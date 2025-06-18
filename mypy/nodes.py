@@ -148,18 +148,6 @@ reverse_builtin_aliases: Final = {
     "builtins.frozenset": "typing.FrozenSet",
 }
 
-_nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate": ""}
-_nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
-# Drop OrderedDict from this for backward compatibility
-del _nongen_builtins["collections.OrderedDict"]
-# HACK: consequence of hackily treating LiteralString as an alias for str
-del _nongen_builtins["builtins.str"]
-
-
-def get_nongen_builtins(python_version: tuple[int, int]) -> dict[str, str]:
-    # After 3.9 with pep585 generic builtins are allowed
-    return _nongen_builtins if python_version < (3, 9) else {}
-
 
 RUNTIME_PROTOCOL_DECOS: Final = (
     "typing.runtime_checkable",
@@ -550,12 +538,20 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    __slots__ = ("items", "unanalyzed_items", "impl", "deprecated", "_is_trivial_self")
+    __slots__ = (
+        "items",
+        "unanalyzed_items",
+        "impl",
+        "deprecated",
+        "setter_index",
+        "_is_trivial_self",
+    )
 
     items: list[OverloadPart]
     unanalyzed_items: list[OverloadPart]
     impl: OverloadPart | None
     deprecated: str | None
+    setter_index: int | None
 
     def __init__(self, items: list[OverloadPart]) -> None:
         super().__init__()
@@ -563,6 +559,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         self.deprecated = None
+        self.setter_index = None
         self._is_trivial_self: bool | None = None
         if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
@@ -598,6 +595,17 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self._is_trivial_self = True
         return True
 
+    @property
+    def setter(self) -> Decorator:
+        # Do some consistency checks first.
+        first_item = self.items[0]
+        assert isinstance(first_item, Decorator)
+        assert first_item.var.is_settable_property
+        assert self.setter_index is not None
+        item = self.items[self.setter_index]
+        assert isinstance(item, Decorator)
+        return item
+
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
@@ -610,6 +618,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             "impl": None if self.impl is None else self.impl.serialize(),
             "flags": get_flags(self, FUNCBASE_FLAGS),
             "deprecated": self.deprecated,
+            "setter_index": self.setter_index,
         }
 
     @classmethod
@@ -630,6 +639,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         res._fullname = data["fullname"]
         set_flags(res, data["flags"])
         res.deprecated = data["deprecated"]
+        res.setter_index = data["setter_index"]
         # NOTE: res.info will be set in the fixup phase.
         return res
 
@@ -3313,8 +3323,8 @@ class TypeInfo(SymbolNode):
                         continue  # unannotated value not a member
 
                     typ = mypy.types.get_proper_type(sym.node.type)
-                    if isinstance(
-                        typ, mypy.types.FunctionLike
+                    if (
+                        isinstance(typ, mypy.types.FunctionLike) and not typ.is_type_obj()
                     ) or (  # explicit `@member` is required
                         isinstance(typ, mypy.types.Instance)
                         and typ.type.fullname == "enum.nonmember"
@@ -3371,11 +3381,11 @@ class TypeInfo(SymbolNode):
                 return c
         return None
 
-    def is_metaclass(self) -> bool:
+    def is_metaclass(self, *, precise: bool = False) -> bool:
         return (
             self.has_base("builtins.type")
             or self.fullname == "abc.ABCMeta"
-            or self.fallback_to_any
+            or (self.fallback_to_any and not precise)
         )
 
     def has_base(self, fullname: str) -> bool:

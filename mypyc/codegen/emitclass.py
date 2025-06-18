@@ -304,9 +304,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
         emit_line()
-        if del_method:
-            generate_finalize_for_class(del_method, finalize_name, emitter)
-            emit_line()
 
         if cl.allow_interpreted_subclasses:
             shadow_vtable_name: str | None = generate_vtables(
@@ -316,6 +313,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         else:
             shadow_vtable_name = None
         vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter, shadow=False)
+        emit_line()
+    if del_method:
+        generate_finalize_for_class(del_method, finalize_name, emitter)
         emit_line()
     if needs_getseters:
         generate_getseter_declarations(cl, emitter)
@@ -831,7 +831,7 @@ def generate_finalize_for_class(
 def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     emitter.emit_line(f"static PyMethodDef {name}[] = {{")
     for fn in cl.methods.values():
-        if fn.decl.is_prop_setter or fn.decl.is_prop_getter:
+        if fn.decl.is_prop_setter or fn.decl.is_prop_getter or fn.internal:
             continue
         emitter.emit_line(f'{{"{fn.name}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")
