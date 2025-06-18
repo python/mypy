@@ -1567,7 +1567,9 @@ class SemanticAnalyzer(
                         )
         return bare_setter_type
 
-    def _is_valid_property_decorator(self, deco: Expression, property_name: str) -> bool:
+    def _is_valid_property_decorator(
+        self, deco: Expression, property_name: str
+    ) -> TypeGuard[MemberExpr]:
         if not isinstance(deco, MemberExpr):
             return False
         if not isinstance(deco.expr, NameExpr) or deco.expr.name != property_name:
