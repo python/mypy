@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from collections.abc import Iterable
-from typing import Optional, TypeVar
+from typing import List, Optional, TypeVar
 
 from mypy.build import (
     BuildResult,
@@ -911,15 +911,19 @@ class GroupGenerator:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
             name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
+            flags: List[str] = []
             if is_fastcall_supported(fn, emitter.capi_version):
-                flag = "METH_FASTCALL"
+                flags.append("METH_FASTCALL")
             else:
-                flag = "METH_VARARGS"
+                flags.append("METH_VARARGS")
+            flags.append("METH_KEYWORDS")
+            if fn.decl.is_async:
+                flags.append("METH_COROUTINE")
             emitter.emit_line(
                 (
-                    '{{"{name}", (PyCFunction){prefix}{cname}, {flag} | METH_KEYWORDS, '
+                    '{{"{name}", (PyCFunction){prefix}{cname}, {flags}, '
                     "NULL /* docstring */}},"
-                ).format(name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag)
+                ).format(name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flags=" | ".join(flags))
             )
         emitter.emit_line("{NULL, NULL, 0, NULL}")
         emitter.emit_line("};")
