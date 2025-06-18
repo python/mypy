@@ -1457,12 +1457,22 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
         flags = {IS_VAR}
         if not v.is_final:
             flags.add(IS_SETTABLE)
-        if v.is_classvar:
+        # TODO: define cleaner rules for class vs instance variables.
+        if v.is_classvar and not is_descriptor(v.type):
             flags.add(IS_CLASSVAR)
         if class_obj and v.is_inferred:
             flags.add(IS_CLASSVAR)
         return flags
     return set()
+
+
+def is_descriptor(typ: Type | None) -> bool:
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return typ.type.get("__get__") is not None
+    if isinstance(typ, UnionType):
+        return all(is_descriptor(item) for item in typ.relevant_items())
+    return False
 
 
 def find_node_type(
