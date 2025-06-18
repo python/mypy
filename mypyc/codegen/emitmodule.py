@@ -995,7 +995,11 @@ class GroupGenerator:
                 )
                 emitter.emit_line(f"if (!{temp_name}) goto fail;")
                 emitter.emit_line(
-                    "if (!CPyFunc_SetCoroFlag(" + temp_name + ")) { Py_DECREF(" + temp_name + "); goto fail; }"
+                    "if (!CPyFunc_SetCoroFlag("
+                    + temp_name
+                    + ")) { Py_DECREF("
+                    + temp_name
+                    + "); goto fail; }"
                 )
                 emitter.emit_line(f"Py_DECREF({temp_name});")
 
