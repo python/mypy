@@ -475,7 +475,7 @@ CPyCoro_GetAwaitableIter(PyObject *o)
 }
 
 static PyObject *
-CPyFunc_SetCoroFlag(PyObject* func)
+CPyFunc_SetCoroFlag(PyObject* func);
 
 
 #endif
