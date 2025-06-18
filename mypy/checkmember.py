@@ -1227,9 +1227,6 @@ def analyze_class_attribute_access(
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
             isinstance(node.node, SYMBOL_FUNCBASE_TYPES) and node.node.is_class
         )
-        is_staticmethod = (is_decorated and cast(Decorator, node.node).func.is_static) or (
-            isinstance(node.node, SYMBOL_FUNCBASE_TYPES) and node.node.is_static
-        )
         t = get_proper_type(t)
         is_trivial_self = False
         if isinstance(node.node, Decorator):
@@ -1247,7 +1244,7 @@ def analyze_class_attribute_access(
             original_vars=original_vars,
             is_trivial_self=is_trivial_self,
         )
-        if is_decorated and not is_staticmethod:
+        if is_decorated:
             t = expand_self_type_if_needed(
                 t, mx, cast(Decorator, node.node).var, itype, is_class=is_classmethod
             )
