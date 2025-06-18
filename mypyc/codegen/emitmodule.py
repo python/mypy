@@ -990,22 +990,6 @@ class GroupGenerator:
                 emitter.emit_lines(f"if (unlikely(!{type_struct}))", "    goto fail;")
 
         emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
-        # Patch async native functions so they're recognized as coroutines
-        for fn in module.functions:
-            if fn.decl.is_async and fn.class_name is None:
-                temp_name = f"{fn.fullname.replace('.', '__')}_temp"
-                emitter.emit_line(
-                    f'PyObject *{temp_name} = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
-                )
-                emitter.emit_line(f"if (!{temp_name}) goto fail;")
-                emitter.emit_line(
-                    "if (!CPyFunc_SetCoroFlag("
-                    + temp_name
-                    + ")) { Py_DECREF("
-                    + temp_name
-                    + "); goto fail; }"
-                )
-                emitter.emit_line(f"Py_DECREF({temp_name});")
 
         self.generate_top_level_call(module, emitter)
 

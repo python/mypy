@@ -103,20 +103,4 @@ CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow)
 }
 
 
-// CPy support for async functions: patch code object to include CO_COROUTINE
-PyObject* CPyFunc_SetCoroFlag(PyObject* func) {
-    PyObject* code = PyObject_GetAttrString(func, "__code__");
-    if (!code) {
-        return NULL;
-    }
-    PyCodeObject* codeobj = (PyCodeObject*)code;
-    codeobj->co_flags |= CO_COROUTINE;
-    int res = PyObject_SetAttrString(func, "__code__", code);
-    Py_DECREF(code);
-    if (res < 0) {
-        return NULL;
-    }
-    Py_INCREF(func);
-    return func;
-}
 #endif
