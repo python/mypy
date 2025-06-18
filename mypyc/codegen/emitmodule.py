@@ -990,13 +990,13 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.decl.is_async and fn.class_name is None:
                 emitter.emit_line(
-                    f'PyObject *func = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
+                    f'PyObject *func_temp = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
                 )
-                emitter.emit_line("if (!func) goto fail;")
+                emitter.emit_line("if (!func_temp) goto fail;")
                 emitter.emit_line(
-                    "if (!CPyFunc_SetCoroFlag(func)) { Py_DECREF(func); goto fail; }"
+                    "if (!CPyFunc_SetCoroFlag(func_temp)) { Py_DECREF(func_temp); goto fail; }"
                 )
-                emitter.emit_line("Py_DECREF(func);")
+                emitter.emit_line("Py_DECREF(func_temp);")
 
         self.generate_top_level_call(module, emitter)
 
