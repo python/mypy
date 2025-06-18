@@ -140,7 +140,7 @@ def triple(a: int) -> Callable[[], Callable[[int], int]]:
     return outer
 
 def if_else(flag: int) -> str:
-    def dummy_funtion() -> str:
+    def dummy_function() -> str:
         return 'if_else.dummy_function'
 
     if flag < 0:
@@ -155,7 +155,7 @@ def if_else(flag: int) -> str:
     return inner()
 
 def for_loop() -> int:
-    def dummy_funtion() -> str:
+    def dummy_function() -> str:
         return 'for_loop.dummy_function'
 
     for i in range(5):
@@ -166,7 +166,7 @@ def for_loop() -> int:
     return 0
 
 def while_loop() -> int:
-    def dummy_funtion() -> str:
+    def dummy_function() -> str:
         return 'while_loop.dummy_function'
 
     i = 0
@@ -1243,7 +1243,8 @@ def g() -> None:
 g()
 
 [case testUnpackKwargsCompiled]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -1254,6 +1255,7 @@ def foo(**kwargs: Unpack[Person]) -> None:
 
 # This is not really supported yet, just test that we behave reasonably.
 foo(name='Jennifer', age=38)
+[typing fixtures/typing-full.pyi]
 [out]
 Jennifer
 
@@ -1284,6 +1286,7 @@ def bar() -> None:
     print(inner.__dict__)  # type: ignore
 
 bar()
+[typing fixtures/typing-full.pyi]
 [out]
 {'__module__': 'native', '__name__': 'bar', '__qualname__': 'bar', '__doc__': None, '__wrapped__': <built-in function bar>}
 

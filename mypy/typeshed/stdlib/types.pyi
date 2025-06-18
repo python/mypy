@@ -1,5 +1,5 @@
 import sys
-from _typeshed import SupportsKeysAndGetItem
+from _typeshed import AnnotationForm, MaybeNone, SupportsKeysAndGetItem
 from _typeshed.importlib import LoaderProtocol
 from collections.abc import (
     AsyncGenerator,
@@ -11,14 +11,16 @@ from collections.abc import (
     Iterable,
     Iterator,
     KeysView,
+    Mapping,
     MutableSequence,
     ValuesView,
 )
 from importlib.machinery import ModuleSpec
+from typing import Any, ClassVar, Literal, TypeVar, final, overload
+from typing_extensions import ParamSpec, Self, TypeAliasType, TypeVarTuple, deprecated
 
-# pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Literal, Mapping, TypeVar, final, overload  # noqa: Y022
-from typing_extensions import ParamSpec, Self, TypeVarTuple, deprecated
+if sys.version_info >= (3, 14):
+    from _typeshed import AnnotateFunc
 
 __all__ = [
     "FunctionType",
@@ -47,10 +49,8 @@ __all__ = [
     "WrapperDescriptorType",
     "resolve_bases",
     "CellType",
+    "GenericAlias",
 ]
-
-if sys.version_info >= (3, 9):
-    __all__ += ["GenericAlias"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["EllipsisType", "NoneType", "NotImplementedType", "UnionType"]
@@ -80,7 +80,9 @@ class FunctionType:
     def __globals__(self) -> dict[str, Any]: ...
     __name__: str
     __qualname__: str
-    __annotations__: dict[str, Any]
+    __annotations__: dict[str, AnnotationForm]
+    if sys.version_info >= (3, 14):
+        __annotate__: AnnotateFunc | None
     __kwdefaults__: dict[str, Any] | None
     if sys.version_info >= (3, 10):
         @property
@@ -89,14 +91,26 @@ class FunctionType:
         __type_params__: tuple[TypeVar | ParamSpec | TypeVarTuple, ...]
 
     __module__: str
-    def __new__(
-        cls,
-        code: CodeType,
-        globals: dict[str, Any],
-        name: str | None = ...,
-        argdefs: tuple[object, ...] | None = ...,
-        closure: tuple[CellType, ...] | None = ...,
-    ) -> Self: ...
+    if sys.version_info >= (3, 13):
+        def __new__(
+            cls,
+            code: CodeType,
+            globals: dict[str, Any],
+            name: str | None = None,
+            argdefs: tuple[object, ...] | None = None,
+            closure: tuple[CellType, ...] | None = None,
+            kwdefaults: dict[str, object] | None = None,
+        ) -> Self: ...
+    else:
+        def __new__(
+            cls,
+            code: CodeType,
+            globals: dict[str, Any],
+            name: str | None = None,
+            argdefs: tuple[object, ...] | None = None,
+            closure: tuple[CellType, ...] | None = None,
+        ) -> Self: ...
+
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     @overload
     def __get__(self, instance: None, owner: type, /) -> FunctionType: ...
@@ -137,7 +151,7 @@ class CodeType:
     def co_firstlineno(self) -> int: ...
     if sys.version_info >= (3, 10):
         @property
-        @deprecated("Will be removed in Python 3.14. Use the co_lines() method instead.")
+        @deprecated("Will be removed in Python 3.15. Use the co_lines() method instead.")
         def co_lnotab(self) -> bytes: ...
     else:
         @property
@@ -157,6 +171,8 @@ class CodeType:
         @property
         def co_qualname(self) -> str: ...
         def co_positions(self) -> Iterable[tuple[int | None, int | None, int | None, int | None]]: ...
+    if sys.version_info >= (3, 14):
+        def co_branches(self) -> Iterator[tuple[int, int, int]]: ...
 
     if sys.version_info >= (3, 11):
         def __new__(
@@ -305,14 +321,13 @@ class MappingProxyType(Mapping[_KT, _VT_co]):
     def values(self) -> ValuesView[_VT_co]: ...
     def items(self) -> ItemsView[_KT, _VT_co]: ...
     @overload
-    def get(self, key: _KT, /) -> _VT_co | None: ...  # type: ignore[override]
+    def get(self, key: _KT, /) -> _VT_co | None: ...
     @overload
-    def get(self, key: _KT, default: _VT_co | _T2, /) -> _VT_co | _T2: ...  # type: ignore[override]
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
-        def __reversed__(self) -> Iterator[_KT]: ...
-        def __or__(self, value: Mapping[_T1, _T2], /) -> dict[_KT | _T1, _VT_co | _T2]: ...
-        def __ror__(self, value: Mapping[_T1, _T2], /) -> dict[_KT | _T1, _VT_co | _T2]: ...
+    def get(self, key: _KT, default: _VT_co | _T2, /) -> _VT_co | _T2: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __reversed__(self) -> Iterator[_KT]: ...
+    def __or__(self, value: Mapping[_T1, _T2], /) -> dict[_KT | _T1, _VT_co | _T2]: ...
+    def __ror__(self, value: Mapping[_T1, _T2], /) -> dict[_KT | _T1, _VT_co | _T2]: ...
 
 class SimpleNamespace:
     __hash__: ClassVar[None]  # type: ignore[assignment]
@@ -337,6 +352,17 @@ class ModuleType:
     __package__: str | None
     __path__: MutableSequence[str]
     __spec__: ModuleSpec | None
+    # N.B. Although this is the same type as `builtins.object.__doc__`,
+    # it is deliberately redeclared here. Most symbols declared in the namespace
+    # of `types.ModuleType` are available as "implicit globals" within a module's
+    # namespace, but this is not true for symbols declared in the namespace of `builtins.object`.
+    # Redeclaring `__doc__` here helps some type checkers understand that `__doc__` is available
+    # as an implicit global in all modules, similar to `__name__`, `__file__`, `__spec__`, etc.
+    __doc__: str | None
+    __annotations__: dict[str, AnnotationForm]
+    if sys.version_info >= (3, 14):
+        __annotate__: AnnotateFunc | None
+
     def __init__(self, name: str, doc: str | None = ...) -> None: ...
     # __getattr__ doesn't exist at runtime,
     # but having it here in typeshed makes dynamic imports
@@ -355,6 +381,12 @@ _ReturnT_co = TypeVar("_ReturnT_co", covariant=True)
 
 @final
 class GeneratorType(Generator[_YieldT_co, _SendT_contra, _ReturnT_co]):
+    @property
+    def gi_code(self) -> CodeType: ...
+    @property
+    def gi_frame(self) -> FrameType: ...
+    @property
+    def gi_running(self) -> bool: ...
     @property
     def gi_yieldfrom(self) -> GeneratorType[_YieldT_co, _SendT_contra, Any] | None: ...
     if sys.version_info >= (3, 11):
@@ -378,6 +410,12 @@ class GeneratorType(Generator[_YieldT_co, _SendT_contra, _ReturnT_co]):
 class AsyncGeneratorType(AsyncGenerator[_YieldT_co, _SendT_contra]):
     @property
     def ag_await(self) -> Awaitable[Any] | None: ...
+    @property
+    def ag_code(self) -> CodeType: ...
+    @property
+    def ag_frame(self) -> FrameType: ...
+    @property
+    def ag_running(self) -> bool: ...
     __name__: str
     __qualname__: str
     if sys.version_info >= (3, 12):
@@ -394,13 +432,20 @@ class AsyncGeneratorType(AsyncGenerator[_YieldT_co, _SendT_contra]):
     @overload
     async def athrow(self, typ: BaseException, val: None = None, tb: TracebackType | None = ..., /) -> _YieldT_co: ...
     def aclose(self) -> Coroutine[Any, Any, None]: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 @final
 class CoroutineType(Coroutine[_YieldT_co, _SendT_contra, _ReturnT_co]):
     __name__: str
     __qualname__: str
+    @property
+    def cr_await(self) -> Any | None: ...
+    @property
+    def cr_code(self) -> CodeType: ...
+    @property
+    def cr_frame(self) -> FrameType: ...
+    @property
+    def cr_running(self) -> bool: ...
     @property
     def cr_origin(self) -> tuple[tuple[str, int, str], ...] | None: ...
     if sys.version_info >= (3, 11):
@@ -424,6 +469,8 @@ class MethodType:
     @property
     def __closure__(self) -> tuple[CellType, ...] | None: ...  # inherited from the added function
     @property
+    def __code__(self) -> CodeType: ...  # inherited from the added function
+    @property
     def __defaults__(self) -> tuple[Any, ...] | None: ...  # inherited from the added function
     @property
     def __func__(self) -> Callable[..., Any]: ...
@@ -433,8 +480,12 @@ class MethodType:
     def __name__(self) -> str: ...  # inherited from the added function
     @property
     def __qualname__(self) -> str: ...  # inherited from the added function
-    def __new__(cls, func: Callable[..., Any], obj: object, /) -> Self: ...
+    def __new__(cls, func: Callable[..., Any], instance: object, /) -> Self: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    if sys.version_info >= (3, 13):
+        def __get__(self, instance: object, owner: type | None = None, /) -> Self: ...
+
     def __eq__(self, value: object, /) -> bool: ...
     def __hash__(self) -> int: ...
 
@@ -526,15 +577,18 @@ class FrameType:
     def f_lasti(self) -> int: ...
     # see discussion in #6769: f_lineno *can* sometimes be None,
     # but you should probably file a bug report with CPython if you encounter it being None in the wild.
-    # An `int | None` annotation here causes too many false-positive errors.
+    # An `int | None` annotation here causes too many false-positive errors, so applying `int | Any`.
     @property
-    def f_lineno(self) -> int | Any: ...
+    def f_lineno(self) -> int | MaybeNone: ...
     @property
     def f_locals(self) -> dict[str, Any]: ...
     f_trace: Callable[[FrameType, str, Any], Any] | None
     f_trace_lines: bool
     f_trace_opcodes: bool
     def clear(self) -> None: ...
+    if sys.version_info >= (3, 14):
+        @property
+        def f_generator(self) -> GeneratorType[Any, Any, Any] | CoroutineType[Any, Any, Any] | None: ...
 
 @final
 class GetSetDescriptorType:
@@ -574,8 +628,27 @@ def prepare_class(
 if sys.version_info >= (3, 12):
     def get_original_bases(cls: type, /) -> tuple[Any, ...]: ...
 
-# Actually a different type, but `property` is special and we want that too.
-DynamicClassAttribute = property
+# Does not actually inherit from property, but saying it does makes sure that
+# pyright handles this class correctly.
+class DynamicClassAttribute(property):
+    fget: Callable[[Any], Any] | None
+    fset: Callable[[Any, Any], object] | None  # type: ignore[assignment]
+    fdel: Callable[[Any], object] | None  # type: ignore[assignment]
+    overwrite_doc: bool
+    __isabstractmethod__: bool
+    def __init__(
+        self,
+        fget: Callable[[Any], Any] | None = None,
+        fset: Callable[[Any, Any], object] | None = None,
+        fdel: Callable[[Any], object] | None = None,
+        doc: str | None = None,
+    ) -> None: ...
+    def __get__(self, instance: Any, ownerclass: type | None = None) -> Any: ...
+    def __set__(self, instance: Any, value: Any) -> None: ...
+    def __delete__(self, instance: Any) -> None: ...
+    def getter(self, fget: Callable[[Any], Any]) -> DynamicClassAttribute: ...
+    def setter(self, fset: Callable[[Any, Any], object]) -> DynamicClassAttribute: ...
+    def deleter(self, fdel: Callable[[Any], object]) -> DynamicClassAttribute: ...
 
 _Fn = TypeVar("_Fn", bound=Callable[..., object])
 _R = TypeVar("_R")
@@ -583,33 +656,33 @@ _P = ParamSpec("_P")
 
 # it's not really an Awaitable, but can be used in an await expression. Real type: Generator & Awaitable
 @overload
-def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[overload-overlap]
+def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...
 @overload
 def coroutine(func: _Fn) -> _Fn: ...
 
-if sys.version_info >= (3, 9):
-    class GenericAlias:
+class GenericAlias:
+    @property
+    def __origin__(self) -> type | TypeAliasType: ...
+    @property
+    def __args__(self) -> tuple[Any, ...]: ...
+    @property
+    def __parameters__(self) -> tuple[Any, ...]: ...
+    def __new__(cls, origin: type, args: Any, /) -> Self: ...
+    def __getitem__(self, typeargs: Any, /) -> GenericAlias: ...
+    def __eq__(self, value: object, /) -> bool: ...
+    def __hash__(self) -> int: ...
+    def __mro_entries__(self, bases: Iterable[object], /) -> tuple[type, ...]: ...
+    if sys.version_info >= (3, 11):
         @property
-        def __origin__(self) -> type: ...
+        def __unpacked__(self) -> bool: ...
         @property
-        def __args__(self) -> tuple[Any, ...]: ...
-        @property
-        def __parameters__(self) -> tuple[Any, ...]: ...
-        def __new__(cls, origin: type, args: Any) -> Self: ...
-        def __getitem__(self, typeargs: Any, /) -> GenericAlias: ...
-        def __eq__(self, value: object, /) -> bool: ...
-        def __hash__(self) -> int: ...
-        if sys.version_info >= (3, 11):
-            @property
-            def __unpacked__(self) -> bool: ...
-            @property
-            def __typing_unpacked_tuple_args__(self) -> tuple[Any, ...] | None: ...
-        if sys.version_info >= (3, 10):
-            def __or__(self, value: Any, /) -> UnionType: ...
-            def __ror__(self, value: Any, /) -> UnionType: ...
+        def __typing_unpacked_tuple_args__(self) -> tuple[Any, ...] | None: ...
+    if sys.version_info >= (3, 10):
+        def __or__(self, value: Any, /) -> UnionType: ...
+        def __ror__(self, value: Any, /) -> UnionType: ...
 
-        # GenericAlias delegates attr access to `__origin__`
-        def __getattr__(self, name: str) -> Any: ...
+    # GenericAlias delegates attr access to `__origin__`
+    def __getattr__(self, name: str) -> Any: ...
 
 if sys.version_info >= (3, 10):
     @final
@@ -626,6 +699,8 @@ if sys.version_info >= (3, 10):
     class UnionType:
         @property
         def __args__(self) -> tuple[Any, ...]: ...
+        @property
+        def __parameters__(self) -> tuple[Any, ...]: ...
         def __or__(self, value: Any, /) -> UnionType: ...
         def __ror__(self, value: Any, /) -> UnionType: ...
         def __eq__(self, value: object, /) -> bool: ...

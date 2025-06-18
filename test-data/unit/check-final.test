@@ -41,7 +41,7 @@ class C:
     def __init__(self, x: Tuple[int, Any]) -> None:
         self.x: Final = x
         self.y: Final[float] = 1
-reveal_type(C((1, 2)).x)  # N: Revealed type is "Tuple[builtins.int, Any]"
+reveal_type(C((1, 2)).x)  # N: Revealed type is "tuple[builtins.int, Any]"
 reveal_type(C((1, 2)).y)  # N: Revealed type is "builtins.float"
 [builtins fixtures/tuple.pyi]
 [out]
@@ -194,6 +194,7 @@ def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qu
 [out]
 
 [case testFinalDefiningNotInMethodExtensions]
+# flags: --python-version 3.14
 from typing_extensions import Final
 
 def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
@@ -250,7 +251,7 @@ class C(Generic[T]):
         self.x: Final = x
         self.y: Final = 1
 
-reveal_type(C((1, 2)).x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(C((1, 2)).x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 C.x  # E: Cannot access final instance attribute "x" on class object \
      # E: Access to generic instance variables via class is ambiguous
 C.y  # E: Cannot access final instance attribute "y" on class object
@@ -1119,7 +1120,7 @@ class B:
 [out]
 
 [case testFinalInDeferredMethod]
-from typing_extensions import Final
+from typing import Final
 
 class A:
     def __init__(self) -> None:
@@ -1128,6 +1129,7 @@ class A:
 [builtins fixtures/tuple.pyi]
 
 [case testFinalUsedWithClassVar]
+# flags: --python-version 3.12
 from typing import Final, ClassVar
 
 class A:
@@ -1135,6 +1137,15 @@ class A:
     b: ClassVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
     c: ClassVar[Final] = 1  # E: Final can be only used as an outermost qualifier in a variable annotation
 [out]
+
+[case testFinalUsedWithClassVarAfterPy313]
+# flags: --python-version 3.13
+from typing import Final, ClassVar
+
+class A:
+    a: Final[ClassVar[int]] = 1
+    b: ClassVar[Final[int]] = 1
+    c: ClassVar[Final] = 1
 
 [case testFinalClassWithAbstractMethod]
 from typing import final
@@ -1176,7 +1187,7 @@ class Child(Parent):
     def __bar(self) -> None: ...
 
 [case testFinalWithoutBool]
-from typing_extensions import final, Literal
+from typing import Literal, final
 
 class A:
     pass
@@ -1196,7 +1207,7 @@ reveal_type(C() and 42)  # N: Revealed type is "Literal[42]?"
 [builtins fixtures/bool.pyi]
 
 [case testFinalWithoutBoolButWithLen]
-from typing_extensions import final, Literal
+from typing import Literal, final
 
 # Per Python data model, __len__ is called if __bool__ does not exist.
 # In a @final class, __bool__ would not exist.
@@ -1218,3 +1229,46 @@ reveal_type(B() and 42)  # N: Revealed type is "Literal[42]?"
 reveal_type(C() and 42)  # N: Revealed type is "__main__.C"
 
 [builtins fixtures/bool.pyi]
+
+[case testCanAccessFinalClassInit]
+from typing import final
+
+@final
+class FinalClass:
+    pass
+
+def check_final_class() -> None:
+    new_instance = FinalClass()
+    new_instance.__init__()
+
+class FinalInit:
+    @final
+    def __init__(self) -> None:
+        pass
+
+def check_final_init() -> None:
+    new_instance = FinalInit()
+    new_instance.__init__()
+[builtins fixtures/tuple.pyi]
+
+[case testNarrowingOfFinalPersistsInFunctions]
+from typing import Final, Union
+
+def _init() -> Union[int, None]:
+    return 0
+
+FOO: Final = _init()
+
+class Example:
+
+    if FOO is not None:
+        reveal_type(FOO)  # N: Revealed type is "builtins.int"
+
+        def fn(self) -> int:
+            return FOO
+
+if FOO is not None:
+    reveal_type(FOO)  # N: Revealed type is "builtins.int"
+
+    def func() -> int:
+        return FOO

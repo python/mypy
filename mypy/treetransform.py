@@ -5,7 +5,8 @@ Subclass TransformVisitor to perform non-trivial transformations.
 
 from __future__ import annotations
 
-from typing import Iterable, Optional, cast
+from collections.abc import Iterable
+from typing import Optional, cast
 
 from mypy.nodes import (
     GDEF,
@@ -276,7 +277,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return NonlocalDecl(node.names.copy())
 
     def visit_block(self, node: Block) -> Block:
-        return Block(self.statements(node.body))
+        return Block(self.statements(node.body), is_unreachable=node.is_unreachable)
 
     def visit_decorator(self, node: Decorator) -> Decorator:
         # Note that a Decorator must be transformed to a Decorator.
@@ -558,7 +559,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
-        return AssignmentExpr(self.expr(node.target), self.expr(node.value))
+        return AssignmentExpr(self.duplicate_name(node.target), self.expr(node.value))
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))

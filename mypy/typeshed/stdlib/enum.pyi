@@ -53,6 +53,7 @@ _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
 # >>> Enum('Foo', names={'RED': 1, 'YELLOW': 2})
 # <enum 'Foo'>
 _EnumNames: TypeAlias = str | Iterable[str] | Iterable[Iterable[str | Any]] | Mapping[str, Any]
+_Signature: TypeAlias = Any  # TODO: Unable to import Signature from inspect module
 
 if sys.version_info >= (3, 11):
     class nonmember(Generic[_EnumMemberT]):
@@ -64,7 +65,11 @@ if sys.version_info >= (3, 11):
         def __init__(self, value: _EnumMemberT) -> None: ...
 
 class _EnumDict(dict[str, Any]):
-    def __init__(self) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(self, cls_name: str | None = None) -> None: ...
+    else:
+        def __init__(self) -> None: ...
+
     def __setitem__(self, key: str, value: Any) -> None: ...
     if sys.version_info >= (3, 11):
         # See comment above `typing.MutableMapping.update`
@@ -96,20 +101,13 @@ class EnumMeta(type):
             _simple: bool = False,
             **kwds: Any,
         ) -> _typeshed.Self: ...
-    elif sys.version_info >= (3, 9):
+    else:
         def __new__(
             metacls: type[_typeshed.Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict, **kwds: Any
         ) -> _typeshed.Self: ...
-    else:
-        def __new__(metacls: type[_typeshed.Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict) -> _typeshed.Self: ...
 
-    if sys.version_info >= (3, 9):
-        @classmethod
-        def __prepare__(metacls, cls: str, bases: tuple[type, ...], **kwds: Any) -> _EnumDict: ...  # type: ignore[override]
-    else:
-        @classmethod
-        def __prepare__(metacls, cls: str, bases: tuple[type, ...]) -> _EnumDict: ...  # type: ignore[override]
-
+    @classmethod
+    def __prepare__(metacls, cls: str, bases: tuple[type, ...], **kwds: Any) -> _EnumDict: ...  # type: ignore[override]
     def __iter__(self: type[_EnumMemberT]) -> Iterator[_EnumMemberT]: ...
     def __reversed__(self: type[_EnumMemberT]) -> Iterator[_EnumMemberT]: ...
     if sys.version_info >= (3, 12):
@@ -169,6 +167,9 @@ class EnumMeta(type):
     if sys.version_info >= (3, 12):
         @overload
         def __call__(cls: type[_EnumMemberT], value: Any, *values: Any) -> _EnumMemberT: ...
+    if sys.version_info >= (3, 14):
+        @property
+        def __signature__(cls) -> _Signature: ...
 
     _member_names_: list[str]  # undocumented
     _member_map_: dict[str, Enum]  # undocumented
@@ -215,7 +216,7 @@ class Enum(metaclass=EnumMeta):
     if sys.version_info >= (3, 11):
         def __copy__(self) -> Self: ...
         def __deepcopy__(self, memo: Any) -> Self: ...
-    if sys.version_info >= (3, 12):
+    if sys.version_info >= (3, 12) and sys.version_info < (3, 14):
         @classmethod
         def __signature__(cls) -> str: ...
 
@@ -302,6 +303,7 @@ if sys.version_info >= (3, 11):
         def __or__(self, other: int) -> Self: ...
         def __and__(self, other: int) -> Self: ...
         def __xor__(self, other: int) -> Self: ...
+        def __invert__(self) -> Self: ...
         __ror__ = __or__
         __rand__ = __and__
         __rxor__ = __xor__
@@ -312,16 +314,28 @@ else:
         def __or__(self, other: int) -> Self: ...
         def __and__(self, other: int) -> Self: ...
         def __xor__(self, other: int) -> Self: ...
+        def __invert__(self) -> Self: ...
         __ror__ = __or__
         __rand__ = __and__
         __rxor__ = __xor__
 
-# subclassing IntFlag so it picks up all implemented base functions, best modeling behavior of enum.auto()
-class auto(IntFlag):
+class auto:
     _value_: Any
     @_magic_enum_attr
     def value(self) -> Any: ...
     def __new__(cls) -> Self: ...
+
+    # These don't exist, but auto is basically immediately replaced with
+    # either an int or a str depending on the type of the enum. StrEnum's auto
+    # shouldn't have these, but they're needed for int versions of auto (mostly the __or__).
+    # Ideally type checkers would special case auto enough to handle this,
+    # but until then this is a slightly inaccurate helping hand.
+    def __or__(self, other: int | Self) -> Self: ...
+    def __and__(self, other: int | Self) -> Self: ...
+    def __xor__(self, other: int | Self) -> Self: ...
+    __ror__ = __or__
+    __rand__ = __and__
+    __rxor__ = __xor__
 
 if sys.version_info >= (3, 11):
     def pickle_by_global_name(self: Enum, proto: int) -> str: ...

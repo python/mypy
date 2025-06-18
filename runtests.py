@@ -17,6 +17,8 @@ MYPYC_RUN = "TestRun"
 MYPYC_RUN_MULTI = "TestRunMultiFile"
 MYPYC_EXTERNAL = "TestExternal"
 MYPYC_COMMAND_LINE = "TestCommandLine"
+MYPYC_SEPARATE = "TestRunSeparate"
+MYPYC_MULTIMODULE = "multimodule"  # Subset of mypyc run tests that are slow
 ERROR_STREAM = "ErrorStreamSuite"
 
 
@@ -31,6 +33,7 @@ ALL_NON_FAST = [
     MYPYC_RUN_MULTI,
     MYPYC_EXTERNAL,
     MYPYC_COMMAND_LINE,
+    MYPYC_SEPARATE,
     ERROR_STREAM,
 ]
 
@@ -40,7 +43,10 @@ PYTEST_OPT_IN = [PEP561]
 
 
 # These must be enabled by explicitly including 'mypyc-extra' on the command line.
-MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI]
+MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI, MYPYC_SEPARATE]
+
+# These mypyc test filters cover most slow test cases
+MYPYC_SLOW = [MYPYC_RUN_MULTI, MYPYC_COMMAND_LINE, MYPYC_SEPARATE, MYPYC_MULTIMODULE]
 
 
 # We split the pytest run into three parts to improve test
@@ -58,6 +64,15 @@ cmds = {
         "mypy",
         "-p",
         "mypyc",
+    ],
+    # Type check setup.py as well
+    "self-packaging": [
+        executable,
+        "-m",
+        "mypy",
+        "--config-file",
+        "mypy_self_check.ini",
+        "setup.py",
     ],
     # Lint
     "lint": ["pre-commit", "run", "--all-files"],
@@ -77,6 +92,7 @@ cmds = {
         "-k",
         " or ".join([DAEMON, MYPYC_EXTERNAL, MYPYC_COMMAND_LINE, ERROR_STREAM]),
     ],
+    "mypyc-fast": ["pytest", "-q", "mypyc", "-k", f"not ({' or '.join(MYPYC_SLOW)})"],
     # Test cases that might take minutes to run
     "pytest-extra": ["pytest", "-q", "-k", " or ".join(PYTEST_OPT_IN)],
     # Mypyc tests that aren't run by default, since they are slow and rarely
@@ -87,7 +103,7 @@ cmds = {
 # Stop run immediately if these commands fail
 FAST_FAIL = ["self", "lint"]
 
-EXTRA_COMMANDS = ("pytest-extra", "mypyc-extra")
+EXTRA_COMMANDS = ("pytest-extra", "mypyc-fast", "mypyc-extra")
 DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd not in EXTRA_COMMANDS]
 
 assert all(cmd in cmds for cmd in FAST_FAIL)
@@ -95,7 +111,13 @@ assert all(cmd in cmds for cmd in FAST_FAIL)
 
 def run_cmd(name: str) -> int:
     status = 0
-    cmd = cmds[name]
+    if name in cmds:
+        cmd = cmds[name]
+    else:
+        if name.endswith(".test"):
+            cmd = ["pytest", f"mypy/test/testcheck.py::TypeCheckSuite::{name}"]
+        else:
+            cmd = ["pytest", "-n0", "-k", name]
     print(f"run {name}: {cmd}")
     proc = subprocess.run(cmd, stderr=subprocess.STDOUT)
     if proc.returncode:
@@ -128,13 +150,22 @@ def main() -> None:
     prog, *args = argv
 
     if not set(args).issubset(cmds):
-        print("usage:", prog, " ".join(f"[{k}]" for k in cmds))
+        print(
+            "usage:",
+            prog,
+            " ".join(f"[{k}]" for k in cmds),
+            "[names of individual tests and files...]",
+        )
         print()
         print(
             "Run the given tests. If given no arguments, run everything except"
-            + " pytest-extra and mypyc-extra."
+            + " pytest-extra and mypyc-extra. Unrecognized arguments will be"
+            + " interpreted as individual test names / substring expressions"
+            + " (or, if they end in .test, individual test files)"
+            + " and this script will try to run them."
         )
-        exit(1)
+        if "-h" in args or "--help" in args:
+            exit(1)
 
     if not args:
         args = DEFAULT_COMMANDS.copy()

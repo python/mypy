@@ -3,8 +3,9 @@ import types
 from _socket import _Address, _RetAddress
 from _typeshed import ReadableBuffer
 from collections.abc import Callable
+from io import BufferedIOBase
 from socket import socket as _socket
-from typing import Any, BinaryIO, ClassVar
+from typing import Any, ClassVar
 from typing_extensions import Self, TypeAlias
 
 __all__ = [
@@ -34,32 +35,26 @@ if sys.platform != "win32":
 _RequestType: TypeAlias = _socket | tuple[bytes, _socket]
 _AfUnixAddress: TypeAlias = str | ReadableBuffer  # address acceptable for an AF_UNIX socket
 _AfInetAddress: TypeAlias = tuple[str | bytes | bytearray, int]  # address acceptable for an AF_INET socket
+_AfInet6Address: TypeAlias = tuple[str | bytes | bytearray, int, int, int]  # address acceptable for an AF_INET6 socket
 
 # This can possibly be generic at some point:
 class BaseServer:
-    address_family: int
     server_address: _Address
-    socket: _socket
-    allow_reuse_address: bool
-    request_queue_size: int
-    socket_type: int
     timeout: float | None
     RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler]
     def __init__(
         self, server_address: _Address, RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler]
     ) -> None: ...
-    def fileno(self) -> int: ...
     def handle_request(self) -> None: ...
     def serve_forever(self, poll_interval: float = 0.5) -> None: ...
     def shutdown(self) -> None: ...
     def server_close(self) -> None: ...
     def finish_request(self, request: _RequestType, client_address: _RetAddress) -> None: ...
-    def get_request(self) -> tuple[Any, Any]: ...
+    def get_request(self) -> tuple[Any, Any]: ...  # Not implemented here, but expected to exist on subclasses
     def handle_error(self, request: _RequestType, client_address: _RetAddress) -> None: ...
     def handle_timeout(self) -> None: ...
     def process_request(self, request: _RequestType, client_address: _RetAddress) -> None: ...
     def server_activate(self) -> None: ...
-    def server_bind(self) -> None: ...
     def verify_request(self, request: _RequestType, client_address: _RetAddress) -> bool: ...
     def __enter__(self) -> Self: ...
     def __exit__(
@@ -70,16 +65,23 @@ class BaseServer:
     def close_request(self, request: _RequestType) -> None: ...  # undocumented
 
 class TCPServer(BaseServer):
+    address_family: int
+    socket: _socket
+    allow_reuse_address: bool
+    request_queue_size: int
+    socket_type: int
     if sys.version_info >= (3, 11):
         allow_reuse_port: bool
-    server_address: _AfInetAddress
+    server_address: _AfInetAddress | _AfInet6Address
     def __init__(
         self,
-        server_address: _AfInetAddress,
+        server_address: _AfInetAddress | _AfInet6Address,
         RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler],
         bind_and_activate: bool = True,
     ) -> None: ...
+    def fileno(self) -> int: ...
     def get_request(self) -> tuple[_socket, _RetAddress]: ...
+    def server_bind(self) -> None: ...
 
 class UDPServer(TCPServer):
     max_packet_size: ClassVar[int]
@@ -158,11 +160,11 @@ class StreamRequestHandler(BaseRequestHandler):
     timeout: ClassVar[float | None]  # undocumented
     disable_nagle_algorithm: ClassVar[bool]  # undocumented
     connection: Any  # undocumented
-    rfile: BinaryIO
-    wfile: BinaryIO
+    rfile: BufferedIOBase
+    wfile: BufferedIOBase
 
 class DatagramRequestHandler(BaseRequestHandler):
-    packet: _socket  # undocumented
+    packet: bytes  # undocumented
     socket: _socket  # undocumented
-    rfile: BinaryIO
-    wfile: BinaryIO
+    rfile: BufferedIOBase
+    wfile: BufferedIOBase

@@ -25,7 +25,8 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -33,6 +34,7 @@ from mypy.fscache import FileSystemCache
 from mypy.main import process_options
 from mypy.options import Options
 from mypy.util import write_junit_xml
+from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
 from mypyc.common import RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
@@ -87,7 +89,7 @@ def setup_mypycify_vars() -> None:
     # There has to be a better approach to this.
 
     # The vars can contain ints but we only work with str ones
-    vars = cast(Dict[str, str], sysconfig.get_config_vars())
+    vars = cast(dict[str, str], sysconfig.get_config_vars())
     if sys.platform == "darwin":
         # Disable building 32-bit binaries, since we generate too much code
         # for a 32-bit Mach-O object. There has to be a better way to do this.
@@ -240,7 +242,7 @@ def generate_c(
         print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
     errors = Errors(options)
-    modules, ctext = emitmodule.compile_modules_to_c(
+    modules, ctext, mapper = emitmodule.compile_modules_to_c(
         result, compiler_options=compiler_options, errors=errors, groups=groups
     )
     t2 = time.time()
@@ -251,6 +253,9 @@ def generate_c(
 
     if compiler_options.verbose:
         print(f"Compiled to C in {t2 - t1:.3f}s")
+
+    if options.mypyc_annotation_file:
+        generate_annotated_html(options.mypyc_annotation_file, result, modules, mapper)
 
     return ctext, "\n".join(format_modules(modules))
 
@@ -352,6 +357,7 @@ def construct_groups(
     sources: list[BuildSource],
     separate: bool | list[tuple[list[str], str | None]],
     use_shared_lib: bool,
+    group_name_override: str | None,
 ) -> emitmodule.Groups:
     """Compute Groups given the input source list and separate configs.
 
@@ -381,7 +387,10 @@ def construct_groups(
     # Generate missing names
     for i, (group, name) in enumerate(groups):
         if use_shared_lib and not name:
-            name = group_name([source.module for source in group])
+            if group_name_override is not None:
+                name = group_name_override
+            else:
+                name = group_name([source.module for source in group])
         groups[i] = (group, name)
 
     return groups
@@ -427,7 +436,10 @@ def mypyc_build(
         or always_use_shared_lib
     )
 
-    groups = construct_groups(mypyc_sources, separate, use_shared_lib)
+    groups = construct_groups(mypyc_sources, separate, use_shared_lib, compiler_options.group_name)
+
+    if compiler_options.group_name is not None:
+        assert len(groups) == 1, "If using custom group_name, only one group is expected"
 
     # We let the test harness just pass in the c file contents instead
     # so that it can do a corner-cutting version without full stubs.
@@ -447,7 +459,8 @@ def mypyc_build(
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(compiler_options.target_dir, cfile)
-            write_file(cfile, ctext)
+            if not options.mypyc_skip_c_generation:
+                write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == ".c":
                 cfilenames.append(cfile)
 
@@ -470,6 +483,8 @@ def mypycify(
     skip_cgen_input: Any | None = None,
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
+    strict_dunder_typing: bool = False,
+    group_name: str | None = None,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -509,6 +524,13 @@ def mypycify(
                                should be directly #include'd instead of linked
                                separately in order to reduce compiler invocations.
                                Defaults to False in multi_file mode, True otherwise.
+        strict_dunder_typing: If True, force dunder methods to have the return type
+                              of the method strictly, which can lead to more
+                              optimization opportunities. Defaults to False.
+        group_name: If set, override the default group name derived from
+                    the hash of module names. This is used for the names of the
+                    output C files and the shared library. This is only supported
+                    if there is a single group. [Experimental]
     """
 
     # Figure out our configuration
@@ -519,6 +541,8 @@ def mypycify(
         separate=separate is not False,
         target_dir=target_dir,
         include_runtime_files=include_runtime_files,
+        strict_dunder_typing=strict_dunder_typing,
+        group_name=group_name,
     )
 
     # Generate all the actual important C code

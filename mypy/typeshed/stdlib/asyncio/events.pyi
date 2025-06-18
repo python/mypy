@@ -1,8 +1,15 @@
 import ssl
 import sys
+from _asyncio import (
+    _get_running_loop as _get_running_loop,
+    _set_running_loop as _set_running_loop,
+    get_event_loop as get_event_loop,
+    get_running_loop as get_running_loop,
+)
 from _typeshed import FileDescriptorLike, ReadableBuffer, StrPath, Unused, WriteableBuffer
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Sequence
+from concurrent.futures import Executor
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Literal, Protocol, TypeVar, overload
@@ -14,16 +21,21 @@ from .futures import Future
 from .protocols import BaseProtocol
 from .tasks import Task
 from .transports import BaseTransport, DatagramTransport, ReadTransport, SubprocessTransport, Transport, WriteTransport
-from .unix_events import AbstractChildWatcher
 
+if sys.version_info < (3, 14):
+    from .unix_events import AbstractChildWatcher
+
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 14):
     __all__ = (
-        "AbstractEventLoopPolicy",
+        "_AbstractEventLoopPolicy",
         "AbstractEventLoop",
         "AbstractServer",
         "Handle",
         "TimerHandle",
+        "_get_event_loop_policy",
         "get_event_loop_policy",
+        "_set_event_loop_policy",
         "set_event_loop_policy",
         "get_event_loop",
         "set_event_loop",
@@ -130,27 +142,19 @@ class AbstractEventLoop:
     @abstractmethod
     async def shutdown_asyncgens(self) -> None: ...
     # Methods scheduling callbacks.  All these return Handles.
-    if sys.version_info >= (3, 9):  # "context" added in 3.9.10/3.10.2
-        @abstractmethod
-        def call_soon(
-            self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
-        ) -> Handle: ...
-        @abstractmethod
-        def call_later(
-            self, delay: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
-        ) -> TimerHandle: ...
-        @abstractmethod
-        def call_at(
-            self, when: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
-        ) -> TimerHandle: ...
-    else:
-        @abstractmethod
-        def call_soon(self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> Handle: ...
-        @abstractmethod
-        def call_later(self, delay: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> TimerHandle: ...
-        @abstractmethod
-        def call_at(self, when: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> TimerHandle: ...
-
+    # "context" added in 3.9.10/3.10.2 for call_*
+    @abstractmethod
+    def call_soon(
+        self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
+    ) -> Handle: ...
+    @abstractmethod
+    def call_later(
+        self, delay: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
+    ) -> TimerHandle: ...
+    @abstractmethod
+    def call_at(
+        self, when: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
+    ) -> TimerHandle: ...
     @abstractmethod
     def time(self) -> float: ...
     # Future methods
@@ -171,19 +175,15 @@ class AbstractEventLoop:
     @abstractmethod
     def get_task_factory(self) -> _TaskFactory | None: ...
     # Methods for interacting with threads
-    if sys.version_info >= (3, 9):  # "context" added in 3.9.10/3.10.2
-        @abstractmethod
-        def call_soon_threadsafe(
-            self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
-        ) -> Handle: ...
-    else:
-        @abstractmethod
-        def call_soon_threadsafe(self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> Handle: ...
-
+    # "context" added in 3.9.10/3.10.2
     @abstractmethod
-    def run_in_executor(self, executor: Any, func: Callable[[Unpack[_Ts]], _T], *args: Unpack[_Ts]) -> Future[_T]: ...
+    def call_soon_threadsafe(
+        self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
+    ) -> Handle: ...
     @abstractmethod
-    def set_default_executor(self, executor: Any) -> None: ...
+    def run_in_executor(self, executor: Executor | None, func: Callable[[Unpack[_Ts]], _T], *args: Unpack[_Ts]) -> Future[_T]: ...
+    @abstractmethod
+    def set_default_executor(self, executor: Executor) -> None: ...
     # Network I/O methods returning Futures.
     @abstractmethod
     async def getaddrinfo(
@@ -599,11 +599,10 @@ class AbstractEventLoop:
     def get_debug(self) -> bool: ...
     @abstractmethod
     def set_debug(self, enabled: bool) -> None: ...
-    if sys.version_info >= (3, 9):
-        @abstractmethod
-        async def shutdown_default_executor(self) -> None: ...
+    @abstractmethod
+    async def shutdown_default_executor(self) -> None: ...
 
-class AbstractEventLoopPolicy:
+class _AbstractEventLoopPolicy:
     @abstractmethod
     def get_event_loop(self) -> AbstractEventLoop: ...
     @abstractmethod
@@ -625,14 +624,33 @@ class AbstractEventLoopPolicy:
             @abstractmethod
             def set_child_watcher(self, watcher: AbstractChildWatcher) -> None: ...
 
-class BaseDefaultEventLoopPolicy(AbstractEventLoopPolicy, metaclass=ABCMeta):
-    def get_event_loop(self) -> AbstractEventLoop: ...
-    def set_event_loop(self, loop: AbstractEventLoop | None) -> None: ...
-    def new_event_loop(self) -> AbstractEventLoop: ...
+if sys.version_info < (3, 14):
+    AbstractEventLoopPolicy = _AbstractEventLoopPolicy
 
-def get_event_loop_policy() -> AbstractEventLoopPolicy: ...
-def set_event_loop_policy(policy: AbstractEventLoopPolicy | None) -> None: ...
-def get_event_loop() -> AbstractEventLoop: ...
+if sys.version_info >= (3, 14):
+    class _BaseDefaultEventLoopPolicy(_AbstractEventLoopPolicy, metaclass=ABCMeta):
+        def get_event_loop(self) -> AbstractEventLoop: ...
+        def set_event_loop(self, loop: AbstractEventLoop | None) -> None: ...
+        def new_event_loop(self) -> AbstractEventLoop: ...
+
+else:
+    class BaseDefaultEventLoopPolicy(_AbstractEventLoopPolicy, metaclass=ABCMeta):
+        def get_event_loop(self) -> AbstractEventLoop: ...
+        def set_event_loop(self, loop: AbstractEventLoop | None) -> None: ...
+        def new_event_loop(self) -> AbstractEventLoop: ...
+
+if sys.version_info >= (3, 14):
+    def _get_event_loop_policy() -> _AbstractEventLoopPolicy: ...
+    def _set_event_loop_policy(policy: _AbstractEventLoopPolicy | None) -> None: ...
+    @deprecated("Deprecated as of Python 3.14; will be removed in Python 3.16")
+    def get_event_loop_policy() -> _AbstractEventLoopPolicy: ...
+    @deprecated("Deprecated as of Python 3.14; will be removed in Python 3.16")
+    def set_event_loop_policy(policy: _AbstractEventLoopPolicy | None) -> None: ...
+
+else:
+    def get_event_loop_policy() -> _AbstractEventLoopPolicy: ...
+    def set_event_loop_policy(policy: _AbstractEventLoopPolicy | None) -> None: ...
+
 def set_event_loop(loop: AbstractEventLoop | None) -> None: ...
 def new_event_loop() -> AbstractEventLoop: ...
 
@@ -646,7 +664,3 @@ if sys.version_info < (3, 14):
     else:
         def get_child_watcher() -> AbstractChildWatcher: ...
         def set_child_watcher(watcher: AbstractChildWatcher) -> None: ...
-
-def _set_running_loop(loop: AbstractEventLoop | None, /) -> None: ...
-def _get_running_loop() -> AbstractEventLoop: ...
-def get_running_loop() -> AbstractEventLoop: ...

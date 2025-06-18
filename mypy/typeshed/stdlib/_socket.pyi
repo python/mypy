@@ -1,8 +1,9 @@
 import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from collections.abc import Iterable
+from socket import error as error, gaierror as gaierror, herror as herror, timeout as timeout
 from typing import Any, SupportsIndex, overload
-from typing_extensions import TypeAlias
+from typing_extensions import CapsuleType, TypeAlias
 
 _CMSG: TypeAlias = tuple[int, int, bytes]
 _CMSGArg: TypeAlias = tuple[int, int, ReadableBuffer]
@@ -71,13 +72,16 @@ SO_SNDBUF: int
 SO_SNDLOWAT: int
 SO_SNDTIMEO: int
 SO_TYPE: int
-SO_USELOOPBACK: int
+if sys.platform != "linux":
+    SO_USELOOPBACK: int
 if sys.platform == "win32":
     SO_EXCLUSIVEADDRUSE: int
 if sys.platform != "win32":
     SO_REUSEPORT: int
+    if sys.platform != "darwin" or sys.version_info >= (3, 13):
+        SO_BINDTODEVICE: int
+
 if sys.platform != "win32" and sys.platform != "darwin":
-    SO_BINDTODEVICE: int
     SO_DOMAIN: int
     SO_MARK: int
     SO_PASSCRED: int
@@ -86,7 +90,10 @@ if sys.platform != "win32" and sys.platform != "darwin":
     SO_PEERSEC: int
     SO_PRIORITY: int
     SO_PROTOCOL: int
+if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "linux":
     SO_SETFIB: int
+if sys.platform == "linux" and sys.version_info >= (3, 13):
+    SO_BINDTOIFINDEX: int
 
 SOMAXCONN: int
 
@@ -98,27 +105,32 @@ MSG_TRUNC: int
 MSG_WAITALL: int
 if sys.platform != "win32":
     MSG_DONTWAIT: int
-    MSG_EOF: int
     MSG_EOR: int
     MSG_NOSIGNAL: int  # Sometimes this exists on darwin, sometimes not
 if sys.platform != "darwin":
-    MSG_BCAST: int
     MSG_ERRQUEUE: int
+if sys.platform == "win32":
+    MSG_BCAST: int
     MSG_MCAST: int
 if sys.platform != "win32" and sys.platform != "darwin":
-    MSG_BTAG: int
     MSG_CMSG_CLOEXEC: int
     MSG_CONFIRM: int
-    MSG_ETAG: int
     MSG_FASTOPEN: int
     MSG_MORE: int
+if sys.platform != "win32" and sys.platform != "linux":
+    MSG_EOF: int
+if sys.platform != "win32" and sys.platform != "linux" and sys.platform != "darwin":
     MSG_NOTIFICATION: int
+    MSG_BTAG: int  # Not FreeBSD either
+    MSG_ETAG: int  # Not FreeBSD either
 
 SOL_IP: int
 SOL_SOCKET: int
 SOL_TCP: int
 SOL_UDP: int
 if sys.platform != "win32" and sys.platform != "darwin":
+    # Defined in socket.h for Linux, but these aren't always present for
+    # some reason.
     SOL_ATALK: int
     SOL_AX25: int
     SOL_HCI: int
@@ -127,10 +139,11 @@ if sys.platform != "win32" and sys.platform != "darwin":
     SOL_ROSE: int
 
 if sys.platform != "win32":
-    SCM_CREDS: int
     SCM_RIGHTS: int
 if sys.platform != "win32" and sys.platform != "darwin":
     SCM_CREDENTIALS: int
+if sys.platform != "win32" and sys.platform != "linux":
+    SCM_CREDS: int
 
 IPPROTO_ICMP: int
 IPPROTO_IP: int
@@ -142,21 +155,22 @@ IPPROTO_DSTOPTS: int
 IPPROTO_EGP: int
 IPPROTO_ESP: int
 IPPROTO_FRAGMENT: int
-IPPROTO_GGP: int
 IPPROTO_HOPOPTS: int
 IPPROTO_ICMPV6: int
 IPPROTO_IDP: int
 IPPROTO_IGMP: int
-IPPROTO_IPV4: int
 IPPROTO_IPV6: int
-IPPROTO_MAX: int
-IPPROTO_ND: int
 IPPROTO_NONE: int
 IPPROTO_PIM: int
 IPPROTO_PUP: int
 IPPROTO_ROUTING: int
 IPPROTO_SCTP: int
-if sys.platform != "darwin":
+if sys.platform != "linux":
+    IPPROTO_GGP: int
+    IPPROTO_IPV4: int
+    IPPROTO_MAX: int
+    IPPROTO_ND: int
+if sys.platform == "win32":
     IPPROTO_CBT: int
     IPPROTO_ICLFXBM: int
     IPPROTO_IGP: int
@@ -165,19 +179,20 @@ if sys.platform != "darwin":
     IPPROTO_RDP: int
     IPPROTO_ST: int
 if sys.platform != "win32":
-    IPPROTO_EON: int
     IPPROTO_GRE: int
-    IPPROTO_HELLO: int
-    IPPROTO_IPCOMP: int
     IPPROTO_IPIP: int
     IPPROTO_RSVP: int
     IPPROTO_TP: int
+if sys.platform != "win32" and sys.platform != "linux":
+    IPPROTO_EON: int
+    IPPROTO_HELLO: int
+    IPPROTO_IPCOMP: int
     IPPROTO_XTP: int
-if sys.platform != "win32" and sys.platform != "darwin":
-    IPPROTO_BIP: int
-    IPPROTO_MOBILE: int
-    IPPROTO_VRRP: int
-if sys.version_info >= (3, 9) and sys.platform == "linux":
+if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "linux":
+    IPPROTO_BIP: int  # Not FreeBSD either
+    IPPROTO_MOBILE: int  # Not FreeBSD either
+    IPPROTO_VRRP: int  # Not FreeBSD either
+if sys.platform == "linux":
     # Availability: Linux >= 2.6.20, FreeBSD >= 10.1
     IPPROTO_UDPLITE: int
 if sys.version_info >= (3, 10) and sys.platform == "linux":
@@ -201,10 +216,9 @@ IP_MULTICAST_IF: int
 IP_MULTICAST_LOOP: int
 IP_MULTICAST_TTL: int
 IP_OPTIONS: int
-IP_RECVDSTADDR: int
+if sys.platform != "linux":
+    IP_RECVDSTADDR: int
 if sys.version_info >= (3, 10):
-    IP_RECVTOS: int
-elif sys.platform != "win32" and sys.platform != "darwin":
     IP_RECVTOS: int
 IP_TOS: int
 IP_TTL: int
@@ -215,8 +229,32 @@ if sys.platform != "win32":
     IP_RECVOPTS: int
     IP_RECVRETOPTS: int
     IP_RETOPTS: int
+if sys.version_info >= (3, 13) and sys.platform == "linux":
+    CAN_RAW_ERR_FILTER: int
+if sys.version_info >= (3, 14):
+    IP_RECVTTL: int
+
+    if sys.platform == "win32" or sys.platform == "linux":
+        IPV6_RECVERR: int
+        IP_RECVERR: int
+        SO_ORIGINAL_DST: int
+
+    if sys.platform == "win32":
+        SOL_RFCOMM: int
+        SO_BTH_ENCRYPT: int
+        SO_BTH_MTU: int
+        SO_BTH_MTU_MAX: int
+        SO_BTH_MTU_MIN: int
+        TCP_QUICKACK: int
+
+    if sys.platform == "linux":
+        IP_FREEBIND: int
+        IP_RECVORIGDSTADDR: int
+        VMADDR_CID_LOCAL: int
+
 if sys.platform != "win32" and sys.platform != "darwin":
     IP_TRANSPARENT: int
+if sys.platform != "win32" and sys.platform != "darwin" and sys.version_info >= (3, 11):
     IP_BIND_ADDRESS_NO_PORT: int
 if sys.version_info >= (3, 12):
     IP_ADD_SOURCE_MEMBERSHIP: int
@@ -235,26 +273,26 @@ IPV6_RECVTCLASS: int
 IPV6_TCLASS: int
 IPV6_UNICAST_HOPS: int
 IPV6_V6ONLY: int
-if sys.version_info >= (3, 9) or sys.platform != "darwin":
-    IPV6_DONTFRAG: int
-    IPV6_HOPLIMIT: int
-    IPV6_HOPOPTS: int
-    IPV6_PKTINFO: int
-    IPV6_RECVRTHDR: int
-    IPV6_RTHDR: int
+IPV6_DONTFRAG: int
+IPV6_HOPLIMIT: int
+IPV6_HOPOPTS: int
+IPV6_PKTINFO: int
+IPV6_RECVRTHDR: int
+IPV6_RTHDR: int
 if sys.platform != "win32":
     IPV6_RTHDR_TYPE_0: int
-    if sys.version_info >= (3, 9) or sys.platform != "darwin":
-        IPV6_DSTOPTS: int
-        IPV6_NEXTHOP: int
-        IPV6_PATHMTU: int
-        IPV6_RECVDSTOPTS: int
-        IPV6_RECVHOPLIMIT: int
-        IPV6_RECVHOPOPTS: int
-        IPV6_RECVPATHMTU: int
-        IPV6_RECVPKTINFO: int
-        IPV6_RTHDRDSTOPTS: int
-        IPV6_USE_MIN_MTU: int
+    IPV6_DSTOPTS: int
+    IPV6_NEXTHOP: int
+    IPV6_PATHMTU: int
+    IPV6_RECVDSTOPTS: int
+    IPV6_RECVHOPLIMIT: int
+    IPV6_RECVHOPOPTS: int
+    IPV6_RECVPATHMTU: int
+    IPV6_RECVPKTINFO: int
+    IPV6_RTHDRDSTOPTS: int
+
+if sys.platform != "win32" and sys.platform != "linux":
+    IPV6_USE_MIN_MTU: int
 
 EAI_AGAIN: int
 EAI_BADFLAGS: int
@@ -267,11 +305,12 @@ EAI_SERVICE: int
 EAI_SOCKTYPE: int
 if sys.platform != "win32":
     EAI_ADDRFAMILY: int
+    EAI_OVERFLOW: int
+    EAI_SYSTEM: int
+if sys.platform != "win32" and sys.platform != "linux":
     EAI_BADHINTS: int
     EAI_MAX: int
-    EAI_OVERFLOW: int
     EAI_PROTOCOL: int
-    EAI_SYSTEM: int
 
 AI_ADDRCONFIG: int
 AI_ALL: int
@@ -280,7 +319,7 @@ AI_NUMERICHOST: int
 AI_NUMERICSERV: int
 AI_PASSIVE: int
 AI_V4MAPPED: int
-if sys.platform != "win32":
+if sys.platform != "win32" and sys.platform != "linux":
     AI_DEFAULT: int
     AI_MASK: int
     AI_V4MAPPED_CFG: int
@@ -292,6 +331,8 @@ NI_NAMEREQD: int
 NI_NOFQDN: int
 NI_NUMERICHOST: int
 NI_NUMERICSERV: int
+if sys.platform == "linux" and sys.version_info >= (3, 13):
+    NI_IDN: int
 
 TCP_FASTOPEN: int
 TCP_KEEPCNT: int
@@ -317,6 +358,27 @@ if sys.platform != "win32" and sys.platform != "darwin":
     TCP_SYNCNT: int
     TCP_USER_TIMEOUT: int
     TCP_WINDOW_CLAMP: int
+if sys.platform == "linux" and sys.version_info >= (3, 12):
+    TCP_CC_INFO: int
+    TCP_FASTOPEN_CONNECT: int
+    TCP_FASTOPEN_KEY: int
+    TCP_FASTOPEN_NO_COOKIE: int
+    TCP_INQ: int
+    TCP_MD5SIG: int
+    TCP_MD5SIG_EXT: int
+    TCP_QUEUE_SEQ: int
+    TCP_REPAIR: int
+    TCP_REPAIR_OPTIONS: int
+    TCP_REPAIR_QUEUE: int
+    TCP_REPAIR_WINDOW: int
+    TCP_SAVED_SYN: int
+    TCP_SAVE_SYN: int
+    TCP_THIN_DUPACK: int
+    TCP_THIN_LINEAR_TIMEOUTS: int
+    TCP_TIMESTAMP: int
+    TCP_TX_DELAY: int
+    TCP_ULP: int
+    TCP_ZEROCOPY_RECEIVE: int
 
 # --------------------
 # Specifically documented constants
@@ -333,12 +395,13 @@ if sys.platform == "linux":
     CAN_ERR_FLAG: int
     CAN_ERR_MASK: int
     CAN_RAW: int
-    CAN_RAW_ERR_FILTER: int
     CAN_RAW_FILTER: int
     CAN_RAW_LOOPBACK: int
     CAN_RAW_RECV_OWN_MSGS: int
     CAN_RTR_FLAG: int
     CAN_SFF_MASK: int
+    if sys.version_info < (3, 11):
+        CAN_RAW_ERR_FILTER: int
 
 if sys.platform == "linux":
     # Availability: Linux >= 2.6.25
@@ -371,16 +434,10 @@ if sys.platform == "linux":
 if sys.platform == "linux":
     # Availability: Linux >= 3.6
     CAN_RAW_FD_FRAMES: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 9):
     # Availability: Linux >= 4.1
     CAN_RAW_JOIN_FILTERS: int
-
-if sys.platform == "linux":
     # Availability: Linux >= 2.6.25
     CAN_ISOTP: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 9):
     # Availability: Linux >= 5.4
     CAN_J1939: int
 
@@ -436,12 +493,13 @@ if sys.platform == "linux":
     AF_RDS: int
     PF_RDS: int
     SOL_RDS: int
+    # These are present in include/linux/rds.h but don't always show up
+    # here.
     RDS_CANCEL_SENT_TO: int
     RDS_CMSG_RDMA_ARGS: int
     RDS_CMSG_RDMA_DEST: int
     RDS_CMSG_RDMA_MAP: int
     RDS_CMSG_RDMA_STATUS: int
-    RDS_CMSG_RDMA_UPDATE: int
     RDS_CONG_MONITOR: int
     RDS_FREE_MR: int
     RDS_GET_MR: int
@@ -454,6 +512,10 @@ if sys.platform == "linux":
     RDS_RDMA_SILENT: int
     RDS_RDMA_USE_ONCE: int
     RDS_RECVERR: int
+
+    # This is supported by CPython but doesn't seem to be a real thing.
+    # The closest existing constant in rds.h is RDS_CMSG_CONG_UPDATE
+    # RDS_CMSG_RDMA_UPDATE: int
 
 if sys.platform == "win32":
     SIO_RCVALL: int
@@ -518,19 +580,18 @@ if sys.platform == "linux":
     SO_VM_SOCKETS_BUFFER_MIN_SIZE: int
     VM_SOCKETS_INVALID_VERSION: int  # undocumented
 
-if sys.platform != "win32" or sys.version_info >= (3, 9):
-    # Documented as only available on BSD, macOS, but empirically sometimes
-    # available on Windows
+# Documented as only available on BSD, macOS, but empirically sometimes
+# available on Windows
+if sys.platform != "linux":
     AF_LINK: int
 
 has_ipv6: bool
 
-if sys.platform != "darwin":
-    if sys.platform != "win32" or sys.version_info >= (3, 9):
-        BDADDR_ANY: str
-        BDADDR_LOCAL: str
+if sys.platform != "darwin" and sys.platform != "linux":
+    BDADDR_ANY: str
+    BDADDR_LOCAL: str
 
-if sys.platform != "win32" and sys.platform != "darwin":
+if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "linux":
     HCI_FILTER: int  # not in NetBSD or DragonFlyBSD
     HCI_TIME_STAMP: int  # not in FreeBSD, NetBSD, or DragonFlyBSD
     HCI_DATA_DIR: int  # not in FreeBSD, NetBSD, or DragonFlyBSD
@@ -579,40 +640,39 @@ if sys.version_info >= (3, 12):
 if sys.platform == "linux":
     # Netlink is defined by Linux
     AF_NETLINK: int
-    NETLINK_ARPD: int
     NETLINK_CRYPTO: int
     NETLINK_DNRTMSG: int
     NETLINK_FIREWALL: int
     NETLINK_IP6_FW: int
     NETLINK_NFLOG: int
-    NETLINK_ROUTE6: int
     NETLINK_ROUTE: int
-    NETLINK_SKIP: int
-    NETLINK_TAPBASE: int
-    NETLINK_TCPDIAG: int
     NETLINK_USERSOCK: int
-    NETLINK_W1: int
     NETLINK_XFRM: int
+    # Technically still supported by CPython
+    # NETLINK_ARPD: int  # linux 2.0 to 2.6.12 (EOL August 2005)
+    # NETLINK_ROUTE6: int  # linux 2.2 to 2.6.12 (EOL August 2005)
+    # NETLINK_SKIP: int  # linux 2.0 to 2.6.12 (EOL August 2005)
+    # NETLINK_TAPBASE: int  # linux 2.2 to 2.6.12 (EOL August 2005)
+    # NETLINK_TCPDIAG: int  # linux 2.6.0 to 2.6.13 (EOL December 2005)
+    # NETLINK_W1: int  # linux 2.6.13 to 2.6.17 (EOL October 2006)
 
 if sys.platform == "darwin":
     PF_SYSTEM: int
     SYSPROTO_CONTROL: int
 
-if sys.platform != "darwin":
-    if sys.version_info >= (3, 9) or sys.platform != "win32":
-        AF_BLUETOOTH: int
+if sys.platform != "darwin" and sys.platform != "linux":
+    AF_BLUETOOTH: int
 
-if sys.platform != "win32" and sys.platform != "darwin":
+if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "linux":
     # Linux and some BSD support is explicit in the docs
     # Windows and macOS do not support in practice
     BTPROTO_HCI: int
     BTPROTO_L2CAP: int
     BTPROTO_SCO: int  # not in FreeBSD
-if sys.platform != "darwin":
-    if sys.version_info >= (3, 9) or sys.platform != "win32":
-        BTPROTO_RFCOMM: int
+if sys.platform != "darwin" and sys.platform != "linux":
+    BTPROTO_RFCOMM: int
 
-if sys.version_info >= (3, 9) and sys.platform == "linux":
+if sys.platform == "linux":
     UDPLITE_RECV_CSCOV: int
     UDPLITE_SEND_CSCOV: int
 
@@ -635,13 +695,14 @@ AF_SNA: int
 
 if sys.platform != "win32":
     AF_ROUTE: int
+
+if sys.platform == "darwin":
     AF_SYSTEM: int
 
 if sys.platform != "darwin":
     AF_IRDA: int
 
 if sys.platform != "win32" and sys.platform != "darwin":
-    AF_AAL5: int
     AF_ASH: int
     AF_ATMPVC: int
     AF_ATMSVC: int
@@ -660,23 +721,13 @@ if sys.platform != "win32" and sys.platform != "darwin":
 
 # Miscellaneous undocumented
 
-if sys.platform != "win32":
+if sys.platform != "win32" and sys.platform != "linux":
     LOCAL_PEERCRED: int
 
 if sys.platform != "win32" and sys.platform != "darwin":
+    # Defined in linux socket.h, but this isn't always present for
+    # some reason.
     IPX_TYPE: int
-
-# ===== Exceptions =====
-
-error = OSError
-
-class herror(error): ...
-class gaierror(error): ...
-
-if sys.version_info >= (3, 10):
-    timeout = TimeoutError
-else:
-    class timeout(error): ...
 
 # ===== Classes =====
 
@@ -687,8 +738,9 @@ class socket:
     def type(self) -> int: ...
     @property
     def proto(self) -> int: ...
+    # F811: "Redefinition of unused `timeout`"
     @property
-    def timeout(self) -> float | None: ...
+    def timeout(self) -> float | None: ...  # noqa: F811
     if sys.platform == "win32":
         def __init__(
             self, family: int = ..., type: int = ..., proto: int = ..., fileno: SupportsIndex | bytes | None = ...
@@ -770,12 +822,12 @@ def getaddrinfo(
     type: int = ...,
     proto: int = ...,
     flags: int = ...,
-) -> list[tuple[int, int, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...
+) -> list[tuple[int, int, int, str, tuple[str, int] | tuple[str, int, int, int] | tuple[int, bytes]]]: ...
 def gethostbyname(hostname: str, /) -> str: ...
 def gethostbyname_ex(hostname: str, /) -> tuple[str, list[str], list[str]]: ...
 def gethostname() -> str: ...
 def gethostbyaddr(ip_address: str, /) -> tuple[str, list[str], list[str]]: ...
-def getnameinfo(sockaddr: tuple[str, int] | tuple[str, int, int, int], flags: int, /) -> tuple[str, str]: ...
+def getnameinfo(sockaddr: tuple[str, int] | tuple[str, int, int, int] | tuple[int, bytes], flags: int, /) -> tuple[str, str]: ...
 def getprotobyname(protocolname: str, /) -> int: ...
 def getservbyname(servicename: str, protocolname: str = ..., /) -> int: ...
 def getservbyport(port: int, protocolname: str = ..., /) -> str: ...
@@ -788,7 +840,9 @@ def inet_ntoa(packed_ip: ReadableBuffer, /) -> str: ...
 def inet_pton(address_family: int, ip_string: str, /) -> bytes: ...
 def inet_ntop(address_family: int, packed_ip: ReadableBuffer, /) -> str: ...
 def getdefaulttimeout() -> float | None: ...
-def setdefaulttimeout(timeout: float | None, /) -> None: ...
+
+# F811: "Redefinition of unused `timeout`"
+def setdefaulttimeout(timeout: float | None, /) -> None: ...  # noqa: F811
 
 if sys.platform != "win32":
     def sethostname(name: str, /) -> None: ...
@@ -798,6 +852,11 @@ if sys.platform != "win32":
 
 def if_nameindex() -> list[tuple[int, str]]: ...
 def if_nametoindex(oname: str, /) -> int: ...
-def if_indextoname(index: int, /) -> str: ...
 
-CAPI: object
+if sys.version_info >= (3, 14):
+    def if_indextoname(if_index: int, /) -> str: ...
+
+else:
+    def if_indextoname(index: int, /) -> str: ...
+
+CAPI: CapsuleType

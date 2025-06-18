@@ -104,6 +104,15 @@ def main(x: object, type_check_func: Callable[[object], TypeIs[T]]) -> T:
 reveal_type(main("a", is_str))  # N: Revealed type is "builtins.str"
 [builtins fixtures/exception.pyi]
 
+[case testTypeIsPassedAsTypeVarIsBool]
+from typing import Callable, TypeVar
+from typing_extensions import TypeIs
+T = TypeVar('T')
+def is_str(x: object) -> TypeIs[str]: pass
+def main(f: Callable[[object], T]) -> T: pass
+reveal_type(main(is_str))  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsUnionIn]
 from typing import Union
 from typing_extensions import TypeIs
@@ -375,9 +384,9 @@ def guard(a: object) -> TypeIs[B]:
 
 a = A()
 if guard(a):
-    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
     a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
     a = A()
     reveal_type(a)  # N: Revealed type is "__main__.A"
 reveal_type(a)  # N: Revealed type is "__main__.A"
@@ -445,7 +454,7 @@ def g(x: object) -> None: ...
 def test(x: List[Any]) -> None:
     if not(f(x) or isinstance(x, A)):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "list" and "A">]"
+    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "builtins.list[Any]" and "__main__.A">]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsMultipleCondition]
@@ -464,13 +473,13 @@ def is_bar(item: object) -> TypeIs[Bar]:
 def foobar(x: object):
     if not isinstance(x, Foo) or not isinstance(x, Bar):
         return
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.Foo" and "__main__.Bar">"
 
 def foobar_typeis(x: object):
     if not is_foo(x) or not is_bar(x):
         return
     # Looks like a typo but this is what our unique name generation produces
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">1"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.Foo" and "__main__.Bar">"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsAsFunctionArgAsBoolSubtype]
@@ -631,7 +640,7 @@ def is_two_element_tuple(val: Tuple[_T, ...]) -> TypeIs[Tuple[_T, _T]]:
 def func(names: Tuple[str, ...]):
     reveal_type(names)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
     if is_two_element_tuple(names):
-        reveal_type(names)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+        reveal_type(names)  # N: Revealed type is "tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsErroneousDefinitionFails]
@@ -752,7 +761,7 @@ def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of inpu
 
 T = TypeVar('T')
 
-def g(x: List[T]) -> TypeIs[Sequence[T]]:  # E: Narrowed type "Sequence[T]" is not a subtype of input type "List[T]"
+def g(x: List[T]) -> TypeIs[Sequence[T]]:  # E: Narrowed type "Sequence[T]" is not a subtype of input type "list[T]"
     pass
 
 [builtins fixtures/tuple.pyi]
@@ -807,4 +816,21 @@ accept_typeis(typeguard)  # E: Argument 1 to "accept_typeis" has incompatible ty
 accept_typeguard(typeis)  # E: Argument 1 to "accept_typeguard" has incompatible type "Callable[[object], TypeIs[str]]"; expected "Callable[[object], TypeGuard[str]]"
 accept_typeguard(typeguard)
 
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsEnumOverlappingUnionExcludesIrrelevant]
+from enum import Enum
+from typing import Literal
+from typing_extensions import TypeIs
+
+class Model(str, Enum):
+    A = 'a'
+    B = 'a'
+
+def is_model_a(model: str) -> TypeIs[Literal[Model.A, "foo"]]:
+    return True
+
+def handle(model: Model) -> None:
+    if is_model_a(model):
+        reveal_type(model)  # N: Revealed type is "Literal[__main__.Model.A]"
 [builtins fixtures/tuple.pyi]

@@ -2,7 +2,7 @@ import dis
 import enum
 import sys
 import types
-from _typeshed import StrPath
+from _typeshed import AnnotationForm, StrPath
 from collections import OrderedDict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Mapping, Sequence, Set as AbstractSet
 from types import (
@@ -27,6 +27,9 @@ from types import (
 )
 from typing import Any, ClassVar, Final, Literal, NamedTuple, Protocol, TypeVar, overload
 from typing_extensions import ParamSpec, Self, TypeAlias, TypeGuard, TypeIs
+
+if sys.version_info >= (3, 14):
+    from annotationlib import Format
 
 if sys.version_info >= (3, 11):
     __all__ = [
@@ -139,12 +142,14 @@ if sys.version_info >= (3, 11):
             "getasyncgenstate",
             "BufferFlags",
         ]
+    if sys.version_info >= (3, 14):
+        __all__ += ["CO_HAS_DOCSTRING", "CO_METHOD", "ispackage"]
 
 _P = ParamSpec("_P")
 _T = TypeVar("_T")
 _F = TypeVar("_F", bound=Callable[..., Any])
-_T_cont = TypeVar("_T_cont", contravariant=True)
-_V_cont = TypeVar("_V_cont", contravariant=True)
+_T_contra = TypeVar("_T_contra", contravariant=True)
+_V_contra = TypeVar("_V_contra", contravariant=True)
 
 #
 # Types and members
@@ -172,6 +177,9 @@ CO_COROUTINE: Final = 128
 CO_ITERABLE_COROUTINE: Final = 256
 CO_ASYNC_GENERATOR: Final = 512
 TPFLAGS_IS_ABSTRACT: Final = 1048576
+if sys.version_info >= (3, 14):
+    CO_HAS_DOCSTRING: Final = 67108864
+    CO_METHOD: Final = 134217728
 
 modulesbyfile: dict[str, Any]
 
@@ -199,6 +207,11 @@ def getmodulename(path: StrPath) -> str | None: ...
 def ismodule(object: object) -> TypeIs[ModuleType]: ...
 def isclass(object: object) -> TypeIs[type[Any]]: ...
 def ismethod(object: object) -> TypeIs[MethodType]: ...
+
+if sys.version_info >= (3, 14):
+    # Not TypeIs because it does not return True for all modules
+    def ispackage(object: object) -> TypeGuard[ModuleType]: ...
+
 def isfunction(object: object) -> TypeIs[FunctionType]: ...
 
 if sys.version_info >= (3, 12):
@@ -228,11 +241,11 @@ def isasyncgenfunction(obj: Callable[_P, Any]) -> TypeGuard[Callable[_P, AsyncGe
 @overload
 def isasyncgenfunction(obj: object) -> TypeGuard[Callable[..., AsyncGeneratorType[Any, Any]]]: ...
 
-class _SupportsSet(Protocol[_T_cont, _V_cont]):
-    def __set__(self, instance: _T_cont, value: _V_cont, /) -> None: ...
+class _SupportsSet(Protocol[_T_contra, _V_contra]):
+    def __set__(self, instance: _T_contra, value: _V_contra, /) -> None: ...
 
-class _SupportsDelete(Protocol[_T_cont]):
-    def __delete__(self, instance: _T_cont, /) -> None: ...
+class _SupportsDelete(Protocol[_T_contra]):
+    def __delete__(self, instance: _T_contra, /) -> None: ...
 
 def isasyncgen(object: object) -> TypeIs[AsyncGeneratorType[Any, Any]]: ...
 def istraceback(object: object) -> TypeIs[TracebackType]: ...
@@ -294,7 +307,18 @@ _IntrospectableCallable: TypeAlias = Callable[..., Any]
 #
 # Introspecting callables with the Signature object
 #
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 14):
+    def signature(
+        obj: _IntrospectableCallable,
+        *,
+        follow_wrapped: bool = True,
+        globals: Mapping[str, Any] | None = None,
+        locals: Mapping[str, Any] | None = None,
+        eval_str: bool = False,
+        annotation_format: Format = Format.VALUE,  # noqa: Y011
+    ) -> Signature: ...
+
+elif sys.version_info >= (3, 10):
     def signature(
         obj: _IntrospectableCallable,
         *,
@@ -323,7 +347,19 @@ class Signature:
     def bind_partial(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
     def replace(self, *, parameters: Sequence[Parameter] | type[_void] | None = ..., return_annotation: Any = ...) -> Self: ...
     __replace__ = replace
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 14):
+        @classmethod
+        def from_callable(
+            cls,
+            obj: _IntrospectableCallable,
+            *,
+            follow_wrapped: bool = True,
+            globals: Mapping[str, Any] | None = None,
+            locals: Mapping[str, Any] | None = None,
+            eval_str: bool = False,
+            annotation_format: Format = Format.VALUE,  # noqa: Y011
+        ) -> Self: ...
+    elif sys.version_info >= (3, 10):
         @classmethod
         def from_callable(
             cls,
@@ -337,20 +373,24 @@ class Signature:
     else:
         @classmethod
         def from_callable(cls, obj: _IntrospectableCallable, *, follow_wrapped: bool = True) -> Self: ...
-    if sys.version_info >= (3, 13):
+    if sys.version_info >= (3, 14):
+        def format(self, *, max_width: int | None = None, quote_annotation_strings: bool = True) -> str: ...
+    elif sys.version_info >= (3, 13):
         def format(self, *, max_width: int | None = None) -> str: ...
 
     def __eq__(self, other: object) -> bool: ...
     def __hash__(self) -> int: ...
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 14):
+    from annotationlib import get_annotations as get_annotations
+elif sys.version_info >= (3, 10):
     def get_annotations(
-        obj: Callable[..., object] | type[Any] | ModuleType,
+        obj: Callable[..., object] | type[object] | ModuleType,  # any callable, class, or module
         *,
-        globals: Mapping[str, Any] | None = None,
-        locals: Mapping[str, Any] | None = None,
+        globals: Mapping[str, Any] | None = None,  # value types depend on the key
+        locals: Mapping[str, Any] | None = None,  # value types depend on the key
         eval_str: bool = False,
-    ) -> dict[str, Any]: ...
+    ) -> dict[str, AnnotationForm]: ...  # values are type expressions
 
 # The name is the same as the enum's name in CPython
 class _ParameterKind(enum.IntEnum):
@@ -370,7 +410,7 @@ if sys.version_info >= (3, 12):
     AGEN_CLOSED: Final = "AGEN_CLOSED"
 
     def getasyncgenstate(
-        agen: AsyncGenerator[Any, Any]
+        agen: AsyncGenerator[Any, Any],
     ) -> Literal["AGEN_CREATED", "AGEN_RUNNING", "AGEN_SUSPENDED", "AGEN_CLOSED"]: ...
     def getasyncgenlocals(agen: AsyncGeneratorType[Any, Any]) -> dict[str, Any]: ...
 
@@ -416,16 +456,16 @@ class BoundArguments:
     def __init__(self, signature: Signature, arguments: OrderedDict[str, Any]) -> None: ...
     def apply_defaults(self) -> None: ...
     def __eq__(self, other: object) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
 
 #
 # Classes and functions
 #
 
-# TODO: The actual return type should be list[_ClassTreeItem] but mypy doesn't
-# seem to be supporting this at the moment:
-# _ClassTreeItem = list[_ClassTreeItem] | Tuple[type, Tuple[type, ...]]
-def getclasstree(classes: list[type], unique: bool = False) -> list[Any]: ...
-def walktree(classes: list[type], children: Mapping[type[Any], list[type]], parent: type[Any] | None) -> list[Any]: ...
+_ClassTreeItem: TypeAlias = list[tuple[type, ...]] | list[_ClassTreeItem]
+
+def getclasstree(classes: list[type], unique: bool = False) -> _ClassTreeItem: ...
+def walktree(classes: list[type], children: Mapping[type[Any], list[type]], parent: type[Any] | None) -> _ClassTreeItem: ...
 
 class Arguments(NamedTuple):
     args: list[str]
@@ -461,7 +501,13 @@ class ArgInfo(NamedTuple):
     locals: dict[str, Any]
 
 def getargvalues(frame: FrameType) -> ArgInfo: ...
-def formatannotation(annotation: object, base_module: str | None = None) -> str: ...
+
+if sys.version_info >= (3, 14):
+    def formatannotation(annotation: object, base_module: str | None = None, *, quote_annotation_strings: bool = True) -> str: ...
+
+else:
+    def formatannotation(annotation: object, base_module: str | None = None) -> str: ...
+
 def formatannotationrelativeto(object: object) -> Callable[[object], str]: ...
 
 if sys.version_info < (3, 11):
@@ -590,7 +636,7 @@ GEN_SUSPENDED: Final = "GEN_SUSPENDED"
 GEN_CLOSED: Final = "GEN_CLOSED"
 
 def getgeneratorstate(
-    generator: Generator[Any, Any, Any]
+    generator: Generator[Any, Any, Any],
 ) -> Literal["GEN_CREATED", "GEN_RUNNING", "GEN_SUSPENDED", "GEN_CLOSED"]: ...
 
 CORO_CREATED: Final = "CORO_CREATED"
@@ -599,7 +645,7 @@ CORO_SUSPENDED: Final = "CORO_SUSPENDED"
 CORO_CLOSED: Final = "CORO_CLOSED"
 
 def getcoroutinestate(
-    coroutine: Coroutine[Any, Any, Any]
+    coroutine: Coroutine[Any, Any, Any],
 ) -> Literal["CORO_CREATED", "CORO_RUNNING", "CORO_SUSPENDED", "CORO_CLOSED"]: ...
 def getgeneratorlocals(generator: Generator[Any, Any, Any]) -> dict[str, Any]: ...
 def getcoroutinelocals(coroutine: Coroutine[Any, Any, Any]) -> dict[str, Any]: ...
@@ -616,8 +662,7 @@ class Attribute(NamedTuple):
 
 def classify_class_attrs(cls: type) -> list[Attribute]: ...
 
-if sys.version_info >= (3, 9):
-    class ClassFoundException(Exception): ...
+class ClassFoundException(Exception): ...
 
 if sys.version_info >= (3, 12):
     class BufferFlags(enum.IntFlag):

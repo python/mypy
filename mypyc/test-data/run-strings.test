@@ -2,6 +2,11 @@
 
 [case testStrBasics]
 from typing import Tuple
+class A:
+    def __str__(self) -> str:
+        return "A-str"
+    def __repr__(self) -> str:
+        return "A-repr"
 def f() -> str:
     return 'some string'
 def g() -> str:
@@ -10,6 +15,14 @@ def tostr(x: int) -> str:
     return str(x)
 def booltostr(x: bool) -> str:
     return str(x)
+def clstostr(x: A) -> str:
+    return str(x)
+def torepr(x: int) -> str:
+    return repr(x)
+def booltorepr(x: bool) -> str:
+    return repr(x)
+def clstorepr(x: A) -> str:
+    return repr(x)
 def concat(x: str, y: str) -> str:
     return x + y
 def eq(x: str) -> int:
@@ -20,10 +33,21 @@ def eq(x: str) -> int:
     return 2
 def match(x: str, y: str) -> Tuple[bool, bool]:
     return (x.startswith(y), x.endswith(y))
+def match_tuple(x: str, y: Tuple[str, ...]) -> Tuple[bool, bool]:
+    return (x.startswith(y), x.endswith(y))
+def match_tuple_literal_args(x: str, y: str, z: str) -> Tuple[bool, bool]:
+    return (x.startswith((y, z)), x.endswith((y, z)))
+def remove_prefix_suffix(x: str, y: str) -> Tuple[str, str]:
+    return (x.removeprefix(y), x.removesuffix(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq, match
+from native import (
+    f, g, A, tostr, booltostr, clstostr, concat, eq, match, match_tuple,
+    match_tuple_literal_args, remove_prefix_suffix,
+    torepr, booltorepr, clstorepr
+)
 import sys
+from testutil import assertRaises
 
 assert f() == 'some string'
 assert f() is sys.intern('some string')
@@ -32,20 +56,45 @@ assert tostr(57) == '57'
 assert concat('foo', 'bar') == 'foobar'
 assert booltostr(True) == 'True'
 assert booltostr(False) == 'False'
+assert clstostr(A()) == "A-str"
 assert eq('foo') == 0
 assert eq('zar') == 1
 assert eq('bar') == 2
 
+assert torepr(57) == '57'
+assert booltorepr(True) == 'True'
+assert booltorepr(False) == 'False'
+assert clstorepr(A()) == "A-repr"
+
 assert int(tostr(0)) == 0
 assert int(tostr(20)) == 20
+assert int(torepr(0)) == 0
+assert int(torepr(20)) == 20
 assert match('', '') == (True, True)
 assert match('abc', '') == (True, True)
 assert match('abc', 'a') == (True, False)
 assert match('abc', 'c') == (False, True)
 assert match('', 'abc') == (False, False)
+assert match_tuple('abc', ('d', 'e')) == (False, False)
+assert match_tuple('abc', ('a', 'c')) == (True, True)
+assert match_tuple('abc', ('a',)) == (True, False)
+assert match_tuple('abc', ('c',)) == (False, True)
+assert match_tuple('abc', ('x', 'y', 'z')) == (False, False)
+assert match_tuple('abc', ('x', 'y', 'z', 'a', 'c')) == (True, True)
+with assertRaises(TypeError, "tuple for startswith must only contain str"):
+    assert match_tuple('abc', (None,))
+with assertRaises(TypeError, "tuple for endswith must only contain str"):
+    assert match_tuple('abc', ('a', None))
+assert match_tuple_literal_args('abc', 'z', 'a') == (True, False)
+assert match_tuple_literal_args('abc', 'z', 'c') == (False, True)
+
+assert remove_prefix_suffix('', '') == ('', '')
+assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
+assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
 
 [case testStringOps]
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from testutil import assertRaises
 
 def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
     if sep is not None:
@@ -54,6 +103,14 @@ def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None)
         else:
             return s.split(sep)
     return s.split()
+
+def do_rsplit(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
+    if sep is not None:
+        if max_split is not None:
+            return s.rsplit(sep, max_split)
+        else:
+            return s.rsplit(sep)
+    return s.rsplit()
 
 ss = "abc abcd abcde abcdef"
 
@@ -66,12 +123,76 @@ def test_split() -> None:
     assert do_split(ss, " ", 1) == ["abc", "abcd abcde abcdef"]
     assert do_split(ss, " ", 2) == ["abc", "abcd", "abcde abcdef"]
 
+def test_rsplit() -> None:
+    assert do_rsplit(ss) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ") == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, "-") == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", -1) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ", 0) == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", 1) == ["abc abcd abcde", "abcdef"]  # different to do_split
+    assert do_rsplit(ss, " ", 2) == ["abc abcd", "abcde", "abcdef"]  # different to do_split
+
+def splitlines(s: str, keepends: Optional[bool] = None) -> List[str]:
+    if keepends is not None:
+        return s.splitlines(keepends)
+    return s.splitlines()
+
+s_text = "This\nis\n\nsome\nlong\ntext.\n"
+
+def test_splitlines() -> None:
+    assert splitlines(s_text) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, False) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, True) == ["This\n", "is\n", "\n", "some\n", "long\n", "text.\n"]
+
+s_partition = "Some long text"
+
+def partition(s: str, sep: str) -> Tuple[str, str, str]:
+    return s.partition(sep)
+
+def rpartition(s: str, sep: str) -> Tuple[str, str, str]:
+    return s.rpartition(sep)
+
+def test_partition() -> None:
+    assert partition(s_partition, " ") == ("Some", " ", "long text")
+    assert partition(s_partition, "Hello") == ("Some long text", "", "")
+    assert rpartition(s_partition, " ") == ("Some long", " ", "text")
+    assert rpartition(s_partition, "Hello") == ("", "", "Some long text")
+    with assertRaises(ValueError, "empty separator"):
+        partition(s_partition, "")
+    with assertRaises(ValueError, "empty separator"):
+        rpartition(s_partition, "")
+
+def contains(s: str, o: str) -> bool:
+    return o in s
+
 def getitem(s: str, index: int) -> str:
     return s[index]
 
-from testutil import assertRaises
+def find(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.find(substr, start, end)
+        return s.find(substr, start)
+    return s.find(substr)
+
+def rfind(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.rfind(substr, start, end)
+        return s.rfind(substr, start)
+    return s.rfind(substr)
 
 s = "abc"
+
+def test_contains() -> None:
+    assert contains(s, "a") is True
+    assert contains(s, "abc") is True
+    assert contains(s, "Hello") is False
+    assert contains(s, "bc") is True
+    assert contains(s, "abcd") is False
+    assert contains(s, "bb") is False
+    assert contains(s, "") is True
+    assert contains(s, " ") is False
 
 def test_getitem() -> None:
     assert getitem(s, 0) == "a"
@@ -84,6 +205,26 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
+
+def test_find() -> None:
+    s = "abcab"
+    assert find(s, "Hello") == -1
+    assert find(s, "abc") == 0
+    assert find(s, "b") == 1
+    assert find(s, "b", 1) == 1
+    assert find(s, "b", 1, 2) == 1
+    assert find(s, "b", 3) == 4
+    assert find(s, "b", 3, 5) == 4
+    assert find(s, "b", 3, 4) == -1
+
+    assert rfind(s, "Hello") == -1
+    assert rfind(s, "abc") == 0
+    assert rfind(s, "b") == 4
+    assert rfind(s, "b", 1) == 4
+    assert rfind(s, "b", 1, 2) == 1
+    assert rfind(s, "b", 3) == 4
+    assert rfind(s, "b", 3, 5) == 4
+    assert rfind(s, "b", 3, 4) == -1
 
 def str_to_int(s: str, base: Optional[int] = None) -> int:
     if base:
@@ -565,25 +706,32 @@ def test_chr() -> None:
     assert try_invalid(1114112)
 
 [case testOrd]
+from testutil import assertRaises
+
 def test_ord() -> None:
+    assert ord(' ') == 32
+    assert ord(' ' + str()) == 32
+    assert ord('\x00') == 0
+    assert ord('\x00' + str()) == 0
     assert ord('\ue000') == 57344
-    s = "a\xac\u1234\u20ac\U00008000"
-    # ^^^^ two-digit hex escape
-    #   ^^^^^^ four-digit Unicode escape
-    #           ^^^^^^^^^^ eight-digit Unicode escape
+    assert ord('\ue000' + str()) == 57344
+    s = "a\xac\u1234\u20ac\U00010000"
+    #     ^^^^ two-digit hex escape
+    #         ^^^^^^ four-digit Unicode escape
+    #                     ^^^^^^^^^^ eight-digit Unicode escape
     l1 = [ord(c) for c in s]
-    assert l1 == [97, 172, 4660, 8364, 32768]
+    assert l1 == [97, 172, 4660, 8364, 65536]
     u = 'abcdé'
     assert ord(u[-1]) == 233
     assert ord(b'a') == 97
     assert ord(b'a' + bytes()) == 97
-    u2 = '\U0010ffff'
+    u2 = '\U0010ffff' + str()
     assert ord(u2) == 1114111
-    try:
+    assert ord('\U0010ffff') == 1114111
+    with assertRaises(TypeError, "ord() expected a character, but a string of length 2 found"):
         ord('aa')
-        assert False
-    except TypeError:
-        pass
+    with assertRaises(TypeError):
+        ord('')
 
 [case testDecode]
 def test_decode() -> None:
@@ -639,3 +787,31 @@ def test_encode() -> None:
     assert u'\u00E1'.encode('latin1') == b'\xe1'
     with assertRaises(UnicodeEncodeError):
         u.encode('latin1')
+
+[case testUnicodeSurrogate]
+def f() -> str:
+    return "\ud800"
+
+def test_surrogate() -> None:
+    assert ord(f()) == 0xd800
+    assert ord("\udfff") == 0xdfff
+    assert repr("foobar\x00\xab\ud912\U00012345") == r"'foobar\x00«\ud912𒍅'"
+
+[case testStrip]
+def test_all_strips_default() -> None:
+    s = " a1\t"
+    assert s.lstrip() == "a1\t"
+    assert s.strip() == "a1"
+    assert s.rstrip() == " a1"
+def test_all_strips() -> None:
+    s = "xxb2yy"
+    assert s.lstrip("xy") == "b2yy"
+    assert s.strip("xy") == "b2"
+    assert s.rstrip("xy") == "xxb2"
+def test_unicode_whitespace() -> None:
+    assert "\u200A\u000D\u2009\u2020\u000Dtt\u0085\u000A".strip() == "\u2020\u000Dtt"
+def test_unicode_range() -> None:
+    assert "\u2029 \U00107581 ".lstrip() == "\U00107581 "
+    assert "\u2029 \U0010AAAA\U00104444B\u205F ".strip() == "\U0010AAAA\U00104444B"
+    assert " \u3000\u205F ".strip() == ""
+    assert "\u2029 \U00102865\u205F ".rstrip() == "\u2029 \U00102865"

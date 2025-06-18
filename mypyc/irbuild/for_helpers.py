@@ -251,7 +251,7 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(list_append_op, [builder.read(list_ops), e], gen.line)
+        builder.primitive_op(list_append_op, [builder.read(list_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return builder.read(list_ops)
@@ -286,7 +286,7 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(set_add_op, [builder.read(set_ops), e], gen.line)
+        builder.primitive_op(set_add_op, [builder.read(set_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return builder.read(set_ops)
@@ -586,7 +586,7 @@ class ForIterable(ForGenerator):
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         builder = self.builder
-        iter_reg = builder.call_c(iter_op, [expr_reg], self.line)
+        iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
         self.iter_target = builder.maybe_spill(iter_reg)
         self.target_type = target_type
@@ -693,7 +693,7 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.call_c(list_get_item_unsafe_op, [target, index], line)
+        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, "__getitem__", [index], None, line)
 
@@ -985,7 +985,6 @@ class ForInfiniteCounter(ForGenerator):
         zero = Integer(0)
         self.index_reg = builder.maybe_spill_assignable(zero)
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
-        builder.assign(self.index_target, zero, self.line)
 
     def gen_step(self) -> None:
         builder = self.builder
@@ -997,7 +996,9 @@ class ForInfiniteCounter(ForGenerator):
             short_int_rprimitive, builder.read(self.index_reg, line), Integer(1), IntOp.ADD, line
         )
         builder.assign(self.index_reg, new_val, line)
-        builder.assign(self.index_target, new_val, line)
+
+    def begin_body(self) -> None:
+        self.builder.assign(self.index_target, self.builder.read(self.index_reg), self.line)
 
 
 class ForEnumerate(ForGenerator):

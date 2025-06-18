@@ -4,20 +4,25 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import os
-import pathlib
 import re
 import shutil
 import sys
 import time
+from collections.abc import Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
-from typing_extensions import Literal
+from typing import IO, Any, Callable, Final, Literal, TypeVar
+
+orjson: Any
+try:
+    import orjson  # type: ignore[import-not-found, no-redef, unused-ignore]
+except ImportError:
+    orjson = None
 
 try:
-    import curses
-
     import _curses  # noqa: F401
+    import curses
 
     CURSES_ENABLED = True
 except ImportError:
@@ -25,15 +30,7 @@ except ImportError:
 
 T = TypeVar("T")
 
-if sys.version_info >= (3, 9):
-    TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
-else:
-    with importlib_resources.path(
-        "mypy",  # mypy-c doesn't support __package__
-        "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
-    ) as _resource:
-        TYPESHED_DIR = str(_resource.parent / "typeshed")
-
+TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
@@ -69,7 +66,7 @@ def is_dunder(name: str, exclude_special: bool = False) -> bool:
 
 
 def is_sunder(name: str) -> bool:
-    return not is_dunder(name) and name.startswith("_") and name.endswith("_")
+    return not is_dunder(name) and name.startswith("_") and name.endswith("_") and name != "_"
 
 
 def split_module_names(mod_name: str) -> list[str]:
@@ -196,7 +193,7 @@ def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> tuple
     A typical result looks like this:
         ...some_variable = function_to_call(one_arg, other_arg) or...
 
-    Return the trimmed string and the column offset to to adjust error location.
+    Return the trimmed string and the column offset to adjust error location.
     """
     if max_len < 2 * min_width + 1:
         # In case the window is too tiny it is better to still show something.
@@ -412,9 +409,43 @@ def replace_object_state(
             pass
 
 
-def is_sub_path(path1: str, path2: str) -> bool:
-    """Given two paths, return if path1 is a sub-path of path2."""
-    return pathlib.Path(path2) in pathlib.Path(path1).parents
+def is_sub_path_normabs(path: str, dir: str) -> bool:
+    """Given two paths, return if path is a sub-path of dir.
+
+    Moral equivalent of: Path(dir) in Path(path).parents
+
+    Similar to the pathlib version:
+    - Treats paths case-sensitively
+    - Does not fully handle unnormalised paths (e.g. paths with "..")
+    - Does not handle a mix of absolute and relative paths
+    Unlike the pathlib version:
+    - Fast
+    - On Windows, assumes input has been slash normalised
+    - Handles even fewer unnormalised paths (e.g. paths with "." and "//")
+
+    As a result, callers should ensure that inputs have had os.path.abspath called on them
+    (note that os.path.abspath will normalise)
+    """
+    if not dir.endswith(os.sep):
+        dir += os.sep
+    return path.startswith(dir)
+
+
+if sys.platform == "linux" or sys.platform == "darwin":
+
+    def os_path_join(path: str, b: str) -> str:
+        # Based off of os.path.join, but simplified to str-only, 2 args and mypyc can compile it.
+        if b.startswith("/") or not path:
+            return b
+        elif path.endswith("/"):
+            return path + b
+        else:
+            return path + "/" + b
+
+else:
+
+    def os_path_join(a: str, p: str) -> str:
+        return os.path.join(a, p)
 
 
 def hard_exit(status: int = 0) -> None:
@@ -451,10 +482,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):  # noqa: UP036
+    if sys.version_info[:2] < (3, 9):  # noqa: UP036, RUF100
         sys.exit(
-            "Running {name} with Python 3.7 or lower is not supported; "
-            "please upgrade to 3.8 or newer".format(name=program)
+            "Running {name} with Python 3.8 or lower is not supported; "
+            "please upgrade to 3.9 or newer".format(name=program)
         )
 
 
@@ -535,15 +566,12 @@ def hash_digest(data: bytes) -> str:
     accidental collision, but we don't really care about any of the
     cryptographic properties.
     """
-    # Once we drop Python 3.5 support, we should consider using
-    # blake2b, which is faster.
-    return hashlib.sha256(data).hexdigest()
+    return hashlib.sha1(data).hexdigest()
 
 
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
-    if sys.platform == "win32":
-        assert False, "curses is not available on Windows"
+    assert sys.platform != "win32", "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
     gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
@@ -610,8 +638,7 @@ class FancyFormatter:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
         # we check with an assert at runtime and an if check for mypy, as asserts do not
         # yet narrow platform
-        assert sys.platform == "win32"
-        if sys.platform == "win32":
+        if sys.platform == "win32":  # needed to find win specific sys apis
             winver = sys.getwindowsversion()
             if (
                 winver.major < MINIMUM_WINDOWS_MAJOR_VT100
@@ -633,11 +660,12 @@ class FancyFormatter:
             )
             self.initialize_vt100_colors()
             return True
-        return False
+        assert False, "Running not on Windows"
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if sys.platform == "win32" or not CURSES_ENABLED:
+        is_win = sys.platform == "win32"
+        if is_win or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".
@@ -833,6 +861,18 @@ def is_typeshed_file(typeshed_dir: str | None, file: str) -> bool:
         return False
 
 
+def is_stdlib_file(typeshed_dir: str | None, file: str) -> bool:
+    if "stdlib" not in file:
+        # Fast path
+        return False
+    typeshed_dir = typeshed_dir if typeshed_dir is not None else TYPESHED_DIR
+    stdlib_dir = os.path.join(typeshed_dir, "stdlib")
+    try:
+        return os.path.commonpath((stdlib_dir, os.path.abspath(file))) == stdlib_dir
+    except ValueError:  # Different drives on Windows
+        return False
+
+
 def is_stub_package_file(file: str) -> bool:
     # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
     if not file.endswith(".pyi"):
@@ -874,3 +914,31 @@ def quote_docstring(docstr: str) -> str:
         return f"''{docstr_repr}''"
     else:
         return f'""{docstr_repr}""'
+
+
+def json_dumps(obj: object, debug: bool = False) -> bytes:
+    if orjson is not None:
+        if debug:
+            dumps_option = orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS
+        else:
+            # TODO: If we don't sort keys here, testIncrementalInternalScramble fails
+            # We should document exactly what is going on there
+            dumps_option = orjson.OPT_SORT_KEYS
+
+        try:
+            return orjson.dumps(obj, option=dumps_option)  # type: ignore[no-any-return]
+        except TypeError as e:
+            if str(e) != "Integer exceeds 64-bit range":
+                raise
+
+    if debug:
+        return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
+    else:
+        # See above for sort_keys comment
+        return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def json_loads(data: bytes) -> Any:
+    if orjson is not None:
+        return orjson.loads(data)
+    return json.loads(data)
