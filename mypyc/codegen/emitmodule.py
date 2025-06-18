@@ -989,14 +989,15 @@ class GroupGenerator:
         # Patch async native functions so they're recognized as coroutines
         for fn in module.functions:
             if fn.decl.is_async and fn.class_name is None:
+                temp_name = f"{fn.fullname}_temp"
                 emitter.emit_line(
-                    f'PyObject *{fn.decl.name}_temp = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
+                    f'PyObject *{temp_name} = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
                 )
-                emitter.emit_line("if (!func_temp) goto fail;")
+                emitter.emit_line(f"if (!{temp_name}) goto fail;")
                 emitter.emit_line(
-                    "if (!CPyFunc_SetCoroFlag(func_temp)) { Py_DECREF(func_temp); goto fail; }"
+                    "if (!CPyFunc_SetCoroFlag(" + temp_name + ")) { Py_DECREF(" + temp_name + "); goto fail; }"
                 )
-                emitter.emit_line("Py_DECREF(func_temp);")
+                emitter.emit_line(f"Py_DECREF({temp_name});")
 
         self.generate_top_level_call(module, emitter)
 
