@@ -630,6 +630,7 @@ class A:
 
 reveal_type(A().g)  # N: Revealed type is "builtins.int"
 reveal_type(A().g2)  # N: Revealed type is "builtins.int"
+A().g = 1  # E: Property "g" defined in "A" is read-only
 A().g2 = 1
 A().g2 = "no"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/property.pyi]

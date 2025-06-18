@@ -4422,7 +4422,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if definition:
                 if is_node_static(definition):
                     var.is_staticmethod = True
-                elif is_node_class(definition):
+                elif is_classmethod_node(definition):
                     var.is_classmethod = True
                 elif is_property(definition):
                     var.is_property = True
@@ -8545,7 +8545,7 @@ class SetNothingToAny(TypeTranslator):
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
-def is_node_class(node: Node | None) -> bool | None:
+def is_classmethod_node(node: Node | None) -> bool | None:
     """Find out if a node describes a classmethod."""
     if isinstance(node, FuncDef):
         return node.is_class
