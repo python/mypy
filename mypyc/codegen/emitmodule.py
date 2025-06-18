@@ -921,9 +921,13 @@ class GroupGenerator:
                 flags.append("METH_COROUTINE")
             emitter.emit_line(
                 (
-                    '{{"{name}", (PyCFunction){prefix}{cname}, {flags}, '
-                    "NULL /* docstring */}},"
-                ).format(name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flags=" | ".join(flags))
+                    '{{"{name}", (PyCFunction){prefix}{cname}, {flags}, ' "NULL /* docstring */}},"
+                ).format(
+                    name=name,
+                    cname=fn.cname(emitter.names),
+                    prefix=PREFIX,
+                    flags=" | ".join(flags),
+                )
             )
         emitter.emit_line("{NULL, NULL, 0, NULL}")
         emitter.emit_line("};")
