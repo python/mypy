@@ -278,3 +278,12 @@ def test_multiply() -> None:
     assert (1,) * 3 == res
     assert 3 * (1,) == res
     assert multiply((1,), 3) == res
+
+[case testTupleDoNotCrashOnTransformedInComparisons]
+def f() -> None:
+    for n in ["x"]:
+        if n in ("x", "z") or n.startswith("y"):
+            print(n)
+f()
+[out]
+x
