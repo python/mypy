@@ -369,7 +369,7 @@ t: type
 a: A
 
 if int():
-    a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
+    a = A # E: Incompatible types in assignment (expression has type "type[A]", variable has type "A")
 if int():
     t = f # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
 if int():
@@ -464,10 +464,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type "Type[C]"; expected "Callable[[Any], Any]"
+f([C])  # E: List item 0 has incompatible type "type[C]"; expected "Callable[[Any], Any]"
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type "Type[D]"; expected "Callable[[Any], Any]"
+f([D])  # E: List item 0 has incompatible type "type[D]"; expected "Callable[[Any], Any]"
 [builtins fixtures/list.pyi]
 
 [case testSubtypingTypeTypeAsCallable]
@@ -483,7 +483,7 @@ class A: pass
 x: Callable[..., A]
 y: Type[A]
 if int():
-    y = x  # E: Incompatible types in assignment (expression has type "Callable[..., A]", variable has type "Type[A]")
+    y = x  # E: Incompatible types in assignment (expression has type "Callable[..., A]", variable has type "type[A]")
 
 -- Default argument values
 -- -----------------------
@@ -945,7 +945,7 @@ def f(x): pass
 def faulty(c: Callable[[int], None]) -> Callable[[tuple[int, int]], None]:
     return lambda x: None
 
-@faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[Tuple[int, int]], None]"; expected "Callable[[int], None]"
+@faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[tuple[int, int]], None]"; expected "Callable[[int], None]"
 @faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[str], None]"; expected "Callable[[int], None]"
 def g(x: str) -> None:
     return None
@@ -1614,11 +1614,11 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E: Need type annotation for "f" (hint: "f: List[<type>] = ...")
+f = [] # E: Need type annotation for "f" (hint: "f: list[<type>] = ...")
 if object():
     def f(): pass # E: Incompatible redefinition
-f()  # E: "List[Any]" not callable
-f(1)  # E: "List[Any]" not callable
+f()  # E: "list[Any]" not callable
+f(1)  # E: "list[Any]" not callable
 [builtins fixtures/list.pyi]
 
 [case testDefineConditionallyAsImportedAndDecorated]
@@ -1827,7 +1827,6 @@ def Arg(x, y): pass
 F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.Arg"
 
 [case testCallableParsingFromExpr]
-# flags: --python-version 3.9
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
 import mypy_extensions
@@ -1858,13 +1857,6 @@ Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias: expression is 
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias: expression is not a valid type \
                                               # E: Value of type "int" is not indexable \
                                               # E: "Arg" gets multiple values for keyword argument "name"
-
-
-
-
-
-
-
 [builtins fixtures/dict.pyi]
 
 [case testCallableParsing]
@@ -2119,7 +2111,7 @@ f(x=1, y="hello", z=[])
 from typing import Dict
 def f(x, **kwargs): # type: (...) -> None
     success_dict_type = kwargs # type: Dict[str, str]
-    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type "Dict[str, Any]", variable has type "Dict[int, str]")
+    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type "dict[str, Any]", variable has type "dict[int, str]")
 f(1, thing_in_kwargs=["hey"])
 [builtins fixtures/dict.pyi]
 [out]
@@ -2128,7 +2120,7 @@ f(1, thing_in_kwargs=["hey"])
 from typing import Tuple, Any
 def f(x, *args): # type: (...) -> None
     success_tuple_type = args # type: Tuple[Any, ...]
-    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type "Tuple[Any, ...]", variable has type "None")
+    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type "tuple[Any, ...]", variable has type "None")
 f(1, "hello")
 [builtins fixtures/tuple.pyi]
 [out]
@@ -2455,7 +2447,7 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for "bad" (hint: "bad: List[<type>] = ...")
+bad = make_list()  # E: Need type annotation for "bad" (hint: "bad: list[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]
@@ -2502,26 +2494,26 @@ def fn(
 from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
-    return x # E: Incompatible return value type (got "List[str]", expected "List[Union[str, int]]") \
+    return x # E: Incompatible return value type (got "list[str]", expected "list[Union[str, int]]") \
       # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant \
-      # N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "list[Union[str, int]]"
 
 def g() -> Dict[str, Union[str, int]]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[str, Union[str, int]]") \
+    return x # E: Incompatible return value type (got "dict[str, str]", expected "dict[str, Union[str, int]]") \
       # N: "dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Mapping" instead, which is covariant in the value type \
-      # N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "dict[str, Union[str, int]]"
 
 def h() -> Dict[Union[str, int], str]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[Union[str, int], str]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[Union[str, int], str]"
+    return x # E: Incompatible return value type (got "dict[str, str]", expected "dict[Union[str, int], str]") \
+# N: Perhaps you need a type annotation for "x"? Suggestion: "dict[Union[str, int], str]"
 
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
-    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
+    return x # E: Incompatible return value type (got "list[int]", expected "list[Union[int, float]]") \
       # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 
@@ -2531,11 +2523,11 @@ def i() -> List[Union[int, float]]:
 from typing import Union, List
 def f() -> List[Union[int, float]]:
     x = ['a']
-    return x # E: Incompatible return value type (got "List[str]", expected "List[Union[int, float]]")
+    return x # E: Incompatible return value type (got "list[str]", expected "list[Union[int, float]]")
 
 def g() -> List[Union[str, int]]:
     x = ('a', 2)
-    return x # E: Incompatible return value type (got "Tuple[str, int]", expected "List[Union[str, int]]")
+    return x # E: Incompatible return value type (got "tuple[str, int]", expected "list[Union[str, int]]")
 
 [builtins fixtures/list.pyi]
 
@@ -2543,7 +2535,7 @@ def g() -> List[Union[str, int]]:
 from typing import Union, Dict, List
 def f() -> Dict[str, Union[str, int]]:
     x = {'a': 'a', 'b': 2}
-    return x # E: Incompatible return value type (got "Dict[str, object]", expected "Dict[str, Union[str, int]]")
+    return x # E: Incompatible return value type (got "dict[str, object]", expected "dict[str, Union[str, int]]")
 
 def g() -> Dict[str, Union[str, int]]:
     x: Dict[str, Union[str, int]] = {'a': 'a', 'b': 2}
@@ -2551,7 +2543,7 @@ def g() -> Dict[str, Union[str, int]]:
 
 def h() -> List[Union[str, int]]:
     x = ['a', 2]
-    return x # E: Incompatible return value type (got "List[object]", expected "List[Union[str, int]]")
+    return x # E: Incompatible return value type (got "list[object]", expected "list[Union[str, int]]")
 
 def i() -> List[Union[str, int]]:
     x: List[Union[str, int]] = ['a', 2]
@@ -3285,6 +3277,39 @@ class C(B):
     def __f(self, y: int) -> str: pass  # OK
 [typing fixtures/typing-override.pyi]
 
+[case testOverrideUntypedDef]
+# flags: --python-version 3.12
+from typing import override
+
+class Parent: pass
+
+class Child(Parent):
+    @override
+    def foo(self, y): pass  # E: Method "foo" is marked as an override, but no base method was found with this name
+
+[typing fixtures/typing-override.pyi]
+
+[case testOverrideOnUnknownBaseClass]
+# flags: --python-version 3.12
+from typing import overload, override
+
+from unknown import UnknownParent  # type: ignore[import-not-found]
+
+class UnknownChild(UnknownParent):
+    @override
+    def foo(self, y): pass  # OK
+    @override
+    def bar(self, y: str) -> None: pass  # OK
+
+    @override
+    @overload
+    def baz(self, y: str) -> None: ...
+    @override
+    @overload
+    def baz(self, y: int) -> None: ...
+    def baz(self, y: str | int) -> None: ...
+[typing fixtures/typing-override.pyi]
+
 [case testCallableProperty]
 from typing import Callable
 
@@ -3566,3 +3591,106 @@ class Bar(Foo):
 
     def foo(self, value: Union[int, str]) -> Union[int, str]:
         return super().foo(value)  # E: Call to abstract method "foo" of "Foo" with trivial body via super() is unsafe
+
+[case fullNamesOfImportedBaseClassesDisplayed]
+from a import A
+
+class B(A):
+    def f(self, x: str) -> None:  # E: Argument 1 of "f" is incompatible with supertype "a.A"; supertype defines the argument type as "int" \
+                                  # N: This violates the Liskov substitution principle \
+                                  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+        ...
+    def g(self, x: str) -> None:  # E: Signature of "g" incompatible with supertype "a.A" \
+                                  # N:      Superclass: \
+                                  # N:          def g(self) -> None \
+                                  # N:      Subclass: \
+                                  # N:          def g(self, x: str) -> None
+        ...
+
+[file a.py]
+class A:
+    def f(self, x: int) -> None:
+        ...
+    def g(self) -> None:
+        ...
+
+[case testBoundMethodsAssignedInClassBody]
+from typing import Callable
+
+class A:
+    def f(self, x: int) -> str:
+        pass
+    @classmethod
+    def g(cls, x: int) -> str:
+        pass
+    @staticmethod
+    def h(x: int) -> str:
+        pass
+    attr: Callable[[int], str]
+
+class C:
+    x1 = A.f
+    x2 = A.g
+    x3 = A().f
+    x4 = A().g
+    x5 = A.h
+    x6 = A().h
+    x7 = A().attr
+
+reveal_type(C.x1)  # N: Revealed type is "def (self: __main__.A, x: builtins.int) -> builtins.str"
+reveal_type(C.x2)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x3)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x4)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x5)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x7)  # N: Revealed type is "def (builtins.int) -> builtins.str"
+
+reveal_type(C().x1)  # E: Invalid self argument "C" to attribute function "x1" with type "Callable[[A, int], str]" \
+                     # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x2)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x3)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x4)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x5)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x7)  # E: Invalid self argument "C" to attribute function "x7" with type "Callable[[int], str]" \
+                     # N: Revealed type is "def () -> builtins.str"
+[builtins fixtures/classmethod.pyi]
+
+[case testFunctionRedefinitionDeferred]
+from typing import Callable, TypeVar
+
+def outer() -> None:
+    if bool():
+        def inner() -> str: ...
+    else:
+        def inner() -> int: ...  # E: All conditional function variants must have identical signatures \
+                                 # N: Original: \
+                                 # N:     def inner() -> str \
+                                 # N: Redefinition: \
+                                 # N:     def inner() -> int
+    x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
+[case testCheckFunctionErrorContextDuplicateDeferred]
+# flags: --show-error-context
+from typing import Callable, TypeVar
+
+def a() -> None:
+    def b() -> None:
+        1 + ""
+        x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[out]
+main: note: In function "a":
+main:6: error: Unsupported operand types for + ("int" and "str")

@@ -140,6 +140,7 @@ class FuncDecl:
         is_prop_setter: bool = False,
         is_prop_getter: bool = False,
         implicit: bool = False,
+        internal: bool = False,
     ) -> None:
         self.name = name
         self.class_name = class_name
@@ -159,6 +160,9 @@ class FuncDecl:
         # If True, not present in the mypy AST and must be synthesized during irbuild
         # Currently only supported for property getters/setters
         self.implicit = implicit
+
+        # If True, only direct C level calls are supported (no wrapper function)
+        self.internal = internal
 
         # This is optional because this will be set to the line number when the corresponding
         # FuncIR is created
@@ -204,6 +208,7 @@ class FuncDecl:
             "is_prop_setter": self.is_prop_setter,
             "is_prop_getter": self.is_prop_getter,
             "implicit": self.implicit,
+            "internal": self.internal,
         }
 
     # TODO: move this to FuncIR?
@@ -226,6 +231,7 @@ class FuncDecl:
             data["is_prop_setter"],
             data["is_prop_getter"],
             data["implicit"],
+            data["internal"],
         )
 
 
@@ -286,6 +292,10 @@ class FuncIR:
     @property
     def id(self) -> str:
         return self.decl.id
+
+    @property
+    def internal(self) -> bool:
+        return self.decl.internal
 
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)

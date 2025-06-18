@@ -18,10 +18,11 @@ from .runners import *
 from .streams import *
 from .subprocess import *
 from .tasks import *
+from .threads import *
 from .transports import *
 
-if sys.version_info >= (3, 9):
-    from .threads import *
+if sys.version_info >= (3, 14):
+    from .graph import *
 
 if sys.version_info >= (3, 11):
     from .taskgroups import *
@@ -34,17 +35,20 @@ else:
 
 if sys.platform == "win32":
     if sys.version_info >= (3, 14):
+
         __all__ = (
             "BaseEventLoop",  # from base_events
             "Server",  # from base_events
             "iscoroutinefunction",  # from coroutines
             "iscoroutine",  # from coroutines
-            "AbstractEventLoopPolicy",  # from events
+            "_AbstractEventLoopPolicy",  # from events
             "AbstractEventLoop",  # from events
             "AbstractServer",  # from events
             "Handle",  # from events
             "TimerHandle",  # from events
+            "_get_event_loop_policy",  # from events
             "get_event_loop_policy",  # from events
+            "_set_event_loop_policy",  # from events
             "set_event_loop_policy",  # from events
             "get_event_loop",  # from events
             "set_event_loop",  # from events
@@ -62,6 +66,13 @@ if sys.platform == "win32":
             "Future",  # from futures
             "wrap_future",  # from futures
             "isfuture",  # from futures
+            "future_discard_from_awaited_by",  # from futures
+            "future_add_to_awaited_by",  # from futures
+            "capture_call_graph",  # from graph
+            "format_call_graph",  # from graph
+            "print_call_graph",  # from graph
+            "FrameCallGraphEntry",  # from graph
+            "FutureCallGraph",  # from graph
             "Lock",  # from locks
             "Event",  # from locks
             "Condition",  # from locks
@@ -123,9 +134,9 @@ if sys.platform == "win32":
             "SelectorEventLoop",  # from windows_events
             "ProactorEventLoop",  # from windows_events
             "IocpProactor",  # from windows_events
-            "DefaultEventLoopPolicy",  # from windows_events
-            "WindowsSelectorEventLoopPolicy",  # from windows_events
-            "WindowsProactorEventLoopPolicy",  # from windows_events
+            "_DefaultEventLoopPolicy",  # from windows_events
+            "_WindowsSelectorEventLoopPolicy",  # from windows_events
+            "_WindowsProactorEventLoopPolicy",  # from windows_events
             "EventLoop",  # from windows_events
         )
     elif sys.version_info >= (3, 13):
@@ -412,7 +423,7 @@ if sys.platform == "win32":
             "WindowsSelectorEventLoopPolicy",  # from windows_events
             "WindowsProactorEventLoopPolicy",  # from windows_events
         )
-    elif sys.version_info >= (3, 9):
+    else:
         __all__ = (
             "BaseEventLoop",  # from base_events
             "Server",  # from base_events
@@ -486,91 +497,6 @@ if sys.platform == "win32":
             "_enter_task",  # from tasks
             "_leave_task",  # from tasks
             "to_thread",  # from threads
-            "BaseTransport",  # from transports
-            "ReadTransport",  # from transports
-            "WriteTransport",  # from transports
-            "Transport",  # from transports
-            "DatagramTransport",  # from transports
-            "SubprocessTransport",  # from transports
-            "SelectorEventLoop",  # from windows_events
-            "ProactorEventLoop",  # from windows_events
-            "IocpProactor",  # from windows_events
-            "DefaultEventLoopPolicy",  # from windows_events
-            "WindowsSelectorEventLoopPolicy",  # from windows_events
-            "WindowsProactorEventLoopPolicy",  # from windows_events
-        )
-    else:
-        __all__ = (
-            "BaseEventLoop",  # from base_events
-            "coroutine",  # from coroutines
-            "iscoroutinefunction",  # from coroutines
-            "iscoroutine",  # from coroutines
-            "AbstractEventLoopPolicy",  # from events
-            "AbstractEventLoop",  # from events
-            "AbstractServer",  # from events
-            "Handle",  # from events
-            "TimerHandle",  # from events
-            "get_event_loop_policy",  # from events
-            "set_event_loop_policy",  # from events
-            "get_event_loop",  # from events
-            "set_event_loop",  # from events
-            "new_event_loop",  # from events
-            "get_child_watcher",  # from events
-            "set_child_watcher",  # from events
-            "_set_running_loop",  # from events
-            "get_running_loop",  # from events
-            "_get_running_loop",  # from events
-            "CancelledError",  # from exceptions
-            "InvalidStateError",  # from exceptions
-            "TimeoutError",  # from exceptions
-            "IncompleteReadError",  # from exceptions
-            "LimitOverrunError",  # from exceptions
-            "SendfileNotAvailableError",  # from exceptions
-            "Future",  # from futures
-            "wrap_future",  # from futures
-            "isfuture",  # from futures
-            "Lock",  # from locks
-            "Event",  # from locks
-            "Condition",  # from locks
-            "Semaphore",  # from locks
-            "BoundedSemaphore",  # from locks
-            "BaseProtocol",  # from protocols
-            "Protocol",  # from protocols
-            "DatagramProtocol",  # from protocols
-            "SubprocessProtocol",  # from protocols
-            "BufferedProtocol",  # from protocols
-            "run",  # from runners
-            "Queue",  # from queues
-            "PriorityQueue",  # from queues
-            "LifoQueue",  # from queues
-            "QueueFull",  # from queues
-            "QueueEmpty",  # from queues
-            "StreamReader",  # from streams
-            "StreamWriter",  # from streams
-            "StreamReaderProtocol",  # from streams
-            "open_connection",  # from streams
-            "start_server",  # from streams
-            "create_subprocess_exec",  # from subprocess
-            "create_subprocess_shell",  # from subprocess
-            "Task",  # from tasks
-            "create_task",  # from tasks
-            "FIRST_COMPLETED",  # from tasks
-            "FIRST_EXCEPTION",  # from tasks
-            "ALL_COMPLETED",  # from tasks
-            "wait",  # from tasks
-            "wait_for",  # from tasks
-            "as_completed",  # from tasks
-            "sleep",  # from tasks
-            "gather",  # from tasks
-            "shield",  # from tasks
-            "ensure_future",  # from tasks
-            "run_coroutine_threadsafe",  # from tasks
-            "current_task",  # from tasks
-            "all_tasks",  # from tasks
-            "_register_task",  # from tasks
-            "_unregister_task",  # from tasks
-            "_enter_task",  # from tasks
-            "_leave_task",  # from tasks
             "BaseTransport",  # from transports
             "ReadTransport",  # from transports
             "WriteTransport",  # from transports
@@ -591,12 +517,14 @@ else:
             "Server",  # from base_events
             "iscoroutinefunction",  # from coroutines
             "iscoroutine",  # from coroutines
-            "AbstractEventLoopPolicy",  # from events
+            "_AbstractEventLoopPolicy",  # from events
             "AbstractEventLoop",  # from events
             "AbstractServer",  # from events
             "Handle",  # from events
             "TimerHandle",  # from events
+            "_get_event_loop_policy",  # from events
             "get_event_loop_policy",  # from events
+            "_set_event_loop_policy",  # from events
             "set_event_loop_policy",  # from events
             "get_event_loop",  # from events
             "set_event_loop",  # from events
@@ -614,6 +542,13 @@ else:
             "Future",  # from futures
             "wrap_future",  # from futures
             "isfuture",  # from futures
+            "future_discard_from_awaited_by",  # from futures
+            "future_add_to_awaited_by",  # from futures
+            "capture_call_graph",  # from graph
+            "format_call_graph",  # from graph
+            "print_call_graph",  # from graph
+            "FrameCallGraphEntry",  # from graph
+            "FutureCallGraph",  # from graph
             "Lock",  # from locks
             "Event",  # from locks
             "Condition",  # from locks
@@ -675,7 +610,7 @@ else:
             "DatagramTransport",  # from transports
             "SubprocessTransport",  # from transports
             "SelectorEventLoop",  # from unix_events
-            "DefaultEventLoopPolicy",  # from unix_events
+            "_DefaultEventLoopPolicy",  # from unix_events
             "EventLoop",  # from unix_events
         )
     elif sys.version_info >= (3, 13):
@@ -974,7 +909,7 @@ else:
             "ThreadedChildWatcher",  # from unix_events
             "DefaultEventLoopPolicy",  # from unix_events
         )
-    elif sys.version_info >= (3, 9):
+    else:
         __all__ = (
             "BaseEventLoop",  # from base_events
             "Server",  # from base_events
@@ -1061,94 +996,6 @@ else:
             "SafeChildWatcher",  # from unix_events
             "FastChildWatcher",  # from unix_events
             "PidfdChildWatcher",  # from unix_events
-            "MultiLoopChildWatcher",  # from unix_events
-            "ThreadedChildWatcher",  # from unix_events
-            "DefaultEventLoopPolicy",  # from unix_events
-        )
-    else:
-        __all__ = (
-            "BaseEventLoop",  # from base_events
-            "coroutine",  # from coroutines
-            "iscoroutinefunction",  # from coroutines
-            "iscoroutine",  # from coroutines
-            "AbstractEventLoopPolicy",  # from events
-            "AbstractEventLoop",  # from events
-            "AbstractServer",  # from events
-            "Handle",  # from events
-            "TimerHandle",  # from events
-            "get_event_loop_policy",  # from events
-            "set_event_loop_policy",  # from events
-            "get_event_loop",  # from events
-            "set_event_loop",  # from events
-            "new_event_loop",  # from events
-            "get_child_watcher",  # from events
-            "set_child_watcher",  # from events
-            "_set_running_loop",  # from events
-            "get_running_loop",  # from events
-            "_get_running_loop",  # from events
-            "CancelledError",  # from exceptions
-            "InvalidStateError",  # from exceptions
-            "TimeoutError",  # from exceptions
-            "IncompleteReadError",  # from exceptions
-            "LimitOverrunError",  # from exceptions
-            "SendfileNotAvailableError",  # from exceptions
-            "Future",  # from futures
-            "wrap_future",  # from futures
-            "isfuture",  # from futures
-            "Lock",  # from locks
-            "Event",  # from locks
-            "Condition",  # from locks
-            "Semaphore",  # from locks
-            "BoundedSemaphore",  # from locks
-            "BaseProtocol",  # from protocols
-            "Protocol",  # from protocols
-            "DatagramProtocol",  # from protocols
-            "SubprocessProtocol",  # from protocols
-            "BufferedProtocol",  # from protocols
-            "run",  # from runners
-            "Queue",  # from queues
-            "PriorityQueue",  # from queues
-            "LifoQueue",  # from queues
-            "QueueFull",  # from queues
-            "QueueEmpty",  # from queues
-            "StreamReader",  # from streams
-            "StreamWriter",  # from streams
-            "StreamReaderProtocol",  # from streams
-            "open_connection",  # from streams
-            "start_server",  # from streams
-            "open_unix_connection",  # from streams
-            "start_unix_server",  # from streams
-            "create_subprocess_exec",  # from subprocess
-            "create_subprocess_shell",  # from subprocess
-            "Task",  # from tasks
-            "create_task",  # from tasks
-            "FIRST_COMPLETED",  # from tasks
-            "FIRST_EXCEPTION",  # from tasks
-            "ALL_COMPLETED",  # from tasks
-            "wait",  # from tasks
-            "wait_for",  # from tasks
-            "as_completed",  # from tasks
-            "sleep",  # from tasks
-            "gather",  # from tasks
-            "shield",  # from tasks
-            "ensure_future",  # from tasks
-            "run_coroutine_threadsafe",  # from tasks
-            "current_task",  # from tasks
-            "all_tasks",  # from tasks
-            "_register_task",  # from tasks
-            "_unregister_task",  # from tasks
-            "_enter_task",  # from tasks
-            "_leave_task",  # from tasks
-            "BaseTransport",  # from transports
-            "ReadTransport",  # from transports
-            "WriteTransport",  # from transports
-            "Transport",  # from transports
-            "DatagramTransport",  # from transports
-            "SubprocessTransport",  # from transports
-            "SelectorEventLoop",  # from unix_events
-            "AbstractChildWatcher",  # from unix_events
-            "SafeChildWatcher",  # from unix_events
-            "FastChildWatcher",  # from unix_events
             "MultiLoopChildWatcher",  # from unix_events
             "ThreadedChildWatcher",  # from unix_events
             "DefaultEventLoopPolicy",  # from unix_events

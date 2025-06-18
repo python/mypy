@@ -78,7 +78,7 @@ def map_actuals_to_formals(
         elif actual_kind.is_named():
             assert actual_names is not None, "Internal error: named kinds without names given"
             name = actual_names[ai]
-            if name in formal_names:
+            if name in formal_names and formal_kinds[formal_names.index(name)] != nodes.ARG_STAR:
                 formal_to_actual[formal_names.index(name)].append(ai)
             elif nodes.ARG_STAR2 in formal_kinds:
                 formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
