@@ -993,7 +993,9 @@ class GroupGenerator:
                     f'PyObject *func = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
                 )
                 emitter.emit_line("if (!func) goto fail;")
-                emitter.emit_line("if (!CPyFunc_SetCoroFlag(func)) { Py_DECREF(func); goto fail; }")
+                emitter.emit_line(
+                    "if (!CPyFunc_SetCoroFlag(func)) { Py_DECREF(func); goto fail; }"
+                )
                 emitter.emit_line("Py_DECREF(func);")
 
         self.generate_top_level_call(module, emitter)
