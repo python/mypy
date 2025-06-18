@@ -1362,7 +1362,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if typ.type_is:
                     arg_index = 0
                     # For methods and classmethods, we want the second parameter
-                    if ref_type is not None and (not defn.is_static or defn.name == "__new__"):
+                    if ref_type is not None and defn.has_self_or_cls_argument:
                         arg_index = 1
                     if arg_index < len(typ.arg_types) and not is_subtype(
                         typ.type_is, typ.arg_types[arg_index]
@@ -1382,7 +1382,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         isinstance(defn, FuncDef)
                         and ref_type is not None
                         and i == 0
-                        and (not defn.is_static or defn.name == "__new__")
+                        and defn.has_self_or_cls_argument
                         and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]
                     ):
                         if defn.is_class or defn.name == "__new__":
