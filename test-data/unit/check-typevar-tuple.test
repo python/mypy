@@ -2638,6 +2638,17 @@ class C(Generic[Unpack[Ts]]):
 
 reveal_type(C.x)  # E: Access to generic instance variables via class is ambiguous \
                   # N: Revealed type is "builtins.tuple[Any, ...]"
+
+class Bad(C[int, int]):
+    pass
+reveal_type(Bad.x)  # E: Access to generic instance variables via class is ambiguous \
+                    # N: Revealed type is "tuple[builtins.int, builtins.int]"
+reveal_type(Bad().x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+
+class Good(C[int, int]):
+    x = (1, 1)
+reveal_type(Good.x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+reveal_type(Good().x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testConstraintsIncludeTupleFallback]

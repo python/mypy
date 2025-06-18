@@ -319,7 +319,9 @@ A[int, str].x  # E: Access to generic class variables is ambiguous
 
 class Bad(A[int, str]):
     pass
-Bad.x  # E: Access to generic class variables is ambiguous
+reveal_type(Bad.x)  # E: Access to generic class variables is ambiguous \
+                    # N: Revealed type is "Union[builtins.int, tuple[builtins.str, type[builtins.str]]]"
+reveal_type(Bad().x)  # N: Revealed type is "Union[builtins.int, tuple[builtins.str, type[builtins.str]]]"
 
 class Good(A[int, str]):
     x = 42

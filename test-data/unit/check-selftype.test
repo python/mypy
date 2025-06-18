@@ -2221,7 +2221,7 @@ class C(A, B):  # OK: both methods take Self
 [builtins fixtures/tuple.pyi]
 
 [case testSelfTypeClassMethodNotSilentlyErased]
-from typing import ClassVar, Self, Optional
+from typing import Self, Optional
 
 class X:
     _inst: Optional[Self] = None
@@ -2231,6 +2231,15 @@ class X:
         if cls._inst is None:
             cls._inst = cls()
         return cls._inst
+
+reveal_type(X._inst)  # E: Access to generic instance variables via class is ambiguous \
+                      # N: Revealed type is "Union[__main__.X, None]"
+reveal_type(X()._inst)  # N: Revealed type is "Union[__main__.X, None]"
+
+class Y(X): ...
+reveal_type(Y._inst)  # E: Access to generic instance variables via class is ambiguous \
+                      # N: Revealed type is "Union[__main__.Y, None]"
+reveal_type(Y()._inst)  # N: Revealed type is "Union[__main__.Y, None]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfInFuncDecoratedClassmethod]
