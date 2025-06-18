@@ -1375,7 +1375,7 @@ class MessageBuilder:
         callee_name = callable_name(callee_type)
         if callee_name is not None:
             self.fail(
-                f"Cannot infer type argument to type parameter {format_type(tv, self.options)} of {callee_name}",
+                f"Cannot infer value of type parameter {format_type(tv, self.options)} of {callee_name}",
                 context,
             )
             if callee_name == "<dict>":
