@@ -990,7 +990,7 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.decl.is_async and fn.class_name is None:
                 emitter.emit_line(
-                    f'PyObject *func_temp = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
+                    f'PyObject *{fn.decl.name}_temp = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
                 )
                 emitter.emit_line("if (!func_temp) goto fail;")
                 emitter.emit_line(
