@@ -4288,7 +4288,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ):
             self.msg.unreachable_right_operand(e.op, e.right)
 
-        right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
+        right_type = self.analyze_cond_branch(
+            right_map, e.right, self._combined_context(expanded_left_type)
+        )
 
         if left_map is None and right_map is None:
             return UninhabitedType()
@@ -5918,6 +5920,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return UninhabitedType()
             self.chk.push_type_map(map)
             return self.accept(node, type_context=context, allow_none_return=allow_none_return)
+
+    def _combined_context(self, ty: Type | None) -> Type | None:
+        ctx_items = []
+        if ty is not None:
+            ctx_items.append(ty)
+        if self.type_context and self.type_context[-1] is not None:
+            ctx_items.append(self.type_context[-1])
+        if ctx_items:
+            return make_simplified_union(ctx_items)
+        return None
 
     #
     # Helpers

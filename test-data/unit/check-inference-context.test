@@ -1510,3 +1510,24 @@ def mymin(
 def check(paths: Iterable[str], key: Callable[[str], int]) -> Union[str, None]:
     return mymin(paths, key=key, default=None)
 [builtins fixtures/tuple.pyi]
+
+[case testBinaryOpInferenceContext]
+from typing import Literal, TypeVar
+
+T = TypeVar("T")
+
+def identity(x: T) -> T:
+    return x
+
+def check1(use: bool, val: str) -> "str | Literal[True]":
+    return use or identity(val)
+
+def check2(use: bool, val: str) -> "str | bool":
+    return use or identity(val)
+
+def check3(use: bool, val: str) -> "str | Literal[False]":
+    return use and identity(val)
+
+def check4(use: bool, val: str) -> "str | bool":
+    return use and identity(val)
+[builtins fixtures/tuple.pyi]

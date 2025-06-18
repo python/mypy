@@ -968,7 +968,13 @@ def expand_and_bind_callable(
     # TODO: a decorated property can result in Overloaded here.
     assert isinstance(expanded, CallableType)
     if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
-        # TODO: use check_call() to infer better type, same as for __set__().
+        if expanded.variables:
+            type_ctx = mx.rvalue or TempNode(AnyType(TypeOfAny.special_form), context=mx.context)
+            _, inferred_expanded = mx.chk.expr_checker.check_call(
+                expanded, [type_ctx], [ARG_POS], mx.context
+            )
+            expanded = get_proper_type(inferred_expanded)
+            assert isinstance(expanded, CallableType)
         if not expanded.arg_types:
             # This can happen when accessing invalid property from its own body,
             # error will be reported elsewhere.
@@ -1221,6 +1227,9 @@ def analyze_class_attribute_access(
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
             isinstance(node.node, SYMBOL_FUNCBASE_TYPES) and node.node.is_class
         )
+        is_staticmethod = (is_decorated and cast(Decorator, node.node).func.is_static) or (
+            isinstance(node.node, SYMBOL_FUNCBASE_TYPES) and node.node.is_static
+        )
         t = get_proper_type(t)
         is_trivial_self = False
         if isinstance(node.node, Decorator):
@@ -1230,7 +1239,7 @@ def analyze_class_attribute_access(
             is_trivial_self = node.node.is_trivial_self
         if isinstance(t, FunctionLike) and is_classmethod and not is_trivial_self:
             t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
-        result = add_class_tvars(
+        t = add_class_tvars(
             t,
             isuper,
             is_classmethod,
@@ -1238,6 +1247,12 @@ def analyze_class_attribute_access(
             original_vars=original_vars,
             is_trivial_self=is_trivial_self,
         )
+        if is_decorated and not is_staticmethod:
+            t = expand_self_type_if_needed(
+                t, mx, cast(Decorator, node.node).var, itype, is_class=is_classmethod
+            )
+
+        result = t
         # __set__ is not called on class objects.
         if not mx.is_lvalue:
             result = analyze_descriptor_access(result, mx)
