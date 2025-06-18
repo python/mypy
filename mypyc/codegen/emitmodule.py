@@ -989,7 +989,7 @@ class GroupGenerator:
         # Patch async native functions so they're recognized as coroutines
         for fn in module.functions:
             if fn.decl.is_async and fn.class_name is None:
-                temp_name = f"{fn.fullname}_temp"
+                temp_name = f"{fn.fullname.replace(".", "__")}_temp"
                 emitter.emit_line(
                     f'PyObject *{temp_name} = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
                 )
