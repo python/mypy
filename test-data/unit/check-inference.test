@@ -4149,3 +4149,27 @@ class Foo:
         else:
             self.qux = {}  # E: Need type annotation for "qux" (hint: "qux: dict[<type>, <type>] = ...")
 [builtins fixtures/dict.pyi]
+
+[case testInferLiteralTypedDict]
+from typing import Generic, TypeVar, TypedDict
+
+T = TypeVar("T")
+
+class D(TypedDict):
+    x: int
+
+class A(Generic[T]): ...
+
+
+def f(a: A[T], t: T) -> T: ...
+def g(a: T, t: A[T]) -> T: ...
+
+def check(obj: A[D]) -> None:
+    reveal_type(f(obj, {"x": 1}))  # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int})"
+    reveal_type(f(obj, {"x": ''}))  # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int})" \
+                                    # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+    reveal_type(g({"x": 1}, obj))  # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int})"
+    reveal_type(g({"x": ''}, obj))  # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int})" \
+                                    # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
