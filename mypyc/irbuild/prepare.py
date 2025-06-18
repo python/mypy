@@ -185,14 +185,7 @@ def prepare_func_def(
         else (FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
     )
     sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
-    decl = FuncDecl(
-        fdef.name,
-        class_name,
-        module_name,
-        sig,
-        kind=kind,
-        is_async=fdef.is_coroutine,
-    )
+    decl = FuncDecl(fdef.name, class_name, module_name, sig, kind=kind, is_async=fdef.is_coroutine)
     mapper.func_to_decl[fdef] = decl
     return decl
 
@@ -304,6 +297,16 @@ def prepare_class_def(
                 # common pitfalls.
                 errors.error(
                     "Inheriting from most builtin types is unimplemented", path, cdef.line
+                )
+                errors.note(
+                    "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)",
+                    path,
+                    cdef.line,
+                )
+                errors.note(
+                    "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
+                    path,
+                    cdef.line,
                 )
 
     # Set up the parent class
