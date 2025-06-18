@@ -104,7 +104,7 @@ CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow)
 
 
 // CPy support for async functions: patch code object to include CO_COROUTINE
-PyObject* CPyPatchAsyncCode(PyObject* func) {
+PyObject* CPyFunc_SetCoroFlag(PyObject* func) {
     PyObject* code = PyObject_GetAttrString(func, "__code__");
     if (!code) {
         return NULL;
