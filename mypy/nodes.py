@@ -509,13 +509,6 @@ class FuncBase(Node):
         "_fullname",
     )
 
-    is_static: bool
-    """Is this a `@staticmethod` (explicit or implicit)?
-
-    This shouldn't be used to check that there's `self` or `cls` argument.
-    Use :py:attr:`has_self_or_cls_argument` instead.
-    """
-
     def __init__(self) -> None:
         super().__init__()
         # Type signature. This is usually CallableType or Overloaded, but it can be
@@ -527,6 +520,8 @@ class FuncBase(Node):
         self.info = FUNC_NO_INFO
         self.is_property = False
         self.is_class = False
+        # Is this a `@staticmethod` (explicit or implicit)?
+        # Note: use has_self_or_cls_argument to check if there is `self` or `cls` argument
         self.is_static = False
         self.is_final = False
         self.is_explicit_override = False
