@@ -4,13 +4,14 @@ from types import ModuleType
 T = TypeVar('T')
 S = TypeVar('S')
 
-class list(Generic[T], Sequence[T]): pass
+class list(Generic[T], Sequence[T]): pass  # type: ignore
 
 class object:
     def __init__(self) -> None: pass
 class type: pass
 class function: pass
 class int: pass
+class float: pass
 class str: pass
 class bool: pass
 class tuple(Generic[T]): pass

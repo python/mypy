@@ -620,6 +620,9 @@ class Server:
         t1 = time.time()
         manager.log(f"fine-grained increment: find_changed: {t1 - t0:.3f}s")
 
+        # Track all modules encountered so far. New entries for all dependencies
+        # are added below by other module finding methods below. All dependencies
+        # in graph but not in `seen` are considered deleted at the end of this method.
         seen = {source.module for source in sources}
 
         # Find changed modules reachable from roots (or in roots) already in graph.
@@ -736,7 +739,9 @@ class Server:
         Args:
             roots: modules where to start search from
             graph: module graph to use for the search
-            seen: modules we've seen before that won't be visited (mutated here!!)
+            seen: modules we've seen before that won't be visited (mutated here!!).
+                  Needed to accumulate all modules encountered during update and remove
+                  everything that no longer exists.
             changed_paths: which paths have changed (stop search here and return any found)
 
         Return (encountered reachable changed modules,
@@ -756,7 +761,8 @@ class Server:
                 changed.append((nxt.module, nxt.path))
             elif nxt.module in graph:
                 state = graph[nxt.module]
-                for dep in state.dependencies:
+                ancestors = state.ancestors or []
+                for dep in state.dependencies + ancestors:
                     if dep not in seen:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path, graph[dep].id, followed=True))
@@ -775,7 +781,9 @@ class Server:
         """Find suppressed modules that have been added (and not included in seen).
 
         Args:
-            seen: reachable modules we've seen before (mutated here!!)
+            seen: reachable modules we've seen before (mutated here!!).
+                  Needed to accumulate all modules encountered during update and remove
+                  everything that no longer exists.
 
         Return suppressed, added modules.
         """

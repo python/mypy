@@ -1243,7 +1243,8 @@ def g() -> None:
 g()
 
 [case testUnpackKwargsCompiled]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -1254,6 +1255,7 @@ def foo(**kwargs: Unpack[Person]) -> None:
 
 # This is not really supported yet, just test that we behave reasonably.
 foo(name='Jennifer', age=38)
+[typing fixtures/typing-full.pyi]
 [out]
 Jennifer
 
@@ -1284,6 +1286,7 @@ def bar() -> None:
     print(inner.__dict__)  # type: ignore
 
 bar()
+[typing fixtures/typing-full.pyi]
 [out]
 {'__module__': 'native', '__name__': 'bar', '__qualname__': 'bar', '__doc__': None, '__wrapped__': <built-in function bar>}
 

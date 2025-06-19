@@ -38,7 +38,6 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     The argument contains the description of the test case.
     """
     options = Options()
-    options.force_uppercase_builtins = True
     options.hide_error_codes = True
 
     if testcase.file.endswith("python310.test"):

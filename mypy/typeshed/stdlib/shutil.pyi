@@ -1,9 +1,9 @@
 import os
 import sys
-from _typeshed import BytesPath, ExcInfo, FileDescriptorOrPath, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
+from _typeshed import BytesPath, ExcInfo, FileDescriptorOrPath, MaybeNone, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
 from collections.abc import Callable, Iterable, Sequence
 from tarfile import _TarfileFilter
-from typing import Any, AnyStr, NamedTuple, Protocol, TypeVar, overload
+from typing import Any, AnyStr, NamedTuple, NoReturn, Protocol, TypeVar, overload
 from typing_extensions import TypeAlias, deprecated
 
 __all__ = [
@@ -18,7 +18,6 @@ __all__ = [
     "rmtree",
     "Error",
     "SpecialFileError",
-    "ExecError",
     "make_archive",
     "get_archive_formats",
     "register_archive_format",
@@ -34,17 +33,23 @@ __all__ = [
     "SameFileError",
     "disk_usage",
 ]
+if sys.version_info < (3, 14):
+    __all__ += ["ExecError"]
 
 _StrOrBytesPathT = TypeVar("_StrOrBytesPathT", bound=StrOrBytesPath)
 _StrPathT = TypeVar("_StrPathT", bound=StrPath)
-# Return value of some functions that may either return a path-like object that was passed in or
-# a string
-_PathReturn: TypeAlias = Any
+_BytesPathT = TypeVar("_BytesPathT", bound=BytesPath)
 
 class Error(OSError): ...
 class SameFileError(Error): ...
 class SpecialFileError(OSError): ...
-class ExecError(OSError): ...
+
+if sys.version_info >= (3, 14):
+    ExecError = RuntimeError  # Deprecated in Python 3.14; removal scheduled for Python 3.16
+
+else:
+    class ExecError(OSError): ...
+
 class ReadError(OSError): ...
 class RegistryError(Exception): ...
 
@@ -53,23 +58,23 @@ def copyfile(src: StrOrBytesPath, dst: _StrOrBytesPathT, *, follow_symlinks: boo
 def copymode(src: StrOrBytesPath, dst: StrOrBytesPath, *, follow_symlinks: bool = True) -> None: ...
 def copystat(src: StrOrBytesPath, dst: StrOrBytesPath, *, follow_symlinks: bool = True) -> None: ...
 @overload
-def copy(src: StrPath, dst: StrPath, *, follow_symlinks: bool = True) -> _PathReturn: ...
+def copy(src: StrPath, dst: _StrPathT, *, follow_symlinks: bool = True) -> _StrPathT | str: ...
 @overload
-def copy(src: BytesPath, dst: BytesPath, *, follow_symlinks: bool = True) -> _PathReturn: ...
+def copy(src: BytesPath, dst: _BytesPathT, *, follow_symlinks: bool = True) -> _BytesPathT | bytes: ...
 @overload
-def copy2(src: StrPath, dst: StrPath, *, follow_symlinks: bool = True) -> _PathReturn: ...
+def copy2(src: StrPath, dst: _StrPathT, *, follow_symlinks: bool = True) -> _StrPathT | str: ...
 @overload
-def copy2(src: BytesPath, dst: BytesPath, *, follow_symlinks: bool = True) -> _PathReturn: ...
+def copy2(src: BytesPath, dst: _BytesPathT, *, follow_symlinks: bool = True) -> _BytesPathT | bytes: ...
 def ignore_patterns(*patterns: StrPath) -> Callable[[Any, list[str]], set[str]]: ...
 def copytree(
     src: StrPath,
-    dst: StrPath,
+    dst: _StrPathT,
     symlinks: bool = False,
     ignore: None | Callable[[str, list[str]], Iterable[str]] | Callable[[StrPath, list[str]], Iterable[str]] = None,
     copy_function: Callable[[str, str], object] = ...,
     ignore_dangling_symlinks: bool = False,
     dirs_exist_ok: bool = False,
-) -> _PathReturn: ...
+) -> _StrPathT: ...
 
 _OnErrorCallback: TypeAlias = Callable[[Callable[..., Any], str, ExcInfo], object]
 _OnExcCallback: TypeAlias = Callable[[Callable[..., Any], str, BaseException], object]
@@ -83,7 +88,7 @@ class _RmtreeType(Protocol):
             self,
             path: StrOrBytesPath,
             ignore_errors: bool,
-            onerror: _OnErrorCallback,
+            onerror: _OnErrorCallback | None,
             *,
             onexc: None = None,
             dir_fd: int | None = None,
@@ -95,7 +100,7 @@ class _RmtreeType(Protocol):
             path: StrOrBytesPath,
             ignore_errors: bool = False,
             *,
-            onerror: _OnErrorCallback,
+            onerror: _OnErrorCallback | None,
             onexc: None = None,
             dir_fd: int | None = None,
         ) -> None: ...
@@ -130,12 +135,7 @@ _CopyFn: TypeAlias = Callable[[str, str], object] | Callable[[StrPath, StrPath],
 # N.B. shutil.move appears to take bytes arguments, however,
 # this does not work when dst is (or is within) an existing directory.
 # (#6832)
-if sys.version_info >= (3, 9):
-    def move(src: StrPath, dst: StrPath, copy_function: _CopyFn = ...) -> _PathReturn: ...
-
-else:
-    # See https://bugs.python.org/issue32689
-    def move(src: str, dst: StrPath, copy_function: _CopyFn = ...) -> _PathReturn: ...
+def move(src: StrPath, dst: _StrPathT, copy_function: _CopyFn = ...) -> _StrPathT | str | MaybeNone: ...
 
 class _ntuple_diskusage(NamedTuple):
     total: int
@@ -185,8 +185,13 @@ else:
     @overload
     def chown(path: FileDescriptorOrPath, user: str | int, group: str | int) -> None: ...
 
+if sys.platform == "win32" and sys.version_info < (3, 12):
+    @overload
+    @deprecated("On Windows before Python 3.12, using a PathLike as `cmd` would always fail or return `None`.")
+    def which(cmd: os.PathLike[str], mode: int = 1, path: StrPath | None = None) -> NoReturn: ...
+
 @overload
-def which(cmd: _StrPathT, mode: int = 1, path: StrPath | None = None) -> str | _StrPathT | None: ...
+def which(cmd: StrPath, mode: int = 1, path: StrPath | None = None) -> str | None: ...
 @overload
 def which(cmd: bytes, mode: int = 1, path: StrPath | None = None) -> bytes | None: ...
 def make_archive(

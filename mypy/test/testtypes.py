@@ -23,7 +23,6 @@ from mypy.nodes import (
     Expression,
     NameExpr,
 )
-from mypy.options import Options
 from mypy.plugins.common import find_shallow_matching_overload_item
 from mypy.state import state
 from mypy.subtypes import is_more_precise, is_proper_subtype, is_same_type, is_subtype
@@ -130,17 +129,13 @@ class TypesSuite(Suite):
         )
         assert_equal(str(c3), "def (X? =, *Y?) -> Any")
 
-    def test_tuple_type_upper(self) -> None:
-        options = Options()
-        options.force_uppercase_builtins = True
-        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[()]")
-        assert_equal(TupleType([self.x], self.fx.std_tuple).str_with_options(options), "Tuple[X?]")
-        assert_equal(
-            TupleType(
-                [self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple
-            ).str_with_options(options),
-            "Tuple[X?, Any]",
-        )
+    def test_tuple_type_str(self) -> None:
+        t1 = TupleType([], self.fx.std_tuple)
+        assert_equal(str(t1), "tuple[()]")
+        t2 = TupleType([self.x], self.fx.std_tuple)
+        assert_equal(str(t2), "tuple[X?]")
+        t3 = TupleType([self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple)
+        assert_equal(str(t3), "tuple[X?, Any]")
 
     def test_type_variable_binding(self) -> None:
         assert_equal(
@@ -1021,7 +1016,7 @@ class JoinSuite(Suite):
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
@@ -1049,12 +1044,12 @@ class JoinSuite(Suite):
             self.tuple(
                 self.fx.a, UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a
             ),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a),
@@ -1063,6 +1058,10 @@ class JoinSuite(Suite):
             ),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a),
         )
+
+    def test_join_type_type_type_var(self) -> None:
+        self.assert_join(self.fx.type_a, self.fx.t, self.fx.o)
+        self.assert_join(self.fx.t, self.fx.type_a, self.fx.o)
 
     # There are additional test cases in check-inference.test.
 
@@ -1584,11 +1583,12 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
 class TestExpandTypeLimitGetProperType(TestCase):
     # WARNING: do not increase this number unless absolutely necessary,
     # and you understand what you are doing.
-    ALLOWED_GET_PROPER_TYPES = 9
+    ALLOWED_GET_PROPER_TYPES = 7
 
     @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
     def test_count_get_proper_type(self) -> None:
         with open(mypy.expandtype.__file__) as f:
             code = f.read()
-        get_proper_type_count = len(re.findall("get_proper_type", code))
+        get_proper_type_count = len(re.findall(r"get_proper_type\(", code))
+        get_proper_type_count -= len(re.findall(r"get_proper_type\(\)", code))
         assert get_proper_type_count == self.ALLOWED_GET_PROPER_TYPES

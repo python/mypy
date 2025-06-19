@@ -420,7 +420,7 @@ def g() -> None:
 <m.f2> -> m.g
 
 [case testLiteralDepsExpr]
-from typing_extensions import Literal
+from typing import Literal
 
 Alias = Literal[1]
 

@@ -235,8 +235,7 @@ def test_frozen_sets_from_iterables() -> None:
     assert g4() == frozenset({11, 21, 31})
 
 [case testPrecomputedFrozenSets]
-from typing import Any
-from typing_extensions import Final
+from typing import Final, Any
 
 CONST: Final = "CONST"
 non_const = "non_const"

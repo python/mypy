@@ -288,6 +288,14 @@ section of the command line docs.
 
        See :ref:`using-a-pyproject-toml`.
 
+.. confval:: exclude_gitignore
+
+    :type: boolean
+    :default: False
+
+    This flag will add everything that matches ``.gitignore`` file(s) to :confval:`exclude`.
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: namespace_packages
 
     :type: boolean
@@ -424,7 +432,7 @@ Platform configuration
 
     Specifies the Python version used to parse and check the target
     program.  The string should be in the format ``MAJOR.MINOR`` --
-    for example ``2.7``.  The default is the version of the Python
+    for example ``3.9``.  The default is the version of the Python
     interpreter used to run mypy.
 
     This option may only be set in the global section (``[mypy]``).
@@ -666,6 +674,16 @@ section of the command line docs.
     Shows a warning when encountering any code inferred to be unreachable or
     redundant after performing type analysis.
 
+.. confval:: deprecated_calls_exclude
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from the :ref:`deprecated<code-deprecated>` error code.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exclusions list is defined globally for all your code.
+
 
 Suppressing errors
 ******************
@@ -694,6 +712,44 @@ section of the command line docs.
 
     Causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
+
+.. confval:: allow_redefinition_new
+
+    :type: boolean
+    :default: False
+
+    By default, mypy won't allow a variable to be redefined with an
+    unrelated type. This *experimental* flag enables the redefinition of
+    unannotated variables with an arbitrary type. You will also need to enable
+    :confval:`local_partial_types`.
+    Example:
+
+    .. code-block:: python
+
+        def maybe_convert(n: int, b: bool) -> int | str:
+            if b:
+                x = str(n)  # Assign "str"
+            else:
+                x = n       # Assign "int"
+            # Type of "x" is "int | str" here.
+            return x
+
+    This also enables an unannotated variable to have different types in different
+    code locations:
+
+    .. code-block:: python
+
+        if check():
+            for x in range(n):
+                # Type of "x" is "int" here.
+                ...
+        else:
+            for x in ['a', 'b']:
+                # Type of "x" is "str" here.
+                ...
+
+    Note: We are planning to turn this flag on by default in a future mypy
+    release, along with :confval:`local_partial_types`.
 
 .. confval:: allow_redefinition
 
@@ -728,6 +784,7 @@ section of the command line docs.
 
     Disallows inferring variable type for ``None`` from two assignments in different scopes.
     This is always implicitly enabled when using the :ref:`mypy daemon <mypy_daemon>`.
+    This will be enabled by default in a future mypy release.
 
 .. confval:: disable_error_code
 
@@ -864,14 +921,6 @@ These options may only be set in the global section (``[mypy]``).
     :default: False
 
     Show absolute paths to files.
-
-.. confval:: force_uppercase_builtins
-
-    :type: boolean
-    :default: False
-
-    Always use ``List`` instead of ``list`` in error messages,
-    even on Python 3.9+.
 
 .. confval:: force_union_syntax
 
@@ -1178,7 +1227,7 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     # mypy global options:
 
     [tool.mypy]
-    python_version = "2.7"
+    python_version = "3.9"
     warn_return_any = true
     warn_unused_configs = true
     exclude = [

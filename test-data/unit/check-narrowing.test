@@ -1,7 +1,6 @@
 [case testNarrowingParentWithStrsBasic]
 from dataclasses import dataclass
-from typing import NamedTuple, Tuple, Union
-from typing_extensions import Literal, TypedDict
+from typing import Literal, NamedTuple, Tuple, TypedDict, Union
 
 class Object1:
     key: Literal["A"]
@@ -54,24 +53,24 @@ else:
 
 x3: Union[NamedTuple1, NamedTuple2]
 if x3.key == "A":
-    reveal_type(x3)         # N: Revealed type is "Tuple[Literal['A'], builtins.int, fallback=__main__.NamedTuple1]"
+    reveal_type(x3)         # N: Revealed type is "tuple[Literal['A'], builtins.int, fallback=__main__.NamedTuple1]"
     reveal_type(x3.key)     # N: Revealed type is "Literal['A']"
 else:
-    reveal_type(x3)         # N: Revealed type is "Tuple[Literal['B'], builtins.str, fallback=__main__.NamedTuple2]"
+    reveal_type(x3)         # N: Revealed type is "tuple[Literal['B'], builtins.str, fallback=__main__.NamedTuple2]"
     reveal_type(x3.key)     # N: Revealed type is "Literal['B']"
 if x3[0] == "A":
-    reveal_type(x3)         # N: Revealed type is "Tuple[Literal['A'], builtins.int, fallback=__main__.NamedTuple1]"
+    reveal_type(x3)         # N: Revealed type is "tuple[Literal['A'], builtins.int, fallback=__main__.NamedTuple1]"
     reveal_type(x3[0])      # N: Revealed type is "Literal['A']"
 else:
-    reveal_type(x3)         # N: Revealed type is "Tuple[Literal['B'], builtins.str, fallback=__main__.NamedTuple2]"
+    reveal_type(x3)         # N: Revealed type is "tuple[Literal['B'], builtins.str, fallback=__main__.NamedTuple2]"
     reveal_type(x3[0])      # N: Revealed type is "Literal['B']"
 
 x4: Union[Tuple1, Tuple2]
 if x4[0] == "A":
-    reveal_type(x4)         # N: Revealed type is "Tuple[Literal['A'], builtins.int]"
+    reveal_type(x4)         # N: Revealed type is "tuple[Literal['A'], builtins.int]"
     reveal_type(x4[0])      # N: Revealed type is "Literal['A']"
 else:
-    reveal_type(x4)         # N: Revealed type is "Tuple[Literal['B'], builtins.str]"
+    reveal_type(x4)         # N: Revealed type is "tuple[Literal['B'], builtins.str]"
     reveal_type(x4[0])      # N: Revealed type is "Literal['B']"
 
 x5: Union[TypedDict1, TypedDict2]
@@ -80,12 +79,12 @@ if x5["key"] == "A":
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': Literal['B'], 'foo': builtins.str})"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithEnumsBasic]
 from enum import Enum
 from dataclasses import dataclass
-from typing import NamedTuple, Tuple, Union
-from typing_extensions import Literal, TypedDict
+from typing import Literal, NamedTuple, Tuple, TypedDict, Union
 
 class Key(Enum):
     A = 1
@@ -143,24 +142,24 @@ else:
 
 x3: Union[NamedTuple1, NamedTuple2]
 if x3.key is Key.A:
-    reveal_type(x3)         # N: Revealed type is "Tuple[Literal[__main__.Key.A], builtins.int, fallback=__main__.NamedTuple1]"
+    reveal_type(x3)         # N: Revealed type is "tuple[Literal[__main__.Key.A], builtins.int, fallback=__main__.NamedTuple1]"
     reveal_type(x3.key)     # N: Revealed type is "Literal[__main__.Key.A]"
 else:
-    reveal_type(x3)         # N: Revealed type is "Tuple[Literal[__main__.Key.B], builtins.str, fallback=__main__.NamedTuple2]"
+    reveal_type(x3)         # N: Revealed type is "tuple[Literal[__main__.Key.B], builtins.str, fallback=__main__.NamedTuple2]"
     reveal_type(x3.key)     # N: Revealed type is "Literal[__main__.Key.B]"
 if x3[0] is Key.A:
-    reveal_type(x3)         # N: Revealed type is "Tuple[Literal[__main__.Key.A], builtins.int, fallback=__main__.NamedTuple1]"
+    reveal_type(x3)         # N: Revealed type is "tuple[Literal[__main__.Key.A], builtins.int, fallback=__main__.NamedTuple1]"
     reveal_type(x3[0])      # N: Revealed type is "Literal[__main__.Key.A]"
 else:
-    reveal_type(x3)         # N: Revealed type is "Tuple[Literal[__main__.Key.B], builtins.str, fallback=__main__.NamedTuple2]"
+    reveal_type(x3)         # N: Revealed type is "tuple[Literal[__main__.Key.B], builtins.str, fallback=__main__.NamedTuple2]"
     reveal_type(x3[0])      # N: Revealed type is "Literal[__main__.Key.B]"
 
 x4: Union[Tuple1, Tuple2]
 if x4[0] is Key.A:
-    reveal_type(x4)         # N: Revealed type is "Tuple[Literal[__main__.Key.A], builtins.int]"
+    reveal_type(x4)         # N: Revealed type is "tuple[Literal[__main__.Key.A], builtins.int]"
     reveal_type(x4[0])      # N: Revealed type is "Literal[__main__.Key.A]"
 else:
-    reveal_type(x4)         # N: Revealed type is "Tuple[Literal[__main__.Key.B], builtins.str]"
+    reveal_type(x4)         # N: Revealed type is "tuple[Literal[__main__.Key.B], builtins.str]"
     reveal_type(x4[0])      # N: Revealed type is "Literal[__main__.Key.B]"
 
 x5: Union[TypedDict1, TypedDict2]
@@ -168,12 +167,12 @@ if x5["key"] is Key.A:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': Literal[__main__.Key.A], 'foo': builtins.int})"
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': Literal[__main__.Key.B], 'foo': builtins.str})"
-[builtins fixtures/narrowing.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithIsInstanceBasic]
 from dataclasses import dataclass
-from typing import NamedTuple, Tuple, Union
-from typing_extensions import TypedDict
+from typing import NamedTuple, Tuple, TypedDict, Union
 
 class Object1:
     key: int
@@ -214,32 +213,32 @@ else:
 
 x3: Union[NamedTuple1, NamedTuple2]
 if isinstance(x3.key, int):
-    reveal_type(x3)         # N: Revealed type is "Tuple[builtins.int, fallback=__main__.NamedTuple1]"
+    reveal_type(x3)         # N: Revealed type is "tuple[builtins.int, fallback=__main__.NamedTuple1]"
 else:
-    reveal_type(x3)         # N: Revealed type is "Tuple[builtins.str, fallback=__main__.NamedTuple2]"
+    reveal_type(x3)         # N: Revealed type is "tuple[builtins.str, fallback=__main__.NamedTuple2]"
 if isinstance(x3[0], int):
-    reveal_type(x3)         # N: Revealed type is "Tuple[builtins.int, fallback=__main__.NamedTuple1]"
+    reveal_type(x3)         # N: Revealed type is "tuple[builtins.int, fallback=__main__.NamedTuple1]"
 else:
-    reveal_type(x3)         # N: Revealed type is "Tuple[builtins.str, fallback=__main__.NamedTuple2]"
+    reveal_type(x3)         # N: Revealed type is "tuple[builtins.str, fallback=__main__.NamedTuple2]"
 
 x4: Union[Tuple1, Tuple2]
 if isinstance(x4[0], int):
-    reveal_type(x4)         # N: Revealed type is "Tuple[builtins.int]"
+    reveal_type(x4)         # N: Revealed type is "tuple[builtins.int]"
 else:
-    reveal_type(x4)         # N: Revealed type is "Tuple[builtins.str]"
+    reveal_type(x4)         # N: Revealed type is "tuple[builtins.str]"
 
 x5: Union[TypedDict1, TypedDict2]
 if isinstance(x5["key"], int):
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': builtins.int})"
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': builtins.str})"
-[builtins fixtures/narrowing.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentMultipleKeys]
 # flags: --warn-unreachable
 from enum import Enum
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 class Key(Enum):
     A = 1
@@ -271,8 +270,7 @@ else:
 
 [case testNarrowingTypedDictParentMultipleKeys]
 # flags: --warn-unreachable
-from typing import Union
-from typing_extensions import Literal, TypedDict
+from typing import Literal, TypedDict, Union
 
 class TypedDict1(TypedDict):
     key: Literal['A', 'C']
@@ -295,11 +293,11 @@ if x['key'] == 'D':
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingPartialTypedDictParentMultipleKeys]
 # flags: --warn-unreachable
-from typing import Union
-from typing_extensions import Literal, TypedDict
+from typing import Literal, TypedDict, Union
 
 class TypedDict1(TypedDict, total=False):
     key: Literal['A', 'C']
@@ -322,10 +320,10 @@ if x['key'] == 'D':
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingNestedTypedDicts]
-from typing import Union
-from typing_extensions import TypedDict, Literal
+from typing import Literal, TypedDict, Union
 
 class A(TypedDict):
     key: Literal['A']
@@ -350,11 +348,11 @@ if unknown['inner']['key'] == 'C':
     reveal_type(unknown)            # N: Revealed type is "TypedDict('__main__.Y', {'inner': Union[TypedDict('__main__.B', {'key': Literal['B']}), TypedDict('__main__.C', {'key': Literal['C']})]})"
     reveal_type(unknown['inner'])   # N: Revealed type is "TypedDict('__main__.C', {'key': Literal['C']})"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithMultipleParents]
 from enum import Enum
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 class Key(Enum):
     A = 1
@@ -398,8 +396,7 @@ else:
 
 [case testNarrowingParentWithParentMixtures]
 from enum import Enum
-from typing import Union, NamedTuple
-from typing_extensions import Literal, TypedDict
+from typing import Literal, Union, NamedTuple, TypedDict
 
 class Key(Enum):
     A = 1
@@ -417,7 +414,7 @@ ok_mixture: Union[KeyedObject, KeyedNamedTuple]
 if ok_mixture.key is Key.A:
     reveal_type(ok_mixture)             # N: Revealed type is "__main__.KeyedObject"
 else:
-    reveal_type(ok_mixture)             # N: Revealed type is "Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]"
+    reveal_type(ok_mixture)             # N: Revealed type is "tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]"
 
 impossible_mixture: Union[KeyedObject, KeyedTypedDict]
 if impossible_mixture.key is Key.A:     # E: Item "KeyedTypedDict" of "Union[KeyedObject, KeyedTypedDict]" has no attribute "key"
@@ -434,22 +431,21 @@ weird_mixture: Union[KeyedTypedDict, KeyedNamedTuple]
 if weird_mixture["key"] is Key.B:       # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
                                         # N: Possible overload variants: \
                                         # N:     def __getitem__(self, int, /) -> Literal[Key.C] \
-                                        # N:     def __getitem__(self, slice, /) -> Tuple[Literal[Key.C], ...]
-    reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
+                                        # N:     def __getitem__(self, slice, /) -> tuple[Literal[Key.C], ...]
+    reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 else:
-    reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
+    reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 
 if weird_mixture[0] is Key.B:           # E: TypedDict key must be a string literal; expected one of ("key")
-    reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
+    reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 else:
-    reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
+    reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testNarrowingParentWithProperties]
 from enum import Enum
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 class Key(Enum):
     A = 1
@@ -476,8 +472,7 @@ else:
 
 [case testNarrowingParentWithAny]
 from enum import Enum
-from typing import Union, Any
-from typing_extensions import Literal
+from typing import Literal, Union, Any
 
 class Key(Enum):
     A = 1
@@ -501,8 +496,7 @@ else:
 [builtins fixtures/tuple.pyi]
 
 [case testNarrowingParentsHierarchy]
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 from enum import Enum
 
 class Key(Enum):
@@ -580,8 +574,7 @@ else:
 
 [case testNarrowingParentsHierarchyTypedDict]
 # flags: --warn-unreachable
-from typing import Union
-from typing_extensions import TypedDict, Literal
+from typing import Literal, TypedDict, Union
 from enum import Enum
 
 class Key(Enum):
@@ -618,12 +611,12 @@ if y["model"]["key"] is Key.C:
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentsHierarchyTypedDictWithStr]
 # flags: --warn-unreachable
-from typing import Union
-from typing_extensions import TypedDict, Literal
+from typing import Literal, TypedDict, Union
 
 class Parent1(TypedDict):
     model: Model1
@@ -655,10 +648,10 @@ else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingExprPropagation]
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 class A:
     tag: Literal['A']
@@ -679,7 +672,7 @@ if not (abo is None or abo.tag != "B"):
 
 [case testNarrowingEqualityFlipFlop]
 # flags: --warn-unreachable --strict-equality
-from typing_extensions import Literal, Final
+from typing import Final, Literal
 from enum import Enum
 
 class State(Enum):
@@ -744,7 +737,7 @@ def test3(switch: FlipFlopEnum) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
-from typing_extensions import Literal, Final
+from typing import Final, Literal
 
 A_final: Final = "A"
 A_literal: Literal["A"]
@@ -790,8 +783,7 @@ reveal_type(x_union)      # N: Revealed type is "Union[Literal['A'], Literal['B'
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitEnumLiteral]
-from typing import Union
-from typing_extensions import Literal, Final
+from typing import Final, Literal, Union
 from enum import Enum
 
 class Foo(Enum):
@@ -832,8 +824,7 @@ def bar(x: Union[SingletonFoo, Foo], y: SingletonFoo) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityDisabledForCustomEquality]
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 from enum import Enum
 
 class Custom:
@@ -875,8 +866,7 @@ else:
 
 [case testNarrowingEqualityDisabledForCustomEqualityChain]
 # flags: --strict-equality --warn-unreachable
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 class Custom:
     def __eq__(self, other: object) -> bool: return True
@@ -912,8 +902,7 @@ else:
 
 [case testNarrowingUnreachableCases]
 # flags: --strict-equality --warn-unreachable
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 a: Literal[1]
 b: Literal[1, 2]
@@ -960,8 +949,7 @@ else:
 
 [case testNarrowingUnreachableCases2]
 # flags: --strict-equality --warn-unreachable
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 a: Literal[1, 2, 3, 4]
 b: Literal[1, 2, 3, 4]
@@ -999,8 +987,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingLiteralTruthiness]
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 str_or_false: Union[Literal[False], str]
 
@@ -1119,7 +1106,7 @@ T = TypeVar("T", A, B)
 
 def f(cls: Type[T]) -> T:
     if issubclass(cls, A):
-        reveal_type(cls)  # N: Revealed type is "Type[__main__.A]"
+        reveal_type(cls)  # N: Revealed type is "type[__main__.A]"
         x: bool
         if x:
             return A()
@@ -1133,8 +1120,7 @@ reveal_type(f(B))  # N: Revealed type is "__main__.B"
 
 
 [case testNarrowingLiteralIdentityCheck]
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 str_or_false: Union[Literal[False], str]
 
@@ -1174,8 +1160,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanIdentityCheck]
-from typing import Optional
-from typing_extensions import Literal
+from typing import Literal, Optional
 
 bool_val: bool
 
@@ -1196,8 +1181,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanTruthiness]
-from typing import Optional
-from typing_extensions import Literal
+from typing import Literal, Optional
 
 bool_val: bool
 
@@ -1217,8 +1201,7 @@ reveal_type(opt_bool_val)   # N: Revealed type is "Union[builtins.bool, None]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanBoolOp]
-from typing import Optional
-from typing_extensions import Literal
+from typing import Literal, Optional
 
 bool_a: bool
 bool_b: bool
@@ -1245,8 +1228,7 @@ reveal_type(x) # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypedDictUsingEnumLiteral]
-from typing import Union
-from typing_extensions import TypedDict, Literal
+from typing import Literal, TypedDict, Union
 from enum import Enum
 
 class E(Enum):
@@ -1266,6 +1248,7 @@ def f(d: Union[Foo, Bar]) -> None:
     d['x']
     reveal_type(d)  # N: Revealed type is "TypedDict('__main__.Foo', {'tag': Literal[__main__.E.FOO], 'x': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingUsingMetaclass]
 from typing import Type
@@ -1277,14 +1260,14 @@ class C: pass
 
 def f(t: Type[C]) -> None:
     if type(t) is M:
-        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+        reveal_type(t)  # N: Revealed type is "type[__main__.C]"
     else:
-        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+        reveal_type(t)  # N: Revealed type is "type[__main__.C]"
     if type(t) is not M:
-        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+        reveal_type(t)  # N: Revealed type is "type[__main__.C]"
     else:
-        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
-    reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+        reveal_type(t)  # N: Revealed type is "type[__main__.C]"
+    reveal_type(t)  # N: Revealed type is "type[__main__.C]"
 
 [case testNarrowingUsingTypeVar]
 from typing import Type, TypeVar
@@ -1301,13 +1284,12 @@ def f(t: Type[T], a: A, b: B) -> None:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
     if type(b) is t:
-        reveal_type(b)  # N: Revealed type is "Never"
+        reveal_type(b)  # N: Revealed type is "T`-1"
     else:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 
 [case testNarrowingNestedUnionOfTypedDicts]
-from typing import Union
-from typing_extensions import Literal, TypedDict
+from typing import Literal, TypedDict, Union
 
 class A(TypedDict):
     tag: Literal["A"]
@@ -1331,9 +1313,8 @@ elif abc["tag"] == "C":
     reveal_type(abc) # N: Revealed type is "TypedDict('__main__.C', {'tag': Literal['C'], 'c': builtins.int})"
 else:
     reveal_type(abc) # N: Revealed type is "TypedDict('__main__.B', {'tag': Literal['B'], 'b': builtins.int})"
-
 [builtins fixtures/primitives.pyi]
-
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingRuntimeCover]
 from typing import Dict, List, Union
@@ -1521,14 +1502,14 @@ from typing import Tuple
 
 x: Tuple[int, ...]
 if len(x) == 3:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int]"
 else:
     reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 if len(x) != 3:
     reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 else:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTypeUnaffected]
@@ -1560,20 +1541,19 @@ VarTuple = Union[Tuple[int, int], Tuple[int, int, int]]
 x: VarTuple
 y: VarTuple
 if len(x) == len(y) == 3:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
-    reveal_type(y) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int]"
+    reveal_type(y) # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenFinal]
-from typing import Tuple, Union
-from typing_extensions import Final
+from typing import Final, Tuple, Union
 
 VarTuple = Union[Tuple[int, int], Tuple[int, int, int]]
 
 x: VarTuple
 fin: Final = 3
 if len(x) == fin:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenGreaterThan]
@@ -1583,24 +1563,24 @@ VarTuple = Union[Tuple[int], Tuple[int, int], Tuple[int, int, int]]
 
 x: VarTuple
 if len(x) > 1:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 else:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int]"
 
 if len(x) < 2:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int]"
 else:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 
 if len(x) >= 2:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 else:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int]"
 
 if len(x) <= 2:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int], tuple[builtins.int, builtins.int]]"
 else:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBothSidesUnionTuples]
@@ -1615,9 +1595,9 @@ VarTuple = Union[
 
 x: VarTuple
 if 2 <= len(x) <= 3:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 else:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int], tuple[builtins.int, builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenGreaterThanHomogeneousTupleShort]
@@ -1628,9 +1608,9 @@ VarTuple = Tuple[int, ...]
 
 x: VarTuple
 if len(x) < 3:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[()], Tuple[builtins.int], Tuple[builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[()], tuple[builtins.int], tuple[builtins.int, builtins.int]]"
 else:
-    reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+    reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/len.pyi]
 
@@ -1653,9 +1633,9 @@ from typing import Tuple
 
 x: Tuple[int, ...]
 if 1 < len(x) < 4:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 else:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[()], Tuple[builtins.int], Tuple[builtins.int, builtins.int, builtins.int, builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[()], tuple[builtins.int], tuple[builtins.int, builtins.int, builtins.int, builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]]"
 reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/len.pyi]
 
@@ -1667,12 +1647,12 @@ x: Union[Tuple[int, int], Tuple[int, int, int]]
 if len(x) >= 4:
     reveal_type(x) # E: Statement is unreachable
 else:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 
 if len(x) < 2:
     reveal_type(x) # E: Statement is unreachable
 else:
-    reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenMixedTypes]
@@ -1681,17 +1661,17 @@ from typing import Tuple, List, Union
 x: Union[Tuple[int, int], Tuple[int, int, int], List[int]]
 a = b = c = 0
 if len(x) == 3:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int, builtins.int], builtins.list[builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int, builtins.int], builtins.list[builtins.int]]"
     a, b, c = x
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], builtins.list[builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int], builtins.list[builtins.int]]"
     a, b = x
 
 if len(x) != 3:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], builtins.list[builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int], builtins.list[builtins.int]]"
     a, b = x
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int, builtins.int], builtins.list[builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int, builtins.int], builtins.list[builtins.int]]"
     a, b, c = x
 [builtins fixtures/len.pyi]
 
@@ -1702,14 +1682,14 @@ from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
 def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) == 5:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 
     if len(x) != 5:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTypeVarTupleGreaterThan]
@@ -1719,17 +1699,17 @@ from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
 def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) > 5:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
         reveal_type(x[5])  # N: Revealed type is "builtins.object"
         reveal_type(x[-6])  # N: Revealed type is "builtins.object"
         reveal_type(x[-1])  # N: Revealed type is "builtins.str"
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 
     if len(x) < 5:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
         x[5]  # E: Tuple index out of range \
               # N: Variadic tuple can have length 5
         x[-6]  # E: Tuple index out of range \
@@ -1750,23 +1730,23 @@ def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) == 1:
         reveal_type(x)  # E: Statement is unreachable
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 
     if len(x) != 1:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
         reveal_type(x)  # E: Statement is unreachable
 
 def bar(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) >= 2:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
         reveal_type(x)  # E: Statement is unreachable
 
     if len(x) < 2:
         reveal_type(x)  # E: Statement is unreachable
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenVariadicTupleEquals]
@@ -1775,14 +1755,14 @@ from typing_extensions import Unpack
 
 def foo(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     if len(x) == 4:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.float, builtins.float, builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.float, builtins.float, builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 
     if len(x) != 4:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.float, builtins.float, builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.float, builtins.float, builtins.str]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenVariadicTupleGreaterThan]
@@ -1791,16 +1771,16 @@ from typing_extensions import Unpack
 
 def foo(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     if len(x) > 3:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.float, builtins.float, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.float, builtins.float, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.str], Tuple[builtins.int, builtins.float, builtins.str]]"
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.str], tuple[builtins.int, builtins.float, builtins.str]]"
+    reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 
     if len(x) < 3:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.float, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.float, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+    reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenVariadicTupleUnreachable]
@@ -1812,23 +1792,23 @@ def foo(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     if len(x) == 1:
         reveal_type(x)  # E: Statement is unreachable
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 
     if len(x) != 1:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
         reveal_type(x)  # E: Statement is unreachable
 
 def bar(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     if len(x) >= 2:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
         reveal_type(x)  # E: Statement is unreachable
 
     if len(x) < 2:
         reveal_type(x)  # E: Statement is unreachable
     else:
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBareExpressionPrecise]
@@ -1837,7 +1817,7 @@ from typing import Tuple
 
 x: Tuple[int, ...]
 assert x
-reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBareExpressionTypeVarTuple]
@@ -1856,9 +1836,9 @@ from typing import Tuple, Optional
 
 x: Optional[Tuple[int, ...]]
 if x:
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+    reveal_type(x)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[()], None]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[()], None]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBareExpressionWithNoneImprecise]
@@ -1877,14 +1857,14 @@ from typing import Any
 
 x: Any
 if isinstance(x, (list, tuple)) and len(x) == 0:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[()], builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[()], builtins.list[Any]]"
 else:
     reveal_type(x)  # N: Revealed type is "Any"
 reveal_type(x)  # N: Revealed type is "Any"
 
 x1: Any
 if isinstance(x1, (list, tuple)) and len(x1) > 1:
-    reveal_type(x1)  # N: Revealed type is "Union[Tuple[Any, Any, Unpack[builtins.tuple[Any, ...]]], builtins.list[Any]]"
+    reveal_type(x1)  # N: Revealed type is "Union[tuple[Any, Any, Unpack[builtins.tuple[Any, ...]]], builtins.list[Any]]"
 else:
     reveal_type(x1)  # N: Revealed type is "Any"
 reveal_type(x1)  # N: Revealed type is "Any"
@@ -1895,7 +1875,7 @@ from typing import Any
 
 x: Any
 if isinstance(x, (list, tuple)) and len(x) == 0:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[()], builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[()], builtins.list[Any]]"
 else:
     reveal_type(x)  # N: Revealed type is "Any"
 reveal_type(x)  # N: Revealed type is "Any"
@@ -1909,8 +1889,7 @@ reveal_type(x1)  # N: Revealed type is "Any"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenExplicitLiteralTypes]
-from typing import Tuple, Union
-from typing_extensions import Literal
+from typing import Literal, Tuple, Union
 
 VarTuple = Union[
     Tuple[int],
@@ -1921,15 +1900,15 @@ x: VarTuple
 
 supported: Literal[2]
 if len(x) == supported:
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+    reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 
 not_supported_yet: Literal[2, 3]
 if len(x) == not_supported_yet:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int], tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int], tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenUnionOfVariadicTuples]
@@ -1937,7 +1916,7 @@ from typing import Tuple, Union
 
 x: Union[Tuple[int, ...], Tuple[str, ...]]
 if len(x) == 2:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.str, builtins.str]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.str, builtins.str]]"
 else:
     reveal_type(x)  # N: Revealed type is "Union[builtins.tuple[builtins.int, ...], builtins.tuple[builtins.str, ...]]"
 [builtins fixtures/len.pyi]
@@ -1955,9 +1934,9 @@ class Point3D(NamedTuple):
 
 x: Union[Point2D, Point3D]
 if len(x) == 2:
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.Point2D]"
+    reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.Point2D]"
 else:
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int, fallback=__main__.Point3D]"
+    reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int, builtins.int, fallback=__main__.Point3D]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTupleSubclass]
@@ -1968,7 +1947,7 @@ class Ints(Tuple[int, ...]):
 
 x: Ints
 if len(x) == 2:
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.Ints]"
+    reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.Ints]"
     reveal_type(x.size)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.Ints"
@@ -2012,15 +1991,15 @@ x: Union[Tuple[int, int], Tuple[int, int, int]]
 
 n: int
 if len(x) == n:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 
 a: Any
 if len(x) == a:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+    reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, builtins.int], tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenUnionWithUnreachable]
@@ -2033,7 +2012,7 @@ def f(x: Union[int, Sequence[int]]) -> None:
         and isinstance(x[0], int)
         and isinstance(x[1], int)
     ):
-        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+        reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingIsSubclassNoneType1]
@@ -2041,9 +2020,9 @@ from typing import Type, Union
 
 def f(cls: Type[Union[None, int]]) -> None:
     if issubclass(cls, int):
-        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
     else:
-        reveal_type(cls)  # N: Revealed type is "Type[None]"
+        reveal_type(cls)  # N: Revealed type is "type[None]"
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsSubclassNoneType2]
@@ -2051,9 +2030,9 @@ from typing import Type, Union
 
 def f(cls: Type[Union[None, int]]) -> None:
     if issubclass(cls, type(None)):
-        reveal_type(cls)  # N: Revealed type is "Type[None]"
+        reveal_type(cls)  # N: Revealed type is "type[None]"
     else:
-        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsSubclassNoneType3]
@@ -2063,9 +2042,9 @@ NoneType_ = type(None)
 
 def f(cls: Type[Union[None, int]]) -> None:
     if issubclass(cls, NoneType_):
-        reveal_type(cls)  # N: Revealed type is "Type[None]"
+        reveal_type(cls)  # N: Revealed type is "type[None]"
     else:
-        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsSubclassNoneType4]
@@ -2076,9 +2055,9 @@ from typing import Type, Union
 
 def f(cls: Type[Union[None, int]]) -> None:
     if issubclass(cls, NoneType):
-        reveal_type(cls)  # N: Revealed type is "Type[None]"
+        reveal_type(cls)  # N: Revealed type is "type[None]"
     else:
-        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType]
@@ -2367,12 +2346,11 @@ def f() -> bool: ...
 
 y = None
 while f():
-    reveal_type(y)  # N: Revealed type is "None" \
-                    # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
     y = 1
 reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 
-z = []  # E: Need type annotation for "z" (hint: "z: List[<type>] = ...")
+z = []  # E: Need type annotation for "z" (hint: "z: list[<type>] = ...")
 def g() -> None:
     for i in range(2):
         while f():
@@ -2382,16 +2360,48 @@ def g() -> None:
 
 class A:
     def g(self) -> None:
-        z = []  # E: Need type annotation for "z" (hint: "z: List[<type>] = ...")
+        z = []  # E: Need type annotation for "z" (hint: "z: list[<type>] = ...")
         for i in range(2):
             while f():
                 if z:
                     z[0] + "v"  # E: Unsupported operand types for + ("int" and "str")
                 z.append(1)
-
 [builtins fixtures/primitives.pyi]
 
-[case testAvoidFalseUnreachableInLoop]
+[case testPersistentUnreachableLinesNestedInInpersistentUnreachableLines]
+# flags: --warn-unreachable --python-version 3.11
+
+x = None
+y = None
+while True:
+    if x is not None:
+        if y is not None:
+            reveal_type(y)  # E: Statement is unreachable
+    x = 1
+[builtins fixtures/bool.pyi]
+
+[case testAvoidFalseRedundantCastInLoops]
+# flags: --warn-redundant-casts
+
+from typing import Callable, cast, Union
+
+ProcessorReturnValue = Union[str, int]
+Processor = Callable[[str], ProcessorReturnValue]
+
+def main_cast(p: Processor) -> None:
+    ed: ProcessorReturnValue
+    ed = cast(str, ...)
+    while True:
+        ed = p(cast(str, ed))
+
+def main_no_cast(p: Processor) -> None:
+    ed: ProcessorReturnValue
+    ed = cast(str, ...)
+    while True:
+        ed = p(ed)  # E: Argument 1 has incompatible type "Union[str, int]"; expected "str"
+[builtins fixtures/bool.pyi]
+
+[case testAvoidFalseUnreachableInLoop1]
 # flags: --warn-unreachable --python-version 3.11
 
 def f() -> int | None: ...
@@ -2401,8 +2411,28 @@ x: int | None
 x = 1
 while x is not None or b():
     x = f()
-
 [builtins fixtures/bool.pyi]
+
+[case testAvoidFalseUnreachableInLoop2]
+# flags: --warn-unreachable --python-version 3.11
+
+y = None
+while y is None:
+    if y is None:
+        y = []
+    y.append(1)
+[builtins fixtures/list.pyi]
+
+[case testAvoidFalseUnreachableInLoop3]
+# flags: --warn-unreachable --python-version 3.11
+
+xs: list[int | None]
+y = None
+for x in xs:
+    if x is not None:
+        if y is None:
+            y = {}  # E: Need type annotation for "y" (hint: "y: dict[<type>, <type>] = ...")
+[builtins fixtures/list.pyi]
 
 [case testAvoidFalseRedundantExprInLoop]
 # flags: --enable-error-code redundant-expr --python-version 3.11
@@ -2414,7 +2444,6 @@ x: int | None
 x = 1
 while x is not None and b():
     x = f()
-
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypeVarMultiple]
@@ -2433,4 +2462,134 @@ def foo(x: T) -> T:
         raise
     reveal_type(x)  # N: Revealed type is "T`-1"
     return x
+[builtins fixtures/isinstance.pyi]
+
+[case testDoNotNarrowToNever]
+def any():
+    return 1
+
+def f() -> None:
+    x = "a"
+    x = any()
+    assert isinstance(x, int)
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeVarBoundType]
+from typing import Type, TypeVar
+
+class A: ...
+class B(A):
+    other: int
+
+T = TypeVar("T", bound=A)
+def test(cls: Type[T]) -> T:
+    if issubclass(cls, B):
+        reveal_type(cls)  # N: Revealed type is "type[T`-1]"
+        reveal_type(cls().other)  # N: Revealed type is "builtins.int"
+        return cls()
+    return cls()
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeVarBoundUnion]
+from typing import TypeVar
+
+class A:
+    x: int
+class B:
+    x: str
+
+T = TypeVar("T")
+def test(x: T) -> T:
+    if not isinstance(x, (A, B)):
+        return x
+    reveal_type(x)  # N: Revealed type is "T`-1"
+    reveal_type(x.x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "T`-1"
+        reveal_type(x.x)  # N: Revealed type is "builtins.int"
+        return x
+    reveal_type(x)  # N: Revealed type is "T`-1"
+    reveal_type(x.x)  # N: Revealed type is "builtins.str"
+    return x
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceNarrowingWithSelfTypes]
+from typing import Generic, TypeVar, overload
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __init__(self: A[int]) -> None:
+        pass
+
+def check_a(obj: "A[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.A[T`-1], builtins.str]"
+    if isinstance(obj, A):
+        reveal_type(obj)  # N: Revealed type is "__main__.A[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+
+
+class B(Generic[T]):
+    @overload
+    def __init__(self, x: T) -> None: ...
+    @overload
+    def __init__(self: B[int]) -> None: ...
+    def __init__(self, x: "T | None" = None) -> None:
+        pass
+
+def check_b(obj: "B[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.B[T`-1], builtins.str]"
+    if isinstance(obj, B):
+        reveal_type(obj)  # N: Revealed type is "__main__.B[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+
+
+class C(Generic[T]):
+    @overload
+    def __init__(self: C[int]) -> None: ...
+    @overload
+    def __init__(self, x: T) -> None: ...
+    def __init__(self, x: "T | None" = None) -> None:
+        pass
+
+def check_c(obj: "C[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.C[T`-1], builtins.str]"
+    if isinstance(obj, C):
+        reveal_type(obj)  # N: Revealed type is "__main__.C[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+
+
+class D(tuple[T], Generic[T]): ...
+
+def check_d(arg: D[T]) -> None:
+    if not isinstance(arg, D):
+        return
+    reveal_type(arg)  # N: Revealed type is "tuple[T`-1, fallback=__main__.D[Any]]"
+[builtins fixtures/tuple.pyi]
+
+
+[case testNarrowingUnionMixins]
+class Base: ...
+
+class FooMixin:
+    def foo(self) -> None: ...
+
+class BarMixin:
+    def bar(self) -> None: ...
+
+def baz(item: Base) -> None:
+    if not isinstance(item, (FooMixin, BarMixin)):
+        raise
+
+    reveal_type(item)  # N: Revealed type is "Union[__main__.<subclass of "__main__.Base" and "__main__.FooMixin">, __main__.<subclass of "__main__.Base" and "__main__.BarMixin">]"
+    if isinstance(item, FooMixin):
+        reveal_type(item)  # N: Revealed type is "__main__.FooMixin"
+        item.foo()
+    else:
+        reveal_type(item)  # N: Revealed type is "__main__.<subclass of "__main__.Base" and "__main__.BarMixin">"
+        item.bar()
 [builtins fixtures/isinstance.pyi]
