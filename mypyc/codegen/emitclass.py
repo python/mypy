@@ -193,7 +193,7 @@ def generate_class_reuse(
     context = c_emitter.context
     name = cl.name_prefix(c_emitter.names) + "_free_instance"
     struct_name = cl.struct_name(c_emitter.names)
-    context.declarations[name] = HeaderDeclaration(f"{struct_name} *{name};", needs_export=True)
+    context.declarations[name] = HeaderDeclaration(f"CPyThreadLocal {struct_name} *{name};", needs_export=True)
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
