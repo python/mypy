@@ -1362,7 +1362,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if typ.type_is:
                     arg_index = 0
                     # For methods and classmethods, we want the second parameter
-                    if ref_type is not None and (not defn.is_static or defn.name == "__new__"):
+                    if ref_type is not None and defn.has_self_or_cls_argument:
                         arg_index = 1
                     if arg_index < len(typ.arg_types) and not is_subtype(
                         typ.type_is, typ.arg_types[arg_index]
@@ -1382,7 +1382,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         isinstance(defn, FuncDef)
                         and ref_type is not None
                         and i == 0
-                        and (not defn.is_static or defn.name == "__new__")
+                        and defn.has_self_or_cls_argument
                         and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]
                     ):
                         if defn.is_class or defn.name == "__new__":
@@ -4400,9 +4400,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         refers to the variable (lvalue). If var is None, do nothing.
         """
         if var and not self.current_node_deferred:
-            # TODO: should we also set 'is_ready = True' here?
             var.type = type
             var.is_inferred = True
+            var.is_ready = True
             if var not in self.var_decl_frames:
                 # Used for the hack to improve optional type inference in conditionals
                 self.var_decl_frames[var] = {frame.id for frame in self.binder.frames}
@@ -4412,9 +4412,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
             p_type = get_proper_type(type)
-            if isinstance(p_type, CallableType) and is_node_static(p_type.definition):
-                # TODO: handle aliases to class methods (similarly).
-                var.is_staticmethod = True
+            definition = None
+            if isinstance(p_type, CallableType):
+                definition = p_type.definition
+            elif isinstance(p_type, Overloaded):
+                # Randomly select first item, if items are different, there will
+                # be an error during semantic analysis.
+                definition = p_type.items[0].definition
+            if definition:
+                if is_node_static(definition):
+                    var.is_staticmethod = True
+                elif is_classmethod_node(definition):
+                    var.is_classmethod = True
+                elif is_property(definition):
+                    var.is_property = True
+                    if isinstance(p_type, Overloaded):
+                        # TODO: in theory we can have a property with a deleter only.
+                        var.is_settable_property = True
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
         """Store best known type for variable if type inference failed.
@@ -8531,15 +8545,21 @@ class SetNothingToAny(TypeTranslator):
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
+def is_classmethod_node(node: Node | None) -> bool | None:
+    """Find out if a node describes a classmethod."""
+    if isinstance(node, FuncDef):
+        return node.is_class
+    if isinstance(node, Var):
+        return node.is_classmethod
+    return None
+
+
 def is_node_static(node: Node | None) -> bool | None:
     """Find out if a node describes a static function method."""
-
     if isinstance(node, FuncDef):
         return node.is_static
-
     if isinstance(node, Var):
         return node.is_staticmethod
-
     return None
 
 
@@ -8786,6 +8806,8 @@ def is_static(func: FuncBase | Decorator) -> bool:
 
 
 def is_property(defn: SymbolNode) -> bool:
+    if isinstance(defn, FuncDef):
+        return defn.is_property
     if isinstance(defn, Decorator):
         return defn.func.is_property
     if isinstance(defn, OverloadedFuncDef):
