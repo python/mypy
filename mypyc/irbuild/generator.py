@@ -376,11 +376,12 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     exc_tb = builder.add_local(Var("traceback"), object_rprimitive, is_arg=True)
     # TODO: Use the right type here instead of object?
     exc_arg = builder.add_local(Var("arg"), object_rprimitive, is_arg=True)
-    stop_iter_value_arg = builder.add_local(Var("stop_iter_value"), object_pointer_rprimitive, is_arg=True)
+    stop_iter_value_arg = builder.add_local(Var("stop_iter_ptr"), object_pointer_rprimitive, is_arg=True)
     # TODO: do something with stop_iter_value_arg
 
     cls.exc_regs = (exc_type, exc_val, exc_tb)
     cls.send_arg_reg = exc_arg
+    cls.stop_iter_value_reg = stop_iter_value_arg
 
     cls.self_reg = builder.read(self_target, fitem.line)
     if builder.fn_info.can_merge_generator_and_env_classes():

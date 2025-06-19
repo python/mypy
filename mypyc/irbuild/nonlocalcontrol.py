@@ -14,11 +14,14 @@ from mypyc.ir.ops import (
     Branch,
     Goto,
     Integer,
+    LoadErrorValue,
     Register,
     Return,
+    SetMem,
     Unreachable,
     Value,
 )
+from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.primitives.exc_ops import restore_exc_info_op, set_stop_iteration_value
 
@@ -108,10 +111,23 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # StopIteration instead of using RaiseStandardError because
         # the obvious thing doesn't work if the value is a tuple
         # (???).
+
+        true, false = BasicBlock(), BasicBlock()
+        r = builder.fn_info.generator_class.stop_iter_value_reg
+
+        builder.add(Branch(r, true, false, Branch.IS_ERROR))
+
+        builder.activate_block(true)
+
         builder.call_c(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.builder.pop_error_handler()
 
+        builder.activate_block(false)
+
+        # Assign to provided pointer instead of raising an exception
+        builder.add(SetMem(object_rprimitive, r, value))
+        builder.add(Return(Integer(0, object_rprimitive)))
 
 class CleanupNonlocalControl(NonlocalControl):
     """Abstract nonlocal control that runs some cleanup code."""

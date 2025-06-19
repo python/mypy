@@ -167,6 +167,8 @@ class GeneratorClass(ImplicitClass):
         # Holds the arg passed to send
         self.send_arg_reg: Value | None = None
 
+        self.stop_iter_value_reg: Value | None = None
+
         # The switch block is used to decide which instruction to go using the value held in the
         # next-label register.
         self.switch_block = BasicBlock()

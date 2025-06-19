@@ -958,13 +958,18 @@ def emit_yield_from_or_await(
 
     if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
         # Second fast path optimization: call helper directly (see also comment above).
+        fast_path = True
         obj = builder.read(iter_reg)
         nn = builder.none_object()
-        m = MethodCall(obj, helper_method, [nn, nn, nn, nn, Integer(0, object_pointer_rprimitive)], line)
+        stop_iter_val = Register(object_rprimitive)
+        builder.assign(stop_iter_val, Integer(0, object_rprimitive), line)
+        ptr = builder.add(LoadAddress(object_pointer_rprimitive, stop_iter_val))
+        m = MethodCall(obj, helper_method, [nn, nn, nn, nn, ptr], line)
         # Generators have custom error handling, so disable normal error handling.
         m.error_kind = ERR_NEVER
         _y_init = builder.add(m)
     else:
+        fast_path = False
         _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
 
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
@@ -972,7 +977,10 @@ def emit_yield_from_or_await(
     # Try extracting a return value from a StopIteration and return it.
     # If it wasn't, this reraises the exception.
     builder.activate_block(stop_block)
-    builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+    if fast_path:
+        builder.assign(result, stop_iter_val, line)
+    else:
+        builder.assign(result, builder.call_c(check_stop_op, [], line), line)
     # Clear the spilled iterator/coroutine so that it will be freed.
     # Otherwise, the freeing of the spilled register would likely be delayed.
     err = builder.add(LoadErrorValue(iter_reg.type))
