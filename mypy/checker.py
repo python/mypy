@@ -4594,7 +4594,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self,
         lvalue: MemberExpr,
         instance_type: Type,
-        attribute_type: Type,
+        set_lvalue_type: Type,
         rvalue: Expression,
         context: Context,
     ) -> tuple[Type, Type, bool]:
@@ -4611,23 +4611,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if (isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or isinstance(
             instance_type, TypeType
         ):
-            rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, attribute_type, True
+            rvalue_type, _ = self.check_simple_assignment(set_lvalue_type, rvalue, context)
+            return rvalue_type, set_lvalue_type, True
 
         with self.msg.filter_errors(filter_deprecated=True):
             get_lvalue_type = self.expr_checker.analyze_ordinary_member_access(
                 lvalue, is_lvalue=False
             )
 
-        # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
-        # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
+        # Special case: if the rvalue_type is a subtype of '__get__' type, and
+        # '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
-        rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
-        infer = is_subtype(rvalue_type, get_lvalue_type) and is_subtype(
-            get_lvalue_type, attribute_type
-        )
-        return rvalue_type if infer else attribute_type, attribute_type, infer
+        rvalue_type, _ = self.check_simple_assignment(set_lvalue_type, rvalue, context)
+        rvalue_type = rvalue_type if is_subtype(rvalue_type, get_lvalue_type) else get_lvalue_type
+        return rvalue_type, set_lvalue_type, is_subtype(get_lvalue_type, set_lvalue_type)
 
     def check_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression, context: Context

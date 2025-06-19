@@ -2593,3 +2593,22 @@ def baz(item: Base) -> None:
         reveal_type(item)  # N: Revealed type is "__main__.<subclass of "__main__.Base" and "__main__.BarMixin">"
         item.bar()
 [builtins fixtures/isinstance.pyi]
+
+[case testCustomSetterNarrowingReWidened]
+class B: ...
+class C(B): ...
+class C1(B): ...
+class D(C): ...
+
+class Test:
+    @property
+    def foo(self) -> C: ...
+    @foo.setter
+    def foo(self, val: B) -> None: ...
+
+t: Test
+t.foo = D()
+reveal_type(t.foo)  # N: Revealed type is "__main__.D"
+t.foo = C1()
+reveal_type(t.foo)  # N: Revealed type is "__main__.C"
+[builtins fixtures/property.pyi]
