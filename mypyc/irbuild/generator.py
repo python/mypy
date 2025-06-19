@@ -32,7 +32,7 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import RInstance, int32_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import RInstance, int32_rprimitive, object_rprimitive, object_pointer_rprimitive
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
@@ -256,7 +256,7 @@ def add_next_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl: 
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), none_reg, none_reg, none_reg, none_reg],
+                [builder.self(), none_reg, none_reg, none_reg, none_reg, Integer(0, object_pointer_rprimitive)],
                 fn_info.fitem.line,
             )
         )
@@ -272,7 +272,7 @@ def add_send_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl: 
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), none_reg, none_reg, none_reg, builder.read(arg)],
+                [builder.self(), none_reg, none_reg, none_reg, builder.read(arg), Integer(0, object_pointer_rprimitive)],
                 fn_info.fitem.line,
             )
         )
@@ -297,7 +297,7 @@ def add_throw_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl:
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), builder.read(typ), builder.read(val), builder.read(tb), none_reg],
+                [builder.self(), builder.read(typ), builder.read(val), builder.read(tb), none_reg, Integer(0, object_pointer_rprimitive)],
                 fn_info.fitem.line,
             )
         )
@@ -376,6 +376,8 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     exc_tb = builder.add_local(Var("traceback"), object_rprimitive, is_arg=True)
     # TODO: Use the right type here instead of object?
     exc_arg = builder.add_local(Var("arg"), object_rprimitive, is_arg=True)
+    stop_iter_value_arg = builder.add_local(Var("stop_iter_value"), object_pointer_rprimitive, is_arg=True)
+    # TODO: do something with stop_iter_value_arg
 
     cls.exc_regs = (exc_type, exc_val, exc_tb)
     cls.send_arg_reg = exc_arg

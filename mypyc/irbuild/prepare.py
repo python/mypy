@@ -69,6 +69,7 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
+from mypyc.ir.rtypes import object_rprimitive, object_pointer_rprimitive
 
 
 def build_type_map(
@@ -220,6 +221,7 @@ def create_generator_class_if_needed(
                 RuntimeArg("value", object_rprimitive),
                 RuntimeArg("traceback", object_rprimitive),
                 RuntimeArg("arg", object_rprimitive),
+                RuntimeArg("stop_iter_ptr", object_pointer_rprimitive),
             ),
             object_rprimitive,
         )

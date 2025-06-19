@@ -960,7 +960,7 @@ def emit_yield_from_or_await(
         # Second fast path optimization: call helper directly (see also comment above).
         obj = builder.read(iter_reg)
         nn = builder.none_object()
-        m = MethodCall(obj, helper_method, [nn, nn, nn, nn], line)
+        m = MethodCall(obj, helper_method, [nn, nn, nn, nn, Integer(0, object_pointer_rprimitive)], line)
         # Generators have custom error handling, so disable normal error handling.
         m.error_kind = ERR_NEVER
         _y_init = builder.add(m)
