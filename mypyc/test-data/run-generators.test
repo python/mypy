@@ -681,7 +681,6 @@ def test_basic() -> None:
         assert context.x == 1
     assert context.x == 0
 
-
 [case testYieldSpill]
 from typing import Generator
 from testutil import run_generator
@@ -697,3 +696,47 @@ def test_basic() -> None:
     yields, val = x
     assert yields == ('foo',)
     assert val == 3, val
+
+[case testGeneratorReuse]
+from typing import Iterator
+
+def gen(x: list[int]) -> Iterator[list[int]]:
+    y = [9]
+    for z in x:
+        yield y + [z]
+    yield y
+
+def gen_range(n: int) -> Iterator[int]:
+    for x in range(n):
+        yield x
+
+def test_use_generator_multiple_times_one_at_a_time() -> None:
+    for i in range(100):
+        a = []
+        for x in gen([2, i]):
+            a.append(x)
+        assert a == [[9, 2], [9, i], [9]]
+
+def test_use_multiple_generator_instances_at_same_time() -> None:
+    a = []
+    for x in gen([2]):
+        a.append(x)
+        for y in gen([3, 4]):
+            a.append(y)
+    assert a == [[9, 2], [9, 3], [9, 4], [9], [9], [9, 3], [9, 4], [9]]
+
+def test_use_multiple_generator_instances_at_same_time_2() -> None:
+    a = []
+    for x in gen_range(2):
+        a.append(x)
+        b = []
+        for y in gen_range(3):
+            b.append(y)
+            c = []
+            for z in gen_range(4):
+                c.append(z)
+            assert c == [0, 1, 2, 3]
+        assert b == [0, 1, 2]
+    assert a == [0, 1]
+    assert list(gen_range(5)) == list(range(5))
+
