@@ -285,7 +285,7 @@ main:3: error: Cannot assign to class variable "x" via instance
 from typing import ClassVar, Generic, TypeVar
 T = TypeVar('T')
 class A(Generic[T]):
-    x: ClassVar[T]  # E: ClassVar cannot contain type variables
+    x: ClassVar[T]  # Error reported at access site
     @classmethod
     def foo(cls) -> T:
         return cls.x  # OK
@@ -308,7 +308,7 @@ from typing import ClassVar, Generic, Tuple, TypeVar, Union, Type
 T = TypeVar('T')
 U = TypeVar('U')
 class A(Generic[T, U]):
-    x: ClassVar[Union[T, Tuple[U, Type[U]]]]  # E: ClassVar cannot contain type variables
+    x: ClassVar[Union[T, Tuple[U, Type[U]]]]  # Error reported at access site
     @classmethod
     def foo(cls) -> Union[T, Tuple[U, Type[U]]]:
         return cls.x  # OK
@@ -319,7 +319,9 @@ A[int, str].x  # E: Access to generic class variables is ambiguous
 
 class Bad(A[int, str]):
     pass
-Bad.x  # E: Access to generic class variables is ambiguous
+reveal_type(Bad.x)  # E: Access to generic class variables is ambiguous \
+                    # N: Revealed type is "Union[builtins.int, tuple[builtins.str, type[builtins.str]]]"
+reveal_type(Bad().x)  # N: Revealed type is "Union[builtins.int, tuple[builtins.str, type[builtins.str]]]"
 
 class Good(A[int, str]):
     x = 42
@@ -343,3 +345,18 @@ class C:
     g: ClassVar[Union[Callable[[C], int], int]] = f
 
 reveal_type(C().g)  # N: Revealed type is "Union[def () -> builtins.int, builtins.int]"
+
+[case testGenericSubclassAccessNoLeak]
+from typing import ClassVar, Generic, TypeVar
+
+T = TypeVar("T")
+class B(Generic[T]):
+    x: T
+    y: ClassVar[T]
+
+class C(B[T]): ...
+
+reveal_type(C.x)  # E: Access to generic instance variables via class is ambiguous \
+                  # N: Revealed type is "Any"
+reveal_type(C.y)  # E: Access to generic class variables is ambiguous \
+                  # N: Revealed type is "Any"

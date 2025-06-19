@@ -2629,6 +2629,28 @@ def test(*args: Unpack[tuple[T]]) -> int: ...
 reveal_type(fn(test))  # N: Revealed type is "def [T] (T`1) -> builtins.int"
 [builtins fixtures/tuple.pyi]
 
+[case testNoGenericTypeVarTupleClassVarAccess]
+from typing import Generic, Tuple, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]):
+    x: Tuple[Unpack[Ts]]
+
+reveal_type(C.x)  # E: Access to generic instance variables via class is ambiguous \
+                  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+class Bad(C[int, int]):
+    pass
+reveal_type(Bad.x)  # E: Access to generic instance variables via class is ambiguous \
+                    # N: Revealed type is "tuple[builtins.int, builtins.int]"
+reveal_type(Bad().x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+
+class Good(C[int, int]):
+    x = (1, 1)
+reveal_type(Good.x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+reveal_type(Good().x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
 [case testConstraintsIncludeTupleFallback]
 from typing import Generic, TypeVar
 from typing_extensions import TypeVarTuple, Unpack
