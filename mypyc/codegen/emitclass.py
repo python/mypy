@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Callable
 
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
-from mypyc.codegen.emitfunc import native_function_header
+from mypyc.codegen.emitfunc import native_function_doc_initializer, native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_bin_op_wrapper,
     generate_bool_wrapper,
@@ -841,7 +841,8 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
         elif fn.decl.kind == FUNC_CLASSMETHOD:
             flags.append("METH_CLASS")
 
-        emitter.emit_line(" {}, NULL}},".format(" | ".join(flags)))
+        doc = native_function_doc_initializer(fn)
+        emitter.emit_line(" {}, {}}},".format(" | ".join(flags), doc))
 
     # Provide a default __getstate__ and __setstate__
     if not cl.has_method("__setstate__") and not cl.has_method("__getstate__"):
