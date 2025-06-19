@@ -508,6 +508,8 @@ class FuncBase(Node):
         self.info = FUNC_NO_INFO
         self.is_property = False
         self.is_class = False
+        # Is this a `@staticmethod` (explicit or implicit)?
+        # Note: use has_self_or_cls_argument to check if there is `self` or `cls` argument
         self.is_static = False
         self.is_final = False
         self.is_explicit_override = False
@@ -523,6 +525,15 @@ class FuncBase(Node):
     @property
     def fullname(self) -> str:
         return self._fullname
+
+    @property
+    def has_self_or_cls_argument(self) -> bool:
+        """If used as a method, does it have an argument for method binding (`self`, `cls`)?
+
+        This is true for `__new__` even though `__new__` does not undergo method binding,
+        because we still usually assume that `cls` corresponds to the enclosing class.
+        """
+        return not self.is_static or self.name == "__new__"
 
 
 OverloadPart: _TypeAlias = Union["FuncDef", "Decorator"]

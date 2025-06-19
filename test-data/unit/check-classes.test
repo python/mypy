@@ -4588,6 +4588,23 @@ reveal_type(a.a)  # N: Revealed type is "def (a: builtins.int)"
 reveal_type(a.c)  # N: Revealed type is "def (a: builtins.int)"
 [builtins fixtures/staticmethod.pyi]
 
+[case testClassStaticMethodIndirectOverloaded]
+from typing import overload
+class A:
+    @overload
+    @staticmethod
+    def a(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def a(x: str) -> str: ...
+    @staticmethod
+    def a(x):
+        ...
+    c = a
+reveal_type(A.c)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
+reveal_type(A().c)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
+[builtins fixtures/staticmethod.pyi]
+
 [case testClassStaticMethodSubclassing]
 class A:
     @staticmethod
@@ -8779,3 +8796,21 @@ class C:
 C().foo = "no"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 C().bar = "fine"
 [builtins fixtures/property.pyi]
+
+[case testCorrectConstructorTypeWithAnyFallback]
+from typing import Generic, TypeVar
+
+class B(Unknown):  # type: ignore
+    def __init__(self) -> None: ...
+class C(B): ...
+
+reveal_type(C)  # N: Revealed type is "def () -> __main__.C"
+
+T = TypeVar("T")
+class BG(Generic[T], Unknown):  # type: ignore
+    def __init__(self) -> None: ...
+class CGI(BG[int]): ...
+class CGT(BG[T]): ...
+
+reveal_type(CGI)  # N: Revealed type is "def () -> __main__.CGI"
+reveal_type(CGT)  # N: Revealed type is "def [T] () -> __main__.CGT[T`1]"

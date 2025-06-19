@@ -2135,7 +2135,7 @@ def d(f: Callable[P, None], fn: Callable[Concatenate[Callable[P, None], P], None
 
 reveal_type(d(a, f1))  # N: Revealed type is "def (i: builtins.int)"
 reveal_type(d(a, f2))  # N: Revealed type is "def (i: builtins.int)"
-reveal_type(d(b, f1))  # E: Cannot infer type argument 1 of "d" \
+reveal_type(d(b, f1))  # E: Cannot infer value of type parameter "P" of "d" \
                        # N: Revealed type is "def (*Any, **Any)"
 reveal_type(d(b, f2))  # N: Revealed type is "def (builtins.int)"
 [builtins fixtures/paramspec.pyi]
