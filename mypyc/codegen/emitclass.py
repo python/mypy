@@ -193,7 +193,9 @@ def generate_class_reuse(
     context = c_emitter.context
     name = cl.name_prefix(c_emitter.names) + "_free_instance"
     struct_name = cl.struct_name(c_emitter.names)
-    context.declarations[name] = HeaderDeclaration(f"CPyThreadLocal {struct_name} *{name};", needs_export=True)
+    context.declarations[name] = HeaderDeclaration(
+        f"CPyThreadLocal {struct_name} *{name};", needs_export=True
+    )
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -572,11 +574,14 @@ def generate_setup_for_class(
 
     prefix = cl.name_prefix(emitter.names)
     if cl.reuse_freed_instance:
+        # Attempt to use a per-type free list first (a free "list" with up to one object only).
         emitter.emit_line(f"if ({prefix}_free_instance != NULL) {{")
         emitter.emit_line(f"self = {prefix}_free_instance;")
         emitter.emit_line(f"{prefix}_free_instance = NULL;")
         emitter.emit_line("Py_SET_REFCNT(self, 1);")
         emitter.emit_line("PyObject_GC_Track(self);")
+        if defaults_fn is not None:
+            emit_attr_defaults_func_call(defaults_fn, "self", emitter)
         emitter.emit_line("return (PyObject *)self;")
         emitter.emit_line("}")
 
@@ -593,9 +598,7 @@ def generate_setup_for_class(
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
 
-    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
-        field = emitter.bitmap_field(i)
-        emitter.emit_line(f"self->{field} = 0;")
+    emit_clear_bitmaps(cl, emitter)
 
     if cl.has_method("__call__"):
         name = cl.method_decl("__call__").cname(emitter.names)
@@ -612,17 +615,32 @@ def generate_setup_for_class(
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
-        emitter.emit_lines(
-            "if ({}{}((PyObject *)self) == 0) {{".format(
-                NATIVE_PREFIX, defaults_fn.cname(emitter.names)
-            ),
-            "Py_DECREF(self);",
-            "return NULL;",
-            "}",
-        )
+        emit_attr_defaults_func_call(defaults_fn, "self", emitter)
 
     emitter.emit_line("return (PyObject *)self;")
     emitter.emit_line("}")
+
+
+def emit_clear_bitmaps(cl: ClassIR, emitter: Emitter) -> None:
+    """Emit C code to clear bitmaps that track if attributes have an assigned value."""
+    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
+        field = emitter.bitmap_field(i)
+        emitter.emit_line(f"self->{field} = 0;")
+
+
+def emit_attr_defaults_func_call(defaults_fn: FuncIR, self_name: str, emitter: Emitter) -> None:
+    """Emit C code to initialize attribute defaults by calling defaults_fn.
+
+    The code returns NULL on a raised exception.
+    """
+    emitter.emit_lines(
+        "if ({}{}((PyObject *){}) == 0) {{".format(
+            NATIVE_PREFIX, defaults_fn.cname(emitter.names), self_name
+        ),
+        "Py_DECREF(self);",
+        "return NULL;",
+        "}",
+    )
 
 
 def generate_constructor_for_class(
@@ -832,13 +850,6 @@ def emit_reuse_dealloc(cl: ClassIR, emitter: Emitter) -> None:
 
     emitter.emit_line("return;")
     emitter.emit_line("}")
-
-
-def emit_clear_bitmaps(cl: ClassIR, emitter: Emitter) -> None:
-    """Emit C code to clear bitmaps that track if attributes have an assigned value."""
-    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
-        field = emitter.bitmap_field(i)
-        emitter.emit_line(f"self->{field} = 0;")
 
 
 def generate_finalize_for_class(
