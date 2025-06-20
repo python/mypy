@@ -698,7 +698,7 @@ def test_basic() -> None:
     assert val == 3, val
 
 [case testGeneratorReuse]
-from typing import Iterator
+from typing import Iterator, Any
 
 def gen(x: list[int]) -> Iterator[list[int]]:
     y = [9]
@@ -739,4 +739,30 @@ def test_use_multiple_generator_instances_at_same_time_2() -> None:
         assert b == [0, 1, 2]
     assert a == [0, 1]
     assert list(gen_range(5)) == list(range(5))
+
+def gen_a(x: int) -> Iterator[int]:
+    yield x + 1
+
+def gen_b(x: int) -> Iterator[int]:
+    yield x + 2
+
+def test_generator_identities() -> None:
+    # Sanity check: two distinct live objects can't reuse the same memory location
+    g1 = gen_a(1)
+    g2 = gen_a(1)
+    assert g1 is not g2
+
+    # If two generators have non-overlapping lifetimes, they should reuse a memory location
+    g3 = gen_b(1)
+    id1 = id(g3)
+    g3 = gen_b(1)
+    assert id(g3) == id1
+
+    # More complex case of reuse: allocate other objects in between
+    g4: Any = gen_a(1)
+    id2 = id(g4)
+    g4 = gen_b(1)
+    g4 = [gen_b(n) for n in range(100)]
+    g4 = gen_a(1)
+    assert id(g4) == id2
 
