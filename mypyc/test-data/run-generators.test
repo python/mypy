@@ -766,3 +766,35 @@ def test_generator_identities() -> None:
     g4 = gen_a(1)
     assert id(g4) == id2
 
+[case testGeneratorReuseWithGilDisabled]
+import sys
+import threading
+from typing import Iterator
+
+def gen() -> Iterator[int]:
+    yield 1
+
+def is_gil_disabled() -> bool:
+    return hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled()
+
+def test_each_thread_gets_separate_instance() -> None:
+    if not is_gil_disabled():
+        # This only makes sense if GIL is disabled
+        return
+
+    g = gen()
+    id1 = id(g)
+
+    id2 = 0
+
+    def run() -> None:
+        nonlocal id2
+        g = gen()
+        id2 = id(g)
+
+    t = threading.Thread(target=run)
+    t.start()
+    t.join()
+
+    # Each thread should get a separate reused instance
+    assert id1 != id2
