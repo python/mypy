@@ -174,7 +174,7 @@ def f4(a: Union[List[int], int]) -> None:
 [case testTypeIsTupleGeneric]
 # flags: --warn-unreachable
 from __future__ import annotations
-from typing_extensions import TypeIs
+from typing_extensions import TypeIs, Unpack
 
 class A: ...
 class B: ...
@@ -211,7 +211,7 @@ def test5(t: tuple[A | B, ...]) -> None:
     else:
         reveal_type(t)  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
 
-def test6(t: tuple[B, *tuple[A | B, ...], B]) -> None:
+def test6(t: tuple[B, Unpack[tuple[A | B, ...]], B]) -> None:
     if is_tuple_of_B(t):
         # Should this be tuple[B, *tuple[B, ...], B]
         reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Never, __main__.B]"
