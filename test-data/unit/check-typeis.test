@@ -919,3 +919,17 @@ def handle(model: Model) -> None:
     if is_model_a(model):
         reveal_type(model)  # N: Revealed type is "Literal[__main__.Model.A]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeIsAwaitableAny]
+from __future__ import annotations
+from typing import Any, Awaitable, Callable
+from typing_extensions import TypeIs
+
+def is_async_callable(obj: Any) -> TypeIs[Callable[..., Awaitable[Any]]]: ...
+
+def main(f: Callable[[], int | Awaitable[int]]) -> None:
+    if is_async_callable(f):
+        reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> typing.Awaitable[Any]"
+    else:
+        reveal_type(f)  # N: Revealed type is "def () -> Union[builtins.int, typing.Awaitable[builtins.int]]"
+[builtins fixtures/tuple.pyi]
