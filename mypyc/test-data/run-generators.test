@@ -798,3 +798,34 @@ def test_each_thread_gets_separate_instance() -> None:
 
     # Each thread should get a separate reused instance
     assert id1 != id2
+
+[case testGeneratorWithUndefinedLocalInEnvironment]
+from typing import Iterator
+
+from testutil import assertRaises
+
+def gen(set: bool) -> Iterator[float]:
+    if set:
+        y = float("-113.0")
+    yield 1.0
+    yield y
+
+def test_bitmap_is_cleared_when_object_is_reused() -> None:
+    # This updates the bitmap of the shared instance.
+    list(gen(True))
+
+    # Ensure bitmap has been cleared.
+    with assertRaises(AttributeError):  # TODO: Should be UnboundLocalError
+      list(gen(False))
+
+def gen2(set: bool) -> Iterator[int]:
+    if set:
+        y = int("5")
+    yield 1
+    yield y
+
+def test_undefined_int_in_environment() -> None:
+    list(gen2(True))
+
+    with assertRaises(AttributeError):  # TODO: Should be UnboundLocalError
+      list(gen2(False))
