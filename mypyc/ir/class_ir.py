@@ -206,7 +206,8 @@ class ClassIR:
 
         # If True, keep one freed, cleared instance available for immediate reuse to
         # speed up allocations. This helps if many objects are freed quickly, before
-        # other instances of the same class are allocated.
+        # other instances of the same class are allocated. This is effectively a
+        # per-type free "list" of up to length 1.
         self.reuse_freed_instance = False
 
     def __repr__(self) -> str:

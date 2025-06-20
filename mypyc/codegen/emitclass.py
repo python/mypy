@@ -189,7 +189,18 @@ def generate_class_type_decl(
 def generate_class_reuse(
     cl: ClassIR, c_emitter: Emitter, external_emitter: Emitter, emitter: Emitter
 ) -> None:
+    """Generate a definition of a single-object per-class free "list".
+
+    This speeds up object allocation and freeing when there are many short-lived
+    objects.
+
+    TODO: Generalize to support a free list with up to N objects.
+    """
     assert cl.reuse_freed_instance
+
+    # The free list implementation doesn't support class hierarchies
+    assert cl.is_final_class or cl.children == []
+
     context = c_emitter.context
     name = cl.name_prefix(c_emitter.names) + "_free_instance"
     struct_name = cl.struct_name(c_emitter.names)
@@ -838,9 +849,15 @@ def generate_dealloc_for_class(
 
 
 def emit_reuse_dealloc(cl: ClassIR, emitter: Emitter) -> None:
+    """Emit code to deallocate object by putting it to per-type free list.
+
+    The free "list" currently can have up to one object.
+    """
     prefix = cl.name_prefix(emitter.names)
     emitter.emit_line(f"if ({prefix}_free_instance == NULL) {{")
     emitter.emit_line(f"{prefix}_free_instance = self;")
+
+    # Clear attributes and free referenced objects.
 
     emit_clear_bitmaps(cl, emitter)
 

@@ -38,7 +38,7 @@
 #elif defined(_MSC_VER)
 #define CPyThreadLocal __declspec(thread)
 
-// 3.  GNU thread local storage for GCC/Clang targets that still need it
+// 3. GNU thread local storage for GCC/Clang targets that still need it
 #elif defined(__GNUC__) || defined(__clang__)
 #define CPyThreadLocal __thread
 
