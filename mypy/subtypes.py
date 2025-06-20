@@ -2087,13 +2087,17 @@ def restrict_subtype_away(t: Type, s: Type, *, consider_runtime_isinstance: bool
         )
     elif isinstance(p_t, TypeVarType):
         return p_t.copy_modified(upper_bound=restrict_subtype_away(p_t.upper_bound, s))
-    elif consider_runtime_isinstance and covers_at_runtime(t, s):
-        return UninhabitedType()
-    elif is_proper_subtype(t, s, ignore_promotions=True):
-        return UninhabitedType()
-    elif is_proper_subtype(t, s, ignore_promotions=True, erase_instances=True):
-        return UninhabitedType()
+
+    if consider_runtime_isinstance:
+        if covers_at_runtime(t, s):
+            return UninhabitedType()
+        else:
+            return t
     else:
+        if is_proper_subtype(t, s, ignore_promotions=True):
+            return UninhabitedType()
+        if is_proper_subtype(t, s, ignore_promotions=True, erase_instances=True):
+            return UninhabitedType()
         return t
 
 
