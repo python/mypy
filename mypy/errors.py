@@ -318,12 +318,17 @@ class IterationErrorWatcher(ErrorWatcher):
             context.end_column = error_info[5]
             yield error_info[1], context, error_info[0]
 
-    def yield_note_infos(self) -> Iterator[tuple[str, Context]]:
+    def yield_note_infos(self, options: Options) -> Iterator[tuple[str, Context]]:
         """Yield all types revealed in at least one iteration step."""
 
         for note_info, types in self.iteration_dependent_errors.revealed_types.items():
             sorted_ = sorted(types, key=lambda typ: typ.lower())
-            revealed = sorted_[0] if len(types) == 1 else f"Union[{', '.join(sorted_)}]"
+            if len(types) == 1:
+                revealed = sorted_[0]
+            elif options.use_or_syntax():
+                revealed = " | ".join(sorted_)
+            else:
+                revealed = f"Union[{', '.join(sorted_)}]"
             context = Context(line=note_info[1], column=note_info[2])
             context.end_line = note_info[3]
             context.end_column = note_info[4]

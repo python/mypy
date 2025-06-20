@@ -637,7 +637,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             for error_info in watcher.yield_error_infos():
                 self.msg.fail(*error_info[:2], code=error_info[2])
-            for note_info in watcher.yield_note_infos():
+            for note_info in watcher.yield_note_infos(self.options):
                 self.note(*note_info)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
@@ -4965,7 +4965,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             for error_info in watcher.yield_error_infos():
                 self.msg.fail(*error_info[:2], code=error_info[2])
-            for note_info in watcher.yield_note_infos():
+            for note_info in watcher.yield_note_infos(self.options):
                 self.msg.note(*note_info)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
