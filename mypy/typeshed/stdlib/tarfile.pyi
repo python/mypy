@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 from gzip import _ReadableFileobj as _GzipReadableFileobj, _WritableFileobj as _GzipWritableFileobj
 from types import TracebackType
 from typing import IO, ClassVar, Literal, Protocol, overload
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "TarFile",
@@ -38,6 +38,8 @@ if sys.version_info >= (3, 12):
         "AbsolutePathError",
         "LinkOutsideDestinationError",
     ]
+if sys.version_info >= (3, 13):
+    __all__ += ["LinkFallbackError"]
 
 _FilterFunction: TypeAlias = Callable[[TarInfo, str], TarInfo | None]
 _TarfileFilter: TypeAlias = Literal["fully_trusted", "tar", "data"] | _FilterFunction
@@ -306,11 +308,49 @@ class TarFile:
     @classmethod
     def open(
         cls,
+        name: StrOrBytesPath | ReadableBuffer | None,
+        mode: Literal["r|*", "r|", "r|gz", "r|bz2", "r|xz"],
+        fileobj: _Fileobj | None = None,
+        bufsize: int = 10240,
+        *,
+        format: int | None = ...,
+        tarinfo: type[TarInfo] | None = ...,
+        dereference: bool | None = ...,
+        ignore_zeros: bool | None = ...,
+        encoding: str | None = ...,
+        errors: str = ...,
+        pax_headers: Mapping[str, str] | None = ...,
+        debug: int | None = ...,
+        errorlevel: int | None = ...,
+    ) -> Self: ...
+    @overload
+    @classmethod
+    def open(
+        cls,
         name: StrOrBytesPath | ReadableBuffer | None = None,
         *,
         mode: Literal["r|*", "r|", "r|gz", "r|bz2", "r|xz"],
         fileobj: _Fileobj | None = None,
         bufsize: int = 10240,
+        format: int | None = ...,
+        tarinfo: type[TarInfo] | None = ...,
+        dereference: bool | None = ...,
+        ignore_zeros: bool | None = ...,
+        encoding: str | None = ...,
+        errors: str = ...,
+        pax_headers: Mapping[str, str] | None = ...,
+        debug: int | None = ...,
+        errorlevel: int | None = ...,
+    ) -> Self: ...
+    @overload
+    @classmethod
+    def open(
+        cls,
+        name: StrOrBytesPath | WriteableBuffer | None,
+        mode: Literal["w|", "w|xz"],
+        fileobj: _Fileobj | None = None,
+        bufsize: int = 10240,
+        *,
         format: int | None = ...,
         tarinfo: type[TarInfo] | None = ...,
         dereference: bool | None = ...,
@@ -339,6 +379,26 @@ class TarFile:
         pax_headers: Mapping[str, str] | None = ...,
         debug: int | None = ...,
         errorlevel: int | None = ...,
+    ) -> Self: ...
+    @overload
+    @classmethod
+    def open(
+        cls,
+        name: StrOrBytesPath | WriteableBuffer | None,
+        mode: Literal["w|gz", "w|bz2"],
+        fileobj: _Fileobj | None = None,
+        bufsize: int = 10240,
+        *,
+        format: int | None = ...,
+        tarinfo: type[TarInfo] | None = ...,
+        dereference: bool | None = ...,
+        ignore_zeros: bool | None = ...,
+        encoding: str | None = ...,
+        errors: str = ...,
+        pax_headers: Mapping[str, str] | None = ...,
+        debug: int | None = ...,
+        errorlevel: int | None = ...,
+        compresslevel: int = 9,
     ) -> Self: ...
     @overload
     @classmethod
@@ -492,7 +552,14 @@ class TarFile:
         filter: _TarfileFilter | None = ...,
     ) -> None: ...
     def _extract_member(
-        self, tarinfo: TarInfo, targetpath: str, set_attrs: bool = True, numeric_owner: bool = False
+        self,
+        tarinfo: TarInfo,
+        targetpath: str,
+        set_attrs: bool = True,
+        numeric_owner: bool = False,
+        *,
+        filter_function: _FilterFunction | None = None,
+        extraction_root: str | None = None,
     ) -> None: ...  # undocumented
     def extractfile(self, member: str | TarInfo) -> IO[bytes] | None: ...
     def makedir(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
@@ -501,6 +568,9 @@ class TarFile:
     def makefifo(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
     def makedev(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
     def makelink(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
+    def makelink_with_filter(
+        self, tarinfo: TarInfo, targetpath: StrOrBytesPath, filter_function: _FilterFunction, extraction_root: str
+    ) -> None: ...  # undocumented
     def chown(self, tarinfo: TarInfo, targetpath: StrOrBytesPath, numeric_owner: bool) -> None: ...  # undocumented
     def chmod(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
     def utime(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
@@ -520,11 +590,7 @@ class TarFile:
 
 open = TarFile.open
 
-if sys.version_info >= (3, 9):
-    def is_tarfile(name: StrOrBytesPath | IO[bytes]) -> bool: ...
-
-else:
-    def is_tarfile(name: StrOrBytesPath) -> bool: ...
+def is_tarfile(name: StrOrBytesPath | IO[bytes]) -> bool: ...
 
 class TarError(Exception): ...
 class ReadError(TarError): ...
@@ -553,6 +619,9 @@ class AbsoluteLinkError(FilterError):
 class LinkOutsideDestinationError(FilterError):
     def __init__(self, tarinfo: TarInfo, path: str) -> None: ...
 
+class LinkFallbackError(FilterError):
+    def __init__(self, tarinfo: TarInfo, path: str) -> None: ...
+
 def fully_trusted_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
 def tar_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
 def data_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
@@ -568,7 +637,6 @@ class TarInfo:
     offset: int
     offset_data: int
     sparse: bytes | None
-    tarfile: TarFile | None
     mode: int
     type: bytes
     linkname: str
@@ -578,6 +646,16 @@ class TarInfo:
     gname: str
     pax_headers: Mapping[str, str]
     def __init__(self, name: str = "") -> None: ...
+    if sys.version_info >= (3, 13):
+        @property
+        @deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.16")
+        def tarfile(self) -> TarFile | None: ...
+        @tarfile.setter
+        @deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.16")
+        def tarfile(self, tarfile: TarFile | None) -> None: ...
+    else:
+        tarfile: TarFile | None
+
     @classmethod
     def frombuf(cls, buf: bytes | bytearray, encoding: str, errors: str) -> Self: ...
     @classmethod

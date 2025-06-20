@@ -1286,6 +1286,7 @@ def bar() -> None:
     print(inner.__dict__)  # type: ignore
 
 bar()
+[typing fixtures/typing-full.pyi]
 [out]
 {'__module__': 'native', '__name__': 'bar', '__qualname__': 'bar', '__doc__': None, '__wrapped__': <built-in function bar>}
 

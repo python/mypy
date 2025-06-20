@@ -420,7 +420,7 @@ a: int
 a: str
 
 [case testDaemonGetType]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.9
 Daemon started
 $ dmypy inspect foo:1:2:3:4
 Command "inspect" is only valid after a "check" command (that produces no parse errors)
@@ -784,3 +784,21 @@ import a_module_which_does_not_exist
 class A:
     def __init__(self) -> None:
         self.__attrs_init__()  # type: ignore[attr-defined]
+
+[case testDaemonImportAncestors]
+$ dmypy run test.py
+Daemon started
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy run test.py
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy run test.py
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+[file test.py]
+from xml.etree.ElementTree import Element
+1 + 'a'
