@@ -172,7 +172,8 @@ class Mapper:
                 for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)
             ]
             arg_pos_onlys = [name is None for name in fdef.type.arg_names]
-            if fdef.is_coroutine or fdef.is_generator:
+            # TODO: We could probably support decorators sometimes (static and class method?)
+            if (fdef.is_coroutine or fdef.is_generator) and not fdef.is_decorated:
                 ret = RInstance(self.fdef_to_generator[fdef])
             else:
                 ret = self.type_to_rtype(fdef.type.ret_type)
