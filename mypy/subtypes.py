@@ -2106,7 +2106,8 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
     supertype = get_proper_type(supertype)
 
     # Since runtime type checks will ignore type arguments, erase the types.
-    supertype = erase_type(supertype)
+    if isinstance(supertype, Instance):
+        supertype = erase_type(supertype)
     if is_proper_subtype(
         erase_type(item), supertype, ignore_promotions=True, erase_instances=True
     ):
