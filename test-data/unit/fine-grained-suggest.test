@@ -683,6 +683,33 @@ f('hi')
 (str) -> str
 ==
 
+
+[case testSuggestInferFuncDecorator7]
+# suggest: foo.f
+[file foo.py]
+from __future__ import annotations
+
+from typing import Callable, Protocol, TypeVar
+from typing_extensions import ParamSpec, TypeAlias
+
+P = ParamSpec('P')
+R = TypeVar('R')
+Alias: TypeAlias = Callable[P, R]
+
+def dec(f: Callable[P, R]) -> Alias[P, R]:
+    return f
+
+@dec
+def f(x):
+    return x
+
+f('hi')
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
 [case testSuggestFlexAny1]
 # suggest: --flex-any=0.4 m.foo
 # suggest: --flex-any=0.7 m.foo
