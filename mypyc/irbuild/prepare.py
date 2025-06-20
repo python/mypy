@@ -194,7 +194,7 @@ def prepare_func_def(
                 RuntimeArg("traceback", object_rprimitive),
                 RuntimeArg("arg", object_rprimitive),
             ),
-            RInstance(cir),
+            object_rprimitive,
         )
 
         helper_fn_decl = FuncDecl(
