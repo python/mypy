@@ -171,6 +171,54 @@ def f4(a: Union[List[int], int]) -> None:
     reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.int]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsTupleGeneric]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing_extensions import TypeIs
+
+class A: ...
+class B: ...
+
+def is_tuple_of_B(v: tuple[A | B, ...]) -> TypeIs[tuple[B, ...]]: ...
+
+def test1(t: tuple[A]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # E: Statement is unreachable
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.A]"
+
+def test2(t: tuple[B, A]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # E: Statement is unreachable
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, __main__.A]"
+
+def test3(t: tuple[A | B]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[Union[__main__.A, __main__.B]]"
+
+def test4(t: tuple[A | B, A | B]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, __main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[Union[__main__.A, __main__.B], Union[__main__.A, __main__.B]]"
+
+def test5(t: tuple[A | B, ...]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
+    else:
+        reveal_type(t)  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+
+def test6(t: tuple[B, *tuple[A | B, ...], B]) -> None:
+    if is_tuple_of_B(t):
+        # Should this be tuple[B, *tuple[B, ...], B]
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Never, __main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Unpack[builtins.tuple[Union[__main__.A, __main__.B], ...]], __main__.B]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsNonzeroFloat]
 from typing_extensions import TypeIs
 def is_nonzero(a: object) -> TypeIs[float]: pass
