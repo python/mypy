@@ -824,7 +824,7 @@ def emit_reuse_dealloc(cl: ClassIR, emitter: Emitter) -> None:
     emitter.emit_line(f"if ({prefix}_free_instance == NULL) {{")
     emitter.emit_line(f"{prefix}_free_instance = self;")
 
-    # TODO: emit_clear_bitmaps(cl, emitter)
+    emit_clear_bitmaps(cl, emitter)
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
@@ -832,6 +832,13 @@ def emit_reuse_dealloc(cl: ClassIR, emitter: Emitter) -> None:
 
     emitter.emit_line("return;")
     emitter.emit_line("}")
+
+
+def emit_clear_bitmaps(cl: ClassIR, emitter: Emitter) -> None:
+    """Emit C code to clear bitmaps that track if attributes have an assigned value."""
+    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
+        field = emitter.bitmap_field(i)
+        emitter.emit_line(f"self->{field} = 0;")
 
 
 def generate_finalize_for_class(
