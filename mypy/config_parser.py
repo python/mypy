@@ -650,9 +650,8 @@ def parse_mypy_comments(
     Returns a dictionary of options to be applied and a list of error messages
     generated.
     """
-
     errors: list[tuple[int, str]] = []
-    sections = {}
+    sections: dict[str, object] = {"enable_error_code": [], "disable_error_code": []}
 
     for lineno, line in args:
         # In order to easily match the behavior for bools, we abuse configparser.
@@ -660,7 +659,6 @@ def parse_mypy_comments(
         # method is to create a config parser.
         parser = configparser.RawConfigParser()
         options, parse_errors = mypy_comments_to_config_map(line, template)
-
         if "python_version" in options:
             errors.append((lineno, "python_version not supported in inline configuration"))
             del options["python_version"]
@@ -690,9 +688,24 @@ def parse_mypy_comments(
                     '(see "mypy -h" for the list of flags enabled in strict mode)',
                 )
             )
-
+        # Because this is currently special-cased
+        # (the new_sections for an inline config *always* includes 'disable_error_code' and
+        # 'enable_error_code' fields, usually empty, which overwrite the old ones),
+        # we have to manipulate them specially.
+        # This could use a refactor, but so could the whole subsystem.
+        if (
+            "enable_error_code" in new_sections
+            and isinstance(neec := new_sections["enable_error_code"], list)
+            and isinstance(eec := sections.get("enable_error_code", []), list)
+        ):
+            new_sections["enable_error_code"] = sorted(set(neec + eec))
+        if (
+            "disable_error_code" in new_sections
+            and isinstance(ndec := new_sections["disable_error_code"], list)
+            and isinstance(dec := sections.get("disable_error_code", []), list)
+        ):
+            new_sections["disable_error_code"] = sorted(set(ndec + dec))
         sections.update(new_sections)
-
     return sections, errors
 
 
