@@ -318,6 +318,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
 
+    _arg_infer_context_cache: ArgumentInferContext | None
+
     def __init__(
         self,
         chk: mypy.checker.TypeChecker,
@@ -351,6 +353,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # related to type context.
         self.is_callee = False
         type_state.infer_polymorphic = not self.chk.options.old_type_inference
+
+        self._arg_infer_context_cache = None
 
     def reset(self) -> None:
         self.resolved_type = {}
@@ -2277,9 +2281,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return callee_type, inferred_args
 
     def argument_infer_context(self) -> ArgumentInferContext:
-        return ArgumentInferContext(
-            self.chk.named_type("typing.Mapping"), self.chk.named_type("typing.Iterable")
-        )
+        if self._arg_infer_context_cache is None:
+            self._arg_infer_context_cache = ArgumentInferContext(
+                self.chk.named_type("typing.Mapping"), self.chk.named_type("typing.Iterable")
+            )
+        return self._arg_infer_context_cache
 
     def get_arg_infer_passes(
         self,

@@ -852,7 +852,7 @@ class TypeFormatter(TypeStrVisitor):
         if self.module:
             parts = obj.split(".")  # need to split the object part if it is a nested class
             tree = self.graph[self.module].tree
-            if tree and parts[0] in tree.names:
+            if tree and parts[0] in tree.names and mod not in tree.names:
                 mod = self.module
 
         if (mod, obj) == ("builtins", "tuple"):
