@@ -11,7 +11,7 @@ Notes:
  - The tool prints a command that can be used to analyze the profile afterwards
 
 You may need to adjust kernel parameters temporarily, e.g. this (note that this has security
-impliciations):
+implications):
 
   sudo sysctl kernel.perf_event_paranoid=-1
 
@@ -36,6 +36,9 @@ from perf_compare import build_mypy, clone
 # Use these C compiler flags when compiling mypy (important). Note that it's strongly recommended
 # to also compile CPython using similar flags, but we don't enforce it in this script.
 CFLAGS = "-O2 -fno-omit-frame-pointer -g"
+
+# Generated files, including binaries, go under this directory to avoid overwriting user state.
+TARGET_DIR = "mypy.profile.tmpdir"
 
 
 def _profile_self_check(target_dir: str) -> None:
@@ -70,13 +73,13 @@ def check_requirements() -> None:
 
     try:
         subprocess.run(["perf", "-h"], capture_output=True)
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         print("error: The 'perf' profiler is not installed")
         sys.exit(1)
 
     try:
         subprocess.run(["clang", "--version"], capture_output=True)
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         print("error: The clang compiler is not installed")
         sys.exit(1)
 
@@ -103,9 +106,7 @@ def main() -> None:
     multi_file: bool = args.multi_file
     skip_compile: bool = args.skip_compile
 
-    target_dir = "."
-
-    target_dir = "mypy.profile.tmpdir"
+    target_dir = TARGET_DIR
 
     if not skip_compile:
         clone(target_dir, "HEAD")
