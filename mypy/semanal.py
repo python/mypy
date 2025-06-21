@@ -1575,6 +1575,12 @@ class SemanticAnalyzer(
         if not isinstance(deco.expr, NameExpr) or deco.expr.name != property_name:
             return False
         if deco.name not in {"setter", "deleter"}:
+            # This intentionally excludes getter. While `@prop.getter` is valid at
+            # runtime, that would mean replacing the already processed getter type.
+            # Such usage is almost definitely a mistake (except for overrides in
+            # subclasses but we don't support them anyway) and might be a typo
+            # (only one letter away from `setter`), it's likely almost never used,
+            # so supporting it properly won't pay off.
             return False
         return True
 

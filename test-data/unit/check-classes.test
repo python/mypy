@@ -1624,7 +1624,6 @@ class A:
 [builtins fixtures/property.pyi]
 
 [case testPropertyNameIsChecked]
-import typing
 class A:
     @property
     def f(self) -> str: ...
@@ -1651,11 +1650,18 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testPropertyAttributeIsChecked]
-import typing
 class A:
     @property
     def f(self) -> str: ...
     @f.unknown  # E: Only supported top decorators are @f.setter and @f.deleter
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testPropertyGetterDecoratorIsRejected]
+class A:
+    @property
+    def f(self) -> str: ...
+    @f.getter  # E: Only supported top decorators are @f.setter and @f.deleter
     def f(self, val: str) -> None: ...
 [builtins fixtures/property.pyi]
 
