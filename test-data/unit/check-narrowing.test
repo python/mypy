@@ -2346,7 +2346,7 @@ def f() -> bool: ...
 
 y = None
 while f():
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "Union[None, builtins.int]"
     y = 1
 reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 
