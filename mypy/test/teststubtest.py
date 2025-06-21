@@ -157,6 +157,17 @@ class Flag(Enum):
         __rxor__ = __xor__
 """
 
+stubtest_types_stub = """
+from typing import Coroutine, TypeVar
+
+_T = TypeVar('_T')
+_U = TypeVar('_U')
+_V = TypeVar('_V')
+
+class CoroutineType(Coroutine[_T, _U, _V]):
+    pass
+"""
+
 
 def run_stubtest_with_stderr(
     stub: str, runtime: str, options: list[str], config_file: str | None = None
@@ -168,6 +179,8 @@ def run_stubtest_with_stderr(
             f.write(stubtest_typing_stub)
         with open("enum.pyi", "w") as f:
             f.write(stubtest_enum_stub)
+        with open("types.pyi", "w") as f:
+            f.write(stubtest_types_stub)
         with open(f"{TEST_MODULE_NAME}.pyi", "w") as f:
             f.write(stub)
         with open(f"{TEST_MODULE_NAME}.py", "w") as f:
@@ -292,6 +305,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_coroutines(self) -> Iterator[Case]:
+        yield Case(stub="import types", runtime="import types", error=None)
         yield Case(stub="def bar() -> int: ...", runtime="async def bar(): return 5", error="bar")
         # Don't error for this one -- we get false positives otherwise
         yield Case(stub="async def foo() -> int: ...", runtime="def foo(): return 5", error=None)
