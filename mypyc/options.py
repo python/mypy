@@ -15,6 +15,7 @@ class CompilerOptions:
         capi_version: tuple[int, int] | None = None,
         python_version: tuple[int, int] | None = None,
         strict_dunder_typing: bool = False,
+        group_name: str | None = None,
     ) -> None:
         self.strip_asserts = strip_asserts
         self.multi_file = multi_file
@@ -38,3 +39,9 @@ class CompilerOptions:
         # will assume the return type of the method strictly, which can lead to
         # more optimization opportunities.
         self.strict_dunders_typing = strict_dunder_typing
+        # Override the automatic group name derived from the hash of module names.
+        # This affects the names of generated .c, .h and shared library files.
+        # This is only supported when compiling exactly one group, and a shared
+        # library is generated (with shims). This can be used to make the output
+        # file names more predictable.
+        self.group_name = group_name

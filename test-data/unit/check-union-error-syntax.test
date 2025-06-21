@@ -55,3 +55,24 @@ from typing import Literal, Union
 x : Union[Literal[1], None]
 x = 3 # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Optional[Literal[1]]")
 [builtins fixtures/tuple.pyi]
+
+[case testUnionSyntaxRecombined]
+# flags: --python-version 3.10 --force-union-syntax --allow-redefinition-new --local-partial-types
+# The following revealed type is recombined because the finally body is visited twice.
+try:
+    x = 1
+    x = ""
+finally:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testOrSyntaxRecombined]
+# flags: --python-version 3.10 --no-force-union-syntax --allow-redefinition-new --local-partial-types
+# The following revealed type is recombined because the finally body is visited twice.
+# ToDo: Improve this recombination logic, especially (but not only) for the "or syntax".
+try:
+    x = 1
+    x = ""
+finally:
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | builtins.str"
+[builtins fixtures/isinstancelist.pyi]

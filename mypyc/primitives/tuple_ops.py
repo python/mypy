@@ -83,6 +83,24 @@ binary_op(
     error_kind=ERR_MAGIC,
 )
 
+# tuple * int
+binary_op(
+    name="*",
+    arg_types=[tuple_rprimitive, int_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="CPySequence_Multiply",
+    error_kind=ERR_MAGIC,
+)
+
+# int * tuple
+binary_op(
+    name="*",
+    arg_types=[int_rprimitive, tuple_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="CPySequence_RMultiply",
+    error_kind=ERR_MAGIC,
+)
+
 # tuple[begin:end]
 tuple_slice_op = custom_op(
     arg_types=[tuple_rprimitive, int_rprimitive, int_rprimitive],

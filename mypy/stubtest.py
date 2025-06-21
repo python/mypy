@@ -1256,12 +1256,28 @@ def verify_paramspecexpr(
         return
 
 
+def _is_django_cached_property(runtime: Any) -> bool:  # pragma: no cover
+    # This is a special case for
+    # https://docs.djangoproject.com/en/5.2/ref/utils/#django.utils.functional.cached_property
+    # This is needed in `django-stubs` project:
+    # https://github.com/typeddjango/django-stubs
+    if type(runtime).__name__ != "cached_property":
+        return False
+    try:
+        return bool(runtime.func)
+    except Exception:
+        return False
+
+
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
     if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
+    if _is_django_cached_property(runtime):
         yield from _verify_final_method(stub.func, runtime.func, MISSING)
         return
     if inspect.isdatadescriptor(runtime):
@@ -1478,6 +1494,7 @@ IGNORED_MODULE_DUNDERS: Final = frozenset(
         "__loader__",
         "__spec__",
         "__annotations__",
+        "__annotate__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
         # Created by `warnings.warn`, does not make much sense to have in stubs:
@@ -1494,6 +1511,9 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         # Special attributes
         "__dict__",
         "__annotations__",
+        "__annotate__",
+        "__annotations_cache__",
+        "__annotate_func__",
         "__text_signature__",
         "__weakref__",
         "__hash__",
@@ -1502,6 +1522,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
         "__firstlineno__",
         "__static_attributes__",
+        "__classdictcell__",
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
@@ -1520,6 +1541,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__getinitargs__",
         "__reduce_ex__",
         "__reduce__",
+        "__slotnames__",  # Cached names of slots added by `copyreg` module.
         # ctypes weirdness
         "__ctype_be__",
         "__ctype_le__",
@@ -2003,6 +2025,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.process_incomplete_features(
         error_callback=error_callback, warning_callback=warning_callback
     )
+    options.process_strict_bytes()
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
@@ -2039,7 +2062,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             if args.generate_allowlist:
                 generated_allowlist.add(error.object_desc)
                 continue
-            print(error.get_description(concise=args.concise))
+            safe_print(error.get_description(concise=args.concise))
             error_count += 1
 
     # Print unused allowlist entries
@@ -2079,10 +2102,25 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     return exit_code
 
 
+def safe_print(text: str) -> None:
+    """Print a text replacing chars not representable in stdout encoding."""
+    # If `sys.stdout` encoding is not the same as out (usually UTF8) string,
+    # if may cause painful crashes. I don't want to reconfigure `sys.stdout`
+    # to do `errors = "replace"` as that sounds scary.
+    out_encoding = sys.stdout.encoding
+    if out_encoding is not None:
+        # Can be None if stdout is replaced (including our own tests). This should be
+        # safe to omit if the actual stream doesn't care about encoding.
+        text = text.encode(out_encoding, errors="replace").decode(out_encoding, errors="replace")
+    print(text)
+
+
 def parse_options(args: list[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
     parser.add_argument("modules", nargs="*", help="Modules to test")
     parser.add_argument(
         "--concise",

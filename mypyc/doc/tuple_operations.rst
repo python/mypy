@@ -22,6 +22,7 @@ Operators
 * ``tup[n]`` (integer index)
 * ``tup[n:m]``, ``tup[n:]``, ``tup[:m]`` (slicing)
 * ``tup1 + tup2``
+* ``tup * n``, ``n * tup``
 
 Statements
 ----------
