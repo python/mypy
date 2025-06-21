@@ -179,7 +179,7 @@ class ErrorWatcher:
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
         filter_deprecated: bool = False,
-        filter_revealed_type: bool = False
+        filter_revealed_type: bool = False,
     ) -> None:
         self.errors = errors
         self._has_new_errors = False
