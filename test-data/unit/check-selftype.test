@@ -2220,6 +2220,28 @@ class C(A, B):  # OK: both methods take Self
     pass
 [builtins fixtures/tuple.pyi]
 
+[case testSelfTypeClassMethodNotSilentlyErased]
+from typing import Self, Optional
+
+class X:
+    _inst: Optional[Self] = None
+    @classmethod
+    def default(cls) -> Self:
+        reveal_type(cls._inst)  # N: Revealed type is "Union[Self`0, None]"
+        if cls._inst is None:
+            cls._inst = cls()
+        return cls._inst
+
+reveal_type(X._inst)  # E: Access to generic instance variables via class is ambiguous \
+                      # N: Revealed type is "Union[__main__.X, None]"
+reveal_type(X()._inst)  # N: Revealed type is "Union[__main__.X, None]"
+
+class Y(X): ...
+reveal_type(Y._inst)  # E: Access to generic instance variables via class is ambiguous \
+                      # N: Revealed type is "Union[__main__.Y, None]"
+reveal_type(Y()._inst)  # N: Revealed type is "Union[__main__.Y, None]"
+[builtins fixtures/tuple.pyi]
+
 [case testSelfInFuncDecoratedClassmethod]
 from collections.abc import Callable
 from typing import Self, TypeVar

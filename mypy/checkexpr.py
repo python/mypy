@@ -2338,10 +2338,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Report error if some of the variables could not be solved. In that
         # case assume that all variables have type Any to avoid extra
         # bogus error messages.
-        for i, inferred_type in enumerate(inferred_args):
+        for inferred_type, tv in zip(inferred_args, callee_type.variables):
             if not inferred_type or has_erased_component(inferred_type):
                 # Could not infer a non-trivial type for a type variable.
-                self.msg.could_not_infer_type_arguments(callee_type, i + 1, context)
+                self.msg.could_not_infer_type_arguments(callee_type, tv, context)
                 inferred_args = [AnyType(TypeOfAny.from_error)] * len(inferred_args)
         # Apply the inferred types to the function type. In this case the
         # return type must be CallableType, since we give the right number of type

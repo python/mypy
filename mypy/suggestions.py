@@ -229,6 +229,18 @@ def is_implicit_any(typ: Type) -> bool:
     return isinstance(typ, AnyType) and not is_explicit_any(typ)
 
 
+def _arg_accepts_function(typ: ProperType) -> bool:
+    return (
+        # TypeVar / Callable
+        isinstance(typ, (TypeVarType, CallableType))
+        or
+        # Protocol with __call__
+        isinstance(typ, Instance)
+        and typ.type.is_protocol
+        and typ.type.get_method("__call__") is not None
+    )
+
+
 class SuggestionEngine:
     """Engine for finding call sites and suggesting signatures."""
 
@@ -474,7 +486,7 @@ class SuggestionEngine:
         if self.no_errors and orig_errors:
             raise SuggestionFailure("Function does not typecheck.")
 
-        is_method = bool(node.info) and not node.is_static
+        is_method = bool(node.info) and node.has_self_or_cls_argument
 
         with state.strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
@@ -658,7 +670,7 @@ class SuggestionEngine:
             for ct in typ.items:
                 if not (
                     len(ct.arg_types) == 1
-                    and isinstance(ct.arg_types[0], TypeVarType)
+                    and _arg_accepts_function(get_proper_type(ct.arg_types[0]))
                     and ct.arg_types[0] == ct.ret_type
                 ):
                     return None

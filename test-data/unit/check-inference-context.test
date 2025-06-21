@@ -1009,7 +1009,7 @@ class D(C): ...
 
 def f(x: List[T], y: List[T]) -> List[T]: ...
 
-f([C()], [D()]) # E: Cannot infer type argument 1 of "f"
+f([C()], [D()]) # E: Cannot infer value of type parameter "T" of "f"
 [builtins fixtures/list.pyi]
 
 [case testInferTypeVariableFromTwoGenericTypes3]

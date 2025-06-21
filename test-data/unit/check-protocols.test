@@ -4217,10 +4217,10 @@ def g2(a: Input[bytes], b: Output[bytes]) -> None:
     f(a, b)
 
 def g3(a: Input[str], b: Output[bytes]) -> None:
-    f(a, b)  # E: Cannot infer type argument 1 of "f"
+    f(a, b)  # E: Cannot infer value of type parameter "AnyStr" of "f"
 
 def g4(a: Input[bytes], b: Output[str]) -> None:
-    f(a, b)  # E: Cannot infer type argument 1 of "f"
+    f(a, b)  # E: Cannot infer value of type parameter "AnyStr" of "f"
 
 [builtins fixtures/tuple.pyi]
 

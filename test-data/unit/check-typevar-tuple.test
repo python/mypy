@@ -2372,9 +2372,9 @@ def pointwise_multiply(x: Array[Unpack[Ts]], y: Array[Unpack[Ts]]) -> Array[Unpa
 
 def a1(x: Array[int], y: Array[str], z: Array[int, str]) -> None:
     reveal_type(pointwise_multiply(x, x))  # N: Revealed type is "__main__.Array[builtins.int]"
-    reveal_type(pointwise_multiply(x, y))  # E: Cannot infer type argument 1 of "pointwise_multiply" \
+    reveal_type(pointwise_multiply(x, y))  # E: Cannot infer value of type parameter "Ts" of "pointwise_multiply" \
                                            # N: Revealed type is "__main__.Array[Unpack[builtins.tuple[Any, ...]]]"
-    reveal_type(pointwise_multiply(x, z))  # E: Cannot infer type argument 1 of "pointwise_multiply" \
+    reveal_type(pointwise_multiply(x, z))  # E: Cannot infer value of type parameter "Ts" of "pointwise_multiply" \
                                            # N: Revealed type is "__main__.Array[Unpack[builtins.tuple[Any, ...]]]"
 
 def func(x: Array[Unpack[Ts]], *args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
@@ -2382,9 +2382,9 @@ def func(x: Array[Unpack[Ts]], *args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
 
 def a2(x: Array[int, str]) -> None:
     reveal_type(func(x, 2, "Hello"))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
-    reveal_type(func(x, 2))           # E: Cannot infer type argument 1 of "func" \
+    reveal_type(func(x, 2))           # E: Cannot infer value of type parameter "Ts" of "func" \
                                       # N: Revealed type is "builtins.tuple[Any, ...]"
-    reveal_type(func(x, 2, "Hello", True))   # E: Cannot infer type argument 1 of "func" \
+    reveal_type(func(x, 2, "Hello", True))   # E: Cannot infer value of type parameter "Ts" of "func" \
                                              # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
 
@@ -2627,4 +2627,42 @@ def fn(f: Callable[[*tuple[T]], int]) -> Callable[[*tuple[T]], int]: ...
 
 def test(*args: Unpack[tuple[T]]) -> int: ...
 reveal_type(fn(test))  # N: Revealed type is "def [T] (T`1) -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testNoGenericTypeVarTupleClassVarAccess]
+from typing import Generic, Tuple, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]):
+    x: Tuple[Unpack[Ts]]
+
+reveal_type(C.x)  # E: Access to generic instance variables via class is ambiguous \
+                  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+class Bad(C[int, int]):
+    pass
+reveal_type(Bad.x)  # E: Access to generic instance variables via class is ambiguous \
+                    # N: Revealed type is "tuple[builtins.int, builtins.int]"
+reveal_type(Bad().x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+
+class Good(C[int, int]):
+    x = (1, 1)
+reveal_type(Good.x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+reveal_type(Good().x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testConstraintsIncludeTupleFallback]
+from typing import Generic, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+_FT = TypeVar("_FT", bound=type)
+
+def identity(smth: _FT) -> _FT:
+    return smth
+
+@identity
+class S(tuple[Unpack[Ts]], Generic[T, Unpack[Ts]]):
+    def f(self, x: T, /) -> T: ...
 [builtins fixtures/tuple.pyi]
