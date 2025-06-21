@@ -35,11 +35,13 @@ def heading(s: str) -> None:
     print()
 
 
-def build_mypy(target_dir: str) -> None:
+def build_mypy(target_dir: str, multi_file: bool) -> None:
     env = os.environ.copy()
     env["CC"] = "clang"
     env["MYPYC_OPT_LEVEL"] = "2"
     env["PYTHONHASHSEED"] = "1"
+    if multi_file:
+        env["MYPYC_MULTI_FILE"] = "1"
     cmd = [sys.executable, "setup.py", "--use-mypyc", "build_ext", "--inplace"]
     subprocess.run(cmd, env=env, check=True, cwd=target_dir)
 
@@ -111,6 +113,12 @@ def main() -> None:
         help="measure incremental run (fully cached)",
     )
     parser.add_argument(
+        "--multi-file",
+        default=False,
+        action="store_true",
+        help="compile each mypy module to a separate C file (reduces RAM use)",
+    )
+    parser.add_argument(
         "--dont-setup",
         default=False,
         action="store_true",
@@ -127,9 +135,9 @@ def main() -> None:
     parser.add_argument(
         "-j",
         metavar="N",
-        default=8,
+        default=4,
         type=int,
-        help="set maximum number of parallel builds (default=8)",
+        help="set maximum number of parallel builds (default=4) -- high numbers require a lot of RAM!",
     )
     parser.add_argument(
         "-r",
@@ -155,6 +163,7 @@ def main() -> None:
     args = parser.parse_args()
     incremental: bool = args.incremental
     dont_setup: bool = args.dont_setup
+    multi_file: bool = args.multi_file
     commits = args.commit
     num_runs: int = args.num_runs + 1
     max_workers: int = args.j
@@ -185,7 +194,9 @@ def main() -> None:
         print("(This will take a while...)")
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [executor.submit(build_mypy, target_dir) for target_dir in target_dirs]
+            futures = [
+                executor.submit(build_mypy, target_dir, multi_file) for target_dir in target_dirs
+            ]
             for future in as_completed(futures):
                 future.result()
 
