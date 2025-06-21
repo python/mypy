@@ -35,7 +35,7 @@ def heading(s: str) -> None:
     print()
 
 
-def build_mypy(target_dir: str, multi_file: bool) -> None:
+def build_mypy(target_dir: str, multi_file: bool, *, cflags: str | None = None) -> None:
     env = os.environ.copy()
     env["CC"] = "clang"
     env["MYPYC_OPT_LEVEL"] = "2"
