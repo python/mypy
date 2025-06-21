@@ -6310,6 +6310,40 @@ reveal_type(f12(A()))  # N: Revealed type is "__main__.A"
 
 [typing fixtures/typing-medium.pyi]
 
+[case testAdjacentConditionalOverloads]
+# flags: --always-true true_alias
+from typing import overload
+
+true_alias = True
+
+if true_alias:
+    @overload
+    def ham(v: str) -> list[str]: ...
+
+    @overload
+    def ham(v: int) -> list[int]: ...
+
+def ham(v: "int | str") -> "list[str] | list[int]":
+    return []
+
+if true_alias:
+    @overload
+    def spam(v: str) -> str: ...
+
+    @overload
+    def spam(v: int) -> int: ...
+
+def spam(v: "int | str") -> "str | int":
+    return ""
+
+reveal_type(ham)  # N: Revealed type is "Overload(def (v: builtins.str) -> builtins.list[builtins.str], def (v: builtins.int) -> builtins.list[builtins.int])"
+reveal_type(spam)  # N: Revealed type is "Overload(def (v: builtins.str) -> builtins.str, def (v: builtins.int) -> builtins.int)"
+
+reveal_type(ham(""))  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(ham(0))  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(spam(""))  # N: Revealed type is "builtins.str"
+reveal_type(spam(0))  # N: Revealed type is "builtins.int"
+
 [case testOverloadIfUnconditionalFuncDef]
 # flags: --always-true True --always-false False
 from typing import overload
