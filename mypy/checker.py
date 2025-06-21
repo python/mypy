@@ -25,7 +25,14 @@ from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
-from mypy.errors import ErrorInfo, Errors, ErrorWatcher, LoopErrorWatcher, report_internal_error
+from mypy.errors import (
+    ErrorInfo,
+    Errors,
+    ErrorWatcher,
+    IterationDependentErrors,
+    IterationErrorWatcher,
+    report_internal_error,
+)
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
@@ -100,6 +107,7 @@ from mypy.nodes import (
     OperatorAssignmentStmt,
     OpExpr,
     OverloadedFuncDef,
+    OverloadPart,
     PassStmt,
     PromoteExpr,
     RaiseStmt,
@@ -400,6 +408,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
 
+        # Track when we enter an overload implementation. Some checks should not be applied
+        # to the implementation signature when specific overloads are available.
+        # Use `enter_overload_impl` to modify.
+        self.overload_impl_stack: list[OverloadPart] = []
+
         # This flag is set when we run type-check or attribute access check for the purpose
         # of giving a note on possibly missing "await". It is used to avoid infinite recursion.
         self.checking_missing_await = False
@@ -598,26 +611,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # on without bound otherwise)
             widened_old = len(self.widened_vars)
 
-            # one set of `unreachable`, `redundant-expr`, and `redundant-casts` errors
-            # per iteration step:
-            uselessness_errors = []
-            # one set of unreachable line numbers per iteration step:
-            unreachable_lines = []
-            # one set of revealed types per line where `reveal_type` is used (each
-            # created set can grow during the iteration):
-            revealed_types = defaultdict(set)
+            iter_errors = IterationDependentErrors()
             iter = 1
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     if on_enter_body is not None:
                         on_enter_body()
 
-                    with LoopErrorWatcher(self.msg.errors) as watcher:
+                    with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
                         self.accept(body)
-                    uselessness_errors.append(watcher.uselessness_errors)
-                    unreachable_lines.append(watcher.unreachable_lines)
-                    for key, values in watcher.revealed_types.items():
-                        revealed_types[key].update(values)
 
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 widened_new = len(self.widened_vars)
@@ -639,29 +641,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            # Report only those `unreachable`, `redundant-expr`, and `redundant-casts`
-            # errors that could not be ruled out in any iteration step:
-            persistent_uselessness_errors = set()
-            for candidate in set(itertools.chain(*uselessness_errors)):
-                if all(
-                    (candidate in errors) or (candidate[2] in lines)
-                    for errors, lines in zip(uselessness_errors, unreachable_lines)
-                ):
-                    persistent_uselessness_errors.add(candidate)
-            for error_info in persistent_uselessness_errors:
-                context = Context(line=error_info[2], column=error_info[3])
-                context.end_line = error_info[4]
-                context.end_column = error_info[5]
-                self.msg.fail(error_info[1], context, code=error_info[0])
-
-            #  Report all types revealed in at least one iteration step:
-            for note_info, types in revealed_types.items():
-                sorted_ = sorted(types, key=lambda typ: typ.lower())
-                revealed = sorted_[0] if len(types) == 1 else f"Union[{', '.join(sorted_)}]"
-                context = Context(line=note_info[1], column=note_info[2])
-                context.end_line = note_info[3]
-                context.end_column = note_info[4]
-                self.note(f'Revealed type is "{revealed}"', context)
+            for error_info in watcher.yield_error_infos():
+                self.msg.fail(*error_info[:2], code=error_info[2])
+            for note_info in watcher.yield_note_infos(self.options):
+                self.note(*note_info)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
             if exit_condition:
@@ -732,7 +715,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if num_abstract not in (0, len(defn.items)):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.impl:
-            defn.impl.accept(self)
+            with self.enter_overload_impl(defn.impl):
+                defn.impl.accept(self)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
             if defn.type is None:
@@ -774,6 +758,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 self.msg.no_overridable_method(defn.name, defn)
             self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
             self.check_inplace_operator_method(defn)
+
+    @contextmanager
+    def enter_overload_impl(self, impl: OverloadPart) -> Iterator[None]:
+        self.overload_impl_stack.append(impl)
+        try:
+            yield
+        finally:
+            assert self.overload_impl_stack.pop() == impl
 
     def extract_callable_type(self, inner_type: Type | None, ctx: Context) -> CallableType | None:
         """Get type as seen by an overload item caller."""
@@ -1301,7 +1293,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     )
 
                 if name:  # Special method names
-                    if defn.info and self.is_reverse_op_method(name):
+                    if (
+                        defn.info
+                        and self.is_reverse_op_method(name)
+                        and defn not in self.overload_impl_stack
+                    ):
                         self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ("__getattr__", "__getattribute__"):
                         self.check_getattr_method(typ, defn, name)
@@ -2956,23 +2952,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         ):
             return  # Reasonable exceptions from this check
 
-        metaclasses = [
-            entry.metaclass_type
-            for entry in typ.mro[1:-1]
-            if entry.metaclass_type
-            and not is_named_instance(entry.metaclass_type, "builtins.type")
-        ]
-        if not metaclasses:
-            return
-        if typ.metaclass_type is not None and all(
-            is_subtype(typ.metaclass_type, meta) for meta in metaclasses
+        if typ.metaclass_type is None and any(
+            base.type.metaclass_type is not None for base in typ.bases
         ):
-            return
-        self.fail(
-            "Metaclass conflict: the metaclass of a derived class must be "
-            "a (non-strict) subclass of the metaclasses of all its bases",
-            typ,
-        )
+            self.fail(
+                "Metaclass conflict: the metaclass of a derived class must be "
+                "a (non-strict) subclass of the metaclasses of all its bases",
+                typ,
+            )
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:
@@ -4594,7 +4581,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self,
         lvalue: MemberExpr,
         instance_type: Type,
-        attribute_type: Type,
+        set_lvalue_type: Type,
         rvalue: Expression,
         context: Context,
     ) -> tuple[Type, Type, bool]:
@@ -4611,23 +4598,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if (isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or isinstance(
             instance_type, TypeType
         ):
-            rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, attribute_type, True
+            rvalue_type, _ = self.check_simple_assignment(set_lvalue_type, rvalue, context)
+            return rvalue_type, set_lvalue_type, True
 
         with self.msg.filter_errors(filter_deprecated=True):
             get_lvalue_type = self.expr_checker.analyze_ordinary_member_access(
                 lvalue, is_lvalue=False
             )
 
-        # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
-        # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
+        # Special case: if the rvalue_type is a subtype of '__get__' type, and
+        # '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
-        rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
-        infer = is_subtype(rvalue_type, get_lvalue_type) and is_subtype(
-            get_lvalue_type, attribute_type
-        )
-        return rvalue_type if infer else attribute_type, attribute_type, infer
+        rvalue_type, _ = self.check_simple_assignment(set_lvalue_type, rvalue, context)
+        rvalue_type = rvalue_type if is_subtype(rvalue_type, get_lvalue_type) else get_lvalue_type
+        return rvalue_type, set_lvalue_type, is_subtype(get_lvalue_type, set_lvalue_type)
 
     def check_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression, context: Context
@@ -4962,6 +4947,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
+
+        iter_errors = None
+
         # Our enclosing frame will get the result if the try/except falls through.
         # This one gets all possible states after the try block exited abnormally
         # (by exception, return, break, etc.)
@@ -4976,7 +4964,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.visit_try_without_finally(s, try_frame=bool(s.finally_body))
             if s.finally_body:
                 # First we check finally_body is type safe on all abnormal exit paths
-                self.accept(s.finally_body)
+                iter_errors = IterationDependentErrors()
+                with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                    self.accept(s.finally_body)
 
         if s.finally_body:
             # Then we try again for the more restricted set of options
@@ -4990,8 +4980,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # type checks in both contexts, but only the resulting types
             # from the latter context affect the type state in the code
             # that follows the try statement.)
+            assert iter_errors is not None
             if not self.binder.is_unreachable():
-                self.accept(s.finally_body)
+                with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                    self.accept(s.finally_body)
+
+            for error_info in watcher.yield_error_infos():
+                self.msg.fail(*error_info[:2], code=error_info[2])
+            for note_info in watcher.yield_note_infos(self.options):
+                self.msg.note(*note_info)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.
@@ -6188,6 +6185,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                     self.lookup_type(expr),
                                     [TypeRange(node.callee.type_is, is_upper_bound=False)],
                                     expr,
+                                    consider_runtime_isinstance=False,
                                 ),
                             )
         elif isinstance(node, ComparisonExpr):
@@ -7615,11 +7613,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: None = None,
+        *,
+        consider_runtime_isinstance: bool = True,
     ) -> tuple[Type | None, Type | None]: ...
 
     @overload
     def conditional_types_with_intersection(
-        self, expr_type: Type, type_ranges: list[TypeRange] | None, ctx: Context, default: Type
+        self,
+        expr_type: Type,
+        type_ranges: list[TypeRange] | None,
+        ctx: Context,
+        default: Type,
+        *,
+        consider_runtime_isinstance: bool = True,
     ) -> tuple[Type, Type]: ...
 
     def conditional_types_with_intersection(
@@ -7628,8 +7634,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: Type | None = None,
+        *,
+        consider_runtime_isinstance: bool = True,
     ) -> tuple[Type | None, Type | None]:
-        initial_types = conditional_types(expr_type, type_ranges, default)
+        initial_types = conditional_types(
+            expr_type,
+            type_ranges,
+            default,
+            consider_runtime_isinstance=consider_runtime_isinstance,
+        )
         # For some reason, doing "yes_map, no_map = conditional_types_to_typemaps(...)"
         # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
         yes_type: Type | None = initial_types[0]
@@ -7941,18 +7954,30 @@ class CollectArgTypeVarTypes(TypeTraverserVisitor):
 
 @overload
 def conditional_types(
-    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: None = None
+    current_type: Type,
+    proposed_type_ranges: list[TypeRange] | None,
+    default: None = None,
+    *,
+    consider_runtime_isinstance: bool = True,
 ) -> tuple[Type | None, Type | None]: ...
 
 
 @overload
 def conditional_types(
-    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: Type
+    current_type: Type,
+    proposed_type_ranges: list[TypeRange] | None,
+    default: Type,
+    *,
+    consider_runtime_isinstance: bool = True,
 ) -> tuple[Type, Type]: ...
 
 
 def conditional_types(
-    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: Type | None = None
+    current_type: Type,
+    proposed_type_ranges: list[TypeRange] | None,
+    default: Type | None = None,
+    *,
+    consider_runtime_isinstance: bool = True,
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
@@ -7994,7 +8019,11 @@ def conditional_types(
                     if not type_range.is_upper_bound
                 ]
             )
-            remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
+            remaining_type = restrict_subtype_away(
+                current_type,
+                proposed_precise_type,
+                consider_runtime_isinstance=consider_runtime_isinstance,
+            )
             return proposed_type, remaining_type
     else:
         # An isinstance check, but we don't understand the type
