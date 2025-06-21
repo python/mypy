@@ -49,6 +49,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     bool_rprimitive,
+    bytes_rprimitive,
     c_int_rprimitive,
     dict_rprimitive,
     int16_rprimitive,
@@ -82,6 +83,11 @@ from mypyc.irbuild.format_str_tokenizer import (
     convert_format_expr_to_str,
     join_formatted_strings,
     tokenizer_format_call,
+)
+from mypyc.primitives.bytes_ops import (
+    bytes_decode_ascii_strict,
+    bytes_decode_latin1_strict,
+    bytes_decode_utf8_strict,
 )
 from mypyc.primitives.dict_ops import (
     dict_items_op,
@@ -736,6 +742,47 @@ def str_encode_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         return builder.call_c(str_encode_ascii_strict, [builder.accept(callee.expr)], expr.line)
     elif encoding in ["iso88591", "8859", "cp819", "latin", "latin1", "l1"]:
         return builder.call_c(str_encode_latin1_strict, [builder.accept(callee.expr)], expr.line)
+
+    return None
+
+
+@specialize_function("decode", bytes_rprimitive)
+def bytes_decode_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if not isinstance(callee, MemberExpr):
+        return None
+
+    encoding = "utf8"
+
+    if len(expr.arg_kinds) > 0 and isinstance(expr.args[0], StrExpr):
+        if expr.arg_kinds[0] == ARG_NAMED:
+            if expr.arg_names[0] == "encoding":
+                encoding = expr.args[0].value
+        elif expr.arg_kinds[0] == ARG_POS:
+            encoding = expr.args[0].value
+        else:
+            return None
+
+    if len(expr.arg_kinds) > 1 and isinstance(expr.args[1], StrExpr):
+        if expr.arg_kinds[1] == ARG_NAMED:
+            if expr.arg_names[1] == "encoding":
+                encoding = expr.args[1].value
+        else:
+            return None
+
+    normalized = encoding.lower().replace("-", "").replace("_", "")
+
+    if normalized in ("utf8", "utf", "u8", "cp65001"):
+        return builder.primitive_op(
+            bytes_decode_utf8_strict, [builder.accept(callee.expr)], expr.line
+        )
+    elif normalized in ("ascii", "usascii", "646"):
+        return builder.primitive_op(
+            bytes_decode_ascii_strict, [builder.accept(callee.expr)], expr.line
+        )
+    elif normalized in ("latin1", "latin", "iso88591", "cp819", "8859", "l1"):
+        return builder.primitive_op(
+            bytes_decode_latin1_strict, [builder.accept(callee.expr)], expr.line
+        )
 
     return None
 
