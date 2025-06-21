@@ -53,6 +53,7 @@ files = [
     "irbuild-constant-fold.test",
     "irbuild-glue-methods.test",
     "irbuild-math.test",
+    "irbuild-weakref.test",
 ]
 
 if sys.version_info >= (3, 10):
