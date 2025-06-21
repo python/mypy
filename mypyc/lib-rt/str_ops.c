@@ -511,6 +511,30 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
     }
 }
 
+Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start) {
+    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
+    if (temp_start == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return -1;
+    }
+    Py_ssize_t end = PyUnicode_GET_LENGTH(unicode);
+    return PyUnicode_Count(unicode, substring, temp_start, end);
+}
+
+Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end) {
+    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
+    if (temp_start == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return -1;
+    }
+    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
+    if (temp_end == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return -1;
+    }
+    return PyUnicode_Count(unicode, substring, temp_start, temp_end);
+}
+
 
 CPyTagged CPyStr_Ord(PyObject *obj) {
     Py_ssize_t s = PyUnicode_GET_LENGTH(obj);
