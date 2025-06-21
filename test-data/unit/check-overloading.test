@@ -3370,10 +3370,10 @@ def wrapper() -> None:
     obj2: Union[W1[A], W2[B]]
 
     reveal_type(foo(obj2))  # N: Revealed type is "Union[__main__.A, __main__.B]"
-    bar(obj2)  # E: Cannot infer type argument 1 of "bar"
+    bar(obj2)  # E: Cannot infer value of type parameter "T" of "bar"
 
     b1_overload: A = foo(obj2)  # E: Incompatible types in assignment (expression has type "Union[A, B]", variable has type "A")
-    b1_union: A    = bar(obj2)  # E: Cannot infer type argument 1 of "bar"
+    b1_union: A    = bar(obj2)  # E: Cannot infer value of type parameter "T" of "bar"
 
 [case testOverloadingInferUnionReturnWithObjectTypevarReturn]
 from typing import overload, Union, TypeVar, Generic
@@ -3496,7 +3496,7 @@ def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     # The arguments in the tuple are swapped
     x3: Union[List[S], List[Tuple[S, T1]]]
     y3: S
-    Dummy[T1]().foo(x3, y3)  # E: Cannot infer type argument 1 of "foo" of "Dummy" \
+    Dummy[T1]().foo(x3, y3)  # E: Cannot infer value of type parameter "S" of "foo" of "Dummy" \
                              # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[list[S], list[tuple[S, T1]]]"; expected "list[tuple[T1, Any]]"
 
     x4: Union[List[int], List[Tuple[C, int]]]

@@ -470,8 +470,8 @@ reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
 reveal_type(a.x)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(a.y)  # N: Revealed type is "builtins.int"
 
-A(['str'], 7)  # E: Cannot infer type argument 1 of "A"
-A([1], '2')  # E: Cannot infer type argument 1 of "A"
+A(['str'], 7)  # E: Cannot infer value of type parameter "T" of "A"
+A([1], '2')  # E: Cannot infer value of type parameter "T" of "A"
 
 [builtins fixtures/list.pyi]
 
