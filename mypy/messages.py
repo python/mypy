@@ -23,7 +23,7 @@ import mypy.typeops
 from mypy import errorcodes as codes, message_registry
 from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
-from mypy.errors import ErrorInfo, Errors, ErrorWatcher
+from mypy.errors import ErrorInfo, Errors, ErrorWatcher, IterationErrorWatcher
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -188,12 +188,14 @@ class MessageBuilder:
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = True,
         save_filtered_errors: bool = False,
         filter_deprecated: bool = False,
+        filter_revealed_type: bool = False,
     ) -> ErrorWatcher:
         return ErrorWatcher(
             self.errors,
             filter_errors=filter_errors,
             save_filtered_errors=save_filtered_errors,
             filter_deprecated=filter_deprecated,
+            filter_revealed_type=filter_revealed_type,
         )
 
     def add_errors(self, errors: list[ErrorInfo]) -> None:
@@ -1738,6 +1740,24 @@ class MessageBuilder:
         )
 
     def reveal_type(self, typ: Type, context: Context) -> None:
+
+        # Search for an error watcher that modifies the "normal" behaviour (we do not
+        # rely on the normal `ErrorWatcher` filtering approach because we might need to
+        # collect the original types for a later unionised response):
+        for watcher in self.errors.watchers:
+            # The `reveal_type` statement should be ignored:
+            if watcher.filter_revealed_type:
+                return
+            # The `reveal_type` statement might be visited iteratively due to being
+            # placed in a loop or so. Hence, we collect the respective types of
+            # individual iterations so that we can report them all in one step later:
+            if isinstance(watcher, IterationErrorWatcher):
+                watcher.iteration_dependent_errors.revealed_types[
+                    (context.line, context.column, context.end_line, context.end_column)
+                ].append(typ)
+                return
+
+        # Nothing special here; just create the note:
         visitor = TypeStrVisitor(options=self.options)
         self.note(f'Revealed type is "{typ.accept(visitor)}"', context)
 

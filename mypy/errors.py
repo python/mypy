@@ -15,6 +15,8 @@ from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode,
 from mypy.nodes import Context
 from mypy.options import Options
 from mypy.scope import Scope
+from mypy.typeops import make_simplified_union
+from mypy.types import Type
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 from mypy.version import __version__ as mypy_version
 
@@ -166,6 +168,10 @@ class ErrorWatcher:
     out by one of the ErrorWatcher instances.
     """
 
+    # public attribute for the special treatment of `reveal_type` by
+    # `MessageBuilder.reveal_type`:
+    filter_revealed_type: bool
+
     def __init__(
         self,
         errors: Errors,
@@ -173,11 +179,13 @@ class ErrorWatcher:
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
         filter_deprecated: bool = False,
+        filter_revealed_type: bool = False
     ) -> None:
         self.errors = errors
         self._has_new_errors = False
         self._filter = filter_errors
         self._filter_deprecated = filter_deprecated
+        self.filter_revealed_type = filter_revealed_type
         self._filtered: list[ErrorInfo] | None = [] if save_filtered_errors else None
 
     def __enter__(self) -> Self:
@@ -236,15 +244,15 @@ class IterationDependentErrors:
     # the error report occurs but really all unreachable lines.
     unreachable_lines: list[set[int]]
 
-    # One set of revealed types for each `reveal_type` statement.  Each created set can
-    # grow during the iteration.  Meaning of the tuple items: function_or_member, line,
-    # column, end_line, end_column:
-    revealed_types: dict[tuple[str | None, int, int, int, int], set[str]]
+    # One list of revealed types for each `reveal_type` statement.  Each created list
+    # can grow during the iteration.  Meaning of the tuple items: line, column,
+    # end_line, end_column:
+    revealed_types: dict[tuple[int, int, int | None, int | None], list[Type]]
 
     def __init__(self) -> None:
         self.uselessness_errors = []
         self.unreachable_lines = []
-        self.revealed_types = defaultdict(set)
+        self.revealed_types = defaultdict(list)
 
 
 class IterationErrorWatcher(ErrorWatcher):
@@ -287,15 +295,6 @@ class IterationErrorWatcher(ErrorWatcher):
                 iter_errors.unreachable_lines[-1].update(range(info.line, info.end_line + 1))
             return True
 
-        if info.code == codes.MISC and info.message.startswith("Revealed type is "):
-            key = info.function_or_member, info.line, info.column, info.end_line, info.end_column
-            types = info.message.split('"')[1]
-            if types.startswith("Union["):
-                iter_errors.revealed_types[key].update(types[6:-1].split(", "))
-            else:
-                iter_errors.revealed_types[key].add(types)
-            return True
-
         return super().on_error(file, info)
 
     def yield_error_infos(self) -> Iterator[tuple[str, Context, ErrorCode]]:
@@ -318,21 +317,14 @@ class IterationErrorWatcher(ErrorWatcher):
             context.end_column = error_info[5]
             yield error_info[1], context, error_info[0]
 
-    def yield_note_infos(self, options: Options) -> Iterator[tuple[str, Context]]:
+    def yield_note_infos(self, options: Options) -> Iterator[tuple[Type, Context]]:
         """Yield all types revealed in at least one iteration step."""
 
         for note_info, types in self.iteration_dependent_errors.revealed_types.items():
-            sorted_ = sorted(types, key=lambda typ: typ.lower())
-            if len(types) == 1:
-                revealed = sorted_[0]
-            elif options.use_or_syntax():
-                revealed = " | ".join(sorted_)
-            else:
-                revealed = f"Union[{', '.join(sorted_)}]"
-            context = Context(line=note_info[1], column=note_info[2])
-            context.end_line = note_info[3]
-            context.end_column = note_info[4]
-            yield f'Revealed type is "{revealed}"', context
+            context = Context(line=note_info[0], column=note_info[1])
+            context.end_line = note_info[2]
+            context.end_column = note_info[3]
+            yield make_simplified_union(types), context
 
 
 class Errors:
@@ -596,18 +588,20 @@ class Errors:
         if info.code in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND):
             self.seen_import_error = True
 
+    @property
+    def watchers(self) -> Iterator[ErrorWatcher]:
+        """Yield the `ErrorWatcher` stack from top to bottom."""
+        i = len(self._watchers)
+        while i > 0:
+            i -= 1
+            yield self._watchers[i]
+
     def _filter_error(self, file: str, info: ErrorInfo) -> bool:
         """
         process ErrorWatcher stack from top to bottom,
         stopping early if error needs to be filtered out
         """
-        i = len(self._watchers)
-        while i > 0:
-            i -= 1
-            w = self._watchers[i]
-            if w.on_error(file, info):
-                return True
-        return False
+        return any(w.on_error(file, info) for w in self.watchers)
 
     def add_error_info(self, info: ErrorInfo) -> None:
         file, lines = info.origin
