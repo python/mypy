@@ -116,7 +116,7 @@ def main() -> None:
         "--multi-file",
         default=False,
         action="store_true",
-        help="compile each mypy module to a separete C file (reduces RAM use)",
+        help="compile each mypy module to a separate C file (reduces RAM use)",
     )
     parser.add_argument(
         "--dont-setup",
