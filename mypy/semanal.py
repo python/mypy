@@ -1549,8 +1549,8 @@ class SemanticAnalyzer(
                             other_node.accept(self)
                     else:
                         self.fail(
-                            f"Only supported top decorators are @{func_name}.setter and @{func_name}.deleter",
-                            item,
+                            f'Only supported top decorators are "@{func_name}.setter" and "@{func_name}.deleter"',
+                            first_node,
                         )
             else:
                 self.fail(f'Unexpected definition for property "{func_name}"', item)

@@ -2752,7 +2752,7 @@ class B:
     @property
     @dec
     def f(self) -> int: pass
-    @dec # E: Only supported top decorators are @f.setter and @f.deleter
+    @dec # E: Only supported top decorators are "@f.setter" and "@f.deleter"
     @f.setter
     def f(self, v: int) -> None: pass
 
