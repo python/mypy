@@ -2602,6 +2602,7 @@ def f(t: T) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchTypeObjectTypeVar]
+# flags: --warn-unreachable
 from typing import TypeVar
 import b
 
