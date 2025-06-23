@@ -317,7 +317,7 @@ class IterationErrorWatcher(ErrorWatcher):
             context.end_column = error_info[5]
             yield error_info[1], context, error_info[0]
 
-    def yield_note_infos(self, options: Options) -> Iterator[tuple[Type, Context]]:
+    def yield_note_infos(self) -> Iterator[tuple[Type, Context]]:
         """Yield all types revealed in at least one iteration step."""
 
         for note_info, types in self.iteration_dependent_errors.revealed_types.items():
