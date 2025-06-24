@@ -1878,7 +1878,7 @@ a = {'a': 1}
 b = {'z': 26, **a}
 c = {**b}
 d = {**a, **b, 'c': 3}
-e = {1: 'a', **a}  # E: Cannot infer type argument 1 of <dict> \
+e = {1: 'a', **a}  # E: Cannot infer value of type parameter "KT" of <dict> \
                    # N: Try assigning the literal to a variable annotated as dict[<key>, <val>]
 f = {**b}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompatible type "dict[str, int]"; expected "SupportsKeysAndGetItem[int, int]"
 g = {**Thing()}
@@ -1893,7 +1893,7 @@ i = {**Thing()}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompat
                  # N:         def keys(self) -> Iterable[int] \
                  # N:     Got: \
                  # N:         def keys(self) -> Iterable[str]
-j = {1: 'a', **Thing()}  # E: Cannot infer type argument 1 of <dict> \
+j = {1: 'a', **Thing()}  # E: Cannot infer value of type parameter "KT" of <dict> \
                          # N: Try assigning the literal to a variable annotated as dict[<key>, <val>]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]

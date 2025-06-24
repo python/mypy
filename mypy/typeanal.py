@@ -1109,8 +1109,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 variables = t.variables
             else:
                 variables, _ = self.bind_function_type_variables(t, t)
-            type_guard = self.anal_type_guard(t.ret_type)
-            type_is = self.anal_type_is(t.ret_type)
+            type_guard = self.anal_type_guard(t.ret_type) if t.type_guard is None else t.type_guard
+            type_is = self.anal_type_is(t.ret_type) if t.type_is is None else t.type_is
 
             arg_kinds = t.arg_kinds
             arg_types = []
@@ -1844,11 +1844,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         defs = []
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
-                self.fail(
-                    f'Type variable "{name}" is bound by an outer class',
-                    defn,
-                    code=codes.VALID_TYPE,
-                )
+                err_msg = message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name)
+                self.fail(err_msg.value, defn, code=err_msg.code)
             binding = self.tvar_scope.bind_new(name, tvar)
             defs.append(binding)
 
