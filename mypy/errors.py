@@ -255,6 +255,33 @@ class IterationDependentErrors:
         self.revealed_types = defaultdict(list)
 
 
+    def yield_uselessness_error_infos(self) -> Iterator[tuple[str, Context, ErrorCode]]:
+        """Report only those `unreachable`, `redundant-expr`, and `redundant-casts`
+        errors that could not be ruled out in any iteration step."""
+
+        persistent_uselessness_errors = set()
+        for candidate in set(chain(*self.uselessness_errors)):
+            if all(
+                (candidate in errors) or (candidate[2] in lines)
+                for errors, lines in zip(self.uselessness_errors, self.unreachable_lines)
+            ):
+                persistent_uselessness_errors.add(candidate)
+        for error_info in persistent_uselessness_errors:
+            context = Context(line=error_info[2], column=error_info[3])
+            context.end_line = error_info[4]
+            context.end_column = error_info[5]
+            yield error_info[1], context, error_info[0]
+
+    def yield_revealed_type_infos(self) -> Iterator[tuple[Type, Context]]:
+        """Yield all types revealed in at least one iteration step."""
+
+        for note_info, types in self.revealed_types.items():
+            context = Context(line=note_info[0], column=note_info[1])
+            context.end_line = note_info[2]
+            context.end_column = note_info[3]
+            yield make_simplified_union(types), context
+
+
 class IterationErrorWatcher(ErrorWatcher):
     """Error watcher that filters and separately collects `unreachable` errors,
     `redundant-expr` and `redundant-casts` errors, and revealed types when analysing
@@ -296,35 +323,6 @@ class IterationErrorWatcher(ErrorWatcher):
             return True
 
         return super().on_error(file, info)
-
-    def yield_error_infos(self) -> Iterator[tuple[str, Context, ErrorCode]]:
-        """Report only those `unreachable`, `redundant-expr`, and `redundant-casts`
-        errors that could not be ruled out in any iteration step."""
-
-        persistent_uselessness_errors = set()
-        iter_errors = self.iteration_dependent_errors
-        for candidate in set(chain(*iter_errors.uselessness_errors)):
-            if all(
-                (candidate in errors) or (candidate[2] in lines)
-                for errors, lines in zip(
-                    iter_errors.uselessness_errors, iter_errors.unreachable_lines
-                )
-            ):
-                persistent_uselessness_errors.add(candidate)
-        for error_info in persistent_uselessness_errors:
-            context = Context(line=error_info[2], column=error_info[3])
-            context.end_line = error_info[4]
-            context.end_column = error_info[5]
-            yield error_info[1], context, error_info[0]
-
-    def yield_note_infos(self) -> Iterator[tuple[Type, Context]]:
-        """Yield all types revealed in at least one iteration step."""
-
-        for note_info, types in self.iteration_dependent_errors.revealed_types.items():
-            context = Context(line=note_info[0], column=note_info[1])
-            context.end_line = note_info[2]
-            context.end_column = note_info[3]
-            yield make_simplified_union(types), context
 
 
 class Errors:

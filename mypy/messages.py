@@ -23,7 +23,13 @@ import mypy.typeops
 from mypy import errorcodes as codes, message_registry
 from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
-from mypy.errors import ErrorInfo, Errors, ErrorWatcher, IterationErrorWatcher
+from mypy.errors import (
+    ErrorInfo,
+    Errors,
+    ErrorWatcher,
+    IterationDependentErrors,
+    IterationErrorWatcher,
+)
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -2500,6 +2506,12 @@ class MessageBuilder:
             context,
             code=codes.EXHAUSTIVE_MATCH,
         )
+
+    def iteration_dependent_errors(self, iter_errors: IterationDependentErrors) -> None:
+        for error_info in iter_errors.yield_uselessness_error_infos():
+            self.fail(*error_info[:2], code=error_info[2])
+        for note_info, context in iter_errors.yield_revealed_type_infos():
+            self.reveal_type(note_info, context)
 
 
 def quote_type_string(type_string: str) -> str:
