@@ -254,7 +254,6 @@ class IterationDependentErrors:
         self.unreachable_lines = []
         self.revealed_types = defaultdict(list)
 
-
     def yield_uselessness_error_infos(self) -> Iterator[tuple[str, Context, ErrorCode]]:
         """Report only those `unreachable`, `redundant-expr`, and `redundant-casts`
         errors that could not be ruled out in any iteration step."""
