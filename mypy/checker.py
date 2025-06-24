@@ -618,7 +618,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if on_enter_body is not None:
                         on_enter_body()
 
-                    with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                    with IterationErrorWatcher(self.msg.errors, iter_errors):
                         self.accept(body)
 
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
@@ -4962,7 +4962,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if s.finally_body:
                 # First we check finally_body is type safe on all abnormal exit paths
                 iter_errors = IterationDependentErrors()
-                with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                with IterationErrorWatcher(self.msg.errors, iter_errors):
                     self.accept(s.finally_body)
 
         if s.finally_body:
@@ -4979,7 +4979,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # that follows the try statement.)
             assert iter_errors is not None
             if not self.binder.is_unreachable():
-                with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                with IterationErrorWatcher(self.msg.errors, iter_errors):
                     self.accept(s.finally_body)
             self.msg.iteration_dependent_errors(iter_errors)
 
