@@ -188,6 +188,13 @@ else:
     ast_TypeVar = Any
     ast_TypeVarTuple = Any
 
+if sys.version_info >= (3, 14):
+    ast_TemplateStr = ast3.TemplateStr
+    ast_Interpolation = ast3.Interpolation
+else:
+    ast_TemplateStr = Any
+    ast_Interpolation = Any
+
 N = TypeVar("N", bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
@@ -768,6 +775,17 @@ class ASTConverter:
             ret.append(last_if_stmt)
         return ret
 
+    def insert_synthetic_templatelib_import(self, stmts: list[Statement]) -> None:
+        # Only insert 'string.templatelib' import if a t-string was visited.
+        if hasattr(ast3, "TemplateStr") and ast3.TemplateStr in self.visitor_cache:
+            imp = ImportFrom(
+                "string.templatelib",
+                0,
+                [("Template", "__mypy-Template"), ("Interpolation", "__mypy-Interpolation")],
+            )
+            stmts.append(imp)
+            self.imports.append(imp)
+
     def _check_ifstmt_for_overloads(
         self, stmt: IfStmt, current_overload_name: str | None = None
     ) -> str | None:
@@ -892,6 +910,7 @@ class ASTConverter:
                 self.fail(message_registry.INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
 
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
+        self.insert_synthetic_templatelib_import(body)
 
         ret = MypyFile(body, self.imports, False, ignored_lines=self.type_ignores)
         ret.is_stub = self.is_stub
@@ -1697,6 +1716,36 @@ class ASTConverter:
             format_method, [val_exp, format_spec_exp], [ARG_POS, ARG_POS], [None, None]
         )
         return self.set_line(result_expression, n)
+
+    # TemplateStr(expr* values)
+    def visit_TemplateStr(self, n: ast_TemplateStr) -> Expression:
+        template_cls = NameExpr("__mypy-Template")
+        template_cls.set_line(n.lineno, n.col_offset)
+        template_values = self.translate_expr_list(n.values)
+        e = CallExpr(
+            template_cls,
+            template_values,
+            [ARG_POS] * len(template_values),
+            [None] * len(template_values),
+        )
+        return self.set_line(e, n)
+
+    # Interpolation(expr value, constant str, int conversion, expr? format_spec)
+    def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
+        interp_cls = NameExpr("__mypy-Interpolation")
+        interp_cls.set_line(n.lineno, n.col_offset)
+        val_exp = self.visit(n.value)
+        val_exp.set_line(interp_cls)
+        val_str = StrExpr(n.str)
+        conv_expr = NameExpr("None") if n.conversion < 0 else StrExpr(chr(n.conversion))
+        format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr("")
+        e = CallExpr(
+            interp_cls,
+            [val_exp, val_str, conv_expr, format_spec_exp],
+            [ARG_POS, ARG_POS, ARG_POS, ARG_POS],
+            [None, None, None, None],
+        )
+        return self.set_line(e, n)
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:
