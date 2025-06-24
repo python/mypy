@@ -783,7 +783,7 @@ class ASTConverter:
                 0,
                 [("Template", "__mypy-Template"), ("Interpolation", "__mypy-Interpolation")],
             )
-            stmts.append(imp)
+            stmts.insert(0, imp)
             self.imports.append(imp)
 
     def _check_ifstmt_for_overloads(

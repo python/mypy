@@ -3,6 +3,7 @@ x = 'mypy'
 t'Hello {x}'
 [out]
 MypyFile:1(
+  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation])
   AssignmentStmt:1(
     NameExpr(x)
     StrExpr(mypy))
@@ -17,14 +18,14 @@ MypyFile:1(
             NameExpr(x)
             StrExpr(x)
             NameExpr(None)
-            StrExpr())))))
-  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation]))
+            StrExpr()))))))
 
 [case testTStringWithConversion]
 x = 'mypy'
 T'Hello {x!r}'
 [out]
 MypyFile:1(
+  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation])
   AssignmentStmt:1(
     NameExpr(x)
     StrExpr(mypy))
@@ -39,14 +40,14 @@ MypyFile:1(
             NameExpr(x)
             StrExpr(x)
             StrExpr(r)
-            StrExpr())))))
-  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation]))
+            StrExpr()))))))
 
 [case testFStringWithOnlyFormatSpecifier]
 x = 'mypy'
 t'Hello {x:<30}'
 [out]
 MypyFile:1(
+  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation])
   AssignmentStmt:1(
     NameExpr(x)
     StrExpr(mypy))
@@ -61,14 +62,14 @@ MypyFile:1(
             NameExpr(x)
             StrExpr(x)
             NameExpr(None)
-            StrExpr(<30))))))
-  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation]))
+            StrExpr(<30)))))))
 
 [case testFStringWithFormatSpecifierAndConversion]
 x = 'mypy'
 t'Hello {x!s:<30}'
 [out]
 MypyFile:1(
+  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation])
   AssignmentStmt:1(
     NameExpr(x)
     StrExpr(mypy))
@@ -83,8 +84,7 @@ MypyFile:1(
             NameExpr(x)
             StrExpr(x)
             StrExpr(s)
-            StrExpr(<30))))))
-  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation]))
+            StrExpr(<30)))))))
 
 [case testFStringWithFormatSpecifierExpression]
 x = 'mypy'
@@ -92,6 +92,7 @@ y = 30
 t'Hello {x!s:<{y+y}}'
 [out]
 MypyFile:1(
+  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation])
   AssignmentStmt:1(
     NameExpr(x)
     StrExpr(mypy))
@@ -125,5 +126,4 @@ MypyFile:1(
                         +
                         NameExpr(y)
                         NameExpr(y))
-                      StrExpr()))))))))))
-  ImportFrom:-1(string.templatelib, [Template : __mypy-Template, Interpolation : __mypy-Interpolation]))
+                      StrExpr())))))))))))
