@@ -1,4 +1,4 @@
-[case testTStringSimple]
+[case testTemplateStringSimple]
 x = 'mypy'
 t'Hello {x}'
 [out]
@@ -20,7 +20,7 @@ MypyFile:1(
             NameExpr(None)
             StrExpr()))))))
 
-[case testTStringWithConversion]
+[case testTemplateStringWithConversion]
 x = 'mypy'
 T'Hello {x!r}'
 [out]
@@ -42,7 +42,7 @@ MypyFile:1(
             StrExpr(r)
             StrExpr()))))))
 
-[case testFStringWithOnlyFormatSpecifier]
+[case testTemplateStringWithOnlyFormatSpecifier]
 x = 'mypy'
 t'Hello {x:<30}'
 [out]
@@ -64,7 +64,7 @@ MypyFile:1(
             NameExpr(None)
             StrExpr(<30)))))))
 
-[case testFStringWithFormatSpecifierAndConversion]
+[case testTemplateStringWithFormatSpecifierAndConversion]
 x = 'mypy'
 t'Hello {x!s:<30}'
 [out]
@@ -86,7 +86,7 @@ MypyFile:1(
             StrExpr(s)
             StrExpr(<30)))))))
 
-[case testFStringWithFormatSpecifierExpression]
+[case testTemplateStringWithFormatSpecifierExpression]
 x = 'mypy'
 y = 30
 t'Hello {x!s:<{y+y}}'

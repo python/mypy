@@ -1734,14 +1734,18 @@ class ASTConverter:
     def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
         interp_cls = NameExpr("__mypy-Interpolation")
         interp_cls.set_line(n.lineno, n.col_offset)
-        val_exp = self.visit(n.value)
-        val_exp.set_line(interp_cls)
-        val_str = StrExpr(n.str)
+        val_expr = self.visit(n.value)
+        val_expr.set_line(interp_cls)
+        str_expr = StrExpr(n.str)
+        str_expr.set_line(interp_cls)
         conv_expr = NameExpr("None") if n.conversion < 0 else StrExpr(chr(n.conversion))
-        format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr("")
+        conv_expr.set_line(interp_cls)
+        format_expr = self.visit(n.format_spec) if n.format_spec is not None else StrExpr("")
+        if format_expr.line == -1:
+            format_expr.set_line(interp_cls)
         e = CallExpr(
             interp_cls,
-            [val_exp, val_str, conv_expr, format_spec_exp],
+            [val_expr, str_expr, conv_expr, format_expr],
             [ARG_POS, ARG_POS, ARG_POS, ARG_POS],
             [None, None, None, None],
         )
