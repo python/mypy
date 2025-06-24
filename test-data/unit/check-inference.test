@@ -693,8 +693,8 @@ class A(Generic[T]): pass
 class B: pass
 
 
-f(ao, ab) # E: Cannot infer type argument 1 of "f"
-f(ab, ao) # E: Cannot infer type argument 1 of "f"
+f(ao, ab) # E: Cannot infer value of type parameter "T" of "f"
+f(ab, ao) # E: Cannot infer value of type parameter "T" of "f"
 f(ao, ao)
 f(ab, ab)
 
@@ -3774,8 +3774,8 @@ reveal_type(f(x, []))  # N: Revealed type is "builtins.str"
 reveal_type(f(["yes"], []))  # N: Revealed type is "builtins.str"
 
 empty: List[NoReturn]
-f(x, empty)  # E: Cannot infer type argument 1 of "f"
-f(["no"], empty)  # E: Cannot infer type argument 1 of "f"
+f(x, empty)  # E: Cannot infer value of type parameter "T" of "f"
+f(["no"], empty)  # E: Cannot infer value of type parameter "T" of "f"
 [builtins fixtures/list.pyi]
 
 [case testInferenceWorksWithEmptyCollectionsUnion]
@@ -4149,3 +4149,19 @@ class Foo:
         else:
             self.qux = {}  # E: Need type annotation for "qux" (hint: "qux: dict[<type>, <type>] = ...")
 [builtins fixtures/dict.pyi]
+
+[case testConstraintSolvingFailureShowsCorrectArgument]
+from typing import Callable, TypeVar
+
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
+def foo(
+    a: T1,
+    b: T2,
+    c: Callable[[T2], T2],
+) -> tuple[T1, T2]: ...
+
+def bar(y: float) -> float: ...
+
+foo(1, None, bar)  # E: Cannot infer value of type parameter "T2" of "foo"
+[builtins fixtures/tuple.pyi]
