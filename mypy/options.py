@@ -120,7 +120,7 @@ class Options:
         # Is ignore_missing_imports set in a per-module section
         self.ignore_missing_imports_per_module = False
         # Typecheck modules without stubs or py.typed marker
-        self.follow_untyped_imports = False
+        self.follow_untyped_imports = True
         self.follow_imports = "normal"  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
