@@ -77,10 +77,10 @@ class FunctionSig(NamedTuple):
     name: str
     args: list[ArgSig]
     ret_type: str | None
-    pos_only_index: int | None = None
-    kwarg_only_index: int | None = None
     type_args: str = ""  # TODO implement in stubgenc and remove the default
     docstring: str | None = None
+    pos_only_index: int | None = None
+    kwarg_only_index: int | None = None
 
     def is_special_method(self) -> bool:
         return bool(
