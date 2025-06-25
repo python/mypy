@@ -144,8 +144,7 @@ class FunctionSig(NamedTuple):
         if self.pos_only_index:
             args.insert(self.pos_only_index, '/')
         if self.kwarg_only_index:
-            pos_offset =  1 if self.pos_only_index else 0
-            args.insert(self.kwarg_only_index + pos_offset, '*')
+            args.insert(self.kwarg_only_index, '*')
 
         retfield = ""
         ret_type = self.ret_type if self.ret_type else any_val
@@ -190,6 +189,7 @@ class DocStringParser:
         self.args: list[ArgSig] = []
         self.pos_only: int | None = None
         self.keyword_only: int | None = None
+        self.keyword_only_index: int | None = None
         # Valid signatures found so far.
         self.signatures: list[FunctionSig] = []
 
@@ -273,6 +273,7 @@ class DocStringParser:
                         self.reset()
                         return
                     self.keyword_only = len(self.args)
+                    self.keyword_only_index = self.keyword_only
                     self.accumulator = ""
                 else:
                     if self.accumulator.startswith("*"):
@@ -350,7 +351,7 @@ class DocStringParser:
 
             if self.found:
                 self.signatures.append(
-                    FunctionSig(name=self.function_name, args=self.args, pos_only_index=self.pos_only, kwarg_only_index=self.keyword_only, ret_type=self.ret_type)
+                    FunctionSig(name=self.function_name, args=self.args, pos_only_index=self.pos_only, kwarg_only_index=self.keyword_only_index, ret_type=self.ret_type)
                 )
                 self.found = False
             self.args = []
