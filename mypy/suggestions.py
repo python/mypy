@@ -58,6 +58,7 @@ from mypy.options import Options
 from mypy.plugin import FunctionContext, MethodContext, Plugin
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
+from mypy.subtypes import is_same_type
 from mypy.traverser import TraverserVisitor
 from mypy.typeops import bind_self, make_simplified_union
 from mypy.types import (
@@ -671,7 +672,7 @@ class SuggestionEngine:
                 if not (
                     len(ct.arg_types) == 1
                     and _arg_accepts_function(get_proper_type(ct.arg_types[0]))
-                    and ct.arg_types[0] == ct.ret_type
+                    and is_same_type(ct.arg_types[0], ct.ret_type)
                 ):
                     return None
 
