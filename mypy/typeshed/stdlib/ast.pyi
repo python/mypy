@@ -1076,13 +1076,13 @@ if sys.version_info >= (3, 14):
         value: expr
         str: builtins.str
         conversion: int
-        format_spec: builtins.str | None = None
+        format_spec: expr | None = None
         def __init__(
             self,
             value: expr = ...,
             str: builtins.str = ...,
             conversion: int = ...,
-            format_spec: builtins.str | None = ...,
+            format_spec: expr | None = ...,
             **kwargs: Unpack[_Attributes],
         ) -> None: ...
         def __replace__(
@@ -1091,7 +1091,7 @@ if sys.version_info >= (3, 14):
             value: expr = ...,
             str: builtins.str = ...,
             conversion: int = ...,
-            format_spec: builtins.str | None = ...,
+            format_spec: expr | None = ...,
             **kwargs: Unpack[_Attributes],
         ) -> Self: ...
 
