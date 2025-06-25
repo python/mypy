@@ -273,7 +273,7 @@ class DocStringParser:
                         self.reset()
                         return
                     self.keyword_only = len(self.args)
-                    self.keyword_only_index = self.keyword_only
+                    self.keyword_only_index = self.keyword_only + 1 if self.pos_only is not None else 0
                     self.accumulator = ""
                 else:
                     if self.accumulator.startswith("*"):
