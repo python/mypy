@@ -48,8 +48,8 @@ def func_incomplete_signature(*args, **kwargs):
 def func_returning_optional() -> int | None:
     """func_returning_optional() -> Optional[int]"""
 def func_returning_pair() -> tuple[int, float]:
-    """func_returning_pair() -> Tuple[int, float]"""
+    """func_returning_pair() -> tuple[int, float]"""
 def func_returning_path() -> os.PathLike:
     """func_returning_path() -> os.PathLike"""
 def func_returning_vector() -> list[float]:
-    """func_returning_vector() -> List[float]"""
+    """func_returning_vector() -> list[float]"""

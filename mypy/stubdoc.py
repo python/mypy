@@ -144,7 +144,8 @@ class FunctionSig(NamedTuple):
         if self.pos_only_index:
             args.insert(self.pos_only_index, '/')
         if self.kwarg_only_index:
-            args.insert(self.kwarg_only_index, '*')
+            pos_offset =  1 if self.pos_only_index else 0
+            args.insert(self.kwarg_only_index + pos_offset, '*')
 
         retfield = ""
         ret_type = self.ret_type if self.ret_type else any_val
