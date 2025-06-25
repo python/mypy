@@ -266,53 +266,6 @@ void bind_demo(py::module& m) {
   m.attr("PI") = std::acos(-1);
   m.attr("__version__") = "0.0.1";
 
-  // test_keyword_only_args
-    m.def(
-        "kw_only_all",
-        [](int i, int j) { return py::make_tuple(i, j); },
-        py::kw_only(),
-        py::arg("i"),
-        py::arg("j"));
-    m.def(
-        "kw_only_some",
-        [](int i, int j, int k) { return py::make_tuple(i, j, k); },
-        py::arg(),
-        py::kw_only(),
-        py::arg("j"),
-        py::arg("k"));
-    m.def(
-        "kw_only_with_defaults",
-        [](int i, int j, int k, int z) { return py::make_tuple(i, j, k, z); },
-        py::arg() = 3,
-        "j"_a = 4,
-        py::kw_only(),
-        "k"_a = 5,
-        "z"_a);
-    m.def(
-        "kw_only_mixed",
-        [](int i, int j) { return py::make_tuple(i, j); },
-        "i"_a,
-        py::kw_only(),
-        "j"_a);
-    m.def(
-        "kw_only_plus_more",
-        [](int i, int j, int k, const py::kwargs &kwargs) {
-            return py::make_tuple(i, j, k, kwargs);
-        },
-        py::arg() /* positional */,
-        py::arg("j") = -1 /* both */,
-        py::kw_only(),
-        py::arg("k") /* kw-only */);
-
-    m.def("register_invalid_kw_only", [](py::module_ m) {
-        m.def(
-            "bad_kw_only",
-            [](int i, int j) { return py::make_tuple(i, j); },
-            py::kw_only(),
-            py::arg() /* invalid unnamed argument */,
-            "j"_a);
-    });
-
     // test_positional_only_args
     m.def(
         "pos_only_all",
