@@ -77,6 +77,8 @@ class FunctionSig(NamedTuple):
     name: str
     args: list[ArgSig]
     ret_type: str | None
+    pos_only_index: int | None = None
+    kwarg_only_index: int | None = None
     type_args: str = ""  # TODO implement in stubgenc and remove the default
     docstring: str | None = None
 
@@ -138,6 +140,11 @@ class FunctionSig(NamedTuple):
                 arg_def += f"={arg.default_value}"
 
             args.append(arg_def)
+
+        if self.pos_only_index:
+            args.insert(self.pos_only_index, '/')
+        if self.kwarg_only_index:
+            args.insert(self.kwarg_only_index, '*')
 
         retfield = ""
         ret_type = self.ret_type if self.ret_type else any_val
@@ -342,7 +349,7 @@ class DocStringParser:
 
             if self.found:
                 self.signatures.append(
-                    FunctionSig(name=self.function_name, args=self.args, ret_type=self.ret_type)
+                    FunctionSig(name=self.function_name, args=self.args, pos_only_index=self.pos_only, kwarg_only_index=self.keyword_only, ret_type=self.ret_type)
                 )
                 self.found = False
             self.args = []

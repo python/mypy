@@ -477,17 +477,17 @@ class StubgenUtilSuite(unittest.TestCase):
     def test_infer_sig_from_docstring_keyword_only_arguments(self) -> None:
         assert_equal(
             infer_sig_from_docstring("func(*, x) -> str", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="x")], ret_type="str")],
+            [FunctionSig(name="func", args=[ArgSig(name="x")], ret_type="str", pos_only_index=0)],
         )
 
         assert_equal(
             infer_sig_from_docstring("func(x, *, y) -> str", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str", pos_only_index=1)],
         )
 
         assert_equal(
             infer_sig_from_docstring("func(*, x, y) -> str", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str", pos_only_index=0)],
         )
 
         assert_equal(
@@ -497,6 +497,7 @@ class StubgenUtilSuite(unittest.TestCase):
                     name="func",
                     args=[ArgSig(name="x"), ArgSig(name="kwonly"), ArgSig("**kwargs")],
                     ret_type="str",
+                    pos_only_index=1,
                 )
             ],
         )
@@ -514,6 +515,8 @@ class StubgenUtilSuite(unittest.TestCase):
                     name="func",
                     args=[ArgSig(name="x"), ArgSig(name="y"), ArgSig(name="z")],
                     ret_type="str",
+                    pos_only_index=1,
+                    kwarg_only_index=3
                 )
             ],
         )
@@ -530,6 +533,8 @@ class StubgenUtilSuite(unittest.TestCase):
                         ArgSig("**kwargs"),
                     ],
                     ret_type="str",
+                    pos_only_index=1,
+                    kwarg_only_index=3
                 )
             ],
         )
