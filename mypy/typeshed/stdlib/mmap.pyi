@@ -1,7 +1,8 @@
 import sys
-from _typeshed import ReadableBuffer, Self
-from collections.abc import Iterable, Iterator, Sized
-from typing import NoReturn, overload
+from _typeshed import ReadableBuffer, Unused
+from collections.abc import Iterator
+from typing import Final, Literal, NoReturn, overload
+from typing_extensions import Self
 
 ACCESS_DEFAULT: int
 ACCESS_READ: int
@@ -15,6 +16,8 @@ if sys.platform == "linux":
     MAP_EXECUTABLE: int
     if sys.version_info >= (3, 10):
         MAP_POPULATE: int
+if sys.version_info >= (3, 11) and sys.platform != "win32" and sys.platform != "darwin":
+    MAP_STACK: int
 
 if sys.platform != "win32":
     MAP_ANON: int
@@ -25,22 +28,31 @@ if sys.platform != "win32":
     PROT_READ: int
     PROT_WRITE: int
 
-    PAGESIZE: int
+PAGESIZE: int
 
-class mmap(Iterable[int], Sized):
+class mmap:
     if sys.platform == "win32":
         def __init__(self, fileno: int, length: int, tagname: str | None = ..., access: int = ..., offset: int = ...) -> None: ...
     else:
-        def __init__(
-            self, fileno: int, length: int, flags: int = ..., prot: int = ..., access: int = ..., offset: int = ...
-        ) -> None: ...
+        if sys.version_info >= (3, 13):
+            def __new__(
+                cls,
+                fileno: int,
+                length: int,
+                flags: int = ...,
+                prot: int = ...,
+                access: int = ...,
+                offset: int = ...,
+                *,
+                trackfd: bool = True,
+            ) -> Self: ...
+        else:
+            def __new__(
+                cls, fileno: int, length: int, flags: int = ..., prot: int = ..., access: int = ..., offset: int = ...
+            ) -> Self: ...
 
     def close(self) -> None: ...
-    if sys.version_info >= (3, 8):
-        def flush(self, offset: int = ..., size: int = ...) -> None: ...
-    else:
-        def flush(self, offset: int = ..., size: int = ...) -> int: ...
-
+    def flush(self, offset: int = ..., size: int = ...) -> None: ...
     def move(self, dest: int, src: int, count: int) -> None: ...
     def read_byte(self) -> int: ...
     def readline(self) -> bytes: ...
@@ -51,7 +63,7 @@ class mmap(Iterable[int], Sized):
     def write_byte(self, byte: int) -> None: ...
     def __len__(self) -> int: ...
     closed: bool
-    if sys.version_info >= (3, 8) and sys.platform != "win32":
+    if sys.platform != "win32":
         def madvise(self, option: int, start: int = ..., length: int = ...) -> None: ...
 
     def find(self, sub: ReadableBuffer, start: int = ..., stop: int = ...) -> int: ...
@@ -59,24 +71,28 @@ class mmap(Iterable[int], Sized):
     def read(self, n: int | None = ...) -> bytes: ...
     def write(self, bytes: ReadableBuffer) -> int: ...
     @overload
-    def __getitem__(self, __index: int) -> int: ...
+    def __getitem__(self, key: int, /) -> int: ...
     @overload
-    def __getitem__(self, __index: slice) -> bytes: ...
-    def __delitem__(self, __index: int | slice) -> NoReturn: ...
+    def __getitem__(self, key: slice, /) -> bytes: ...
+    def __delitem__(self, key: int | slice, /) -> NoReturn: ...
     @overload
-    def __setitem__(self, __index: int, __object: int) -> None: ...
+    def __setitem__(self, key: int, value: int, /) -> None: ...
     @overload
-    def __setitem__(self, __index: slice, __object: ReadableBuffer) -> None: ...
+    def __setitem__(self, key: slice, value: ReadableBuffer, /) -> None: ...
     # Doesn't actually exist, but the object actually supports "in" because it has __getitem__,
     # so we claim that there is also a __contains__ to help type checkers.
-    def __contains__(self, __o: object) -> bool: ...
+    def __contains__(self, o: object, /) -> bool: ...
     # Doesn't actually exist, but the object is actually iterable because it has __getitem__ and __len__,
     # so we claim that there is also an __iter__ to help type checkers.
     def __iter__(self) -> Iterator[int]: ...
-    def __enter__(self: Self) -> Self: ...
-    def __exit__(self, *args: object) -> None: ...
+    def __enter__(self) -> Self: ...
+    def __exit__(self, *args: Unused) -> None: ...
+    def __buffer__(self, flags: int, /) -> memoryview: ...
+    def __release_buffer__(self, buffer: memoryview, /) -> None: ...
+    if sys.version_info >= (3, 13):
+        def seekable(self) -> Literal[True]: ...
 
-if sys.version_info >= (3, 8) and sys.platform != "win32":
+if sys.platform != "win32":
     MADV_NORMAL: int
     MADV_RANDOM: int
     MADV_SEQUENTIAL: int
@@ -84,29 +100,47 @@ if sys.version_info >= (3, 8) and sys.platform != "win32":
     MADV_DONTNEED: int
     MADV_FREE: int
 
-    if sys.platform == "linux":
-        MADV_REMOVE: int
-        MADV_DONTFORK: int
-        MADV_DOFORK: int
-        MADV_HWPOISON: int
-        MADV_MERGEABLE: int
-        MADV_UNMERGEABLE: int
-        # Seems like this constant is not defined in glibc.
-        # See https://github.com/python/typeshed/pull/5360 for details
-        # MADV_SOFT_OFFLINE: int
-        MADV_HUGEPAGE: int
-        MADV_NOHUGEPAGE: int
-        MADV_DONTDUMP: int
-        MADV_DODUMP: int
+if sys.platform == "linux":
+    MADV_REMOVE: int
+    MADV_DONTFORK: int
+    MADV_DOFORK: int
+    MADV_HWPOISON: int
+    MADV_MERGEABLE: int
+    MADV_UNMERGEABLE: int
+    # Seems like this constant is not defined in glibc.
+    # See https://github.com/python/typeshed/pull/5360 for details
+    # MADV_SOFT_OFFLINE: int
+    MADV_HUGEPAGE: int
+    MADV_NOHUGEPAGE: int
+    MADV_DONTDUMP: int
+    MADV_DODUMP: int
 
-    # This Values are defined for FreeBSD but type checkers do not support conditions for these
-    if sys.platform != "linux" and sys.platform != "darwin":
-        MADV_NOSYNC: int
-        MADV_AUTOSYNC: int
-        MADV_NOCORE: int
-        MADV_CORE: int
-        MADV_PROTECT: int
+# This Values are defined for FreeBSD but type checkers do not support conditions for these
+if sys.platform != "linux" and sys.platform != "darwin" and sys.platform != "win32":
+    MADV_NOSYNC: int
+    MADV_AUTOSYNC: int
+    MADV_NOCORE: int
+    MADV_CORE: int
+    MADV_PROTECT: int
 
 if sys.version_info >= (3, 10) and sys.platform == "darwin":
     MADV_FREE_REUSABLE: int
     MADV_FREE_REUSE: int
+
+if sys.version_info >= (3, 13) and sys.platform != "win32":
+    MAP_32BIT: Final = 32768
+
+if sys.version_info >= (3, 13) and sys.platform == "darwin":
+    MAP_NORESERVE: Final = 64
+    MAP_NOEXTEND: Final = 256
+    MAP_HASSEMAPHORE: Final = 512
+    MAP_NOCACHE: Final = 1024
+    MAP_JIT: Final = 2048
+    MAP_RESILIENT_CODESIGN: Final = 8192
+    MAP_RESILIENT_MEDIA: Final = 16384
+    MAP_TRANSLATED_ALLOW_EXECUTE: Final = 131072
+    MAP_UNIX03: Final = 262144
+    MAP_TPRO: Final = 524288
+
+if sys.version_info >= (3, 13) and sys.platform == "linux":
+    MAP_NORESERVE: Final = 16384

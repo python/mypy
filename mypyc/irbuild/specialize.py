@@ -19,6 +19,7 @@ from typing import Callable, Optional
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
+    BytesExpr,
     CallExpr,
     DictExpr,
     Expression,
@@ -44,21 +45,30 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    RPrimitive,
     RTuple,
     RType,
     bool_rprimitive,
     c_int_rprimitive,
     dict_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
+    int_rprimitive,
+    is_bool_rprimitive,
     is_dict_rprimitive,
+    is_fixed_width_rtype,
+    is_float_rprimitive,
+    is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_uint8_rprimitive,
     list_rprimitive,
     set_rprimitive,
     str_rprimitive,
+    uint8_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
@@ -80,6 +90,11 @@ from mypyc.primitives.dict_ops import (
     dict_values_op,
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
+from mypyc.primitives.str_ops import (
+    str_encode_ascii_strict,
+    str_encode_latin1_strict,
+    str_encode_utf8_strict,
+)
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 
 # Specializers are attempted before compiling the arguments to the
@@ -154,14 +169,31 @@ def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
 
 
 @specialize_function("builtins.abs")
-def translate_abs(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
-    """Specialize calls on native classes that implement __abs__."""
-    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+@specialize_function("builtins.int")
+@specialize_function("builtins.float")
+@specialize_function("builtins.complex")
+@specialize_function("mypy_extensions.i64")
+@specialize_function("mypy_extensions.i32")
+@specialize_function("mypy_extensions.i16")
+@specialize_function("mypy_extensions.u8")
+def translate_builtins_with_unary_dunder(
+    builder: IRBuilder, expr: CallExpr, callee: RefExpr
+) -> Value | None:
+    """Specialize calls on native classes that implement the associated dunder.
+
+    E.g. i64(x) gets specialized to x.__int__() if x is a native instance.
+    """
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS] and isinstance(callee, NameExpr):
         arg = expr.args[0]
         arg_typ = builder.node_type(arg)
-        if isinstance(arg_typ, RInstance) and arg_typ.class_ir.has_method("__abs__"):
+        shortname = callee.fullname.split(".")[1]
+        if shortname in ("i64", "i32", "i16", "u8"):
+            method = "__int__"
+        else:
+            method = f"__{shortname}__"
+        if isinstance(arg_typ, RInstance) and arg_typ.class_ir.has_method(method):
             obj = builder.accept(arg)
-            return builder.gen_method_call(obj, "__abs__", [], None, expr.line)
+            return builder.gen_method_call(obj, method, [], None, expr.line)
 
     return None
 
@@ -430,7 +462,7 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
     # handle 'start' argument, if given
     if len(expr.args) == 2:
         # ensure call to sum() was properly constructed
-        if not expr.arg_kinds[1] in (ARG_POS, ARG_NAMED):
+        if expr.arg_kinds[1] not in (ARG_POS, ARG_NAMED):
             return None
         start_expr = expr.args[1]
     else:
@@ -656,6 +688,58 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
     return None
 
 
+@specialize_function("encode", str_rprimitive)
+def str_encode_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Specialize common cases of str.encode for most used encodings and strict errors."""
+
+    if not isinstance(callee, MemberExpr):
+        return None
+
+    # We can only specialize if we have string literals as args
+    if len(expr.arg_kinds) > 0 and not isinstance(expr.args[0], StrExpr):
+        return None
+    if len(expr.arg_kinds) > 1 and not isinstance(expr.args[1], StrExpr):
+        return None
+
+    encoding = "utf8"
+    errors = "strict"
+    if len(expr.arg_kinds) > 0 and isinstance(expr.args[0], StrExpr):
+        if expr.arg_kinds[0] == ARG_NAMED:
+            if expr.arg_names[0] == "encoding":
+                encoding = expr.args[0].value
+            elif expr.arg_names[0] == "errors":
+                errors = expr.args[0].value
+        elif expr.arg_kinds[0] == ARG_POS:
+            encoding = expr.args[0].value
+        else:
+            return None
+    if len(expr.arg_kinds) > 1 and isinstance(expr.args[1], StrExpr):
+        if expr.arg_kinds[1] == ARG_NAMED:
+            if expr.arg_names[1] == "encoding":
+                encoding = expr.args[1].value
+            elif expr.arg_names[1] == "errors":
+                errors = expr.args[1].value
+        elif expr.arg_kinds[1] == ARG_POS:
+            errors = expr.args[1].value
+        else:
+            return None
+
+    if errors != "strict":
+        # We can only specialize strict errors
+        return None
+
+    encoding = encoding.lower().replace("-", "").replace("_", "")  # normalize
+    # Specialized encodings and their accepted aliases
+    if encoding in ["u8", "utf", "utf8", "cp65001"]:
+        return builder.call_c(str_encode_utf8_strict, [builder.accept(callee.expr)], expr.line)
+    elif encoding in ["646", "ascii", "usascii"]:
+        return builder.call_c(str_encode_ascii_strict, [builder.accept(callee.expr)], expr.line)
+    elif encoding in ["iso88591", "8859", "cp819", "latin", "latin1", "l1"]:
+        return builder.call_c(str_encode_latin1_strict, [builder.accept(callee.expr)], expr.line)
+
+    return None
+
+
 @specialize_function("mypy_extensions.i64")
 def translate_i64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
@@ -664,10 +748,13 @@ def translate_i64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     arg_type = builder.node_type(arg)
     if is_int64_rprimitive(arg_type):
         return builder.accept(arg)
-    elif is_int32_rprimitive(arg_type):
+    elif is_int32_rprimitive(arg_type) or is_int16_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int64_rprimitive, signed=True, line=expr.line))
-    elif is_int_rprimitive(arg_type):
+    elif is_uint8_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, int64_rprimitive, signed=False, line=expr.line))
+    elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.coerce(val, int64_rprimitive, expr.line)
     return None
@@ -684,7 +771,120 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int64_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int32_rprimitive, line=expr.line))
-    elif is_int_rprimitive(arg_type):
+    elif is_int16_rprimitive(arg_type):
         val = builder.accept(arg)
+        return builder.add(Extend(val, int32_rprimitive, signed=True, line=expr.line))
+    elif is_uint8_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, int32_rprimitive, signed=False, line=expr.line))
+    elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
+        val = builder.accept(arg)
+        val = truncate_literal(val, int32_rprimitive)
         return builder.coerce(val, int32_rprimitive, expr.line)
+    return None
+
+
+@specialize_function("mypy_extensions.i16")
+def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_int16_rprimitive(arg_type):
+        return builder.accept(arg)
+    elif is_int32_rprimitive(arg_type) or is_int64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
+    elif is_uint8_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, int16_rprimitive, signed=False, line=expr.line))
+    elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
+        val = builder.accept(arg)
+        val = truncate_literal(val, int16_rprimitive)
+        return builder.coerce(val, int16_rprimitive, expr.line)
+    return None
+
+
+@specialize_function("mypy_extensions.u8")
+def translate_u8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_uint8_rprimitive(arg_type):
+        return builder.accept(arg)
+    elif (
+        is_int16_rprimitive(arg_type)
+        or is_int32_rprimitive(arg_type)
+        or is_int64_rprimitive(arg_type)
+    ):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, uint8_rprimitive, line=expr.line))
+    elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
+        val = builder.accept(arg)
+        val = truncate_literal(val, uint8_rprimitive)
+        return builder.coerce(val, uint8_rprimitive, expr.line)
+    return None
+
+
+def truncate_literal(value: Value, rtype: RPrimitive) -> Value:
+    """If value is an integer literal value, truncate it to given native int rtype.
+
+    For example, truncate 256 into 0 if rtype is u8.
+    """
+    if not isinstance(value, Integer):
+        return value  # Not a literal, nothing to do
+    x = value.numeric_value()
+    max_unsigned = (1 << (rtype.size * 8)) - 1
+    x = x & max_unsigned
+    if rtype.is_signed and x >= (max_unsigned + 1) // 2:
+        # Adjust to make it a negative value
+        x -= max_unsigned + 1
+    return Integer(x, rtype)
+
+
+@specialize_function("builtins.int")
+def translate_int(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if (
+        is_bool_rprimitive(arg_type)
+        or is_int_rprimitive(arg_type)
+        or is_fixed_width_rtype(arg_type)
+    ):
+        src = builder.accept(arg)
+        return builder.coerce(src, int_rprimitive, expr.line)
+    return None
+
+
+@specialize_function("builtins.bool")
+def translate_bool(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    src = builder.accept(arg)
+    return builder.builder.bool_value(src)
+
+
+@specialize_function("builtins.float")
+def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_float_rprimitive(arg_type):
+        # No-op float conversion.
+        return builder.accept(arg)
+    return None
+
+
+@specialize_function("builtins.ord")
+def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    if isinstance(arg, (StrExpr, BytesExpr)) and len(arg.value) == 1:
+        return Integer(ord(arg.value))
     return None

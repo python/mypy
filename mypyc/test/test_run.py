@@ -11,18 +11,20 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Any, Iterator, cast
+from collections.abc import Iterator
+from typing import Any
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.options import TYPE_VAR_TUPLE, UNPACK, Options
-from mypy.test.config import test_temp_dir
+from mypy.options import Options
+from mypy.test.config import mypyc_output_dir, test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
 from mypyc.build import construct_groups
 from mypyc.codegen import emitmodule
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
+from mypyc.test.config import test_data_prefix
 from mypyc.test.test_serialization import check_serialization_roundtrip
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -41,7 +43,10 @@ files = [
     "run-integers.test",
     "run-i64.test",
     "run-i32.test",
+    "run-i16.test",
+    "run-u8.test",
     "run-floats.test",
+    "run-math.test",
     "run-bools.test",
     "run-strings.test",
     "run-bytes.test",
@@ -56,17 +61,22 @@ files = [
     "run-classes.test",
     "run-traits.test",
     "run-generators.test",
+    "run-generics.test",
     "run-multimodule.test",
     "run-bench.test",
     "run-mypy-sim.test",
     "run-dunders.test",
+    "run-dunders-special.test",
     "run-singledispatch.test",
     "run-attrs.test",
+    "run-python37.test",
+    "run-python38.test",
 ]
 
-files.append("run-python37.test")
-if sys.version_info >= (3, 8):
-    files.append("run-python38.test")
+if sys.version_info >= (3, 10):
+    files.append("run-match.test")
+if sys.version_info >= (3, 12):
+    files.append("run-python312.test")
 
 setup_format = """\
 from setuptools import setup
@@ -105,15 +115,13 @@ def run_setup(script_name: str, script_args: list[str]) -> bool:
         finally:
             sys.argv = save_argv
     except SystemExit as e:
-        # typeshed reports code as being an int but that is wrong
-        code = cast(Any, e).code
         # distutils converts KeyboardInterrupt into a SystemExit with
         # "interrupted" as the argument. Convert it back so that
         # pytest will exit instead of just failing the test.
-        if code == "interrupted":
+        if e.code == "interrupted":
             raise KeyboardInterrupt from e
 
-        return code == 0 or code is None
+        return e.code == 0 or e.code is None
 
     return True
 
@@ -136,12 +144,14 @@ class TestRun(MypycDataSuite):
     optional_out = True
     multi_file = False
     separate = False  # If True, using separate (incremental) compilation
+    strict_dunder_typing = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
         # by chdiring into tmp/
-        with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase), (
-            chdir_manager("tmp")
+        with (
+            use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase),
+            chdir_manager("tmp"),
         ):
             self.run_case_inner(testcase)
 
@@ -170,12 +180,10 @@ class TestRun(MypycDataSuite):
             # new by distutils, shift the mtime of all of the
             # generated artifacts back by a second.
             fudge_dir_mtimes(WORKDIR, -1)
-            # On Ubuntu, changing the mtime doesn't work reliably. As
+            # On some OS, changing the mtime doesn't work reliably. As
             # a workaround, sleep.
-            #
             # TODO: Figure out a better approach, since this slows down tests.
-            if sys.platform == "linux":
-                time.sleep(1.0)
+            time.sleep(1.0)
 
             step += 1
             with chdir_manager(".."):
@@ -194,7 +202,6 @@ class TestRun(MypycDataSuite):
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
-        options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -228,10 +235,14 @@ class TestRun(MypycDataSuite):
             else False
         )
 
-        groups = construct_groups(sources, separate, len(module_names) > 1)
+        groups = construct_groups(sources, separate, len(module_names) > 1, None)
 
         try:
-            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
+            compiler_options = CompilerOptions(
+                multi_file=self.multi_file,
+                separate=self.separate,
+                strict_dunder_typing=self.strict_dunder_typing,
+            )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
@@ -239,8 +250,8 @@ class TestRun(MypycDataSuite):
                 groups=groups,
                 alt_lib_path=".",
             )
-            errors = Errors()
-            ir, cfiles = emitmodule.compile_modules_to_c(
+            errors = Errors(options)
+            ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
             if errors.num_errors:
@@ -252,7 +263,7 @@ class TestRun(MypycDataSuite):
             assert False, "Compile error"
 
         # Check that serialization works on this IR. (Only on the first
-        # step because the the returned ir only includes updated code.)
+        # step because the returned ir only includes updated code.)
         if incremental_step == 1:
             check_serialization_roundtrip(ir)
 
@@ -271,6 +282,7 @@ class TestRun(MypycDataSuite):
         if not run_setup(setup_file, ["build_ext", "--inplace"]):
             if testcase.config.getoption("--mypyc-showc"):
                 show_c(cfiles)
+            copy_output_files(mypyc_output_dir)
             assert False, "Compilation failed"
 
         # Assert that an output file got created
@@ -282,9 +294,7 @@ class TestRun(MypycDataSuite):
             # No driver.py provided by test case. Use the default one
             # (mypyc/test-data/driver/driver.py) that calls each
             # function named test_*.
-            default_driver = os.path.join(
-                os.path.dirname(__file__), "..", "test-data", "driver", "driver.py"
-            )
+            default_driver = os.path.join(test_data_prefix, "driver", "driver.py")
             shutil.copy(default_driver, driver_path)
         env = os.environ.copy()
         env["MYPYC_RUN_BENCH"] = "1" if bench else "0"
@@ -309,14 +319,34 @@ class TestRun(MypycDataSuite):
             stderr=subprocess.STDOUT,
             env=env,
         )
+        if sys.version_info >= (3, 12):
+            # TODO: testDecorators1 hangs on 3.12, remove this once fixed
+            proc.wait(timeout=30)
         output = proc.communicate()[0].decode("utf8")
+        output = output.replace(f'  File "{os.getcwd()}{os.sep}', '  File "')
         outlines = output.splitlines()
 
         if testcase.config.getoption("--mypyc-showc"):
             show_c(cfiles)
         if proc.returncode != 0:
             print()
-            print("*** Exit status: %d" % proc.returncode)
+            signal = proc.returncode == -11
+            extra = ""
+            if signal:
+                extra = " (likely segmentation fault)"
+            print(f"*** Exit status: {proc.returncode}{extra}")
+            if signal and not sys.platform.startswith("win"):
+                print()
+                if sys.platform == "darwin":
+                    debugger = "lldb"
+                else:
+                    debugger = "gdb"
+                print(
+                    f'hint: Use "pytest -n0 -s --mypyc-debug={debugger} -k <name-substring>" to run test in debugger'
+                )
+                print("hint: You may need to build a debug version of Python first and use it")
+                print('hint: See also "Debugging Segfaults" in mypyc/doc/dev-intro.md')
+            copy_output_files(mypyc_output_dir)
 
         # Verify output.
         if bench:
@@ -397,6 +427,14 @@ class TestRunSeparate(TestRun):
     files = ["run-multimodule.test", "run-mypy-sim.test"]
 
 
+class TestRunStrictDunderTyping(TestRun):
+    """Run the tests with strict dunder typing."""
+
+    strict_dunder_typing = True
+    test_name_suffix = "_dunder_typing"
+    files = ["run-dunders.test", "run-floats.test"]
+
+
 def fix_native_line_number(message: str, fnam: str, delta: int) -> str:
     """Update code locations in test case output to point to the .test file.
 
@@ -422,3 +460,17 @@ def fix_native_line_number(message: str, fnam: str, delta: int) -> str:
         message,
     )
     return message
+
+
+def copy_output_files(target_dir: str) -> None:
+    try:
+        os.mkdir(target_dir)
+    except OSError:
+        # Only copy data for the first failure, to avoid excessive output in case
+        # many tests fail
+        return
+
+    for fnam in glob.glob("build/*.[ch]"):
+        shutil.copy(fnam, target_dir)
+
+    sys.stderr.write(f"\nGenerated files: {target_dir} (for first failure only)\n\n")

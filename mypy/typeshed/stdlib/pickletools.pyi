@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Callable, Iterator, MutableMapping
 from typing import IO, Any
 from typing_extensions import TypeAlias
@@ -40,7 +41,13 @@ def read_uint8(f: IO[bytes]) -> int: ...
 
 uint8: ArgumentDescriptor
 
-def read_stringnl(f: IO[bytes], decode: bool = ..., stripquotes: bool = ...) -> bytes | str: ...
+if sys.version_info >= (3, 12):
+    def read_stringnl(
+        f: IO[bytes], decode: bool = True, stripquotes: bool = True, *, encoding: str = "latin-1"
+    ) -> bytes | str: ...
+
+else:
+    def read_stringnl(f: IO[bytes], decode: bool = True, stripquotes: bool = True) -> bytes | str: ...
 
 stringnl: ArgumentDescriptor
 
@@ -160,8 +167,8 @@ def genops(pickle: bytes | bytearray | IO[bytes]) -> Iterator[tuple[OpcodeInfo, 
 def optimize(p: bytes | bytearray | IO[bytes]) -> bytes: ...
 def dis(
     pickle: bytes | bytearray | IO[bytes],
-    out: IO[str] | None = ...,
-    memo: MutableMapping[int, Any] | None = ...,
-    indentlevel: int = ...,
-    annotate: int = ...,
+    out: IO[str] | None = None,
+    memo: MutableMapping[int, Any] | None = None,
+    indentlevel: int = 4,
+    annotate: int = 0,
 ) -> None: ...

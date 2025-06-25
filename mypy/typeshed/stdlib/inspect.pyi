@@ -2,7 +2,7 @@ import dis
 import enum
 import sys
 import types
-from _typeshed import Self
+from _typeshed import AnnotationForm, StrPath
 from collections import OrderedDict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Mapping, Sequence, Set as AbstractSet
 from types import (
@@ -25,8 +25,11 @@ from types import (
     TracebackType,
     WrapperDescriptorType,
 )
-from typing import Any, ClassVar, NamedTuple, Protocol, TypeVar, Union, overload
-from typing_extensions import Literal, ParamSpec, TypeAlias, TypeGuard
+from typing import Any, ClassVar, Final, Literal, NamedTuple, Protocol, TypeVar, overload
+from typing_extensions import ParamSpec, Self, TypeAlias, TypeGuard, TypeIs
+
+if sys.version_info >= (3, 14):
+    from annotationlib import Format
 
 if sys.version_info >= (3, 11):
     __all__ = [
@@ -128,10 +131,25 @@ if sys.version_info >= (3, 11):
         "walktree",
     ]
 
+    if sys.version_info >= (3, 12):
+        __all__ += [
+            "markcoroutinefunction",
+            "AGEN_CLOSED",
+            "AGEN_CREATED",
+            "AGEN_RUNNING",
+            "AGEN_SUSPENDED",
+            "getasyncgenlocals",
+            "getasyncgenstate",
+            "BufferFlags",
+        ]
+    if sys.version_info >= (3, 14):
+        __all__ += ["CO_HAS_DOCSTRING", "CO_METHOD", "ispackage"]
+
 _P = ParamSpec("_P")
 _T = TypeVar("_T")
-_T_cont = TypeVar("_T_cont", contravariant=True)
-_V_cont = TypeVar("_V_cont", contravariant=True)
+_F = TypeVar("_F", bound=Callable[..., Any])
+_T_contra = TypeVar("_T_contra", contravariant=True)
+_V_contra = TypeVar("_V_contra", contravariant=True)
 
 #
 # Types and members
@@ -148,104 +166,99 @@ class BlockFinder:
     last: int
     def tokeneater(self, type: int, token: str, srowcol: tuple[int, int], erowcol: tuple[int, int], line: str) -> None: ...
 
-CO_OPTIMIZED: Literal[1]
-CO_NEWLOCALS: Literal[2]
-CO_VARARGS: Literal[4]
-CO_VARKEYWORDS: Literal[8]
-CO_NESTED: Literal[16]
-CO_GENERATOR: Literal[32]
-CO_NOFREE: Literal[64]
-CO_COROUTINE: Literal[128]
-CO_ITERABLE_COROUTINE: Literal[256]
-CO_ASYNC_GENERATOR: Literal[512]
-TPFLAGS_IS_ABSTRACT: Literal[1048576]
+CO_OPTIMIZED: Final = 1
+CO_NEWLOCALS: Final = 2
+CO_VARARGS: Final = 4
+CO_VARKEYWORDS: Final = 8
+CO_NESTED: Final = 16
+CO_GENERATOR: Final = 32
+CO_NOFREE: Final = 64
+CO_COROUTINE: Final = 128
+CO_ITERABLE_COROUTINE: Final = 256
+CO_ASYNC_GENERATOR: Final = 512
+TPFLAGS_IS_ABSTRACT: Final = 1048576
+if sys.version_info >= (3, 14):
+    CO_HAS_DOCSTRING: Final = 67108864
+    CO_METHOD: Final = 134217728
 
 modulesbyfile: dict[str, Any]
 
+_GetMembersPredicateTypeGuard: TypeAlias = Callable[[Any], TypeGuard[_T]]
+_GetMembersPredicateTypeIs: TypeAlias = Callable[[Any], TypeIs[_T]]
 _GetMembersPredicate: TypeAlias = Callable[[Any], bool]
-_GetMembersReturn: TypeAlias = list[tuple[str, Any]]
+_GetMembersReturn: TypeAlias = list[tuple[str, _T]]
 
-def getmembers(object: object, predicate: _GetMembersPredicate | None = ...) -> _GetMembersReturn: ...
-
-if sys.version_info >= (3, 11):
-    def getmembers_static(object: object, predicate: _GetMembersPredicate | None = ...) -> _GetMembersReturn: ...
-
-def getmodulename(path: str) -> str | None: ...
-def ismodule(object: object) -> TypeGuard[ModuleType]: ...
-def isclass(object: object) -> TypeGuard[type[Any]]: ...
-def ismethod(object: object) -> TypeGuard[MethodType]: ...
-def isfunction(object: object) -> TypeGuard[FunctionType]: ...
-
-if sys.version_info >= (3, 8):
-    @overload
-    def isgeneratorfunction(obj: Callable[..., Generator[Any, Any, Any]]) -> bool: ...
-    @overload
-    def isgeneratorfunction(obj: Callable[_P, Any]) -> TypeGuard[Callable[_P, GeneratorType[Any, Any, Any]]]: ...
-    @overload
-    def isgeneratorfunction(obj: object) -> TypeGuard[Callable[..., GeneratorType[Any, Any, Any]]]: ...
-    @overload
-    def iscoroutinefunction(obj: Callable[..., Coroutine[Any, Any, Any]]) -> bool: ...
-    @overload
-    def iscoroutinefunction(obj: Callable[_P, Awaitable[_T]]) -> TypeGuard[Callable[_P, CoroutineType[Any, Any, _T]]]: ...
-    @overload
-    def iscoroutinefunction(obj: Callable[_P, object]) -> TypeGuard[Callable[_P, CoroutineType[Any, Any, Any]]]: ...
-    @overload
-    def iscoroutinefunction(obj: object) -> TypeGuard[Callable[..., CoroutineType[Any, Any, Any]]]: ...
-
-else:
-    @overload
-    def isgeneratorfunction(object: Callable[..., Generator[Any, Any, Any]]) -> bool: ...
-    @overload
-    def isgeneratorfunction(object: Callable[_P, Any]) -> TypeGuard[Callable[_P, GeneratorType[Any, Any, Any]]]: ...
-    @overload
-    def isgeneratorfunction(object: object) -> TypeGuard[Callable[..., GeneratorType[Any, Any, Any]]]: ...
-    @overload
-    def iscoroutinefunction(object: Callable[..., Coroutine[Any, Any, Any]]) -> bool: ...
-    @overload
-    def iscoroutinefunction(object: Callable[_P, Awaitable[_T]]) -> TypeGuard[Callable[_P, CoroutineType[Any, Any, _T]]]: ...
-    @overload
-    def iscoroutinefunction(object: Callable[_P, Any]) -> TypeGuard[Callable[_P, CoroutineType[Any, Any, Any]]]: ...
-    @overload
-    def iscoroutinefunction(object: object) -> TypeGuard[Callable[..., CoroutineType[Any, Any, Any]]]: ...
-
-def isgenerator(object: object) -> TypeGuard[GeneratorType[Any, Any, Any]]: ...
-def iscoroutine(object: object) -> TypeGuard[CoroutineType[Any, Any, Any]]: ...
-def isawaitable(object: object) -> TypeGuard[Awaitable[Any]]: ...
-
-if sys.version_info >= (3, 8):
-    @overload
-    def isasyncgenfunction(obj: Callable[..., AsyncGenerator[Any, Any]]) -> bool: ...
-    @overload
-    def isasyncgenfunction(obj: Callable[_P, Any]) -> TypeGuard[Callable[_P, AsyncGeneratorType[Any, Any]]]: ...
-    @overload
-    def isasyncgenfunction(obj: object) -> TypeGuard[Callable[..., AsyncGeneratorType[Any, Any]]]: ...
-
-else:
-    @overload
-    def isasyncgenfunction(object: Callable[..., AsyncGenerator[Any, Any]]) -> bool: ...
-    @overload
-    def isasyncgenfunction(object: Callable[_P, Any]) -> TypeGuard[Callable[_P, AsyncGeneratorType[Any, Any]]]: ...
-    @overload
-    def isasyncgenfunction(object: object) -> TypeGuard[Callable[..., AsyncGeneratorType[Any, Any]]]: ...
-
-class _SupportsSet(Protocol[_T_cont, _V_cont]):
-    def __set__(self, __instance: _T_cont, __value: _V_cont) -> None: ...
-
-class _SupportsDelete(Protocol[_T_cont]):
-    def __delete__(self, __instance: _T_cont) -> None: ...
-
-def isasyncgen(object: object) -> TypeGuard[AsyncGeneratorType[Any, Any]]: ...
-def istraceback(object: object) -> TypeGuard[TracebackType]: ...
-def isframe(object: object) -> TypeGuard[FrameType]: ...
-def iscode(object: object) -> TypeGuard[CodeType]: ...
-def isbuiltin(object: object) -> TypeGuard[BuiltinFunctionType]: ...
+@overload
+def getmembers(object: object, predicate: _GetMembersPredicateTypeGuard[_T]) -> _GetMembersReturn[_T]: ...
+@overload
+def getmembers(object: object, predicate: _GetMembersPredicateTypeIs[_T]) -> _GetMembersReturn[_T]: ...
+@overload
+def getmembers(object: object, predicate: _GetMembersPredicate | None = None) -> _GetMembersReturn[Any]: ...
 
 if sys.version_info >= (3, 11):
-    def ismethodwrapper(object: object) -> TypeGuard[MethodWrapperType]: ...
+    @overload
+    def getmembers_static(object: object, predicate: _GetMembersPredicateTypeGuard[_T]) -> _GetMembersReturn[_T]: ...
+    @overload
+    def getmembers_static(object: object, predicate: _GetMembersPredicateTypeIs[_T]) -> _GetMembersReturn[_T]: ...
+    @overload
+    def getmembers_static(object: object, predicate: _GetMembersPredicate | None = None) -> _GetMembersReturn[Any]: ...
+
+def getmodulename(path: StrPath) -> str | None: ...
+def ismodule(object: object) -> TypeIs[ModuleType]: ...
+def isclass(object: object) -> TypeIs[type[Any]]: ...
+def ismethod(object: object) -> TypeIs[MethodType]: ...
+
+if sys.version_info >= (3, 14):
+    # Not TypeIs because it does not return True for all modules
+    def ispackage(object: object) -> TypeGuard[ModuleType]: ...
+
+def isfunction(object: object) -> TypeIs[FunctionType]: ...
+
+if sys.version_info >= (3, 12):
+    def markcoroutinefunction(func: _F) -> _F: ...
+
+@overload
+def isgeneratorfunction(obj: Callable[..., Generator[Any, Any, Any]]) -> bool: ...
+@overload
+def isgeneratorfunction(obj: Callable[_P, Any]) -> TypeGuard[Callable[_P, GeneratorType[Any, Any, Any]]]: ...
+@overload
+def isgeneratorfunction(obj: object) -> TypeGuard[Callable[..., GeneratorType[Any, Any, Any]]]: ...
+@overload
+def iscoroutinefunction(obj: Callable[..., Coroutine[Any, Any, Any]]) -> bool: ...
+@overload
+def iscoroutinefunction(obj: Callable[_P, Awaitable[_T]]) -> TypeGuard[Callable[_P, CoroutineType[Any, Any, _T]]]: ...
+@overload
+def iscoroutinefunction(obj: Callable[_P, object]) -> TypeGuard[Callable[_P, CoroutineType[Any, Any, Any]]]: ...
+@overload
+def iscoroutinefunction(obj: object) -> TypeGuard[Callable[..., CoroutineType[Any, Any, Any]]]: ...
+def isgenerator(object: object) -> TypeIs[GeneratorType[Any, Any, Any]]: ...
+def iscoroutine(object: object) -> TypeIs[CoroutineType[Any, Any, Any]]: ...
+def isawaitable(object: object) -> TypeIs[Awaitable[Any]]: ...
+@overload
+def isasyncgenfunction(obj: Callable[..., AsyncGenerator[Any, Any]]) -> bool: ...
+@overload
+def isasyncgenfunction(obj: Callable[_P, Any]) -> TypeGuard[Callable[_P, AsyncGeneratorType[Any, Any]]]: ...
+@overload
+def isasyncgenfunction(obj: object) -> TypeGuard[Callable[..., AsyncGeneratorType[Any, Any]]]: ...
+
+class _SupportsSet(Protocol[_T_contra, _V_contra]):
+    def __set__(self, instance: _T_contra, value: _V_contra, /) -> None: ...
+
+class _SupportsDelete(Protocol[_T_contra]):
+    def __delete__(self, instance: _T_contra, /) -> None: ...
+
+def isasyncgen(object: object) -> TypeIs[AsyncGeneratorType[Any, Any]]: ...
+def istraceback(object: object) -> TypeIs[TracebackType]: ...
+def isframe(object: object) -> TypeIs[FrameType]: ...
+def iscode(object: object) -> TypeIs[CodeType]: ...
+def isbuiltin(object: object) -> TypeIs[BuiltinFunctionType]: ...
+
+if sys.version_info >= (3, 11):
+    def ismethodwrapper(object: object) -> TypeIs[MethodWrapperType]: ...
 
 def isroutine(
     object: object,
-) -> TypeGuard[
+) -> TypeIs[
     FunctionType
     | LambdaType
     | MethodType
@@ -255,26 +268,34 @@ def isroutine(
     | MethodDescriptorType
     | ClassMethodDescriptorType
 ]: ...
-def ismethoddescriptor(object: object) -> TypeGuard[MethodDescriptorType]: ...
-def ismemberdescriptor(object: object) -> TypeGuard[MemberDescriptorType]: ...
+def ismethoddescriptor(object: object) -> TypeIs[MethodDescriptorType]: ...
+def ismemberdescriptor(object: object) -> TypeIs[MemberDescriptorType]: ...
 def isabstract(object: object) -> bool: ...
-def isgetsetdescriptor(object: object) -> TypeGuard[GetSetDescriptorType]: ...
-def isdatadescriptor(object: object) -> TypeGuard[_SupportsSet[Any, Any] | _SupportsDelete[Any]]: ...
+def isgetsetdescriptor(object: object) -> TypeIs[GetSetDescriptorType]: ...
+def isdatadescriptor(object: object) -> TypeIs[_SupportsSet[Any, Any] | _SupportsDelete[Any]]: ...
 
 #
 # Retrieving source code
 #
-_SourceObjectType: TypeAlias = Union[
-    ModuleType, type[Any], MethodType, FunctionType, TracebackType, FrameType, CodeType, Callable[..., Any]
-]
+_SourceObjectType: TypeAlias = (
+    ModuleType | type[Any] | MethodType | FunctionType | TracebackType | FrameType | CodeType | Callable[..., Any]
+)
 
 def findsource(object: _SourceObjectType) -> tuple[list[str], int]: ...
-def getabsfile(object: _SourceObjectType, _filename: str | None = ...) -> str: ...
+def getabsfile(object: _SourceObjectType, _filename: str | None = None) -> str: ...
+
+# Special-case the two most common input types here
+# to avoid the annoyingly vague `Sequence[str]` return type
+@overload
+def getblock(lines: list[str]) -> list[str]: ...
+@overload
+def getblock(lines: tuple[str, ...]) -> tuple[str, ...]: ...
+@overload
 def getblock(lines: Sequence[str]) -> Sequence[str]: ...
 def getdoc(object: object) -> str | None: ...
 def getcomments(object: object) -> str | None: ...
 def getfile(object: _SourceObjectType) -> str: ...
-def getmodule(object: object, _filename: str | None = ...) -> ModuleType | None: ...
+def getmodule(object: object, _filename: str | None = None) -> ModuleType | None: ...
 def getsourcefile(object: _SourceObjectType) -> str | None: ...
 def getsourcelines(object: _SourceObjectType) -> tuple[list[str], int]: ...
 def getsource(object: _SourceObjectType) -> str: ...
@@ -286,25 +307,36 @@ _IntrospectableCallable: TypeAlias = Callable[..., Any]
 #
 # Introspecting callables with the Signature object
 #
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 14):
     def signature(
         obj: _IntrospectableCallable,
         *,
-        follow_wrapped: bool = ...,
-        globals: Mapping[str, Any] | None = ...,
-        locals: Mapping[str, Any] | None = ...,
-        eval_str: bool = ...,
+        follow_wrapped: bool = True,
+        globals: Mapping[str, Any] | None = None,
+        locals: Mapping[str, Any] | None = None,
+        eval_str: bool = False,
+        annotation_format: Format = Format.VALUE,  # noqa: Y011
+    ) -> Signature: ...
+
+elif sys.version_info >= (3, 10):
+    def signature(
+        obj: _IntrospectableCallable,
+        *,
+        follow_wrapped: bool = True,
+        globals: Mapping[str, Any] | None = None,
+        locals: Mapping[str, Any] | None = None,
+        eval_str: bool = False,
     ) -> Signature: ...
 
 else:
-    def signature(obj: _IntrospectableCallable, *, follow_wrapped: bool = ...) -> Signature: ...
+    def signature(obj: _IntrospectableCallable, *, follow_wrapped: bool = True) -> Signature: ...
 
 class _void: ...
 class _empty: ...
 
 class Signature:
     def __init__(
-        self, parameters: Sequence[Parameter] | None = ..., *, return_annotation: Any = ..., __validate_parameters__: bool = ...
+        self, parameters: Sequence[Parameter] | None = None, *, return_annotation: Any = ..., __validate_parameters__: bool = True
     ) -> None: ...
     empty = _empty
     @property
@@ -313,46 +345,74 @@ class Signature:
     def return_annotation(self) -> Any: ...
     def bind(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
     def bind_partial(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
-    def replace(
-        self: Self, *, parameters: Sequence[Parameter] | type[_void] | None = ..., return_annotation: Any = ...
-    ) -> Self: ...
-    if sys.version_info >= (3, 10):
+    def replace(self, *, parameters: Sequence[Parameter] | type[_void] | None = ..., return_annotation: Any = ...) -> Self: ...
+    __replace__ = replace
+    if sys.version_info >= (3, 14):
         @classmethod
         def from_callable(
-            cls: type[Self],
+            cls,
             obj: _IntrospectableCallable,
             *,
-            follow_wrapped: bool = ...,
-            globals: Mapping[str, Any] | None = ...,
-            locals: Mapping[str, Any] | None = ...,
-            eval_str: bool = ...,
+            follow_wrapped: bool = True,
+            globals: Mapping[str, Any] | None = None,
+            locals: Mapping[str, Any] | None = None,
+            eval_str: bool = False,
+            annotation_format: Format = Format.VALUE,  # noqa: Y011
+        ) -> Self: ...
+    elif sys.version_info >= (3, 10):
+        @classmethod
+        def from_callable(
+            cls,
+            obj: _IntrospectableCallable,
+            *,
+            follow_wrapped: bool = True,
+            globals: Mapping[str, Any] | None = None,
+            locals: Mapping[str, Any] | None = None,
+            eval_str: bool = False,
         ) -> Self: ...
     else:
         @classmethod
-        def from_callable(cls: type[Self], obj: _IntrospectableCallable, *, follow_wrapped: bool = ...) -> Self: ...
+        def from_callable(cls, obj: _IntrospectableCallable, *, follow_wrapped: bool = True) -> Self: ...
+    if sys.version_info >= (3, 14):
+        def format(self, *, max_width: int | None = None, quote_annotation_strings: bool = True) -> str: ...
+    elif sys.version_info >= (3, 13):
+        def format(self, *, max_width: int | None = None) -> str: ...
 
     def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 14):
+    from annotationlib import get_annotations as get_annotations
+elif sys.version_info >= (3, 10):
     def get_annotations(
-        obj: Callable[..., object] | type[Any] | ModuleType,
+        obj: Callable[..., object] | type[object] | ModuleType,  # any callable, class, or module
         *,
-        globals: Mapping[str, Any] | None = ...,
-        locals: Mapping[str, Any] | None = ...,
-        eval_str: bool = ...,
-    ) -> dict[str, Any]: ...
+        globals: Mapping[str, Any] | None = None,  # value types depend on the key
+        locals: Mapping[str, Any] | None = None,  # value types depend on the key
+        eval_str: bool = False,
+    ) -> dict[str, AnnotationForm]: ...  # values are type expressions
 
 # The name is the same as the enum's name in CPython
 class _ParameterKind(enum.IntEnum):
-    POSITIONAL_ONLY: int
-    POSITIONAL_OR_KEYWORD: int
-    VAR_POSITIONAL: int
-    KEYWORD_ONLY: int
-    VAR_KEYWORD: int
+    POSITIONAL_ONLY = 0
+    POSITIONAL_OR_KEYWORD = 1
+    VAR_POSITIONAL = 2
+    KEYWORD_ONLY = 3
+    VAR_KEYWORD = 4
 
-    if sys.version_info >= (3, 8):
-        @property
-        def description(self) -> str: ...
+    @property
+    def description(self) -> str: ...
+
+if sys.version_info >= (3, 12):
+    AGEN_CREATED: Final = "AGEN_CREATED"
+    AGEN_RUNNING: Final = "AGEN_RUNNING"
+    AGEN_SUSPENDED: Final = "AGEN_SUSPENDED"
+    AGEN_CLOSED: Final = "AGEN_CLOSED"
+
+    def getasyncgenstate(
+        agen: AsyncGenerator[Any, Any],
+    ) -> Literal["AGEN_CREATED", "AGEN_RUNNING", "AGEN_SUSPENDED", "AGEN_CLOSED"]: ...
+    def getasyncgenlocals(agen: AsyncGeneratorType[Any, Any]) -> dict[str, Any]: ...
 
 class Parameter:
     def __init__(self, name: str, kind: _ParameterKind, *, default: Any = ..., annotation: Any = ...) -> None: ...
@@ -372,14 +432,18 @@ class Parameter:
     @property
     def annotation(self) -> Any: ...
     def replace(
-        self: Self,
+        self,
         *,
         name: str | type[_void] = ...,
         kind: _ParameterKind | type[_void] = ...,
         default: Any = ...,
         annotation: Any = ...,
     ) -> Self: ...
+    if sys.version_info >= (3, 13):
+        __replace__ = replace
+
     def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 class BoundArguments:
     arguments: OrderedDict[str, Any]
@@ -392,16 +456,16 @@ class BoundArguments:
     def __init__(self, signature: Signature, arguments: OrderedDict[str, Any]) -> None: ...
     def apply_defaults(self) -> None: ...
     def __eq__(self, other: object) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
 
 #
 # Classes and functions
 #
 
-# TODO: The actual return type should be list[_ClassTreeItem] but mypy doesn't
-# seem to be supporting this at the moment:
-# _ClassTreeItem = list[_ClassTreeItem] | Tuple[type, Tuple[type, ...]]
-def getclasstree(classes: list[type], unique: bool = ...) -> list[Any]: ...
-def walktree(classes: list[type], children: Mapping[type[Any], list[type]], parent: type[Any] | None) -> list[Any]: ...
+_ClassTreeItem: TypeAlias = list[tuple[type, ...]] | list[_ClassTreeItem]
+
+def getclasstree(classes: list[type], unique: bool = False) -> _ClassTreeItem: ...
+def walktree(classes: list[type], children: Mapping[type[Any], list[type]], parent: type[Any] | None) -> _ClassTreeItem: ...
 
 class Arguments(NamedTuple):
     args: list[str]
@@ -416,6 +480,7 @@ if sys.version_info < (3, 11):
         varargs: str | None
         keywords: str | None
         defaults: tuple[Any, ...]
+
     def getargspec(func: object) -> ArgSpec: ...
 
 class FullArgSpec(NamedTuple):
@@ -436,18 +501,24 @@ class ArgInfo(NamedTuple):
     locals: dict[str, Any]
 
 def getargvalues(frame: FrameType) -> ArgInfo: ...
-def formatannotation(annotation: object, base_module: str | None = ...) -> str: ...
+
+if sys.version_info >= (3, 14):
+    def formatannotation(annotation: object, base_module: str | None = None, *, quote_annotation_strings: bool = True) -> str: ...
+
+else:
+    def formatannotation(annotation: object, base_module: str | None = None) -> str: ...
+
 def formatannotationrelativeto(object: object) -> Callable[[object], str]: ...
 
 if sys.version_info < (3, 11):
     def formatargspec(
         args: list[str],
-        varargs: str | None = ...,
-        varkw: str | None = ...,
-        defaults: tuple[Any, ...] | None = ...,
-        kwonlyargs: Sequence[str] | None = ...,
-        kwonlydefaults: Mapping[str, Any] | None = ...,
-        annotations: Mapping[str, Any] = ...,
+        varargs: str | None = None,
+        varkw: str | None = None,
+        defaults: tuple[Any, ...] | None = None,
+        kwonlyargs: Sequence[str] | None = (),
+        kwonlydefaults: Mapping[str, Any] | None = {},
+        annotations: Mapping[str, Any] = {},
         formatarg: Callable[[str], str] = ...,
         formatvarargs: Callable[[str], str] = ...,
         formatvarkw: Callable[[str], str] = ...,
@@ -467,7 +538,7 @@ def formatargvalues(
     formatvalue: Callable[[Any], str] | None = ...,
 ) -> str: ...
 def getmro(cls: type) -> tuple[type, ...]: ...
-def getcallargs(__func: Callable[_P, Any], *args: _P.args, **kwds: _P.kwargs) -> dict[str, Any]: ...
+def getcallargs(func: Callable[_P, Any], /, *args: _P.args, **kwds: _P.kwargs) -> dict[str, Any]: ...
 
 class ClosureVars(NamedTuple):
     nonlocals: Mapping[str, Any]
@@ -476,7 +547,7 @@ class ClosureVars(NamedTuple):
     unbound: AbstractSet[str]
 
 def getclosurevars(func: _IntrospectableCallable) -> ClosureVars: ...
-def unwrap(func: Callable[..., Any], *, stop: Callable[[Callable[..., Any]], Any] | None = ...) -> Any: ...
+def unwrap(func: Callable[..., Any], *, stop: Callable[[Callable[..., Any]], Any] | None = None) -> Any: ...
 
 #
 # The interpreter stack
@@ -493,14 +564,14 @@ if sys.version_info >= (3, 11):
     class Traceback(_Traceback):
         positions: dis.Positions | None
         def __new__(
-            cls: type[Self],
+            cls,
             filename: str,
             lineno: int,
             function: str,
             code_context: list[str] | None,
             index: int | None,
             *,
-            positions: dis.Positions | None = ...,
+            positions: dis.Positions | None = None,
         ) -> Self: ...
 
     class _FrameInfo(NamedTuple):
@@ -514,7 +585,7 @@ if sys.version_info >= (3, 11):
     class FrameInfo(_FrameInfo):
         positions: dis.Positions | None
         def __new__(
-            cls: type[Self],
+            cls,
             frame: FrameType,
             filename: str,
             lineno: int,
@@ -522,7 +593,7 @@ if sys.version_info >= (3, 11):
             code_context: list[str] | None,
             index: int | None,
             *,
-            positions: dis.Positions | None = ...,
+            positions: dis.Positions | None = None,
         ) -> Self: ...
 
 else:
@@ -541,13 +612,13 @@ else:
         code_context: list[str] | None
         index: int | None  # type: ignore[assignment]
 
-def getframeinfo(frame: FrameType | TracebackType, context: int = ...) -> Traceback: ...
-def getouterframes(frame: Any, context: int = ...) -> list[FrameInfo]: ...
-def getinnerframes(tb: TracebackType, context: int = ...) -> list[FrameInfo]: ...
+def getframeinfo(frame: FrameType | TracebackType, context: int = 1) -> Traceback: ...
+def getouterframes(frame: Any, context: int = 1) -> list[FrameInfo]: ...
+def getinnerframes(tb: TracebackType, context: int = 1) -> list[FrameInfo]: ...
 def getlineno(frame: FrameType) -> int: ...
 def currentframe() -> FrameType | None: ...
-def stack(context: int = ...) -> list[FrameInfo]: ...
-def trace(context: int = ...) -> list[FrameInfo]: ...
+def stack(context: int = 1) -> list[FrameInfo]: ...
+def trace(context: int = 1) -> list[FrameInfo]: ...
 
 #
 # Fetching attributes statically
@@ -559,22 +630,22 @@ def getattr_static(obj: object, attr: str, default: Any | None = ...) -> Any: ..
 # Current State of Generators and Coroutines
 #
 
-GEN_CREATED: Literal["GEN_CREATED"]
-GEN_RUNNING: Literal["GEN_RUNNING"]
-GEN_SUSPENDED: Literal["GEN_SUSPENDED"]
-GEN_CLOSED: Literal["GEN_CLOSED"]
+GEN_CREATED: Final = "GEN_CREATED"
+GEN_RUNNING: Final = "GEN_RUNNING"
+GEN_SUSPENDED: Final = "GEN_SUSPENDED"
+GEN_CLOSED: Final = "GEN_CLOSED"
 
 def getgeneratorstate(
-    generator: Generator[Any, Any, Any]
+    generator: Generator[Any, Any, Any],
 ) -> Literal["GEN_CREATED", "GEN_RUNNING", "GEN_SUSPENDED", "GEN_CLOSED"]: ...
 
-CORO_CREATED: Literal["CORO_CREATED"]
-CORO_RUNNING: Literal["CORO_RUNNING"]
-CORO_SUSPENDED: Literal["CORO_SUSPENDED"]
-CORO_CLOSED: Literal["CORO_CLOSED"]
+CORO_CREATED: Final = "CORO_CREATED"
+CORO_RUNNING: Final = "CORO_RUNNING"
+CORO_SUSPENDED: Final = "CORO_SUSPENDED"
+CORO_CLOSED: Final = "CORO_CLOSED"
 
 def getcoroutinestate(
-    coroutine: Coroutine[Any, Any, Any]
+    coroutine: Coroutine[Any, Any, Any],
 ) -> Literal["CORO_CREATED", "CORO_RUNNING", "CORO_SUSPENDED", "CORO_CLOSED"]: ...
 def getgeneratorlocals(generator: Generator[Any, Any, Any]) -> dict[str, Any]: ...
 def getcoroutinelocals(coroutine: Coroutine[Any, Any, Any]) -> dict[str, Any]: ...
@@ -591,5 +662,26 @@ class Attribute(NamedTuple):
 
 def classify_class_attrs(cls: type) -> list[Attribute]: ...
 
-if sys.version_info >= (3, 9):
-    class ClassFoundException(Exception): ...
+class ClassFoundException(Exception): ...
+
+if sys.version_info >= (3, 12):
+    class BufferFlags(enum.IntFlag):
+        SIMPLE = 0
+        WRITABLE = 1
+        FORMAT = 4
+        ND = 8
+        STRIDES = 24
+        C_CONTIGUOUS = 56
+        F_CONTIGUOUS = 88
+        ANY_CONTIGUOUS = 152
+        INDIRECT = 280
+        CONTIG = 9
+        CONTIG_RO = 8
+        STRIDED = 25
+        STRIDED_RO = 24
+        RECORDS = 29
+        RECORDS_RO = 28
+        FULL = 285
+        FULL_RO = 284
+        READ = 256
+        WRITE = 512

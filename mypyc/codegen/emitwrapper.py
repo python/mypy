@@ -12,7 +12,7 @@ or methods in a single compilation unit.
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
@@ -24,7 +24,6 @@ from mypyc.common import (
     NATIVE_PREFIX,
     PREFIX,
     bitmap_name,
-    use_vectorcall,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
@@ -32,7 +31,6 @@ from mypyc.ir.rtypes import (
     RInstance,
     RType,
     is_bool_rprimitive,
-    is_fixed_width_rtype,
     is_int_rprimitive,
     is_object_rprimitive,
     object_rprimitive,
@@ -63,6 +61,7 @@ def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
 
     See comment above for a summary of the arguments.
     """
+    assert not fn.internal
     return (
         "PyObject *{prefix}{name}("
         "PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)"
@@ -146,7 +145,7 @@ def generate_wrapper_function(
     real_args = list(fn.args)
     if fn.sig.num_bitmap_args:
         real_args = real_args[: -fn.sig.num_bitmap_args]
-    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
+    if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
 
@@ -174,13 +173,13 @@ def generate_wrapper_function(
         arg_ptrs += [f"&obj_{groups[ARG_STAR2][0].name}" if groups[ARG_STAR2] else "NULL"]
     arg_ptrs += [f"&obj_{arg.name}" for arg in reordered_args]
 
-    if fn.name == "__call__" and use_vectorcall(emitter.capi_version):
+    if fn.name == "__call__":
         nargs = "PyVectorcall_NARGS(nargs)"
     else:
         nargs = "nargs"
     parse_fn = "CPyArg_ParseStackAndKeywords"
     # Special case some common signatures
-    if len(real_args) == 0:
+    if not real_args:
         # No args
         parse_fn = "CPyArg_ParseStackAndKeywordsNoArgs"
     elif len(real_args) == 1 and len(groups[ARG_POS]) == 1:
@@ -239,7 +238,7 @@ def generate_legacy_wrapper_function(
     real_args = list(fn.args)
     if fn.sig.num_bitmap_args:
         real_args = real_args[: -fn.sig.num_bitmap_args]
-    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
+    if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
 
@@ -302,6 +301,32 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return gen.wrapper_name()
 
 
+def generate_ipow_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generate a wrapper for native __ipow__.
+
+    Since __ipow__ fills a ternary slot, but almost no one defines __ipow__ to take three
+    arguments, the wrapper needs to tweaked to force it to accept three arguments.
+    """
+    gen = WrapperGenerator(cl, emitter)
+    gen.set_target(fn)
+    assert len(fn.args) in (2, 3), "__ipow__ should only take 2 or 3 arguments"
+    gen.arg_names = ["self", "exp", "mod"]
+    gen.emit_header()
+    gen.emit_arg_processing()
+    handle_third_pow_argument(
+        fn,
+        emitter,
+        gen,
+        if_unsupported=[
+            'PyErr_SetString(PyExc_TypeError, "__ipow__ takes 2 positional arguments but 3 were given");',
+            "return NULL;",
+        ],
+    )
+    gen.emit_call()
+    gen.finish()
+    return gen.wrapper_name()
+
+
 def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for a native binary dunder method.
 
@@ -312,13 +337,16 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """
     gen = WrapperGenerator(cl, emitter)
     gen.set_target(fn)
-    gen.arg_names = ["left", "right"]
+    if fn.name in ("__pow__", "__rpow__"):
+        gen.arg_names = ["left", "right", "mod"]
+    else:
+        gen.arg_names = ["left", "right"]
     wrapper_name = gen.wrapper_name()
 
     gen.emit_header()
     if fn.name not in reverse_op_methods and fn.name in reverse_op_method_names:
         # There's only a reverse operator method.
-        generate_bin_op_reverse_only_wrapper(emitter, gen)
+        generate_bin_op_reverse_only_wrapper(fn, emitter, gen)
     else:
         rmethod = reverse_op_methods[fn.name]
         fn_rev = cl.get_method(rmethod)
@@ -335,6 +363,7 @@ def generate_bin_op_forward_only_wrapper(
     fn: FuncIR, emitter: Emitter, gen: WrapperGenerator
 ) -> None:
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
+    handle_third_pow_argument(fn, emitter, gen, if_unsupported=["goto typefail;"])
     gen.emit_call(not_implemented_handler="goto typefail;")
     gen.emit_error_handling()
     emitter.emit_label("typefail")
@@ -353,19 +382,16 @@ def generate_bin_op_forward_only_wrapper(
     #        if not isinstance(other, int):
     #            return NotImplemented
     #        ...
-    rmethod = reverse_op_methods[fn.name]
-    emitter.emit_line(f"_Py_IDENTIFIER({rmethod});")
-    emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
-            op_methods_to_symbols[fn.name], rmethod
-        )
-    )
+    generate_bin_op_reverse_dunder_call(fn, emitter, reverse_op_methods[fn.name])
     gen.finish()
 
 
-def generate_bin_op_reverse_only_wrapper(emitter: Emitter, gen: WrapperGenerator) -> None:
+def generate_bin_op_reverse_only_wrapper(
+    fn: FuncIR, emitter: Emitter, gen: WrapperGenerator
+) -> None:
     gen.arg_names = ["right", "left"]
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
+    handle_third_pow_argument(fn, emitter, gen, if_unsupported=["goto typefail;"])
     gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_label("typefail")
@@ -391,7 +417,14 @@ def generate_bin_op_both_wrappers(
         )
     )
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
-    gen.emit_call(not_implemented_handler="goto typefail;")
+    handle_third_pow_argument(fn, emitter, gen, if_unsupported=["goto typefail2;"])
+    # Ternary __rpow__ calls aren't a thing so immediately bail
+    # if ternary __pow__ returns NotImplemented.
+    if fn.name == "__pow__" and len(fn.args) == 3:
+        fwd_not_implemented_handler = "goto typefail2;"
+    else:
+        fwd_not_implemented_handler = "goto typefail;"
+    gen.emit_call(not_implemented_handler=fwd_not_implemented_handler)
     gen.emit_error_handling()
     emitter.emit_line("}")
     emitter.emit_label("typefail")
@@ -403,20 +436,57 @@ def generate_bin_op_both_wrappers(
     gen.set_target(fn_rev)
     gen.arg_names = ["right", "left"]
     gen.emit_arg_processing(error=GotoHandler("typefail2"), raise_exception=False)
+    handle_third_pow_argument(fn_rev, emitter, gen, if_unsupported=["goto typefail2;"])
     gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_line("} else {")
-    emitter.emit_line(f"_Py_IDENTIFIER({fn_rev.name});")
-    emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
-            op_methods_to_symbols[fn.name], fn_rev.name
-        )
-    )
+    generate_bin_op_reverse_dunder_call(fn, emitter, fn_rev.name)
     emitter.emit_line("}")
     emitter.emit_label("typefail2")
     emitter.emit_line("Py_INCREF(Py_NotImplemented);")
     emitter.emit_line("return Py_NotImplemented;")
     gen.finish()
+
+
+def generate_bin_op_reverse_dunder_call(fn: FuncIR, emitter: Emitter, rmethod: str) -> None:
+    if fn.name in ("__pow__", "__rpow__"):
+        # Ternary pow() will never call the reverse dunder.
+        emitter.emit_line("if (obj_mod == Py_None) {")
+    emitter.emit_line(f"_Py_IDENTIFIER({rmethod});")
+    emitter.emit_line(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
+            op_methods_to_symbols[fn.name], rmethod
+        )
+    )
+    if fn.name in ("__pow__", "__rpow__"):
+        emitter.emit_line("} else {")
+        emitter.emit_line("Py_INCREF(Py_NotImplemented);")
+        emitter.emit_line("return Py_NotImplemented;")
+        emitter.emit_line("}")
+
+
+def handle_third_pow_argument(
+    fn: FuncIR, emitter: Emitter, gen: WrapperGenerator, *, if_unsupported: list[str]
+) -> None:
+    if fn.name not in ("__pow__", "__rpow__", "__ipow__"):
+        return
+
+    if (fn.name in ("__pow__", "__ipow__") and len(fn.args) == 2) or fn.name == "__rpow__":
+        # If the power dunder only supports two arguments and the third
+        # argument (AKA mod) is set to a non-default value, simply bail.
+        #
+        # Importantly, this prevents any ternary __rpow__ calls from
+        # happening (as per the language specification).
+        emitter.emit_line("if (obj_mod != Py_None) {")
+        for line in if_unsupported:
+            emitter.emit_line(line)
+        emitter.emit_line("}")
+        # The slot wrapper will receive three arguments, but the call only
+        # supports two so make sure that the third argument isn't passed
+        # along. This is needed as two-argument __(i)pow__ is allowed and
+        # rather common.
+        if len(gen.arg_names) == 3:
+            gen.arg_names.pop()
 
 
 RICHCOMPARE_OPS = {
@@ -718,9 +788,10 @@ def generate_arg_check(
     """
     error = error or AssignHandler()
     if typ.is_unboxed:
-        if is_fixed_width_rtype(typ) and optional:
+        if typ.error_overlap and optional:
             # Update bitmap is value is provided.
-            emitter.emit_line(f"{emitter.ctype(typ)} arg_{name} = 0;")
+            init = emitter.c_undefined_value(typ)
+            emitter.emit_line(f"{emitter.ctype(typ)} arg_{name} = {init};")
             emitter.emit_line(f"if (obj_{name} != NULL) {{")
             bitmap = bitmap_name(bitmap_arg_index // BITMAP_BITS)
             emitter.emit_line(f"{bitmap} |= 1 << {bitmap_arg_index & (BITMAP_BITS - 1)};")
@@ -835,7 +906,7 @@ class WrapperGenerator:
                 optional=optional,
                 bitmap_arg_index=bitmap_arg_index,
             )
-            if optional and is_fixed_width_rtype(typ):
+            if optional and typ.error_overlap:
                 bitmap_arg_index += 1
 
     def emit_call(self, not_implemented_handler: str = "") -> None:

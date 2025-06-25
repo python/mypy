@@ -3,154 +3,163 @@ from _typeshed import structseq
 from collections.abc import Callable, Iterable
 from enum import IntEnum
 from types import FrameType
-from typing import Any, Union
-from typing_extensions import Final, Never, TypeAlias, final
+from typing import Any, Final, Literal, final
+from typing_extensions import Never, TypeAlias
 
 NSIG: int
 
 class Signals(IntEnum):
-    SIGABRT: int
-    SIGEMT: int
-    SIGFPE: int
-    SIGILL: int
-    SIGINFO: int
-    SIGINT: int
-    SIGSEGV: int
-    SIGTERM: int
+    SIGABRT = 6
+    SIGFPE = 8
+    SIGILL = 4
+    SIGINT = 2
+    SIGSEGV = 11
+    SIGTERM = 15
 
     if sys.platform == "win32":
-        SIGBREAK: int
-        CTRL_C_EVENT: int
-        CTRL_BREAK_EVENT: int
+        SIGBREAK = 21
+        CTRL_C_EVENT = 0
+        CTRL_BREAK_EVENT = 1
     else:
-        SIGALRM: int
-        SIGBUS: int
-        SIGCHLD: int
-        SIGCONT: int
-        SIGHUP: int
-        SIGIO: int
-        SIGIOT: int
-        SIGKILL: int
-        SIGPIPE: int
-        SIGPROF: int
-        SIGQUIT: int
-        SIGSTOP: int
-        SIGSYS: int
-        SIGTRAP: int
-        SIGTSTP: int
-        SIGTTIN: int
-        SIGTTOU: int
-        SIGURG: int
-        SIGUSR1: int
-        SIGUSR2: int
-        SIGVTALRM: int
-        SIGWINCH: int
-        SIGXCPU: int
-        SIGXFSZ: int
+        SIGALRM = 14
+        SIGBUS = 7
+        SIGCHLD = 17
+        SIGCONT = 18
+        SIGHUP = 1
+        SIGIO = 29
+        SIGIOT = 6
+        SIGKILL = 9
+        SIGPIPE = 13
+        SIGPROF = 27
+        SIGQUIT = 3
+        SIGSTOP = 19
+        SIGSYS = 31
+        SIGTRAP = 5
+        SIGTSTP = 20
+        SIGTTIN = 21
+        SIGTTOU = 22
+        SIGURG = 23
+        SIGUSR1 = 10
+        SIGUSR2 = 12
+        SIGVTALRM = 26
+        SIGWINCH = 28
+        SIGXCPU = 24
+        SIGXFSZ = 25
+        if sys.platform != "linux":
+            SIGEMT = 7
+            SIGINFO = 29
         if sys.platform != "darwin":
-            SIGCLD: int
-            SIGPOLL: int
-            SIGPWR: int
-            SIGRTMAX: int
-            SIGRTMIN: int
+            SIGCLD = 17
+            SIGPOLL = 29
+            SIGPWR = 30
+            SIGRTMAX = 64
+            SIGRTMIN = 34
+            if sys.version_info >= (3, 11):
+                SIGSTKFLT = 16
 
 class Handlers(IntEnum):
-    SIG_DFL: int
-    SIG_IGN: int
+    SIG_DFL = 0
+    SIG_IGN = 1
 
-SIG_DFL: Handlers
-SIG_IGN: Handlers
+SIG_DFL: Literal[Handlers.SIG_DFL]
+SIG_IGN: Literal[Handlers.SIG_IGN]
 
 _SIGNUM: TypeAlias = int | Signals
-_HANDLER: TypeAlias = Union[Callable[[int, FrameType | None], Any], int, Handlers, None]
+_HANDLER: TypeAlias = Callable[[int, FrameType | None], Any] | int | Handlers | None
 
-def default_int_handler(__signalnum: int, __frame: FrameType | None) -> Never: ...
+def default_int_handler(signalnum: int, frame: FrameType | None, /) -> Never: ...
 
 if sys.version_info >= (3, 10):  # arguments changed in 3.10.2
     def getsignal(signalnum: _SIGNUM) -> _HANDLER: ...
     def signal(signalnum: _SIGNUM, handler: _HANDLER) -> _HANDLER: ...
 
 else:
-    def getsignal(__signalnum: _SIGNUM) -> _HANDLER: ...
-    def signal(__signalnum: _SIGNUM, __handler: _HANDLER) -> _HANDLER: ...
+    def getsignal(signalnum: _SIGNUM, /) -> _HANDLER: ...
+    def signal(signalnum: _SIGNUM, handler: _HANDLER, /) -> _HANDLER: ...
 
-SIGABRT: Signals
-SIGEMT: Signals
-SIGFPE: Signals
-SIGILL: Signals
-SIGINFO: Signals
-SIGINT: Signals
-SIGSEGV: Signals
-SIGTERM: Signals
+SIGABRT: Literal[Signals.SIGABRT]
+SIGFPE: Literal[Signals.SIGFPE]
+SIGILL: Literal[Signals.SIGILL]
+SIGINT: Literal[Signals.SIGINT]
+SIGSEGV: Literal[Signals.SIGSEGV]
+SIGTERM: Literal[Signals.SIGTERM]
 
 if sys.platform == "win32":
-    SIGBREAK: Signals
-    CTRL_C_EVENT: Signals
-    CTRL_BREAK_EVENT: Signals
+    SIGBREAK: Literal[Signals.SIGBREAK]
+    CTRL_C_EVENT: Literal[Signals.CTRL_C_EVENT]
+    CTRL_BREAK_EVENT: Literal[Signals.CTRL_BREAK_EVENT]
 else:
-    SIGALRM: Signals
-    SIGBUS: Signals
-    SIGCHLD: Signals
-    SIGCONT: Signals
-    SIGHUP: Signals
-    SIGIO: Signals
-    SIGIOT: Signals
-    SIGKILL: Signals
-    SIGPIPE: Signals
-    SIGPROF: Signals
-    SIGQUIT: Signals
-    SIGSTOP: Signals
-    SIGSYS: Signals
-    SIGTRAP: Signals
-    SIGTSTP: Signals
-    SIGTTIN: Signals
-    SIGTTOU: Signals
-    SIGURG: Signals
-    SIGUSR1: Signals
-    SIGUSR2: Signals
-    SIGVTALRM: Signals
-    SIGWINCH: Signals
-    SIGXCPU: Signals
-    SIGXFSZ: Signals
+    if sys.platform != "linux":
+        SIGINFO: Literal[Signals.SIGINFO]
+        SIGEMT: Literal[Signals.SIGEMT]
+    SIGALRM: Literal[Signals.SIGALRM]
+    SIGBUS: Literal[Signals.SIGBUS]
+    SIGCHLD: Literal[Signals.SIGCHLD]
+    SIGCONT: Literal[Signals.SIGCONT]
+    SIGHUP: Literal[Signals.SIGHUP]
+    SIGIO: Literal[Signals.SIGIO]
+    SIGIOT: Literal[Signals.SIGABRT]  # alias
+    SIGKILL: Literal[Signals.SIGKILL]
+    SIGPIPE: Literal[Signals.SIGPIPE]
+    SIGPROF: Literal[Signals.SIGPROF]
+    SIGQUIT: Literal[Signals.SIGQUIT]
+    SIGSTOP: Literal[Signals.SIGSTOP]
+    SIGSYS: Literal[Signals.SIGSYS]
+    SIGTRAP: Literal[Signals.SIGTRAP]
+    SIGTSTP: Literal[Signals.SIGTSTP]
+    SIGTTIN: Literal[Signals.SIGTTIN]
+    SIGTTOU: Literal[Signals.SIGTTOU]
+    SIGURG: Literal[Signals.SIGURG]
+    SIGUSR1: Literal[Signals.SIGUSR1]
+    SIGUSR2: Literal[Signals.SIGUSR2]
+    SIGVTALRM: Literal[Signals.SIGVTALRM]
+    SIGWINCH: Literal[Signals.SIGWINCH]
+    SIGXCPU: Literal[Signals.SIGXCPU]
+    SIGXFSZ: Literal[Signals.SIGXFSZ]
 
-    class ItimerError(IOError): ...
+    class ItimerError(OSError): ...
     ITIMER_PROF: int
     ITIMER_REAL: int
     ITIMER_VIRTUAL: int
 
     class Sigmasks(IntEnum):
-        SIG_BLOCK: int
-        SIG_UNBLOCK: int
-        SIG_SETMASK: int
-    SIG_BLOCK = Sigmasks.SIG_BLOCK
-    SIG_UNBLOCK = Sigmasks.SIG_UNBLOCK
-    SIG_SETMASK = Sigmasks.SIG_SETMASK
-    def alarm(__seconds: int) -> int: ...
-    def getitimer(__which: int) -> tuple[float, float]: ...
+        SIG_BLOCK = 0
+        SIG_UNBLOCK = 1
+        SIG_SETMASK = 2
+
+    SIG_BLOCK: Literal[Sigmasks.SIG_BLOCK]
+    SIG_UNBLOCK: Literal[Sigmasks.SIG_UNBLOCK]
+    SIG_SETMASK: Literal[Sigmasks.SIG_SETMASK]
+    def alarm(seconds: int, /) -> int: ...
+    def getitimer(which: int, /) -> tuple[float, float]: ...
     def pause() -> None: ...
-    def pthread_kill(__thread_id: int, __signalnum: int) -> None: ...
+    def pthread_kill(thread_id: int, signalnum: int, /) -> None: ...
     if sys.version_info >= (3, 10):  # arguments changed in 3.10.2
         def pthread_sigmask(how: int, mask: Iterable[int]) -> set[_SIGNUM]: ...
     else:
-        def pthread_sigmask(__how: int, __mask: Iterable[int]) -> set[_SIGNUM]: ...
+        def pthread_sigmask(how: int, mask: Iterable[int], /) -> set[_SIGNUM]: ...
 
-    def setitimer(__which: int, __seconds: float, __interval: float = ...) -> tuple[float, float]: ...
-    def siginterrupt(__signalnum: int, __flag: bool) -> None: ...
+    def setitimer(which: int, seconds: float, interval: float = 0.0, /) -> tuple[float, float]: ...
+    def siginterrupt(signalnum: int, flag: bool, /) -> None: ...
     def sigpending() -> Any: ...
     if sys.version_info >= (3, 10):  # argument changed in 3.10.2
         def sigwait(sigset: Iterable[int]) -> _SIGNUM: ...
     else:
-        def sigwait(__sigset: Iterable[int]) -> _SIGNUM: ...
+        def sigwait(sigset: Iterable[int], /) -> _SIGNUM: ...
     if sys.platform != "darwin":
-        SIGCLD: Signals
-        SIGPOLL: Signals
-        SIGPWR: Signals
-        SIGRTMAX: Signals
-        SIGRTMIN: Signals
+        SIGCLD: Literal[Signals.SIGCHLD]  # alias
+        SIGPOLL: Literal[Signals.SIGIO]  # alias
+        SIGPWR: Literal[Signals.SIGPWR]
+        SIGRTMAX: Literal[Signals.SIGRTMAX]
+        SIGRTMIN: Literal[Signals.SIGRTMIN]
+        if sys.version_info >= (3, 11):
+            SIGSTKFLT: Literal[Signals.SIGSTKFLT]
+
         @final
         class struct_siginfo(structseq[int], tuple[int, int, int, int, int, int, int]):
             if sys.version_info >= (3, 10):
                 __match_args__: Final = ("si_signo", "si_code", "si_errno", "si_pid", "si_uid", "si_status", "si_band")
+
             @property
             def si_signo(self) -> int: ...
             @property
@@ -166,16 +175,13 @@ else:
             @property
             def si_band(self) -> int: ...
 
-        def sigtimedwait(sigset: Iterable[int], timeout: float) -> struct_siginfo | None: ...
-        def sigwaitinfo(sigset: Iterable[int]) -> struct_siginfo: ...
+        def sigtimedwait(sigset: Iterable[int], timeout: float, /) -> struct_siginfo | None: ...
+        def sigwaitinfo(sigset: Iterable[int], /) -> struct_siginfo: ...
 
-if sys.version_info >= (3, 8):
-    def strsignal(__signalnum: _SIGNUM) -> str | None: ...
-    def valid_signals() -> set[Signals]: ...
-    def raise_signal(__signalnum: _SIGNUM) -> None: ...
+def strsignal(signalnum: _SIGNUM, /) -> str | None: ...
+def valid_signals() -> set[Signals]: ...
+def raise_signal(signalnum: _SIGNUM, /) -> None: ...
+def set_wakeup_fd(fd: int, /, *, warn_on_full_buffer: bool = ...) -> int: ...
 
-def set_wakeup_fd(fd: int, *, warn_on_full_buffer: bool = ...) -> int: ...
-
-if sys.version_info >= (3, 9):
-    if sys.platform == "linux":
-        def pidfd_send_signal(__pidfd: int, __sig: int, __siginfo: None = ..., __flags: int = ...) -> None: ...
+if sys.platform == "linux":
+    def pidfd_send_signal(pidfd: int, sig: int, siginfo: None = None, flags: int = ..., /) -> None: ...

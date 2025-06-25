@@ -44,15 +44,15 @@ import sys
 import textwrap
 import time
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
-from typing import Any, Dict
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Final
+from typing_extensions import TypeAlias as _TypeAlias
 
 CACHE_PATH: Final = ".incremental_checker_cache.json"
 MYPY_REPO_URL: Final = "https://github.com/python/mypy.git"
 MYPY_TARGET_FILE: Final = "mypy"
 DAEMON_CMD: Final = ["python3", "-m", "mypy.dmypy"]
 
-JsonDict: _TypeAlias = Dict[str, Any]
+JsonDict: _TypeAlias = dict[str, Any]
 
 
 def print_offset(text: str, indent_length: int = 4) -> None:

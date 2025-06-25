@@ -26,7 +26,7 @@ fi
 curl -O https://www.python.org/ftp/python/$VERSION/Python-$VERSION.tgz
 tar zxf Python-$VERSION.tgz
 cd Python-$VERSION
-CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" ./configure CFLAGS="-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG" --with-pydebug --prefix=$PREFIX
+CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" ./configure CFLAGS="-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG" --with-pydebug --prefix=$PREFIX --with-trace-refs
 make -j4
 make install
 $PREFIX/bin/python3 -m pip install virtualenv

@@ -3,8 +3,11 @@ from __future__ import annotations
 import pprint
 import re
 import sys
-from typing import Any, Callable, Dict, Mapping, Pattern
-from typing_extensions import Final
+import sysconfig
+import warnings
+from collections.abc import Mapping
+from re import Pattern
+from typing import Any, Callable, Final
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -20,6 +23,7 @@ class BuildType:
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
     "allow_redefinition",
+    "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
     "always_true",
@@ -39,8 +43,10 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
+    "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
+    "follow_untyped_imports",
     "ignore_errors",
     "ignore_missing_imports",
     "implicit_optional",
@@ -61,16 +67,22 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
+        "old_type_inference",
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
+        "strict_bytes",
     }
 ) - {"debug_cache"}
 
-# Features that are currently incomplete/experimental
+# Features that are currently (or were recently) incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
 UNPACK: Final = "Unpack"
-INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
+PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
+NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
+INLINE_TYPEDDICT: Final = "InlineTypedDict"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT))
+COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
 class Options:
@@ -86,7 +98,15 @@ class Options:
         # The executable used to search for PEP 561 packages. If this is None,
         # then mypy does not search for PEP 561 packages.
         self.python_executable: str | None = sys.executable
-        self.platform = sys.platform
+
+        # When cross compiling to emscripten, we need to rely on MACHDEP because
+        # sys.platform is the host build platform, not emscripten.
+        MACHDEP = sysconfig.get_config_var("MACHDEP")
+        if MACHDEP == "emscripten":
+            self.platform = MACHDEP
+        else:
+            self.platform = sys.platform
+
         self.custom_typing_module: str | None = None
         self.custom_typeshed_dir: str | None = None
         # The abspath() version of the above, we compute it once as an optimization.
@@ -99,6 +119,8 @@ class Options:
         self.ignore_missing_imports = False
         # Is ignore_missing_imports set in a per-module section
         self.ignore_missing_imports_per_module = False
+        # Typecheck modules without stubs or py.typed marker
+        self.follow_untyped_imports = False
         self.follow_imports = "normal"  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
@@ -116,6 +138,7 @@ class Options:
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
         self.exclude: list[str] = []
+        self.exclude_gitignore: bool = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -126,6 +149,10 @@ class Options:
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
+
+        # Always allow untyped calls for function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.untyped_calls_exclude: list[str] = []
 
         # Disallow defining untyped (or incompletely typed) functions
         self.disallow_untyped_defs = False
@@ -154,6 +181,13 @@ class Options:
         # Warn about returning objects of type Any when the function is
         # declared with a precise type
         self.warn_return_any = False
+
+        # Report importing or using deprecated features as errors instead of notes.
+        self.report_deprecated_as_note = False
+
+        # Allow deprecated calls from function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.deprecated_calls_exclude: list[str] = []
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
@@ -187,12 +221,22 @@ class Options:
         # and the same nesting level as the initialization
         self.allow_redefinition = False
 
+        # Allow flexible variable redefinition with an arbitrary type, in different
+        # blocks and and at different nesting levels
+        self.allow_redefinition_new = False
+
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
-        # Make arguments prepended via Concatenate be truly positional-only.
+        # Disable treating bytearray and memoryview as subtypes of bytes
+        self.strict_bytes = False
+
+        # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
+
+        # Enable additional checks that are technically correct but impractical.
+        self.extra_checks = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
@@ -236,6 +280,8 @@ class Options:
         # Write junit.xml to given file
         self.junit_xml: str | None = None
 
+        self.junit_format: str = "global"  # global|per_file
+
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
@@ -248,6 +294,9 @@ class Options:
         self.cache_fine_grained = False
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
+
+        # Run tree.serialize() even if cache generation is disabled
+        self.debug_serialize = False
 
         # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
         # in modules being compiled. Not in the config file or command line.
@@ -263,6 +312,12 @@ class Options:
         # because it is intended for software integrating with
         # mypy. (Like mypyc.)
         self.preserve_asts = False
+
+        # If True, function and class docstrings will be extracted and retained.
+        # This isn't exposed as a command line option
+        # because it is intended for software integrating with
+        # mypy. (Like stubgen.)
+        self.include_docstrings = False
 
         # Paths of user plugins
         self.plugins: list[str] = []
@@ -280,9 +335,9 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_features = False  # deprecated
         self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
+        self.line_checking_stats: str | None = None
 
         # -- test options --
         # Stop after the semantic analysis phase
@@ -291,11 +346,16 @@ class Options:
         # Use stub builtins fixtures to speed up tests
         self.use_builtins_fixtures = False
 
+        # This should only be set when running certain mypy tests.
+        # Use this sparingly to avoid tests diverging from non-test behavior.
+        self.test_env = False
+
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
         self.hide_error_codes = False
+        self.show_error_code_links = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
@@ -331,25 +391,51 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Disable recursive type aliases (currently experimental)
-        self.disable_recursive_aliases = False
+        # Disable new experimental type inference algorithm.
+        self.old_type_inference = False
         # Deprecated reverse version of the above, do not use.
-        self.enable_recursive_aliases = False
+        self.new_type_inference = False
+        # Export line-level, limited, fine-grained dependency information in cache data
+        # (undocumented feature).
+        self.export_ref_info = False
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
+        # Deprecated, Mypy only supports Python 3.9+
+        self.force_uppercase_builtins = False
+        self.force_union_syntax = False
 
-    # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
-    @property
-    def new_semantic_analyzer(self) -> bool:
+        # Sets custom output format
+        self.output: str | None = None
+
+        # Output html file for mypyc -a
+        self.mypyc_annotation_file: str | None = None
+        # Skip writing C output files, but perform all other steps of a build (allows
+        # preserving manual tweaks to generated C file)
+        self.mypyc_skip_c_generation = False
+
+    def use_lowercase_names(self) -> bool:
+        warnings.warn(
+            "options.use_lowercase_names() is deprecated and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return True
 
-    def snapshot(self) -> object:
+    def use_or_syntax(self) -> bool:
+        if self.python_version >= (3, 10):
+            return not self.force_union_syntax
+        return False
+
+    def use_star_unpack(self) -> bool:
+        return self.python_version >= (3, 11)
+
+    def snapshot(self) -> dict[str, object]:
         """Produce a comparable snapshot of this Option"""
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         d = dict(getattr(self, "__dict__", ()))
         for k in get_class_descriptors(Options):
-            if hasattr(self, k) and k != "new_semantic_analyzer":
+            if hasattr(self, k):
                 d[k] = getattr(self, k)
         # Remove private attributes from snapshot
         d = {k: v for k, v in d.items() if not k.startswith("_")}
@@ -358,7 +444,45 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
+    def process_error_codes(self, *, error_callback: Callable[[str], Any]) -> None:
+        # Process `--enable-error-code` and `--disable-error-code` flags
+        disabled_codes = set(self.disable_error_code)
+        enabled_codes = set(self.enable_error_code)
+
+        valid_error_codes = set(error_codes.keys())
+
+        invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
+        if invalid_codes:
+            error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
+
+        self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
+        self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+
+        # Enabling an error code always overrides disabling
+        self.disabled_error_codes -= self.enabled_error_codes
+
+    def process_incomplete_features(
+        self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
+    ) -> None:
+        # Validate incomplete features.
+        for feature in self.enable_incomplete_feature:
+            if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
+                error_callback(f"Unknown incomplete feature: {feature}")
+            if feature in COMPLETE_FEATURES:
+                warning_callback(f"Warning: {feature} is already enabled by default")
+
+    def process_strict_bytes(self) -> None:
+        # Sync `--strict-bytes` and `--disable-{bytearray,memoryview}-promotion`
+        if self.strict_bytes:
+            # backwards compatibility
+            self.disable_bytearray_promotion = True
+            self.disable_memoryview_promotion = True
+        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
+            # forwards compatibility
+            self.strict_bytes = True
+
     def apply_changes(self, changes: dict[str, object]) -> Options:
+        # Note: effects of this method *must* be idempotent.
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         replace_object_state(new_options, self, copy_dict=True)
@@ -383,6 +507,17 @@ class Options:
             new_options.disabled_error_codes.discard(code)
 
         return new_options
+
+    def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
+        """Compare options in a way that is stable for snapshot() -> apply_changes() roundtrip.
+
+        This is needed because apply_changes() has non-trivial effects for some flags, so
+        Options().apply_changes(options.snapshot()) may result in a (slightly) different object.
+        """
+        return (
+            Options().apply_changes(self.snapshot()).snapshot()
+            == Options().apply_changes(other_snapshot).snapshot()
+        )
 
     def build_per_module_cache(self) -> None:
         self._per_module_cache = {}
@@ -481,7 +616,7 @@ class Options:
         return re.compile(expr + "\\Z")
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        result: Dict[str, object] = {}
+        result: dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)
             if opt in ("disabled_error_codes", "enabled_error_codes"):

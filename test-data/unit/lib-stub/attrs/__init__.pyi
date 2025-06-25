@@ -1,4 +1,13 @@
-from typing import TypeVar, overload, Callable, Any, Optional, Union, Sequence, Mapping
+from typing import TypeVar, overload, Callable, Any, Optional, Union, Sequence, Mapping, \
+    Protocol, ClassVar, Type
+from typing_extensions import TypeGuard
+
+from attr import Attribute as Attribute
+
+
+class AttrsInstance(Protocol):
+    __attrs_attrs__: ClassVar[Any]
+
 
 _T = TypeVar('_T')
 _C = TypeVar('_C', bound=type)
@@ -13,6 +22,7 @@ def define(
     *,
     these: Optional[Mapping[str, Any]] = ...,
     repr: bool = ...,
+    unsafe_hash: Optional[bool]=None,
     hash: Optional[bool] = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -35,6 +45,7 @@ def define(
     *,
     these: Optional[Mapping[str, Any]] = ...,
     repr: bool = ...,
+    unsafe_hash: Optional[bool]=None,
     hash: Optional[bool] = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -70,6 +81,7 @@ def field(
     eq: Optional[bool] = ...,
     order: Optional[bool] = ...,
     on_setattr: Optional[_OnSetAttrArgType] = ...,
+    alias: Optional[str] = ...,
 ) -> Any: ...
 
 # This form catches an explicit None or no default and infers the type from the
@@ -89,6 +101,7 @@ def field(
     eq: Optional[bool] = ...,
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
+    alias: Optional[str] = ...,
 ) -> _T: ...
 
 # This form catches an explicit default argument.
@@ -107,6 +120,7 @@ def field(
     eq: Optional[bool] = ...,
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
+    alias: Optional[str] = ...,
 ) -> _T: ...
 
 # This form covers type=non-Type: e.g. forward references (str), Any
@@ -125,4 +139,10 @@ def field(
     eq: Optional[bool] = ...,
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
+    alias: Optional[str] = ...,
 ) -> Any: ...
+
+def evolve(inst: _T, **changes: Any) -> _T: ...
+def assoc(inst: _T, **changes: Any) -> _T: ...
+def has(cls: type) -> TypeGuard[Type[AttrsInstance]]: ...
+def fields(cls: Type[AttrsInstance]) -> Any: ...

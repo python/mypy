@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
-from typing import Any, Dict
-from typing_extensions import Final
+from typing import Any, Final
 
 from mypy.util import unnamed_function
 
@@ -14,6 +13,7 @@ REG_PREFIX: Final = "cpy_r_"  # Registers
 STATIC_PREFIX: Final = "CPyStatic_"  # Static variables (for literals etc.)
 TYPE_PREFIX: Final = "CPyType_"  # Type object struct
 MODULE_PREFIX: Final = "CPyModule_"  # Cached modules
+TYPE_VAR_PREFIX: Final = "CPyTypeVar_"  # Type variables when using new-style Python 3.12 syntax
 ATTR_PREFIX: Final = "_"  # Attributes
 
 ENV_ATTR_NAME: Final = "__mypyc_env__"
@@ -44,13 +44,6 @@ IS_32_BIT_PLATFORM: Final = int(SIZEOF_SIZE_T) == 4
 
 PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 
-# Python 3.5 on macOS uses a hybrid 32/64-bit build that requires some workarounds.
-# The same generated C will be compiled in both 32 and 64 bit modes when building mypy
-# wheels (for an unknown reason).
-#
-# Note that we use "in ['darwin']" because of https://github.com/mypyc/mypyc/issues/761.
-IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_info < (3, 6)
-
 # Maximum value for a short tagged integer.
 MAX_SHORT_INT: Final = 2 ** (8 * int(SIZEOF_SIZE_T) - 2) - 1
 
@@ -59,12 +52,11 @@ MIN_SHORT_INT: Final = -(MAX_SHORT_INT) - 1
 
 # Maximum value for a short tagged integer represented as a C integer literal.
 #
-# Note: Assume that the compiled code uses the same bit width as mypyc, except for
-#       Python 3.5 on macOS.
-MAX_LITERAL_SHORT_INT: Final = MAX_SHORT_INT if not IS_MIXED_32_64_BIT_BUILD else 2**30 - 1
+# Note: Assume that the compiled code uses the same bit width as mypyc
+MAX_LITERAL_SHORT_INT: Final = MAX_SHORT_INT
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
-# Decription of the C type used to track the definedness of attributes and
+# Description of the C type used to track the definedness of attributes and
 # the presence of argument default values that have types with overlapping
 # error values. Each tracked attribute/argument has a dedicated bit in the
 # relevant bitmap.
@@ -77,6 +69,7 @@ RUNTIME_C_FILES: Final = [
     "getargs.c",
     "getargsfast.c",
     "int_ops.c",
+    "float_ops.c",
     "str_ops.c",
     "bytes_ops.c",
     "list_ops.c",
@@ -86,10 +79,21 @@ RUNTIME_C_FILES: Final = [
     "exc_ops.c",
     "misc_ops.c",
     "generic_ops.c",
+    "pythonsupport.c",
 ]
 
+# Python 3.12 introduced immortal objects, specified via a special reference count
+# value. The reference counts of immortal objects are normally not modified, but it's
+# not strictly wrong to modify them. See PEP 683 for more information, but note that
+# some details in the PEP are out of date.
+HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)
 
-JsonDict = Dict[str, Any]
+# Are we running on a free-threaded build (GIL disabled)? This implies that
+# we are on Python 3.13 or later.
+IS_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
+
+JsonDict = dict[str, Any]
 
 
 def shared_lib_name(group_name: str) -> str:
@@ -104,21 +108,6 @@ def short_name(name: str) -> str:
     if name.startswith("builtins."):
         return name[9:]
     return name
-
-
-def use_fastcall(capi_version: tuple[int, int]) -> bool:
-    # We can use METH_FASTCALL for faster wrapper functions on Python 3.7+.
-    return capi_version >= (3, 7)
-
-
-def use_vectorcall(capi_version: tuple[int, int]) -> bool:
-    # We can use vectorcalls to make calls on Python 3.8+ (PEP 590).
-    return capi_version >= (3, 8)
-
-
-def use_method_vectorcall(capi_version: tuple[int, int]) -> bool:
-    # We can use a dedicated vectorcall API to call methods on Python 3.9+.
-    return capi_version >= (3, 9)
 
 
 def get_id_from_name(name: str, fullname: str, line: int) -> str:

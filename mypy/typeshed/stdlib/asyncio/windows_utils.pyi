@@ -1,31 +1,22 @@
 import subprocess
 import sys
-from _typeshed import Self
 from collections.abc import Callable
 from types import TracebackType
-from typing import Any, AnyStr, Protocol
-from typing_extensions import Literal
+from typing import Any, AnyStr, Final
+from typing_extensions import Self
 
 if sys.platform == "win32":
     __all__ = ("pipe", "Popen", "PIPE", "PipeHandle")
 
-    class _WarnFunction(Protocol):
-        def __call__(
-            self, message: str, category: type[Warning] = ..., stacklevel: int = ..., source: PipeHandle = ...
-        ) -> object: ...
-    BUFSIZE: Literal[8192]
+    BUFSIZE: Final = 8192
     PIPE = subprocess.PIPE
     STDOUT = subprocess.STDOUT
-    def pipe(*, duplex: bool = ..., overlapped: tuple[bool, bool] = ..., bufsize: int = ...) -> tuple[int, int]: ...
+    def pipe(*, duplex: bool = False, overlapped: tuple[bool, bool] = (True, True), bufsize: int = 8192) -> tuple[int, int]: ...
 
     class PipeHandle:
         def __init__(self, handle: int) -> None: ...
-        if sys.version_info >= (3, 8):
-            def __del__(self, _warn: _WarnFunction = ...) -> None: ...
-        else:
-            def __del__(self) -> None: ...
-
-        def __enter__(self: Self) -> Self: ...
+        def __del__(self) -> None: ...
+        def __enter__(self) -> Self: ...
         def __exit__(self, t: type[BaseException] | None, v: BaseException | None, tb: TracebackType | None) -> None: ...
         @property
         def handle(self) -> int: ...
@@ -41,7 +32,7 @@ if sys.platform == "win32":
         # subprocess.Popen takes other positional-or-keyword arguments before
         # stdin.
         def __new__(
-            cls: type[Self],
+            cls,
             args: subprocess._CMD,
             stdin: subprocess._FILE | None = ...,
             stdout: subprocess._FILE | None = ...,
@@ -51,8 +42,8 @@ if sys.platform == "win32":
         def __init__(
             self,
             args: subprocess._CMD,
-            stdin: subprocess._FILE | None = ...,
-            stdout: subprocess._FILE | None = ...,
-            stderr: subprocess._FILE | None = ...,
+            stdin: subprocess._FILE | None = None,
+            stdout: subprocess._FILE | None = None,
+            stderr: subprocess._FILE | None = None,
             **kwds: Any,
         ) -> None: ...

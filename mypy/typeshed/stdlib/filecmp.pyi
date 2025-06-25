@@ -1,30 +1,38 @@
 import sys
 from _typeshed import GenericPath, StrOrBytesPath
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, AnyStr, Generic
-from typing_extensions import Literal
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
+from types import GenericAlias
+from typing import Any, AnyStr, Final, Generic, Literal
 
 __all__ = ["clear_cache", "cmp", "dircmp", "cmpfiles", "DEFAULT_IGNORES"]
 
 DEFAULT_IGNORES: list[str]
-BUFSIZE: Literal[8192]
+BUFSIZE: Final = 8192
 
-def cmp(f1: StrOrBytesPath, f2: StrOrBytesPath, shallow: bool | Literal[0, 1] = ...) -> bool: ...
+def cmp(f1: StrOrBytesPath, f2: StrOrBytesPath, shallow: bool | Literal[0, 1] = True) -> bool: ...
 def cmpfiles(
-    a: GenericPath[AnyStr], b: GenericPath[AnyStr], common: Iterable[GenericPath[AnyStr]], shallow: bool | Literal[0, 1] = ...
+    a: GenericPath[AnyStr], b: GenericPath[AnyStr], common: Iterable[GenericPath[AnyStr]], shallow: bool | Literal[0, 1] = True
 ) -> tuple[list[AnyStr], list[AnyStr], list[AnyStr]]: ...
 
 class dircmp(Generic[AnyStr]):
-    def __init__(
-        self,
-        a: GenericPath[AnyStr],
-        b: GenericPath[AnyStr],
-        ignore: Sequence[AnyStr] | None = ...,
-        hide: Sequence[AnyStr] | None = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            a: GenericPath[AnyStr],
+            b: GenericPath[AnyStr],
+            ignore: Sequence[AnyStr] | None = None,
+            hide: Sequence[AnyStr] | None = None,
+            *,
+            shallow: bool = True,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            a: GenericPath[AnyStr],
+            b: GenericPath[AnyStr],
+            ignore: Sequence[AnyStr] | None = None,
+            hide: Sequence[AnyStr] | None = None,
+        ) -> None: ...
     left: AnyStr
     right: AnyStr
     hide: Sequence[AnyStr]
@@ -52,7 +60,6 @@ class dircmp(Generic[AnyStr]):
     def phase3(self) -> None: ...
     def phase4(self) -> None: ...
     def phase4_closure(self) -> None: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 def clear_cache() -> None: ...

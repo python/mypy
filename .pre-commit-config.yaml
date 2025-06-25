@@ -1,16 +1,64 @@
+exclude: '^(mypyc/external/)|(mypy/typeshed/)|misc/typeshed_patches'  # Exclude all vendored code from lints
 repos:
-  - repo: https://github.com/psf/black
-    rev: 22.10.0  # must match test-requirements.txt
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 25.1.0
     hooks:
       - id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 5.10.1  # must match test-requirements.txt
+        exclude: '^(test-data/)'
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.4
     hooks:
-      - id: isort
-  - repo: https://github.com/pycqa/flake8
-    rev: 5.0.4  # must match test-requirements.txt
+      - id: ruff
+        args: [--exit-non-zero-on-fix]
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.32.1
     hooks:
-      - id: flake8
+      - id: check-github-workflows
+      - id: check-github-actions
+      - id: check-readthedocs
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-words-list=HAX,ccompiler,ot,statics,whet,zar
+        exclude: ^(mypy/test/|mypy/typeshed/|mypyc/test-data/|test-data/).+$
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+        args: [
+          -ignore=property "debug_build" is not defined,
+          -ignore=property "allow_failure" is not defined,
+          -ignore=SC2(046|086),
+        ]
         additional_dependencies:
-          - flake8-bugbear==22.9.23  # must match test-requirements.txt
-          - flake8-noqa==1.2.9       # must match test-requirements.txt
+          # actionlint has a shellcheck integration which extracts shell scripts in `run:` steps from GitHub Actions
+          # and checks these with shellcheck. This is arguably its most useful feature,
+          # but the integration only works if shellcheck is installed
+          - "github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.10.0"
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.5.2
+    hooks:
+      - id: zizmor
+  - repo: local
+    hooks:
+      - id: bad-pr-link
+        name: Bad PR link
+        description: Detect PR links text that don't match their URL
+        language: pygrep
+        entry: '\[(\d+)\]\(https://github.com/python/mypy/pull/(?!\1/?\))\d+/?\)'
+        files: CHANGELOG.md
+  # Should be the last one:
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
+
+ci:
+  autoupdate_schedule: quarterly

@@ -2,9 +2,9 @@
 
 
 [case testSimpleIsinstance]
-x = None  # type: object
-n = None  # type: int
-s = None  # type: str
+x: object
+n: int
+s: str
 if int():
     n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 if isinstance(x, int):

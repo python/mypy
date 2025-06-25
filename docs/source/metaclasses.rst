@@ -34,13 +34,14 @@ Mypy supports the lookup of attributes in the metaclass:
 
 .. code-block:: python
 
-    from typing import Type, TypeVar, ClassVar
-    T = TypeVar('T')
+    from typing import ClassVar, TypeVar
+
+    S = TypeVar("S")
 
     class M(type):
         count: ClassVar[int] = 0
 
-        def make(cls: Type[T]) -> T:
+        def make(cls: type[S]) -> S:
             M.count += 1
             return cls()
 
@@ -86,3 +87,6 @@ so it's better not to combine metaclasses and class hierarchies:
   such as ``class A(metaclass=f()): ...``
 * Mypy does not and cannot understand arbitrary metaclass code.
 * Mypy only recognizes subclasses of :py:class:`type` as potential metaclasses.
+* ``Self`` is not allowed as annotation in metaclasses as per `PEP 673`_.
+
+.. _PEP 673: https://peps.python.org/pep-0673/#valid-locations-for-self

@@ -63,8 +63,7 @@ run this on __init__ methods, this analysis pass will be fairly quick.
 
 from __future__ import annotations
 
-from typing import Set, Tuple
-from typing_extensions import Final
+from typing import Final
 
 from mypyc.analysis.dataflow import (
     CFG,
@@ -91,7 +90,7 @@ from mypyc.ir.ops import (
     SetMem,
     Unreachable,
 )
-from mypyc.ir.rtypes import RInstance, is_fixed_width_rtype
+from mypyc.ir.rtypes import RInstance
 
 # If True, print out all always-defined attributes of native classes (to aid
 # debugging and testing)
@@ -177,7 +176,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> No
         m.blocks, self_reg, maybe_defined, dirty
     )
 
-    mark_attr_initialiation_ops(m.blocks, self_reg, maybe_defined, dirty)
+    mark_attr_initialization_ops(m.blocks, self_reg, maybe_defined, dirty)
 
     # Check if __init__ can run unpredictable code (leak 'self').
     any_dirty = False
@@ -261,7 +260,7 @@ def find_sometimes_defined_attributes(
     return attrs
 
 
-def mark_attr_initialiation_ops(
+def mark_attr_initialization_ops(
     blocks: list[BasicBlock],
     self_reg: Register,
     maybe_defined: AnalysisResult[str],
@@ -280,7 +279,7 @@ def mark_attr_initialiation_ops(
                     op.mark_as_initializer()
 
 
-GenAndKill = Tuple[Set[str], Set[str]]
+GenAndKill = tuple[set[str], set[str]]
 
 
 def attributes_initialized_by_init_call(op: Call) -> set[str]:
@@ -414,7 +413,10 @@ def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: set[ClassIR]
     seen.add(cl)
 
 
-def detect_undefined_bitmap(cl: ClassIR, seen: Set[ClassIR]) -> None:
+def detect_undefined_bitmap(cl: ClassIR, seen: set[ClassIR]) -> None:
+    if cl.is_trait:
+        return
+
     if cl in seen:
         return
     seen.add(cl)
@@ -424,5 +426,11 @@ def detect_undefined_bitmap(cl: ClassIR, seen: Set[ClassIR]) -> None:
     if len(cl.base_mro) > 1:
         cl.bitmap_attrs.extend(cl.base_mro[1].bitmap_attrs)
     for n, t in cl.attributes.items():
-        if is_fixed_width_rtype(t) and not cl.is_always_defined(n):
+        if t.error_overlap and not cl.is_always_defined(n):
             cl.bitmap_attrs.append(n)
+
+    for base in cl.mro[1:]:
+        if base.is_trait:
+            for n, t in base.attributes.items():
+                if t.error_overlap and not cl.is_always_defined(n) and n not in cl.bitmap_attrs:
+                    cl.bitmap_attrs.append(n)

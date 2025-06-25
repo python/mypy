@@ -41,12 +41,10 @@ variable type annotation:
 
 .. code-block:: python
 
-   from typing import Union
-
-   x: Union[int, str] = 1
+   x: int | str = 1
 
 Without the type annotation, the type of ``x`` would be just ``int``. We
-use an annotation to give it a more general type ``Union[int, str]`` (this
+use an annotation to give it a more general type ``int | str`` (this
 type means that the value can be either an ``int`` or a ``str``).
 
 The best way to think about this is that the type annotation sets the type of
@@ -55,8 +53,8 @@ about the following code:
 
 .. code-block:: python
 
-   x: Union[int, str] = 1.1  # error: Incompatible types in assignment
-                             # (expression has type "float", variable has type "Union[int, str]")
+   x: int | str = 1.1  # error: Incompatible types in assignment
+                       # (expression has type "float", variable has type "int | str")
 
 .. note::
 
@@ -185,6 +183,8 @@ Working around the issue is easy by adding a type annotation:
     a: list[int] = []  # OK
     foo(a)
 
+.. _silencing-type-errors:
+
 Silencing type errors
 *********************
 
@@ -228,6 +228,8 @@ short explanation of the bug. To do that, use this format:
     # Starting app on http://localhost:8000
     app.run(8000)  # type: ignore  # `run()` in v2.0 accepts an `int`, as a port
 
+Type ignore error codes
+-----------------------
 
 By default, mypy displays an error code for each error:
 
@@ -240,7 +242,21 @@ It is possible to add a specific error-code in your ignore comment (e.g.
 ``# type: ignore[attr-defined]``) to clarify what's being silenced. You can
 find more information about error codes :ref:`here <silence-error-codes>`.
 
-Similarly, you can also ignore all mypy errors in a file, by adding a
+Other ways to silence errors
+----------------------------
+
+You can get mypy to silence errors about a specific variable by dynamically
+typing it with ``Any``. See :ref:`dynamic-typing` for more information.
+
+.. code-block:: python
+
+    from typing import Any
+
+    def f(x: Any, y: str) -> None:
+        x = 'hello'
+        x += 1  # OK
+
+You can ignore all mypy errors in a file by adding a
 ``# mypy: ignore-errors`` at the top of the file:
 
 .. code-block:: python
@@ -250,8 +266,28 @@ Similarly, you can also ignore all mypy errors in a file, by adding a
     import unittest
     ...
 
+You can also specify per-module configuration options in your :ref:`config-file`.
+For example:
+
+.. code-block:: ini
+
+    # Don't report errors in the 'package_to_fix_later' package
+    [mypy-package_to_fix_later.*]
+    ignore_errors = True
+
+    # Disable specific error codes in the 'tests' package
+    # Also don't require type annotations
+    [mypy-tests.*]
+    disable_error_code = var-annotated, has-type
+    allow_untyped_defs = True
+
+    # Silence import errors from the 'library_missing_types' package
+    [mypy-library_missing_types.*]
+    ignore_missing_imports = True
+
 Finally, adding a ``@typing.no_type_check`` decorator to a class, method or
-function has the effect of ignoring that class, method or function.
+function causes mypy to avoid type checking that class, method or function
+and to treat it as not having any type annotations.
 
 .. code-block:: python
 

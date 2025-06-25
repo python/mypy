@@ -18,7 +18,7 @@ into a regular, owned reference that needs to freed before return.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Tuple
+from collections.abc import Iterable
 
 from mypyc.analysis.dataflow import (
     AnalysisDict,
@@ -46,13 +46,13 @@ from mypyc.ir.ops import (
     Value,
 )
 
-Decs = Tuple[Tuple[Value, bool], ...]
-Incs = Tuple[Value, ...]
+Decs = tuple[tuple[Value, bool], ...]
+Incs = tuple[Value, ...]
 
 # A cache of basic blocks that decrement and increment specific values
 # and then jump to some target block. This lets us cut down on how
 # much code we generate in some circumstances.
-BlockCache = Dict[Tuple[BasicBlock, Decs, Incs], BasicBlock]
+BlockCache = dict[tuple[BasicBlock, Decs, Incs], BasicBlock]
 
 
 def insert_ref_count_opcodes(ir: FuncIR) -> None:
@@ -70,7 +70,7 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     defined = analyze_must_defined_regs(ir.blocks, cfg, args, values, strict_errors=True)
     ordering = make_value_ordering(ir)
     cache: BlockCache = {}
-    for block in ir.blocks[:]:
+    for block in ir.blocks.copy():
         if isinstance(block.ops[-1], (Branch, Goto)):
             insert_branch_inc_and_decrefs(
                 block,

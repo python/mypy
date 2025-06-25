@@ -107,7 +107,7 @@ performance.
 integer values. A side effect of this is that the exact runtime type of
 ``int`` values is lost. For example, consider this simple function::
 
-    def first_int(x: List[int]) -> int:
+    def first_int(x: list[int]) -> int:
         return x[0]
 
     print(first_int([True]))  # Output is 1, instead of True!
@@ -268,19 +268,27 @@ used in compiled code, or there are some limitations. You can
 partially work around some of these limitations by running your code
 in interpreted mode.
 
-Operator overloading
-********************
+Nested classes
+**************
 
-Native classes can only use these dunder methods to override operators:
+Nested classes are not supported.
 
-* ``__eq__``
-* ``__ne__``
-* ``__getitem__``
-* ``__setitem__``
+Conditional functions or classes
+********************************
 
-.. note::
+Function and class definitions guarded by an if-statement are not supported.
 
-    This limitation will be lifted in the future.
+Dunder methods
+**************
+
+Native classes **cannot** use these dunders. If defined, they will not
+work as expected.
+
+* ``__del__``
+* ``__index__``
+* ``__getattr__``, ``__getattribute__``
+* ``__setattr__``
+* ``__delattr__``
 
 Generator expressions
 *********************
@@ -299,10 +307,17 @@ Descriptors
 Native classes can't contain arbitrary descriptors. Properties, static
 methods and class methods are supported.
 
-Stack introspection
-*******************
+Introspection
+*************
 
-Frames of compiled functions can't be inspected using ``inspect``.
+Various methods of introspection may break by using mypyc. Here's an
+non-exhaustive list of what won't work:
+
+- Instance ``__annotations__`` is usually not kept
+- Frames of compiled functions can't be inspected using ``inspect``
+- Compiled methods aren't considered methods by ``inspect.ismethod``
+- ``inspect.signature`` chokes on compiled functions
+- ``inspect.iscoroutinefunction`` and ``asyncio.iscoroutinefunction`` will always return False for compiled functions, even those defined with `async def`
 
 Profiling hooks and tracing
 ***************************

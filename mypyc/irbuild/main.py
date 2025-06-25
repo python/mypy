@@ -73,7 +73,7 @@ def build_ir(
 
     for module in modules:
         # First pass to determine free symbols.
-        pbv = PreBuildVisitor(errors, module, singledispatch_info.decorators_to_remove)
+        pbv = PreBuildVisitor(errors, module, singledispatch_info.decorators_to_remove, types)
         module.accept(pbv)
 
         # Construct and configure builder objects (cyclic runtime dependency).
@@ -99,6 +99,7 @@ def build_ir(
             builder.functions,
             builder.classes,
             builder.final_names,
+            builder.type_var_names,
         )
         result[module.fullname] = module_ir
         class_irs.extend(builder.classes)
@@ -130,7 +131,7 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
         ir = builder.mapper.type_to_ir[cls.info]
         builder.classes.append(ir)
 
-    builder.enter("<top level>")
+    builder.enter("<module>")
 
     # Make sure we have a builtins import
     builder.gen_import("builtins", -1)

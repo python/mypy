@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifndef Py_TPFLAGS_SEQUENCE
+#define Py_TPFLAGS_SEQUENCE (1 << 5)
+#endif
+
 PyObject *CPyList_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
 
@@ -24,6 +28,20 @@ PyObject *CPyList_Build(Py_ssize_t len, ...) {
 
     return res;
 }
+
+PyObject *CPyList_Copy(PyObject *list) {
+    if(PyList_CheckExact(list)) {
+        return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
+    }
+    _Py_IDENTIFIER(copy);
+
+    PyObject *name = _PyUnicode_FromId(&PyId_copy);
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodNoArgs(list, name);
+}
+
 
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
     Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
@@ -252,7 +270,10 @@ int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
 }
 
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
-    return _PyList_Extend((PyListObject *)o1, o2);
+    if (PyList_Extend(o1, o2) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 // Return -2 or error, -1 if not found, or index of first match otherwise.
@@ -298,6 +319,18 @@ CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
     return index << 1;
 }
 
+PyObject *CPySequence_Sort(PyObject *seq) {
+    PyObject *newlist = PySequence_List(seq);
+    if (newlist == NULL)
+        return NULL;
+    int res = PyList_Sort(newlist);
+    if (res < 0) {
+        Py_DECREF(newlist);
+        return NULL;
+    }
+    return newlist;
+}
+
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
     Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
     if (size == -1 && PyErr_Occurred()) {
@@ -308,6 +341,14 @@ PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
 
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
     return CPySequence_Multiply(seq, t_size);
+}
+
+PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size) {
+    Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    return PySequence_InPlaceRepeat(seq, size);
 }
 
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
@@ -324,4 +365,8 @@ PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         return PyList_GetSlice(obj, startn, endn);
     }
     return CPyObject_GetSlice(obj, start, end);
+}
+
+int CPySequence_Check(PyObject *obj) {
+    return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_SEQUENCE;
 }

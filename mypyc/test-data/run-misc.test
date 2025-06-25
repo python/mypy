@@ -37,9 +37,9 @@ from testutil import assertRaises
 
 f(True, True)
 f(False, False)
-with assertRaises(NameError):
+with assertRaises(UnboundLocalError):
     f(False, True)
-with assertRaises(NameError):
+with assertRaises(UnboundLocalError):
     g()
 [out]
 lol
@@ -83,6 +83,36 @@ assert f(None) is None
 assert f(a) is a
 assert g(None) == 1
 assert g(a) == 2
+
+[case testInferredOptionalAssignment]
+from typing import Any, Generator
+
+def f(b: bool) -> Any:
+    if b:
+        x = None
+    else:
+        x = 1
+
+    if b:
+        y = 1
+    else:
+        y = None
+
+    m = 1 if b else None
+    n = None if b else 1
+    return ((x, y), (m, n))
+
+def gen(b: bool) -> Generator[Any, None, None]:
+    if b:
+        y = 1
+    else:
+        y = None
+    yield y
+
+assert f(False) == ((1, None), (None, 1))
+assert f(True) == ((None, 1), (1, None))
+assert next(gen(False)) is None
+assert next(gen(True)) == 1
 
 [case testWith]
 from typing import Any
@@ -158,7 +188,7 @@ exit! a ohno
 caught
 
 [case testDisplays]
-from typing import List, Set, Tuple, Sequence, Dict, Any
+from typing import List, Set, Tuple, Sequence, Dict, Any, Mapping
 
 def listDisplay(x: List[int], y: List[int]) -> List[int]:
     return [1, 2, *x, *y, 3]
@@ -172,12 +202,17 @@ def tupleDisplay(x: Sequence[str], y: Sequence[str]) -> Tuple[str, ...]:
 def dictDisplay(x: str, y1: Dict[str, int], y2: Dict[str, int]) -> Dict[str, int]:
     return {x: 2, **y1, 'z': 3, **y2}
 
+def dictDisplayUnpackMapping(obj: Mapping[str, str]) -> Dict[str, str]:
+    return {**obj, "env": "value"}
+
 [file driver.py]
-from native import listDisplay, setDisplay, tupleDisplay, dictDisplay
+import os
+from native import listDisplay, setDisplay, tupleDisplay, dictDisplay, dictDisplayUnpackMapping
 assert listDisplay([4], [5, 6]) == [1, 2, 4, 5, 6, 3]
 assert setDisplay({4}, {5}) == {1, 2, 3, 4, 5}
 assert tupleDisplay(['4', '5'], ['6']) == ('1', '2', '4', '5', '6', '3')
 assert dictDisplay('x', {'y1': 1}, {'y2': 2, 'z': 5}) == {'x': 2, 'y1': 1, 'y2': 2, 'z': 5}
+assert dictDisplayUnpackMapping(os.environ) == {**os.environ, "env": "value"}
 
 [case testArbitraryLvalues]
 from typing import List, Dict, Any
@@ -577,8 +612,7 @@ for a in sorted(s):
 9     8   72
 
 [case testDummyTypes]
-from typing import Tuple, List, Dict, NamedTuple
-from typing_extensions import Literal, TypedDict, NewType
+from typing import Tuple, List, Dict, Literal, NamedTuple, NewType, TypedDict
 
 class A:
     pass
@@ -629,6 +663,7 @@ except Exception as e:
     print(type(e).__name__)
 # ... but not that it is a valid literal value
 take_literal(10)
+[typing fixtures/typing-full.pyi]
 [out]
 Lol(a=1, b=[])
 10
@@ -640,7 +675,7 @@ TypeError
 10
 
 [case testClassBasedTypedDict]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class TD(TypedDict):
     a: int
@@ -672,6 +707,7 @@ def test_non_total_typed_dict() -> None:
     d4 = TD4(a=1, b=2, c=3, d=4)
     assert d3['c'] == 3
     assert d4['d'] == 4
+[typing fixtures/typing-full.pyi]
 
 [case testClassBasedNamedTuple]
 from typing import NamedTuple
@@ -933,7 +969,13 @@ print(z)
 [case testCheckVersion]
 import sys
 
-if sys.version_info[:2] == (3, 12):
+if sys.version_info[:2] == (3, 14):
+    def version() -> int:
+        return 14
+elif sys.version_info[:2] == (3, 13):
+    def version() -> int:
+        return 13
+elif sys.version_info[:2] == (3, 12):
     def version() -> int:
         return 12
 elif sys.version_info[:2] == (3, 11):
@@ -945,15 +987,6 @@ elif sys.version_info[:2] == (3, 10):
 elif sys.version_info[:2] == (3, 9):
     def version() -> int:
         return 9
-elif sys.version_info[:2] == (3, 8):
-    def version() -> int:
-        return 8
-elif sys.version_info[:2] == (3, 7):
-    def version() -> int:
-        return 7
-elif sys.version_info[:2] == (3, 6):
-    def version() -> int:
-        return 6
 else:
     raise Exception("we don't support this version yet!")
 
@@ -1062,8 +1095,10 @@ B = sys.platform == 'x' and sys.foobar
 C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
 C = sys.platform == 'x' and cast(a, b[c])
 C = sys.platform == 'x' and (lambda x: y + x)
-# TODO: This still doesn't work
-# C = sys.platform == 'x' and (x for y in z)
+C = sys.platform == 'x' and (x for y in z)
+C = sys.platform == 'x' and [x for y in z]
+C = sys.platform == 'x' and {x: x for y in z}
+C = sys.platform == 'x' and {x for y in z}
 
 assert not A
 assert not B
@@ -1073,29 +1108,14 @@ assert not C
 # make the initial import fail
 assert False
 
-class C:
-    def __init__(self):
-        self.x = 1
-        self.y = 2
-def test() -> None:
-    a = C()
 [file driver.py]
 # load native, cause PyInit to be run, create the module but don't finish initializing the globals
-try:
-    import native
-except:
-    pass
-try:
-    # try accessing those globals that were never properly initialized
-    import native
-    native.test()
-# should fail with AssertionError due to `assert False` in other function
-except AssertionError:
-    pass
-
-[case testRepeatedUnderscoreFunctions]
-def _(arg): pass
-def _(arg): pass
+for _ in range(2):
+    try:
+        import native
+        raise RuntimeError('exception expected')
+    except AssertionError:
+        pass
 
 [case testUnderscoreFunctionsInMethods]
 
@@ -1116,3 +1136,33 @@ i = b"foo"
 
 def test_redefinition() -> None:
     assert i == b"foo"
+
+[case testWithNative]
+class DummyContext:
+    def __init__(self):
+        self.c = 0
+    def __enter__(self) -> None:
+        self.c += 1
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.c -= 1
+
+def test_dummy_context() -> None:
+    c = DummyContext()
+    with c:
+        assert c.c == 1
+    assert c.c == 0
+
+[case testWithNativeVarArgs]
+class DummyContext:
+    def __init__(self):
+        self.c = 0
+    def __enter__(self) -> None:
+        self.c += 1
+    def __exit__(self, *args: object) -> None:
+        self.c -= 1
+
+def test_dummy_context() -> None:
+    c = DummyContext()
+    with c:
+        assert c.c == 1
+    assert c.c == 0

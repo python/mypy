@@ -28,3 +28,5 @@ def __print(a1=None, a2=None, a3=None, a4=None):
     # Do not use *args since this would require list and break many test
     # cases.
     pass
+
+class dict: pass

@@ -8,6 +8,7 @@ __all__ = [
     "CIRCUMFLEX",
     "CIRCUMFLEXEQUAL",
     "COLON",
+    "COLONEQUAL",
     "COMMA",
     "DEDENT",
     "DOT",
@@ -59,6 +60,8 @@ __all__ = [
     "STAREQUAL",
     "STRING",
     "TILDE",
+    "TYPE_COMMENT",
+    "TYPE_IGNORE",
     "VBAR",
     "VBAREQUAL",
     "tok_name",
@@ -66,12 +69,17 @@ __all__ = [
     "NL",
     "COMMENT",
 ]
-
-if sys.version_info >= (3, 8):
-    __all__ += ["ASYNC", "AWAIT", "COLONEQUAL", "TYPE_COMMENT", "TYPE_IGNORE"]
+if sys.version_info < (3, 13):
+    __all__ += ["ASYNC", "AWAIT"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
+
+if sys.version_info >= (3, 12):
+    __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START", "EXACT_TOKEN_TYPES"]
+
+if sys.version_info >= (3, 14):
+    __all__ += ["TSTRING_START", "TSTRING_MIDDLE", "TSTRING_END"]
 
 ENDMARKER: int
 NAME: int
@@ -126,7 +134,7 @@ AT: int
 RARROW: int
 ELLIPSIS: int
 ATEQUAL: int
-if sys.version_info >= (3, 8):
+if sys.version_info < (3, 13):
     AWAIT: int
     ASYNC: int
 OP: int
@@ -137,13 +145,23 @@ tok_name: dict[int, str]
 COMMENT: int
 NL: int
 ENCODING: int
-if sys.version_info >= (3, 8):
-    TYPE_COMMENT: int
-    TYPE_IGNORE: int
-    COLONEQUAL: int
-    EXACT_TOKEN_TYPES: dict[str, int]
+TYPE_COMMENT: int
+TYPE_IGNORE: int
+COLONEQUAL: int
+EXACT_TOKEN_TYPES: dict[str, int]
 if sys.version_info >= (3, 10):
     SOFT_KEYWORD: int
+
+if sys.version_info >= (3, 12):
+    EXCLAMATION: int
+    FSTRING_END: int
+    FSTRING_MIDDLE: int
+    FSTRING_START: int
+
+if sys.version_info >= (3, 14):
+    TSTRING_START: int
+    TSTRING_MIDDLE: int
+    TSTRING_END: int
 
 def ISTERMINAL(x: int) -> bool: ...
 def ISNONTERMINAL(x: int) -> bool: ...

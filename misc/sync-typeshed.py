@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import glob
 import os
 import re
 import shutil
@@ -24,7 +25,7 @@ import requests
 
 
 def check_state() -> None:
-    if not os.path.isfile("README.md") and not os.path.isdir("mypy"):
+    if not os.path.isfile("pyproject.toml") or not os.path.isdir("mypy"):
         sys.exit("error: The current working directory must be the mypy repository root")
     out = subprocess.check_output(["git", "status", "-s", os.path.join("mypy", "typeshed")])
     if out:
@@ -35,10 +36,13 @@ def check_state() -> None:
 def update_typeshed(typeshed_dir: str, commit: str | None) -> str:
     """Update contents of local typeshed copy.
 
+    We maintain our own separate mypy_extensions stubs, since it's
+    treated specially by mypy and we make assumptions about what's there.
+    We don't sync mypy_extensions stubs here -- this is done manually.
+
     Return the normalized typeshed commit hash.
     """
     assert os.path.isdir(os.path.join(typeshed_dir, "stdlib"))
-    assert os.path.isdir(os.path.join(typeshed_dir, "stubs"))
     if commit:
         subprocess.run(["git", "checkout", commit], check=True, cwd=typeshed_dir)
     commit = git_head_commit(typeshed_dir)
@@ -47,15 +51,8 @@ def update_typeshed(typeshed_dir: str, commit: str | None) -> str:
     # Remove existing stubs.
     shutil.rmtree(stdlib_dir)
     # Copy new stdlib stubs.
-    shutil.copytree(os.path.join(typeshed_dir, "stdlib"), stdlib_dir)
-    # Copy mypy_extensions stubs. We don't want to use a stub package, since it's
-    # treated specially by mypy and we make assumptions about what's there.
-    stubs_dir = os.path.join("mypy", "typeshed", "stubs")
-    shutil.rmtree(stubs_dir)
-    os.makedirs(stubs_dir)
     shutil.copytree(
-        os.path.join(typeshed_dir, "stubs", "mypy-extensions"),
-        os.path.join(stubs_dir, "mypy-extensions"),
+        os.path.join(typeshed_dir, "stdlib"), stdlib_dir, ignore=shutil.ignore_patterns("@tests")
     )
     shutil.copy(os.path.join(typeshed_dir, "LICENSE"), os.path.join("mypy", "typeshed"))
     return commit
@@ -154,44 +151,66 @@ def main() -> None:
         if os.environ.get("GITHUB_TOKEN") is None:
             raise ValueError("GITHUB_TOKEN environment variable must be set")
 
-    branch_name = "mypybot/sync-typeshed"
-    subprocess.run(["git", "checkout", "-B", branch_name, "origin/master"], check=True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Stash patches before checking out a new branch
+        typeshed_patches = os.path.join("misc", "typeshed_patches")
+        tmp_patches = os.path.join(tmpdir, "typeshed_patches")
+        shutil.copytree(typeshed_patches, tmp_patches)
 
-    if not args.typeshed_dir:
-        # Clone typeshed repo if no directory given.
-        with tempfile.TemporaryDirectory() as tempdir:
-            print(f"Cloning typeshed in {tempdir}...")
+        branch_name = "mypybot/sync-typeshed"
+        subprocess.run(["git", "checkout", "-B", branch_name, "origin/master"], check=True)
+
+        # Copy the stashed patches back
+        shutil.rmtree(typeshed_patches, ignore_errors=True)
+        shutil.copytree(tmp_patches, typeshed_patches)
+        if subprocess.run(["git", "diff", "--quiet", "--exit-code"], check=False).returncode != 0:
+            subprocess.run(["git", "commit", "-am", "Update typeshed patches"], check=True)
+
+        if not args.typeshed_dir:
+            tmp_typeshed = os.path.join(tmpdir, "typeshed")
+            os.makedirs(tmp_typeshed)
+            # Clone typeshed repo if no directory given.
+            print(f"Cloning typeshed in {tmp_typeshed}...")
             subprocess.run(
-                ["git", "clone", "https://github.com/python/typeshed.git"], check=True, cwd=tempdir
+                ["git", "clone", "https://github.com/python/typeshed.git"],
+                check=True,
+                cwd=tmp_typeshed,
             )
-            repo = os.path.join(tempdir, "typeshed")
+            repo = os.path.join(tmp_typeshed, "typeshed")
             commit = update_typeshed(repo, args.commit)
-    else:
-        commit = update_typeshed(args.typeshed_dir, args.commit)
+        else:
+            commit = update_typeshed(args.typeshed_dir, args.commit)
 
-    assert commit
+        assert commit
 
-    # Create a commit
-    message = textwrap.dedent(
-        f"""\
-        Sync typeshed
+        # Create a commit
+        message = textwrap.dedent(
+            f"""\
+            Sync typeshed
 
-        Source commit:
-        https://github.com/python/typeshed/commit/{commit}
-        """
-    )
-    subprocess.run(["git", "add", "--all", os.path.join("mypy", "typeshed")], check=True)
-    subprocess.run(["git", "commit", "-m", message], check=True)
-    print("Created typeshed sync commit.")
+            Source commit:
+            https://github.com/python/typeshed/commit/{commit}
+            """
+        )
+        subprocess.run(["git", "add", "--all", os.path.join("mypy", "typeshed")], check=True)
+        subprocess.run(["git", "commit", "-m", message], check=True)
+        print("Created typeshed sync commit.")
 
-    commits_to_cherry_pick = [
-        "780534b13722b7b0422178c049a1cbbf4ea4255b",  # LiteralString reverts
-        "5319fa34a8004c1568bb6f032a07b8b14cc95bed",  # sum reverts
-        "0062994228fb62975c6cef4d2c80d00c7aa1c545",  # ctypes reverts
-    ]
-    for commit in commits_to_cherry_pick:
-        subprocess.run(["git", "cherry-pick", commit], check=True)
-        print(f"Cherry-picked {commit}.")
+        patches = sorted(glob.glob(os.path.join(typeshed_patches, "*.patch")))
+        for patch in patches:
+            cmd = ["git", "am", "--3way", patch]
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(
+                    f"\n\nFailed to apply patch {patch}\n"
+                    "1. Resolve the conflict, `git add --update`, then run `git am --continue`\n"
+                    "2. Run `git format-patch -1 -o misc/typeshed_patches <new_commit_sha>` "
+                    "to update the patch file.\n"
+                    "3. Re-run sync-typeshed.py"
+                ) from e
+
+            print(f"Applied patch {patch}")
 
     if args.make_pr:
         subprocess.run(["git", "push", "--force", "origin", branch_name], check=True)

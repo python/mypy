@@ -20,7 +20,6 @@ Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
 Ord() == 1
 Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
 Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTotalOrderingLambda]
@@ -43,7 +42,6 @@ Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
 Ord() == 1
 Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
 Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTotalOrderingNonCallable]
@@ -59,8 +57,6 @@ class Ord(object):
 Ord() <= Ord()  # E: Unsupported left operand type for <= ("Ord")
 Ord() > Ord()  # E: "int" not callable
 Ord() >= Ord()  # E: Unsupported left operand type for >= ("Ord")
-
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTotalOrderingReturnNotBool]
@@ -79,8 +75,6 @@ reveal_type(Ord() <= Ord())  # N: Revealed type is "Any"
 reveal_type(Ord() == Ord())  # N: Revealed type is "builtins.bool"
 reveal_type(Ord() > Ord())  # N: Revealed type is "Any"
 reveal_type(Ord() >= Ord())  # N: Revealed type is "Any"
-
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testTotalOrderingAllowsAny]
@@ -105,11 +99,9 @@ Ord() <= 1  # E: Unsupported left operand type for <= ("Ord")
 Ord() == 1
 Ord() > 1
 Ord() >= 1  # E: Unsupported left operand type for >= ("Ord")
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testCachedProperty]
-# flags: --python-version 3.8
 from functools import cached_property
 class Parent:
     @property
@@ -151,5 +143,586 @@ def f(d: D[C]) -> None:
     reveal_type(d.__gt__)  # N: Revealed type is "def (other: Any) -> builtins.bool"
 
 d: D[int]  # E: Type argument "int" of "D" must be a subtype of "C"
-[builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialBasic]
+from typing import Callable
+import functools
+
+def foo(a: int, b: str, c: int = 5) -> int: ...  # N: "foo" defined here
+
+p1 = functools.partial(foo)
+p1(1, "a", 3)  # OK
+p1(1, "a", c=3)  # OK
+p1(1, b="a", c=3)  # OK
+
+reveal_type(p1)  # N: Revealed type is "functools.partial[builtins.int]"
+
+def takes_callable_int(f: Callable[..., int]) -> None: ...
+def takes_callable_str(f: Callable[..., str]) -> None: ...
+takes_callable_int(p1)
+takes_callable_str(p1)  # E: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "Callable[..., str]" \
+                        # N: "partial[int].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], int]"
+
+p2 = functools.partial(foo, 1)
+p2("a")  # OK
+p2("a", 3)  # OK
+p2("a", c=3)  # OK
+p2(1, 3)  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
+p2(1, "a", 3)  # E: Too many arguments for "foo" \
+               # E: Argument 1 to "foo" has incompatible type "int"; expected "str" \
+               # E: Argument 2 to "foo" has incompatible type "str"; expected "int"
+p2(a=1, b="a", c=3)  # E: Unexpected keyword argument "a" for "foo"
+
+p3 = functools.partial(foo, b="a")
+p3(1)  # OK
+p3(1, c=3)  # OK
+p3(a=1)  # OK
+p3(1, b="a", c=3)  # OK, keywords can be clobbered
+p3(1, 3)  # E: Too many positional arguments for "foo" \
+          # E: Argument 2 to "foo" has incompatible type "int"; expected "str"
+
+functools.partial(foo, "a")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+functools.partial(foo, b=1)  # E: Argument "b" to "foo" has incompatible type "int"; expected "str"
+functools.partial(foo, a=1, b=2, c=3)  # E: Argument "b" to "foo" has incompatible type "int"; expected "str"
+functools.partial(1)  # E: "int" not callable \
+                      # E: Argument 1 to "partial" has incompatible type "int"; expected "Callable[..., Never]"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialStar]
+import functools
+from typing import List
+
+def foo(a: int, b: str, *args: int, d: str, **kwargs: int) -> int: ...
+
+p1 = functools.partial(foo, 1, d="a", x=9)
+p1("a", 2, 3, 4)  # OK
+p1("a", 2, 3, 4, d="a")  # OK
+p1("a", 2, 3, 4, "a")  # E: Argument 5 to "foo" has incompatible type "str"; expected "int"
+p1("a", 2, 3, 4, x="a")  # E: Argument "x" to "foo" has incompatible type "str"; expected "int"
+
+p2 = functools.partial(foo, 1, "a")
+p2(2, 3, 4, d="a")  # OK
+p2("a")  # E: Missing named argument "d" for "foo" \
+         # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+p2(2, 3, 4)  # E: Missing named argument "d" for "foo"
+
+functools.partial(foo, 1, "a", "b", "c", d="a")  # E: Argument 3 to "foo" has incompatible type "str"; expected "int" \
+                                                 # E: Argument 4 to "foo" has incompatible type "str"; expected "int"
+
+def bar(*a: bytes, **k: int):
+    p1("a", 2, 3, 4, d="a", **k)
+    p1("a", d="a", **k)
+    p1("a", **k)  # E: Argument 2 to "foo" has incompatible type "**dict[str, int]"; expected "str"
+    p1(**k)  # E: Argument 1 to "foo" has incompatible type "**dict[str, int]"; expected "str"
+    p1(*a)  # E: Expected iterable as variadic argument
+
+
+def baz(a: int, b: int) -> int: ...
+def test_baz(xs: List[int]):
+    p3 = functools.partial(baz, *xs)
+    p3()
+    p3(1)  # E: Too many arguments for "baz"
+
+
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialGeneric]
+from typing import TypeVar
+import functools
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+def foo(a: T, b: T) -> T: ...
+
+p1 = functools.partial(foo, 1)
+reveal_type(p1(2))  # N: Revealed type is "builtins.int"
+p1("a")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+p2 = functools.partial(foo, "a")
+p2(1)  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
+reveal_type(p2("a"))  # N: Revealed type is "builtins.str"
+
+def bar(a: T, b: U) -> U: ...
+
+p3 = functools.partial(bar, 1)
+reveal_type(p3(2))  # N: Revealed type is "builtins.int"
+reveal_type(p3("a"))  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialCallable]
+from typing import Callable
+import functools
+
+def main1(f: Callable[[int, str], int]) -> None:
+    p = functools.partial(f, 1)
+    p("a")  # OK
+    p(1)  # E: Argument 1 has incompatible type "int"; expected "str"
+
+    functools.partial(f, a=1)  # E: Unexpected keyword argument "a"
+
+class CallbackProto:
+    def __call__(self, a: int, b: str) -> int: ...
+
+def main2(f: CallbackProto) -> None:
+    p = functools.partial(f, b="a")
+    p(1)  # OK
+    p("a")  # E: Argument 1 to "__call__" of "CallbackProto" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialOverload]
+from typing import overload
+import functools
+
+@overload
+def foo(a: int, b: str) -> int: ...
+@overload
+def foo(a: str, b: int) -> str: ...
+def foo(*a, **k): ...
+
+p1 = functools.partial(foo)
+reveal_type(p1(1, "a"))  # N: Revealed type is "builtins.int"
+reveal_type(p1("a", 1))  # N: Revealed type is "builtins.int"
+p1(1, 2)  # TODO: false negative
+p1("a", "b")  # TODO: false negative
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialTypeGuard]
+import functools
+from typing_extensions import TypeGuard
+
+def is_str_list(val: list[object]) -> TypeGuard[list[str]]: ...
+
+reveal_type(functools.partial(is_str_list, [1, 2, 3]))  # N: Revealed type is "functools.partial[builtins.bool]"
+reveal_type(functools.partial(is_str_list, [1, 2, 3])())  # N: Revealed type is "builtins.bool"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialType]
+import functools
+from typing import Type
+
+class A:
+    def __init__(self, a: int, b: str) -> None: ...  # N: "A" defined here
+
+p = functools.partial(A, 1)
+reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
+
+p("a")  # OK
+p(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
+p(z=1)  # E: Unexpected keyword argument "z" for "A"
+
+def main(t: Type[A]) -> None:
+    p = functools.partial(t, 1)
+    reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
+
+    p("a")  # OK
+    p(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
+    p(z=1)  # E: Unexpected keyword argument "z" for "A"
+
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialTypeVarTuple]
+import functools
+import typing
+Ts = typing.TypeVarTuple("Ts")
+def foo(fn: typing.Callable[[typing.Unpack[Ts]], None], /, *arg: typing.Unpack[Ts], kwarg: str) -> None: ...
+p = functools.partial(foo, kwarg="asdf")
+
+def bar(a: int, b: str, c: float) -> None: ...
+p(bar, 1, "a", 3.0)  # OK
+p(bar, 1, "a", 3.0, kwarg="asdf")  # OK
+p(bar, 1, "a", "b")  # E: Argument 1 to "foo" has incompatible type "Callable[[int, str, float], None]"; expected "Callable[[int, str, str], None]"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialUnion]
+import functools
+from typing import Any, Callable, Union
+
+cls1: Any
+cls2: Union[Any, Any]
+reveal_type(functools.partial(cls1, 2)())  # N: Revealed type is "Any"
+reveal_type(functools.partial(cls2, 2)())  # N: Revealed type is "Any"
+
+fn1: Union[Callable[[int], int], Callable[[int], int]]
+reveal_type(functools.partial(fn1, 2)())  # N: Revealed type is "builtins.int"
+
+fn2: Union[Callable[[int], int], Callable[[int], str]]
+reveal_type(functools.partial(fn2, 2)())  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+fn3: Union[Callable[[int], int], str]
+reveal_type(functools.partial(fn3, 2)())  # E: "str" not callable \
+                                          # N: Revealed type is "builtins.int" \
+                                          # E: Argument 1 to "partial" has incompatible type "Union[Callable[[int], int], str]"; expected "Callable[..., int]"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialUnionOfTypeAndCallable]
+import functools
+from typing import Callable, Union, Type
+from typing_extensions import TypeAlias
+
+class FooBar:
+    def __init__(self, arg1: str) -> None:
+        pass
+
+def f1(t: Union[Type[FooBar], Callable[..., 'FooBar']]) -> None:
+    val = functools.partial(t)
+
+FooBarFunc: TypeAlias = Callable[..., 'FooBar']
+
+def f2(t: Union[Type[FooBar], FooBarFunc]) -> None:
+    val = functools.partial(t)
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialExplicitType]
+from functools import partial
+from typing import Type, TypeVar, Callable
+
+T = TypeVar("T")
+def generic(string: str, integer: int, resulting_type: Type[T]) -> T: ...
+
+p: partial[str] = partial(generic, resulting_type=str)
+q: partial[bool] = partial(generic, resulting_type=str)  # E: Argument "resulting_type" to "generic" has incompatible type "type[str]"; expected "type[bool]"
+
+pc: Callable[..., str] = partial(generic, resulting_type=str)
+qc: Callable[..., bool] = partial(generic, resulting_type=str)  # E: Incompatible types in assignment (expression has type "partial[str]", variable has type "Callable[..., bool]") \
+                                                                # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialNestedPartial]
+from functools import partial
+from typing import Any
+
+def foo(x: int) -> int: ...
+p = partial(partial, foo)
+reveal_type(p()(1))  # N: Revealed type is "builtins.int"
+p()("no")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+q = partial(partial, partial, foo)
+q()()("no")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+r = partial(partial, foo, 1)
+reveal_type(r()())  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypeObject]
+import functools
+from typing import Type, Generic, TypeVar
+
+class A:
+    def __init__(self, val: int) -> None: ...
+
+cls1: Type[A]
+reveal_type(functools.partial(cls1, 2)())  # N: Revealed type is "__main__.A"
+functools.partial(cls1, "asdf")  # E: Argument 1 to "A" has incompatible type "str"; expected "int"
+
+T = TypeVar("T")
+class B(Generic[T]):
+    def __init__(self, val: T) -> None: ...
+
+cls2: Type[B[int]]
+reveal_type(functools.partial(cls2, 2)())  # N: Revealed type is "__main__.B[builtins.int]"
+functools.partial(cls2, "asdf")  # E: Argument 1 to "B" has incompatible type "str"; expected "int"
+
+def foo(cls3: Type[B[T]]):
+    reveal_type(functools.partial(cls3, "asdf"))  # N: Revealed type is "functools.partial[__main__.B[T`-1]]" \
+                                                  # E: Argument 1 to "B" has incompatible type "str"; expected "T"
+    reveal_type(functools.partial(cls3, 2)())  # N: Revealed type is "__main__.B[T`-1]" \
+                                               # E: Argument 1 to "B" has incompatible type "int"; expected "T"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypedDictUnpack]
+from typing import TypedDict
+from typing_extensions import Unpack
+from functools import partial
+
+class D1(TypedDict, total=False):
+    a1: int
+
+def fn1(a1: int) -> None: ...  # N: "fn1" defined here
+def main1(**d1: Unpack[D1]) -> None:
+    partial(fn1, **d1)()
+    partial(fn1, **d1)(**d1)
+    partial(fn1, **d1)(a1=1)
+    partial(fn1, **d1)(a1="asdf")  # E: Argument "a1" to "fn1" has incompatible type "str"; expected "int"
+    partial(fn1, **d1)(oops=1)  # E: Unexpected keyword argument "oops" for "fn1"
+
+def fn2(**kwargs: Unpack[D1]) -> None: ...  # N: "fn2" defined here
+def main2(**d1: Unpack[D1]) -> None:
+    partial(fn2, **d1)()
+    partial(fn2, **d1)(**d1)
+    partial(fn2, **d1)(a1=1)
+    partial(fn2, **d1)(a1="asdf")  # E: Argument "a1" to "fn2" has incompatible type "str"; expected "int"
+    partial(fn2, **d1)(oops=1)  # E: Unexpected keyword argument "oops" for "fn2"
+
+class D2(TypedDict, total=False):
+    a1: int
+    a2: str
+
+class A2Good(TypedDict, total=False):
+    a2: str
+class A2Bad(TypedDict, total=False):
+    a2: int
+
+def fn3(a1: int, a2: str) -> None: ...  # N: "fn3" defined here
+def main3(a2good: A2Good, a2bad: A2Bad, **d2: Unpack[D2]) -> None:
+    partial(fn3, **d2)()
+    partial(fn3, **d2)(a1=1, a2="asdf")
+
+    partial(fn3, **d2)(**d2)
+
+    partial(fn3, **d2)(a1="asdf")  # E: Argument "a1" to "fn3" has incompatible type "str"; expected "int"
+    partial(fn3, **d2)(a1=1, a2="asdf", oops=1)  # E: Unexpected keyword argument "oops" for "fn3"
+
+    partial(fn3, **d2)(**a2good)
+    partial(fn3, **d2)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
+
+def fn4(**kwargs: Unpack[D2]) -> None: ...  # N: "fn4" defined here
+def main4(a2good: A2Good, a2bad: A2Bad, **d2: Unpack[D2]) -> None:
+    partial(fn4, **d2)()
+    partial(fn4, **d2)(a1=1, a2="asdf")
+
+    partial(fn4, **d2)(**d2)
+
+    partial(fn4, **d2)(a1="asdf")  # E: Argument "a1" to "fn4" has incompatible type "str"; expected "int"
+    partial(fn4, **d2)(a1=1, a2="asdf", oops=1)  # E: Unexpected keyword argument "oops" for "fn4"
+
+    partial(fn3, **d2)(**a2good)
+    partial(fn3, **d2)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
+
+def main5(**d2: Unpack[D2]) -> None:
+    partial(fn1, **d2)()  # E: Extra argument "a2" from **args for "fn1"
+    partial(fn2, **d2)()  # E: Extra argument "a2" from **args for "fn2"
+
+def main6(a2good: A2Good, a2bad: A2Bad, **d1: Unpack[D1]) -> None:
+    partial(fn3, **d1)()  # E: Missing positional argument "a1" in call to "fn3"
+    partial(fn3, **d1)("asdf")  # E: Too many positional arguments for "fn3" \
+                                # E: Too few arguments for "fn3" \
+                                # E: Argument 1 to "fn3" has incompatible type "str"; expected "int"
+    partial(fn3, **d1)(a2="asdf")
+    partial(fn3, **d1)(**a2good)
+    partial(fn3, **d1)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
+
+    partial(fn4, **d1)()
+    partial(fn4, **d1)("asdf")  # E: Too many positional arguments for "fn4" \
+                                # E: Argument 1 to "fn4" has incompatible type "str"; expected "int"
+    partial(fn4, **d1)(a2="asdf")
+    partial(fn4, **d1)(**a2good)
+    partial(fn4, **d1)(**a2bad)  # E: Argument "a2" to "fn4" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testFunctoolsPartialNestedGeneric]
+from functools import partial
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+def get(n: int, args: List[T]) -> T: ...
+first = partial(get, 0)
+
+x: List[str]
+reveal_type(first(x))  # N: Revealed type is "builtins.str"
+reveal_type(first([1]))  # N: Revealed type is "builtins.int"
+
+first_kw = partial(get, n=0)
+reveal_type(first_kw(args=[1]))  # N: Revealed type is "builtins.int"
+
+# TODO: this is indeed invalid, but the error is incomprehensible.
+first_kw([1])  # E: Too many positional arguments for "get" \
+               # E: Too few arguments for "get" \
+               # E: Argument 1 to "get" has incompatible type "list[int]"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testFunctoolsPartialHigherOrder]
+from functools import partial
+from typing import Callable
+
+def fn(a: int, b: str, c: bytes) -> int: ...
+
+def callback1(fn: Callable[[str, bytes], int]) -> None: ...
+def callback2(fn: Callable[[str, int], int]) -> None: ...
+
+callback1(partial(fn, 1))
+# TODO: false negative
+# https://github.com/python/mypy/issues/17461
+callback2(partial(fn, 1))
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialClassObjectMatchingPartial]
+from functools import partial
+
+class A:
+    def __init__(self, var: int, b: int, c: int) -> None: ...
+
+p = partial(A, 1)
+reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
+p(1, "no")  # E: Argument 2 to "A" has incompatible type "str"; expected "int"
+
+q: partial[A] = partial(A, 1)  # OK
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypeVarBound]
+from typing import Callable, TypeVar, Type
+import functools
+
+T = TypeVar("T", bound=Callable[[str, int], str])
+S = TypeVar("S", bound=Type[int])
+
+def foo(f: T) -> T:
+    g = functools.partial(f, "foo")
+    return f
+
+def bar(f: S) -> S:
+    g = functools.partial(f, "foo")
+    return f
+[builtins fixtures/primitives.pyi]
+
+[case testFunctoolsPartialAbstractType]
+from abc import ABC, abstractmethod
+from functools import partial
+
+class A(ABC):
+    def __init__(self) -> None: ...
+    @abstractmethod
+    def method(self) -> None: ...
+
+def f1(cls: type[A]) -> None:
+    cls()
+    partial_cls = partial(cls)
+    partial_cls()
+
+def f2() -> None:
+    A()  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
+    partial_cls = partial(A)  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
+    partial_cls()  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialSelfType]
+from functools import partial
+from typing_extensions import Self
+
+class A:
+    def __init__(self, ts: float, msg: str) -> None: ...
+
+    @classmethod
+    def from_msg(cls, msg: str) -> Self:
+        factory = partial(cls, ts=0)
+        return factory(msg=msg)
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypeVarValues]
+from functools import partial
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(x: int, y: T) -> T:
+    return y
+
+def g(x: T, y: int) -> T:
+    return x
+
+def h(x: T, y: T) -> T:
+    return x
+
+fp = partial(f, 1)
+reveal_type(fp(1))  # N: Revealed type is "builtins.int"
+reveal_type(fp("a"))  # N: Revealed type is "builtins.str"
+fp(object())  # E: Value of type variable "T" of "f" cannot be "object"
+
+gp = partial(g, 1)
+reveal_type(gp(1))  # N: Revealed type is "builtins.int"
+gp("a")  # E: Argument 1 to "g" has incompatible type "str"; expected "int"
+
+hp = partial(h, 1)
+reveal_type(hp(1))  # N: Revealed type is "builtins.int"
+hp("a")  # E: Argument 1 to "h" has incompatible type "str"; expected "int"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialOverloadedCallableProtocol]
+from functools import partial
+from typing import Callable, Protocol, overload
+
+class P(Protocol):
+    @overload
+    def __call__(self, x: int) -> int: ...
+    @overload
+    def __call__(self, x: str) -> str: ...
+
+def f(x: P):
+    reveal_type(partial(x, 1)())  # N: Revealed type is "builtins.int"
+
+    # TODO: but this is incorrect, predating the functools.partial plugin
+    reveal_type(partial(x, "a")())  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypeVarErasure]
+from typing import Callable, TypeVar, Union
+from typing_extensions import ParamSpec, TypeVarTuple, Unpack
+from functools import partial
+
+def use_int_callable(x: Callable[[int], int]) -> None:
+    pass
+def use_func_callable(
+    x: Callable[
+        [Callable[[int], None]],
+        Callable[[int], None],
+    ],
+) -> None:
+    pass
+
+Tc = TypeVar("Tc", int, str)
+Tb = TypeVar("Tb", bound=Union[int, str])
+P = ParamSpec("P")
+Ts = TypeVarTuple("Ts")
+
+def func_b(a: Tb, b: str) -> Tb:
+    return a
+def func_c(a: Tc, b: str) -> Tc:
+    return a
+
+def func_fn(fn: Callable[P, Tc], b: str) -> Callable[P, Tc]:
+    return fn
+def func_fn_unpack(fn: Callable[[Unpack[Ts]], Tc], b: str) -> Callable[[Unpack[Ts]], Tc]:
+    return fn
+
+# We should not leak stray typevars that aren't in scope:
+reveal_type(partial(func_b, b=""))  # N: Revealed type is "functools.partial[Any]"
+reveal_type(partial(func_c, b=""))  # N: Revealed type is "functools.partial[Any]"
+reveal_type(partial(func_fn, b=""))  # N: Revealed type is "functools.partial[def (*Any, **Any) -> Any]"
+reveal_type(partial(func_fn_unpack, b=""))  # N: Revealed type is "functools.partial[def (*Any) -> Any]"
+
+use_int_callable(partial(func_b, b=""))
+use_func_callable(partial(func_b, b=""))
+use_int_callable(partial(func_c, b=""))
+use_func_callable(partial(func_c, b=""))
+use_int_callable(partial(func_fn, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Callable[[VarArg(Any), KwArg(Any)], Any]]"; expected "Callable[[int], int]" \
+                                          # N: "partial[Callable[[VarArg(Any), KwArg(Any)], Any]].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Callable[[VarArg(Any), KwArg(Any)], Any]]"
+use_func_callable(partial(func_fn, b=""))
+use_int_callable(partial(func_fn_unpack, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Callable[[VarArg(Any)], Any]]"; expected "Callable[[int], int]" \
+                                                 # N: "partial[Callable[[VarArg(Any)], Any]].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Callable[[VarArg(Any)], Any]]"
+use_func_callable(partial(func_fn_unpack, b=""))
+
+# But we should not erase typevars that aren't bound by function
+# passed to `partial`:
+
+def outer_b(arg: Tb) -> None:
+
+    def inner(a: Tb, b: str) -> Tb:
+        return a
+
+    reveal_type(partial(inner, b=""))  # N: Revealed type is "functools.partial[Tb`-1]"
+    use_int_callable(partial(inner, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Tb]"; expected "Callable[[int], int]" \
+                                            # N: "partial[Tb].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Tb]"
+
+def outer_c(arg: Tc) -> None:
+
+    def inner(a: Tc, b: str) -> Tc:
+        return a
+
+    reveal_type(partial(inner, b=""))  # N: Revealed type is "functools.partial[builtins.int]" \
+                                       # N: Revealed type is "functools.partial[builtins.str]"
+    use_int_callable(partial(inner, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[str]"; expected "Callable[[int], int]" \
+                                            # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
+[builtins fixtures/tuple.pyi]

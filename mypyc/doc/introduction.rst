@@ -10,7 +10,7 @@ The compiled language is a strict, *gradually typed* Python variant. It
 restricts the use of some dynamic Python features to gain performance,
 but it's mostly compatible with standard Python.
 
-Mypyc uses `mypy <http://www.mypy-lang.org/>`_ to perform type
+Mypyc uses `mypy <https://www.mypy-lang.org/>`_ to perform type
 checking and type inference. Most type system features in the stdlib
 `typing <https://docs.python.org/3/library/typing.html>`_ module are
 supported.

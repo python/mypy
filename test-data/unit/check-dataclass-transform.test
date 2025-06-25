@@ -1,0 +1,1074 @@
+[case testDataclassTransformReusesDataclassLogic]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+@my_dataclass
+class Person:
+    name: str
+    age: int
+
+    def summary(self):
+        return "%s is %d years old." % (self.name, self.age)
+
+reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('John', 32)
+Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformIsFoundInTypingExtensions]
+from typing import Type
+from typing_extensions import dataclass_transform
+
+@dataclass_transform()
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+@my_dataclass
+class Person:
+    name: str
+    age: int
+
+    def summary(self):
+        return "%s is %d years old." % (self.name, self.age)
+
+reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('John', 32)
+Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformParametersAreApplied]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Callable, Type
+
+@dataclass_transform()
+def my_dataclass(*, eq: bool, order: bool) -> Callable[[Type], Type]:
+    def transform(cls: Type) -> Type:
+        return cls
+    return transform
+
+@my_dataclass(eq=False, order=True)  # E: "eq" must be True if "order" is True
+class Person:
+    name: str
+    age: int
+
+reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('John', 32)
+Person('John', 21, None)  # E: Too many arguments for "Person"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformParametersMustBeBoolLiterals]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Callable, Type
+
+@dataclass_transform()
+def my_dataclass(*, eq: bool = True, order: bool = False) -> Callable[[Type], Type]:
+    def transform(cls: Type) -> Type:
+        return cls
+    return transform
+@dataclass_transform()
+class BaseClass:
+    def __init_subclass__(cls, *, eq: bool): ...
+@dataclass_transform()
+class Metaclass(type): ...
+
+BOOL_CONSTANT = True
+@my_dataclass(eq=BOOL_CONSTANT)  # E: "eq" argument must be a True or False literal
+class A: ...
+@my_dataclass(order=not False)  # E: "order" argument must be a True or False literal
+class B: ...
+class C(BaseClass, eq=BOOL_CONSTANT): ...  # E: "eq" argument must be a True or False literal
+class D(metaclass=Metaclass, order=not False): ...  # E: "order" argument must be a True or False literal
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformDefaultParamsMustBeLiterals]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, Final
+
+BOOLEAN_CONSTANT = True
+FINAL_BOOLEAN: Final = True
+
+@dataclass_transform(eq_default=BOOLEAN_CONSTANT) # E: "eq_default" argument must be a True or False literal
+def foo(cls: Type) -> Type:
+    return cls
+@dataclass_transform(eq_default=(not True)) # E: "eq_default" argument must be a True or False literal
+def bar(cls: Type) -> Type:
+    return cls
+@dataclass_transform(eq_default=FINAL_BOOLEAN) # E: "eq_default" argument must be a True or False literal
+def baz(cls: Type) -> Type:
+    return cls
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformUnrecognizedParamsAreErrors]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+BOOLEAN_CONSTANT = True
+
+@dataclass_transform(nonexistent=True) # E: Unrecognized dataclass_transform parameter "nonexistent"
+def foo(cls: Type) -> Type:
+    return cls
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformDefaultParams]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, Callable
+
+@dataclass_transform(eq_default=False)
+def no_eq(*, order: bool = False) -> Callable[[Type], Type]:
+    return lambda cls: cls
+@no_eq()
+class Foo: ...
+@no_eq(order=True)  # E: "eq" must be True if "order" is True
+class Bar: ...
+
+
+@dataclass_transform(kw_only_default=True)
+def always_use_kw(cls: Type) -> Type:
+    return cls
+@always_use_kw
+class Baz:
+    x: int
+Baz(x=5)
+Baz(5)  # E: Too many positional arguments for "Baz"
+
+@dataclass_transform(order_default=True)
+def ordered(*, eq: bool = True) -> Callable[[Type], Type]:
+    return lambda cls: cls
+@ordered()
+class A:
+    x: int
+A(1) > A(2)
+
+@dataclass_transform(frozen_default=True)
+def frozen(cls: Type) -> Type:
+    return cls
+@frozen
+class B:
+    x: int
+b = B(x=1)
+b.x = 2  # E: Property "x" defined in "B" is read-only
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformDefaultsCanBeOverridden]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Callable, Type
+
+@dataclass_transform(kw_only_default=True)
+def my_dataclass(*, kw_only: bool = True) -> Callable[[Type], Type]:
+    return lambda cls: cls
+
+@my_dataclass()
+class KwOnly:
+    x: int
+@my_dataclass(kw_only=False)
+class KwOptional:
+    x: int
+
+KwOnly(5)  # E: Too many positional arguments for "KwOnly"
+KwOptional(5)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFieldSpecifiersDefaultsToEmpty]
+# flags: --python-version 3.11
+from dataclasses import field, dataclass
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+@my_dataclass
+class Foo:
+    foo: int = field(kw_only=True)
+
+# Does not cause a type error because `dataclasses.field` is not a recognized field specifier by
+# default
+Foo(5)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFieldSpecifierRejectMalformed]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Any, Callable, Final, Type
+
+def some_type() -> Type: ...
+def some_function() -> Callable[[], None]: ...
+
+def field(*args, **kwargs): ...
+def fields_tuple() -> tuple[type | Callable[..., Any], ...]: return (field,)
+CONSTANT: Final = (field,)
+
+@dataclass_transform(field_specifiers=(some_type(),))  # E: "field_specifiers" must only contain identifiers
+def bad_dataclass1() -> None: ...
+@dataclass_transform(field_specifiers=(some_function(),))  # E: "field_specifiers" must only contain identifiers
+def bad_dataclass2() -> None: ...
+@dataclass_transform(field_specifiers=CONSTANT)  # E: "field_specifiers" argument must be a tuple literal
+def bad_dataclass3() -> None: ...
+@dataclass_transform(field_specifiers=fields_tuple())  # E: "field_specifiers" argument must be a tuple literal
+def bad_dataclass4() -> None: ...
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFieldSpecifierParams]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Any, Callable, Type, Final
+
+def field(
+    *,
+    init: bool = True,
+    kw_only: bool = False,
+    alias: str | None = None,
+    default: Any | None = None,
+    default_factory: Callable[[], Any] | None = None,
+    factory: Callable[[], Any] | None = None,
+): ...
+@dataclass_transform(field_specifiers=(field,))
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+B: Final = 'b_'
+@my_dataclass
+class Foo:
+    a: int = field(alias='a_')
+    b: int = field(alias=B)
+    # cannot be passed as a positional
+    kwonly: int = field(kw_only=True, default=0)
+    # Safe to omit from constructor, error to pass
+    noinit: int = field(init=False, default=1)
+    # It should be safe to call the constructor without passing any of these
+    unused1: int = field(default=0)
+    unused2: int = field(factory=lambda: 0)
+    unused3: int = field(default_factory=lambda: 0)
+
+Foo(a=5, b_=1)  # E: Unexpected keyword argument "a" for "Foo"
+Foo(a_=1, b_=1, noinit=1)  # E: Unexpected keyword argument "noinit" for "Foo"
+Foo(1, 2, 3) # (a, b, unused1)
+foo = Foo(1, 2, kwonly=3)
+reveal_type(foo.noinit)  # N: Revealed type is "builtins.int"
+reveal_type(foo.unused1)  # N: Revealed type is "builtins.int"
+Foo(a_=5, b_=1, unused1=2, unused2=3, unused3=4)
+
+def some_str() -> str: ...
+def some_bool() -> bool: ...
+@my_dataclass
+class Bad:
+    bad1: int = field(alias=some_str())  # E: "alias" argument to dataclass field must be a string literal
+    bad2: int = field(kw_only=some_bool())  # E: "kw_only" argument must be a boolean literal
+
+reveal_type(Foo.__dataclass_fields__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFieldSpecifierExtraArgs]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+def field(extra1, *, kw_only=False, extra2=0): ...
+@dataclass_transform(field_specifiers=(field,))
+def my_dataclass(cls):
+    return cls
+
+@my_dataclass
+class Good:
+    a: int = field(5)
+    b: int = field(5, extra2=1)
+    c: int = field(5, kw_only=True)
+
+@my_dataclass
+class Bad:
+    a: int = field(kw_only=True)  # E: Missing positional argument "extra1" in call to "field"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformMultipleFieldSpecifiers]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+def field1(*, default: int) -> int: ...
+def field2(*, default: str) -> str: ...
+
+@dataclass_transform(field_specifiers=(field1, field2))
+def my_dataclass(cls): return cls
+
+@my_dataclass
+class Foo:
+    a: int = field1(default=0)
+    b: str = field2(default='hello')
+
+reveal_type(Foo)  # N: Revealed type is "def (a: builtins.int =, b: builtins.str =) -> __main__.Foo"
+Foo()
+Foo(a=1, b='bye')
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFieldSpecifierImplicitInit]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Literal, overload
+
+def init(*, init: Literal[True] = True): ...
+def no_init(*, init: Literal[False] = False): ...
+
+@overload
+def field_overload(*, custom: None, init: Literal[True] = True): ...
+@overload
+def field_overload(*, custom: str, init: Literal[False] = False): ...
+def field_overload(*, custom, init): ...
+
+@dataclass_transform(field_specifiers=(init, no_init, field_overload))
+def my_dataclass(cls): return cls
+
+@my_dataclass
+class Foo:
+    a: int = init()
+    b: int = field_overload(custom=None)
+
+    bad1: int = no_init()
+    bad2: int = field_overload(custom="bad2")
+
+reveal_type(Foo)  # N: Revealed type is "def (a: builtins.int, b: builtins.int) -> __main__.Foo"
+Foo(a=1, b=2)
+Foo(a=1, b=2, bad1=0)  # E: Unexpected keyword argument "bad1" for "Foo"
+Foo(a=1, b=2, bad2=0)  # E: Unexpected keyword argument "bad2" for "Foo"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformOverloadsDecoratorOnOverload]
+# flags: --python-version 3.11
+from typing import dataclass_transform, overload, Any, Callable, Type, Literal
+
+@overload
+def my_dataclass(*, foo: str) -> Callable[[Type], Type]: ...
+@overload
+@dataclass_transform(frozen_default=True)
+def my_dataclass(*, foo: int) -> Callable[[Type], Type]: ...
+def my_dataclass(*, foo: Any) -> Callable[[Type], Type]:
+    return lambda cls: cls
+@my_dataclass(foo="hello")
+class A:
+    a: int
+@my_dataclass(foo=5)
+class B:
+    b: int
+
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (b: builtins.int) -> __main__.B"
+A(1, "hello")  # E: Too many arguments for "A"
+a = A(1)
+a.a = 2  # E: Property "a" defined in "A" is read-only
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformOverloadsDecoratorOnImpl]
+# flags: --python-version 3.11
+from typing import dataclass_transform, overload, Any, Callable, Type, Literal
+
+@overload
+def my_dataclass(*, foo: str) -> Callable[[Type], Type]: ...
+@overload
+def my_dataclass(*, foo: int) -> Callable[[Type], Type]: ...
+@dataclass_transform(frozen_default=True)
+def my_dataclass(*, foo: Any) -> Callable[[Type], Type]:
+    return lambda cls: cls
+@my_dataclass(foo="hello")
+class A:
+    a: int
+@my_dataclass(foo=5)
+class B:
+    b: int
+
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (b: builtins.int) -> __main__.B"
+A(1, "hello")  # E: Too many arguments for "A"
+a = A(1)
+a.a = 2  # E: Property "a" defined in "A" is read-only
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformViaBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+class Dataclass:
+    def __init_subclass__(cls, *, kw_only: bool = False): ...
+
+class Person(Dataclass, kw_only=True):
+    name: str
+    age: int
+
+reveal_type(Person)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('Jonh', 21)  # E: Too many positional arguments for "Person"
+person = Person(name='John', age=32)
+person.name = "John Smith"  # E: Property "name" defined in "Person" is read-only
+
+class Contact(Person):
+    email: str
+
+reveal_type(Contact)  # N: Revealed type is "def (email: builtins.str, *, name: builtins.str, age: builtins.int) -> __main__.Contact"
+Contact('john@john.com', name='John', age=32)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformViaMetaclass]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+class Dataclass(type): ...
+
+# Note that PEP 681 states that a class that directly specifies a dataclass_transform-decorated
+# metaclass should be treated as neither frozen nor unfrozen. For Person to have frozen semantics,
+# it may not directly specify the metaclass.
+class BaseDataclass(metaclass=Dataclass): ...
+class Person(BaseDataclass, kw_only=True):
+    name: str
+    age: int
+
+reveal_type(Person)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> __main__.Person"
+Person('Jonh', 21)  # E: Too many positional arguments for "Person"
+person = Person(name='John', age=32)
+person.name = "John Smith"  # E: Property "name" defined in "Person" is read-only
+
+class Contact(Person):
+    email: str
+
+reveal_type(Contact)  # N: Revealed type is "def (email: builtins.str, *, name: builtins.str, age: builtins.int) -> __main__.Contact"
+Contact('john@john.com', name='John', age=32)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformViaSubclassOfMetaclass]
+# flags: --python-version 3.11
+from typing import dataclass_transform
+
+@dataclass_transform(frozen_default=True)
+class BaseMeta(type): ...
+class SubMeta(BaseMeta): ...
+
+# MyPy does *not* recognize this as a dataclass because the metaclass is not directly decorated with
+# dataclass_transform
+class Foo(metaclass=SubMeta):
+    foo: int
+
+reveal_type(Foo)  # N: Revealed type is "def () -> __main__.Foo"
+Foo(1)  # E: Too many arguments for "Foo"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformTypeCheckingInFunction]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+FunctionModel(string_="abc", integer_=1)
+FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "tuple[Never, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInFunction]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+FunctionModel(string_="abc", integer_=1)
+FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "tuple[Never, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformTypeCheckingInBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelBase:
+    ...
+
+class BaseClassModel(ModelBase):
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+BaseClassModel(string_="abc", integer_=1)
+BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "tuple[Never, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInBaseClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelBase:
+    ...
+
+class BaseClassModel(ModelBase):
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+BaseClassModel(string_="abc", integer_=1)
+BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "tuple[Never, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformTypeCheckingInMetaClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelMeta(type):
+    ...
+
+class ModelBaseWithMeta(metaclass=ModelMeta):
+    ...
+
+class MetaClassModel(ModelBaseWithMeta):
+    if TYPE_CHECKING:
+        string_: str
+        integer_: int
+    else:
+        string_: tuple
+        integer_: tuple
+
+MetaClassModel(string_="abc", integer_=1)
+MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "tuple[Never, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformNegatedTypeCheckingInMetaClass]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+@dataclass_transform()
+class ModelMeta(type):
+    ...
+
+class ModelBaseWithMeta(metaclass=ModelMeta):
+    ...
+
+class MetaClassModel(ModelBaseWithMeta):
+    if not TYPE_CHECKING:
+        string_: tuple
+        integer_: tuple
+    else:
+        string_: str
+        integer_: int
+
+MetaClassModel(string_="abc", integer_=1)
+MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "tuple[Never, ...]"; expected "int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformStaticConditionalAttributes]
+# flags: --python-version 3.11 --always-true TRUTH
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        present_1: int
+    else:
+        skipped_1: int
+    if True:  # Mypy does not know if it is True or False, so the block is used
+        present_2: int
+    if False:  # Mypy does not know if it is True or False, so the block is used
+        present_3: int
+    if not TRUTH:
+        skipped_2: int
+    else:
+        present_4: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+)
+FunctionModel()  # E: Missing positional arguments "present_1", "present_2", "present_3", "present_4" in call to "FunctionModel"
+FunctionModel(   # E: Unexpected keyword argument "skipped_1" for "FunctionModel"
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    skipped_1=5,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformStaticDeterministicConditionalElifAttributes]
+# flags: --python-version 3.11 --always-true TRUTH --always-false LIE
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+LIE = True  # Is set to --always-false
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if TYPE_CHECKING:
+        present_1: int
+    elif TRUTH:
+        skipped_1: int
+    else:
+        skipped_2: int
+    if LIE:
+        skipped_3: int
+    elif TRUTH:
+        present_2: int
+    else:
+        skipped_4: int
+    if LIE:
+        skipped_5: int
+    elif LIE:
+        skipped_6: int
+    else:
+        present_3: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformStaticNotDeterministicConditionalElifAttributes]
+# flags: --python-version 3.11 --always-true TRUTH --always-false LIE
+from typing import dataclass_transform, Type, TYPE_CHECKING
+
+TRUTH = False  # Is set to --always-true
+LIE = True  # Is set to --always-false
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+@model
+class FunctionModel:
+    if 123:  # Mypy does not know if it is True or False, so this block is used
+        present_1: int
+    elif TRUTH:  # Mypy does not know if previous condition is True or False, so it uses also this block
+        present_2: int
+    else:  # Previous block is for sure True, so this block is skipped
+        skipped_1: int
+    if 123:
+        present_3: int
+    elif 123:
+        present_4: int
+    else:
+        present_5: int
+    if 123:  # Mypy does not know if it is True or False, so this block is used
+        present_6: int
+    elif LIE:  # This is for sure False, so the block is skipped used
+        skipped_2: int
+    else:  # None of the conditions above for sure True, so this block is used
+        present_7: int
+
+FunctionModel(
+    present_1=1,
+    present_2=2,
+    present_3=3,
+    present_4=4,
+    present_5=5,
+    present_6=6,
+    present_7=7,
+)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformFunctionConditionalAttributes]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+def condition() -> bool:
+    return True
+
+@model
+class FunctionModel:
+    if condition():
+        x: int
+        y: int
+        z1: int
+    else:
+        x: str  # E: Name "x" already defined on line 14
+        y: int  # E: Name "y" already defined on line 15
+        z2: int
+
+FunctionModel(x=1, y=2, z1=3, z2=4)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassTransformNegatedFunctionConditionalAttributes]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def model(cls: Type) -> Type:
+    return cls
+
+def condition() -> bool:
+    return True
+
+@model
+class FunctionModel:
+    if not condition():
+        x: int
+        y: int
+        z1: int
+    else:
+        x: str  # E: Name "x" already defined on line 14
+        y: int  # E: Name "y" already defined on line 15
+        z2: int
+
+FunctionModel(x=1, y=2, z1=3, z2=4)
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformDirectMetaclassNeitherFrozenNorNotFrozen]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+class Meta(type): ...
+class Base(metaclass=Meta):
+    base: int
+class Foo(Base, frozen=True):
+    foo: int
+class Bar(Base, frozen=False):
+    bar: int
+
+
+foo = Foo(0, 1)
+foo.foo = 5  # E: Property "foo" defined in "Foo" is read-only
+foo.base = 6
+reveal_type(foo.base)  # N: Revealed type is "builtins.int"
+bar = Bar(0, 1)
+bar.bar = 5
+bar.base = 6
+reveal_type(bar.base)  # N: Revealed type is "builtins.int"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformReplace]
+from dataclasses import replace
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+@my_dataclass
+class Person:
+    name: str
+
+p = Person('John')
+y = replace(p, name='Bob')
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformSimpleDescriptor]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | str: ...
+
+    def __set__(self, instance: Any, value: str) -> None: ...
+
+@my_dataclass
+class C:
+    x: Desc
+    y: int
+
+C(x='x', y=1)
+C(x=1, y=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "str"
+reveal_type(C(x='x', y=1).x)  # N: Revealed type is "builtins.str"
+reveal_type(C(x='x', y=1).y)  # N: Revealed type is "builtins.int"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformUnannotatedDescriptor]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | str: ...
+
+    def __set__(*args, **kwargs): ...
+
+@my_dataclass
+class C:
+    x: Desc
+    y: int
+
+C(x='x', y=1)
+C(x=1, y=1)
+reveal_type(C(x='x', y=1).x)  # N: Revealed type is "builtins.str"
+reveal_type(C(x='x', y=1).y)  # N: Revealed type is "builtins.int"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformGenericDescriptor]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any, TypeVar, Generic
+
+@dataclass_transform()
+def my_dataclass(frozen: bool = False): ...
+
+T = TypeVar("T")
+
+class Desc(Generic[T]):
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc[T]: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> T: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | T: ...
+
+    def __set__(self, instance: Any, value: T) -> None: ...
+
+@my_dataclass()
+class C:
+    x: Desc[str]
+
+C(x='x')
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "str"
+reveal_type(C(x='x').x)  # N: Revealed type is "builtins.str"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc[builtins.str]"
+
+@my_dataclass()
+class D(C):
+    y: Desc[int]
+
+d = D(x='x', y=1)
+reveal_type(d.x)  # N: Revealed type is "builtins.str"
+reveal_type(d.y)  # N: Revealed type is "builtins.int"
+reveal_type(D.x)  # N: Revealed type is "__main__.Desc[builtins.str]"
+reveal_type(D.y)  # N: Revealed type is "__main__.Desc[builtins.int]"
+
+@my_dataclass(frozen=True)
+class F:
+    x: Desc[str] = Desc()
+
+F(x='x')
+F(x=1)  # E: Argument "x" to "F" has incompatible type "int"; expected "str"
+reveal_type(F(x='x').x)  # N: Revealed type is "builtins.str"
+reveal_type(F.x)  # N: Revealed type is "__main__.Desc[builtins.str]"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformGenericDescriptorWithInheritance]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any, TypeVar, Generic
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+T = TypeVar("T")
+
+class Desc(Generic[T]):
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc[T]: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> T: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | T: ...
+
+    def __set__(self, instance: Any, value: T) -> None: ...
+
+class Desc2(Desc[str]):
+    pass
+
+@my_dataclass
+class C:
+    x: Desc2
+
+C(x='x')
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "str"
+reveal_type(C(x='x').x)  # N: Revealed type is "builtins.str"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc[builtins.str]"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformDescriptorWithDifferentGetSetTypes]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> int: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner): ...
+
+    def __set__(self, instance: Any, value: bytes | None) -> None: ...
+
+@my_dataclass
+class C:
+    x: Desc
+
+c = C(x=b'x')
+c = C(x=None)
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "Optional[bytes]"
+reveal_type(c.x)  # N: Revealed type is "builtins.str"
+reveal_type(C.x)  # N: Revealed type is "builtins.int"
+c.x = b'x'
+c.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[bytes]")
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformUnsupportedDescriptors]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> int: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner): ...
+
+    def __set__(*args, **kwargs) -> None: ...
+
+class Desc2:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> int: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner): ...
+
+    @overload
+    def __set__(self, instance: Any, value: bytes) -> None: ...
+    @overload
+    def __set__(self) -> None: ...
+    def __set__(self, *args, **kawrga) -> None: ...
+
+@my_dataclass
+class C:
+    x: Desc  # E: Unsupported signature for "__set__" in "Desc"
+    y: Desc2  # E: Unsupported "__set__" in "Desc2"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]

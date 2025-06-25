@@ -1,12 +1,14 @@
 import email.message
 import io
 import ssl
+import sys
 import types
-from _typeshed import ReadableBuffer, Self, SupportsRead, WriteableBuffer
+from _typeshed import MaybeNone, ReadableBuffer, SupportsRead, SupportsReadline, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
+from email._policybase import _MessageT
 from socket import socket
-from typing import Any, BinaryIO, TypeVar, overload
-from typing_extensions import TypeAlias
+from typing import BinaryIO, Literal, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "HTTPResponse",
@@ -32,76 +34,99 @@ __all__ = [
 
 _DataType: TypeAlias = SupportsRead[bytes] | Iterable[ReadableBuffer] | ReadableBuffer
 _T = TypeVar("_T")
+_HeaderValue: TypeAlias = ReadableBuffer | str | int
 
 HTTP_PORT: int
 HTTPS_PORT: int
 
-CONTINUE: int
-SWITCHING_PROTOCOLS: int
-PROCESSING: int
+# Keep these global constants in sync with http.HTTPStatus (http/__init__.pyi).
+# They are present for backward compatibility reasons.
+CONTINUE: Literal[100]
+SWITCHING_PROTOCOLS: Literal[101]
+PROCESSING: Literal[102]
+EARLY_HINTS: Literal[103]
 
-OK: int
-CREATED: int
-ACCEPTED: int
-NON_AUTHORITATIVE_INFORMATION: int
-NO_CONTENT: int
-RESET_CONTENT: int
-PARTIAL_CONTENT: int
-MULTI_STATUS: int
-IM_USED: int
+OK: Literal[200]
+CREATED: Literal[201]
+ACCEPTED: Literal[202]
+NON_AUTHORITATIVE_INFORMATION: Literal[203]
+NO_CONTENT: Literal[204]
+RESET_CONTENT: Literal[205]
+PARTIAL_CONTENT: Literal[206]
+MULTI_STATUS: Literal[207]
+ALREADY_REPORTED: Literal[208]
+IM_USED: Literal[226]
 
-MULTIPLE_CHOICES: int
-MOVED_PERMANENTLY: int
-FOUND: int
-SEE_OTHER: int
-NOT_MODIFIED: int
-USE_PROXY: int
-TEMPORARY_REDIRECT: int
+MULTIPLE_CHOICES: Literal[300]
+MOVED_PERMANENTLY: Literal[301]
+FOUND: Literal[302]
+SEE_OTHER: Literal[303]
+NOT_MODIFIED: Literal[304]
+USE_PROXY: Literal[305]
+TEMPORARY_REDIRECT: Literal[307]
+PERMANENT_REDIRECT: Literal[308]
 
-BAD_REQUEST: int
-UNAUTHORIZED: int
-PAYMENT_REQUIRED: int
-FORBIDDEN: int
-NOT_FOUND: int
-METHOD_NOT_ALLOWED: int
-NOT_ACCEPTABLE: int
-PROXY_AUTHENTICATION_REQUIRED: int
-REQUEST_TIMEOUT: int
-CONFLICT: int
-GONE: int
-LENGTH_REQUIRED: int
-PRECONDITION_FAILED: int
-REQUEST_ENTITY_TOO_LARGE: int
-REQUEST_URI_TOO_LONG: int
-UNSUPPORTED_MEDIA_TYPE: int
-REQUESTED_RANGE_NOT_SATISFIABLE: int
-EXPECTATION_FAILED: int
-UNPROCESSABLE_ENTITY: int
-LOCKED: int
-FAILED_DEPENDENCY: int
-UPGRADE_REQUIRED: int
-PRECONDITION_REQUIRED: int
-TOO_MANY_REQUESTS: int
-REQUEST_HEADER_FIELDS_TOO_LARGE: int
+BAD_REQUEST: Literal[400]
+UNAUTHORIZED: Literal[401]
+PAYMENT_REQUIRED: Literal[402]
+FORBIDDEN: Literal[403]
+NOT_FOUND: Literal[404]
+METHOD_NOT_ALLOWED: Literal[405]
+NOT_ACCEPTABLE: Literal[406]
+PROXY_AUTHENTICATION_REQUIRED: Literal[407]
+REQUEST_TIMEOUT: Literal[408]
+CONFLICT: Literal[409]
+GONE: Literal[410]
+LENGTH_REQUIRED: Literal[411]
+PRECONDITION_FAILED: Literal[412]
+if sys.version_info >= (3, 13):
+    CONTENT_TOO_LARGE: Literal[413]
+REQUEST_ENTITY_TOO_LARGE: Literal[413]
+if sys.version_info >= (3, 13):
+    URI_TOO_LONG: Literal[414]
+REQUEST_URI_TOO_LONG: Literal[414]
+UNSUPPORTED_MEDIA_TYPE: Literal[415]
+if sys.version_info >= (3, 13):
+    RANGE_NOT_SATISFIABLE: Literal[416]
+REQUESTED_RANGE_NOT_SATISFIABLE: Literal[416]
+EXPECTATION_FAILED: Literal[417]
+IM_A_TEAPOT: Literal[418]
+MISDIRECTED_REQUEST: Literal[421]
+if sys.version_info >= (3, 13):
+    UNPROCESSABLE_CONTENT: Literal[422]
+UNPROCESSABLE_ENTITY: Literal[422]
+LOCKED: Literal[423]
+FAILED_DEPENDENCY: Literal[424]
+TOO_EARLY: Literal[425]
+UPGRADE_REQUIRED: Literal[426]
+PRECONDITION_REQUIRED: Literal[428]
+TOO_MANY_REQUESTS: Literal[429]
+REQUEST_HEADER_FIELDS_TOO_LARGE: Literal[431]
+UNAVAILABLE_FOR_LEGAL_REASONS: Literal[451]
 
-INTERNAL_SERVER_ERROR: int
-NOT_IMPLEMENTED: int
-BAD_GATEWAY: int
-SERVICE_UNAVAILABLE: int
-GATEWAY_TIMEOUT: int
-HTTP_VERSION_NOT_SUPPORTED: int
-INSUFFICIENT_STORAGE: int
-NOT_EXTENDED: int
-NETWORK_AUTHENTICATION_REQUIRED: int
+INTERNAL_SERVER_ERROR: Literal[500]
+NOT_IMPLEMENTED: Literal[501]
+BAD_GATEWAY: Literal[502]
+SERVICE_UNAVAILABLE: Literal[503]
+GATEWAY_TIMEOUT: Literal[504]
+HTTP_VERSION_NOT_SUPPORTED: Literal[505]
+VARIANT_ALSO_NEGOTIATES: Literal[506]
+INSUFFICIENT_STORAGE: Literal[507]
+LOOP_DETECTED: Literal[508]
+NOT_EXTENDED: Literal[510]
+NETWORK_AUTHENTICATION_REQUIRED: Literal[511]
 
 responses: dict[int, str]
 
-class HTTPMessage(email.message.Message):
+class HTTPMessage(email.message.Message[str, str]):
     def getallmatchingheaders(self, name: str) -> list[str]: ...  # undocumented
 
-def parse_headers(fp: io.BufferedIOBase, _class: Callable[[], email.message.Message] = ...) -> HTTPMessage: ...
+@overload
+def parse_headers(fp: SupportsReadline[bytes], _class: Callable[[], _MessageT]) -> _MessageT: ...
+@overload
+def parse_headers(fp: SupportsReadline[bytes]) -> HTTPMessage: ...
 
-class HTTPResponse(io.BufferedIOBase, BinaryIO):
+class HTTPResponse(io.BufferedIOBase, BinaryIO):  # type: ignore[misc]  # incompatible method definitions in the base classes
     msg: HTTPMessage
     headers: HTTPMessage
     version: int
@@ -114,12 +139,16 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     chunk_left: int | None
     length: int | None
     will_close: bool
-    def __init__(self, sock: socket, debuglevel: int = ..., method: str | None = ..., url: str | None = ...) -> None: ...
-    def peek(self, n: int = ...) -> bytes: ...
-    def read(self, amt: int | None = ...) -> bytes: ...
-    def read1(self, n: int = ...) -> bytes: ...
+    # url is set on instances of the class in urllib.request.AbstractHTTPHandler.do_open
+    # to match urllib.response.addinfourl's interface.
+    # It's not set in HTTPResponse.__init__ or any other method on the class
+    url: str
+    def __init__(self, sock: socket, debuglevel: int = 0, method: str | None = None, url: str | None = None) -> None: ...
+    def peek(self, n: int = -1) -> bytes: ...
+    def read(self, amt: int | None = None) -> bytes: ...
+    def read1(self, n: int = -1) -> bytes: ...
     def readinto(self, b: WriteableBuffer) -> int: ...
-    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore[override]
+    def readline(self, limit: int = -1) -> bytes: ...  # type: ignore[override]
     @overload
     def getheader(self, name: str) -> str | None: ...
     @overload
@@ -127,7 +156,7 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     def getheaders(self) -> list[tuple[str, str]]: ...
     def isclosed(self) -> bool: ...
     def __iter__(self) -> Iterator[bytes]: ...
-    def __enter__(self: Self) -> Self: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
@@ -144,44 +173,65 @@ class HTTPConnection:
     timeout: float | None
     host: str
     port: int
-    sock: socket | Any  # can be `None` if `.connect()` was not called
+    sock: socket | MaybeNone  # can be `None` if `.connect()` was not called
     def __init__(
         self,
         host: str,
-        port: int | None = ...,
+        port: int | None = None,
         timeout: float | None = ...,
-        source_address: tuple[str, int] | None = ...,
-        blocksize: int = ...,
+        source_address: tuple[str, int] | None = None,
+        blocksize: int = 8192,
     ) -> None: ...
     def request(
-        self, method: str, url: str, body: _DataType | None = ..., headers: Mapping[str, str] = ..., *, encode_chunked: bool = ...
+        self,
+        method: str,
+        url: str,
+        body: _DataType | str | None = None,
+        headers: Mapping[str, _HeaderValue] = {},
+        *,
+        encode_chunked: bool = False,
     ) -> None: ...
     def getresponse(self) -> HTTPResponse: ...
     def set_debuglevel(self, level: int) -> None: ...
-    def set_tunnel(self, host: str, port: int | None = ..., headers: Mapping[str, str] | None = ...) -> None: ...
+    if sys.version_info >= (3, 12):
+        def get_proxy_response_headers(self) -> HTTPMessage | None: ...
+
+    def set_tunnel(self, host: str, port: int | None = None, headers: Mapping[str, str] | None = None) -> None: ...
     def connect(self) -> None: ...
     def close(self) -> None: ...
-    def putrequest(self, method: str, url: str, skip_host: bool = ..., skip_accept_encoding: bool = ...) -> None: ...
-    def putheader(self, header: str, *argument: str) -> None: ...
-    def endheaders(self, message_body: _DataType | None = ..., *, encode_chunked: bool = ...) -> None: ...
+    def putrequest(self, method: str, url: str, skip_host: bool = False, skip_accept_encoding: bool = False) -> None: ...
+    def putheader(self, header: str | bytes, *values: _HeaderValue) -> None: ...
+    def endheaders(self, message_body: _DataType | None = None, *, encode_chunked: bool = False) -> None: ...
     def send(self, data: _DataType | str) -> None: ...
 
 class HTTPSConnection(HTTPConnection):
     # Can be `None` if `.connect()` was not called:
-    sock: ssl.SSLSocket | Any  # type: ignore[override]
-    def __init__(
-        self,
-        host: str,
-        port: int | None = ...,
-        key_file: str | None = ...,
-        cert_file: str | None = ...,
-        timeout: float | None = ...,
-        source_address: tuple[str, int] | None = ...,
-        *,
-        context: ssl.SSLContext | None = ...,
-        check_hostname: bool | None = ...,
-        blocksize: int = ...,
-    ) -> None: ...
+    sock: ssl.SSLSocket | MaybeNone
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            host: str,
+            port: int | None = None,
+            *,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            context: ssl.SSLContext | None = None,
+            blocksize: int = 8192,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str,
+            port: int | None = None,
+            key_file: str | None = None,
+            cert_file: str | None = None,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            *,
+            context: ssl.SSLContext | None = None,
+            check_hostname: bool | None = None,
+            blocksize: int = 8192,
+        ) -> None: ...
 
 class HTTPException(Exception): ...
 
@@ -197,7 +247,7 @@ class UnknownTransferEncoding(HTTPException): ...
 class UnimplementedFileMode(HTTPException): ...
 
 class IncompleteRead(HTTPException):
-    def __init__(self, partial: bytes, expected: int | None = ...) -> None: ...
+    def __init__(self, partial: bytes, expected: int | None = None) -> None: ...
     partial: bytes
     expected: int | None
 

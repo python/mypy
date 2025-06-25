@@ -10,10 +10,10 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, Tuple[Any]))
+    NamedTupleExpr:2(N, tuple[Any]))
   FuncDef:3(
     f
-    def () -> Tuple[Any, fallback=__main__.N]
+    def () -> tuple[Any, fallback=__main__.N]
     Block:3(
       PassStmt:3())))
 
@@ -27,10 +27,10 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, Tuple[Any, Any]))
+    NamedTupleExpr:2(N, tuple[Any, Any]))
   FuncDef:3(
     f
-    def () -> Tuple[Any, Any, fallback=__main__.N]
+    def () -> tuple[Any, Any, fallback=__main__.N]
     Block:3(
       PassStmt:3())))
 
@@ -44,10 +44,10 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, Tuple[Any, Any]))
+    NamedTupleExpr:2(N, tuple[Any, Any]))
   FuncDef:3(
     f
-    def () -> Tuple[Any, Any, fallback=__main__.N]
+    def () -> tuple[Any, Any, fallback=__main__.N]
     Block:3(
       PassStmt:3())))
 
@@ -61,10 +61,10 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, Tuple[Any, Any]))
+    NamedTupleExpr:2(N, tuple[Any, Any]))
   FuncDef:3(
     f
-    def () -> Tuple[Any, Any, fallback=__main__.N]
+    def () -> tuple[Any, Any, fallback=__main__.N]
     Block:3(
       PassStmt:3())))
 
@@ -78,7 +78,7 @@ MypyFile:1(
   ImportFrom:1(typing, [NamedTuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
+    NamedTupleExpr:2(N, tuple[builtins.int, builtins.str])))
 
 [case testNamedTupleWithTupleFieldNamesWithItemTypes]
 from typing import NamedTuple
@@ -90,7 +90,7 @@ MypyFile:1(
   ImportFrom:1(typing, [NamedTuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
+    NamedTupleExpr:2(N, tuple[builtins.int, builtins.str])))
 
 [case testNamedTupleBaseClass]
 from collections import namedtuple
@@ -102,11 +102,11 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, Tuple[Any]))
+    NamedTupleExpr:2(N, tuple[Any]))
   ClassDef:3(
     A
     TupleType(
-      Tuple[Any, fallback=__main__.N])
+      tuple[Any, fallback=__main__.N])
     BaseType(
       __main__.N)
     PassStmt:3()))
@@ -121,7 +121,7 @@ MypyFile:1(
   ClassDef:2(
     A
     TupleType(
-      Tuple[Any, fallback=__main__.N@2])
+      tuple[Any, fallback=__main__.N@2])
     BaseType(
       __main__.N@2)
     PassStmt:2()))
@@ -136,7 +136,7 @@ MypyFile:1(
   ClassDef:2(
     A
     TupleType(
-      Tuple[builtins.int, fallback=__main__.N@2])
+      tuple[builtins.int, fallback=__main__.N@2])
     BaseType(
       __main__.N@2)
     PassStmt:2()))
@@ -165,7 +165,7 @@ N = namedtuple('N', ['x', 1]) # E: String literal expected as "namedtuple()" ite
 
 [case testNamedTupleWithUnderscoreItemName]
 from collections import namedtuple
-N = namedtuple('N', ['_fallback']) # E: "namedtuple()" field names cannot start with an underscore: _fallback
+N = namedtuple('N', ['_fallback']) # E: "namedtuple()" field name "_fallback" starts with an underscore
 [builtins fixtures/tuple.pyi]
 
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
@@ -197,7 +197,7 @@ N = NamedTuple('N', 1) # E: List or tuple literal expected as the second argumen
 
 [case testTypingNamedTupleWithUnderscoreItemName]
 from typing import NamedTuple
-N = NamedTuple('N', [('_fallback', int)]) # E: "NamedTuple()" field names cannot start with an underscore: _fallback
+N = NamedTuple('N', [('_fallback', int)]) # E: "NamedTuple()" field name "_fallback" starts with an underscore
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithUnexpectedNames]
@@ -225,3 +225,23 @@ class B(A): pass
 [out]
 main:2: error: Unsupported dynamic base class "NamedTuple"
 main:2: error: Name "NamedTuple" is not defined
+
+[case testNamedTupleWithDecorator]
+from typing import final, NamedTuple
+
+@final
+class A(NamedTuple("N", [("x", int)])):
+    pass
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [final, NamedTuple])
+  ClassDef:4(
+    A
+    TupleType(
+      tuple[builtins.int, fallback=__main__.N@4])
+    Decorators(
+      NameExpr(final [typing.final]))
+    BaseType(
+      __main__.N@4)
+    PassStmt:5()))

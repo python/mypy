@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import pytest
-
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
 from mypy.test.helpers import Suite
 from mypy.test.typefixture import TypeFixture
-from mypy.types import Instance, TupleType, TypeList, UnpackType
+from mypy.types import Instance, TupleType, UnpackType
 
 
 class ConstraintsSuite(Suite):
@@ -22,18 +20,28 @@ class ConstraintsSuite(Suite):
                 Constraint(type_var=fx.t, op=direction, target=fx.a)
             ]
 
-    @pytest.mark.xfail
     def test_basic_type_var_tuple_subtype(self) -> None:
         fx = self.fx
         assert infer_constraints(
             Instance(fx.gvi, [UnpackType(fx.ts)]), Instance(fx.gvi, [fx.a, fx.b]), SUBTYPE_OF
-        ) == [Constraint(type_var=fx.ts, op=SUBTYPE_OF, target=TypeList([fx.a, fx.b]))]
+        ) == [
+            Constraint(type_var=fx.ts, op=SUBTYPE_OF, target=TupleType([fx.a, fx.b], fx.std_tuple))
+        ]
 
     def test_basic_type_var_tuple(self) -> None:
         fx = self.fx
-        assert infer_constraints(
-            Instance(fx.gvi, [UnpackType(fx.ts)]), Instance(fx.gvi, [fx.a, fx.b]), SUPERTYPE_OF
-        ) == [Constraint(type_var=fx.ts, op=SUPERTYPE_OF, target=TypeList([fx.a, fx.b]))]
+        assert set(
+            infer_constraints(
+                Instance(fx.gvi, [UnpackType(fx.ts)]), Instance(fx.gvi, [fx.a, fx.b]), SUPERTYPE_OF
+            )
+        ) == {
+            Constraint(
+                type_var=fx.ts, op=SUPERTYPE_OF, target=TupleType([fx.a, fx.b], fx.std_tuple)
+            ),
+            Constraint(
+                type_var=fx.ts, op=SUBTYPE_OF, target=TupleType([fx.a, fx.b], fx.std_tuple)
+            ),
+        }
 
     def test_type_var_tuple_with_prefix_and_suffix(self) -> None:
         fx = self.fx
@@ -45,11 +53,16 @@ class ConstraintsSuite(Suite):
             )
         ) == {
             Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.a),
-            Constraint(type_var=fx.ts, op=SUPERTYPE_OF, target=TypeList([fx.b, fx.c])),
+            Constraint(
+                type_var=fx.ts, op=SUPERTYPE_OF, target=TupleType([fx.b, fx.c], fx.std_tuple)
+            ),
+            Constraint(
+                type_var=fx.ts, op=SUBTYPE_OF, target=TupleType([fx.b, fx.c], fx.std_tuple)
+            ),
             Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.d),
         }
 
-    def test_unpack_homogenous_tuple(self) -> None:
+    def test_unpack_homogeneous_tuple(self) -> None:
         fx = self.fx
         assert set(
             infer_constraints(
@@ -59,10 +72,12 @@ class ConstraintsSuite(Suite):
             )
         ) == {
             Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.a),
+            Constraint(type_var=fx.t, op=SUBTYPE_OF, target=fx.a),
             Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.b),
+            Constraint(type_var=fx.t, op=SUBTYPE_OF, target=fx.b),
         }
 
-    def test_unpack_homogenous_tuple_with_prefix_and_suffix(self) -> None:
+    def test_unpack_homogeneous_tuple_with_prefix_and_suffix(self) -> None:
         fx = self.fx
         assert set(
             infer_constraints(
@@ -73,51 +88,26 @@ class ConstraintsSuite(Suite):
         ) == {
             Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.a),
             Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.b),
+            Constraint(type_var=fx.s, op=SUBTYPE_OF, target=fx.b),
             Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.c),
+            Constraint(type_var=fx.s, op=SUBTYPE_OF, target=fx.c),
             Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.d),
-        }
-
-    def test_unpack_tuple(self) -> None:
-        fx = self.fx
-        assert set(
-            infer_constraints(
-                Instance(
-                    fx.gvi,
-                    [
-                        UnpackType(
-                            TupleType([fx.t, fx.s], fallback=Instance(fx.std_tuplei, [fx.o]))
-                        )
-                    ],
-                ),
-                Instance(fx.gvi, [fx.a, fx.b]),
-                SUPERTYPE_OF,
-            )
-        ) == {
-            Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.a),
-            Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.b),
         }
 
     def test_unpack_with_prefix_and_suffix(self) -> None:
         fx = self.fx
         assert set(
             infer_constraints(
-                Instance(
-                    fx.gv2i,
-                    [
-                        fx.u,
-                        UnpackType(
-                            TupleType([fx.t, fx.s], fallback=Instance(fx.std_tuplei, [fx.o]))
-                        ),
-                        fx.u,
-                    ],
-                ),
+                Instance(fx.gv2i, [fx.u, fx.t, fx.s, fx.u]),
                 Instance(fx.gv2i, [fx.a, fx.b, fx.c, fx.d]),
                 SUPERTYPE_OF,
             )
         ) == {
             Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.a),
             Constraint(type_var=fx.t, op=SUPERTYPE_OF, target=fx.b),
+            Constraint(type_var=fx.t, op=SUBTYPE_OF, target=fx.b),
             Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.c),
+            Constraint(type_var=fx.s, op=SUBTYPE_OF, target=fx.c),
             Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.d),
         }
 
@@ -125,16 +115,7 @@ class ConstraintsSuite(Suite):
         fx = self.fx
         assert set(
             infer_constraints(
-                Instance(
-                    fx.gv2i,
-                    [
-                        fx.u,
-                        UnpackType(
-                            TupleType([fx.t, fx.s], fallback=Instance(fx.std_tuplei, [fx.o]))
-                        ),
-                        fx.u,
-                    ],
-                ),
+                Instance(fx.gv2i, [fx.u, fx.t, fx.s, fx.u]),
                 Instance(fx.gv2i, [fx.a, fx.b, fx.d]),
                 SUPERTYPE_OF,
             )
@@ -143,3 +124,11 @@ class ConstraintsSuite(Suite):
             Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.a),
             Constraint(type_var=fx.u, op=SUPERTYPE_OF, target=fx.d),
         }
+
+    def test_var_length_tuple_with_fixed_length_tuple(self) -> None:
+        fx = self.fx
+        assert not infer_constraints(
+            TupleType([fx.t, fx.s], fallback=Instance(fx.std_tuplei, [fx.o])),
+            Instance(fx.std_tuplei, [fx.a]),
+            SUPERTYPE_OF,
+        )

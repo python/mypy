@@ -8,7 +8,7 @@
 
 cast = 0
 overload = 0
-Any = 0
+Any = object()
 Union = 0
 Optional = 0
 TypeVar = 0
@@ -28,6 +28,7 @@ NoReturn = 0
 NewType = 0
 TypeAlias = 0
 LiteralString = 0
+Self = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -55,6 +56,7 @@ class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
 
 class Mapping(Iterable[T], Generic[T, T_co]):
+    def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
 
 class SupportsInt(Protocol):

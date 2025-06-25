@@ -28,3 +28,4 @@ class str:
     def __eq__(self, other: 'str') -> bool: pass
 class ellipsis: pass
 class list: ...
+class dict: pass

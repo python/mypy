@@ -26,9 +26,11 @@ will be incomplete.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from itertools import groupby
+from typing import TYPE_CHECKING, Callable, Final, Optional, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.state
@@ -37,6 +39,7 @@ from mypy.errors import Errors
 from mypy.nodes import Decorator, FuncDef, MypyFile, OverloadedFuncDef, TypeInfo, Var
 from mypy.options import Options
 from mypy.plugin import ClassDefContext
+from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.semanal import (
     SemanticAnalyzer,
     apply_semantic_analyzer_patches,
@@ -49,6 +52,7 @@ from mypy.semanal_classprop import (
     check_protocol_status,
 )
 from mypy.semanal_infer import infer_decorator_signature_if_simple
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.server.aststrip import SavedAttributes
 from mypy.util import is_typeshed_file
@@ -57,7 +61,7 @@ if TYPE_CHECKING:
     from mypy.build import Graph, State
 
 
-Patches: _TypeAlias = List[Tuple[int, Callable[[], None]]]
+Patches: _TypeAlias = list[tuple[int, Callable[[], None]]]
 
 
 # If we perform this many iterations, raise an exception since we are likely stuck.
@@ -66,7 +70,14 @@ MAX_ITERATIONS: Final = 20
 
 # Number of passes over core modules before going on to the rest of the builtin SCC.
 CORE_WARMUP: Final = 2
-core_modules: Final = ["typing", "builtins", "abc", "collections"]
+core_modules: Final = [
+    "typing",
+    "_collections_abc",
+    "builtins",
+    "abc",
+    "collections",
+    "collections.abc",
+]
 
 
 def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -> None:
@@ -170,7 +181,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
 
     # Reverse order of the scc so the first modules in the original list will be
     # be processed first. This helps with performance.
-    scc = list(reversed(scc))
+    scc = list(reversed(scc))  # noqa: FURB187 intentional copy
 
     # Initialize ASTs and symbol tables.
     for id in scc:
@@ -181,7 +192,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Initially all namespaces in the SCC are incomplete (well they are empty).
     state.manager.incomplete_namespaces.update(scc)
 
-    worklist = scc[:]
+    worklist = scc.copy()
     # HACK: process core stuff first. This is mostly needed to support defining
     # named tuples in builtin SCC.
     if all(m in worklist for m in core_modules):
@@ -209,7 +220,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
             state = graph[next_id]
             assert state.tree is not None
             deferred, incomplete, progress = semantic_analyze_target(
-                next_id, state, state.tree, None, final_iteration, patches
+                next_id, next_id, state, state.tree, None, final_iteration, patches
             )
             all_deferred += deferred
             any_progress = any_progress or progress
@@ -223,26 +234,66 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
         final_iteration = not any_progress
 
 
+def order_by_subclassing(targets: list[FullTargetInfo]) -> Iterator[FullTargetInfo]:
+    """Make sure that superclass methods are always processed before subclass methods.
+
+    This algorithm is not very optimal, but it is simple and should work well for lists
+    that are already almost correctly ordered.
+    """
+
+    # First, group the targets by their TypeInfo (since targets are sorted by line,
+    # we know that each TypeInfo will appear as group key only once).
+    grouped = [(k, list(g)) for k, g in groupby(targets, key=lambda x: x[3])]
+    remaining_infos = {info for info, _ in grouped if info is not None}
+
+    next_group = 0
+    while grouped:
+        if next_group >= len(grouped):
+            # This should never happen, if there is an MRO cycle, it should be reported
+            # and fixed during top-level processing.
+            raise ValueError("Cannot order method targets by MRO")
+        next_info, group = grouped[next_group]
+        if next_info is None:
+            # Trivial case, not methods but functions, process them straight away.
+            yield from group
+            grouped.pop(next_group)
+            continue
+        if any(parent in remaining_infos for parent in next_info.mro[1:]):
+            # We cannot process this method group yet, try a next one.
+            next_group += 1
+            continue
+        yield from group
+        grouped.pop(next_group)
+        remaining_infos.discard(next_info)
+        # Each time after processing a method group we should retry from start,
+        # since there may be some groups that are not blocked on parents anymore.
+        next_group = 0
+
+
 def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Process functions.
+    all_targets = []
     for module in scc:
         tree = graph[module].tree
         assert tree is not None
-        analyzer = graph[module].manager.semantic_analyzer
         # In principle, functions can be processed in arbitrary order,
         # but _methods_ must be processed in the order they are defined,
         # because some features (most notably partial types) depend on
         # order of definitions on self.
         #
         # There can be multiple generated methods per line. Use target
-        # name as the second sort key to get a repeatable sort order on
-        # Python 3.5, which doesn't preserve dictionary order.
+        # name as the second sort key to get a repeatable sort order.
         targets = sorted(get_all_leaf_targets(tree), key=lambda x: (x[1].line, x[0]))
-        for target, node, active_type in targets:
-            assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
-            process_top_level_function(
-                analyzer, graph[module], module, target, node, active_type, patches
-            )
+        all_targets.extend(
+            [(module, target, node, active_type) for target, node, active_type in targets]
+        )
+
+    for module, target, node, active_type in order_by_subclassing(all_targets):
+        analyzer = graph[module].manager.semantic_analyzer
+        assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
+        process_top_level_function(
+            analyzer, graph[module], module, target, node, active_type, patches
+        )
 
 
 def process_top_level_function(
@@ -280,8 +331,10 @@ def process_top_level_function(
             # OK, this is one last pass, now missing names will be reported.
             analyzer.incomplete_namespaces.discard(module)
         deferred, incomplete, progress = semantic_analyze_target(
-            target, state, node, active_type, final_iteration, patches
+            target, module, state, node, active_type, final_iteration, patches
         )
+        if not incomplete:
+            state.manager.incomplete_namespaces.discard(module)
         if final_iteration:
             assert not deferred, "Must not defer during final iteration"
         if not progress:
@@ -293,8 +346,13 @@ def process_top_level_function(
     analyzer.saved_locals.clear()
 
 
-TargetInfo: _TypeAlias = Tuple[
+TargetInfo: _TypeAlias = tuple[
     str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+]
+
+# Same as above but includes module as first item.
+FullTargetInfo: _TypeAlias = tuple[
+    str, str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
 ]
 
 
@@ -309,6 +367,7 @@ def get_all_leaf_targets(file: MypyFile) -> list[TargetInfo]:
 
 def semantic_analyze_target(
     target: str,
+    module: str,
     state: State,
     node: MypyFile | FuncDef | OverloadedFuncDef | Decorator,
     active_type: TypeInfo | None,
@@ -322,7 +381,7 @@ def semantic_analyze_target(
     - was some definition incomplete (need to run another pass)
     - were any new names defined (or placeholders replaced)
     """
-    state.manager.processed_targets.append(target)
+    state.manager.processed_targets.append((module, target))
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.semantic_analyzer
@@ -330,6 +389,7 @@ def semantic_analyze_target(
     analyzer.global_decls = [set()]
     analyzer.nonlocal_decls = [set()]
     analyzer.globals = tree.names
+    analyzer.imports = set()
     analyzer.progress = False
     with state.wrap_context(check_blockers=False):
         refresh_node = node
@@ -370,7 +430,8 @@ def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:
         analyzer = TypeArgumentAnalyzer(
             errors,
             state.options,
-            is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+            state.tree.is_typeshed_file(state.options),
+            state.manager.semantic_analyzer.named_type,
         )
         with state.wrap_context():
             with mypy.state.state.strict_optional_set(state.options.strict_optional):
@@ -389,6 +450,7 @@ def check_type_arguments_in_targets(
         errors,
         state.options,
         is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        state.manager.semantic_analyzer.named_type,
     )
     with state.wrap_context():
         with mypy.state.state.strict_optional_set(state.options.strict_optional):
@@ -450,11 +512,29 @@ def apply_hooks_to_class(
     ok = True
     for decorator in defn.decorators:
         with self.file_context(file_node, options, info):
+            hook = None
+
             decorator_name = self.get_fullname_for_hook(decorator)
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook_2(decorator_name)
-                if hook:
-                    ok = ok and hook(ClassDefContext(defn, decorator, self))
+            # Special case: if the decorator is itself decorated with
+            # typing.dataclass_transform, apply the hook for the dataclasses plugin
+            # TODO: remove special casing here
+            if hook is None and find_dataclass_transform_spec(decorator):
+                hook = dataclasses_plugin.dataclass_class_maker_callback
+
+            if hook:
+                ok = ok and hook(ClassDefContext(defn, decorator, self))
+
+    # Check if the class definition itself triggers a dataclass transform (via a parent class/
+    # metaclass)
+    spec = find_dataclass_transform_spec(info)
+    if spec is not None:
+        with self.file_context(file_node, options, info):
+            # We can't use the normal hook because reason = defn, and ClassDefContext only accepts
+            # an Expression for reason
+            ok = ok and dataclasses_plugin.DataclassTransformer(defn, defn, spec, self).transform()
+
     return ok
 
 

@@ -5,7 +5,7 @@ These happen after semantic analysis and before type checking.
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -22,7 +22,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.types import Instance, ProperType
+from mypy.types import MYPYC_NATIVE_INT_NAMES, Instance, ProperType
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
@@ -46,6 +46,8 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     abstract attribute.  Also compute a list of abstract attributes.
     Report error is required ABCMeta metaclass is missing.
     """
+    typ.is_abstract = False
+    typ.abstract_attributes = []
     if typ.typeddict_type:
         return  # TypedDict can't be abstract
     concrete: set[str] = set()
@@ -56,7 +58,6 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
         # Special case: NewTypes are considered as always non-abstract, so they can be used as:
         #     Config = NewType('Config', Mapping[str, str])
         #     default = Config({'cannot': 'modify'})  # OK
-        typ.abstract_attributes = []
         return
     for base in typ.mro:
         for name, symnode in base.names.items():
@@ -121,11 +122,12 @@ def check_protocol_status(info: TypeInfo, errors: Errors) -> None:
     if info.is_protocol:
         for type in info.bases:
             if not type.type.is_protocol and type.type.fullname != "builtins.object":
-
-                def report(message: str, severity: str) -> None:
-                    errors.report(info.line, info.column, message, severity=severity)
-
-                report("All bases of a protocol must be protocols", "error")
+                errors.report(
+                    info.line,
+                    info.column,
+                    "All bases of a protocol must be protocols",
+                    severity="error",
+                )
 
 
 def calculate_class_vars(info: TypeInfo) -> None:
@@ -177,10 +179,10 @@ def add_type_promotion(
     # Special case the promotions between 'int' and native integer types.
     # These have promotions going both ways, such as from 'int' to 'i64'
     # and 'i64' to 'int', for convenience.
-    if defn.fullname == "mypy_extensions.i64" or defn.fullname == "mypy_extensions.i32":
+    if defn.fullname in MYPYC_NATIVE_INT_NAMES:
         int_sym = builtin_names["int"]
         assert isinstance(int_sym.node, TypeInfo)
         int_sym.node._promote.append(Instance(defn.info, []))
-        defn.info.alt_promote = int_sym.node
+        defn.info.alt_promote = Instance(int_sym.node, [])
     if promote_targets:
         defn.info._promote.extend(promote_targets)

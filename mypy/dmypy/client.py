@@ -14,11 +14,13 @@ import pickle
 import sys
 import time
 import traceback
-from typing import Any, Callable, Mapping, NoReturn
+from collections.abc import Mapping
+from typing import Any, Callable, NoReturn
 
 from mypy.dmypy_os import alive, kill
-from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
+from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
 from mypy.ipc import IPCClient, IPCException
+from mypy.main import RECURSION_LIMIT
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
@@ -27,13 +29,16 @@ from mypy.version import __version__
 
 
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=30)
+    def __init__(self, prog: str, **kwargs: Any) -> None:
+        super().__init__(prog=prog, max_help_position=30, **kwargs)
 
 
 parser = argparse.ArgumentParser(
     prog="dmypy", description="Client for mypy daemon mode", fromfile_prefix_chars="@"
 )
+if sys.version_info >= (3, 14):
+    parser.color = True  # Set as init arg in 3.14
+
 parser.set_defaults(action=None)
 parser.add_argument(
     "--status-file", default=DEFAULT_STATUS_FILE, help="status file to retrieve daemon details"
@@ -244,6 +249,7 @@ daemon_parser = p = subparsers.add_parser("daemon", help="Run daemon in foregrou
 p.add_argument(
     "--timeout", metavar="TIMEOUT", type=int, help="Server shutdown timeout (in seconds)"
 )
+p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdout/stderr to FILE")
 p.add_argument(
     "flags", metavar="FLAG", nargs="*", type=str, help="Regular mypy flags (precede with --)"
 )
@@ -266,6 +272,10 @@ class BadStatus(Exception):
 def main(argv: list[str]) -> None:
     """The code is top-down."""
     check_python_version("dmypy")
+
+    # set recursion limit consistent with mypy/main.py
+    sys.setrecursionlimit(RECURSION_LIMIT)
+
     args = parser.parse_args(argv)
     if not args.action:
         parser.print_usage()
@@ -435,7 +445,7 @@ def do_status(args: argparse.Namespace) -> None:
     if args.verbose or "error" in response:
         show_stats(response)
     if "error" in response:
-        fail(f"Daemon is stuck; consider {sys.argv[0]} kill")
+        fail(f"Daemon may be busy processing; if this persists, consider {sys.argv[0]} kill")
     print("Daemon is up and running")
 
 
@@ -446,7 +456,7 @@ def do_stop(args: argparse.Namespace) -> None:
     response = request(args.status_file, "stop", timeout=5)
     if "error" in response:
         show_stats(response)
-        fail(f"Daemon is stuck; consider {sys.argv[0]} kill")
+        fail(f"Daemon may be busy processing; if this persists, consider {sys.argv[0]} kill")
     else:
         print("Daemon stopped")
 
@@ -552,6 +562,10 @@ def check_output(
 
     Call sys.exit() unless the status code is zero.
     """
+    if os.name == "nt":
+        # Enable ANSI color codes for Windows cmd using this strange workaround
+        # ( see https://github.com/python/cpython/issues/74261 )
+        os.system("")
     if "error" in response:
         fail(response["error"])
     try:
@@ -561,6 +575,7 @@ def check_output(
     sys.stdout.write(out)
     sys.stdout.flush()
     sys.stderr.write(err)
+    sys.stderr.flush()
     if verbose:
         show_stats(response)
     if junit_xml:
@@ -571,7 +586,7 @@ def check_output(
         write_junit_xml(
             response["roundtrip_time"],
             bool(err),
-            messages,
+            {None: messages} if messages else {},
             junit_xml,
             response["python_version"],
             response["platform"],
@@ -587,13 +602,14 @@ def check_output(
 
 def show_stats(response: Mapping[str, object]) -> None:
     for key, value in sorted(response.items()):
-        if key not in ("out", "err"):
-            print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
-        else:
+        if key in ("out", "err", "stdout", "stderr"):
+            # Special case text output to display just 40 characters of text
             value = repr(value)[1:-1]
             if len(value) > 50:
-                value = value[:40] + " ..."
+                value = f"{value[:40]} ... {len(value)-40} more characters"
             print("%-24s: %s" % (key, value))
+            continue
+        print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
 
 
 @action(hang_parser)
@@ -608,21 +624,22 @@ def do_daemon(args: argparse.Namespace) -> None:
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
 
+    if args.log_file:
+        sys.stdout = sys.stderr = open(args.log_file, "a", buffering=1)
+        fd = sys.stdout.fileno()
+        os.dup2(fd, 2)
+        os.dup2(fd, 1)
+
     if args.options_data:
         from mypy.options import Options
 
-        options_dict, timeout, log_file = pickle.loads(base64.b64decode(args.options_data))
+        options_dict = pickle.loads(base64.b64decode(args.options_data))
         options_obj = Options()
         options = options_obj.apply_changes(options_dict)
-        if log_file:
-            sys.stdout = sys.stderr = open(log_file, "a", buffering=1)
-            fd = sys.stdout.fileno()
-            os.dup2(fd, 2)
-            os.dup2(fd, 1)
     else:
         options = process_start_options(args.flags, allow_sources=False)
-        timeout = args.timeout
-    Server(options, args.status_file, timeout=timeout).serve()
+
+    Server(options, args.status_file, timeout=args.timeout).serve()
 
 
 @action(help_parser)
@@ -655,21 +672,29 @@ def request(
     # so that it can format the type checking output accordingly.
     args["is_tty"] = sys.stdout.isatty() or should_force_color()
     args["terminal_width"] = get_terminal_width()
-    bdata = json.dumps(args).encode("utf8")
     _, name = get_status(status_file)
     try:
         with IPCClient(name, timeout) as client:
-            client.write(bdata)
-            response = receive(client)
+            send(client, args)
+
+            final = False
+            while not final:
+                response = receive(client)
+                final = bool(response.pop("final", False))
+                # Display debugging output written to stdout/stderr in the server process for convenience.
+                # This should not be confused with "out" and "err" fields in the response.
+                # Those fields hold the output of the "check" command, and are handled in check_output().
+                stdout = response.pop("stdout", None)
+                if stdout:
+                    sys.stdout.write(stdout)
+                stderr = response.pop("stderr", None)
+                if stderr:
+                    sys.stderr.write(stderr)
     except (OSError, IPCException) as err:
         return {"error": str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
-    else:
-        # Display debugging output written to stdout in the server process for convenience.
-        stdout = response.get("stdout")
-        if stdout:
-            sys.stdout.write(stdout)
-        return response
+
+    return response
 
 
 def get_status(status_file: str) -> tuple[int, str]:

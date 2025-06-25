@@ -27,9 +27,9 @@ from __future__ import annotations
 import itertools
 import json
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Callable, Iterator, NamedTuple, TypeVar, cast
-from typing_extensions import TypedDict
+from typing import Callable, NamedTuple, TypedDict, TypeVar, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
@@ -52,13 +52,14 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     TypeInfo,
-    reverse_builtin_aliases,
+    Var,
 )
+from mypy.options import Options
 from mypy.plugin import FunctionContext, MethodContext, Plugin
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.traverser import TraverserVisitor
-from mypy.typeops import make_simplified_union
+from mypy.typeops import bind_self, make_simplified_union
 from mypy.types import (
     AnyType,
     CallableType,
@@ -77,9 +78,8 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
-    is_optional,
-    remove_optional,
 )
+from mypy.types_utils import is_overlapping_none, remove_optional
 from mypy.util import split_target
 
 
@@ -227,6 +227,18 @@ def is_explicit_any(typ: AnyType) -> bool:
 def is_implicit_any(typ: Type) -> bool:
     typ = get_proper_type(typ)
     return isinstance(typ, AnyType) and not is_explicit_any(typ)
+
+
+def _arg_accepts_function(typ: ProperType) -> bool:
+    return (
+        # TypeVar / Callable
+        isinstance(typ, (TypeVarType, CallableType))
+        or
+        # Protocol with __call__
+        isinstance(typ, Instance)
+        and typ.type.is_protocol
+        and typ.type.get_method("__call__") is not None
+    )
 
 
 class SuggestionEngine:
@@ -454,7 +466,7 @@ class SuggestionEngine:
             pnode = parent.names.get(node.name)
             if pnode and isinstance(pnode.node, (FuncDef, Decorator)):
                 typ = get_proper_type(pnode.node.type)
-                # FIXME: Doesn't work right with generic tyeps
+                # FIXME: Doesn't work right with generic types
                 if isinstance(typ, CallableType) and len(typ.arg_types) == len(node.arguments):
                     # Return the first thing we find, since it probably doesn't make sense
                     # to grab things further up in the chain if an earlier parent has it.
@@ -474,7 +486,7 @@ class SuggestionEngine:
         if self.no_errors and orig_errors:
             raise SuggestionFailure("Function does not typecheck.")
 
-        is_method = bool(node.info) and not node.is_static
+        is_method = bool(node.info) and node.has_self_or_cls_argument
 
         with state.strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
@@ -638,22 +650,27 @@ class SuggestionEngine:
     def extract_from_decorator(self, node: Decorator) -> FuncDef | None:
         for dec in node.decorators:
             typ = None
-            if isinstance(dec, RefExpr) and isinstance(dec.node, FuncDef):
-                typ = dec.node.type
+            if isinstance(dec, RefExpr) and isinstance(dec.node, (Var, FuncDef)):
+                typ = get_proper_type(dec.node.type)
             elif (
                 isinstance(dec, CallExpr)
                 and isinstance(dec.callee, RefExpr)
-                and isinstance(dec.callee.node, FuncDef)
-                and isinstance(dec.callee.node.type, CallableType)
+                and isinstance(dec.callee.node, (Decorator, FuncDef, Var))
+                and isinstance((call_tp := get_proper_type(dec.callee.node.type)), CallableType)
             ):
-                typ = get_proper_type(dec.callee.node.type.ret_type)
+                typ = get_proper_type(call_tp.ret_type)
+
+            if isinstance(typ, Instance):
+                call_method = typ.type.get_method("__call__")
+                if isinstance(call_method, FuncDef) and isinstance(call_method.type, FunctionLike):
+                    typ = bind_self(call_method.type, None)
 
             if not isinstance(typ, FunctionLike):
                 return None
             for ct in typ.items:
                 if not (
                     len(ct.arg_types) == 1
-                    and isinstance(ct.arg_types[0], TypeVarType)
+                    and _arg_accepts_function(get_proper_type(ct.arg_types[0]))
                     and ct.arg_types[0] == ct.ret_type
                 ):
                     return None
@@ -735,7 +752,7 @@ class SuggestionEngine:
     def format_type(self, cur_module: str | None, typ: Type) -> str:
         if self.use_fixme and isinstance(get_proper_type(typ), AnyType):
             return self.use_fixme
-        return typ.accept(TypeFormatter(cur_module, self.graph))
+        return typ.accept(TypeFormatter(cur_module, self.graph, self.manager.options))
 
     def score_type(self, t: Type, arg_pos: bool) -> int:
         """Generate a score for a type that we use to pick which type to use.
@@ -752,7 +769,7 @@ class SuggestionEngine:
                 return 20
             if any(has_any_type(x) for x in t.items):
                 return 15
-            if not is_optional(t):
+            if not is_overlapping_none(t):
                 return 10
         if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
             return 10
@@ -809,8 +826,8 @@ class TypeFormatter(TypeStrVisitor):
     """Visitor used to format types"""
 
     # TODO: Probably a lot
-    def __init__(self, module: str | None, graph: Graph) -> None:
-        super().__init__()
+    def __init__(self, module: str | None, graph: Graph, options: Options) -> None:
+        super().__init__(options=options)
         self.module = module
         self.graph = graph
 
@@ -824,8 +841,6 @@ class TypeFormatter(TypeStrVisitor):
         s = t.type.fullname or t.type.name or None
         if s is None:
             return "<???>"
-        if s in reverse_builtin_aliases:
-            s = reverse_builtin_aliases[s]
 
         mod_obj = split_target(self.graph, s)
         assert mod_obj
@@ -837,7 +852,7 @@ class TypeFormatter(TypeStrVisitor):
         if self.module:
             parts = obj.split(".")  # need to split the object part if it is a nested class
             tree = self.graph[self.module].tree
-            if tree and parts[0] in tree.names:
+            if tree and parts[0] in tree.names and mod not in tree.names:
                 mod = self.module
 
         if (mod, obj) == ("builtins", "tuple"):
@@ -868,7 +883,7 @@ class TypeFormatter(TypeStrVisitor):
         return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> str:
-        if len(t.items) == 2 and is_optional(t):
+        if len(t.items) == 2 and is_overlapping_none(t):
             return f"Optional[{remove_optional(t).accept(self)}]"
         else:
             return super().visit_union_type(t)

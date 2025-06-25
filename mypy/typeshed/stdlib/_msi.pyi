@@ -1,7 +1,7 @@
 import sys
 
 if sys.platform == "win32":
-
+    class MSIError(Exception): ...
     # Actual typename View, not exposed by the implementation
     class _View:
         def Execute(self, params: _Record | None = ...) -> None: ...
@@ -12,6 +12,7 @@ if sys.platform == "win32":
         # Don't exist at runtime
         __new__: None  # type: ignore[assignment]
         __init__: None  # type: ignore[assignment]
+
     # Actual typename SummaryInformation, not exposed by the implementation
     class _SummaryInformation:
         def GetProperty(self, field: int) -> int | bytes | None: ...
@@ -21,6 +22,7 @@ if sys.platform == "win32":
         # Don't exist at runtime
         __new__: None  # type: ignore[assignment]
         __init__: None  # type: ignore[assignment]
+
     # Actual typename Database, not exposed by the implementation
     class _Database:
         def OpenView(self, sql: str) -> _View: ...
@@ -30,6 +32,7 @@ if sys.platform == "win32":
         # Don't exist at runtime
         __new__: None  # type: ignore[assignment]
         __init__: None  # type: ignore[assignment]
+
     # Actual typename Record, not exposed by the implementation
     class _Record:
         def GetFieldCount(self) -> int: ...
@@ -42,10 +45,11 @@ if sys.platform == "win32":
         # Don't exist at runtime
         __new__: None  # type: ignore[assignment]
         __init__: None  # type: ignore[assignment]
+
     def UuidCreate() -> str: ...
-    def FCICreate(__cabname: str, __files: list[str]) -> None: ...
-    def OpenDatabase(__path: str, __persist: int) -> _Database: ...
-    def CreateRecord(__count: int) -> _Record: ...
+    def FCICreate(cabname: str, files: list[str], /) -> None: ...
+    def OpenDatabase(path: str, persist: int, /) -> _Database: ...
+    def CreateRecord(count: int, /) -> _Record: ...
 
     MSICOLINFO_NAMES: int
     MSICOLINFO_TYPES: int

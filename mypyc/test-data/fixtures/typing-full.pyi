@@ -10,26 +10,31 @@ from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
+class _SpecialForm:
+    def __getitem__(self, index): ...
+class TypeVar:
+    def __init__(self, name, *args, bound=None): ...
+    def __or__(self, other): ...
+
 cast = 0
 overload = 0
-Any = 0
-Union = 0
+Any = object()
 Optional = 0
-TypeVar = 0
 Generic = 0
 Protocol = 0
 Tuple = 0
-Callable = 0
 _promote = 0
 NamedTuple = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
 Final = 0
-Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Callable: _SpecialForm
+Union: _SpecialForm
+Literal: _SpecialForm
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -125,6 +130,7 @@ class Sequence(Iterable[T_co], Container[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
+    def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
     @overload
     def get(self, k: T) -> Optional[T_co]: pass
@@ -166,3 +172,6 @@ class _TypedDict(Mapping[str, object]):
     def pop(self, k: NoReturn, default: T = ...) -> object: ...
     def update(self: T, __m: T) -> None: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+
+class TypeAliasType:
+    pass

@@ -9,15 +9,6 @@ doesn't work as expected. Statically typed code is often identical to
 normal Python code (except for type annotations), but sometimes you need
 to do things slightly differently.
 
-Can't install mypy using pip
-----------------------------
-
-If installation fails, you've probably hit one of these issues:
-
-* Mypy needs Python 3.6 or later to run.
-* You may have to run pip like this:
-  ``python3 -m pip install mypy``.
-
 .. _annotations_needed:
 
 No errors reported for obviously wrong code
@@ -26,7 +17,9 @@ No errors reported for obviously wrong code
 There are several common reasons why obviously wrong code is not
 flagged as an error.
 
-**The function containing the error is not annotated.** Functions that
+**The function containing the error is not annotated.**
+
+Functions that
 do not have any annotations (neither for any argument nor for the
 return type) are not type-checked, and even the most blatant type
 errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
@@ -48,11 +41,13 @@ once you add annotations:
 
     def foo(a: str) -> str:
         return '(' + a.split() + ')'
-    # error: Unsupported operand types for + ("str" and List[str])
+    # error: Unsupported operand types for + ("str" and "list[str]")
 
 If you don't know what types to add, you can use ``Any``, but beware:
 
-**One of the values involved has type 'Any'.** Extending the above
+**One of the values involved has type 'Any'.**
+
+Extending the above
 example, if we were to leave out the annotation for ``a``, we'd get
 no error:
 
@@ -68,49 +63,52 @@ The reason is that if the type of ``a`` is unknown, the type of
 If you're having trouble debugging such situations,
 :ref:`reveal_type() <reveal-type>` might come in handy.
 
-Note that sometimes library stubs have imprecise type information,
-e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
-<https://github.com/python/typeshed/issues/285>`_ for the reason).
+Note that sometimes library stubs with imprecise type information
+can be a source of ``Any`` values.
 
 :py:meth:`__init__ <object.__init__>` **method has no annotated
-arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
-is considered fully-annotated **if at least one argument is annotated**,
-while mypy will infer the return type as ``None``.
-The implication is that, for a :py:meth:`__init__ <object.__init__>` method
-that has no argument, you'll have to explicitly annotate the return type
-as ``None`` to type-check this :py:meth:`__init__ <object.__init__>` method:
+arguments and no return type annotation.**
+
+This is basically a combination of the two cases above, in that ``__init__``
+without annotations can cause ``Any`` types leak into instance variables:
 
 .. code-block:: python
 
-    def foo(s: str) -> str:
-        return s
+    class Bad:
+        def __init__(self):
+            self.value = "asdf"
+            1 + "asdf"  # No error!
 
-    class A():
-        def __init__(self, value: str): # Return type inferred as None, considered as typed method
+    bad = Bad()
+    bad.value + 1           # No error!
+    reveal_type(bad)        # Revealed type is "__main__.Bad"
+    reveal_type(bad.value)  # Revealed type is "Any"
+
+    class Good:
+        def __init__(self) -> None:  # Explicitly return None
             self.value = value
-            foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 
-    class B():
-        def __init__(self):  # No argument is annotated, considered as untyped method
-            foo(1)  # No error!
 
-    class C():
-        def __init__(self) -> None:  # Must specify return type to type-check
-            foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+**Some imports may be silently ignored**.
 
-**Some imports may be silently ignored**.  Another source of
-unexpected ``Any`` values are the :option:`--ignore-missing-imports
-<mypy --ignore-missing-imports>` and :option:`--follow-imports=skip
-<mypy --follow-imports>` flags.  When you use :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`,
-any imported module that cannot be found is silently replaced with
-``Any``.  When using :option:`--follow-imports=skip <mypy --follow-imports>` the same is true for
-modules for which a ``.py`` file is found but that are not specified
-on the command line.  (If a ``.pyi`` stub is found it is always
-processed normally, regardless of the value of
-:option:`--follow-imports <mypy --follow-imports>`.)  To help debug the former situation (no
-module found at all) leave out :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`; to get
-clarity about the latter use :option:`--follow-imports=error <mypy --follow-imports>`.  You can
-read up about these and other useful flags in :ref:`command-line`.
+A common source of unexpected ``Any`` values is the
+:option:`--ignore-missing-imports <mypy --ignore-missing-imports>` flag.
+
+When you use :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`,
+any imported module that cannot be found is silently replaced with ``Any``.
+
+To help debug this, simply leave out
+:option:`--ignore-missing-imports <mypy --ignore-missing-imports>`.
+As mentioned in :ref:`fix-missing-imports`, setting ``ignore_missing_imports=True``
+on a per-module basis will make bad surprises less likely and is highly encouraged.
+
+Use of the :option:`--follow-imports=skip <mypy --follow-imports>` flags can also
+cause problems. Use of these flags is strongly discouraged and only required in
+relatively niche situations. See :ref:`follow-imports` for more information.
+
+**mypy considers some of your code unreachable**.
+
+See :ref:`unreachable` for more information.
 
 **A function annotated as returning a non-optional type returns 'None'
 and mypy doesn't complain**.
@@ -121,7 +119,7 @@ and mypy doesn't complain**.
         return None  # No error!
 
 You may have disabled strict optional checking (see
-:ref:`no_strict_optional` for more).
+:ref:`--no-strict-optional <no_strict_optional>` for more).
 
 .. _silencing_checker:
 
@@ -186,22 +184,16 @@ over ``.py`` files.
 Ignoring a whole file
 ---------------------
 
-A ``# type: ignore`` comment at the top of a module (before any statements,
+* To only ignore errors, use a top-level ``# mypy: ignore-errors`` comment instead.
+* To only ignore errors with a specific error code, use a top-level
+  ``# mypy: disable-error-code="..."`` comment. Example: ``# mypy: disable-error-code="truthy-bool, ignore-without-code"``
+* To replace the contents of a module with ``Any``, use a per-module ``follow_imports = skip``.
+  See :ref:`Following imports <follow-imports>` for details.
+
+Note that a ``# type: ignore`` comment at the top of a module (before any statements,
 including imports or docstrings) has the effect of ignoring the entire contents of the module.
-
-To only ignore errors, use a top-level ``# mypy: ignore-errors`` comment instead.
-To only ignore errors with a specific error code, use a top-level
-``# mypy: disable-error-code=...`` comment.
-To replace the contents of the module with ``Any``, use a per-module ``follow_imports = skip``.
-See :ref:`Following imports <follow-imports>` for details.
-
-.. code-block:: python
-
-    # type: ignore
-
-    import foo
-
-    foo.bar()
+This behaviour can be surprising and result in
+"Module ... has no attribute ... [attr-defined]" errors.
 
 Issues with code at runtime
 ---------------------------
@@ -234,7 +226,7 @@ dict to a new variable, as mentioned earlier:
 
 .. code-block:: python
 
-   a: List[int] = []
+   a: list[int] = []
 
 Without the annotation mypy can't always figure out the
 precise type of ``a``.
@@ -246,7 +238,7 @@ modification operation in the same scope (such as ``append`` for a list):
 
 .. code-block:: python
 
-   a = []  # Okay because followed by append, inferred type List[int]
+   a = []  # Okay because followed by append, inferred type list[int]
    for i in range(n):
        a.append(i * i)
 
@@ -260,20 +252,20 @@ Redefinitions with incompatible types
 
 Each name within a function only has a single 'declared' type. You can
 reuse for loop indices etc., but if you want to use a variable with
-multiple types within a single function, you may need to declare it
-with the ``Any`` type.
+multiple types within a single function, you may need to instead use
+multiple variables (or maybe declare the variable with an ``Any`` type).
 
 .. code-block:: python
 
    def f() -> None:
        n = 1
        ...
-       n = 'x'        # Type error: n has type int
+       n = 'x'  # error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 .. note::
 
-   This limitation could be lifted in a future mypy
-   release.
+   Using the :option:`--allow-redefinition <mypy --allow-redefinition>`
+   flag can suppress this error in several cases.
 
 Note that you can redefine a variable with a more *precise* or a more
 concrete type. For example, you can redefine a sequence (which does
@@ -284,8 +276,10 @@ not support ``sort()``) as a list and sort it in-place:
     def f(x: Sequence[int]) -> None:
         # Type of x is Sequence[int] here; we don't know the concrete type.
         x = list(x)
-        # Type of x is List[int] here.
+        # Type of x is list[int] here.
         x.sort()  # Okay!
+
+See :ref:`type-narrowing` for more information.
 
 .. _variance:
 
@@ -302,8 +296,8 @@ unexpected errors when combined with type inference. For example:
    class A: ...
    class B(A): ...
 
-   lst = [A(), A()]  # Inferred type is List[A]
-   new_lst = [B(), B()]  # inferred type is List[B]
+   lst = [A(), A()]  # Inferred type is list[A]
+   new_lst = [B(), B()]  # inferred type is list[B]
    lst = new_lst  # mypy will complain about this, because List is invariant
 
 Possible strategies in such situations are:
@@ -312,7 +306,7 @@ Possible strategies in such situations are:
 
   .. code-block:: python
 
-     new_lst: List[A] = [B(), B()]
+     new_lst: list[A] = [B(), B()]
      lst = new_lst  # OK
 
 * Make a copy of the right hand side:
@@ -325,7 +319,7 @@ Possible strategies in such situations are:
 
   .. code-block:: python
 
-     def f_bad(x: List[A]) -> A:
+     def f_bad(x: list[A]) -> A:
          return x[0]
      f_bad(new_lst) # Fails
 
@@ -338,24 +332,24 @@ Declaring a supertype as variable type
 
 Sometimes the inferred type is a subtype (subclass) of the desired
 type. The type inference uses the first assignment to infer the type
-of a name (assume here that ``Shape`` is the base class of both
-``Circle`` and ``Triangle``):
+of a name:
 
 .. code-block:: python
 
-   shape = Circle()    # Infer shape to be Circle
-   ...
-   shape = Triangle()  # Type error: Triangle is not a Circle
+   class Shape: ...
+   class Circle(Shape): ...
+   class Triangle(Shape): ...
+
+   shape = Circle()    # mypy infers the type of shape to be Circle
+   shape = Triangle()  # error: Incompatible types in assignment (expression has type "Triangle", variable has type "Circle")
 
 You can just give an explicit type for the variable in cases such the
 above example:
 
 .. code-block:: python
 
-   shape = Circle() # type: Shape   # The variable s can be any Shape,
-                                    # not just Circle
-   ...
-   shape = Triangle()               # OK
+   shape: Shape = Circle()  # The variable s can be any Shape, not just Circle
+   shape = Triangle()       # OK
 
 Complex type tests
 ------------------
@@ -369,7 +363,8 @@ explicit type cast:
 
 .. code-block:: python
 
-  from typing import Sequence, cast
+  from collections.abc import Sequence
+  from typing import cast
 
   def find_first_str(a: Sequence[object]) -> str:
       index = next((i for i, s in enumerate(a) if isinstance(s, str)), -1)
@@ -432,8 +427,8 @@ More specifically, mypy will understand the use of :py:data:`sys.version_info` a
    import sys
 
    # Distinguishing between different versions of Python:
-   if sys.version_info >= (3, 8):
-       # Python 3.8+ specific definitions and imports
+   if sys.version_info >= (3, 13):
+       # Python 3.13+ specific definitions and imports
    else:
        # Other definitions and imports
 
@@ -460,7 +455,7 @@ Example:
    # The rest of this file doesn't apply to Windows.
 
 Some other expressions exhibit similar behavior; in particular,
-:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY``, and any variable
+:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY`` or ``TYPE_CHECKING``, and any variable
 whose name is passed to :option:`--always-true <mypy --always-true>` or :option:`--always-false <mypy --always-false>`.
 (However, ``True`` and ``False`` are not treated specially!)
 
@@ -495,7 +490,7 @@ understand how mypy handles a particular piece of code. Example:
 
 .. code-block:: python
 
-   reveal_type((1, 'hello'))  # Revealed type is "Tuple[builtins.int, builtins.str]"
+   reveal_type((1, 'hello'))  # Revealed type is "tuple[builtins.int, builtins.str]"
 
 You can also use ``reveal_locals()`` at any line in a file
 to see the types of all local variables at once. Example:
@@ -547,7 +542,7 @@ Consider this example:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol
+   from typing import Protocol
 
    class P(Protocol):
        x: float
@@ -567,7 +562,7 @@ the protocol definition:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol
+   from typing import Protocol
 
    class P(Protocol):
        @property
@@ -620,21 +615,24 @@ You can install the latest development version of mypy from source. Clone the
 
     git clone https://github.com/python/mypy.git
     cd mypy
-    sudo python3 -m pip install --upgrade .
+    python3 -m pip install --upgrade .
+
+To install a development version of mypy that is mypyc-compiled, see the
+instructions at the `mypyc wheels repo <https://github.com/mypyc/mypy_mypyc-wheels>`_.
 
 Variables vs type aliases
 -------------------------
 
-Mypy has both *type aliases* and variables with types like ``Type[...]``. These are
+Mypy has both *type aliases* and variables with types like ``type[...]``. These are
 subtly different, and it's important to understand how they differ to avoid pitfalls.
 
-1. A variable with type ``Type[...]`` is defined using an assignment with an
+1. A variable with type ``type[...]`` is defined using an assignment with an
    explicit type annotation:
 
    .. code-block:: python
 
      class A: ...
-     tp: Type[A] = A
+     tp: type[A] = A
 
 2. You can define a type alias using an assignment without an explicit type annotation
    at the top level of a module:
@@ -673,7 +671,7 @@ can't be defined conditionally (unless using
          # explicit "Type[...]" annotation
          Alias = B
 
-     tp: Type[object]  # "tp" is a variable with a type object value
+     tp: type[object]  # "tp" is a variable with a type object value
      if random() > 0.5:
          tp = A
      else:
@@ -703,7 +701,7 @@ This example demonstrates both safe and unsafe overrides:
 
 .. code-block:: python
 
-    from typing import Sequence, List, Iterable
+    from collections.abc import Sequence, Iterable
 
     class A:
         def test(self, t: Sequence[int]) -> Sequence[str]:
@@ -716,7 +714,7 @@ This example demonstrates both safe and unsafe overrides:
 
     class NarrowerArgument(A):
         # A more specific argument type isn't accepted
-        def test(self, t: List[int]) -> Sequence[str]:  # Error
+        def test(self, t: list[int]) -> Sequence[str]:  # Error
             ...
 
     class NarrowerReturn(A):
@@ -759,7 +757,7 @@ type check such code. Consider this example:
         x: int = 'abc'  # Unreachable -- no error
 
 It's easy to see that any statement after ``return`` is unreachable,
-and hence mypy will not complain about the mis-typed code below
+and hence mypy will not complain about the mistyped code below
 it. For a more subtle example, consider this code:
 
 .. code-block:: python
@@ -805,7 +803,7 @@ This is best understood via an example:
 
 .. code-block:: python
 
-    def foo(x: Optional[int]) -> Callable[[], int]:
+    def foo(x: int | None) -> Callable[[], int]:
         if x is None:
             x = 5
         print(x + 1)  # mypy correctly deduces x must be an int here
@@ -821,3 +819,30 @@ This is best understood via an example:
 To get this code to type check, you could assign ``y = x`` after ``x`` has been
 narrowed, and use ``y`` in the inner function, or add an assert in the inner
 function.
+
+.. _incorrect-self:
+
+Incorrect use of ``Self``
+-------------------------
+
+``Self`` is not the type of the current class; it's a type variable with upper
+bound of the current class. That is, it represents the type of the current class
+or of potential subclasses.
+
+.. code-block:: python
+
+    from typing import Self
+
+    class Foo:
+        @classmethod
+        def constructor(cls) -> Self:
+            # Instead, either call cls() or change the annotation to -> Foo
+            return Foo()  # error: Incompatible return value type (got "Foo", expected "Self")
+
+    class Bar(Foo):
+        ...
+
+    reveal_type(Foo.constructor())  # note: Revealed type is "Foo"
+    # In the context of the subclass Bar, the Self return type promises
+    # that the return value will be Bar
+    reveal_type(Bar.constructor())  # note: Revealed type is "Bar"

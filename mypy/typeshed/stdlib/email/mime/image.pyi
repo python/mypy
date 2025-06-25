@@ -9,9 +9,9 @@ class MIMEImage(MIMENonMultipart):
     def __init__(
         self,
         _imagedata: str | bytes | bytearray,
-        _subtype: str | None = ...,
+        _subtype: str | None = None,
         _encoder: Callable[[MIMEImage], object] = ...,
         *,
-        policy: Policy | None = ...,
+        policy: Policy | None = None,
         **_params: _ParamsType,
     ) -> None: ...

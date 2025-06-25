@@ -1,9 +1,10 @@
+import sys
 import types
 import unittest
 from _typeshed import ExcInfo
 from collections.abc import Callable
-from typing import Any, NamedTuple
-from typing_extensions import TypeAlias
+from typing import Any, NamedTuple, type_check_only
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "register_optionflag",
@@ -41,9 +42,20 @@ __all__ = [
     "debug",
 ]
 
-class TestResults(NamedTuple):
-    failed: int
-    attempted: int
+if sys.version_info >= (3, 13):
+    @type_check_only
+    class _TestResultsBase(NamedTuple):
+        failed: int
+        attempted: int
+
+    class TestResults(_TestResultsBase):
+        def __new__(cls, failed: int, attempted: int, *, skipped: int = 0) -> Self: ...
+        skipped: int
+
+else:
+    class TestResults(NamedTuple):
+        failed: int
+        attempted: int
 
 OPTIONFLAGS_BY_NAME: dict[str, int]
 
@@ -80,11 +92,12 @@ class Example:
         self,
         source: str,
         want: str,
-        exc_msg: str | None = ...,
-        lineno: int = ...,
-        indent: int = ...,
-        options: dict[int, bool] | None = ...,
+        exc_msg: str | None = None,
+        lineno: int = 0,
+        indent: int = 0,
+        options: dict[int, bool] | None = None,
     ) -> None: ...
+    def __hash__(self) -> int: ...
     def __eq__(self, other: object) -> bool: ...
 
 class DocTest:
@@ -103,25 +116,26 @@ class DocTest:
         lineno: int | None,
         docstring: str | None,
     ) -> None: ...
+    def __hash__(self) -> int: ...
     def __lt__(self, other: DocTest) -> bool: ...
     def __eq__(self, other: object) -> bool: ...
 
 class DocTestParser:
-    def parse(self, string: str, name: str = ...) -> list[str | Example]: ...
+    def parse(self, string: str, name: str = "<string>") -> list[str | Example]: ...
     def get_doctest(self, string: str, globs: dict[str, Any], name: str, filename: str | None, lineno: int | None) -> DocTest: ...
-    def get_examples(self, string: str, name: str = ...) -> list[Example]: ...
+    def get_examples(self, string: str, name: str = "<string>") -> list[Example]: ...
 
 class DocTestFinder:
     def __init__(
-        self, verbose: bool = ..., parser: DocTestParser = ..., recurse: bool = ..., exclude_empty: bool = ...
+        self, verbose: bool = False, parser: DocTestParser = ..., recurse: bool = True, exclude_empty: bool = True
     ) -> None: ...
     def find(
         self,
         obj: object,
-        name: str | None = ...,
-        module: None | bool | types.ModuleType = ...,
-        globs: dict[str, Any] | None = ...,
-        extraglobs: dict[str, Any] | None = ...,
+        name: str | None = None,
+        module: None | bool | types.ModuleType = None,
+        globs: dict[str, Any] | None = None,
+        extraglobs: dict[str, Any] | None = None,
     ) -> list[DocTest]: ...
 
 _Out: TypeAlias = Callable[[str], object]
@@ -132,16 +146,18 @@ class DocTestRunner:
     original_optionflags: int
     tries: int
     failures: int
+    if sys.version_info >= (3, 13):
+        skips: int
     test: DocTest
-    def __init__(self, checker: OutputChecker | None = ..., verbose: bool | None = ..., optionflags: int = ...) -> None: ...
+    def __init__(self, checker: OutputChecker | None = None, verbose: bool | None = None, optionflags: int = 0) -> None: ...
     def report_start(self, out: _Out, test: DocTest, example: Example) -> None: ...
     def report_success(self, out: _Out, test: DocTest, example: Example, got: str) -> None: ...
     def report_failure(self, out: _Out, test: DocTest, example: Example, got: str) -> None: ...
     def report_unexpected_exception(self, out: _Out, test: DocTest, example: Example, exc_info: ExcInfo) -> None: ...
     def run(
-        self, test: DocTest, compileflags: int | None = ..., out: _Out | None = ..., clear_globs: bool = ...
+        self, test: DocTest, compileflags: int | None = None, out: _Out | None = None, clear_globs: bool = True
     ) -> TestResults: ...
-    def summarize(self, verbose: bool | None = ...) -> TestResults: ...
+    def summarize(self, verbose: bool | None = None) -> TestResults: ...
     def merge(self, other: DocTestRunner) -> None: ...
 
 class OutputChecker:
@@ -165,32 +181,37 @@ class DebugRunner(DocTestRunner): ...
 master: DocTestRunner | None
 
 def testmod(
-    m: types.ModuleType | None = ...,
-    name: str | None = ...,
-    globs: dict[str, Any] | None = ...,
-    verbose: bool | None = ...,
-    report: bool = ...,
-    optionflags: int = ...,
-    extraglobs: dict[str, Any] | None = ...,
-    raise_on_error: bool = ...,
-    exclude_empty: bool = ...,
+    m: types.ModuleType | None = None,
+    name: str | None = None,
+    globs: dict[str, Any] | None = None,
+    verbose: bool | None = None,
+    report: bool = True,
+    optionflags: int = 0,
+    extraglobs: dict[str, Any] | None = None,
+    raise_on_error: bool = False,
+    exclude_empty: bool = False,
 ) -> TestResults: ...
 def testfile(
     filename: str,
-    module_relative: bool = ...,
-    name: str | None = ...,
-    package: None | str | types.ModuleType = ...,
-    globs: dict[str, Any] | None = ...,
-    verbose: bool | None = ...,
-    report: bool = ...,
-    optionflags: int = ...,
-    extraglobs: dict[str, Any] | None = ...,
-    raise_on_error: bool = ...,
+    module_relative: bool = True,
+    name: str | None = None,
+    package: None | str | types.ModuleType = None,
+    globs: dict[str, Any] | None = None,
+    verbose: bool | None = None,
+    report: bool = True,
+    optionflags: int = 0,
+    extraglobs: dict[str, Any] | None = None,
+    raise_on_error: bool = False,
     parser: DocTestParser = ...,
-    encoding: str | None = ...,
+    encoding: str | None = None,
 ) -> TestResults: ...
 def run_docstring_examples(
-    f: object, globs: dict[str, Any], verbose: bool = ..., name: str = ..., compileflags: int | None = ..., optionflags: int = ...
+    f: object,
+    globs: dict[str, Any],
+    verbose: bool = False,
+    name: str = "NoName",
+    compileflags: int | None = None,
+    optionflags: int = 0,
 ) -> None: ...
 def set_unittest_reportflags(flags: int) -> int: ...
 
@@ -198,13 +219,14 @@ class DocTestCase(unittest.TestCase):
     def __init__(
         self,
         test: DocTest,
-        optionflags: int = ...,
-        setUp: Callable[[DocTest], Any] | None = ...,
-        tearDown: Callable[[DocTest], Any] | None = ...,
-        checker: OutputChecker | None = ...,
+        optionflags: int = 0,
+        setUp: Callable[[DocTest], object] | None = None,
+        tearDown: Callable[[DocTest], object] | None = None,
+        checker: OutputChecker | None = None,
     ) -> None: ...
     def runTest(self) -> None: ...
     def format_failure(self, err: str) -> str: ...
+    def __hash__(self) -> int: ...
     def __eq__(self, other: object) -> bool: ...
 
 class SkipDocTestCase(DocTestCase):
@@ -214,10 +236,10 @@ class SkipDocTestCase(DocTestCase):
 class _DocTestSuite(unittest.TestSuite): ...
 
 def DocTestSuite(
-    module: None | str | types.ModuleType = ...,
-    globs: dict[str, Any] | None = ...,
-    extraglobs: dict[str, Any] | None = ...,
-    test_finder: DocTestFinder | None = ...,
+    module: None | str | types.ModuleType = None,
+    globs: dict[str, Any] | None = None,
+    extraglobs: dict[str, Any] | None = None,
+    test_finder: DocTestFinder | None = None,
     **options: Any,
 ) -> _DocTestSuite: ...
 
@@ -225,16 +247,16 @@ class DocFileCase(DocTestCase): ...
 
 def DocFileTest(
     path: str,
-    module_relative: bool = ...,
-    package: None | str | types.ModuleType = ...,
-    globs: dict[str, Any] | None = ...,
+    module_relative: bool = True,
+    package: None | str | types.ModuleType = None,
+    globs: dict[str, Any] | None = None,
     parser: DocTestParser = ...,
-    encoding: str | None = ...,
+    encoding: str | None = None,
     **options: Any,
 ) -> DocFileCase: ...
 def DocFileSuite(*paths: str, **kw: Any) -> _DocTestSuite: ...
 def script_from_examples(s: str) -> str: ...
 def testsource(module: None | str | types.ModuleType, name: str) -> str: ...
-def debug_src(src: str, pm: bool = ..., globs: dict[str, Any] | None = ...) -> None: ...
-def debug_script(src: str, pm: bool = ..., globs: dict[str, Any] | None = ...) -> None: ...
-def debug(module: None | str | types.ModuleType, name: str, pm: bool = ...) -> None: ...
+def debug_src(src: str, pm: bool = False, globs: dict[str, Any] | None = None) -> None: ...
+def debug_script(src: str, pm: bool = False, globs: dict[str, Any] | None = None) -> None: ...
+def debug(module: None | str | types.ModuleType, name: str, pm: bool = False) -> None: ...

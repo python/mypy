@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 from collections import Counter
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator, cast
-from typing_extensions import Final
+from typing import Final
 
 from mypy import nodes
 from mypy.argmap import map_formals_to_actuals
@@ -154,10 +154,12 @@ class StatisticsVisitor(TraverserVisitor):
                     )
                     return
                 for defn in o.expanded:
-                    self.visit_func_def(cast(FuncDef, defn))
+                    assert isinstance(defn, FuncDef)
+                    self.visit_func_def(defn)
             else:
                 if o.type:
-                    sig = cast(CallableType, o.type)
+                    assert isinstance(o.type, CallableType)
+                    sig = o.type
                     arg_types = sig.arg_types
                     if sig.arg_names and sig.arg_names[0] == "self" and not self.inferred:
                         arg_types = arg_types[1:]
@@ -202,7 +204,11 @@ class StatisticsVisitor(TraverserVisitor):
             # Type variable definition -- not a real assignment.
             return
         if o.type:
+            # If there is an explicit type, don't visit the l.h.s. as an expression
+            # to avoid double-counting and mishandling special forms.
             self.type(o.type)
+            o.rvalue.accept(self)
+            return
         elif self.inferred and not self.all_nodes:
             # if self.all_nodes is set, lvalues will be visited later
             for lvalue in o.lvalues:
@@ -474,11 +480,6 @@ def is_generic(t: Type) -> bool:
 def is_complex(t: Type) -> bool:
     t = get_proper_type(t)
     return is_generic(t) or isinstance(t, (FunctionLike, TupleType, TypeVarType))
-
-
-def ensure_dir_exists(dir: str) -> None:
-    if not os.path.exists(dir):
-        os.makedirs(dir)
 
 
 def is_special_form_any(t: AnyType) -> bool:

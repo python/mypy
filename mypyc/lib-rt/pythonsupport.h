@@ -13,6 +13,19 @@
 #include <assert.h>
 #include "mypyc_util.h"
 
+#if CPY_3_13_FEATURES
+#ifndef Py_BUILD_CORE
+#define Py_BUILD_CORE
+#endif
+#include "internal/pycore_genobject.h"  // _PyGen_FetchStopIterationValue
+#include "internal/pycore_pyerrors.h"  // _PyErr_FormatFromCause, _PyErr_SetKeyError
+#include "internal/pycore_setobject.h"  // _PySet_Update
+#endif
+
+#if CPY_3_12_FEATURES
+#include "internal/pycore_frame.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,7 +35,6 @@ extern "C" {
 
 /////////////////////////////////////////
 // Adapted from bltinmodule.c in Python 3.7.0
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 7
 _Py_IDENTIFIER(__mro_entries__);
 static PyObject*
 update_bases(PyObject *bases)
@@ -45,7 +57,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        if (_PyObject_LookupAttrId(base, &PyId___mro_entries__, &meth) < 0) {
+        if (PyObject_GetOptionalAttrString(base, PyId___mro_entries__.string, &meth) < 0) {
             goto error;
         }
         if (!meth) {
@@ -56,7 +68,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        new_base = _PyObject_FastCall(meth, stack, 1);
+        new_base = PyObject_Vectorcall(meth, stack, 1, NULL);
         Py_DECREF(meth);
         if (!new_base) {
             goto error;
@@ -96,16 +108,8 @@ error:
     Py_XDECREF(new_bases);
     return NULL;
 }
-#else
-static PyObject*
-update_bases(PyObject *bases)
-{
-    return bases;
-}
-#endif
 
 // From Python 3.7's typeobject.c
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
 _Py_IDENTIFIER(__init_subclass__);
 static int
 init_subclass(PyTypeObject *type, PyObject *kwds)
@@ -113,7 +117,7 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     PyObject *super, *func, *result;
     PyObject *args[2] = {(PyObject *)type, (PyObject *)type};
 
-    super = _PyObject_FastCall((PyObject *)&PySuper_Type, args, 2);
+    super = PyObject_Vectorcall((PyObject *)&PySuper_Type, args, 2, NULL);
     if (super == NULL) {
         return -1;
     }
@@ -134,13 +138,42 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     return 0;
 }
 
-#else
-static int
-init_subclass(PyTypeObject *type, PyObject *kwds)
+Py_ssize_t
+CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow);
+
+#if CPY_3_12_FEATURES
+
+static inline Py_ssize_t
+CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
 {
-    return 0;
+    /* This version by Tim Peters */
+    PyLongObject *v = (PyLongObject *)vv;
+    Py_ssize_t res;
+    Py_ssize_t i;
+
+    *overflow = 0;
+
+    res = -1;
+    i = CPY_LONG_TAG(v);
+
+    // TODO: Combine zero and non-zero cases helow?
+    if (likely(i == (1 << CPY_NON_SIZE_BITS))) {
+        res = CPY_LONG_DIGIT(v, 0);
+    } else if (likely(i == CPY_SIGN_ZERO)) {
+        res = 0;
+    } else if (i == ((1 << CPY_NON_SIZE_BITS) | CPY_SIGN_NEGATIVE)) {
+        res = -(sdigit)CPY_LONG_DIGIT(v, 0);
+    } else {
+        // Slow path is moved to a non-inline helper function to
+        // limit size of generated code
+        int overflow_local;
+        res = CPyLong_AsSsize_tAndOverflow_(vv, &overflow_local);
+        *overflow = overflow_local;
+    }
+    return res;
 }
-#endif
+
+#else
 
 // Adapted from longobject.c in Python 3.7.0
 
@@ -158,10 +191,8 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
 {
     /* This version by Tim Peters */
     PyLongObject *v = (PyLongObject *)vv;
-    size_t x, prev;
     Py_ssize_t res;
     Py_ssize_t i;
-    int sign;
 
     *overflow = 0;
 
@@ -169,43 +200,22 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
     i = Py_SIZE(v);
 
     if (likely(i == 1)) {
-        res = v->ob_digit[0];
+        res = CPY_LONG_DIGIT(v, 0);
     } else if (likely(i == 0)) {
         res = 0;
     } else if (i == -1) {
-        res = -(sdigit)v->ob_digit[0];
+        res = -(sdigit)CPY_LONG_DIGIT(v, 0);
     } else {
-        sign = 1;
-        x = 0;
-        if (i < 0) {
-            sign = -1;
-            i = -(i);
-        }
-        while (--i >= 0) {
-            prev = x;
-            x = (x << PyLong_SHIFT) + v->ob_digit[i];
-            if ((x >> PyLong_SHIFT) != prev) {
-                *overflow = sign;
-                goto exit;
-            }
-        }
-        /* Haven't lost any bits, but casting to long requires extra
-         * care (see comment above).
-         */
-        if (x <= (size_t)CPY_TAGGED_MAX) {
-            res = (Py_ssize_t)x * sign;
-        }
-        else if (sign < 0 && x == CPY_TAGGED_ABS_MIN) {
-            res = CPY_TAGGED_MIN;
-        }
-        else {
-            *overflow = sign;
-            /* res is already set to -1 */
-        }
+        // Slow path is moved to a non-inline helper function to
+        // limit size of generated code
+        int overflow_local;
+        res = CPyLong_AsSsize_tAndOverflow_(vv, &overflow_local);
+        *overflow = overflow_local;
     }
-  exit:
     return res;
 }
+
+#endif
 
 // Adapted from listobject.c in Python 3.7.0
 static int
@@ -306,29 +316,6 @@ list_count(PyListObject *self, PyObject *value)
     return CPyTagged_ShortFromSsize_t(count);
 }
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 8
-static PyObject *
-_PyDict_GetItemStringWithError(PyObject *v, const char *key)
-{
-    PyObject *kv, *rv;
-    kv = PyUnicode_FromString(key);
-    if (kv == NULL) {
-        return NULL;
-    }
-    rv = PyDict_GetItemWithError(v, kv);
-    Py_DECREF(kv);
-    return rv;
-}
-#endif
-
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 6
-/* _PyUnicode_EqualToASCIIString got added in 3.5.3 (argh!) so we can't actually know
- * whether it will be present at runtime, so we just assume we don't have it in 3.5. */
-#define CPyUnicode_EqualToASCIIString(x, y) (PyUnicode_CompareWithASCIIString((x), (y)) == 0)
-#elif PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
-#define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
-#endif
-
 // Adapted from genobject.c in Python 3.7.2
 // Copied because it wasn't in 3.5.2 and it is undocumented anyways.
 /*
@@ -390,11 +377,11 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 }
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >=10
+#if PY_VERSION_HEX >= 0x030A0000  // 3.10
 static int
 _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     PyObject *tmp = NULL;
-    int result = _PyObject_LookupAttrId(v, name, &tmp);
+    int result = PyObject_GetOptionalAttrString(v, name->string, &tmp);
     if (tmp) {
         Py_DECREF(tmp);
     }
@@ -404,13 +391,23 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
 #define _CPyObject_HasAttrId _PyObject_HasAttrId
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 9
-// OneArgs and NoArgs functions got added in 3.9
-#define _PyObject_CallMethodIdNoArgs(self, name) \
-    _PyObject_CallMethodIdObjArgs((self), (name), NULL)
-#define _PyObject_CallMethodIdOneArg(self, name, arg) \
-    _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
-#endif
+#if CPY_3_12_FEATURES
+
+// These are copied from genobject.c in Python 3.12
+
+static int
+gen_is_coroutine(PyObject *o)
+{
+    if (PyGen_CheckExact(o)) {
+        PyCodeObject *code = PyGen_GetCode((PyGenObject*)o);
+        if (code->co_flags & CO_ITERABLE_COROUTINE) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#else
 
 // Copied from genobject.c in Python 3.10
 static int
@@ -424,6 +421,8 @@ gen_is_coroutine(PyObject *o)
     }
     return 0;
 }
+
+#endif
 
 /*
  *   This helper function returns an awaitable for `o`:

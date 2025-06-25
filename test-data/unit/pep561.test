@@ -72,15 +72,6 @@ reveal_type(a)
 [out]
 testStubPrecedence.py:5: note: Revealed type is "builtins.list[builtins.str]"
 
-[case testTypedPkgSimpleEgg]
-# pkgs: typedpkg; no-pip
-from typedpkg.sample import ex
-from typedpkg import dne
-a = ex([''])
-reveal_type(a)
-[out]
-testTypedPkgSimpleEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
-
 [case testTypedPkgSimpleEditable]
 # pkgs: typedpkg; editable
 from typedpkg.sample import ex
@@ -89,15 +80,6 @@ a = ex([''])
 reveal_type(a)
 [out]
 testTypedPkgSimpleEditable.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
-
-[case testTypedPkgSimpleEditableEgg]
-# pkgs: typedpkg; editable; no-pip
-from typedpkg.sample import ex
-from typedpkg import dne
-a = ex([''])
-reveal_type(a)
-[out]
-testTypedPkgSimpleEditableEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 
 [case testTypedPkgNamespaceImportFrom]
 # pkgs: typedpkg, typedpkg_ns_a
@@ -185,6 +167,7 @@ a.bf(False)
 b.bf(False)
 a.bf(1)
 b.bf(1)
+import typedpkg_ns.whatever as c  # type: ignore[import-untyped]
 [out]
 testNamespacePkgWStubs.py:4: error: Skipping analyzing "typedpkg_ns.b.bbb": module is installed, but missing library stubs or py.typed marker
 testNamespacePkgWStubs.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -204,6 +187,13 @@ b.bf(1)
 testNamespacePkgWStubsWithNamespacePackagesFlag.py:7: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"
 testNamespacePkgWStubsWithNamespacePackagesFlag.py:8: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"
 
+[case testMissingPytypedFlag]
+# pkgs: typedpkg_ns_b
+# flags: --namespace-packages --follow-untyped-imports
+import typedpkg_ns.b.bbb as b
+b.bf("foo", "bar")
+[out]
+testMissingPytypedFlag.py:4: error: Too many arguments for "bf"
 
 [case testTypedPkgNamespaceRegFromImportTwiceMissing]
 # pkgs: typedpkg_ns_a
@@ -223,3 +213,23 @@ from typedpkg_ns.a.bbb import bf
 [file dummy.py.2]
 [out]
 [out2]
+
+[case testTypedNamespaceSubpackage]
+# pkgs: typedpkg_ns_nested
+import our
+[file our/__init__.py]
+import our.bar
+import our.foo
+[file our/bar.py]
+from typedpkg_ns.b import Something
+[file our/foo.py]
+import typedpkg_ns.a
+
+[file dummy.py.2]
+
+[out]
+our/bar.py:1: error: Skipping analyzing "typedpkg_ns.b": module is installed, but missing library stubs or py.typed marker
+our/bar.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[out2]
+our/bar.py:1: error: Skipping analyzing "typedpkg_ns.b": module is installed, but missing library stubs or py.typed marker
+our/bar.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

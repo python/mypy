@@ -1,5 +1,6 @@
 import sys
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 11):
     __all__ = (
         "BrokenBarrierError",
@@ -21,7 +22,12 @@ else:
     )
 
 class CancelledError(BaseException): ...
-class TimeoutError(Exception): ...
+
+if sys.version_info >= (3, 11):
+    from builtins import TimeoutError as TimeoutError
+else:
+    class TimeoutError(Exception): ...
+
 class InvalidStateError(Exception): ...
 class SendfileNotAvailableError(RuntimeError): ...
 

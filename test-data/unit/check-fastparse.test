@@ -1,10 +1,10 @@
 [case testFastParseSyntaxError]
 
-1 +  # E: invalid syntax
+1 +  # E: Invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
 
-x = None # type: a : b  # E: syntax error in type comment "a : b"
+x = None # type: a : b  # E: Syntax error in type comment "a : b"
 
 [case testFastParseInvalidTypeComment]
 
@@ -14,13 +14,13 @@ x = None # type: a + b  # E: Invalid type comment or annotation
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
 
-def f():  # E: syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
+def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
   pass
 
 [case testFastParseFunctionAnnotationSyntaxErrorSpaces]
 
-def f():  # E: syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
+def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type:             None -> None
   pass
 
@@ -31,7 +31,6 @@ def f(x):  # E: Invalid type comment or annotation
   pass
 
 [case testFastParseInvalidTypes3]
-# flags: --python-version 3.6
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
@@ -159,7 +158,7 @@ def f(a,        # type: A
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 
-def f(*, # type: int  # E: bare * has associated type comment
+def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
       ):
       # type: (...) -> int
@@ -228,8 +227,8 @@ def g():  # E: Type signature has too many arguments
 assert 1, 2
 assert (1, 2)  # E: Assertion is always true, perhaps remove parentheses?
 assert (1, 2), 3  # E: Assertion is always true, perhaps remove parentheses?
-assert ()
 assert (1,)  # E: Assertion is always true, perhaps remove parentheses?
+assert ()
 [builtins fixtures/tuple.pyi]
 
 [case testFastParseAssertMessage]
@@ -242,37 +241,37 @@ assert 1, f()  # E: Name "f" is not defined
 
 [case testFastParserConsistentFunctionTypes]
 
-def f(x, y, z):
+def f1(x, y, z):
   # type: (int, int, int) -> int
   pass
 
-def f(x,  # type: int  # E: Function has duplicate type signatures
+def f2(x,  # type: int  # E: Function has duplicate type signatures
       y,  # type: int
       z   # type: int
     ):
     # type: (int, int, int) -> int
     pass
 
-def f(x,  # type: int
+def f3(x,  # type: int
       y,  # type: int
       z   # type: int
     ):
     # type: (...) -> int
     pass
 
-def f(x, y, z):
+def f4(x, y, z):
   # type: (int, int, int) -> int
   pass
 
-def f(x) -> int:  # E: Function has duplicate type signatures
+def f5(x) -> int:  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
-def f(x: int, y: int, z: int):
+def f6(x: int, y: int, z: int):
   # type: (...) -> int
   pass
 
-def f(x: int):  # E: Function has duplicate type signatures
+def f7(x: int):  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 

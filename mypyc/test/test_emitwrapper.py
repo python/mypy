@@ -56,6 +56,5 @@ class TestArgCheck(unittest.TestCase):
         )
 
     def assert_lines(self, expected: list[str], actual: list[str]) -> None:
-        actual = [line.rstrip("\n").replace(4 * " ", "\t") for line in actual]
-        expected = [line.replace(4 * " ", "\t") for line in expected]
+        actual = [line.rstrip("\n") for line in actual]
         assert_string_arrays_equal(expected, actual, "Invalid output")

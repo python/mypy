@@ -21,7 +21,7 @@ from mypy.nodes import Argument, FuncDef, SymbolNode, Var
 from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME, bitmap_name
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, is_fixed_width_rtype, object_rprimitive
+from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
@@ -43,7 +43,10 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     containing a nested function.
     """
     env_class = ClassIR(
-        f"{builder.fn_info.namespaced_name()}_env", builder.module_name, is_generated=True
+        f"{builder.fn_info.namespaced_name()}_env",
+        builder.module_name,
+        is_generated=True,
+        is_final_class=True,
     )
     env_class.attributes[SELF_NAME] = RInstance(env_class)
     if builder.fn_info.is_nested:
@@ -58,7 +61,8 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
 
 def finalize_env_class(builder: IRBuilder) -> None:
     """Generate, instantiate, and set up the environment of an environment class."""
-    instantiate_env_class(builder)
+    if not builder.fn_info.can_merge_generator_and_env_classes():
+        instantiate_env_class(builder)
 
     # Iterate through the function arguments and replace local definitions (using registers)
     # that were previously added to the environment with references to the function's
@@ -107,7 +111,7 @@ def load_env_registers(builder: IRBuilder) -> None:
         load_outer_envs(builder, fn_info.callable_class)
         # If this is a FuncDef, then make sure to load the FuncDef into its own environment
         # class so that the function can be called recursively.
-        if isinstance(fitem, FuncDef):
+        if isinstance(fitem, FuncDef) and fn_info.add_nested_funcs_to_env:
             setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
 
 
@@ -163,7 +167,7 @@ def num_bitmap_args(builder: IRBuilder, args: list[Argument]) -> int:
     n = 0
     for arg in args:
         t = builder.type_to_rtype(arg.variable.type)
-        if is_fixed_width_rtype(t) and arg.kind.is_optional():
+        if t.error_overlap and arg.kind.is_optional():
             n += 1
     return (n + (BITMAP_BITS - 1)) // BITMAP_BITS
 
@@ -189,6 +193,41 @@ def add_args_to_env(
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
                 builder.add_var_to_env_class(arg.variable, rtype, base, reassign=reassign)
+
+
+def add_vars_to_env(builder: IRBuilder) -> None:
+    """Add relevant local variables and nested functions to the environment class.
+
+    Add all variables and functions that are declared/defined within current
+    function and are referenced in functions nested within this one to this
+    function's environment class so the nested functions can reference
+    them even if they are declared after the nested function's definition.
+    Note that this is done before visiting the body of the function.
+    """
+    env_for_func: FuncInfo | ImplicitClass = builder.fn_info
+    if builder.fn_info.is_generator:
+        env_for_func = builder.fn_info.generator_class
+    elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
+        env_for_func = builder.fn_info.callable_class
+
+    if builder.fn_info.fitem in builder.free_variables:
+        # Sort the variables to keep things deterministic
+        for var in sorted(builder.free_variables[builder.fn_info.fitem], key=lambda x: x.name):
+            if isinstance(var, Var):
+                rtype = builder.type_to_rtype(var.type)
+                builder.add_var_to_env_class(var, rtype, env_for_func, reassign=False)
+
+    if builder.fn_info.fitem in builder.encapsulating_funcs:
+        for nested_fn in builder.encapsulating_funcs[builder.fn_info.fitem]:
+            if isinstance(nested_fn, FuncDef):
+                # The return type is 'object' instead of an RInstance of the
+                # callable class because differently defined functions with
+                # the same name and signature across conditional blocks
+                # will generate different callable classes, so the callable
+                # class that gets instantiated must be generic.
+                builder.add_var_to_env_class(
+                    nested_fn, object_rprimitive, env_for_func, reassign=False
+                )
 
 
 def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: ImplicitClass) -> None:

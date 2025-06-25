@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable
+from typing import Callable, Final
 
+import mypy.errorcodes as codes
 from mypy import message_registry
 from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
     FunctionContext,
+    FunctionSigContext,
     MethodContext,
     MethodSigContext,
     Plugin,
@@ -29,7 +31,9 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarType,
+    UnionType,
     get_proper_type,
+    get_proper_types,
 )
 
 
@@ -37,12 +41,32 @@ class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        from mypy.plugins import ctypes, singledispatch
+        from mypy.plugins import ctypes, enums, singledispatch
 
-        if fullname == "ctypes.Array":
+        if fullname == "_ctypes.Array":
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+        elif fullname == "functools.partial":
+            import mypy.plugins.functools
+
+            return mypy.plugins.functools.partial_new_callback
+        elif fullname == "enum.member":
+            return enums.enum_member_callback
+
+        return None
+
+    def get_function_signature_hook(
+        self, fullname: str
+    ) -> Callable[[FunctionSigContext], FunctionLike] | None:
+        from mypy.plugins import attrs, dataclasses
+
+        if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
+            return attrs.evolve_function_sig_callback
+        elif fullname in ("attr.fields", "attrs.fields"):
+            return attrs.fields_function_sig_callback
+        elif fullname == "dataclasses.replace":
+            return dataclasses.replace_function_sig_callback
         return None
 
     def get_method_signature_hook(
@@ -56,12 +80,21 @@ class DefaultPlugin(Plugin):
             return typed_dict_setdefault_signature_callback
         elif fullname in {n + ".pop" for n in TPDICT_FB_NAMES}:
             return typed_dict_pop_signature_callback
-        elif fullname in {n + ".update" for n in TPDICT_FB_NAMES}:
-            return typed_dict_update_signature_callback
-        elif fullname == "ctypes.Array.__setitem__":
+        elif fullname == "_ctypes.Array.__setitem__":
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_callback
+
+        typed_dict_updates = set()
+        for n in TPDICT_FB_NAMES:
+            typed_dict_updates.add(n + ".update")
+            typed_dict_updates.add(n + ".__or__")
+            typed_dict_updates.add(n + ".__ror__")
+            typed_dict_updates.add(n + ".__ior__")
+
+        if fullname in typed_dict_updates:
+            return typed_dict_update_signature_callback
+
         return None
 
     def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
@@ -73,6 +106,8 @@ class DefaultPlugin(Plugin):
             return int_pow_callback
         elif fullname == "builtins.int.__neg__":
             return int_neg_callback
+        elif fullname == "builtins.int.__pos__":
+            return int_pos_callback
         elif fullname in ("builtins.tuple.__mul__", "builtins.tuple.__rmul__"):
             return tuple_mul_callback
         elif fullname in {n + ".setdefault" for n in TPDICT_FB_NAMES}:
@@ -81,22 +116,26 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_callback
         elif fullname in {n + ".__delitem__" for n in TPDICT_FB_NAMES}:
             return typed_dict_delitem_callback
-        elif fullname == "ctypes.Array.__getitem__":
+        elif fullname == "_ctypes.Array.__getitem__":
             return ctypes.array_getitem_callback
-        elif fullname == "ctypes.Array.__iter__":
+        elif fullname == "_ctypes.Array.__iter__":
             return ctypes.array_iter_callback
         elif fullname == singledispatch.SINGLEDISPATCH_REGISTER_METHOD:
             return singledispatch.singledispatch_register_callback
         elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_after_register_argument
+        elif fullname == "functools.partial.__call__":
+            import mypy.plugins.functools
+
+            return mypy.plugins.functools.partial_call_callback
         return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         from mypy.plugins import ctypes, enums
 
-        if fullname == "ctypes.Array.value":
+        if fullname == "_ctypes.Array.value":
             return ctypes.array_value_callback
-        elif fullname == "ctypes.Array.raw":
+        elif fullname == "_ctypes.Array.raw":
             return ctypes.array_raw_callback
         elif fullname in enums.ENUM_NAME_ACCESS:
             return enums.enum_name_callback
@@ -126,12 +165,13 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook_2(
         self, fullname: str
     ) -> Callable[[ClassDefContext], bool] | None:
-        from mypy.plugins import attrs, dataclasses, functools
+        import mypy.plugins.functools
+        from mypy.plugins import attrs, dataclasses
 
         if fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
-        elif fullname in functools.functools_total_ordering_makers:
-            return functools.functools_total_ordering_maker_callback
+        elif fullname in mypy.plugins.functools.functools_total_ordering_makers:
+            return mypy.plugins.functools.functools_total_ordering_maker_callback
         elif fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
         elif fullname in attrs.attr_dataclass_makers:
@@ -141,7 +181,9 @@ class DefaultPlugin(Plugin):
                 attrs.attr_class_maker_callback, auto_attribs_default=None, frozen_default=True
             )
         elif fullname in attrs.attr_define_makers:
-            return partial(attrs.attr_class_maker_callback, auto_attribs_default=None)
+            return partial(
+                attrs.attr_class_maker_callback, auto_attribs_default=None, slots_default=True
+            )
 
         return None
 
@@ -262,21 +304,26 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types) >= 1
         and len(ctx.arg_types[0]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                key_expr,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         value_types = []
         for key in keys:
-            if key in ctx.type.required_keys:
-                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+            if key in ctx.type.required_keys or key in ctx.type.readonly_keys:
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, key_expr)
 
             value_type = ctx.type.items.get(key)
             if value_type:
                 value_types.append(value_type)
             else:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
                 return AnyType(TypeOfAny.from_error)
 
         if len(ctx.args[1]) == 0:
@@ -317,19 +364,29 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types[0]) == 1
         and len(ctx.arg_types[1]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                key_expr,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
+        assigned_readonly_keys = ctx.type.readonly_keys & set(keys)
+        if assigned_readonly_keys:
+            ctx.api.msg.readonly_keys_mutated(assigned_readonly_keys, context=key_expr)
+
         default_type = ctx.arg_types[1][0]
+        default_expr = ctx.args[1][0]
 
         value_types = []
         for key in keys:
             value_type = ctx.type.items.get(key)
 
             if value_type is None:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
                 return AnyType(TypeOfAny.from_error)
 
             # The signature_callback above can't always infer the right signature
@@ -338,7 +395,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             # default can be assigned to all key-value pairs we're updating.
             if not is_subtype(default_type, value_type):
                 ctx.api.msg.typeddict_setdefault_arguments_inconsistent(
-                    default_type, value_type, ctx.context
+                    default_type, value_type, default_expr
                 )
                 return AnyType(TypeOfAny.from_error)
 
@@ -355,27 +412,74 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types) == 1
         and len(ctx.arg_types[0]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                key_expr,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         for key in keys:
-            if key in ctx.type.required_keys:
-                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+            if key in ctx.type.required_keys or key in ctx.type.readonly_keys:
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, key_expr)
             elif key not in ctx.type.items:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
     return ctx.default_return_type
 
 
+_TP_DICT_MUTATING_METHODS: Final = frozenset({"update of TypedDict", "__ior__ of TypedDict"})
+
+
 def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
-    """Try to infer a better signature type for TypedDict.update."""
+    """Try to infer a better signature type for methods that update `TypedDict`.
+
+    This includes: `TypedDict.update`, `TypedDict.__or__`, `TypedDict.__ror__`,
+    and `TypedDict.__ior__`.
+    """
     signature = ctx.default_signature
     if isinstance(ctx.type, TypedDictType) and len(signature.arg_types) == 1:
         arg_type = get_proper_type(signature.arg_types[0])
-        assert isinstance(arg_type, TypedDictType)
+        if not isinstance(arg_type, TypedDictType):
+            return signature
         arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())
+        if ctx.args and ctx.args[0]:
+            if signature.name in _TP_DICT_MUTATING_METHODS:
+                # If we want to mutate this object in place, we need to set this flag,
+                # it will trigger an extra check in TypedDict's checker.
+                arg_type.to_be_mutated = True
+            with ctx.api.msg.filter_errors(
+                filter_errors=lambda name, info: info.code != codes.TYPEDDICT_READONLY_MUTATED,
+                save_filtered_errors=True,
+            ):
+                inferred = get_proper_type(
+                    ctx.api.get_expression_type(ctx.args[0][0], type_context=arg_type)
+                )
+            if arg_type.to_be_mutated:
+                arg_type.to_be_mutated = False  # Done!
+            possible_tds = []
+            if isinstance(inferred, TypedDictType):
+                possible_tds = [inferred]
+            elif isinstance(inferred, UnionType):
+                possible_tds = [
+                    t
+                    for t in get_proper_types(inferred.relevant_items())
+                    if isinstance(t, TypedDictType)
+                ]
+            items = []
+            for td in possible_tds:
+                item = arg_type.copy_modified(
+                    required_keys=(arg_type.required_keys | td.required_keys)
+                    & arg_type.items.keys()
+                )
+                if not ctx.api.options.extra_checks:
+                    item = item.copy_modified(item_names=list(td.items))
+                items.append(item)
+            if items:
+                arg_type = make_simplified_union(items)
         return signature.copy_modified(arg_types=[arg_type])
     return signature
 
@@ -400,30 +504,41 @@ def int_pow_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def int_neg_callback(ctx: MethodContext) -> Type:
-    """Infer a more precise return type for int.__neg__.
+def int_neg_callback(ctx: MethodContext, multiplier: int = -1) -> Type:
+    """Infer a more precise return type for int.__neg__ and int.__pos__.
 
     This is mainly used to infer the return type as LiteralType
-    if the original underlying object is a LiteralType object
+    if the original underlying object is a LiteralType object.
     """
     if isinstance(ctx.type, Instance) and ctx.type.last_known_value is not None:
         value = ctx.type.last_known_value.value
         fallback = ctx.type.last_known_value.fallback
         if isinstance(value, int):
             if is_literal_type_like(ctx.api.type_context[-1]):
-                return LiteralType(value=-value, fallback=fallback)
+                return LiteralType(value=multiplier * value, fallback=fallback)
             else:
                 return ctx.type.copy_modified(
                     last_known_value=LiteralType(
-                        value=-value, fallback=ctx.type, line=ctx.type.line, column=ctx.type.column
+                        value=multiplier * value,
+                        fallback=fallback,
+                        line=ctx.type.line,
+                        column=ctx.type.column,
                     )
                 )
     elif isinstance(ctx.type, LiteralType):
         value = ctx.type.value
         fallback = ctx.type.fallback
         if isinstance(value, int):
-            return LiteralType(value=-value, fallback=fallback)
+            return LiteralType(value=multiplier * value, fallback=fallback)
     return ctx.default_return_type
+
+
+def int_pos_callback(ctx: MethodContext) -> Type:
+    """Infer a more precise return type for int.__pos__.
+
+    This is identical to __neg__, except the value is not inverted.
+    """
+    return int_neg_callback(ctx, +1)
 
 
 def tuple_mul_callback(ctx: MethodContext) -> Type:
@@ -439,7 +554,7 @@ def tuple_mul_callback(ctx: MethodContext) -> Type:
         value = arg_type.last_known_value.value
         if isinstance(value, int):
             return ctx.type.copy_modified(items=ctx.type.items * value)
-    elif isinstance(ctx.type, LiteralType):
+    elif isinstance(arg_type, LiteralType):
         value = arg_type.value
         if isinstance(value, int):
             return ctx.type.copy_modified(items=ctx.type.items * value)

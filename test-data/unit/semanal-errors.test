@@ -361,84 +361,84 @@ main:2: error: "yield" outside function
 [case testInvalidLvalues1]
 1 = 1
 [out]
-main:1: error: can't assign to literal
+main:1: error: Cannot assign to literal
 [out version>=3.10]
-main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
+main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues2]
 (1) = 1
 [out]
-main:1: error: can't assign to literal
+main:1: error: Cannot assign to literal
 [out version>=3.10]
-main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
+main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues3]
 (1, 1) = 1
 [out]
-main:1: error: can't assign to literal
+main:1: error: Cannot assign to literal
 
 [case testInvalidLvalues4]
 [1, 1] = 1
 [out]
-main:1: error: can't assign to literal
+main:1: error: Cannot assign to literal
 
 [case testInvalidLvalues6]
 x = y = z = 1  # ok
 x, (y, 1) = 1
 [out]
-main:2: error: can't assign to literal
+main:2: error: Cannot assign to literal
 
 [case testInvalidLvalues7]
 x, [y, 1] = 1
 [out]
-main:1: error: can't assign to literal
+main:1: error: Cannot assign to literal
 
 [case testInvalidLvalues8]
 x, [y, [z, 1]] = 1
 [out]
-main:1: error: can't assign to literal
+main:1: error: Cannot assign to literal
 
 [case testInvalidLvalues9]
 x, (y) = 1 # ok
 x, (y, (z, z)) = 1 # ok
 x, (y, (z, 1)) = 1
 [out]
-main:3: error: can't assign to literal
+main:3: error: Cannot assign to literal
 
 [case testInvalidLvalues10]
 x + x = 1
 [out]
-main:1: error: can't assign to operator
+main:1: error: Cannot assign to operator
 [out version>=3.10]
-main:1: error: can't assign to expression here. Maybe you meant '==' instead of '='?
+main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues11]
 -x = 1
 [out]
-main:1: error: can't assign to operator
+main:1: error: Cannot assign to operator
 [out version>=3.10]
-main:1: error: can't assign to expression here. Maybe you meant '==' instead of '='?
+main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues12]
 1.1 = 1
 [out]
-main:1: error: can't assign to literal
+main:1: error: Cannot assign to literal
 [out version>=3.10]
-main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
+main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues13]
 'x' = 1
 [out]
-main:1: error: can't assign to literal
+main:1: error: Cannot assign to literal
 [out version>=3.10]
-main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
+main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues14]
 x() = 1
 [out]
-main:1: error: can't assign to function call
+main:1: error: Cannot assign to function call
 [out version>=3.10]
-main:1: error: can't assign to function call here. Maybe you meant '==' instead of '='?
+main:1: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testTwoStarExpressions]
 a, *b, *c = 1
@@ -480,30 +480,30 @@ c = 1
 d = 1
 a = *b
 [out]
-main:4: error: Can use starred expression only as assignment target
+main:4: error: can't use starred expression here
 
 [case testStarExpressionInExp]
 a = 1
 *a + 1
 [out]
-main:2: error: Can use starred expression only as assignment target
+main:2: error: can't use starred expression here
 
 [case testInvalidDel1]
 x = 1
-del x(1)  # E: can't delete function call
+del x(1)
 [out]
+main:2: error: Cannot delete function call
 
 [case testInvalidDel2]
 x = 1
 del x + 1
 [out]
-main:2: error: cannot delete operator
+main:2: error: Cannot delete operator
 [out version>=3.10]
-main:2: error: cannot delete expression
+main:2: error: Cannot delete expression
 
 [case testInvalidDel3]
 del z     # E: Name "z" is not defined
-[out]
 
 [case testFunctionTvarScope]
 
@@ -542,7 +542,7 @@ import typing
 class A:
   def f(): pass
 [out]
-main:3: error: Method must have at least one argument
+main:3: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testInvalidBaseClass]
 import typing
@@ -564,8 +564,8 @@ class A:
   def f() -> None: pass
   def g(): pass
 [out]
-main:3: error: Method must have at least one argument
-main:4: error: Method must have at least one argument
+main:3: error: Method must have at least one argument. Did you forget the "self" argument?
+main:4: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testMultipleMethodDefinition]
 import typing
@@ -810,8 +810,8 @@ class C(Generic[t]): pass
 cast(str + str, None)    # E: Cast target is not a type
 cast(C[str][str], None)  # E: Cast target is not a type
 cast(C[str + str], None) # E: Cast target is not a type
-cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a type \
-                         # N: Did you mean "List[...]"?
+cast([int], None)   # E: Bracketed expression "[...]" is not valid as a type \
+                    # N: Did you mean "List[...]"?
 [out]
 
 [case testInvalidCastTargetType]
@@ -859,8 +859,8 @@ Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 
 [case testTypeListAsType]
 
-def f(x:[int, str]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
-                             # N: Did you mean "List[...]"?
+def f(x: [int]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
+                         # N: Did you mean "List[...]"?
     pass
 [out]
 
@@ -897,9 +897,9 @@ import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: can't assign to function call
+main:3: error: Cannot assign to function call
 [out version>=3.10]
-main:3: error: can't assign to function call here. Maybe you meant '==' instead of '='?
+main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testIndexedAssignmentWithTypeDeclaration]
 import typing
@@ -975,9 +975,9 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 a = 1
 a() = None # type: int
 [out]
-main:2: error: cannot assign to function call
+main:2: error: Cannot assign to function call
 [out version>=3.10]
-main:2: error: cannot assign to function call here. Maybe you meant '==' instead of '='?
+main:2: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalueWithExplicitType2]
 a = 1
@@ -1015,6 +1015,12 @@ class A(Generic[T]):
           # E: Free type variable expected in Generic[...]
 [out]
 
+[case testRedeclaredTypeVarWithinNestedGenericClass]
+from typing import Generic, Iterable, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    class B(Iterable[T]): pass  # E: Type variable "T" is bound by an outer class
+
 [case testIncludingGenericTwiceInBaseClassList]
 from typing import Generic, TypeVar
 T = TypeVar('T')
@@ -1046,7 +1052,7 @@ T = TypeVar(b'T')      # E: TypeVar() expects a string literal as first argument
 d = TypeVar('D')    # E: String argument 1 "D" to TypeVar(...) does not match variable name "d"
 e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to "TypeVar()": "x"
 f = TypeVar('f', (int, str), int) # E: Type expected
-g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
+g = TypeVar('g', int)             # E: Type variable must have at least two constrained types
 h = TypeVar('h', x=(int, str))    # E: Unexpected argument to "TypeVar()": "x"
 i = TypeVar('i', bound=1)         # E: TypeVar "bound" must be a type
 j = TypeVar('j', covariant=None)  # E: TypeVar "covariant" may only be a literal bool
@@ -1059,6 +1065,22 @@ T = TypeVar('T', int, str, bound=bool) # E: TypeVar cannot have both values and 
 S = TypeVar('S', covariant=True, contravariant=True) \
     # E: TypeVar cannot be both covariant and contravariant
 [builtins fixtures/bool.pyi]
+
+[case testInvalidTypevarArgumentsGenericConstraint]
+from typing import Generic, List, TypeVar
+from typing_extensions import Self
+
+T = TypeVar("T")
+
+def f(x: T) -> None:
+    Bad = TypeVar("Bad", int, List[T])    # E: TypeVar constraint type cannot be parametrized by type variables
+class C(Generic[T]):
+    Bad = TypeVar("Bad", int, List[T])    # E: TypeVar constraint type cannot be parametrized by type variables
+class D:
+    Bad = TypeVar("Bad", int, List[Self]) # E: TypeVar constraint type cannot be parametrized by type variables
+S = TypeVar("S", int, List[T])            # E: Type variable "__main__.T" is unbound \
+                                          # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
+                                          # N: (Hint: Use "T" in function signature to bind "T" inside a function)
 
 [case testInvalidTypevarValues]
 from typing import TypeVar
@@ -1241,6 +1263,12 @@ class A:
     @property  # OK
     @dec
     def g(self) -> int: pass
+    @dec  # type: ignore[misc]
+    @property
+    def h(self) -> int: pass
+    @dec  # type: ignore[prop-decorator]
+    @property
+    def i(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
 
@@ -1275,8 +1303,9 @@ main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typi
 
 [case testInvalidWithTarget]
 def f(): pass
-with f() as 1: pass  # E: can't assign to literal
+with f() as 1: pass
 [out]
+main:2: error: Cannot assign to literal
 
 [case testInvalidTypeAnnotation]
 import typing
@@ -1290,9 +1319,9 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main:3: error: can't assign to function call
+main:3: error: Cannot assign to function call
 [out version>=3.10]
-main:3: error: can't assign to function call here. Maybe you meant '==' instead of '='?
+main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidReferenceToAttributeOfOuterClass]
 class A:
@@ -1388,12 +1417,13 @@ class N:  # E: Name "N" already defined on line 2
 [out]
 
 [case testDuplicateDefTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 
 class Point:  # E: Name "Point" already defined on line 2
     pass
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [out]
 
@@ -1452,11 +1482,11 @@ from typing_extensions import Unpack
 from typing import Tuple
 
 heterogenous_tuple: Tuple[Unpack[Tuple[int, str]]]
-homogenous_tuple: Tuple[Unpack[Tuple[int, ...]]]
-bad: Tuple[Unpack[int]]  # E: builtins.int cannot be unpacked (must be tuple or TypeVarTuple)
+homogeneous_tuple: Tuple[Unpack[Tuple[int, ...]]]
+bad: Tuple[Unpack[int]]  # E: "int" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/tuple.pyi]
 
-[case testTypeVarTuple]
+[case testTypeVarTupleErrors]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -1465,12 +1495,21 @@ TVariadic2 = TypeVarTuple('TVariadic2')
 TP = TypeVarTuple('?')  # E: String argument 1 "?" to TypeVarTuple(...) does not match variable name "TP"
 TP2: int = TypeVarTuple('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
 TP3 = TypeVarTuple()  # E: Too few arguments for TypeVarTuple()
-TP4 = TypeVarTuple('TP4', 'TP4')  # E: Only the first argument to TypeVarTuple has defined semantics
+TP4 = TypeVarTuple('TP4', 'TP4')  # E: Too many positional arguments for "TypeVarTuple"
 TP5 = TypeVarTuple(t='TP5')  # E: TypeVarTuple() expects a string literal as first argument
+TP6 = TypeVarTuple('TP6', bound=int)  # E: Unexpected keyword argument "bound" for "TypeVarTuple"
 
 x: TVariadic  # E: TypeVarTuple "TVariadic" is unbound
-y: Unpack[TVariadic]  # E: TypeVarTuple "TVariadic" is unbound
+y: Unpack[TVariadic]  # E: Unpack is only valid in a variadic position
 
 
 class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only use one type var tuple in a class def
     pass
+
+def bad_args(*args: TVariadic):  # E: TypeVarTuple "TVariadic" is only valid with an unpack
+    pass
+
+def bad_kwargs(**kwargs: Unpack[TVariadic]):  # E: Unpack item in ** argument must be a TypedDict
+    pass
+
+[builtins fixtures/dict.pyi]

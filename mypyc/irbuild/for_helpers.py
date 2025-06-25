@@ -12,11 +12,14 @@ from typing import Callable, ClassVar
 from mypy.nodes import (
     ARG_POS,
     CallExpr,
+    DictionaryComprehension,
     Expression,
     GeneratorExpr,
     Lvalue,
     MemberExpr,
+    NameExpr,
     RefExpr,
+    SetExpr,
     TupleExpr,
     TypeAlias,
 )
@@ -27,6 +30,7 @@ from mypyc.ir.ops import (
     IntOp,
     LoadAddress,
     LoadMem,
+    RaiseStandardError,
     Register,
     TupleGet,
     TupleSet,
@@ -228,6 +232,9 @@ def sequence_from_generator_preallocate_helper(
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, gen):
+        return builder.none()
+
     # Try simplest list comprehension, otherwise fall back to general one
     val = sequence_from_generator_preallocate_helper(
         builder,
@@ -244,19 +251,42 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(list_append_op, [builder.read(list_ops), e], gen.line)
+        builder.primitive_op(list_append_op, [builder.read(list_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return builder.read(list_ops)
 
 
+def raise_error_if_contains_unreachable_names(
+    builder: IRBuilder, gen: GeneratorExpr | DictionaryComprehension
+) -> bool:
+    """Raise a runtime error and return True if generator contains unreachable names.
+
+    False is returned if the generator can be safely transformed without crashing.
+    (It may still be unreachable!)
+    """
+    if any(isinstance(s, NameExpr) and s.node is None for s in gen.indices):
+        error = RaiseStandardError(
+            RaiseStandardError.RUNTIME_ERROR,
+            "mypyc internal error: should be unreachable",
+            gen.line,
+        )
+        builder.add(error)
+        return True
+
+    return False
+
+
 def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, gen):
+        return builder.none()
+
     set_ops = builder.maybe_spill(builder.new_set_op([], gen.line))
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(set_add_op, [builder.read(set_ops), e], gen.line)
+        builder.primitive_op(set_add_op, [builder.read(set_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return builder.read(set_ops)
@@ -469,12 +499,22 @@ def make_for_loop_generator(
             for_dict_gen.init(expr_reg, target_type)
             return for_dict_gen
 
+    iterable_expr_reg: Value | None = None
+    if isinstance(expr, SetExpr):
+        # Special case "for x in <set literal>".
+        from mypyc.irbuild.expression import precompute_set_literal
+
+        set_literal = precompute_set_literal(builder, expr)
+        if set_literal is not None:
+            iterable_expr_reg = set_literal
+
     # Default to a generic for loop.
-    expr_reg = builder.accept(expr)
+    if iterable_expr_reg is None:
+        iterable_expr_reg = builder.accept(expr)
     for_obj = ForIterable(builder, index, body_block, loop_exit, line, nested)
     item_type = builder._analyze_iterable_item_type(expr)
     item_rtype = builder.type_to_rtype(item_type)
-    for_obj.init(expr_reg, item_rtype)
+    for_obj.init(iterable_expr_reg, item_rtype)
     return for_obj
 
 
@@ -546,7 +586,7 @@ class ForIterable(ForGenerator):
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         builder = self.builder
-        iter_reg = builder.call_c(iter_op, [expr_reg], self.line)
+        iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
         self.iter_target = builder.maybe_spill(iter_reg)
         self.target_type = target_type
@@ -653,7 +693,7 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.call_c(list_get_item_unsafe_op, [target, index], line)
+        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, "__getitem__", [index], None, line)
 
@@ -945,7 +985,6 @@ class ForInfiniteCounter(ForGenerator):
         zero = Integer(0)
         self.index_reg = builder.maybe_spill_assignable(zero)
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
-        builder.assign(self.index_target, zero, self.line)
 
     def gen_step(self) -> None:
         builder = self.builder
@@ -957,7 +996,9 @@ class ForInfiniteCounter(ForGenerator):
             short_int_rprimitive, builder.read(self.index_reg, line), Integer(1), IntOp.ADD, line
         )
         builder.assign(self.index_reg, new_val, line)
-        builder.assign(self.index_target, new_val, line)
+
+    def begin_body(self) -> None:
+        self.builder.assign(self.index_target, self.builder.read(self.index_reg), self.line)
 
 
 class ForEnumerate(ForGenerator):

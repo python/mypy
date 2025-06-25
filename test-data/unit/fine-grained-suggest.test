@@ -17,8 +17,8 @@ def bar() -> None:
 [out]
 bar.py:3: (str)
 bar.py:4: (arg=str)
-bar.py:6: (*typing.List[str])
-bar.py:8: (**typing.Dict[str, str])
+bar.py:6: (*list[str])
+bar.py:8: (**dict[str, str])
 ==
 
 [case testSuggestCallsitesStep2]
@@ -41,8 +41,8 @@ def bar() -> None:
 ==
 bar.py:3: (str)
 bar.py:4: (arg=str)
-bar.py:6: (*typing.List[str])
-bar.py:8: (**typing.Dict[str, str])
+bar.py:6: (*list[str])
+bar.py:8: (**dict[str, str])
 
 [case testMaxGuesses]
 # suggest: foo.foo
@@ -62,7 +62,6 @@ foo('3', '4')
 ==
 
 [case testSuggestInferFunc1]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 def foo(arg, lol=None):
@@ -85,7 +84,6 @@ def untyped(x) -> None:
 ==
 
 [case testSuggestInferFunc2]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 def foo(arg):
@@ -161,13 +159,14 @@ def foo():
 [case testSuggestInferTypedDict]
 # suggest: foo.foo
 [file foo.py]
-from typing_extensions import TypedDict
+from typing import TypedDict
 TD = TypedDict('TD', {'x': int})
 def foo():
     return bar()
 
 def bar() -> TD: ...
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 () -> foo.TD
 ==
@@ -208,6 +207,36 @@ foo(B())
 (baz.B) -> Tuple[foo.A, foo:A.C]
 ==
 
+[case testSuggestReexportNamingNameMatchesModule1]
+# suggest: foo.foo
+[file foo.py]
+import bar
+def foo():
+    return bar.bar()
+
+[file bar.py]
+class bar: ...  # name matches module name
+
+[out]
+() -> bar.bar
+==
+
+[case testSuggestReexportNamingNameMatchesModule2]
+# suggest: foo.foo
+[file foo.py]
+import bar
+import qux
+def foo():
+    return qux.bar()
+
+[file bar.py]
+[file qux.py]
+class bar: ...  # name matches another module name
+
+[out]
+() -> qux.bar
+==
+
 [case testSuggestInferInit]
 # suggest: foo.Foo.__init__
 [file foo.py]
@@ -222,7 +251,6 @@ Foo('lol')
 ==
 
 [case testSuggestInferMethod1]
-# flags: --strict-optional
 # suggest: --no-any foo.Foo.foo
 [file foo.py]
 class Foo:
@@ -248,7 +276,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferMethod2]
-# flags: --strict-optional
 # suggest: foo.Foo.foo
 [file foo.py]
 class Foo:
@@ -275,7 +302,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferMethod3]
-# flags: --strict-optional
 # suggest2: foo.Foo.foo
 [file foo.py]
 class Foo:
@@ -372,7 +398,6 @@ def has_nested(x):
 ==
 
 [case testSuggestInferFunctionUnreachable]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 import sys
@@ -390,7 +415,6 @@ foo('test')
 ==
 
 [case testSuggestInferMethodStep2]
-# flags: --strict-optional
 # suggest2: foo.Foo.foo
 [file foo.py]
 class Foo:
@@ -417,7 +441,6 @@ def bar() -> None:
 (Union[str, int, None], Optional[int]) -> Union[int, str]
 
 [case testSuggestInferNestedMethod]
-# flags: --strict-optional
 # suggest: foo.Foo.Bar.baz
 [file foo.py]
 class Foo:
@@ -435,7 +458,6 @@ def bar() -> None:
 ==
 
 [case testSuggestCallable]
-# flags: --strict-optional
 # suggest: foo.foo
 # suggest: foo.bar
 # suggest: --flex-any=0.9 foo.bar
@@ -483,7 +505,6 @@ No guesses that match criteria!
 ==
 
 [case testSuggestNewSemanal]
-# flags: --strict-optional
 # suggest: foo.Foo.foo
 # suggest: foo.foo
 [file foo.py]
@@ -521,7 +542,6 @@ def baz() -> None:
 ==
 
 [case testSuggestInferFuncDecorator1]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 from typing import TypeVar
@@ -543,7 +563,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferFuncDecorator2]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 from typing import TypeVar, Callable, Any
@@ -565,7 +584,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferFuncDecorator3]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 from typing import TypeVar, Callable, Any
@@ -589,7 +607,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferFuncDecorator4]
-# flags: --strict-optional
 # suggest: foo.foo
 [file dec.py]
 from typing import TypeVar, Callable, Any
@@ -615,8 +632,88 @@ def bar() -> None:
 (str) -> str
 ==
 
+[case testSuggestInferFuncDecorator5]
+# suggest: foo.foo1
+# suggest: foo.foo2
+# suggest: foo.foo3
+[file foo.py]
+from __future__ import annotations
+
+from typing import TypeVar, Generator, Callable
+
+F = TypeVar('F')
+
+# simplified `@contextmanager
+class _impl:
+    def __call__(self, f: F) -> F: return f
+def contextmanager(gen: Callable[[], Generator[None, None, None]]) -> Callable[[], _impl]: return _impl
+
+@contextmanager
+def gen() -> Generator[None, None, None]:
+    yield
+
+@gen()
+def foo1(x):
+    return x
+
+foo1('hi')
+
+inst = gen()
+
+@inst
+def foo2(x):
+    return x
+
+foo2('hello')
+
+ref = gen
+
+@ref()
+def foo3(x):
+    return x
+
+foo3('hello hello')
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+(str) -> str
+(str) -> str
+==
+
+[case testSuggestInferFuncDecorator6]
+# suggest: foo.f
+[file foo.py]
+from __future__ import annotations
+
+from typing import Callable, Protocol, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+R_co = TypeVar('R_co', covariant=True)
+
+class Proto(Protocol[P, R_co]):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R_co: ...
+
+def dec1(f: Callable[P, R]) -> Callable[P, R]: ...
+def dec2(f: Callable[..., R]) -> Callable[..., R]: ...
+def dec3(f: Proto[P, R_co]) -> Proto[P, R_co]: ...
+
+@dec1
+@dec2
+@dec3
+def f(x):
+    return x
+
+f('hi')
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
 [case testSuggestFlexAny1]
-# flags: --strict-optional
 # suggest: --flex-any=0.4 m.foo
 # suggest: --flex-any=0.7 m.foo
 # suggest: --flex-any=0.4 m.bar
@@ -656,12 +753,11 @@ No guesses that match criteria!
 (int, int) -> Any
 No guesses that match criteria!
 ==
-(typing.List[Any]) -> int
-(typing.List[Any]) -> int
+(list[Any]) -> int
+(list[Any]) -> int
 
 
 [case testSuggestFlexAny2]
-# flags: --strict-optional
 # suggest: --flex-any=0.5 m.baz
 # suggest: --flex-any=0.0 m.baz
 # suggest: --flex-any=0.5 m.F.foo
@@ -693,7 +789,6 @@ No guesses that match criteria!
 ==
 
 [case testSuggestClassMethod]
-# flags: --strict-optional
 # suggest: foo.F.bar
 # suggest: foo.F.baz
 # suggest: foo.F.eggs
@@ -728,6 +823,26 @@ def bar(iany) -> None:
 (int, int) -> int
 (str, int) -> str
 (int) -> None
+==
+
+[case testSuggestNewInit]
+# suggest: foo.F.__init__
+# suggest: foo.F.__new__
+[file foo.py]
+class F:
+    def __new__(cls, t):
+        return super().__new__(cls)
+
+    def __init__(self, t):
+        self.t = t
+
+[file bar.py]
+from foo import F
+def bar(iany) -> None:
+    F(0)
+[out]
+(int) -> None
+(int) -> Any
 ==
 
 [case testSuggestColonBasic]
@@ -932,7 +1047,7 @@ def g(): ...
 z = foo(f(), g())
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(foo.List[Any], UNKNOWN) -> Tuple[foo.List[Any], Any]
+(list[Any], UNKNOWN) -> Tuple[list[Any], Any]
 ==
 
 [case testSuggestBadImport]
@@ -974,11 +1089,11 @@ spam({'x': 5})
 
 [builtins fixtures/dict.pyi]
 [out]
-() -> typing.Dict[str, int]
-() -> typing.Dict[Any, Any]
-() -> foo:List[typing.Dict[str, int]]
-() -> foo.List[int]
-(typing.Dict[str, int]) -> None
+() -> dict[str, int]
+() -> dict[Any, Any]
+() -> list[dict[str, int]]
+() -> list[int]
+(dict[str, int]) -> None
 ==
 
 [case testSuggestWithErrors]
@@ -1002,10 +1117,10 @@ def foo():
 
 (
 [out]
-foo.py:4: error: unexpected EOF while parsing
+foo.py:4: error: Unexpected EOF while parsing
 Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
 ==
-foo.py:4: error: unexpected EOF while parsing
+foo.py:4: error: Unexpected EOF while parsing
 [out version>=3.10]
 foo.py:4: error: '(' was never closed
 Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
@@ -1090,7 +1205,7 @@ optional2(10)
 optional2('test')
 
 def optional3(x: Optional[List[Any]]):
-    assert not x
+    assert x
     return x[0]
 
 optional3(test)
@@ -1128,18 +1243,18 @@ tuple1(t)
 [out]
 (int, int) -> int
 (int, int) -> int
-(int) -> foo.List[int]
-(foo.List[int]) -> int
+(int) -> list[int]
+(list[int]) -> int
 (Union[int, str]) -> None
 (Callable[[int], int]) -> int
 (Callable[[float], int]) -> int
 (Optional[int]) -> None
 (Union[None, int, str]) -> None
-(Optional[foo.List[int]]) -> int
-(Union[foo.Set[int], foo.List[int]]) -> None
+(Optional[list[int]]) -> int
+(Union[set[int], list[int]]) -> None
 (Optional[int]) -> None
 (Optional[Any]) -> None
-(foo.Dict[int, int]) -> None
+(dict[int, int]) -> None
 (Tuple[int, int]) -> None
 ==
 

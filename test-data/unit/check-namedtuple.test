@@ -2,7 +2,7 @@
 from collections import namedtuple
 
 X = namedtuple('X', 'x y')
-x = None  # type: X
+x: X
 a, b = x
 b = x[0]
 a = x[1]
@@ -14,7 +14,7 @@ x[2] # E: Tuple index out of range
 from collections import namedtuple
 
 X = namedtuple('X', ('x', 'y'))
-x = None  # type: X
+x: X
 a, b = x
 b = x[0]
 a = x[1]
@@ -22,34 +22,26 @@ a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
 [builtins fixtures/tuple.pyi]
 
-[case testNamedTupleNoUnderscoreFields]
+[case testNamedTupleInvalidFields]
 from collections import namedtuple
 
-X = namedtuple('X', 'x, _y, _z')  # E: "namedtuple()" field names cannot start with an underscore: _y, _z
+X = namedtuple('X', 'x, _y')  # E: "namedtuple()" field name "_y" starts with an underscore
+Y = namedtuple('Y', ['x', '1'])  # E: "namedtuple()" field name "1" is not a valid identifier
+Z = namedtuple('Z', ['x', 'def'])  # E: "namedtuple()" field name "def" is a keyword
+A = namedtuple('A', ['x', 'x'])  # E: "namedtuple()" has duplicate field name "x"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAccessingAttributes]
 from collections import namedtuple
 
 X = namedtuple('X', 'x y')
-x = None  # type: X
+x: X
 x.x
 x.y
 x.z # E: "X" has no attribute "z"
 [builtins fixtures/tuple.pyi]
 
-[case testNamedTupleClassPython35]
-# flags: --python-version 3.5
-from typing import NamedTuple
-
-class A(NamedTuple):
-    x = 3  # type: int
-[builtins fixtures/tuple.pyi]
-[out]
-main:4: error: NamedTuple class syntax is only supported in Python 3.6
-
-[case testNamedTupleClassInStubPython35]
-# flags: --python-version 3.5
+[case testNamedTupleClassInStub]
 import foo
 
 [file foo.pyi]
@@ -63,13 +55,13 @@ class A(NamedTuple):
 from collections import namedtuple
 
 X = namedtuple('X', 'x y')
-x = None  # type: X
+x: X
 x.x = 5 # E: Property "x" defined in "X" is read-only
 x.y = 5 # E: Property "y" defined in "X" is read-only
 x.z = 5 # E: "X" has no attribute "z"
 
 class A(X): pass
-a = None  # type: A
+a: A
 a.x = 5 # E: Property "x" defined in "X" is read-only
 a.y = 5 # E: Property "y" defined in "X" is read-only
 -- a.z = 5 # not supported yet
@@ -77,8 +69,7 @@ a.y = 5 # E: Property "y" defined in "X" is read-only
 
 
 [case testTypingNamedTupleAttributesAreReadOnly]
-from typing import NamedTuple
-from typing_extensions import Protocol
+from typing import NamedTuple, Protocol
 
 class HasX(Protocol):
     x: str
@@ -90,8 +81,8 @@ a: HasX = A("foo")
 a.x = "bar"
 [builtins fixtures/tuple.pyi]
 [out]
-main:10: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
-main:10: note: Protocol member HasX.x expected settable variable, got read-only attribute
+main:9: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
+main:9: note: Protocol member HasX.x expected settable variable, got read-only attribute
 
 
 [case testNamedTupleCreateWithPositionalArguments]
@@ -136,13 +127,14 @@ E = namedtuple('E', 'a b', 0)
 [builtins fixtures/bool.pyi]
 
 [out]
+main:4: error: Boolean literal expected as the "rename" argument to namedtuple()
+main:5: error: Boolean literal expected as the "rename" argument to namedtuple()
 main:5: error: Argument "rename" to "namedtuple" has incompatible type "str"; expected "int"
 main:6: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
 <ROOT>/test-data/unit/lib-stub/collections.pyi:3: note: "namedtuple" defined here
 main:7: error: Too many positional arguments for "namedtuple"
 
 [case testNamedTupleDefaults]
-# flags: --python-version 3.7
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'], defaults=(1,))
@@ -154,6 +146,23 @@ X(0, 1, 2)  # E: Too many arguments for "X"
 
 Y = namedtuple('Y', ['x', 'y'], defaults=(1, 2, 3))  # E: Too many defaults given in call to "namedtuple()"
 Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to namedtuple()  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"
+
+[builtins fixtures/list.pyi]
+
+[case testNamedTupleRename]
+from collections import namedtuple
+
+X = namedtuple('X', ['abc', 'def'], rename=False)  # E: "namedtuple()" field name "def" is a keyword
+Y = namedtuple('Y', ['x', 'x', 'def', '42', '_x'], rename=True)
+y = Y(x=0, _1=1, _2=2, _3=3, _4=4)
+reveal_type(y.x)  # N: Revealed type is "Any"
+reveal_type(y._1)  # N: Revealed type is "Any"
+reveal_type(y._2)  # N: Revealed type is "Any"
+reveal_type(y._3)  # N: Revealed type is "Any"
+reveal_type(y._4)  # N: Revealed type is "Any"
+y._0  # E: "Y" has no attribute "_0"
+y._5  # E: "Y" has no attribute "_5"
+y._x  # E: "Y" has no attribute "_x"
 
 [builtins fixtures/list.pyi]
 
@@ -292,13 +301,13 @@ A = NamedTuple('A', [('a', int), ('b', str)])
 class B(A): pass
 a = A(1, '')
 b = B(1, '')
-t = None  # type: Tuple[int, str]
+t: Tuple[int, str]
 if int():
     b = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
-    a = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
+    a = t  # E: Incompatible types in assignment (expression has type "tuple[int, str]", variable has type "A")
 if int():
-    b = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
+    b = t  # E: Incompatible types in assignment (expression has type "tuple[int, str]", variable has type "B")
 if int():
     t = a
 if int():
@@ -323,14 +332,14 @@ if int():
 if int():
     l = [A(1)]
 if int():
-    a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]", \
+    a = (1,)  # E: Incompatible types in assignment (expression has type "tuple[int]", \
                    variable has type "A")
 [builtins fixtures/list.pyi]
 
 [case testNamedTupleMissingClassAttribute]
 import collections
 MyNamedTuple = collections.namedtuple('MyNamedTuple', ['spam', 'eggs'])
-MyNamedTuple.x # E: "Type[MyNamedTuple]" has no attribute "x"
+MyNamedTuple.x # E: "type[MyNamedTuple]" has no attribute "x"
 
 [builtins fixtures/list.pyi]
 
@@ -357,7 +366,7 @@ C(2).b
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
-x = None  # type: X
+x: X
 reveal_type(x._asdict())  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 
 [builtins fixtures/dict.pyi]
@@ -366,8 +375,8 @@ reveal_type(x._asdict())  # N: Revealed type is "builtins.dict[builtins.str, Any
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
-x = None  # type: X
-reveal_type(x._replace())  # N: Revealed type is "Tuple[Any, Any, fallback=__main__.X]"
+x: X
+reveal_type(x._replace())  # N: Revealed type is "tuple[Any, Any, fallback=__main__.X]"
 x._replace(y=5)
 x._replace(x=3)
 x._replace(x=3, y=5)
@@ -391,8 +400,8 @@ X._replace(x=1, y=2)  # E: Missing positional argument "_self" in call to "_repl
 from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
-x = None  # type: X
-reveal_type(x._replace())  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.X]"
+x: X
+reveal_type(x._replace())  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.X]"
 x._replace(x=5)
 x._replace(y=5)  # E: Argument "y" to "_replace" of "X" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]
@@ -401,11 +410,11 @@ x._replace(y=5)  # E: Argument "y" to "_replace" of "X" has incompatible type "i
 from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
-reveal_type(X._make([5, 'a']))  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.X]"
+reveal_type(X._make([5, 'a']))  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.X]"
 X._make('a b')  # E: Argument 1 to "_make" of "X" has incompatible type "str"; expected "Iterable[Any]"
 
 -- # FIX: not a proper class method
--- x = None  # type: X
+-- x: X
 -- reveal_type(x._make([5, 'a']))  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.X]"
 -- x._make('a b')  # E: Argument 1 to "_make" of "X" has incompatible type "str"; expected Iterable[Any]
 
@@ -415,7 +424,7 @@ X._make('a b')  # E: Argument 1 to "_make" of "X" has incompatible type "str"; e
 from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
-reveal_type(X._fields)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+reveal_type(X._fields)  # N: Revealed type is "tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleSource]
@@ -423,7 +432,7 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._source)  # N: Revealed type is "builtins.str"
-x = None  # type: X
+x: X
 reveal_type(x._source)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
@@ -441,7 +450,7 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 Y = NamedTuple('Y', [('x', int), ('y', str)])
-reveal_type([X(3, 'b'), Y(1, 'a')])  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str]]"
+reveal_type([X(3, 'b'), Y(1, 'a')])  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.str]]"
 
 [builtins fixtures/list.pyi]
 
@@ -449,8 +458,8 @@ reveal_type([X(3, 'b'), Y(1, 'a')])  # N: Revealed type is "builtins.list[Tuple[
 from typing import NamedTuple, Tuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
-reveal_type([(3, 'b'), X(1, 'a')])  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str]]"
-reveal_type([X(1, 'a'), (3, 'b')])  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str]]"
+reveal_type([(3, 'b'), X(1, 'a')])  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.str]]"
+reveal_type([X(1, 'a'), (3, 'b')])  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.str]]"
 
 [builtins fixtures/list.pyi]
 
@@ -459,7 +468,7 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._field_types)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
-x = None  # type: X
+x: X
 reveal_type(x._field_types)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 
 [builtins fixtures/dict.pyi]
@@ -472,7 +481,7 @@ def f(x: A) -> None: pass
 
 class B(NamedTuple('B', []), A): pass
 f(B())
-x = None  # type: A
+x: A
 if int():
     x = B()
 
@@ -482,7 +491,7 @@ def g(x: C) -> None: pass
 class D(NamedTuple('D', []), A): pass
 
 g(D())  # E: Argument 1 to "g" has incompatible type "D"; expected "C"
-y = None  # type: C
+y: C
 if int():
     y = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
 [builtins fixtures/tuple.pyi]
@@ -499,9 +508,9 @@ class A(NamedTuple('A', [('x', str)])):
 class B(A):
     pass
 
-a = None  # type: A
+a: A
 a = A('').member()
-b = None  # type: B
+b: B
 b = B('').member()
 a = B('')
 a = B('').member()
@@ -510,28 +519,28 @@ a = B('').member()
 [case testNamedTupleSelfTypeReplace]
 from typing import NamedTuple, TypeVar
 A = NamedTuple('A', [('x', str)])
-reveal_type(A('hello')._replace(x=''))  # N: Revealed type is "Tuple[builtins.str, fallback=__main__.A]"
-a = None  # type: A
+reveal_type(A('hello')._replace(x=''))  # N: Revealed type is "tuple[builtins.str, fallback=__main__.A]"
+a: A
 a = A('hello')._replace(x='')
 
 class B(A):
     pass
 
-reveal_type(B('hello')._replace(x=''))  # N: Revealed type is "Tuple[builtins.str, fallback=__main__.B]"
-b = None  # type: B
+reveal_type(B('hello')._replace(x=''))  # N: Revealed type is "tuple[builtins.str, fallback=__main__.B]"
+b: B
 b = B('hello')._replace(x='')
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleSelfTypeMake]
 from typing import NamedTuple, TypeVar
 A = NamedTuple('A', [('x', str)])
-reveal_type(A._make(['']))  # N: Revealed type is "Tuple[builtins.str, fallback=__main__.A]"
+reveal_type(A._make(['']))  # N: Revealed type is "tuple[builtins.str, fallback=__main__.A]"
 a = A._make([''])  # type: A
 
 class B(A):
     pass
 
-reveal_type(B._make(['']))  # N: Revealed type is "Tuple[builtins.str, fallback=__main__.B]"
+reveal_type(B._make(['']))  # N: Revealed type is "tuple[builtins.str, fallback=__main__.B]"
 b = B._make([''])  # type: B
 
 [builtins fixtures/list.pyi]
@@ -539,7 +548,7 @@ b = B._make([''])  # type: B
 [case testNamedTupleIncompatibleRedefinition]
 from typing import NamedTuple
 class Crash(NamedTuple):
-    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
+    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[object], int]")
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleInClassNamespace]
@@ -550,7 +559,7 @@ class C:
         A = NamedTuple('A', [('x', int)])
     def g(self):
         A = NamedTuple('A', [('y', int)])
-C.A  # E: "Type[C]" has no attribute "A"
+C.A  # E: "type[C]" has no attribute "A"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleInFunction]
@@ -561,6 +570,7 @@ A  # E: Name "A" is not defined
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleForwardAsUpperBound]
+# flags: --disable-error-code=used-before-def
 from typing import NamedTuple, TypeVar, Generic
 T = TypeVar('T', bound='M')
 class G(Generic[T]):
@@ -593,8 +603,8 @@ def f(x: a.X) -> None:
     reveal_type(x)
 [builtins fixtures/tuple.pyi]
 [out]
-tmp/b.py:4: note: Revealed type is "Tuple[Any, fallback=a.X]"
-tmp/b.py:6: note: Revealed type is "Tuple[Any, fallback=a.X]"
+tmp/b.py:4: note: Revealed type is "tuple[Any, fallback=a.X]"
+tmp/b.py:6: note: Revealed type is "tuple[Any, fallback=a.X]"
 
 [case testNamedTupleWithImportCycle2]
 import a
@@ -613,20 +623,22 @@ def f(x: a.N) -> None:
         reveal_type(x)
 [builtins fixtures/tuple.pyi]
 [out]
-tmp/b.py:4: note: Revealed type is "Tuple[Any, fallback=a.N]"
-tmp/b.py:7: note: Revealed type is "Tuple[Any, fallback=a.N]"
+tmp/b.py:4: note: Revealed type is "tuple[Any, fallback=a.N]"
+tmp/b.py:7: note: Revealed type is "tuple[Any, fallback=a.N]"
 
 [case testSimpleSelfReferentialNamedTuple]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
-class MyNamedTuple(NamedTuple):
-    parent: 'MyNamedTuple' # E: Cannot resolve name "MyNamedTuple" (possible cyclic definition)
 
-def bar(nt: MyNamedTuple) -> MyNamedTuple:
-    return nt
+def test() -> None:
+    class MyNamedTuple(NamedTuple):
+        parent: 'MyNamedTuple'  # E: Cannot resolve name "MyNamedTuple" (possible cyclic definition) \
+                                # N: Recursive types are not allowed at function scope
 
-x: MyNamedTuple
-reveal_type(x.parent) # N: Revealed type is "Any"
+    def bar(nt: MyNamedTuple) -> MyNamedTuple:
+        return nt
+
+    x: MyNamedTuple
+    reveal_type(x.parent) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 -- Some crazy self-referential named tuples and types dicts
@@ -655,106 +667,111 @@ class B:
 [out]
 
 [case testSelfRefNT1]
-# flags: --disable-recursive-aliases
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple('Node', [
-        ('name', str),
-        ('children', Tuple['Node', ...]), # E: Cannot resolve name "Node" (possible cyclic definition)
-    ])
-n: Node
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.Node]"
+def test() -> None:
+    Node = NamedTuple('Node', [
+            ('name', str),
+            ('children', Tuple['Node', ...]),  # E: Cannot resolve name "Node" (possible cyclic definition) \
+                                               # N: Recursive types are not allowed at function scope
+        ])
+    n: Node
+    reveal_type(n) # N: Revealed type is "tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.Node@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT2]
-# flags: --disable-recursive-aliases
 from typing import Tuple, NamedTuple
 
-A = NamedTuple('A', [
-        ('x', str),
-        ('y', Tuple['B', ...]), # E: Cannot resolve name "B" (possible cyclic definition)
-    ])
-class B(NamedTuple):
-    x: A
-    y: int
+def test() -> None:
+    A = NamedTuple('A', [
+            ('x', str),
+            ('y', Tuple['B', ...]),  # E: Cannot resolve name "B" (possible cyclic definition) \
+                                     # N: Recursive types are not allowed at function scope
+        ])
+    class B(NamedTuple):
+        x: A
+        y: int
 
-n: A
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.A]"
+    n: A
+    reveal_type(n) # N: Revealed type is "tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.A@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT3]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple, Tuple
 
-class B(NamedTuple):
-    x: Tuple[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
-    y: int
+def test() -> None:
+    class B(NamedTuple):
+        x: Tuple[A, int]  # E: Cannot resolve name "A" (possible cyclic definition) \
+                          # N: Recursive types are not allowed at function scope
+        y: int
 
-A = NamedTuple('A', [
-        ('x', str),
-        ('y', 'B'),
-    ])
-n: B
-m: A
-reveal_type(n.x) # N: Revealed type is "Tuple[Any, builtins.int]"
-reveal_type(m[0]) # N: Revealed type is "builtins.str"
-lst = [m, n]
-reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.object]"
+    A = NamedTuple('A', [
+            ('x', str),
+            ('y', 'B'),
+        ])
+    n: B
+    m: A
+    reveal_type(n.x) # N: Revealed type is "tuple[Any, builtins.int]"
+    reveal_type(m[0]) # N: Revealed type is "builtins.str"
+    lst = [m, n]
+    reveal_type(lst[0]) # N: Revealed type is "tuple[builtins.object, builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT4]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-class B(NamedTuple):
-    x: A # E: Cannot resolve name "A" (possible cyclic definition)
-    y: int
+def test() -> None:
+    class B(NamedTuple):
+        x: A  # E: Cannot resolve name "A" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+        y: int
 
-class A(NamedTuple):
-    x: str
-    y: B
+    class A(NamedTuple):
+        x: str
+        y: B
 
-n: A
-reveal_type(n.y[0]) # N: Revealed type is "Any"
+    n: A
+    reveal_type(n.y[0]) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT5]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-B = NamedTuple('B', [
-        ('x', A), # E: Cannot resolve name "A" (possible cyclic definition)
-        ('y', int),
-    ])
-A = NamedTuple('A', [
-        ('x', str),
-        ('y', 'B'),
-    ])
-n: A
-def f(m: B) -> None: pass
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A]"
-reveal_type(f) # N: Revealed type is "def (m: Tuple[Any, builtins.int, fallback=__main__.B])"
+def test() -> None:
+    B = NamedTuple('B', [
+            ('x', A),  # E: Cannot resolve name "A" (possible cyclic definition) \
+                       # N: Recursive types are not allowed at function scope \
+                       # E: Name "A" is used before definition
+            ('y', int),
+        ])
+    A = NamedTuple('A', [
+            ('x', str),
+            ('y', 'B'),
+        ])
+    n: A
+    def f(m: B) -> None: pass
+    reveal_type(n) # N: Revealed type is "tuple[builtins.str, tuple[Any, builtins.int, fallback=__main__.B@4], fallback=__main__.A@8]"
+    reveal_type(f) # N: Revealed type is "def (m: tuple[Any, builtins.int, fallback=__main__.B@4])"
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveNamedTupleInBases]
-# flags: --disable-recursive-aliases
 from typing import List, NamedTuple, Union
 
-Exp = Union['A', 'B']  # E: Cannot resolve name "Exp" (possible cyclic definition) \
-                       # E: Cannot resolve name "A" (possible cyclic definition)
-class A(NamedTuple('A', [('attr', List[Exp])])): pass
-class B(NamedTuple('B', [('val', object)])): pass
+def test() -> None:
+    Exp = Union['A', 'B']  # E: Cannot resolve name "Exp" (possible cyclic definition) \
+                           # N: Recursive types are not allowed at function scope \
+                           # E: Cannot resolve name "A" (possible cyclic definition)
+    class A(NamedTuple('A', [('attr', List[Exp])])): pass
+    class B(NamedTuple('B', [('val', object)])): pass
 
-def my_eval(exp: Exp) -> int:
-    reveal_type(exp) # N: Revealed type is "Union[Any, Tuple[builtins.object, fallback=__main__.B]]"
+    exp: Exp
+    reveal_type(exp)  # N: Revealed type is "Union[Any, tuple[builtins.object, fallback=__main__.B@6]]"
     if isinstance(exp, A):
-        my_eval(exp[0][0])
-        return my_eval(exp.attr[0])
+        reveal_type(exp[0][0])  # N: Revealed type is "Union[Any, tuple[builtins.object, fallback=__main__.B@6]]"
+        reveal_type(exp.attr[0])  # N: Revealed type is "Union[Any, tuple[builtins.object, fallback=__main__.B@6]]"
     if isinstance(exp, B):
-        return exp.val  # E: Incompatible return value type (got "object", expected "int")
-    return 0
-
-my_eval(A([B(1), B(2)])) # OK
+        reveal_type(exp.val)  # N: Revealed type is "builtins.object"
+    reveal_type(A([B(1), B(2)]))  # N: Revealed type is "tuple[builtins.list[Union[Any, tuple[builtins.object, fallback=__main__.B@6]]], fallback=__main__.A@5]"
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -769,7 +786,7 @@ from b import tp
 x: tp
 reveal_type(x.x)  # N: Revealed type is "builtins.int"
 
-reveal_type(tp)  # N: Revealed type is "def (x: builtins.int) -> Tuple[builtins.int, fallback=b.tp]"
+reveal_type(tp)  # N: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=b.tp]"
 tp('x')  # E: Argument 1 to "tp" has incompatible type "str"; expected "int"
 
 [file b.py]
@@ -781,17 +798,18 @@ tp = NamedTuple('tp', [('x', int)])
 [out]
 
 [case testSubclassOfRecursiveNamedTuple]
-# flags: --disable-recursive-aliases
 from typing import List, NamedTuple
 
-class Command(NamedTuple):
-    subcommands: List['Command'] # E: Cannot resolve name "Command" (possible cyclic definition)
+def test() -> None:
+    class Command(NamedTuple):
+        subcommands: List['Command']  # E: Cannot resolve name "Command" (possible cyclic definition) \
+                                      # N: Recursive types are not allowed at function scope
 
-class HelpCommand(Command):
-    pass
+    class HelpCommand(Command):
+        pass
 
-hc = HelpCommand(subcommands=[])
-reveal_type(hc)  # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.HelpCommand]"
+    hc = HelpCommand(subcommands=[])
+    reveal_type(hc)  # N: Revealed type is "tuple[builtins.list[Any], fallback=__main__.HelpCommand@7]"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -822,7 +840,7 @@ class D(NamedTuple):
     def f(cls) -> None: pass
 
 d: Type[D]
-d.g()  # E: "Type[D]" has no attribute "g"
+d.g()  # E: "type[D]" has no attribute "g"
 d.f()
 [builtins fixtures/classmethod.pyi]
 
@@ -884,11 +902,11 @@ class Parent(NamedTuple):
 class Child(Parent):
     pass
 
-reveal_type(Child.class_method())  # N: Revealed type is "Tuple[builtins.str, fallback=__main__.Child]"
+reveal_type(Child.class_method())  # N: Revealed type is "tuple[builtins.str, fallback=__main__.Child]"
 [builtins fixtures/classmethod.pyi]
 
 [case testNamedTupleAsConditionalStrictOptionalDisabled]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import NamedTuple
 
 class C(NamedTuple):
@@ -904,6 +922,7 @@ if not b:
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleDoubleForward]
+# flags: --disable-error-code=used-before-def
 from typing import Union, Mapping, NamedTuple
 
 class MyBaseTuple(NamedTuple):
@@ -923,10 +942,10 @@ class MyTupleB(NamedTuple):
     field_2: MyBaseTuple
 
 u: MyTupleUnion
-reveal_type(u.field_1)  # N: Revealed type is "typing.Mapping[Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple], builtins.int]"
-reveal_type(u.field_2)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]"
-reveal_type(u[0])  # N: Revealed type is "typing.Mapping[Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple], builtins.int]"
-reveal_type(u[1])  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]"
+reveal_type(u.field_1)  # N: Revealed type is "typing.Mapping[tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple], builtins.int]"
+reveal_type(u.field_2)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]"
+reveal_type(u[0])  # N: Revealed type is "typing.Mapping[tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple], builtins.int]"
+reveal_type(u[1])  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]"
 [builtins fixtures/tuple.pyi]
 
 [case testAssignNamedTupleAsAttribute]
@@ -936,7 +955,18 @@ class A:
     def __init__(self) -> None:
         self.b = NamedTuple('x', [('s', str), ('n', int)])  # E: NamedTuple type as an attribute is not supported
 
-reveal_type(A().b)  # N: Revealed type is "Any"
+reveal_type(A().b)  # N: Revealed type is "typing.NamedTuple"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+
+[case testEmptyNamedTupleTypeRepr]
+from typing import NamedTuple
+
+N = NamedTuple('N', [])
+n: N
+reveal_type(N)  # N: Revealed type is "def () -> tuple[(), fallback=__main__.N]"
+reveal_type(n)  # N: Revealed type is "tuple[(), fallback=__main__.N]"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWrongfile]
@@ -981,7 +1011,7 @@ class Both2(Other, Bar): ...
 class Both3(Biz, Other): ...
 
 def print_namedtuple(obj: NamedTuple) -> None:
-    reveal_type(obj.name)  # N: Revealed type is "builtins.str"
+    reveal_type(obj._fields)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
 
 b1: Bar
 b2: Baz
@@ -997,11 +1027,11 @@ print_namedtuple(b5)  # ok
 print_namedtuple(b6)  # ok
 
 print_namedtuple(1)  # E: Argument 1 to "print_namedtuple" has incompatible type "int"; expected "NamedTuple"
-print_namedtuple(('bar',))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[str]"; expected "NamedTuple"
-print_namedtuple((1, 2))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
-print_namedtuple((b1,))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[Bar]"; expected "NamedTuple"
+print_namedtuple(('bar',))  # E: Argument 1 to "print_namedtuple" has incompatible type "tuple[str]"; expected "NamedTuple"
+print_namedtuple((1, 2))  # E: Argument 1 to "print_namedtuple" has incompatible type "tuple[int, int]"; expected "NamedTuple"
+print_namedtuple((b1,))  # E: Argument 1 to "print_namedtuple" has incompatible type "tuple[Bar]"; expected "NamedTuple"
 t: Tuple[str, ...]
-print_namedtuple(t)  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[str, ...]"; expected "NamedTuple"
+print_namedtuple(t)  # E: Argument 1 to "print_namedtuple" has incompatible type "tuple[str, ...]"; expected "NamedTuple"
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
@@ -1044,9 +1074,9 @@ def good6() -> NamedTuple:
 def bad1() -> NamedTuple:
     return 1  # E: Incompatible return value type (got "int", expected "NamedTuple")
 def bad2() -> NamedTuple:
-    return ()  # E: Incompatible return value type (got "Tuple[]", expected "NamedTuple")
+    return ()  # E: Incompatible return value type (got "tuple[()]", expected "NamedTuple")
 def bad3() -> NamedTuple:
-    return (1, 2)  # E: Incompatible return value type (got "Tuple[int, int]", expected "NamedTuple")
+    return (1, 2)  # E: Incompatible return value type (got "tuple[int, int]", expected "NamedTuple")
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
@@ -1060,14 +1090,14 @@ C = NamedTuple("C", [("x", Literal[True, False])])
 T = Tuple[Literal[True, False]]
 
 # Was error here:
-# Incompatible types in assignment (expression has type "List[C]", variable has type "List[C]")
+# Incompatible types in assignment (expression has type "list[C]", variable has type "list[C]")
 x: List[C] = [C(True)]
 
 t: T
 
 # Was error here:
-# Incompatible types in assignment (expression has type "List[Tuple[bool]]",
-# variable has type "List[Tuple[Union[Literal[True], Literal[False]]]]")
+# Incompatible types in assignment (expression has type "list[tuple[bool]]",
+# variable has type "list[tuple[Union[Literal[True], Literal[False]]]]")
 y: List[T] = [t]
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
@@ -1084,22 +1114,22 @@ class C(NamedTuple):
 
 def foo(c: C) -> None:
     if c:
-        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+        reveal_type(c)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.C]"
     else:
-        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+        reveal_type(c)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.C]"
 
 def bar(c: C) -> None:
     if not c:
-        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+        reveal_type(c)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.C]"
     else:
-        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+        reveal_type(c)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.C]"
 
 class C1(NamedTuple):
     x: int
 
 def foo1(c: C1) -> None:
     if c:
-        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C1]"
+        reveal_type(c)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.C1]"
     else:
         c  # E: Statement is unreachable
 
@@ -1107,7 +1137,7 @@ def bar1(c: C1) -> None:
     if not c:
         c  # E: Statement is unreachable
     else:
-        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C1]"
+        reveal_type(c)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.C1]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1132,7 +1162,7 @@ class One(NamedTuple):
     bar: int
     baz: str
 o: One
-reveal_type(o.__match_args__)  # N: Revealed type is "Tuple[Literal['bar'], Literal['baz']]"
+reveal_type(o.__match_args__)  # N: Revealed type is "tuple[Literal['bar'], Literal['baz']]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1172,11 +1202,11 @@ class NT(NamedTuple, Generic[T]):
     value: T
 
 nts: NT[str]
-reveal_type(nts)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.NT[builtins.str]]"
+reveal_type(nts)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.NT[builtins.str]]"
 reveal_type(nts.value)  # N: Revealed type is "builtins.str"
 
 nti = NT(key=0, value=0)
-reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(nti)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
 reveal_type(nti.value)  # N: Revealed type is "builtins.int"
 
 NT[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "str"
@@ -1194,8 +1224,8 @@ class NT(NamedTuple, Generic[T]):
 Alias = NT[List[T]]
 
 an: Alias[str]
-reveal_type(an)  # N: Revealed type is "Tuple[builtins.int, builtins.list[builtins.str], fallback=__main__.NT[builtins.list[builtins.str]]]"
-Alias[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "List[str]"
+reveal_type(an)  # N: Revealed type is "tuple[builtins.int, builtins.list[builtins.str], fallback=__main__.NT[builtins.list[builtins.str]]]"
+Alias[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "list[str]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1212,7 +1242,7 @@ nti: NT[int]
 reveal_type(nti * x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 nts: NT[str]
-reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1231,7 +1261,7 @@ nts: NT[str]
 reveal_type(nts.foo())  # N: Revealed type is "builtins.str"
 
 nti = NT.from_value(1)
-reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(nti)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
 NT[str].from_value(1)  # E: Argument 1 to "from_value" of "NT" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
@@ -1249,7 +1279,7 @@ nti: NT[int]
 
 def foo(x: Tuple[int, ...]) -> None: ...
 foo(nti)
-foo(nts)  # E: Argument 1 to "foo" has incompatible type "NT[str]"; expected "Tuple[int, ...]"
+foo(nts)  # E: Argument 1 to "foo" has incompatible type "NT[str]"; expected "tuple[int, ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1267,15 +1297,15 @@ x: Tuple[int, ...]
 
 S = TypeVar("S")
 def foo(x: S, y: S) -> S: ...
-reveal_type(foo(nti, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(foo(nti, nti))  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
 
-reveal_type(foo(nti, nts))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
-reveal_type(foo(nts, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
+reveal_type(foo(nti, nts))  # N: Revealed type is "tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
+reveal_type(foo(nts, nti))  # N: Revealed type is "tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
 
 reveal_type(foo(nti, x))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 reveal_type(foo(x, nti))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1284,13 +1314,13 @@ from typing import NamedTuple, TypeVar
 
 T = TypeVar("T")
 NT = NamedTuple("NT", [("key", int), ("value", T)])
-reveal_type(NT)  # N: Revealed type is "def [T] (key: builtins.int, value: T`1) -> Tuple[builtins.int, T`1, fallback=__main__.NT[T`1]]"
+reveal_type(NT)  # N: Revealed type is "def [T] (key: builtins.int, value: T`1) -> tuple[builtins.int, T`1, fallback=__main__.NT[T`1]]"
 
 nts: NT[str]
-reveal_type(nts)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.NT[builtins.str]]"
+reveal_type(nts)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.NT[builtins.str]]"
 
 nti = NT(key=0, value=0)
-reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(nti)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
 NT[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
@@ -1332,6 +1362,171 @@ class NT(NamedTuple, Generic[T]):
             return self._replace()
 
 class SNT(NT[int]): ...
-reveal_type(SNT("test", 42).meth())  # N: Revealed type is "Tuple[builtins.str, builtins.int, fallback=__main__.SNT]"
+reveal_type(SNT("test", 42).meth())  # N: Revealed type is "tuple[builtins.str, builtins.int, fallback=__main__.SNT]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testNoCrashUnsupportedNamedTuple]
+from typing import NamedTuple
+class Test:
+    def __init__(self, field) -> None:
+        self.Item = NamedTuple("x", [(field, str)])  # E: NamedTuple type as an attribute is not supported
+        self.item: self.Item  # E: Name "self.Item" is not defined
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNoClassKeywordsForNamedTuple]
+from typing import NamedTuple
+class Test1(NamedTuple, x=1, y=2):  # E: Unexpected keyword argument "x" for "__init_subclass__" of "NamedTuple" \
+                                    # E: Unexpected keyword argument "y" for "__init_subclass__" of "NamedTuple"
+    ...
+
+class Meta(type): ...
+
+class Test2(NamedTuple, metaclass=Meta):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "NamedTuple"
+    ...
+
+# Technically this would work, but it is just easier for the implementation:
+class Test3(NamedTuple, metaclass=type):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "NamedTuple"
+    ...
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+
+[case testNamedTupleDunderReplace]
+# flags: --python-version 3.13
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+
+A(x=0).__replace__(x=1)
+A(x=0).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "A" has incompatible type "str"; expected "int"
+A(x=0).__replace__(y=1)  # E: Unexpected keyword argument "y" for "__replace__" of "A"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testUnpackSelfNamedTuple]
+import typing
+
+class Foo(typing.NamedTuple):
+    bar: int
+    def baz(self: typing.Self) -> None:
+        x, = self
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNameErrorInNamedTupleNestedInFunction1]
+from typing import NamedTuple
+
+def bar() -> None:
+    class MyNamedTuple(NamedTuple):
+        a: int
+        def foo(self) -> None:
+            ...
+    int_set: Set[int]  # E: Name "Set" is not defined \
+                       # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Set")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNameErrorInNamedTupleNestedInFunction2]
+from typing import NamedTuple
+
+def bar() -> None:
+    class MyNamedTuple(NamedTuple):
+        a: int
+        def foo(self) -> None:
+            misspelled_var_name  # E: Name "misspelled_var_name" is not defined
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+
+[case testNamedTupleFinalAndClassVar]
+from typing import NamedTuple, Final, ClassVar
+
+class My(NamedTuple):
+    a: Final      # E: Final[...] can't be used inside a NamedTuple
+    b: Final[int] # E: Final[...] can't be used inside a NamedTuple
+    c: ClassVar       # E: ClassVar[...] can't be used inside a NamedTuple
+    d: ClassVar[int]  # E: ClassVar[...] can't be used inside a NamedTuple
+
+Func = NamedTuple('Func', [
+    ('a', Final),         # E: Final[...] can't be used inside a NamedTuple
+    ('b', Final[int]),    # E: Final[...] can't be used inside a NamedTuple
+    ('c', ClassVar),      # E: ClassVar[...] can't be used inside a NamedTuple
+    ('d', ClassVar[int]), # E: ClassVar[...] can't be used inside a NamedTuple
+])
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleRecursiveBound]
+from typing import Generic, NamedTuple, TypeVar
+T = TypeVar("T", bound="NT")
+class NT(NamedTuple, Generic[T]):
+    parent: T
+    item: int
+
+def main(n: NT[T]) -> None:
+    reveal_type(n.parent)  # N: Revealed type is "T`-1"
+    reveal_type(n.item)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleOverlappingCheck]
+from typing import overload, NamedTuple, Union
+
+class AKey(NamedTuple):
+    k: str
+
+class A(NamedTuple):
+    key: AKey
+
+
+class BKey(NamedTuple):
+    k: str
+
+class B(NamedTuple):
+    key: BKey
+
+@overload
+def f(arg: A) -> A: ...
+@overload
+def f(arg: B) -> B: ...
+def f(arg: Union[A, B]) -> Union[A, B]: ...
+
+def g(x: Union[A, B, str]) -> Union[A, B, str]:
+    if isinstance(x, str):
+        return x
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[tuple[tuple[builtins.str, fallback=__main__.AKey], fallback=__main__.A], tuple[tuple[builtins.str, fallback=__main__.BKey], fallback=__main__.B]]"
+        return x._replace()
+
+# no errors should be raised above.
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleUnionAnyMethodCall]
+from collections import namedtuple
+from typing import Any, Union
+
+T = namedtuple("T", ["x"])
+
+class C(T):
+    def f(self) -> bool:
+        return True
+
+c: Union[C, Any]
+reveal_type(c.f())  # N: Revealed type is "Union[builtins.bool, Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAsClassMemberNoCrash]
+# https://github.com/python/mypy/issues/18736
+from collections import namedtuple
+
+class Base:
+    def __init__(self, namespace: tuple[str, ...]) -> None:
+        # Not a bug: trigger defer
+        names = [name for name in namespace if fail]  # E: Name "fail" is not defined
+        self.n = namedtuple("n", names)  # E: NamedTuple type as an attribute is not supported
+[builtins fixtures/tuple.pyi]

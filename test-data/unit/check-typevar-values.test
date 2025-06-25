@@ -20,8 +20,8 @@ if int():
     i = f(1)
     s = f('')
     o = f(1) \
-      # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[object]") \
-      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+      # E: Incompatible types in assignment (expression has type "list[int]", variable has type "list[object]") \
+      # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 
@@ -97,8 +97,8 @@ def f(x: AB) -> AB:
 from typing import TypeVar
 T = TypeVar('T', int, str)
 def f(x: T) -> T:
-    a = None  # type: T
-    b = None # type: T
+    a: T
+    b: T
     if 1:
         a = x
         b = x
@@ -248,10 +248,10 @@ def g(a: T) -> None:
 from typing import TypeVar, Generic, Any
 X = TypeVar('X', int, str)
 class A(Generic[X]): pass
-a = None  # type: A[int]
-b = None  # type: A[str]
-d = None  # type: A[object] # E: Value of type variable "X" of "A" cannot be "object"
-c = None  # type: A[Any]
+a: A[int]
+b: A[str]
+d: A[object]  # E: Value of type variable "X" of "A" cannot be "object"
+c: A[Any]
 
 [case testConstructGenericTypeWithTypevarValuesAndTypeInference]
 from typing import TypeVar, Generic, Any, cast
@@ -272,11 +272,11 @@ Z = TypeVar('Z')
 class D(Generic[X]):
     def __init__(self, x: X) -> None: pass
 def f(x: X) -> None:
-    a = None  # type: D[X]
+    a: D[X]
 def g(x: Y) -> None:
-    a = None  # type: D[Y]
+    a: D[Y]
 def h(x: Z) -> None:
-    a = None  # type: D[Z]
+    a: D[Z]
 [out]
 main:11: error: Invalid type argument value for "D"
 main:13: error: Type variable "Z" not valid as type argument value for "D"
@@ -287,7 +287,7 @@ X = TypeVar('X', int, str)
 class S(str): pass
 class C(Generic[X]):
     def __init__(self, x: X) -> None: pass
-x = None  # type: C[str]
+x: C[str]
 y = C(S())
 if int():
     x = y
@@ -412,10 +412,10 @@ class B: pass
 X = TypeVar('X', A, B)
 Y = TypeVar('Y', int, str)
 class C(Generic[X, Y]): pass
-a = None  # type: C[A, int]
-b = None  # type: C[B, str]
-c = None  # type: C[int, int] # E: Value of type variable "X" of "C" cannot be "int"
-d = None  # type: C[A, A]     # E: Value of type variable "Y" of "C" cannot be "A"
+a: C[A, int]
+b: C[B, str]
+c: C[int, int]  # E: Value of type variable "X" of "C" cannot be "int"
+d: C[A, A]      # E: Value of type variable "Y" of "C" cannot be "A"
 
 [case testCallGenericFunctionUsingMultipleTypevarsWithValues]
 from typing import TypeVar
@@ -512,7 +512,7 @@ class C(A[str]):
 from typing import TypeVar, Generic
 T = TypeVar('T', int, str)
 class C(Generic[T]):
-    def f(self, x: int = None) -> None: pass
+    def f(self, x: int = 2) -> None: pass
 
 [case testTypevarValuesWithOverloadedFunctionSpecialCase]
 from foo import *
@@ -592,11 +592,10 @@ class C:
     def f(self, x: T) -> T:
         L = List[S]
         y: L[C.T] = [x]
-        C.T  # E: Type variable "C.T" cannot be used as an expression
-        A = C.T  # E: Type variable "C.T" cannot be used as an expression
+        reveal_type(C.T)  # N: Revealed type is "typing.TypeVar"
         return y[0]
-
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeVarWithAnyTypeBound]
 # flags: --follow-imports=skip
@@ -633,8 +632,7 @@ def f(x: S) -> None:
     h(x)
 
 [case testTypeVarWithTypedDictBoundInIndexExpression]
-from typing import TypeVar
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar
 
 class Data(TypedDict):
     x: int
@@ -645,11 +643,11 @@ T = TypeVar("T", bound=Data)
 
 def f(data: T) -> None:
     reveal_type(data["x"]) # N: Revealed type is "builtins.int"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypeVarWithUnionTypedDictBoundInIndexExpression]
-from typing import TypeVar, Union, Dict
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union, Dict
 
 class Data(TypedDict):
     x: int
@@ -660,13 +658,11 @@ T = TypeVar("T", bound=Union[Data, Dict[str, str]])
 
 def f(data: T) -> None:
     reveal_type(data["x"]) # N: Revealed type is "Union[builtins.int, builtins.str]"
-
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypeVarWithTypedDictValueInIndexExpression]
-from typing import TypeVar, Union, Dict
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union, Dict
 
 class Data(TypedDict):
     x: int
@@ -677,12 +673,11 @@ T = TypeVar("T", Data, Dict[str, str])
 
 def f(data: T) -> None:
     _: Union[str, int] = data["x"]
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testSelfTypeVarIndexExpr]
-from typing import TypeVar, Union, Type
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union, Type
 
 T = TypeVar("T", bound="Indexable")
 
@@ -699,6 +694,53 @@ class Indexable:
 
     def m(self: T) -> T:
         return self["foo"]
-
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypeVarWithValueDeferral]
+from typing import TypeVar, Callable
+
+T = TypeVar("T", "A", "B")
+Func = Callable[[], T]
+
+class A: ...
+class B: ...
+
+[case testTypeCommentInGenericTypeWithConstrainedTypeVar]
+from typing import Generic, TypeVar
+
+NT = TypeVar("NT", int, float)
+
+class Foo1(Generic[NT]):
+    p = 1  # type: int
+
+class Foo2(Generic[NT]):
+    p, q = 1, 2.0  # type: (int, float)
+
+class Foo3(Generic[NT]):
+    def bar(self) -> None:
+        p = 1  # type: int
+
+class Foo4(Generic[NT]):
+    def bar(self) -> None:
+        p, q = 1, 2.0  # type: (int, float)
+
+def foo3(x: NT) -> None:
+    p = 1  # type: int
+
+def foo4(x: NT) -> None:
+    p, q = 1, 2.0  # type: (int, float)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarValuesNarrowing]
+from typing import TypeVar
+
+W = TypeVar("W", int, str)
+
+def fn(w: W) -> W:
+    if type(w) is str:
+        reveal_type(w)  # N: Revealed type is "builtins.str"
+    elif type(w) is int:
+        reveal_type(w)  # N: Revealed type is "builtins.int"
+    return w
+[builtins fixtures/isinstance.pyi]

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import sys
+
+import pytest
 
 from mypy import build
-from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource
 from mypy.nodes import MypyFile
@@ -24,6 +26,8 @@ class ASTDiffSuite(DataSuite):
         files_dict = dict(testcase.files)
         second_src = files_dict["tmp/next.py"]
         options = parse_options(first_src, testcase, 1)
+        if options.python_version > sys.version_info:
+            pytest.skip("Test case requires a newer Python version")
 
         messages1, files1 = self.build(first_src, options)
         messages2, files2 = self.build(second_src, options)
@@ -53,7 +57,6 @@ class ASTDiffSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
-        options.python_version = PYTHON3_VERSION
         options.allow_empty_bodies = True
         try:
             result = build.build(

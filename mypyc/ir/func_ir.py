@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Sequence
-from typing_extensions import Final
+from collections.abc import Sequence
+from typing import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
 from mypyc.common import BITMAP_BITS, JsonDict, bitmap_name, get_id_from_name, short_id_from_name
@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
     Register,
     Value,
 )
-from mypyc.ir.rtypes import RType, bitmap_rprimitive, deserialize_type, is_fixed_width_rtype
+from mypyc.ir.rtypes import RType, bitmap_rprimitive, deserialize_type
 from mypyc.namegen import NameGenerator
 
 
@@ -86,7 +86,7 @@ class FuncSignature:
             return self.args[: -self.num_bitmap_args]
         return self.args
 
-    def bound_sig(self) -> "FuncSignature":
+    def bound_sig(self) -> FuncSignature:
         if self.num_bitmap_args:
             return FuncSignature(self.args[1 : -self.num_bitmap_args], self.ret_type)
         else:
@@ -113,7 +113,7 @@ class FuncSignature:
 def num_bitmap_args(args: tuple[RuntimeArg, ...]) -> int:
     n = 0
     for arg in args:
-        if is_fixed_width_rtype(arg.type) and arg.kind.is_optional():
+        if arg.type.error_overlap and arg.kind.is_optional():
             n += 1
     return (n + (BITMAP_BITS - 1)) // BITMAP_BITS
 
@@ -139,6 +139,8 @@ class FuncDecl:
         kind: int = FUNC_NORMAL,
         is_prop_setter: bool = False,
         is_prop_getter: bool = False,
+        implicit: bool = False,
+        internal: bool = False,
     ) -> None:
         self.name = name
         self.class_name = class_name
@@ -155,7 +157,14 @@ class FuncDecl:
             else:
                 self.bound_sig = sig.bound_sig()
 
-        # this is optional because this will be set to the line number when the corresponding
+        # If True, not present in the mypy AST and must be synthesized during irbuild
+        # Currently only supported for property getters/setters
+        self.implicit = implicit
+
+        # If True, only direct C level calls are supported (no wrapper function)
+        self.internal = internal
+
+        # This is optional because this will be set to the line number when the corresponding
         # FuncIR is created
         self._line: int | None = None
 
@@ -198,6 +207,8 @@ class FuncDecl:
             "kind": self.kind,
             "is_prop_setter": self.is_prop_setter,
             "is_prop_getter": self.is_prop_getter,
+            "implicit": self.implicit,
+            "internal": self.internal,
         }
 
     # TODO: move this to FuncIR?
@@ -219,6 +230,8 @@ class FuncDecl:
             data["kind"],
             data["is_prop_setter"],
             data["is_prop_getter"],
+            data["implicit"],
+            data["internal"],
         )
 
 
@@ -279,6 +292,10 @@ class FuncIR:
     @property
     def id(self) -> str:
         return self.decl.id
+
+    @property
+    def internal(self) -> bool:
+        return self.decl.internal
 
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)

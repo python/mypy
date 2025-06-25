@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Callable
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
@@ -14,6 +15,8 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeVarTupleType,
+    UnpackType,
     get_proper_type,
 )
 
@@ -75,7 +78,7 @@ def map_actuals_to_formals(
         elif actual_kind.is_named():
             assert actual_names is not None, "Internal error: named kinds without names given"
             name = actual_names[ai]
-            if name in formal_names:
+            if name in formal_names and formal_kinds[formal_names.index(name)] != nodes.ARG_STAR:
                 formal_to_actual[formal_names.index(name)].append(ai)
             elif nodes.ARG_STAR2 in formal_kinds:
                 formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
@@ -174,6 +177,7 @@ class ArgTypeExpander:
         actual_kind: nodes.ArgKind,
         formal_name: str | None,
         formal_kind: nodes.ArgKind,
+        allow_unpack: bool = False,
     ) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
@@ -189,6 +193,11 @@ class ArgTypeExpander:
         original_actual = actual_type
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
+            if isinstance(actual_type, TypeVarTupleType):
+                # This code path is hit when *Ts is passed to a callable and various
+                # special-handling didn't catch this. The best thing we can do is to use
+                # the upper bound.
+                actual_type = get_proper_type(actual_type.upper_bound)
             if isinstance(actual_type, Instance) and actual_type.args:
                 from mypy.subtypes import is_subtype
 
@@ -209,7 +218,20 @@ class ArgTypeExpander:
                     self.tuple_index = 1
                 else:
                     self.tuple_index += 1
-                return actual_type.items[self.tuple_index - 1]
+                item = actual_type.items[self.tuple_index - 1]
+                if isinstance(item, UnpackType) and not allow_unpack:
+                    # An unpack item that doesn't have special handling, use upper bound as above.
+                    unpacked = get_proper_type(item.type)
+                    if isinstance(unpacked, TypeVarTupleType):
+                        fallback = get_proper_type(unpacked.upper_bound)
+                    else:
+                        fallback = unpacked
+                    assert (
+                        isinstance(fallback, Instance)
+                        and fallback.type.fullname == "builtins.tuple"
+                    )
+                    item = fallback.args[0]
+                return item
             elif isinstance(actual_type, ParamSpecType):
                 # ParamSpec is valid in *args but it can't be unpacked.
                 return actual_type
@@ -227,10 +249,8 @@ class ArgTypeExpander:
                     formal_name = (set(actual_type.items.keys()) - self.kwargs_used).pop()
                 self.kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
-            elif (
-                isinstance(actual_type, Instance)
-                and len(actual_type.args) > 1
-                and is_subtype(actual_type, self.context.mapping_type)
+            elif isinstance(actual_type, Instance) and is_subtype(
+                actual_type, self.context.mapping_type
             ):
                 # Only `Mapping` type can be unpacked with `**`.
                 # Other types will produce an error somewhere else.

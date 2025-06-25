@@ -13,3 +13,4 @@ class float: pass
 class complex: pass
 class str: pass
 class ellipsis: pass
+class dict: pass

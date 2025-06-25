@@ -1,9 +1,9 @@
+import sys
 import threading
-from _typeshed import Incomplete, ReadableBuffer, SupportsTrunc
+from _typeshed import ConvertibleToInt, Incomplete, Unused
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
-from logging import Logger
-from typing import Any, SupportsInt
-from typing_extensions import SupportsIndex
+from logging import Logger, _Level as _LoggingLevel
+from typing import Any, Final, Generic, TypeVar, overload
 
 __all__ = [
     "sub_debug",
@@ -23,44 +23,72 @@ __all__ = [
     "SUBWARNING",
 ]
 
-NOTSET: int
-SUBDEBUG: int
-DEBUG: int
-INFO: int
-SUBWARNING: int
+if sys.version_info >= (3, 14):
+    __all__ += ["warn"]
 
-LOGGER_NAME: str
-DEFAULT_LOGGING_FORMAT: str
+_T = TypeVar("_T")
+_R_co = TypeVar("_R_co", default=Any, covariant=True)
+
+NOTSET: Final = 0
+SUBDEBUG: Final = 5
+DEBUG: Final = 10
+INFO: Final = 20
+SUBWARNING: Final = 25
+if sys.version_info >= (3, 14):
+    WARNING: Final = 30
+
+LOGGER_NAME: Final[str]
+DEFAULT_LOGGING_FORMAT: Final[str]
 
 def sub_debug(msg: object, *args: object) -> None: ...
 def debug(msg: object, *args: object) -> None: ...
 def info(msg: object, *args: object) -> None: ...
+
+if sys.version_info >= (3, 14):
+    def warn(msg: object, *args: object) -> None: ...
+
 def sub_warning(msg: object, *args: object) -> None: ...
 def get_logger() -> Logger: ...
-def log_to_stderr(level: int | None = ...) -> Logger: ...
+def log_to_stderr(level: _LoggingLevel | None = None) -> Logger: ...
 def is_abstract_socket_namespace(address: str | bytes | None) -> bool: ...
 
 abstract_sockets_supported: bool
 
 def get_temp_dir() -> str: ...
-def register_after_fork(obj: Incomplete, func: Callable[[Incomplete], object]) -> None: ...
+def register_after_fork(obj: _T, func: Callable[[_T], object]) -> None: ...
 
-class Finalize:
+class Finalize(Generic[_R_co]):
+    # "args" and "kwargs" are passed as arguments to "callback".
+    @overload
     def __init__(
         self,
-        obj: Incomplete | None,
-        callback: Callable[..., Incomplete],
-        args: Sequence[Any] = ...,
-        kwargs: Mapping[str, Any] | None = ...,
-        exitpriority: int | None = ...,
+        obj: None,
+        callback: Callable[..., _R_co],
+        *,
+        args: Sequence[Any] = (),
+        kwargs: Mapping[str, Any] | None = None,
+        exitpriority: int,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self, obj: None, callback: Callable[..., _R_co], args: Sequence[Any], kwargs: Mapping[str, Any] | None, exitpriority: int
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        obj: Any,
+        callback: Callable[..., _R_co],
+        args: Sequence[Any] = (),
+        kwargs: Mapping[str, Any] | None = None,
+        exitpriority: int | None = None,
     ) -> None: ...
     def __call__(
         self,
-        wr: object = ...,
-        _finalizer_registry: MutableMapping[Incomplete, Incomplete] = ...,
+        wr: Unused = None,
+        _finalizer_registry: MutableMapping[Incomplete, Incomplete] = {},
         sub_debug: Callable[..., object] = ...,
         getpid: Callable[[], int] = ...,
-    ) -> Incomplete: ...
+    ) -> _R_co: ...
     def cancel(self) -> None: ...
     def still_active(self) -> bool: ...
 
@@ -70,16 +98,11 @@ class ForkAwareThreadLock:
     acquire: Callable[[bool, float], bool]
     release: Callable[[], None]
     def __enter__(self) -> bool: ...
-    def __exit__(self, *args: object) -> None: ...
+    def __exit__(self, *args: Unused) -> None: ...
 
 class ForkAwareLocal(threading.local): ...
 
-MAXFD: int
+MAXFD: Final[int]
 
 def close_all_fds_except(fds: Iterable[int]) -> None: ...
-def spawnv_passfds(
-    path: bytes,
-    # args is anything that can be passed to the int constructor
-    args: Sequence[str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc],
-    passfds: Sequence[int],
-) -> int: ...
+def spawnv_passfds(path: bytes, args: Sequence[ConvertibleToInt], passfds: Sequence[int]) -> int: ...

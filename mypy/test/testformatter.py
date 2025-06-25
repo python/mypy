@@ -52,14 +52,14 @@ class FancyErrorFormattingTestCases(TestCase):
 
     def test_split_words(self) -> None:
         assert split_words("Simple message") == ["Simple", "message"]
-        assert split_words('Message with "Some[Long, Types]"' " in it") == [
+        assert split_words('Message with "Some[Long, Types]" in it') == [
             "Message",
             "with",
             '"Some[Long, Types]"',
             "in",
             "it",
         ]
-        assert split_words('Message with "Some[Long, Types]"' " and [error-code]") == [
+        assert split_words('Message with "Some[Long, Types]" and [error-code]') == [
             "Message",
             "with",
             '"Some[Long, Types]"',

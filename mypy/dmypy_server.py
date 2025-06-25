@@ -16,14 +16,15 @@ import subprocess
 import sys
 import time
 import traceback
+from collections.abc import Sequence, Set as AbstractSet
 from contextlib import redirect_stderr, redirect_stdout
-from typing import AbstractSet, Any, Callable, List, Sequence, Tuple
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Callable, Final
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.dmypy_util import receive
+from mypy.dmypy_util import WriteToConn, receive, send
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileData, FileSystemWatcher
@@ -56,8 +57,12 @@ if sys.platform == "win32":
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, "-m", "mypy.dmypy", "--status-file", status_file, "daemon"]
-        pickled_options = pickle.dumps((options.snapshot(), timeout, log_file))
+        pickled_options = pickle.dumps(options.snapshot())
         command.append(f'--options-data="{base64.b64encode(pickled_options).decode()}"')
+        if timeout:
+            command.append(f"--timeout={timeout}")
+        if log_file:
+            command.append(f"--log-file={log_file}")
         info = STARTUPINFO()
         info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
         info.wShowWindow = 0  # SW_HIDE aka make the window invisible
@@ -157,13 +162,12 @@ def ignore_suppressed_imports(module: str) -> bool:
     return module.startswith("encodings.")
 
 
-ModulePathPair: _TypeAlias = Tuple[str, str]
-ModulePathPairs: _TypeAlias = List[ModulePathPair]
-ChangesAndRemovals: _TypeAlias = Tuple[ModulePathPairs, ModulePathPairs]
+ModulePathPair: _TypeAlias = tuple[str, str]
+ModulePathPairs: _TypeAlias = list[ModulePathPair]
+ChangesAndRemovals: _TypeAlias = tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
-
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
@@ -205,8 +209,12 @@ class Server:
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
+
         command = None
         server = IPCServer(CONNECTION_NAME, self.timeout)
+        orig_stdout = sys.stdout
+        orig_stderr = sys.stderr
+
         try:
             with open(self.status_file, "w") as f:
                 json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
@@ -214,8 +222,8 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
-                    debug_stdout = io.StringIO()
-                    sys.stdout = debug_stdout
+                    sys.stdout = WriteToConn(server, "stdout", sys.stdout.isatty())
+                    sys.stderr = WriteToConn(server, "stderr", sys.stderr.isatty())
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -232,19 +240,23 @@ class Server:
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
-                                resp["stdout"] = debug_stdout.getvalue()
-                                server.write(json.dumps(resp).encode("utf8"))
+                                resp["final"] = True
+                                send(server, resp)
                                 raise
-                    resp["stdout"] = debug_stdout.getvalue()
+                    resp["final"] = True
                     try:
                         resp.update(self._response_metadata())
-                        server.write(json.dumps(resp).encode("utf8"))
+                        send(server, resp)
                     except OSError:
                         pass  # Maybe the client hung up
                     if command == "stop":
                         reset_global_state()
                         sys.exit(0)
         finally:
+            # Revert stdout/stderr so we can see any errors.
+            sys.stdout = orig_stdout
+            sys.stderr = orig_stderr
+
             # If the final command is something other than a clean
             # stop, remove the status file. (We can't just
             # simplify the logic and always remove the file, since
@@ -323,7 +335,7 @@ class Server:
                         header=argparse.SUPPRESS,
                     )
             # Signal that we need to restart if the options have changed
-            if self.options_snapshot != options.snapshot():
+            if not options.compare_stable(self.options_snapshot):
                 return {"restart": "configuration changed"}
             if __version__ != version:
                 return {"restart": "mypy version changed"}
@@ -372,6 +384,9 @@ class Server:
             removals = set(remove)
             sources = [s for s in sources if s.path and s.path not in removals]
         if update:
+            # Sort list of file updates by extension, so *.pyi files are first.
+            update.sort(key=lambda f: os.path.splitext(f)[1], reverse=True)
+
             known = {s.path for s in sources if s.path}
             added = [p for p in update if p not in known]
             try:
@@ -382,15 +397,21 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log(f"fine-grained increment: cmd_recheck: {t1 - t0:.3f}s")
-        self.options.export_types = export_types
+        old_export_types = self.options.export_types
+        self.options.export_types = self.options.export_types or export_types
         if not self.following_imports():
-            messages = self.fine_grained_increment(sources, remove, update)
+            messages = self.fine_grained_increment(
+                sources, remove, update, explicit_export_types=export_types
+            )
         else:
             assert remove is None and update is None
-            messages = self.fine_grained_increment_follow_imports(sources)
+            messages = self.fine_grained_increment_follow_imports(
+                sources, explicit_export_types=export_types
+            )
         res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.flush_caches()
         self.update_stats(res)
+        self.options.export_types = old_export_types
         return res
 
     def check(
@@ -401,17 +422,21 @@ class Server:
         If is_tty is True format the output nicely with colors and summary line
         (unless disabled in self.options). Also pass the terminal_width to formatter.
         """
-        self.options.export_types = export_types
+        old_export_types = self.options.export_types
+        self.options.export_types = self.options.export_types or export_types
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
             if not self.following_imports():
-                messages = self.fine_grained_increment(sources)
+                messages = self.fine_grained_increment(sources, explicit_export_types=export_types)
             else:
-                messages = self.fine_grained_increment_follow_imports(sources)
+                messages = self.fine_grained_increment_follow_imports(
+                    sources, explicit_export_types=export_types
+                )
             res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.flush_caches()
         self.update_stats(res)
+        self.options.export_types = old_export_types
         return res
 
     def flush_caches(self) -> None:
@@ -450,6 +475,7 @@ class Server:
         messages = result.errors
         self.fine_grained_manager = FineGrainedBuildManager(result)
 
+        original_sources_len = len(sources)
         if self.following_imports():
             sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
             self.update_sources(sources)
@@ -514,7 +540,8 @@ class Server:
 
         __, n_notes, __ = count_stats(messages)
         status = 1 if messages and n_notes < len(messages) else 0
-        messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
+        # We use explicit sources length to match the logic in non-incremental mode.
+        messages = self.pretty_messages(messages, original_sources_len, is_tty, terminal_width)
         return {"out": "".join(s + "\n" for s in messages), "err": "", "status": status}
 
     def fine_grained_increment(
@@ -522,6 +549,7 @@ class Server:
         sources: list[BuildSource],
         remove: list[str] | None = None,
         update: list[str] | None = None,
+        explicit_export_types: bool = False,
     ) -> list[str]:
         """Perform a fine-grained type checking increment.
 
@@ -532,6 +560,8 @@ class Server:
             sources: sources passed on the command line
             remove: paths of files that have been removed
             update: paths of files that have been changed or created
+            explicit_export_types: --export-type was passed in a check command
+              (as opposite to being set in dmypy start)
         """
         assert self.fine_grained_manager is not None
         manager = self.fine_grained_manager.manager
@@ -546,6 +576,10 @@ class Server:
             # Use the remove/update lists to update fswatcher.
             # This avoids calling stat() for unchanged files.
             changed, removed = self.update_changed(sources, remove or [], update or [])
+        if explicit_export_types:
+            # If --export-types is given, we need to force full re-checking of all
+            # explicitly passed files, since we need to visit each expression.
+            add_all_sources_to_changed(sources, changed)
         changed += self.find_added_suppressed(
             self.fine_grained_manager.graph, set(), manager.search_paths
         )
@@ -564,7 +598,9 @@ class Server:
         self.previous_sources = sources
         return messages
 
-    def fine_grained_increment_follow_imports(self, sources: list[BuildSource]) -> list[str]:
+    def fine_grained_increment_follow_imports(
+        self, sources: list[BuildSource], explicit_export_types: bool = False
+    ) -> list[str]:
         """Like fine_grained_increment, but follow imports."""
         t0 = time.time()
 
@@ -584,19 +620,27 @@ class Server:
         t1 = time.time()
         manager.log(f"fine-grained increment: find_changed: {t1 - t0:.3f}s")
 
+        # Track all modules encountered so far. New entries for all dependencies
+        # are added below by other module finding methods below. All dependencies
+        # in graph but not in `seen` are considered deleted at the end of this method.
         seen = {source.module for source in sources}
 
         # Find changed modules reachable from roots (or in roots) already in graph.
         changed, new_files = self.find_reachable_changed_modules(
             sources, graph, seen, changed_paths
         )
+        # Same as in fine_grained_increment().
+        self.add_explicitly_new(sources, changed)
+        if explicit_export_types:
+            # Same as in fine_grained_increment().
+            add_all_sources_to_changed(sources, changed)
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
         messages = fine_grained_manager.update(changed, [], followed=True)
 
         # Follow deps from changed modules (still within graph).
-        worklist = changed[:]
+        worklist = changed.copy()
         while worklist:
             module = worklist.pop()
             if module[0] not in graph:
@@ -674,7 +718,7 @@ class Server:
             find_changes_time=t1 - t0,
             fg_update_time=t2 - t1,
             refresh_suppressed_time=t3 - t2,
-            find_added_supressed_time=t4 - t3,
+            find_added_suppressed_time=t4 - t3,
             cleanup_time=t5 - t4,
         )
 
@@ -695,7 +739,9 @@ class Server:
         Args:
             roots: modules where to start search from
             graph: module graph to use for the search
-            seen: modules we've seen before that won't be visited (mutated here!!)
+            seen: modules we've seen before that won't be visited (mutated here!!).
+                  Needed to accumulate all modules encountered during update and remove
+                  everything that no longer exists.
             changed_paths: which paths have changed (stop search here and return any found)
 
         Return (encountered reachable changed modules,
@@ -703,7 +749,7 @@ class Server:
         """
         changed = []
         new_files = []
-        worklist = roots[:]
+        worklist = roots.copy()
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
@@ -715,7 +761,8 @@ class Server:
                 changed.append((nxt.module, nxt.path))
             elif nxt.module in graph:
                 state = graph[nxt.module]
-                for dep in state.dependencies:
+                ancestors = state.ancestors or []
+                for dep in state.dependencies + ancestors:
                     if dep not in seen:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path, graph[dep].id, followed=True))
@@ -734,7 +781,9 @@ class Server:
         """Find suppressed modules that have been added (and not included in seen).
 
         Args:
-            seen: reachable modules we've seen before (mutated here!!)
+            seen: reachable modules we've seen before (mutated here!!).
+                  Needed to accumulate all modules encountered during update and remove
+                  everything that no longer exists.
 
         Return suppressed, added modules.
         """
@@ -824,7 +873,6 @@ class Server:
     def update_changed(
         self, sources: list[BuildSource], remove: list[str], update: list[str]
     ) -> ChangesAndRemovals:
-
         changed_paths = self.fswatcher.update_changed(remove, update)
         return self._find_changed(sources, changed_paths)
 
@@ -851,6 +899,8 @@ class Server:
             assert path
             removed.append((source.module, path))
 
+        self.add_explicitly_new(sources, changed)
+
         # Find anything that has had its module path change because of added or removed __init__s
         last = {s.path: s.module for s in self.previous_sources}
         for s in sources:
@@ -861,6 +911,24 @@ class Server:
                 changed.append((s.module, s.path))
 
         return changed, removed
+
+    def add_explicitly_new(
+        self, sources: list[BuildSource], changed: list[tuple[str, str]]
+    ) -> None:
+        # Always add modules that were (re-)added, since they may be detected as not changed by
+        # fswatcher (if they were actually not changed), but they may still need to be checked
+        # in case they had errors before they were deleted from sources on previous runs.
+        previous_modules = {source.module for source in self.previous_sources}
+        changed_set = set(changed)
+        changed.extend(
+            [
+                (source.module, source.path)
+                for source in sources
+                if source.path
+                and source.module not in previous_modules
+                and (source.module, source.path) not in changed_set
+            ]
+        )
 
     def cmd_inspect(
         self,
@@ -875,8 +943,6 @@ class Server:
         force_reload: bool = False,
     ) -> dict[str, object]:
         """Locate and inspect expression(s)."""
-        if sys.version_info < (3, 8):
-            return {"error": 'Python 3.8 required for "inspect" command'}
         if not self.fine_grained_manager:
             return {
                 "error": 'Command "inspect" is only valid after a "check" command'
@@ -986,13 +1052,29 @@ def find_all_sources_in_build(
     return result
 
 
+def add_all_sources_to_changed(sources: list[BuildSource], changed: list[tuple[str, str]]) -> None:
+    """Add all (explicit) sources to the list changed files in place.
+
+    Use this when re-processing of unchanged files is needed (e.g. for
+    the purpose of exporting types for inspections).
+    """
+    changed_set = set(changed)
+    changed.extend(
+        [
+            (bs.module, bs.path)
+            for bs in sources
+            if bs.path and (bs.module, bs.path) not in changed_set
+        ]
+    )
+
+
 def fix_module_deps(graph: mypy.build.Graph) -> None:
     """After an incremental update, update module dependencies to reflect the new state.
 
     This can make some suppressed dependencies non-suppressed, and vice versa (if modules
     have been added to or removed from the build).
     """
-    for module, state in graph.items():
+    for state in graph.values():
         new_suppressed = []
         new_dependencies = []
         for dep in state.dependencies + state.suppressed:

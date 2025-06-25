@@ -22,6 +22,7 @@ class FuncInfo:
         contains_nested: bool = False,
         is_decorated: bool = False,
         in_non_ext: bool = False,
+        add_nested_funcs_to_env: bool = False,
     ) -> None:
         self.fitem = fitem
         self.name = name
@@ -47,6 +48,7 @@ class FuncInfo:
         self.contains_nested = contains_nested
         self.is_decorated = is_decorated
         self.in_non_ext = in_non_ext
+        self.add_nested_funcs_to_env = add_nested_funcs_to_env
 
         # TODO: add field for ret_type: RType = none_rprimitive
 
@@ -92,6 +94,11 @@ class FuncInfo:
     def curr_env_reg(self) -> Value:
         assert self._curr_env_reg is not None
         return self._curr_env_reg
+
+    def can_merge_generator_and_env_classes(self) -> bool:
+        # In simple cases we can place the environment into the generator class,
+        # instead of having two separate classes.
+        return self.is_generator and not self.is_nested and not self.contains_nested
 
 
 class ImplicitClass:

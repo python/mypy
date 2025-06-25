@@ -1,9 +1,10 @@
 import socket
 import ssl
+import sys
 from builtins import list as _list  # conflicts with a method named "list"
 from re import Pattern
-from typing import Any, BinaryIO, NoReturn, overload
-from typing_extensions import Literal, TypeAlias
+from typing import Any, BinaryIO, Final, NoReturn, overload
+from typing_extensions import TypeAlias
 
 __all__ = ["POP3", "error_proto", "POP3_SSL"]
 
@@ -11,11 +12,11 @@ _LongResp: TypeAlias = tuple[bytes, list[bytes], int]
 
 class error_proto(Exception): ...
 
-POP3_PORT: Literal[110]
-POP3_SSL_PORT: Literal[995]
-CR: Literal[b"\r"]
-LF: Literal[b"\n"]
-CRLF: Literal[b"\r\n"]
+POP3_PORT: Final = 110
+POP3_SSL_PORT: Final = 995
+CR: Final = b"\r"
+LF: Final = b"\n"
+CRLF: Final = b"\r\n"
 HAVE_SSL: bool
 
 class POP3:
@@ -25,13 +26,13 @@ class POP3:
     sock: socket.socket
     file: BinaryIO
     welcome: bytes
-    def __init__(self, host: str, port: int = ..., timeout: float = ...) -> None: ...
+    def __init__(self, host: str, port: int = 110, timeout: float = ...) -> None: ...
     def getwelcome(self) -> bytes: ...
     def set_debuglevel(self, level: int) -> None: ...
     def user(self, user: str) -> bytes: ...
     def pass_(self, pswd: str) -> bytes: ...
     def stat(self) -> tuple[int, int]: ...
-    def list(self, which: Any | None = ...) -> _LongResp: ...
+    def list(self, which: Any | None = None) -> _LongResp: ...
     def retr(self, which: Any) -> _LongResp: ...
     def dele(self, which: Any) -> bytes: ...
     def noop(self) -> bytes: ...
@@ -48,17 +49,24 @@ class POP3:
     def uidl(self, which: Any) -> bytes: ...
     def utf8(self) -> bytes: ...
     def capa(self) -> dict[str, _list[str]]: ...
-    def stls(self, context: ssl.SSLContext | None = ...) -> bytes: ...
+    def stls(self, context: ssl.SSLContext | None = None) -> bytes: ...
 
 class POP3_SSL(POP3):
-    def __init__(
-        self,
-        host: str,
-        port: int = ...,
-        keyfile: str | None = ...,
-        certfile: str | None = ...,
-        timeout: float = ...,
-        context: ssl.SSLContext | None = ...,
-    ) -> None: ...
-    # "context" is actually the last argument, but that breaks LSP and it doesn't really matter because all the arguments are ignored
-    def stls(self, context: Any = ..., keyfile: Any = ..., certfile: Any = ...) -> NoReturn: ...
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self, host: str, port: int = 995, *, timeout: float = ..., context: ssl.SSLContext | None = None
+        ) -> None: ...
+        def stls(self, context: Any = None) -> NoReturn: ...
+    else:
+        def __init__(
+            self,
+            host: str,
+            port: int = 995,
+            keyfile: str | None = None,
+            certfile: str | None = None,
+            timeout: float = ...,
+            context: ssl.SSLContext | None = None,
+        ) -> None: ...
+        # "context" is actually the last argument,
+        # but that breaks LSP and it doesn't really matter because all the arguments are ignored
+        def stls(self, context: Any = None, keyfile: Any = None, certfile: Any = None) -> NoReturn: ...

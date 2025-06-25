@@ -12,31 +12,47 @@ issue tracker, pull requests, and chat, is expected to treat
 other people with respect and more generally to follow the guidelines
 articulated in the [Python Community Code of Conduct](https://www.python.org/psf/codeofconduct/).
 
-
 ## Getting started with development
 
 ### Setup
 
-#### (1) Clone the mypy repository and enter into it
-```
-git clone https://github.com/python/mypy.git
+#### (1) Fork the mypy repository
+
+Within GitHub, navigate to <https://github.com/python/mypy> and fork the repository.
+
+#### (2) Clone the mypy repository and enter into it
+
+```bash
+git clone git@github.com:<your_username>/mypy.git
 cd mypy
 ```
 
-#### (2) Create then activate a virtual environment
-```
-# On Windows, the commands may be slightly different. For more details, see
-# https://docs.python.org/3/library/venv.html#creating-virtual-environments
+#### (3) Create then activate a virtual environment
+
+```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-#### (3) Install the test requirements and the project
+```bash
+# For Windows use
+python -m venv venv
+. venv/Scripts/activate
+
+# For more details, see https://docs.python.org/3/library/venv.html#creating-virtual-environments
 ```
-python3 -m pip install -r test-requirements.txt
-python3 -m pip install -e .
+
+#### (4) Install the test requirements and the project
+
+```bash
+python -m pip install -r test-requirements.txt
+python -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
+
+> **Note**
+> You'll need Python 3.9 or higher to install all requirements listed in
+> test-requirements.txt
 
 ### Running tests
 
@@ -47,49 +63,72 @@ your PR.
 
 However, if you wish to do so, you can run the full test suite
 like this:
-```
-python3 runtests.py
-```
 
-You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
-```
-tox -e py
-
-# Or some specific python version:
-tox -e py39
-
-# Or some specific command:
-tox -e lint
+```bash
+python runtests.py
 ```
 
 Some useful commands for running specific tests include:
+
 ```bash
 # Use mypy to check mypy's own code
-python3 runtests.py self
+python runtests.py self
 # or equivalently:
-python3 -m mypy --config-file mypy_self_check.ini -p mypy
+python -m mypy --config-file mypy_self_check.ini -p mypy
 
-# Run a single test from the test suite
-pytest -n0 -k 'test_name'
+# Run a single test from the test suite (uses pytest substring expression matching)
+python runtests.py test_name
+# or equivalently:
+pytest -n0 -k test_name
 
 # Run all test cases in the "test-data/unit/check-dataclasses.test" file
+python runtests.py check-dataclasses.test
+# or equivalently:
 pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 
-# Run the linter
-flake8
-
-# Run formatters
-black . && isort .
+# Run the formatters and linters
+python runtests.py lint
 ```
 
 For an in-depth guide on running and writing tests,
 see [the README in the test-data directory](test-data/unit/README.md).
+
+#### Using `tox`
+
+You can also use [`tox`](https://tox.wiki/en/latest/) to run tests and other commands.
+`tox` handles setting up test environments for you.
+
+```bash
+# Run tests
+tox run -e py
+
+# Run tests using some specific Python version
+tox run -e py311
+
+# Run a specific command
+tox run -e lint
+
+# Run a single test from the test suite
+tox run -e py -- -n0 -k 'test_name'
+
+# Run all test cases in the "test-data/unit/check-dataclasses.test" file using
+# Python 3.11 specifically
+tox run -e py311 -- mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
+
+# Set up a development environment with all the project libraries and run a command
+tox -e dev -- mypy --verbose test_case.py
+tox -e dev --override testenv:dev.allowlist_externals+=env -- env  # inspect the environment
+```
+
+If you don't already have `tox` installed, you can use a virtual environment as
+described above to install `tox` via `pip` (e.g., ``python -m pip install tox``).
 
 ## First time contributors
 
 If you're looking for things to help with, browse our [issue tracker](https://github.com/python/mypy/issues)!
 
 In particular, look for:
+
 - [good first issues](https://github.com/python/mypy/labels/good-first-issue)
 - [good second issues](https://github.com/python/mypy/labels/good-second-issue)
 - [documentation issues](https://github.com/python/mypy/labels/documentation)
@@ -140,10 +179,6 @@ advice about good pull requests for open-source projects applies; we
 have [our own writeup](https://github.com/python/mypy/wiki/Good-Pull-Request)
 of this advice.
 
-We are using `black` and `isort` to enforce a consistent coding style.
-Run `black . && isort .` before your commits, otherwise you would receive
-a CI failure.
-
 Also, do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is merged.
 
@@ -151,28 +186,27 @@ You may also find other pages in the
 [Mypy developer guide](https://github.com/python/mypy/wiki/Developer-Guides)
 helpful in developing your change.
 
-
 ## Core developer guidelines
 
 Core developers should follow these rules when processing pull requests:
 
-* Always wait for tests to pass before merging PRs.
-* Use "[Squash and merge](https://github.com/blog/2141-squash-your-commits)"
+- Always wait for tests to pass before merging PRs.
+- Use "[Squash and merge](https://github.com/blog/2141-squash-your-commits)"
   to merge PRs.
-* Delete branches for merged PRs (by core devs pushing to the main repo).
-* Edit the final commit message before merging to conform to the following
+- Delete branches for merged PRs (by core devs pushing to the main repo).
+- Edit the final commit message before merging to conform to the following
   style (we wish to have a clean `git log` output):
-  * When merging a multi-commit PR make sure that the commit message doesn't
+  - When merging a multi-commit PR make sure that the commit message doesn't
     contain the local history from the committer and the review history from
     the PR. Edit the message to only describe the end state of the PR.
-  * Make sure there is a *single* newline at the end of the commit message.
+  - Make sure there is a *single* newline at the end of the commit message.
     This way there is a single empty line between commits in `git log`
     output.
-  * Split lines as needed so that the maximum line length of the commit
+  - Split lines as needed so that the maximum line length of the commit
     message is under 80 characters, including the subject line.
-  * Capitalize the subject and each paragraph.
-  * Make sure that the subject of the commit message has no trailing dot.
-  * Use the imperative mood in the subject line (e.g. "Fix typo in README").
-  * If the PR fixes an issue, make sure something like "Fixes #xxx." occurs
+  - Capitalize the subject and each paragraph.
+  - Make sure that the subject of the commit message has no trailing dot.
+  - Use the imperative mood in the subject line (e.g. "Fix typo in README").
+  - If the PR fixes an issue, make sure something like "Fixes #xxx." occurs
     in the body of the message (not in the subject).
-  * Use Markdown for formatting.
+  - Use Markdown for formatting.

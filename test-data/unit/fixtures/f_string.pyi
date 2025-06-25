@@ -34,3 +34,5 @@ class str:
     def format(self, *args) -> str: pass
     def join(self, l: List[str]) -> str: pass
 
+
+class dict: pass

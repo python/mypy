@@ -1,14 +1,14 @@
-from _typeshed import _BufferWithLen
-from typing import IO, Any
-from typing_extensions import Literal, TypeAlias
+from _typeshed import SizedBuffer
+from typing import IO, Any, Final
+from typing_extensions import TypeAlias
 
 __all__ = ["binhex", "hexbin", "Error"]
 
 class Error(Exception): ...
 
-REASONABLY_LARGE: Literal[32768]
-LINELEN: Literal[64]
-RUNCHAR: Literal[b"\x90"]
+REASONABLY_LARGE: Final = 32768
+LINELEN: Final = 64
+RUNCHAR: Final = b"\x90"
 
 class FInfo:
     Type: str
@@ -28,9 +28,9 @@ class openrsrc:
 
 class BinHex:
     def __init__(self, name_finfo_dlen_rlen: _FileInfoTuple, ofp: _FileHandleUnion) -> None: ...
-    def write(self, data: _BufferWithLen) -> None: ...
+    def write(self, data: SizedBuffer) -> None: ...
     def close_data(self) -> None: ...
-    def write_rsrc(self, data: _BufferWithLen) -> None: ...
+    def write_rsrc(self, data: SizedBuffer) -> None: ...
     def close(self) -> None: ...
 
 def binhex(inp: str, out: str) -> None: ...

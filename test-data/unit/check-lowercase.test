@@ -1,0 +1,35 @@
+[case testTupleLowercase]
+x = (3,)
+x = 3 # E: Incompatible types in assignment (expression has type "int", variable has type "tuple[int]")
+[builtins fixtures/tuple.pyi]
+
+[case testListLowercase]
+x = [3]
+x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "list[int]")
+
+[case testDictLowercase]
+x = {"key": "value"}
+x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "dict[str, str]")
+
+[case testSetLowercase]
+x = {3}
+x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "set[int]")
+[builtins fixtures/set.pyi]
+
+[case testTypeLowercase]
+x: type[type]
+y: int
+
+y = x  # E: Incompatible types in assignment (expression has type "type[type]", variable has type "int")
+
+[case testLowercaseTypeAnnotationHint]
+x = []  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
+y = {}  # E: Need type annotation for "y" (hint: "y: dict[<type>, <type>] = ...")
+z = set()  # E: Need type annotation for "z" (hint: "z: set[<type>] = ...")
+[builtins fixtures/primitives.pyi]
+
+[case testLowercaseRevealTypeType]
+def f(t: type[int]) -> None:
+    reveal_type(t)  # N: Revealed type is "type[builtins.int]"
+reveal_type(f)  # N: Revealed type is "def (t: type[builtins.int])"
+[builtins fixtures/primitives.pyi]

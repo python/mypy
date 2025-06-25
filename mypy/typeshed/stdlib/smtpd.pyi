@@ -41,10 +41,10 @@ class SMTPChannel(asynchat.async_chat):
         server: SMTPServer,
         conn: socket.socket,
         addr: Any,
-        data_size_limit: int = ...,
-        map: asyncore._MapType | None = ...,
-        enable_SMTPUTF8: bool = ...,
-        decode_data: bool = ...,
+        data_size_limit: int = 33554432,
+        map: asyncore._MapType | None = None,
+        enable_SMTPUTF8: bool = False,
+        decode_data: bool = False,
     ) -> None: ...
     # base asynchat.async_chat.push() accepts bytes
     def push(self, msg: str) -> None: ...  # type: ignore[override]
@@ -71,10 +71,10 @@ class SMTPServer(asyncore.dispatcher):
         self,
         localaddr: _Address,
         remoteaddr: _Address,
-        data_size_limit: int = ...,
-        map: asyncore._MapType | None = ...,
-        enable_SMTPUTF8: bool = ...,
-        decode_data: bool = ...,
+        data_size_limit: int = 33554432,
+        map: asyncore._MapType | None = None,
+        enable_SMTPUTF8: bool = False,
+        decode_data: bool = False,
     ) -> None: ...
     def handle_accepted(self, conn: socket.socket, addr: Any) -> None: ...
     def process_message(

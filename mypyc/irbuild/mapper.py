@@ -15,10 +15,11 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeType,
-    TypeVarType,
+    TypeVarLikeType,
     UnboundType,
     UninhabitedType,
     UnionType,
+    find_unpack_in_list,
     get_proper_type,
 )
 from mypyc.ir.class_ir import ClassIR
@@ -32,6 +33,8 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
+    frozenset_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
@@ -42,6 +45,7 @@ from mypyc.ir.rtypes import (
     set_rprimitive,
     str_rprimitive,
     tuple_rprimitive,
+    uint8_rprimitive,
 )
 
 
@@ -59,6 +63,7 @@ class Mapper:
         self.group_map = group_map
         self.type_to_ir: dict[TypeInfo, ClassIR] = {}
         self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
+        self.symbol_fullnames: set[str] = set()
 
     def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
@@ -85,6 +90,8 @@ class Mapper:
                 return dict_rprimitive
             elif typ.type.fullname == "builtins.set":
                 return set_rprimitive
+            elif typ.type.fullname == "builtins.frozenset":
+                return frozenset_rprimitive
             elif typ.type.fullname == "builtins.tuple":
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type.fullname == "builtins.range":
@@ -102,12 +109,19 @@ class Mapper:
                 return int64_rprimitive
             elif typ.type.fullname == "mypy_extensions.i32":
                 return int32_rprimitive
+            elif typ.type.fullname == "mypy_extensions.i16":
+                return int16_rprimitive
+            elif typ.type.fullname == "mypy_extensions.u8":
+                return uint8_rprimitive
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):
             # Use our unboxed tuples for raw tuples but fall back to
-            # being boxed for NamedTuple.
-            if typ.partial_fallback.type.fullname == "builtins.tuple":
+            # being boxed for NamedTuple or for variadic tuples.
+            if (
+                typ.partial_fallback.type.fullname == "builtins.tuple"
+                and find_unpack_in_list(typ.items) is None
+            ):
                 return RTuple([self.type_to_rtype(t) for t in typ.items])
             else:
                 return tuple_rprimitive
@@ -116,12 +130,12 @@ class Mapper:
         elif isinstance(typ, NoneTyp):
             return none_rprimitive
         elif isinstance(typ, UnionType):
-            return RUnion([self.type_to_rtype(item) for item in typ.items])
+            return RUnion.make_simplified_union([self.type_to_rtype(item) for item in typ.items])
         elif isinstance(typ, AnyType):
             return object_rprimitive
         elif isinstance(typ, TypeType):
             return object_rprimitive
-        elif isinstance(typ, TypeVarType):
+        elif isinstance(typ, TypeVarLikeType):
             # Erase type variable to upper bound.
             # TODO: Erase to union if object has value restriction?
             return self.type_to_rtype(typ.upper_bound)
@@ -150,7 +164,7 @@ class Mapper:
         else:
             return self.type_to_rtype(typ)
 
-    def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
+    def fdef_to_sig(self, fdef: FuncDef, strict_dunders_typing: bool) -> FuncSignature:
         if isinstance(fdef.type, CallableType):
             arg_types = [
                 self.get_arg_rtype(typ, kind)
@@ -189,11 +203,14 @@ class Mapper:
             )
         ]
 
-        # We force certain dunder methods to return objects to support letting them
-        # return NotImplemented. It also avoids some pointless boxing and unboxing,
-        # since tp_richcompare needs an object anyways.
-        if fdef.name in ("__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"):
-            ret = object_rprimitive
+        if not strict_dunders_typing:
+            # We force certain dunder methods to return objects to support letting them
+            # return NotImplemented. It also avoids some pointless boxing and unboxing,
+            # since tp_richcompare needs an object anyways.
+            # However, it also prevents some optimizations.
+            if fdef.name in ("__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"):
+                ret = object_rprimitive
+
         return FuncSignature(args, ret)
 
     def is_native_module(self, module: str) -> bool:
@@ -204,7 +221,8 @@ class Mapper:
         if expr.node is None:
             return False
         if "." in expr.node.fullname:
-            return self.is_native_module(expr.node.fullname.rpartition(".")[0])
+            name = expr.node.fullname.rpartition(".")[0]
+            return self.is_native_module(name) or name in self.symbol_fullnames
         return True
 
     def is_native_module_ref_expr(self, expr: RefExpr) -> bool:

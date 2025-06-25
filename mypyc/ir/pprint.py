@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Sequence, Union
-from typing_extensions import Final
+from collections.abc import Sequence
+from typing import Any, Final, Union
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -23,6 +23,10 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    Float,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -40,6 +44,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -48,6 +53,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -106,7 +112,18 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         # it explicit that this is a Python object.
         if isinstance(op.value, int):
             prefix = "object "
-        return self.format("%r = %s%s", op, prefix, repr(op.value))
+
+        rvalue = repr(op.value)
+        if isinstance(op.value, frozenset):
+            # We need to generate a string representation that won't vary
+            # run-to-run because sets are unordered, otherwise we may get
+            # spurious irbuild test failures.
+            #
+            # Sorting by the item's string representation is a bit of a
+            # hack, but it's stable and won't cause TypeErrors.
+            formatted_items = [repr(i) for i in sorted(op.value, key=str)]
+            rvalue = "frozenset({" + ", ".join(formatted_items) + "})"
+        return self.format("%r = %s%s", op, prefix, rvalue)
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format("%r = %s%r.%s", op, self.borrow_prefix(op), op.obj, op.attr)
@@ -139,7 +156,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%s = %r :: %s", name, op.value, op.namespace)
 
     def visit_tuple_get(self, op: TupleGet) -> str:
-        return self.format("%r = %r[%d]", op, op.src, op.index)
+        return self.format("%r = %s%r[%d]", op, self.borrow_prefix(op), op.src, op.index)
 
     def visit_tuple_set(self, op: TupleSet) -> str:
         item_str = ", ".join(self.format("%r", item) for item in op.items)
@@ -202,6 +219,13 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         else:
             return self.format("%r = %s(%s)", op, op.function_name, args_str)
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> str:
+        args_str = ", ".join(self.format("%r", arg) for arg in op.args)
+        if op.is_void:
+            return self.format("%s %s", op.desc.name, args_str)
+        else:
+            return self.format("%r = %s %s", op, op.desc.name, args_str)
+
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
 
@@ -230,6 +254,15 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             "%r = %r %s %r%s", op, op.lhs, ComparisonOp.op_str[op.op], op.rhs, sign_format
         )
 
+    def visit_float_op(self, op: FloatOp) -> str:
+        return self.format("%r = %r %s %r", op, op.lhs, FloatOp.op_str[op.op], op.rhs)
+
+    def visit_float_neg(self, op: FloatNeg) -> str:
+        return self.format("%r = -%r", op, op.src)
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> str:
+        return self.format("%r = %r %s %r", op, op.lhs, op.op_str[op.op], op.rhs)
+
     def visit_load_mem(self, op: LoadMem) -> str:
         return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
 
@@ -242,11 +275,25 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_load_address(self, op: LoadAddress) -> str:
         if isinstance(op.src, Register):
             return self.format("%r = load_address %r", op, op.src)
+        elif isinstance(op.src, LoadStatic):
+            name = op.src.identifier
+            if op.src.module_name is not None:
+                name = f"{op.src.module_name}.{name}"
+            return self.format("%r = load_address %s :: %s", op, name, op.src.namespace)
         else:
             return self.format("%r = load_address %s", op, op.src)
 
     def visit_keep_alive(self, op: KeepAlive) -> str:
-        return self.format("keep_alive %s" % ", ".join(self.format("%r", v) for v in op.src))
+        if op.steal:
+            steal = "steal "
+        else:
+            steal = ""
+        return self.format(
+            "keep_alive {}{}".format(steal, ", ".join(self.format("%r", v) for v in op.src))
+        )
+
+    def visit_unborrow(self, op: Unborrow) -> str:
+        return self.format("%r = unborrow %r", op, op.src)
 
     # Helpers
 
@@ -278,6 +325,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                     assert isinstance(arg, Value)
                     if isinstance(arg, Integer):
                         result.append(str(arg.value))
+                    elif isinstance(arg, Float):
+                        result.append(repr(arg.value))
                     else:
                         result.append(self.names[arg])
                 elif typespec == "d":
@@ -434,7 +483,7 @@ def generate_names_for_ir(args: list[Register], blocks: list[BasicBlock]) -> dic
                     continue
                 if isinstance(value, Register) and value.name:
                     name = value.name
-                elif isinstance(value, Integer):
+                elif isinstance(value, (Integer, Float)):
                     continue
                 else:
                     name = "r%d" % temp_index

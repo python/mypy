@@ -1,7 +1,8 @@
-from _typeshed import Self
 from types import TracebackType
-from typing_extensions import final
+from typing import final
+from typing_extensions import Self
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 __all__ = ("Timeout", "timeout", "timeout_at")
 
 @final
@@ -10,7 +11,7 @@ class Timeout:
     def when(self) -> float | None: ...
     def reschedule(self, when: float | None) -> None: ...
     def expired(self) -> bool: ...
-    async def __aenter__(self: Self) -> Self: ...
+    async def __aenter__(self) -> Self: ...
     async def __aexit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...

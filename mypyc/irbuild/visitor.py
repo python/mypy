@@ -70,6 +70,7 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     TypeAliasExpr,
+    TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
     TypeVarExpr,
@@ -131,10 +132,12 @@ from mypyc.irbuild.statement import (
     transform_import,
     transform_import_all,
     transform_import_from,
+    transform_match_stmt,
     transform_operator_assignment_stmt,
     transform_raise_stmt,
     transform_return_stmt,
     transform_try_stmt,
+    transform_type_alias_stmt,
     transform_while_stmt,
     transform_with_stmt,
     transform_yield_expr,
@@ -193,6 +196,7 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         transform_return_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
         transform_assignment_stmt(self.builder, stmt)
@@ -211,12 +215,15 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_break_stmt(self, stmt: BreakStmt) -> None:
         transform_break_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_continue_stmt(self, stmt: ContinueStmt) -> None:
         transform_continue_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_raise_stmt(self, stmt: RaiseStmt) -> None:
         transform_raise_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_try_stmt(self, stmt: TryStmt) -> None:
         transform_try_stmt(self.builder, stmt)
@@ -242,7 +249,10 @@ class IRBuilderVisitor(IRVisitor):
         pass
 
     def visit_match_stmt(self, stmt: MatchStmt) -> None:
-        self.bail("Match statements are not yet supported", stmt.line)
+        transform_match_stmt(self.builder, stmt)
+
+    def visit_type_alias_stmt(self, stmt: TypeAliasStmt) -> None:
+        transform_type_alias_stmt(self.builder, stmt)
 
     # Expressions
 

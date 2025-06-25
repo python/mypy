@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 # Used as a suffix for triggers to handle "from m import *" dependencies (see also
 # make_wildcard_trigger)

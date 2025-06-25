@@ -3,7 +3,7 @@ name: Tests
 on:
   workflow_dispatch:
   push:
-    branches: [master, 'release*']
+    branches: [main, master, 'release*']
     tags: ['*']
   pull_request:
     paths-ignore:
@@ -14,6 +14,9 @@ on:
     - .gitignore
     - CREDITS
     - LICENSE
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -26,88 +29,105 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - name: Test suite with py37-windows-64
-          python: '3.7'
-          arch: x64
-          os: windows-latest
-          toxenv: py37
-        - name: Test suite with py38-ubuntu
-          python: '3.8'
-          arch: x64
-          os: ubuntu-latest
-          toxenv: py
-          tox_extra_args: "-n 2"
-        - name: Test suite with py39-ubuntu
+        # Make sure to run mypyc compiled unit tests for both
+        # the oldest and newest supported Python versions
+        - name: Test suite with py39-ubuntu, mypyc-compiled
           python: '3.9'
-          arch: x64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           toxenv: py
-          tox_extra_args: "-n 2"
-        - name: Test suite with py37-ubuntu, mypyc-compiled
-          python: '3.7'
-          arch: x64
-          os: ubuntu-latest
-          toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 4"
           test_mypyc: true
-        - name: Test suite with py310-ubuntu, mypyc-compiled
-          python: '3.10'
-          arch: x64
-          os: ubuntu-latest
-          toxenv: py
-          tox_extra_args: "-n 2"
-          test_mypyc: true
+        - name: Test suite with py39-windows-64
+          python: '3.9'
+          os: windows-latest
+          toxenv: py39
+          tox_extra_args: "-n 4"
         - name: Test suite with py310-ubuntu
           python: '3.10'
-          arch: x64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           toxenv: py
-          tox_extra_args: "-n 2"
-        - name: Test suite with py311-ubuntu, mypyc-compiled
+          tox_extra_args: "-n 4"
+        - name: Test suite with py311-ubuntu
           python: '3.11'
-          arch: x64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 4"
+        - name: Test suite with py312-ubuntu, mypyc-compiled
+          python: '3.12'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4"
           test_mypyc: true
-        - name: mypyc runtime tests with py37-macos
-          python: '3.7'
-          arch: x64
-          os: macos-latest
+        - name: Test suite with py313-ubuntu, mypyc-compiled
+          python: '3.13'
+          os: ubuntu-24.04-arm
           toxenv: py
-          tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
-        - name: mypyc runtime tests with py37-debug-build-ubuntu
-          python: '3.7.13'
-          arch: x64
-          os: ubuntu-latest
+          tox_extra_args: "-n 4"
+          test_mypyc: true
+
+        - name: Test suite with py314-dev-ubuntu
+          python: '3.14-dev'
+          os: ubuntu-24.04-arm
           toxenv: py
-          tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
-          debug_build: true
-        - name: Type check our own code (py37-ubuntu)
-          python: '3.7'
-          arch: x64
+          tox_extra_args: "-n 4"
+          # allow_failure: true
+          test_mypyc: true
+
+        - name: mypyc runtime tests with py39-macos
+          python: '3.9.21'
+          # TODO: macos-13 is the last one to support Python 3.9, change it to macos-latest when updating the Python version
+          os: macos-13
+          toxenv: py
+          tox_extra_args: "-n 3 mypyc/test/test_run.py mypyc/test/test_external.py"
+        # This is broken. See
+        # - https://github.com/python/mypy/issues/17819
+        # - https://github.com/python/mypy/pull/17822
+        # - name: mypyc runtime tests with py38-debug-build-ubuntu
+        #   python: '3.9.21'
+        #   os: ubuntu-latest
+        #   toxenv: py
+        #   tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
+        #   debug_build: true
+
+        - name: Type check our own code (py39-ubuntu)
+          python: '3.9'
           os: ubuntu-latest
           toxenv: type
-        - name: Type check our own code (py37-windows-64)
-          python: '3.7'
-          arch: x64
+        - name: Type check our own code (py39-windows-64)
+          python: '3.9'
           os: windows-latest
           toxenv: type
-        - name: Formatting with Black + isort and code style with flake8
-          python: '3.7'
-          arch: x64
+
+          # We also run these checks with pre-commit in CI,
+          # but it's useful to run them with tox too,
+          # to ensure the tox env works as expected
+        - name: Formatting and code style with Black + ruff
+          python: '3.10'
           os: ubuntu-latest
           toxenv: lint
 
     name: ${{ matrix.name }}
+    timeout-minutes: 60
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
+      # Rich (pip) -- Disable color for windows + pytest
+      FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
+      # Tox
+      PY_COLORS: 1
+      # Python -- Disable argparse help colors (3.14+)
+      PYTHON_COLORS: 0
+      # Mypy (see https://github.com/python/mypy/issues/7771)
+      TERM: xterm-color
+      MYPY_FORCE_COLOR: 1
+      MYPY_FORCE_TERMINAL_WIDTH: 200
+      # Pytest
+      PYTEST_ADDOPTS: --color=yes
+
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
+    - uses: actions/checkout@v4
       with:
-        python-version: ${{ matrix.python }}
-        architecture: ${{ matrix.arch }}
+        persist-credentials: false
+
     - name: Debug build
       if: ${{ matrix.debug_build }}
       run: |
@@ -115,15 +135,104 @@ jobs:
         PYTHONDIR=~/python-debug/python-$PYTHONVERSION
         VENV=$PYTHONDIR/env
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
+        # TODO: does this do anything? env vars aren't passed to the next step right
         source $VENV/bin/activate
+    - name: Latest dev build
+      if: ${{ endsWith(matrix.python, '-dev') }}
+      run: |
+          git clone --depth 1 https://github.com/python/cpython.git /tmp/cpython --branch $( echo ${{ matrix.python }} | sed 's/-dev//' )
+          cd /tmp/cpython
+          echo git rev-parse HEAD; git rev-parse HEAD
+          git show --no-patch
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
+            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
+          ./configure --prefix=/opt/pythondev
+          make -j$(nproc)
+          sudo make install
+          sudo ln -s /opt/pythondev/bin/python3 /opt/pythondev/bin/python
+          sudo ln -s /opt/pythondev/bin/pip3 /opt/pythondev/bin/pip
+          echo "/opt/pythondev/bin" >> $GITHUB_PATH
+    - uses: actions/setup-python@v5
+      if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
+      with:
+        python-version: ${{ matrix.python }}
+
     - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' tox==3.24.5
+      run: |
+        echo PATH; echo $PATH
+        echo which python; which python
+        echo which pip; which pip
+        echo python version; python -c 'import sys; print(sys.version)'
+        echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
+        echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
+        echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
+        pip install setuptools==75.1.0 tox==4.26.0
+
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
       run: |
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
+
     - name: Setup tox environment
-      run: tox -e ${{ matrix.toxenv }} --notest
+      run: |
+        tox run -e ${{ matrix.toxenv }} --notest
     - name: Test
-      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
+      run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
+      continue-on-error: ${{ matrix.allow_failure == 'true' }}
+
+    - name: Mark as success (check failures manually)
+      if: ${{ matrix.allow_failure == 'true' }}
+      run: exit 0
+
+  python_32bits:
+    runs-on: ubuntu-latest
+    name: Test mypyc suite with 32-bit Python
+    timeout-minutes: 60
+    env:
+      TOX_SKIP_MISSING_INTERPRETERS: False
+      # Rich (pip)
+      FORCE_COLOR: 1
+      # Tox
+      PY_COLORS: 1
+      # Mypy (see https://github.com/python/mypy/issues/7771)
+      TERM: xterm-color
+      MYPY_FORCE_COLOR: 1
+      MYPY_FORCE_TERMINAL_WIDTH: 200
+      # Pytest
+      PYTEST_ADDOPTS: --color=yes
+      CXX: i686-linux-gnu-g++
+      CC: i686-linux-gnu-gcc
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install 32-bit build dependencies
+        run: |
+          sudo dpkg --add-architecture i386 && \
+          sudo apt-get update && sudo apt-get install -y \
+            zlib1g-dev:i386 \
+            libgcc-s1:i386 \
+            g++-i686-linux-gnu \
+            gcc-i686-linux-gnu \
+            libffi-dev:i386 \
+            libssl-dev:i386 \
+            libbz2-dev:i386 \
+            libncurses-dev:i386 \
+            libreadline-dev:i386 \
+            libsqlite3-dev:i386 \
+            liblzma-dev:i386 \
+            uuid-dev:i386
+      - name: Compile, install, and activate 32-bit Python
+        uses: gabrielfalcao/pyenv-action@v13
+        with:
+          default: 3.11.1
+          command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
+      - name: Install tox
+        run: pip install setuptools==75.1.0 tox==4.26.0
+      - name: Setup tox environment
+        run: tox run -e py --notest
+      - name: Test
+        run: tox run -e py --skip-pkg-install -- -n 4 mypyc/test/

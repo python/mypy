@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os.path
+import sys
 
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
@@ -23,12 +24,15 @@ from mypyc.test.testutil import (
 files = [
     "irbuild-basic.test",
     "irbuild-int.test",
+    "irbuild-bool.test",
     "irbuild-lists.test",
     "irbuild-tuple.test",
     "irbuild-dict.test",
     "irbuild-set.test",
     "irbuild-str.test",
     "irbuild-bytes.test",
+    "irbuild-float.test",
+    "irbuild-frozenset.test",
     "irbuild-statements.test",
     "irbuild-nested.test",
     "irbuild-classes.test",
@@ -39,6 +43,8 @@ files = [
     "irbuild-strip-asserts.test",
     "irbuild-i64.test",
     "irbuild-i32.test",
+    "irbuild-i16.test",
+    "irbuild-u8.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",
@@ -46,7 +52,11 @@ files = [
     "irbuild-singledispatch.test",
     "irbuild-constant-fold.test",
     "irbuild-glue-methods.test",
+    "irbuild-math.test",
 ]
+
+if sys.version_info >= (3, 10):
+    files.append("irbuild-match.test")
 
 
 class TestGenOps(MypycDataSuite):

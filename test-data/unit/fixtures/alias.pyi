@@ -12,3 +12,5 @@ class str: pass
 class function: pass
 
 bytes = str
+
+class dict: pass

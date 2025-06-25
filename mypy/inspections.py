@@ -6,7 +6,6 @@ from functools import cmp_to_key
 from typing import Callable
 
 from mypy.build import State
-from mypy.find_sources import InvalidSourceList, SourceFinder
 from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.nodes import (
@@ -206,9 +205,6 @@ class InspectionEngine:
         force_reload: bool = False,
     ) -> None:
         self.fg_manager = fg_manager
-        self.finder = SourceFinder(
-            self.fg_manager.manager.fscache, self.fg_manager.manager.options
-        )
         self.verbosity = verbosity
         self.limit = limit
         self.include_span = include_span
@@ -218,13 +214,6 @@ class InspectionEngine:
         self.force_reload = force_reload
         # Module for which inspection was requested.
         self.module: State | None = None
-
-    def parse_location(self, location: str) -> tuple[str, list[int]]:
-        if location.count(":") not in [2, 4]:
-            raise ValueError("Format should be file:line:column[:end_line:end_column]")
-        parts = location.split(":")
-        module, *rest = parts
-        return module, [int(p) for p in rest]
 
     def reload_module(self, state: State) -> None:
         """Reload given module while temporary exporting types."""
@@ -247,7 +236,9 @@ class InspectionEngine:
         if expr_type is None:
             return self.missing_type(expression), False
 
-        type_str = format_type(expr_type, verbosity=self.verbosity)
+        type_str = format_type(
+            expr_type, self.fg_manager.manager.options, verbosity=self.verbosity
+        )
         return self.add_prefixes(type_str, expression), True
 
     def object_type(self) -> Instance:
@@ -344,7 +335,7 @@ class InspectionEngine:
             node = expression.node
             names = sorted(node.names)
             if "__builtins__" in names:
-                # This is just to make tests stable. No one will really need ths name.
+                # This is just to make tests stable. No one will really need this name.
                 names.remove("__builtins__")
             mod_dict = {f'"<{node.fullname}>"': [f'"{name}"' for name in names]}
         else:
@@ -478,8 +469,7 @@ class InspectionEngine:
 
     def missing_node(self, expression: Expression) -> str:
         return (
-            f'Cannot find definition for "{type(expression).__name__}"'
-            f" at {expr_span(expression)}"
+            f'Cannot find definition for "{type(expression).__name__}" at {expr_span(expression)}'
         )
 
     def add_prefixes(self, result: str, expression: Expression) -> str:
@@ -559,16 +549,14 @@ class InspectionEngine:
         if not any(file.endswith(ext) for ext in PYTHON_EXTENSIONS):
             return None, {"error": "Source file is not a Python file"}
 
-        try:
-            module, _ = self.finder.crawl_up(os.path.normpath(file))
-        except InvalidSourceList:
-            return None, {"error": "Invalid source file name: " + file}
-
-        state = self.fg_manager.graph.get(module)
+        # We are using a bit slower but robust way to find a module by path,
+        # to be sure that namespace packages are handled properly.
+        abs_path = os.path.abspath(file)
+        state = next((s for s in self.fg_manager.graph.values() if s.abspath == abs_path), None)
         self.module = state
         return (
             state,
-            {"out": f"Unknown module: {module}", "err": "", "status": 1} if state is None else {},
+            {"out": f"Unknown module: {file}", "err": "", "status": 1} if state is None else {},
         )
 
     def run_inspection(
@@ -576,10 +564,10 @@ class InspectionEngine:
     ) -> dict[str, object]:
         """Top-level logic to inspect expression(s) at a location.
 
-        This can be re-used by various simple inspections.
+        This can be reused by various simple inspections.
         """
         try:
-            file, pos = self.parse_location(location)
+            file, pos = parse_location(location)
         except ValueError as err:
             return {"error": str(err)}
 
@@ -621,3 +609,18 @@ class InspectionEngine:
             result["out"] = f"No name or member expressions at {location}"
             result["status"] = 1
         return result
+
+
+def parse_location(location: str) -> tuple[str, list[int]]:
+    if location.count(":") < 2:
+        raise ValueError("Format should be file:line:column[:end_line:end_column]")
+    parts = location.rsplit(":", maxsplit=2)
+    start, *rest = parts
+    # Note: we must allow drive prefix like `C:` on Windows.
+    if start.count(":") < 2:
+        return start, [int(p) for p in rest]
+    parts = start.rsplit(":", maxsplit=2)
+    start, *start_rest = parts
+    if start.count(":") < 2:
+        return start, [int(p) for p in start_rest + rest]
+    raise ValueError("Format should be file:line:column[:end_line:end_column]")

@@ -1,11 +1,11 @@
+import _typeshed
 import sys
 import types
-from _typeshed import Self, SupportsKeysAndGetItem
-from abc import ABCMeta
+from _typeshed import SupportsKeysAndGetItem, Unused
 from builtins import property as _builtins_property
-from collections.abc import Iterable, Iterator, Mapping
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from collections.abc import Callable, Iterable, Iterator, Mapping
+from typing import Any, Generic, Literal, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["EnumMeta", "Enum", "IntEnum", "Flag", "IntFlag", "auto", "unique"]
 
@@ -31,7 +31,12 @@ if sys.version_info >= (3, 11):
         "nonmember",
         "property",
         "verify",
+        "pickle_by_enum_name",
+        "pickle_by_global_name",
     ]
+
+if sys.version_info >= (3, 13):
+    __all__ += ["EnumDict"]
 
 _EnumMemberT = TypeVar("_EnumMemberT")
 _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
@@ -48,6 +53,7 @@ _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
 # >>> Enum('Foo', names={'RED': 1, 'YELLOW': 2})
 # <enum 'Foo'>
 _EnumNames: TypeAlias = str | Iterable[str] | Iterable[Iterable[str | Any]] | Mapping[str, Any]
+_Signature: TypeAlias = Any  # TODO: Unable to import Signature from inspect module
 
 if sys.version_info >= (3, 11):
     class nonmember(Generic[_EnumMemberT]):
@@ -59,7 +65,11 @@ if sys.version_info >= (3, 11):
         def __init__(self, value: _EnumMemberT) -> None: ...
 
 class _EnumDict(dict[str, Any]):
-    def __init__(self) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(self, cls_name: str | None = None) -> None: ...
+    else:
+        def __init__(self) -> None: ...
+
     def __setitem__(self, key: str, value: Any) -> None: ...
     if sys.version_info >= (3, 11):
         # See comment above `typing.MutableMapping.update`
@@ -71,49 +81,56 @@ class _EnumDict(dict[str, Any]):
         def update(self, members: SupportsKeysAndGetItem[str, Any], **more_members: Any) -> None: ...
         @overload
         def update(self, members: Iterable[tuple[str, Any]], **more_members: Any) -> None: ...
+    if sys.version_info >= (3, 13):
+        @property
+        def member_names(self) -> list[str]: ...
 
-# Note: EnumMeta actually subclasses type directly, not ABCMeta.
-# This is a temporary workaround to allow multiple creation of enums with builtins
-# such as str as mixins, which due to the handling of ABCs of builtin types, cause
-# spurious inconsistent metaclass structure. See #1595.
+if sys.version_info >= (3, 13):
+    EnumDict = _EnumDict
+
 # Structurally: Iterable[T], Reversible[T], Container[T] where T is the enum itself
-class EnumMeta(ABCMeta):
+class EnumMeta(type):
     if sys.version_info >= (3, 11):
         def __new__(
-            metacls: type[Self],
+            metacls: type[_typeshed.Self],
             cls: str,
             bases: tuple[type, ...],
             classdict: _EnumDict,
             *,
-            boundary: FlagBoundary | None = ...,
-            _simple: bool = ...,
+            boundary: FlagBoundary | None = None,
+            _simple: bool = False,
             **kwds: Any,
-        ) -> Self: ...
-    elif sys.version_info >= (3, 9):
-        def __new__(metacls: type[Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict, **kwds: Any) -> Self: ...
+        ) -> _typeshed.Self: ...
     else:
-        def __new__(metacls: type[Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict) -> Self: ...
+        def __new__(
+            metacls: type[_typeshed.Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict, **kwds: Any
+        ) -> _typeshed.Self: ...
 
-    if sys.version_info >= (3, 9):
-        @classmethod
-        def __prepare__(metacls, cls: str, bases: tuple[type, ...], **kwds: Any) -> _EnumDict: ...  # type: ignore[override]
-    else:
-        @classmethod
-        def __prepare__(metacls, cls: str, bases: tuple[type, ...]) -> _EnumDict: ...  # type: ignore[override]
-
+    @classmethod
+    def __prepare__(metacls, cls: str, bases: tuple[type, ...], **kwds: Any) -> _EnumDict: ...  # type: ignore[override]
     def __iter__(self: type[_EnumMemberT]) -> Iterator[_EnumMemberT]: ...
     def __reversed__(self: type[_EnumMemberT]) -> Iterator[_EnumMemberT]: ...
-    def __contains__(self: type[Any], obj: object) -> bool: ...
+    if sys.version_info >= (3, 12):
+        def __contains__(self: type[Any], value: object) -> bool: ...
+    elif sys.version_info >= (3, 11):
+        def __contains__(self: type[Any], member: object) -> bool: ...
+    elif sys.version_info >= (3, 10):
+        def __contains__(self: type[Any], obj: object) -> bool: ...
+    else:
+        def __contains__(self: type[Any], member: object) -> bool: ...
+
     def __getitem__(self: type[_EnumMemberT], name: str) -> _EnumMemberT: ...
     @_builtins_property
     def __members__(self: type[_EnumMemberT]) -> types.MappingProxyType[str, _EnumMemberT]: ...
     def __len__(self) -> int: ...
     def __bool__(self) -> Literal[True]: ...
     def __dir__(self) -> list[str]: ...
-    # Simple value lookup
-    @overload  # type: ignore[override]
-    def __call__(cls: type[_EnumMemberT], value: Any, names: None = ...) -> _EnumMemberT: ...
-    # Functional Enum API
+
+    # Overload 1: Value lookup on an already existing enum class (simple case)
+    @overload
+    def __call__(cls: type[_EnumMemberT], value: Any, names: None = None) -> _EnumMemberT: ...
+
+    # Overload 2: Functional API for constructing new enum classes.
     if sys.version_info >= (3, 11):
         @overload
         def __call__(
@@ -121,11 +138,11 @@ class EnumMeta(ABCMeta):
             value: str,
             names: _EnumNames,
             *,
-            module: str | None = ...,
-            qualname: str | None = ...,
-            type: type | None = ...,
-            start: int = ...,
-            boundary: FlagBoundary | None = ...,
+            module: str | None = None,
+            qualname: str | None = None,
+            type: type | None = None,
+            start: int = 1,
+            boundary: FlagBoundary | None = None,
         ) -> type[Enum]: ...
     else:
         @overload
@@ -134,11 +151,26 @@ class EnumMeta(ABCMeta):
             value: str,
             names: _EnumNames,
             *,
-            module: str | None = ...,
-            qualname: str | None = ...,
-            type: type | None = ...,
-            start: int = ...,
+            module: str | None = None,
+            qualname: str | None = None,
+            type: type | None = None,
+            start: int = 1,
         ) -> type[Enum]: ...
+
+    # Overload 3 (py312+ only): Value lookup on an already existing enum class (complex case)
+    #
+    # >>> class Foo(enum.Enum):
+    # ...     X = 1, 2, 3
+    # >>> Foo(1, 2, 3)
+    # <Foo.X: (1, 2, 3)>
+    #
+    if sys.version_info >= (3, 12):
+        @overload
+        def __call__(cls: type[_EnumMemberT], value: Any, *values: Any) -> _EnumMemberT: ...
+    if sys.version_info >= (3, 14):
+        @property
+        def __signature__(cls) -> _Signature: ...
+
     _member_names_: list[str]  # undocumented
     _member_map_: dict[str, Enum]  # undocumented
     _value2member_map_: dict[Any, Enum]  # undocumented
@@ -151,6 +183,8 @@ if sys.version_info >= (3, 11):
         def __set_name__(self, ownerclass: type[Enum], name: str) -> None: ...
         name: str
         clsname: str
+        member: Enum | None
+
     _magic_enum_attr = property
 else:
     _magic_enum_attr = types.DynamicClassAttribute
@@ -174,10 +208,17 @@ class Enum(metaclass=EnumMeta):
     # However, using `Any` causes too many false-positives for those using mypy's `--disallow-any-expr`
     # (see #7752, #2539, mypy/#5788),
     # and in practice using `object` here has the same effect as using `Any`.
-    def __new__(cls: type[Self], value: object) -> Self: ...
+    def __new__(cls, value: object) -> Self: ...
     def __dir__(self) -> list[str]: ...
+    def __hash__(self) -> int: ...
     def __format__(self, format_spec: str) -> str: ...
-    def __reduce_ex__(self, proto: object) -> tuple[Any, ...]: ...
+    def __reduce_ex__(self, proto: Unused) -> tuple[Any, ...]: ...
+    if sys.version_info >= (3, 11):
+        def __copy__(self) -> Self: ...
+        def __deepcopy__(self, memo: Any) -> Self: ...
+    if sys.version_info >= (3, 12) and sys.version_info < (3, 14):
+        @classmethod
+        def __signature__(cls) -> str: ...
 
 if sys.version_info >= (3, 11):
     class ReprEnum(Enum): ...
@@ -191,18 +232,11 @@ class IntEnum(int, _IntEnumBase):
     _value_: int
     @_magic_enum_attr
     def value(self) -> int: ...
-    def __new__(cls: type[Self], value: int) -> Self: ...
+    def __new__(cls, value: int) -> Self: ...
 
 def unique(enumeration: _EnumerationT) -> _EnumerationT: ...
 
 _auto_null: Any
-
-# subclassing IntFlag so it picks up all implemented base functions, best modeling behavior of enum.auto()
-class auto(IntFlag):
-    _value_: Any
-    @_magic_enum_attr
-    def value(self) -> Any: ...
-    def __new__(cls: type[Self]) -> Self: ...
 
 class Flag(Enum):
     _name_: str | None  # type: ignore[assignment]
@@ -211,51 +245,33 @@ class Flag(Enum):
     def name(self) -> str | None: ...  # type: ignore[override]
     @_magic_enum_attr
     def value(self) -> int: ...
-    def __contains__(self: Self, other: Self) -> bool: ...
+    def __contains__(self, other: Self) -> bool: ...
     def __bool__(self) -> bool: ...
-    def __or__(self: Self, other: Self) -> Self: ...
-    def __and__(self: Self, other: Self) -> Self: ...
-    def __xor__(self: Self, other: Self) -> Self: ...
-    def __invert__(self: Self) -> Self: ...
+    def __or__(self, other: Self) -> Self: ...
+    def __and__(self, other: Self) -> Self: ...
+    def __xor__(self, other: Self) -> Self: ...
+    def __invert__(self) -> Self: ...
     if sys.version_info >= (3, 11):
-        def __iter__(self: Self) -> Iterator[Self]: ...
+        def __iter__(self) -> Iterator[Self]: ...
         def __len__(self) -> int: ...
         __ror__ = __or__
         __rand__ = __and__
         __rxor__ = __xor__
 
 if sys.version_info >= (3, 11):
-    # The body of the class is the same, but the base classes are different.
-    class IntFlag(int, ReprEnum, Flag, boundary=KEEP):
-        def __new__(cls: type[Self], value: int) -> Self: ...
-        def __or__(self: Self, other: int) -> Self: ...
-        def __and__(self: Self, other: int) -> Self: ...
-        def __xor__(self: Self, other: int) -> Self: ...
-        __ror__ = __or__
-        __rand__ = __and__
-        __rxor__ = __xor__
-
-else:
-    class IntFlag(int, Flag):
-        def __new__(cls: type[Self], value: int) -> Self: ...
-        def __or__(self: Self, other: int) -> Self: ...
-        def __and__(self: Self, other: int) -> Self: ...
-        def __xor__(self: Self, other: int) -> Self: ...
-        __ror__ = __or__
-        __rand__ = __and__
-        __rxor__ = __xor__
-
-if sys.version_info >= (3, 11):
     class StrEnum(str, ReprEnum):
-        def __new__(cls: type[Self], value: str) -> Self: ...
+        def __new__(cls, value: str) -> Self: ...
         _value_: str
         @_magic_enum_attr
         def value(self) -> str: ...
+        @staticmethod
+        def _generate_next_value_(name: str, start: int, count: int, last_values: list[str]) -> str: ...
 
     class EnumCheck(StrEnum):
-        CONTINUOUS: str
-        NAMED_FLAGS: str
-        UNIQUE: str
+        CONTINUOUS = "no skipped integer values"
+        NAMED_FLAGS = "multi-flag aliases may not contain unnamed flags"
+        UNIQUE = "one name per value"
+
     CONTINUOUS = EnumCheck.CONTINUOUS
     NAMED_FLAGS = EnumCheck.NAMED_FLAGS
     UNIQUE = EnumCheck.UNIQUE
@@ -265,16 +281,62 @@ if sys.version_info >= (3, 11):
         def __call__(self, enumeration: _EnumerationT) -> _EnumerationT: ...
 
     class FlagBoundary(StrEnum):
-        STRICT: str
-        CONFORM: str
-        EJECT: str
-        KEEP: str
+        STRICT = "strict"
+        CONFORM = "conform"
+        EJECT = "eject"
+        KEEP = "keep"
+
     STRICT = FlagBoundary.STRICT
     CONFORM = FlagBoundary.CONFORM
     EJECT = FlagBoundary.EJECT
     KEEP = FlagBoundary.KEEP
 
     def global_str(self: Enum) -> str: ...
-    def global_enum(cls: _EnumerationT, update_str: bool = ...) -> _EnumerationT: ...
+    def global_enum(cls: _EnumerationT, update_str: bool = False) -> _EnumerationT: ...
     def global_enum_repr(self: Enum) -> str: ...
     def global_flag_repr(self: Flag) -> str: ...
+
+if sys.version_info >= (3, 11):
+    # The body of the class is the same, but the base classes are different.
+    class IntFlag(int, ReprEnum, Flag, boundary=KEEP):  # type: ignore[misc]  # complaints about incompatible bases
+        def __new__(cls, value: int) -> Self: ...
+        def __or__(self, other: int) -> Self: ...
+        def __and__(self, other: int) -> Self: ...
+        def __xor__(self, other: int) -> Self: ...
+        def __invert__(self) -> Self: ...
+        __ror__ = __or__
+        __rand__ = __and__
+        __rxor__ = __xor__
+
+else:
+    class IntFlag(int, Flag):  # type: ignore[misc]  # complaints about incompatible bases
+        def __new__(cls, value: int) -> Self: ...
+        def __or__(self, other: int) -> Self: ...
+        def __and__(self, other: int) -> Self: ...
+        def __xor__(self, other: int) -> Self: ...
+        def __invert__(self) -> Self: ...
+        __ror__ = __or__
+        __rand__ = __and__
+        __rxor__ = __xor__
+
+class auto:
+    _value_: Any
+    @_magic_enum_attr
+    def value(self) -> Any: ...
+    def __new__(cls) -> Self: ...
+
+    # These don't exist, but auto is basically immediately replaced with
+    # either an int or a str depending on the type of the enum. StrEnum's auto
+    # shouldn't have these, but they're needed for int versions of auto (mostly the __or__).
+    # Ideally type checkers would special case auto enough to handle this,
+    # but until then this is a slightly inaccurate helping hand.
+    def __or__(self, other: int | Self) -> Self: ...
+    def __and__(self, other: int | Self) -> Self: ...
+    def __xor__(self, other: int | Self) -> Self: ...
+    __ror__ = __or__
+    __rand__ = __and__
+    __rxor__ = __xor__
+
+if sys.version_info >= (3, 11):
+    def pickle_by_global_name(self: Enum, proto: int) -> str: ...
+    def pickle_by_enum_name(self: _EnumMemberT, proto: int) -> tuple[Callable[..., Any], tuple[type[_EnumMemberT], str]]: ...

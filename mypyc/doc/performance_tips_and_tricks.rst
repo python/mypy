@@ -57,12 +57,11 @@ here we call ``acme.get_items()``, but it has no type annotation. We
 can use an explicit type annotation for the variable to which we
 assign the result::
 
-    from typing import List, Tuple
     import acme
 
     def work() -> None:
         # Annotate "items" to help mypyc
-        items: List[Tuple[int, str]] = acme.get_items()
+        items: list[tuple[int, str]] = acme.get_items()
         for item in items:
             ...  # Do some work here
 
@@ -103,8 +102,6 @@ These things also tend to be relatively slow:
 
 * Using generator functions
 
-* Using floating point numbers (they are relatively unoptimized)
-
 * Using callable values (i.e. not leveraging early binding to call
   functions or methods)
 
@@ -142,7 +139,7 @@ Similarly, caching a frequently called method in a local variable can
 help in CPython, but it can slow things down in compiled code, since
 the code won't use :ref:`early binding <early-binding>`::
 
-    def squares(n: int) -> List[int]:
+    def squares(n: int) -> list[int]:
         a = []
         append = a.append  # Not a good idea in compiled code!
         for i in range(n):
@@ -159,6 +156,8 @@ Here are examples of features that are fast, in no particular order
   unit (with positional and/or keyword arguments)
 
 * Many integer operations
+
+* Many ``float`` operations
 
 * Booleans
 

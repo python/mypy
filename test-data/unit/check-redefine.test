@@ -88,6 +88,7 @@ def h(a: Iterable[int]) -> None:
 
 [case testCannotRedefineLocalWithinTry]
 # flags: --allow-redefinition
+def g(): pass
 def f() -> None:
     try:
         x = 0
@@ -102,7 +103,67 @@ def f() -> None:
     y
     y = ''
 
-def g(): pass
+[case testRedefineLocalWithinTryClauses]
+# flags: --allow-redefinition
+def fn_str(_: str) -> int: ...
+def fn_int(_: int) -> None: ...
+
+def in_block() -> None:
+    try:
+        a = ""
+        a = fn_str(a)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        fn_int(a)  # E: Argument 1 to "fn_int" has incompatible type "str"; expected "int"
+    except:
+        b = ""
+        b = fn_str(b)
+        fn_int(b)
+    else:
+        c = ""
+        c = fn_str(c)
+        fn_int(c)
+    finally:
+        d = ""
+        d = fn_str(d)
+        fn_int(d)
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+    reveal_type(b)  # N: Revealed type is "builtins.int"
+    reveal_type(c)  # N: Revealed type is "builtins.int"
+    reveal_type(d)  # N: Revealed type is "builtins.int"
+
+def across_blocks() -> None:
+    try:
+        a = ""
+    except:
+        pass
+    else:
+        a = fn_str(a)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testRedefineLocalExceptVar]
+# flags: --allow-redefinition
+def fn_exc(_: Exception) -> str: ...
+
+def exc_name() -> None:
+    try:
+        pass
+    except RuntimeError as e:
+        e = fn_exc(e)
+[builtins fixtures/exception.pyi]
+
+[case testRedefineNestedInTry]
+# flags: --allow-redefinition
+
+def fn_int(_: int) -> None: ...
+
+try:
+    try:
+        ...
+    finally:
+        a = ""
+        a = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        fn_int(a)  # E: Argument 1 to "fn_int" has incompatible type "str"; expected "int"
+except:
+    pass
 
 [case testRedefineLocalWithinWith]
 # flags: --allow-redefinition
@@ -193,7 +254,8 @@ def f() -> None:
     _, _ = 1, ''
     if 1:
         _, _ = '', 1
-        reveal_type(_) # N: Revealed type is "Any"
+        # This is unintentional but probably fine. No one is going to read _ value.
+        reveal_type(_) # N: Revealed type is "builtins.int"
 
 [case testRedefineWithBreakAndContinue]
 # flags: --allow-redefinition
@@ -261,7 +323,7 @@ def f() -> None:
 def f() -> None:
     class x: pass
     x = 1 # E: Cannot assign to a type \
-          # E: Incompatible types in assignment (expression has type "int", variable has type "Type[x]")
+          # E: Incompatible types in assignment (expression has type "int", variable has type "type[x]")
     y = 1
     class y: pass # E: Name "y" already defined on line 5
 
@@ -270,14 +332,16 @@ def f() -> None:
 from typing import TypeVar
 def f() -> None:
     x = TypeVar('x')
-    x = 1  # E: Invalid assignment target
-    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = 1  # E: Invalid assignment target \
+           # E: Incompatible types in assignment (expression has type "int", variable has type "TypeVar")
+    reveal_type(x) # N: Revealed type is "typing.TypeVar"
     y = 1
-    # NOTE: '"int" not callable' is due to test stubs
     y = TypeVar('y')  # E: Cannot redefine "y" as a type variable \
-                      # E: "int" not callable
+                      # E: Incompatible types in assignment (expression has type "TypeVar", variable has type "int")
     def h(a: y) -> y: return a # E: Variable "y" is not valid as a type \
                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCannotRedefineVarAsModule]
 # flags: --allow-redefinition
@@ -287,6 +351,7 @@ def f() -> None:
     n = 1
     import typing as n  # E: Incompatible import of "n" (imported name has type Module, local name has type "int")
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testRedefineLocalWithTypeAnnotation]
 # flags: --allow-redefinition
@@ -318,7 +383,7 @@ def f() -> None:
     x = 1
     if int():
         x = ''
-    reveal_type(x) # N: Revealed type is "builtins.object"
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
     x = ''
     reveal_type(x) # N: Revealed type is "builtins.str"
     if int():
@@ -483,6 +548,7 @@ try:
 except Exception as typing:
     pass
 [builtins fixtures/exception.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testRedefiningUnderscoreFunctionIsntAnError]
 def _(arg):
