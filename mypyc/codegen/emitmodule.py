@@ -29,7 +29,7 @@ from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
-from mypyc.codegen.emitclass import generate_class, generate_class_type_decl
+from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_legacy_wrapper_function,
@@ -609,6 +609,8 @@ class GroupGenerator:
             self.declare_finals(module_name, module.final_names, declarations)
             for cl in module.classes:
                 generate_class_type_decl(cl, emitter, ext_declarations, declarations)
+                if cl.reuse_freed_instance:
+                    generate_class_reuse(cl, emitter, ext_declarations, declarations)
             self.declare_type_vars(module_name, module.type_var_names, declarations)
             for fn in module.functions:
                 generate_function_declaration(fn, declarations)
