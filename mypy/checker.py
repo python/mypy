@@ -3316,6 +3316,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     type_contexts.append(base_type)
         # Use most derived supertype as type context if available.
         if not type_contexts:
+            if inferred.name == "__slots__":
+                str_type = self.named_type("builtins.str")
+                return self.named_generic_type("typing.Iterable", [str_type])
             return None
         candidate = type_contexts[0]
         for other in type_contexts:

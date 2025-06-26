@@ -496,6 +496,11 @@ class A:
         self.missing = 3
 [builtins fixtures/dict.pyi]
 
+[case testSlotsEmptyList]
+class A:
+    __slots__ = []
+[builtins fixtures/dict.pyi]
+
 
 [case testSlotsWithAny]
 from typing import Any
