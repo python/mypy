@@ -550,6 +550,10 @@ class SuggestionEngine:
         # TODO: Also return OverloadedFuncDef -- currently these are ignored.
         node: SymbolNode | None = None
         if ":" in key:
+            # A colon might be part of a drive name on Windows (like `C:/foo/bar`)
+            # and is also used as a delimiter between file path and lineno.
+            # If a colon is there for any of those reasons, it must be a file+line
+            # reference.
             platform_key_count = 2 if sys.platform == "win32" else 1
             if key.count(":") > platform_key_count:
                 raise SuggestionFailure(
