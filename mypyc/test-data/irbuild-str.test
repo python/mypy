@@ -504,3 +504,61 @@ L0:
     r7 = CPyStr_Strip(s, 0)
     r8 = CPyStr_RStrip(s, 0)
     return 1
+
+[case testCountAll]
+def do_count(s: str) -> int:
+    return s.count("x")  # type: ignore [attr-defined]
+[out]
+def do_count(s):
+    s, r0 :: str
+    r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4 :: int
+L0:
+    r0 = 'x'
+    r1 = CPyStr_Count(s, r0, 0)
+    r2 = r1 >= 0 :: signed
+    r3 = box(native_int, r1)
+    r4 = unbox(int, r3)
+    return r4
+
+[case testCountStart]
+def do_count(s: str, start: int) -> int:
+    return s.count("x", start)  # type: ignore [attr-defined]
+[out]
+def do_count(s, start):
+    s :: str
+    start :: int
+    r0 :: str
+    r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4 :: int
+L0:
+    r0 = 'x'
+    r1 = CPyStr_Count(s, r0, start)
+    r2 = r1 >= 0 :: signed
+    r3 = box(native_int, r1)
+    r4 = unbox(int, r3)
+    return r4
+
+[case testCountStartEnd]
+def do_count(s: str, start: int, end: int) -> int:
+    return s.count("x", start, end)  # type: ignore [attr-defined]
+[out]
+def do_count(s, start, end):
+    s :: str
+    start, end :: int
+    r0 :: str
+    r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4 :: int
+L0:
+    r0 = 'x'
+    r1 = CPyStr_CountFull(s, r0, start, end)
+    r2 = r1 >= 0 :: signed
+    r3 = box(native_int, r1)
+    r4 = unbox(int, r3)
+    return r4
