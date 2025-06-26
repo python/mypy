@@ -778,6 +778,13 @@ assert sys.platform == 'lol'
 def bar() -> None: pass
 [builtins fixtures/ops.pyi]
 
+[case testUnreachableAfterToplevelAssertImportThirdParty]
+# flags: --platform unknown
+import sys
+assert sys.platform == 'linux'
+import does_not_exist
+[builtins fixtures/ops.pyi]
+
 [case testUnreachableAfterToplevelAssertNotInsideIf]
 import sys
 if sys.version_info[0] >= 2:

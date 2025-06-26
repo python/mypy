@@ -633,6 +633,8 @@ class Errors:
                         return
             if file in self.ignored_files:
                 return
+            if file in self.skipped_lines and set(lines) <= self.skipped_lines[file]:
+                return
         if info.only_once:
             if info.message in self.only_once_messages:
                 return
