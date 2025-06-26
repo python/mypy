@@ -667,6 +667,7 @@ PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+char CPyList_Clear(PyObject *list);
 PyObject *CPyList_Copy(PyObject *list);
 int CPySequence_Check(PyObject *obj);
 
