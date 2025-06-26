@@ -791,8 +791,7 @@ def f3() -> None:
             x = ""
             return
     finally:
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]" \
-            # N: Revealed type is "builtins.int"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
     reveal_type(x) # N: Revealed type is "builtins.int"
 
 def f4() -> None:

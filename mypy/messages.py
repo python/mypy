@@ -1370,11 +1370,14 @@ class MessageBuilder:
             self.fail(f"Type application has too few types ({s})", context)
 
     def could_not_infer_type_arguments(
-        self, callee_type: CallableType, n: int, context: Context
+        self, callee_type: CallableType, tv: TypeVarLikeType, context: Context
     ) -> None:
         callee_name = callable_name(callee_type)
-        if callee_name is not None and n > 0:
-            self.fail(f"Cannot infer type argument {n} of {callee_name}", context)
+        if callee_name is not None:
+            self.fail(
+                f"Cannot infer value of type parameter {format_type(tv, self.options)} of {callee_name}",
+                context,
+            )
             if callee_name == "<dict>":
                 # Invariance in key type causes more of these errors than we would want.
                 self.note(
@@ -3090,9 +3093,14 @@ def get_bad_protocol_flags(
     assert right.type.is_protocol
     all_flags: list[tuple[str, set[int], set[int]]] = []
     for member in right.type.protocol_members:
-        if find_member(member, left, left):
-            item = (member, get_member_flags(member, left), get_member_flags(member, right))
-            all_flags.append(item)
+        if find_member(member, left, left, class_obj=class_obj):
+            all_flags.append(
+                (
+                    member,
+                    get_member_flags(member, left, class_obj=class_obj),
+                    get_member_flags(member, right),
+                )
+            )
     bad_flags = []
     for name, subflags, superflags in all_flags:
         if (

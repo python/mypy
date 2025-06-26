@@ -318,6 +318,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
 
+    _arg_infer_context_cache: ArgumentInferContext | None
+
     def __init__(
         self,
         chk: mypy.checker.TypeChecker,
@@ -351,6 +353,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # related to type context.
         self.is_callee = False
         type_state.infer_polymorphic = not self.chk.options.old_type_inference
+
+        self._arg_infer_context_cache = None
 
     def reset(self) -> None:
         self.resolved_type = {}
@@ -2277,9 +2281,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return callee_type, inferred_args
 
     def argument_infer_context(self) -> ArgumentInferContext:
-        return ArgumentInferContext(
-            self.chk.named_type("typing.Mapping"), self.chk.named_type("typing.Iterable")
-        )
+        if self._arg_infer_context_cache is None:
+            self._arg_infer_context_cache = ArgumentInferContext(
+                self.chk.named_type("typing.Mapping"), self.chk.named_type("typing.Iterable")
+            )
+        return self._arg_infer_context_cache
 
     def get_arg_infer_passes(
         self,
@@ -2338,10 +2344,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Report error if some of the variables could not be solved. In that
         # case assume that all variables have type Any to avoid extra
         # bogus error messages.
-        for i, inferred_type in enumerate(inferred_args):
+        for inferred_type, tv in zip(inferred_args, callee_type.variables):
             if not inferred_type or has_erased_component(inferred_type):
                 # Could not infer a non-trivial type for a type variable.
-                self.msg.could_not_infer_type_arguments(callee_type, i + 1, context)
+                self.msg.could_not_infer_type_arguments(callee_type, tv, context)
                 inferred_args = [AnyType(TypeOfAny.from_error)] * len(inferred_args)
         # Apply the inferred types to the function type. In this case the
         # return type must be CallableType, since we give the right number of type
@@ -4288,7 +4294,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ):
             self.msg.unreachable_right_operand(e.op, e.right)
 
-        right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
+        right_type = self.analyze_cond_branch(
+            right_map, e.right, self._combined_context(expanded_left_type)
+        )
 
         if left_map is None and right_map is None:
             return UninhabitedType()
@@ -5918,6 +5926,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return UninhabitedType()
             self.chk.push_type_map(map)
             return self.accept(node, type_context=context, allow_none_return=allow_none_return)
+
+    def _combined_context(self, ty: Type | None) -> Type | None:
+        ctx_items = []
+        if ty is not None:
+            ctx_items.append(ty)
+        if self.type_context and self.type_context[-1] is not None:
+            ctx_items.append(self.type_context[-1])
+        if ctx_items:
+            return make_simplified_union(ctx_items)
+        return None
 
     #
     # Helpers
