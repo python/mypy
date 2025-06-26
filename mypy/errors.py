@@ -631,9 +631,9 @@ class Errors:
                         # Annotation requests us to ignore all errors on this line.
                         self.used_ignored_lines[file][scope_line].append(err_code.code)
                         return
+                    if file in self.skipped_lines and scope_line in self.skipped_lines[file]:
+                        return
             if file in self.ignored_files:
-                return
-            if file in self.skipped_lines and set(lines) <= self.skipped_lines[file]:
                 return
         if info.only_once:
             if info.message in self.only_once_messages:
