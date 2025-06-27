@@ -813,7 +813,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         for base_type_expr in o.base_type_exprs:
             if isinstance(base_type_expr, (NameExpr, MemberExpr)) and self.get_fullname(
                 base_type_expr
-            ).endswith("BaseModel"):
+            ).endswith("pydantic.BaseModel"):
                 is_pydantic_model = True
                 break
         self.processing_pydantic_model = is_pydantic_model
