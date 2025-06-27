@@ -755,12 +755,10 @@ class B2(IntEnum):
 class B3(IntEnum):
     x = 1
 
-# TODO: getting B1.x._value_ and B2.x._value_ to have type 'int' requires a typeshed change
-
 is_x(reveal_type(B1.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(B1.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(B1.x.value)         # N: Revealed type is "builtins.int"
-reveal_type(B1.x._value_)       # N: Revealed type is "Any"
+reveal_type(B1.x._value_)       # N: Revealed type is "builtins.int"
 is_x(reveal_type(B2.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(B2.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(B2.x.value)         # N: Revealed type is "builtins.int"
@@ -2538,4 +2536,52 @@ def check(thing: Things) -> None:
     if thing is Things._:
         return None
     return None  # E: Statement is unreachable
+[builtins fixtures/enum.pyi]
+
+[case testSunderValueType]
+from enum import Enum, IntEnum, StrEnum, Flag, IntFlag
+
+class Basic(Enum):
+    _value_: int
+    FOO = 1
+
+reveal_type(Basic.FOO)  # N: Revealed type is "Literal[__main__.Basic.FOO]?"
+reveal_type(Basic.FOO.value)  # N: Revealed type is "Literal[1]?"
+reveal_type(Basic.FOO._value_)  # N: Revealed type is "builtins.int"
+
+class FromStub(Enum):
+    _value_: int
+    FOO = ...
+
+reveal_type(FromStub.FOO)  # N: Revealed type is "Literal[__main__.FromStub.FOO]?"
+reveal_type(FromStub.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(FromStub.FOO._value_)  # N: Revealed type is "builtins.int"
+
+class InheritedInt(IntEnum):
+    FOO = ...
+
+reveal_type(InheritedInt.FOO)  # N: Revealed type is "Literal[__main__.InheritedInt.FOO]?"
+reveal_type(InheritedInt.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(InheritedInt.FOO._value_)  # N: Revealed type is "builtins.int"
+
+class InheritedStr(StrEnum):
+    FOO = ...
+
+reveal_type(InheritedStr.FOO)  # N: Revealed type is "Literal[__main__.InheritedStr.FOO]?"
+reveal_type(InheritedStr.FOO.value)  # N: Revealed type is "builtins.str"
+reveal_type(InheritedStr.FOO._value_)  # N: Revealed type is "builtins.str"
+
+class InheritedFlag(Flag):
+    FOO = ...
+
+reveal_type(InheritedFlag.FOO)  # N: Revealed type is "Literal[__main__.InheritedFlag.FOO]?"
+reveal_type(InheritedFlag.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(InheritedFlag.FOO._value_)  # N: Revealed type is "builtins.int"
+
+class InheritedIntFlag(IntFlag):
+    FOO = ...
+
+reveal_type(InheritedIntFlag.FOO)  # N: Revealed type is "Literal[__main__.InheritedIntFlag.FOO]?"
+reveal_type(InheritedIntFlag.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(InheritedIntFlag.FOO._value_)  # N: Revealed type is "builtins.int"
 [builtins fixtures/enum.pyi]

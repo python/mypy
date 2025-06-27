@@ -17,7 +17,7 @@ from collections.abc import Iterable, Sequence
 from typing import Final, TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.nodes import TypeInfo
+from mypy.nodes import TypeInfo, Var
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
 from mypy.typeops import fixup_partial_type, make_simplified_union
@@ -87,6 +87,20 @@ def _infer_value_type_with_auto_fallback(
     if proper_type is None:
         return None
     proper_type = get_proper_type(fixup_partial_type(proper_type))
+    # Enums in stubs may have ... instead of actual values. If `_value_` is annotated
+    # (manually or inherited from IntEnum, for example), it is a more reasonable guess
+    # than literal ellipsis type.
+    if isinstance(proper_type, Instance) and proper_type.type.fullname in {
+        "types.EllipsisType",
+        "builtins.ellipsis",
+    }:
+        if (
+            isinstance(ctx.type, Instance)
+            and (value_type := ctx.type.type.get("_value_"))
+            and isinstance(var := value_type.node, Var)
+        ):
+            return var.type
+        return proper_type
     if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
         if is_named_instance(proper_type, "enum.member") and proper_type.args:
             return proper_type.args[0]
