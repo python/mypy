@@ -3316,7 +3316,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     type_contexts.append(base_type)
         # Use most derived supertype as type context if available.
         if not type_contexts:
-            if inferred.name == "__slots__" and self.scope.active_class():
+            if (
+                inferred.name == "__slots__"
+                and self.scope.active_class()
+                or inferred.name == "__all__"
+                and self.scope.is_top_level()
+            ):
                 str_type = self.named_type("builtins.str")
                 return self.named_generic_type("typing.Iterable", [str_type])
             return None
