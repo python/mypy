@@ -2069,8 +2069,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # in this case external context is almost everything we have.
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return callable.copy_modified()
+
+        # GH#19304
+        # needs is_supertype=True since the purpose is to allow sound upcasting
+        # if the context requires it, such as e.g. `x: list[object] = [x for x in (1,2,3)]`
         args = infer_type_arguments(
-            callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
+            callable.variables, ret_type, erased_ctx, is_supertype=True, skip_unsatisfied=True
         )
         # Only substitute non-Uninhabited and non-erased types.
         new_args: list[Type | None] = []
