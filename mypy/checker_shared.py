@@ -334,6 +334,10 @@ class CheckerScope:
                 return fill_typevars(item)
         return None
 
+    def is_top_level(self) -> bool:
+        """Is current scope top-level (no classes or functions)?"""
+        return len(self.stack) == 1
+
     @contextmanager
     def push_function(self, item: FuncItem) -> Iterator[None]:
         self.stack.append(item)
