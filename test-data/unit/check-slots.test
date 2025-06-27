@@ -512,6 +512,14 @@ class A:
 
 reveal_type(A.__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
 
+[case testSlotsEmptySet]
+class A:
+    __slots__ = set()
+    reveal_type(__slots__)  # N: Revealed type is "builtins.set[builtins.str]"
+
+reveal_type(A.__slots__)  # N: Revealed type is "builtins.set[builtins.str]"
+[builtins fixtures/set.pyi]
+
 [case testSlotsWithAny]
 from typing import Any
 
