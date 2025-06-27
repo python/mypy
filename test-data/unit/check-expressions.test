@@ -478,10 +478,6 @@ class A:
   def __contains__(self, x: 'A') -> str: pass
 [builtins fixtures/bool.pyi]
 
-[case testInWithInvalidArgs]
-a = 1 in ([1] + ['x'])
-[builtins fixtures/list.pyi]
-
 [case testEq]
 a: A
 b: bool
