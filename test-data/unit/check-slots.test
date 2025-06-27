@@ -496,11 +496,16 @@ class A:
         self.missing = 3
 [builtins fixtures/dict.pyi]
 
+[case testSlotsNotInClass]
+# Shouldn't be triggered
+__slots__ = [1, 2]
+
+def foo() -> None:
+    __slots__ = 1
+
 [case testSlotsEmptyList]
 class A:
     __slots__ = []
-[builtins fixtures/dict.pyi]
-
 
 [case testSlotsWithAny]
 from typing import Any

@@ -3137,7 +3137,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         else:
                             self.check_getattr_method(signature, lvalue, name)
 
-                if name == "__slots__":
+                if name == "__slots__" and self.scope.active_class() is not None:
                     typ = lvalue_type or self.expr_checker.accept(rvalue)
                     self.check_slots_definition(typ, lvalue)
                 if name == "__match_args__" and inferred is not None:
@@ -3316,7 +3316,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     type_contexts.append(base_type)
         # Use most derived supertype as type context if available.
         if not type_contexts:
-            if inferred.name == "__slots__":
+            if inferred.name == "__slots__" and self.scope.active_class():
                 str_type = self.named_type("builtins.str")
                 return self.named_generic_type("typing.Iterable", [str_type])
             return None
