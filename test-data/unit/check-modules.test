@@ -429,13 +429,13 @@ main:2: error: List item 2 has incompatible type "int"; expected "str"
 
 [case testAllMustBeSequenceStr2]
 import typing
-__all__ = 1
+__all__ = 1  # E: Type of __all__ must be "Sequence[str]", not "int"
+reveal_type(__all__)  # N: Revealed type is "builtins.int"
 [builtins fixtures/module_all.pyi]
-[out]
-main:2: error: Type of __all__ must be "Sequence[str]", not "int"
 
 [case testModuleAllEmptyList]
 __all__ = []
+reveal_type(__all__)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/module_all.pyi]
 
 [case testDunderAllNotGlobal]

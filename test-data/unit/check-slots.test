@@ -499,13 +499,18 @@ class A:
 [case testSlotsNotInClass]
 # Shouldn't be triggered
 __slots__ = [1, 2]
+reveal_type(__slots__)  # N: Revealed type is "builtins.list[builtins.int]"
 
 def foo() -> None:
     __slots__ = 1
+    reveal_type(__slots__)  # N: Revealed type is "builtins.int"
 
 [case testSlotsEmptyList]
 class A:
     __slots__ = []
+    reveal_type(__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
+
+reveal_type(A.__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
 
 [case testSlotsWithAny]
 from typing import Any
