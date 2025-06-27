@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from collections.abc import Iterable
 from typing import Optional, TypeVar
 
@@ -38,6 +39,7 @@ from mypyc.codegen.emitwrapper import (
 )
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
+    IS_FREE_THREADED,
     MODULE_PREFIX,
     PREFIX,
     RUNTIME_C_FILES,
@@ -304,7 +306,10 @@ def compile_ir_to_c(
         for source in sources
     }
 
-    names = NameGenerator([[source.module for source in sources] for sources, _ in groups])
+    names = NameGenerator(
+        [[source.module for source in sources] for sources, _ in groups],
+        separate=compiler_options.separate,
+    )
 
     # Generate C code for each compilation group. Each group will be
     # compiled into a separate extension module.
@@ -450,7 +455,7 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
     emitter.context.declarations[emitter.native_function_name(fn.decl)] = HeaderDeclaration(
         f"{native_function_header(fn.decl, emitter)};", needs_export=True
     )
-    if fn.name != TOP_LEVEL_NAME:
+    if fn.name != TOP_LEVEL_NAME and not fn.internal:
         if is_fastcall_supported(fn, emitter.capi_version):
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
                 f"{wrapper_function_header(fn, emitter.names)};"
@@ -513,6 +518,9 @@ class GroupGenerator:
         self.use_shared_lib = group_name is not None
         self.compiler_options = compiler_options
         self.multi_file = compiler_options.multi_file
+        # Multi-phase init is needed to enable free-threading. In the future we'll
+        # probably want to enable it always, but we'll wait until it's stable.
+        self.multi_phase_init = IS_FREE_THREADED
 
     @property
     def group_suffix(self) -> str:
@@ -563,7 +571,7 @@ class GroupGenerator:
             for fn in module.functions:
                 emitter.emit_line()
                 generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
-                if fn.name != TOP_LEVEL_NAME:
+                if fn.name != TOP_LEVEL_NAME and not fn.internal:
                     emitter.emit_line()
                     if is_fastcall_supported(fn, emitter.capi_version):
                         generate_wrapper_function(
@@ -574,7 +582,7 @@ class GroupGenerator:
                             fn, emitter, self.source_paths[module_name], module_name
                         )
             if multi_file:
-                name = f"__native_{emitter.names.private_name(module_name)}.c"
+                name = f"__native_{exported_name(module_name)}.c"
                 file_contents.append((name, "".join(emitter.fragments)))
 
         # The external header file contains type declarations while
@@ -867,8 +875,37 @@ class GroupGenerator:
 
     def generate_module_def(self, emitter: Emitter, module_name: str, module: ModuleIR) -> None:
         """Emit the PyModuleDef struct for a module and the module init function."""
-        # Emit module methods
         module_prefix = emitter.names.private_name(module_name)
+        self.emit_module_exec_func(emitter, module_name, module_prefix, module)
+        if self.multi_phase_init:
+            self.emit_module_def_slots(emitter, module_prefix)
+        self.emit_module_methods(emitter, module_name, module_prefix, module)
+        self.emit_module_def_struct(emitter, module_name, module_prefix)
+        self.emit_module_init_func(emitter, module_name, module_prefix)
+
+    def emit_module_def_slots(self, emitter: Emitter, module_prefix: str) -> None:
+        name = f"{module_prefix}_slots"
+        exec_name = f"{module_prefix}_exec"
+
+        emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
+        emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
+        if sys.version_info >= (3, 12):
+            # Multiple interpreter support requires not using any C global state,
+            # which we don't support yet.
+            emitter.emit_line(
+                "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},"
+            )
+        if sys.version_info >= (3, 13):
+            # Declare support for free-threading to enable experimentation,
+            # even if we don't properly support it.
+            emitter.emit_line("{Py_mod_gil, Py_MOD_GIL_NOT_USED},")
+        emitter.emit_line("{0, NULL},")
+        emitter.emit_line("};")
+
+    def emit_module_methods(
+        self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
+    ) -> None:
+        """Emit module methods (the static PyMethodDef table)."""
         emitter.emit_line(f"static PyMethodDef {module_prefix}module_methods[] = {{")
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
@@ -888,48 +925,43 @@ class GroupGenerator:
         emitter.emit_line("};")
         emitter.emit_line()
 
-        # Emit module definition struct
+    def emit_module_def_struct(
+        self, emitter: Emitter, module_name: str, module_prefix: str
+    ) -> None:
+        """Emit the static module definition struct (PyModuleDef)."""
         emitter.emit_lines(
             f"static struct PyModuleDef {module_prefix}module = {{",
             "PyModuleDef_HEAD_INIT,",
             f'"{module_name}",',
             "NULL, /* docstring */",
-            "-1,       /* size of per-interpreter state of the module,",
-            "             or -1 if the module keeps state in global variables. */",
-            f"{module_prefix}module_methods",
-            "};",
+            "0,       /* size of per-interpreter state of the module */",
+            f"{module_prefix}module_methods,",
         )
-        emitter.emit_line()
-        # Emit module init function. If we are compiling just one module, this
-        # will be the C API init function. If we are compiling 2+ modules, we
-        # generate a shared library for the modules and shims that call into
-        # the shared library, and in this case we use an internal module
-        # initialized function that will be called by the shim.
-        if not self.use_shared_lib:
-            declaration = f"PyMODINIT_FUNC PyInit_{module_name}(void)"
+        if self.multi_phase_init:
+            slots_name = f"{module_prefix}_slots"
+            emitter.emit_line(f"{slots_name}, /* m_slots */")
         else:
-            declaration = f"PyObject *CPyInit_{exported_name(module_name)}(void)"
+            emitter.emit_line("NULL,")
+        emitter.emit_line("};")
+        emitter.emit_line()
+
+    def emit_module_exec_func(
+        self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
+    ) -> None:
+        """Emit the module init function.
+
+        If we are compiling just one module, this will be the C API init
+        function. If we are compiling 2+ modules, we generate a shared
+        library for the modules and shims that call into the shared
+        library, and in this case we use an internal module initialized
+        function that will be called by the shim.
+        """
+        declaration = f"static int {module_prefix}_exec(PyObject *module)"
+        module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
         emitter.emit_line("PyObject* modname = NULL;")
-        # Store the module reference in a static and return it when necessary.
-        # This is separate from the *global* reference to the module that will
-        # be populated when it is imported by a compiled module. We want that
-        # reference to only be populated when the module has been successfully
-        # imported, whereas this we want to have to stop a circular import.
-        module_static = self.module_internal_static_name(module_name, emitter)
-
-        emitter.emit_lines(
-            f"if ({module_static}) {{",
-            f"Py_INCREF({module_static});",
-            f"return {module_static};",
-            "}",
-        )
-
-        emitter.emit_lines(
-            f"{module_static} = PyModule_Create(&{module_prefix}module);",
-            f"if (unlikely({module_static} == NULL))",
-            "    goto fail;",
-        )
+        if self.multi_phase_init:
+            emitter.emit_line(f"{module_static} = module;")
         emitter.emit_line(
             f'modname = PyObject_GetAttrString((PyObject *){module_static}, "__name__");'
         )
@@ -959,8 +991,12 @@ class GroupGenerator:
 
         emitter.emit_lines("Py_DECREF(modname);")
 
-        emitter.emit_line(f"return {module_static};")
-        emitter.emit_lines("fail:", f"Py_CLEAR({module_static});", "Py_CLEAR(modname);")
+        emitter.emit_line("return 0;")
+        emitter.emit_lines("fail:")
+        if self.multi_phase_init:
+            emitter.emit_lines(f"{module_static} = NULL;", "Py_CLEAR(modname);")
+        else:
+            emitter.emit_lines(f"Py_CLEAR({module_static});", "Py_CLEAR(modname);")
         for name, typ in module.final_names:
             static_name = emitter.static_name(name, module_name)
             emitter.emit_dec_ref(static_name, typ, is_xdec=True)
@@ -970,8 +1006,49 @@ class GroupGenerator:
         # so we have to decref them
         for t in type_structs:
             emitter.emit_line(f"Py_CLEAR({t});")
-        emitter.emit_line("return NULL;")
+        emitter.emit_line("return -1;")
         emitter.emit_line("}")
+
+    def emit_module_init_func(
+        self, emitter: Emitter, module_name: str, module_prefix: str
+    ) -> None:
+        if not self.use_shared_lib:
+            declaration = f"PyMODINIT_FUNC PyInit_{module_name}(void)"
+        else:
+            declaration = f"PyObject *CPyInit_{exported_name(module_name)}(void)"
+        emitter.emit_lines(declaration, "{")
+
+        if self.multi_phase_init:
+            def_name = f"{module_prefix}module"
+            emitter.emit_line(f"return PyModuleDef_Init(&{def_name});")
+            emitter.emit_line("}")
+            return
+
+        exec_func = f"{module_prefix}_exec"
+
+        # Store the module reference in a static and return it when necessary.
+        # This is separate from the *global* reference to the module that will
+        # be populated when it is imported by a compiled module. We want that
+        # reference to only be populated when the module has been successfully
+        # imported, whereas this we want to have to stop a circular import.
+        module_static = self.module_internal_static_name(module_name, emitter)
+
+        emitter.emit_lines(
+            f"if ({module_static}) {{",
+            f"Py_INCREF({module_static});",
+            f"return {module_static};",
+            "}",
+        )
+
+        emitter.emit_lines(
+            f"{module_static} = PyModule_Create(&{module_prefix}module);",
+            f"if (unlikely({module_static} == NULL))",
+            "    goto fail;",
+        )
+        emitter.emit_lines(f"if ({exec_func}({module_static}) != 0)", "    goto fail;")
+        emitter.emit_line(f"return {module_static};")
+        emitter.emit_lines("fail:", "return NULL;")
+        emitter.emit_lines("}")
 
     def generate_top_level_call(self, module: ModuleIR, emitter: Emitter) -> None:
         """Generate call to function representing module top level."""

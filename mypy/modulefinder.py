@@ -684,12 +684,27 @@ def matches_exclude(
     if fscache.isdir(subpath):
         subpath_str += "/"
     for exclude in excludes:
-        if re.search(exclude, subpath_str):
-            if verbose:
-                print(
-                    f"TRACE: Excluding {subpath_str} (matches pattern {exclude})", file=sys.stderr
+        try:
+            if re.search(exclude, subpath_str):
+                if verbose:
+                    print(
+                        f"TRACE: Excluding {subpath_str} (matches pattern {exclude})",
+                        file=sys.stderr,
+                    )
+                return True
+        except re.error as e:
+            print(
+                f"error: The exclude {exclude} is an invalid regular expression, because: {e}"
+                + (
+                    "\n(Hint: use / as a path separator, even if you're on Windows!)"
+                    if "\\" in exclude
+                    else ""
                 )
-            return True
+                + "\nFor more information on Python's flavor of regex, see:"
+                + " https://docs.python.org/3/library/re.html",
+                file=sys.stderr,
+            )
+            sys.exit(2)
     return False
 
 
@@ -786,7 +801,8 @@ def default_lib_path(
             print(
                 "error: --custom-typeshed-dir does not point to a valid typeshed ({})".format(
                     custom_typeshed_dir
-                )
+                ),
+                file=sys.stderr,
             )
             sys.exit(2)
     else:
@@ -979,6 +995,6 @@ def parse_version(version: str) -> tuple[int, int]:
 
 def typeshed_py_version(options: Options) -> tuple[int, int]:
     """Return Python version used for checking whether module supports typeshed."""
-    # Typeshed no longer covers Python 3.x versions before 3.8, so 3.8 is
+    # Typeshed no longer covers Python 3.x versions before 3.9, so 3.9 is
     # the earliest we can support.
-    return max(options.python_version, (3, 8))
+    return max(options.python_version, (3, 9))

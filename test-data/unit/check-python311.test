@@ -81,9 +81,9 @@ reveal_type(coro)  # N: Revealed type is "def () -> typing.Coroutine[Any, Any, t
 [case testTypeVarTupleNewSyntaxAnnotations]
 Ints = tuple[int, int, int]
 x: tuple[str, *Ints]
-reveal_type(x)  # N: Revealed type is "Tuple[builtins.str, builtins.int, builtins.int, builtins.int]"
+reveal_type(x)  # N: Revealed type is "tuple[builtins.str, builtins.int, builtins.int, builtins.int]"
 y: tuple[int, *tuple[int, ...]]
-reveal_type(y)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(y)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleNewSyntaxGenerics]
@@ -95,8 +95,8 @@ class C(Generic[T, *Ts]):
     attr: tuple[int, *Ts, str]
 
     def test(self) -> None:
-        reveal_type(self.attr)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`2], builtins.str]"
-        self.attr = ci  # E: Incompatible types in assignment (expression has type "C[*Tuple[int, ...]]", variable has type "Tuple[int, *Ts, str]")
+        reveal_type(self.attr)  # N: Revealed type is "tuple[builtins.int, Unpack[Ts`2], builtins.str]"
+        self.attr = ci  # E: Incompatible types in assignment (expression has type "C[*tuple[int, ...]]", variable has type "tuple[int, *Ts, str]")
     def meth(self, *args: *Ts) -> T: ...
 
 ci: C[*tuple[int, ...]]
@@ -135,11 +135,11 @@ myclass1 = MyClass(float)
 reveal_type(myclass1)  # N: Revealed type is "__main__.MyClass[builtins.float, None]"
 myclass2 = MyClass(float, float)
 reveal_type(myclass2)  # N: Revealed type is "__main__.MyClass[builtins.float, builtins.float]"
-myclass3 = MyClass(float, float, float)  # E: No overload variant of "MyClass" matches argument types "Type[float]", "Type[float]", "Type[float]" \
+myclass3 = MyClass(float, float, float)  # E: No overload variant of "MyClass" matches argument types "type[float]", "type[float]", "type[float]" \
                                          # N: Possible overload variants: \
                                          # N:     def [T1, T2] __init__(self) -> MyClass[None, None] \
-                                         # N:     def [T1, T2] __init__(self, Type[T1], /) -> MyClass[T1, None] \
-                                         # N:     def [T1, T2] __init__(Type[T1], Type[T2], /) -> MyClass[T1, T2]
+                                         # N:     def [T1, T2] __init__(self, type[T1], /) -> MyClass[T1, None] \
+                                         # N:     def [T1, T2] __init__(type[T1], type[T2], /) -> MyClass[T1, T2]
 reveal_type(myclass3)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
@@ -169,7 +169,7 @@ x3: Alias3[int]  # E: Bad number of arguments for type alias, expected 0, given 
 reveal_type(x3)  # N: Revealed type is "def (*Any) -> builtins.int"
 
 IntList = List[int]
-Alias4 = Callable[[*IntList], int]  # E: "List[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+Alias4 = Callable[[*IntList], int]  # E: "list[int]" cannot be unpacked (must be tuple or TypeVarTuple)
 x4: Alias4[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 reveal_type(x4)  # N: Revealed type is "def (*Any) -> builtins.int"
 [builtins fixtures/tuple.pyi]
