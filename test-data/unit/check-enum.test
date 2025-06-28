@@ -619,8 +619,8 @@ reveal_type(A.x.name)   # N: Revealed type is "Literal['x']?"
 reveal_type(B.a.name)   # N: Revealed type is "Literal['a']?"
 
 # TODO: The revealed type should be 'int' here
-reveal_type(A.x.value)  # N: Revealed type is "Any"
-reveal_type(B.a.value)  # N: Revealed type is "Any"
+reveal_type(A.x.value)  # N: Revealed type is "builtins.int"
+reveal_type(B.a.value)  # N: Revealed type is "builtins.int"
 [builtins fixtures/enum.pyi]
 
 [case testAnonymousFunctionalEnum]
@@ -779,8 +779,8 @@ class C3(IntFlag):
 
 is_x(reveal_type(C1.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(C1.x._name_))  # N: Revealed type is "Literal['x']"
-reveal_type(C1.x.value)         # N: Revealed type is "Any"
-reveal_type(C1.x._value_)       # N: Revealed type is "Any"
+reveal_type(C1.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(C1.x._value_)       # N: Revealed type is "builtins.int"
 is_x(reveal_type(C2.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(C2.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(C2.x.value)         # N: Revealed type is "builtins.int"
@@ -798,8 +798,8 @@ class D3(Flag):
 
 is_x(reveal_type(D1.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(D1.x._name_))  # N: Revealed type is "Literal['x']"
-reveal_type(D1.x.value)         # N: Revealed type is "Any"
-reveal_type(D1.x._value_)       # N: Revealed type is "Any"
+reveal_type(D1.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(D1.x._value_)       # N: Revealed type is "builtins.int"
 is_x(reveal_type(D2.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(D2.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(D2.x.value)         # N: Revealed type is "builtins.int"
