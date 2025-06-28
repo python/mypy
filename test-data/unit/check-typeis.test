@@ -933,3 +933,20 @@ def main(f: Callable[[], int | Awaitable[int]]) -> None:
     else:
         reveal_type(f)  # N: Revealed type is "def () -> Union[builtins.int, typing.Awaitable[builtins.int]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeIsWithDefer]
+from typing import Union
+from typing_extensions import TypeIs
+
+class A: ...
+class B: ...
+
+def is_a(x: object) -> TypeIs[A]:
+    return defer_not_defined()  # E: Name "defer_not_defined" is not defined
+
+def main(x: Union[A, B]) -> None:
+    if is_a(x):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+[builtins fixtures/tuple.pyi]
