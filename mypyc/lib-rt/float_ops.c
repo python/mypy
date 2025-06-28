@@ -34,6 +34,15 @@ static double CPy_MathExpectedPositiveInputError(double x) {
     return CPY_FLOAT_ERROR;
 }
 
+static double CPy_MathExpectedFiniteInput(double x) {
+    char *buf = PyOS_double_to_string(x, 'r', 0, Py_DTSF_ADD_DOT_0, NULL);
+    if (buf) {
+        PyErr_Format(PyExc_ValueError, "expected a finite input, got %s", buf);
+        PyMem_Free(buf);
+    }
+    return CPY_FLOAT_ERROR;
+}
+
 double CPyFloat_FromTagged(CPyTagged x) {
     if (CPyTagged_CheckShort(x)) {
         return CPyTagged_ShortAsSsize_t(x);
@@ -48,7 +57,11 @@ double CPyFloat_FromTagged(CPyTagged x) {
 double CPyFloat_Sin(double x) {
     double v = sin(x);
     if (unlikely(isnan(v)) && !isnan(x)) {
+#if CPY_3_14_FEATURES
+        return CPy_MathExpectedFiniteInput(x);
+#else
         return CPy_DomainError();
+#endif
     }
     return v;
 }
@@ -56,14 +69,22 @@ double CPyFloat_Sin(double x) {
 double CPyFloat_Cos(double x) {
     double v = cos(x);
     if (unlikely(isnan(v)) && !isnan(x)) {
+#if CPY_3_14_FEATURES
+        return CPy_MathExpectedFiniteInput(x);
+#else
         return CPy_DomainError();
+#endif
     }
     return v;
 }
 
 double CPyFloat_Tan(double x) {
     if (unlikely(isinf(x))) {
+#if CPY_3_14_FEATURES
+        return CPy_MathExpectedFiniteInput(x);
+#else
         return CPy_DomainError();
+#endif
     }
     return tan(x);
 }

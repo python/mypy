@@ -145,6 +145,32 @@ L0:
     x = r10
     return 1
 
+[case testListAdd]
+from typing import List
+def f(a: List[int], b: List[int]) -> None:
+    c = a + b
+[out]
+def f(a, b):
+    a, b, r0, c :: list
+L0:
+    r0 = PySequence_Concat(a, b)
+    c = r0
+    return 1
+
+[case testListIAdd]
+from typing import List, Any
+def f(a: List[int], b: Any) -> None:
+    a += b
+[out]
+def f(a, b):
+    a :: list
+    b :: object
+    r0 :: list
+L0:
+    r0 = PySequence_InPlaceConcat(a, b)
+    a = r0
+    return 1
+
 [case testListMultiply]
 from typing import List
 def f(a: List[int]) -> None:
@@ -168,6 +194,18 @@ L0:
     b = r4
     return 1
 
+[case testListIMultiply]
+from typing import List
+def f(a: List[int]) -> None:
+    a *= 2
+[out]
+def f(a):
+    a, r0 :: list
+L0:
+    r0 = CPySequence_InPlaceMultiply(a, 4)
+    a = r0
+    return 1
+
 [case testListLen]
 from typing import List
 def f(a: List[int]) -> int:
@@ -181,6 +219,18 @@ L0:
     r0 = var_object_size a
     r1 = r0 << 1
     return r1
+
+[case testListCopy]
+from typing import List
+from typing import Any
+def f(a: List[Any]) -> List[Any]:
+    return a.copy()
+[out]
+def f(a):
+    a, r0 :: list
+L0:
+    r0 = CPyList_Copy(a)
+    return r0
 
 [case testListAppend]
 from typing import List
@@ -510,4 +560,26 @@ L3:
     r0 = r6
     goto L1
 L4:
+    return 1
+
+[case testSorted]
+from typing import List, Any
+def list_sort(a: List[int]) -> None:
+    a.sort()
+def sort_iterable(a: Any) -> None:
+    sorted(a)
+[out]
+def list_sort(a):
+    a :: list
+    r0 :: i32
+    r1 :: bit
+L0:
+    r0 = PyList_Sort(a)
+    r1 = r0 >= 0 :: signed
+    return 1
+def sort_iterable(a):
+    a :: object
+    r0 :: list
+L0:
+    r0 = CPySequence_Sort(a)
     return 1

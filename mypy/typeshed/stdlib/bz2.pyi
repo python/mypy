@@ -1,18 +1,22 @@
-import _compression
 import sys
 from _bz2 import BZ2Compressor as BZ2Compressor, BZ2Decompressor as BZ2Decompressor
-from _compression import BaseStream
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Iterable
-from typing import IO, Any, Literal, Protocol, SupportsIndex, TextIO, overload
+from io import TextIOWrapper
+from typing import IO, Literal, Protocol, SupportsIndex, overload
 from typing_extensions import Self, TypeAlias
+
+if sys.version_info >= (3, 14):
+    from compression._common._streams import BaseStream, _Reader
+else:
+    from _compression import BaseStream, _Reader
 
 __all__ = ["BZ2File", "BZ2Compressor", "BZ2Decompressor", "open", "compress", "decompress"]
 
 # The following attributes and methods are optional:
 # def fileno(self) -> int: ...
 # def close(self) -> object: ...
-class _ReadableFileobj(_compression._Reader, Protocol): ...
+class _ReadableFileobj(_Reader, Protocol): ...
 
 class _WritableFileobj(Protocol):
     def write(self, b: bytes, /) -> object: ...
@@ -45,7 +49,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> TextIO: ...
+) -> TextIOWrapper: ...
 @overload
 def open(
     filename: _WritableFileobj,
@@ -63,7 +67,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> TextIO: ...
+) -> TextIOWrapper: ...
 @overload
 def open(
     filename: StrOrBytesPath,
@@ -81,7 +85,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> TextIO: ...
+) -> TextIOWrapper: ...
 @overload
 def open(
     filename: StrOrBytesPath | _ReadableFileobj | _WritableFileobj,
@@ -90,37 +94,18 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> BZ2File | TextIO: ...
+) -> BZ2File | TextIOWrapper: ...
 
 class BZ2File(BaseStream, IO[bytes]):
     def __enter__(self) -> Self: ...
-    if sys.version_info >= (3, 9):
-        @overload
-        def __init__(self, filename: _WritableFileobj, mode: _WriteBinaryMode, *, compresslevel: int = 9) -> None: ...
-        @overload
-        def __init__(self, filename: _ReadableFileobj, mode: _ReadBinaryMode = "r", *, compresslevel: int = 9) -> None: ...
-        @overload
-        def __init__(
-            self, filename: StrOrBytesPath, mode: _ReadBinaryMode | _WriteBinaryMode = "r", *, compresslevel: int = 9
-        ) -> None: ...
-    else:
-        @overload
-        def __init__(
-            self, filename: _WritableFileobj, mode: _WriteBinaryMode, buffering: Any | None = None, compresslevel: int = 9
-        ) -> None: ...
-        @overload
-        def __init__(
-            self, filename: _ReadableFileobj, mode: _ReadBinaryMode = "r", buffering: Any | None = None, compresslevel: int = 9
-        ) -> None: ...
-        @overload
-        def __init__(
-            self,
-            filename: StrOrBytesPath,
-            mode: _ReadBinaryMode | _WriteBinaryMode = "r",
-            buffering: Any | None = None,
-            compresslevel: int = 9,
-        ) -> None: ...
-
+    @overload
+    def __init__(self, filename: _WritableFileobj, mode: _WriteBinaryMode, *, compresslevel: int = 9) -> None: ...
+    @overload
+    def __init__(self, filename: _ReadableFileobj, mode: _ReadBinaryMode = "r", *, compresslevel: int = 9) -> None: ...
+    @overload
+    def __init__(
+        self, filename: StrOrBytesPath, mode: _ReadBinaryMode | _WriteBinaryMode = "r", *, compresslevel: int = 9
+    ) -> None: ...
     def read(self, size: int | None = -1) -> bytes: ...
     def read1(self, size: int = -1) -> bytes: ...
     def readline(self, size: SupportsIndex = -1) -> bytes: ...  # type: ignore[override]

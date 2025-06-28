@@ -31,11 +31,16 @@
 // Here just for consistency
 #define CPy_XDECREF(p) Py_XDECREF(p)
 
+#ifndef Py_GIL_DISABLED
+
 // The *_NO_IMM operations below perform refcount manipulation for
 // non-immortal objects (Python 3.12 and later).
 //
 // Py_INCREF and other CPython operations check for immortality. This
 // can be expensive when we know that an object cannot be immortal.
+//
+// This optimization cannot be performed in free-threaded mode so we
+// fall back to just calling the normal incref/decref operations.
 
 static inline void CPy_INCREF_NO_IMM(PyObject *op)
 {
@@ -59,6 +64,14 @@ static inline void CPy_XDECREF_NO_IMM(PyObject *op)
 #define CPy_INCREF_NO_IMM(op) CPy_INCREF_NO_IMM((PyObject *)(op))
 #define CPy_DECREF_NO_IMM(op) CPy_DECREF_NO_IMM((PyObject *)(op))
 #define CPy_XDECREF_NO_IMM(op) CPy_XDECREF_NO_IMM((PyObject *)(op))
+
+#else
+
+#define CPy_INCREF_NO_IMM(op) CPy_INCREF(op)
+#define CPy_DECREF_NO_IMM(op) CPy_DECREF(op)
+#define CPy_XDECREF_NO_IMM(op) CPy_XDECREF(op)
+
+#endif
 
 // Tagged integer -- our representation of Python 'int' objects.
 // Small enough integers are represented as unboxed integers (shifted

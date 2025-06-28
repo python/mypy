@@ -78,16 +78,21 @@ assert hasattr(c, 'x')
 
 [case testTypedDictWithFields]
 import collections
+import json
 from typing import TypedDict
 class C(TypedDict):
     x: collections.deque
+    spam: json.JSONDecoder
 [file driver.py]
 from native import C
 from collections import deque
+from json import JSONDecoder
 
 print(C.__annotations__["x"] is deque)
+print(C.__annotations__["spam"] is JSONDecoder)
 [typing fixtures/typing-full.pyi]
 [out]
+True
 True
 
 [case testClassWithDeletableAttributes]
@@ -928,6 +933,53 @@ def welp() -> int:
 [file driver.py]
 from native import welp
 assert welp() == 35
+
+[case testSubclassUnsupportedException]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class MyError(ZeroDivisionError):
+    pass
+
+@mypyc_attr(native_class=False)
+class MyError2(ZeroDivisionError):
+    def __init__(self, s: str) -> None:
+        super().__init__(s + "!")
+        self.x = s.upper()
+
+def f() -> None:
+    raise MyError("foobar")
+
+def test_non_native_exception_subclass_basics() -> None:
+    e = MyError()
+    assert isinstance(e, MyError)
+    assert isinstance(e, ZeroDivisionError)
+    assert isinstance(e, Exception)
+
+    e = MyError("x")
+    assert repr(e) == "MyError('x')"
+
+    e2 = MyError2("ab")
+    assert repr(e2) == "MyError2('ab!')", repr(e2)
+    assert e2.x == "AB"
+
+def test_raise_non_native_exception_subclass_1() -> None:
+    try:
+        f()
+    except MyError:
+        x = True
+    else:
+        assert False
+    assert x
+
+def test_raise_non_native_exception_subclass_2() -> None:
+    try:
+        f()
+    except ZeroDivisionError:
+        x = True
+    else:
+        assert False
+    assert x
 
 [case testSubclassPy]
 from b import B, V
@@ -2749,6 +2801,21 @@ def test_function():
     assert(isinstance(d.fitem, ForwardDefinedClass))
     assert(isinstance(d.fitems, ForwardDefinedClass))
 
+[case testDelForDictSubclass-xfail]
+# The crash in issue mypy#19175 is fixed.
+# But, for classes that derive from built-in Python classes, user-defined __del__ method is not
+# being invoked.
+class DictSubclass(dict):
+    def __del__(self):
+        print("deleting DictSubclass...")
+
+[file driver.py]
+import native
+native.DictSubclass()
+
+[out]
+deleting DictSubclass...
+
 [case testDel]
 class A:
     def __del__(self):
@@ -2768,6 +2835,12 @@ class C(B):
 
 class D(A):
     pass
+
+# Just make sure that this class compiles (see issue mypy#19175). testDelForDictSubclass tests for
+# correct output.
+class NormDict(dict):
+    def __del__(self) -> None:
+        pass
 
 [file driver.py]
 import native
@@ -2829,3 +2902,159 @@ Traceback (most recent call last):
   File "native.py", line 5, in __del__
     raise Exception("e2")
 Exception: e2
+
+[case testMypycAttrNativeClass]
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+@mypyc_attr(native_class=False)
+class AnnontatedNonExtensionClass:
+    pass
+
+class DerivedClass(AnnontatedNonExtensionClass):
+    pass
+
+class ImplicitExtensionClass():
+    pass
+
+@mypyc_attr(native_class=True)
+class AnnotatedExtensionClass():
+    pass
+
+def test_function():
+    setattr(AnnontatedNonExtensionClass, 'attr_class', 5)
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == True)
+    assert(getattr(AnnontatedNonExtensionClass, 'attr_class') == 5)
+    delattr(AnnontatedNonExtensionClass, 'attr_class')
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == False)
+
+    inst = AnnontatedNonExtensionClass()
+    setattr(inst, 'attr_instance', 6)
+    assert(hasattr(inst, 'attr_instance') == True)
+    assert(getattr(inst, 'attr_instance') == 6)
+    delattr(inst, 'attr_instance')
+    assert(hasattr(inst, 'attr_instance') == False)
+
+    setattr(DerivedClass, 'attr_class', 5)
+    assert(hasattr(DerivedClass, 'attr_class') == True)
+    assert(getattr(DerivedClass, 'attr_class') == 5)
+    delattr(DerivedClass, 'attr_class')
+    assert(hasattr(DerivedClass, 'attr_class') == False)
+
+    derived_inst = DerivedClass()
+    setattr(derived_inst, 'attr_instance', 6)
+    assert(hasattr(derived_inst, 'attr_instance') == True)
+    assert(getattr(derived_inst, 'attr_instance') == 6)
+    delattr(derived_inst, 'attr_instance')
+    assert(hasattr(derived_inst, 'attr_instance') == False)
+
+    ext_inst = ImplicitExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(ext_inst, 'attr_instance', 6)
+
+    explicit_ext_inst = AnnotatedExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(explicit_ext_inst, 'attr_instance', 6)
+
+[case testMypycAttrNativeClassDunder]
+from mypy_extensions import mypyc_attr
+from typing import Generic, Optional, TypeVar
+
+_T = TypeVar("_T")
+
+get_count = set_count = del_count = 0
+
+@mypyc_attr(native_class=False)
+class Bar(Generic[_T]):
+    # Note the lack of __deletable__
+    def __init__(self) -> None:
+        self.value: str = 'start'
+    def __get__(self, instance: _T, owner: Optional[type[_T]] = None) -> str:
+        global get_count
+        get_count += 1
+        return self.value
+    def __set__(self, instance: _T, value: str) -> None:
+        global set_count
+        set_count += 1
+        self.value = value
+    def __delete__(self, instance: _T) -> None:
+        global del_count
+        del_count += 1
+        del self.value
+
+@mypyc_attr(native_class=False)
+class Foo(object):
+    bar: Bar = Bar()
+
+[file driver.py]
+import native
+
+f = native.Foo()
+assert(hasattr(f, 'bar'))
+assert(native.get_count == 1)
+assert(f.bar == 'start')
+assert(native.get_count == 2)
+f.bar = 'test'
+assert(f.bar == 'test')
+assert(native.set_count == 1)
+del f.bar
+assert(not hasattr(f, 'bar'))
+assert(native.del_count == 1)
+
+[case testMypycAttrNativeClassMeta]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar, TypeVar
+
+_T = TypeVar("_T")
+
+@mypyc_attr(native_class=False)
+class M(type):
+    count: ClassVar[int] = 0
+    def make(cls: type[_T]) -> _T:
+        M.count += 1
+        return cls()
+
+# implicit native_class=False
+# see testMypycAttrNativeClassMetaError for when trying to set it True
+class A(metaclass=M):
+    pass
+
+[file driver.py]
+import native
+
+a: native.A = native.A.make()
+assert(native.A.count == 1)
+
+class B(native.A):
+    pass
+
+b: B = B.make()
+assert(B.count == 2)
+
+[case testTypeVarNarrowing]
+from typing import TypeVar
+
+class B:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class C(B):
+    def __init__(self, x: int, y: str) -> None:
+        self.x = x
+        self.y = y
+
+T = TypeVar("T", bound=B)
+def f(x: T) -> T:
+    if isinstance(x, C):
+        print("C", x.y)
+        return x
+    print("B", x.x)
+    return x
+
+[file driver.py]
+from native import f, B, C
+
+f(B(1))
+f(C(1, "yes"))
+[out]
+B 1
+C yes

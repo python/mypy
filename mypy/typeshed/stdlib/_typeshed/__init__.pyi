@@ -22,7 +22,7 @@ from typing import (
     final,
     overload,
 )
-from typing_extensions import Buffer, LiteralString, TypeAlias
+from typing_extensions import Buffer, LiteralString, Self as _Self, TypeAlias
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -117,6 +117,12 @@ class SupportsSub(Protocol[_T_contra, _T_co]):
 class SupportsRSub(Protocol[_T_contra, _T_co]):
     def __rsub__(self, x: _T_contra, /) -> _T_co: ...
 
+class SupportsMul(Protocol[_T_contra, _T_co]):
+    def __mul__(self, x: _T_contra, /) -> _T_co: ...
+
+class SupportsRMul(Protocol[_T_contra, _T_co]):
+    def __rmul__(self, x: _T_contra, /) -> _T_co: ...
+
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, other: _T_contra, /) -> _T_co: ...
 
@@ -151,11 +157,8 @@ class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
     def keys(self) -> Iterable[_KT]: ...
     def __getitem__(self, key: _KT, /) -> _VT_co: ...
 
-# This protocol is currently under discussion. Use SupportsContainsAndGetItem
-# instead, if you require the __contains__ method.
-# See https://github.com/python/typeshed/issues/11822.
+# stable
 class SupportsGetItem(Protocol[_KT_contra, _VT_co]):
-    def __contains__(self, x: Any, /) -> bool: ...
     def __getitem__(self, key: _KT_contra, /) -> _VT_co: ...
 
 # stable
@@ -295,9 +298,6 @@ class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
 
 class SizedBuffer(Sized, Buffer, Protocol): ...
 
-# for compatibility with third-party stubs that may use this
-_BufferWithLen: TypeAlias = SizedBuffer  # not stable  # noqa: Y047
-
 ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo: TypeAlias = ExcInfo | tuple[None, None, None]
 
@@ -325,9 +325,9 @@ class structseq(Generic[_T_co]):
     # The second parameter will accept a dict of any kind without raising an exception,
     # but only has any meaning if you supply it a dict where the keys are strings.
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
-    def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...
+    def __new__(cls, sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> _Self: ...
     if sys.version_info >= (3, 13):
-        def __replace__(self: Self, **kwargs: Any) -> Self: ...
+        def __replace__(self, **kwargs: Any) -> _Self: ...
 
 # Superset of typing.AnyStr that also includes LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001
@@ -350,7 +350,10 @@ class DataclassInstance(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
 # Anything that can be passed to the int/float constructors
-ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc
+if sys.version_info >= (3, 14):
+    ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex
+else:
+    ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc
 ConvertibleToFloat: TypeAlias = str | ReadableBuffer | SupportsFloat | SupportsIndex
 
 # A few classes updated from Foo(str, Enum) to Foo(StrEnum). This is a convenience so these
@@ -361,3 +364,14 @@ else:
     from enum import Enum
 
     class StrEnum(str, Enum): ...
+
+# Objects that appear in annotations or in type expressions.
+# Similar to PEP 747's TypeForm but a little broader.
+AnnotationForm: TypeAlias = Any
+
+if sys.version_info >= (3, 14):
+    from annotationlib import Format
+
+    # These return annotations, which can be arbitrary objects
+    AnnotateFunc: TypeAlias = Callable[[Format], dict[str, AnnotationForm]]
+    EvaluateFunc: TypeAlias = Callable[[Format], AnnotationForm]

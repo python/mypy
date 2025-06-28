@@ -21,7 +21,7 @@ import mypy.util
 Sig: _TypeAlias = tuple[str, str]
 
 
-_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], .\"\']*(\.[a-zA-Z_][\w\[\], ]*)*$")
+_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], .\"\'|]*(\.[a-zA-Z_][\w\[\], ]*)*$")
 _ARG_NAME_RE: Final = re.compile(r"\**[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -78,6 +78,7 @@ class FunctionSig(NamedTuple):
     args: list[ArgSig]
     ret_type: str | None
     type_args: str = ""  # TODO implement in stubgenc and remove the default
+    docstring: str | None = None
 
     def is_special_method(self) -> bool:
         return bool(
@@ -110,6 +111,7 @@ class FunctionSig(NamedTuple):
         is_async: bool = False,
         any_val: str | None = None,
         docstring: str | None = None,
+        include_docstrings: bool = False,
     ) -> str:
         args: list[str] = []
         for arg in self.args:
@@ -144,8 +146,11 @@ class FunctionSig(NamedTuple):
 
         prefix = "async " if is_async else ""
         sig = f"{indent}{prefix}def {self.name}{self.type_args}({', '.join(args)}){retfield}:"
-        if docstring:
-            suffix = f"\n{indent}    {mypy.util.quote_docstring(docstring)}"
+        # if this object has a docstring it's probably produced by a SignatureGenerator, so it
+        # takes precedence over the passed docstring, which acts as a fallback.
+        doc = (self.docstring or docstring) if include_docstrings else None
+        if doc:
+            suffix = f"\n{indent}    {mypy.util.quote_docstring(doc)}"
         else:
             suffix = " ..."
         return f"{sig}{suffix}"
@@ -175,6 +180,8 @@ class DocStringParser:
         self.ret_type = "Any"
         self.found = False
         self.args: list[ArgSig] = []
+        self.pos_only: int | None = None
+        self.keyword_only: int | None = None
         # Valid signatures found so far.
         self.signatures: list[FunctionSig] = []
 
@@ -252,15 +259,34 @@ class DocStringParser:
                 self.arg_type = self.accumulator
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
-                self.arg_name = self.accumulator
-                if not (
-                    token.string == ")" and self.accumulator.strip() == ""
-                ) and not _ARG_NAME_RE.match(self.arg_name):
-                    # Invalid argument name.
-                    self.reset()
-                    return
+                if self.accumulator == "*":
+                    if self.keyword_only is not None:
+                        # Error condition: cannot have * twice
+                        self.reset()
+                        return
+                    self.keyword_only = len(self.args)
+                    self.accumulator = ""
+                else:
+                    if self.accumulator.startswith("*"):
+                        self.keyword_only = len(self.args) + 1
+                    self.arg_name = self.accumulator
+                    if not (
+                        token.string == ")" and self.accumulator.strip() == ""
+                    ) and not _ARG_NAME_RE.match(self.arg_name):
+                        # Invalid argument name.
+                        self.reset()
+                        return
 
             if token.string == ")":
+                if (
+                    self.state[-1] == STATE_ARGUMENT_LIST
+                    and self.keyword_only is not None
+                    and self.keyword_only == len(self.args)
+                    and not self.arg_name
+                ):
+                    # Error condition: * must be followed by arguments
+                    self.reset()
+                    return
                 self.state.pop()
 
             # arg_name is empty when there are no args. e.g. func()
@@ -280,6 +306,22 @@ class DocStringParser:
             self.arg_type = None
             self.arg_default = None
             self.accumulator = ""
+        elif (
+            token.type == tokenize.OP
+            and token.string == "/"
+            and self.state[-1] == STATE_ARGUMENT_LIST
+        ):
+            if token.string == "/":
+                if self.pos_only is not None or self.keyword_only is not None or not self.args:
+                    # Error cases:
+                    # - / shows up more than once
+                    # - / shows up after *
+                    # - / shows up before any arguments
+                    self.reset()
+                    return
+                self.pos_only = len(self.args)
+                self.state.append(STATE_ARGUMENT_TYPE)
+                self.accumulator = ""
 
         elif token.type == tokenize.OP and token.string == "->" and self.state[-1] == STATE_INIT:
             self.accumulator = ""
