@@ -283,13 +283,6 @@ del error_codes[FILE.code]
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final[ErrorCode] = ErrorCode("misc", "Miscellaneous other checks", "General")
 
-# Mypyc-specific error codes
-MYPYC_TRY_FINALLY_AWAIT: Final[ErrorCode] = ErrorCode(
-    "mypyc-try-finally-await",
-    "Async try/finally blocks with await in finally are not supported by mypyc",
-    "General",
-)
-
 OVERLOAD_CANNOT_MATCH: Final[ErrorCode] = ErrorCode(
     "overload-cannot-match",
     "Warn if an @overload signature can never be matched",

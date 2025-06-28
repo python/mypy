@@ -948,9 +948,6 @@ test_async_with_mixed_return()
 def run(x: object) -> object: ...
 
 [case testAsyncTryExceptFinallyAwait]
-# Comprehensive test for bug where exceptions are swallowed in async functions
-# when the finally block contains an await statement
-
 import asyncio
 from testutil import assertRaises
 
@@ -959,14 +956,14 @@ class TestError(Exception):
 
 # Test 0: Simplest case - just try/finally with raise and await
 async def simple_try_finally_await() -> None:
-    try:  # type: ignore[mypyc-try-finally-await]
+    try:
         raise ValueError("simple error")
     finally:
         await asyncio.sleep(0)
 
 # Test 1: Raise inside try, catch in except, don't re-raise
 async def async_try_except_no_reraise() -> int:
-    try:  # type: ignore[mypyc-try-finally-await]
+    try:
         raise ValueError("test error")
         return 1  # Never reached
     except ValueError:
@@ -977,7 +974,7 @@ async def async_try_except_no_reraise() -> int:
 
 # Test 2: Raise inside try, catch in except, re-raise
 async def async_try_except_reraise() -> int:
-    try:  # type: ignore[mypyc-try-finally-await]
+    try:
         raise ValueError("test error")
         return 1  # Never reached
     except ValueError:
@@ -988,7 +985,7 @@ async def async_try_except_reraise() -> int:
 
 # Test 3: Raise inside try, catch in except, raise different error
 async def async_try_except_raise_different() -> int:
-    try:  # type: ignore[mypyc-try-finally-await]
+    try:
         raise ValueError("original error")
         return 1  # Never reached
     except ValueError:
@@ -999,7 +996,7 @@ async def async_try_except_raise_different() -> int:
 
 # Test 4: Another try/except block inside finally
 async def async_try_except_inside_finally() -> int:
-    try:  # type: ignore[mypyc-try-finally-await]
+    try:
         raise ValueError("outer error")
         return 1  # Never reached
     finally:
@@ -1012,12 +1009,12 @@ async def async_try_except_inside_finally() -> int:
 
 # Test 5: Another try/finally block inside finally
 async def async_try_finally_inside_finally() -> int:
-    try:  # type: ignore[mypyc-try-finally-await]
+    try:
         raise ValueError("outer error")
         return 1  # Never reached
     finally:
         await asyncio.sleep(0)
-        try:  # type: ignore[mypyc-try-finally-await]
+        try:
             raise RuntimeError("inner error")
         finally:
             await asyncio.sleep(0)
@@ -1033,7 +1030,7 @@ async def async_exception_no_await_in_finally() -> None:
 
 # Test function with no exception to check normal flow
 async def async_no_exception_with_await_in_finally() -> int:
-    try:  # type: ignore[mypyc-try-finally-await]
+    try:
         return 1  # Normal return
     finally:
         await asyncio.sleep(0)
@@ -1084,11 +1081,8 @@ async def sleep(t: float) -> None: ...
 def run(x: object) -> object: ...
 
 [case testAsyncContextManagerExceptionHandling]
-# Test async context managers with exceptions
-# Async context managers use try/finally internally but seem to work
-# correctly
-
 import asyncio
+from typing import Optional, Type
 from testutil import assertRaises
 
 # Test 1: Basic async context manager that doesn't suppress exceptions
@@ -1096,8 +1090,8 @@ class AsyncContextManager:
     async def __aenter__(self) -> 'AsyncContextManager':
         return self
 
-    async def __aexit__(self, exc_type: type[BaseException] | None,
-                       exc_val: BaseException | None,
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                       exc_val: Optional[BaseException],
                        exc_tb: object) -> None:
         # This await in __aexit__ is like await in finally
         await asyncio.sleep(0)
@@ -1123,8 +1117,8 @@ class AsyncContextManagerRaisesInExit:
     async def __aenter__(self) -> 'AsyncContextManagerRaisesInExit':
         return self
 
-    async def __aexit__(self, exc_type: type[BaseException] | None,
-                       exc_val: BaseException | None,
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                       exc_val: Optional[BaseException],
                        exc_tb: object) -> None:
         # This await in __aexit__ is like await in finally
         await asyncio.sleep(0)
