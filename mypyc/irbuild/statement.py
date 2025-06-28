@@ -756,7 +756,7 @@ def transform_try_finally_stmt_async(
     # Exception case - need to catch to clear the error indicator
     builder.activate_block(err_handler)
     # Catch the error to clear Python's error indicator
-    old_exc = builder.call_c(error_catch_op, [], line)
+    builder.call_c(error_catch_op, [], line)
     # We're not going to use old_exc since it won't survive await
     # The exception is now in sys.exc_info()
     builder.goto(finally_entry)
