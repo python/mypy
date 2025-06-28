@@ -12,6 +12,9 @@ import importlib.util
 from collections.abc import Sequence
 from typing import Callable
 
+import mypy.nodes
+import mypy.traverser
+from mypy.errorcodes import MYPYC_TRY_FINALLY_AWAIT
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -679,7 +682,7 @@ def try_finally_resolve_control(
 
 
 def transform_try_finally_stmt(
-    builder: IRBuilder, try_body: GenFunc, finally_body: GenFunc
+    builder: IRBuilder, try_body: GenFunc, finally_body: GenFunc, line: int = -1
 ) -> None:
     """Generalized try/finally handling that takes functions to gen the bodies.
 
@@ -715,6 +718,17 @@ def transform_try_finally_stmt(
     builder.activate_block(out_block)
 
 
+# A simple visitor to detect await expressions
+class AwaitDetector(mypy.traverser.TraverserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.has_await = False
+
+    def visit_await_expr(self, o: mypy.nodes.AwaitExpr) -> None:
+        self.has_await = True
+        super().visit_await_expr(o)
+
+
 def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
     # Our compilation strategy for try/except/else/finally is to
     # treat try/except/else and try/finally as separate language
@@ -723,6 +737,35 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
     # body of a try/finally block.
     if t.is_star:
         builder.error("Exception groups and except* cannot be compiled yet", t.line)
+
+    # Check if we're in an async function with a finally block that contains await
+    if t.finally_body and builder.fn_info.is_coroutine:
+        detector = AwaitDetector()
+        t.finally_body.accept(detector)
+
+        if detector.has_await:
+            # Check if this error is suppressed with # type: ignore
+            error_ignored = False
+            if builder.module_name in builder.graph:
+                mypyfile = builder.graph[builder.module_name].tree
+                if mypyfile and t.line in mypyfile.ignored_lines:
+                    ignored_codes = mypyfile.ignored_lines[t.line]
+                    # Empty list means ignore all errors on this line
+                    # Otherwise check for specific error code
+                    if not ignored_codes or "mypyc-try-finally-await" in ignored_codes:
+                        error_ignored = True
+
+            if not error_ignored:
+                builder.error(
+                    "try/(except/)finally blocks in async functions with 'await' in "
+                    "the finally block are not supported by mypyc. Exceptions "
+                    "(re-)raised in the try or except blocks will be silently "
+                    "swallowed if a context switch occurs. Ignore with "
+                    "'# type: ignore[mypyc-try-finally-await, unused-ignore]', if you "
+                    "really know what you're doing.",
+                    t.line
+                )
+
     if t.finally_body:
 
         def transform_try_body() -> None:
@@ -733,7 +776,7 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
 
         body = t.finally_body
 
-        transform_try_finally_stmt(builder, transform_try_body, lambda: builder.accept(body))
+        transform_try_finally_stmt(builder, transform_try_body, lambda: builder.accept(body), t.line)
     else:
         transform_try_except_stmt(builder, t)
 
@@ -824,6 +867,7 @@ def transform_with(
         builder,
         lambda: transform_try_except(builder, try_body, [(None, None, except_body)], None, line),
         finally_body,
+        line
     )
 
 
