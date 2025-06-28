@@ -145,8 +145,11 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
                     output.append(line[len(test_temp_dir + os.sep) :].rstrip("\r\n"))
                 else:
                     # Normalize paths so that the output is the same on Windows and Linux/macOS.
-                    line = line.replace(test_temp_dir + os.sep, test_temp_dir + "/")
-                    output.append(line.rstrip("\r\n"))
+                    # Yes, this is naive: replace all slashes preceding first colon, if any.
+                    path, *rest = line.split(":", maxsplit=1)
+                    if rest:
+                        path = path.replace(os.sep, "/")
+                    output.append(":".join([path, *rest]).rstrip("\r\n"))
             iter_count = "" if i == 0 else f" on iteration {i + 1}"
             expected = testcase.output if i == 0 else testcase.output2.get(i + 1, [])
 

@@ -26,7 +26,9 @@ will be incomplete.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import nullcontext
+from itertools import groupby
 from typing import TYPE_CHECKING, Callable, Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -179,7 +181,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
 
     # Reverse order of the scc so the first modules in the original list will be
     # be processed first. This helps with performance.
-    scc = list(reversed(scc))
+    scc = list(reversed(scc))  # noqa: FURB187 intentional copy
 
     # Initialize ASTs and symbol tables.
     for id in scc:
@@ -232,26 +234,66 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
         final_iteration = not any_progress
 
 
+def order_by_subclassing(targets: list[FullTargetInfo]) -> Iterator[FullTargetInfo]:
+    """Make sure that superclass methods are always processed before subclass methods.
+
+    This algorithm is not very optimal, but it is simple and should work well for lists
+    that are already almost correctly ordered.
+    """
+
+    # First, group the targets by their TypeInfo (since targets are sorted by line,
+    # we know that each TypeInfo will appear as group key only once).
+    grouped = [(k, list(g)) for k, g in groupby(targets, key=lambda x: x[3])]
+    remaining_infos = {info for info, _ in grouped if info is not None}
+
+    next_group = 0
+    while grouped:
+        if next_group >= len(grouped):
+            # This should never happen, if there is an MRO cycle, it should be reported
+            # and fixed during top-level processing.
+            raise ValueError("Cannot order method targets by MRO")
+        next_info, group = grouped[next_group]
+        if next_info is None:
+            # Trivial case, not methods but functions, process them straight away.
+            yield from group
+            grouped.pop(next_group)
+            continue
+        if any(parent in remaining_infos for parent in next_info.mro[1:]):
+            # We cannot process this method group yet, try a next one.
+            next_group += 1
+            continue
+        yield from group
+        grouped.pop(next_group)
+        remaining_infos.discard(next_info)
+        # Each time after processing a method group we should retry from start,
+        # since there may be some groups that are not blocked on parents anymore.
+        next_group = 0
+
+
 def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Process functions.
+    all_targets = []
     for module in scc:
         tree = graph[module].tree
         assert tree is not None
-        analyzer = graph[module].manager.semantic_analyzer
         # In principle, functions can be processed in arbitrary order,
         # but _methods_ must be processed in the order they are defined,
         # because some features (most notably partial types) depend on
         # order of definitions on self.
         #
         # There can be multiple generated methods per line. Use target
-        # name as the second sort key to get a repeatable sort order on
-        # Python 3.5, which doesn't preserve dictionary order.
+        # name as the second sort key to get a repeatable sort order.
         targets = sorted(get_all_leaf_targets(tree), key=lambda x: (x[1].line, x[0]))
-        for target, node, active_type in targets:
-            assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
-            process_top_level_function(
-                analyzer, graph[module], module, target, node, active_type, patches
-            )
+        all_targets.extend(
+            [(module, target, node, active_type) for target, node, active_type in targets]
+        )
+
+    for module, target, node, active_type in order_by_subclassing(all_targets):
+        analyzer = graph[module].manager.semantic_analyzer
+        assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
+        process_top_level_function(
+            analyzer, graph[module], module, target, node, active_type, patches
+        )
 
 
 def process_top_level_function(
@@ -308,6 +350,11 @@ TargetInfo: _TypeAlias = tuple[
     str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
 ]
 
+# Same as above but includes module as first item.
+FullTargetInfo: _TypeAlias = tuple[
+    str, str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+]
+
 
 def get_all_leaf_targets(file: MypyFile) -> list[TargetInfo]:
     """Return all leaf targets in a symbol table (module-level and methods)."""
@@ -342,6 +389,7 @@ def semantic_analyze_target(
     analyzer.global_decls = [set()]
     analyzer.nonlocal_decls = [set()]
     analyzer.globals = tree.names
+    analyzer.imports = set()
     analyzer.progress = False
     with state.wrap_context(check_blockers=False):
         refresh_node = node

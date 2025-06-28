@@ -53,6 +53,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
     find_unpack_in_list,
+    flatten_nested_tuples,
     get_proper_type,
     has_recursive_types,
     has_type_vars,
@@ -476,7 +477,7 @@ def _infer_constraints(
                     if not (can_have_union_overlapping and _is_item_overlapping_actual_type(item))
                 ]
             ],
-            eager=False,
+            eager=isinstance(actual, AnyType),
         )
         if result:
             return result
@@ -572,7 +573,7 @@ def handle_recursive_union(template: UnionType, actual: Type, direction: int) ->
     ) or infer_constraints(UnionType.make_union(type_var_items), actual, direction)
 
 
-def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list[Constraint]:
+def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> list[Constraint]:
     """Deduce what we can from a collection of constraint lists.
 
     It's a given that at least one of the lists must be satisfied. A
@@ -607,11 +608,19 @@ def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list
                 if option in trivial_options:
                     continue
                 merged_options.append([merge_with_any(c) for c in option])
-            return any_constraints(list(merged_options), eager)
+            return any_constraints(list(merged_options), eager=eager)
 
     # If normal logic didn't work, try excluding trivially unsatisfiable constraint (due to
     # upper bounds) from each option, and comparing them again.
     filtered_options = [filter_satisfiable(o) for o in options]
+    if filtered_options != options:
+        return any_constraints(filtered_options, eager=eager)
+
+    # Try harder: if that didn't work, try to strip typevars that aren't meta vars.
+    # Note this is what we would always do, but unfortunately some callers may not
+    # set the meta var status correctly (for historical reasons), so we use this as
+    # a fallback only.
+    filtered_options = [exclude_non_meta_vars(o) for o in options]
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
 
@@ -629,6 +638,7 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     """
     if not option:
         return option
+
     satisfiable = []
     for c in option:
         if isinstance(c.origin_type_var, TypeVarType) and c.origin_type_var.values:
@@ -641,6 +651,15 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     if not satisfiable:
         return None
     return satisfiable
+
+
+def exclude_non_meta_vars(option: list[Constraint] | None) -> list[Constraint] | None:
+    # If we had an empty list, keep it intact
+    if not option:
+        return option
+    # However, if none of the options actually references meta vars, better remove
+    # this constraint entirely.
+    return [c for c in option if c.type_var.is_meta_var()] or None
 
 
 def is_same_constraints(x: list[Constraint], y: list[Constraint]) -> bool:
@@ -1108,8 +1127,8 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     inst, erase_typevars(temp), ignore_pos_arg_names=True
                 ):
                     continue
-            # This exception matches the one in subtypes.py, see PR #14121 for context.
-            if member == "__call__" and instance.type.is_metaclass():
+            # This exception matches the one in typeops.py, see PR #14121 for context.
+            if member == "__call__" and instance.type.is_metaclass(precise=True):
                 continue
             res.extend(infer_constraints(temp, inst, self.direction))
             if mypy.subtypes.IS_SETTABLE in mypy.subtypes.get_member_flags(member, protocol):
@@ -1123,11 +1142,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         # using e.g. callback protocols.
         # TODO: check that callables match? Ideally we should not infer constraints
         # callables that can never be subtypes of one another in given direction.
-        template = template.with_unpacked_kwargs()
+        template = template.with_unpacked_kwargs().with_normalized_var_args()
         extra_tvars = False
         if isinstance(self.actual, CallableType):
             res: list[Constraint] = []
-            cactual = self.actual.with_unpacked_kwargs()
+            cactual = self.actual.with_unpacked_kwargs().with_normalized_var_args()
             param_spec = template.param_spec()
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
@@ -1377,6 +1396,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     res.extend(
                         infer_constraints(template_items[i], actual_items[i], self.direction)
                     )
+            res.extend(
+                infer_constraints(
+                    template.partial_fallback, actual.partial_fallback, self.direction
+                )
+            )
             return res
         elif isinstance(actual, AnyType):
             return self.infer_against_any(template.items, actual)
@@ -1408,7 +1432,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
 
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> list[Constraint]:
         res: list[Constraint] = []
-        for t in types:
+        # Some items may be things like `*Tuple[*Ts, T]` for example from callable types with
+        # suffix after *arg, so flatten them.
+        for t in flatten_nested_tuples(types):
             if isinstance(t, UnpackType):
                 if isinstance(t.type, TypeVarTupleType):
                     res.append(Constraint(t.type, self.direction, any_type))

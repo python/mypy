@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install tox
-        run: pip install tox==4.21.2
+        run: pip install tox==4.26.0
       - name: Setup tox environment
         run: tox run -e ${{ env.TOXENV }} --notest
       - name: Test
