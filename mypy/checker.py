@@ -75,6 +75,7 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ComplexExpr,
     Context,
     ContinueStmt,
     Decorator,
@@ -358,6 +359,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     # functions such as open(), etc.
     plugin: Plugin
 
+    # A helper state to produce unique temporary names on demand.
+    _unique_id: int
+
     def __init__(
         self,
         errors: Errors,
@@ -427,6 +431,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self, self.msg, self.plugin, per_line_checking_time_ns
         )
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
+        self._unique_id = 0
 
     @property
     def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
@@ -5430,21 +5435,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
-        named_subject: Expression
-        if isinstance(s.subject, CallExpr):
-            # Create a dummy subject expression to handle cases where a match statement's subject
-            # is not a literal value. This lets us correctly narrow types and check exhaustivity
-            # This is hack!
-            if s.subject_dummy is None:
-                id = s.subject.callee.fullname if isinstance(s.subject.callee, RefExpr) else ""
-                name = "dummy-match-" + id
-                v = Var(name)
-                s.subject_dummy = NameExpr(name)
-                s.subject_dummy.node = v
-            named_subject = s.subject_dummy
-        else:
-            named_subject = s.subject
-
+        named_subject = self._make_named_statement_for_match(s)
         with self.binder.frame_context(can_skip=False, fall_through=0):
             subject_type = get_proper_type(self.expr_checker.accept(s.subject))
 
@@ -5477,6 +5468,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         pattern_map, else_map = conditional_types_to_typemaps(
                             named_subject, pattern_type.type, pattern_type.rest_type
                         )
+                        # Maybe the subject type can be inferred from constraints on
+                        # its attribute/item?
+                        if pattern_map and named_subject in pattern_map:
+                            pattern_map[s.subject] = pattern_map[named_subject]
+                        if else_map and named_subject in else_map:
+                            else_map[s.subject] = else_map[named_subject]
                         pattern_map = self.propagate_up_typemap_info(pattern_map)
                         else_map = self.propagate_up_typemap_info(else_map)
                         self.remove_capture_conflicts(pattern_type.captures, inferred_types)
@@ -5528,6 +5525,36 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # after the match.
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
+
+    def _make_named_statement_for_match(self, s: MatchStmt) -> Expression:
+        """Construct a fake NameExpr for inference if a match clause is complex."""
+        subject = s.subject
+        expressions_to_preserve = (
+            # Already named - we should infer type of it as given
+            NameExpr,
+            AssignmentExpr,
+            # Primitive literals - their type is known, no need to name them
+            IntExpr,
+            StrExpr,
+            BytesExpr,
+            FloatExpr,
+            ComplexExpr,
+            EllipsisExpr,
+        )
+        if isinstance(subject, expressions_to_preserve):
+            return subject
+        elif s.subject_dummy is not None:
+            return s.subject_dummy
+        else:
+            # Create a dummy subject expression to handle cases where a match statement's subject
+            # is not a literal value. This lets us correctly narrow types and check exhaustivity
+            # This is hack!
+            name = self.new_unique_dummy_name("match")
+            v = Var(name)
+            named_subject = NameExpr(name)
+            named_subject.node = v
+            s.subject_dummy = named_subject
+            return named_subject
 
     def _get_recursive_sub_patterns_map(
         self, expr: Expression, typ: Type
@@ -7929,6 +7956,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         candidate = bind_self(candidate, selftype)
                     if candidate == target:
                         self.warn_deprecated(item.func, context)
+
+    def new_unique_dummy_name(self, namespace: str) -> str:
+        """Generate a name that is guaranteed to be unique for this TypeChecker instance."""
+        name = f"dummy-{namespace}-{self._unique_id}"
+        self._unique_id += 1
+        return name
 
     # leafs
 
