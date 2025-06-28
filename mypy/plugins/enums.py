@@ -22,6 +22,7 @@ from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
 from mypy.typeops import fixup_partial_type, make_simplified_union
 from mypy.types import (
+    ELLIPSIS_TYPE_NAMES,
     CallableType,
     Instance,
     LiteralType,
@@ -90,10 +91,7 @@ def _infer_value_type_with_auto_fallback(
     # Enums in stubs may have ... instead of actual values. If `_value_` is annotated
     # (manually or inherited from IntEnum, for example), it is a more reasonable guess
     # than literal ellipsis type.
-    if isinstance(proper_type, Instance) and proper_type.type.fullname in {
-        "types.EllipsisType",
-        "builtins.ellipsis",
-    }:
+    if isinstance(proper_type, Instance) and proper_type.type.fullname in ELLIPSIS_TYPE_NAMES:
         if (
             isinstance(ctx.type, Instance)
             and (value_type := ctx.type.type.get("_value_"))
