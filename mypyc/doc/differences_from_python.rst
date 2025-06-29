@@ -317,6 +317,7 @@ non-exhaustive list of what won't work:
 - Frames of compiled functions can't be inspected using ``inspect``
 - Compiled methods aren't considered methods by ``inspect.ismethod``
 - ``inspect.signature`` chokes on compiled functions
+- ``inspect.iscoroutinefunction`` and ``asyncio.iscoroutinefunction`` will always return False for compiled functions, even those defined with `async def`
 
 Profiling hooks and tracing
 ***************************

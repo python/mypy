@@ -125,7 +125,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
     )
 
 
-def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
+def get_self_type(func: CallableType, def_info: TypeInfo) -> Type | None:
+    default_self = fill_typevars(def_info)
     if isinstance(get_proper_type(func.ret_type), UninhabitedType):
         return func.ret_type
     elif func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
@@ -227,9 +228,8 @@ def type_object_type_from_function(
     # self-types only in the defining class, similar to __new__ (but not exactly the same,
     # see comment in class_callable below). This is mostly useful for annotating library
     # classes such as subprocess.Popen.
-    default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
-        orig_self_types = [get_self_type(it, default_self) for it in signature.items]
+        orig_self_types = [get_self_type(it, def_info) for it in signature.items]
     else:
         orig_self_types = [None] * len(signature.items)
 
@@ -245,7 +245,7 @@ def type_object_type_from_function(
     # We need to map B's __init__ to the type (List[T]) -> None.
     signature = bind_self(
         signature,
-        original_type=default_self,
+        original_type=fill_typevars(info),
         is_classmethod=is_new,
         # Explicit instance self annotations have special handling in class_callable(),
         # we don't need to bind any type variables in them if they are generic.
@@ -472,9 +472,6 @@ def bind_self(
     else:
         variables = func.variables
 
-    original_type = get_proper_type(original_type)
-    if isinstance(original_type, CallableType) and original_type.is_type_obj():
-        original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
         arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
@@ -890,7 +887,7 @@ def callable_type(
     fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and (not fdef.is_static or fdef.name == "__new__") and fdef.arg_names:
+    if fdef.info and fdef.has_self_or_cls_argument and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == "__new__":
             self_type = TypeType.make_normalized(self_type)

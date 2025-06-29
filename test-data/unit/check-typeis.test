@@ -134,6 +134,91 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsUnionWithGeneric]
+from typing import Any, List, Sequence, Union
+from typing_extensions import TypeIs
+
+def is_int_list(a: object) -> TypeIs[List[int]]: pass
+def is_int_seq(a: object) -> TypeIs[Sequence[int]]: pass
+def is_seq(a: object) -> TypeIs[Sequence[Any]]: pass
+
+def f1(a: Union[List[int], List[str]]) -> None:
+    if is_int_list(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+
+def f2(a: Union[List[int], int]) -> None:
+    if is_int_list(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.int]"
+
+def f3(a: Union[List[bool], List[str]]) -> None:
+    if is_int_seq(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.bool]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.bool], builtins.list[builtins.str]]"
+
+def f4(a: Union[List[int], int]) -> None:
+    if is_seq(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsTupleGeneric]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing_extensions import TypeIs, Unpack
+
+class A: ...
+class B: ...
+
+def is_tuple_of_B(v: tuple[A | B, ...]) -> TypeIs[tuple[B, ...]]: ...
+
+def test1(t: tuple[A]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # E: Statement is unreachable
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.A]"
+
+def test2(t: tuple[B, A]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # E: Statement is unreachable
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, __main__.A]"
+
+def test3(t: tuple[A | B]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[Union[__main__.A, __main__.B]]"
+
+def test4(t: tuple[A | B, A | B]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, __main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[Union[__main__.A, __main__.B], Union[__main__.A, __main__.B]]"
+
+def test5(t: tuple[A | B, ...]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
+    else:
+        reveal_type(t)  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+
+def test6(t: tuple[B, Unpack[tuple[A | B, ...]], B]) -> None:
+    if is_tuple_of_B(t):
+        # Should this be tuple[B, *tuple[B, ...], B]
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Never, __main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Unpack[builtins.tuple[Union[__main__.A, __main__.B], ...]], __main__.B]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsNonzeroFloat]
 from typing_extensions import TypeIs
 def is_nonzero(a: object) -> TypeIs[float]: pass
@@ -833,4 +918,35 @@ def is_model_a(model: str) -> TypeIs[Literal[Model.A, "foo"]]:
 def handle(model: Model) -> None:
     if is_model_a(model):
         reveal_type(model)  # N: Revealed type is "Literal[__main__.Model.A]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsAwaitableAny]
+from __future__ import annotations
+from typing import Any, Awaitable, Callable
+from typing_extensions import TypeIs
+
+def is_async_callable(obj: Any) -> TypeIs[Callable[..., Awaitable[Any]]]: ...
+
+def main(f: Callable[[], int | Awaitable[int]]) -> None:
+    if is_async_callable(f):
+        reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> typing.Awaitable[Any]"
+    else:
+        reveal_type(f)  # N: Revealed type is "def () -> Union[builtins.int, typing.Awaitable[builtins.int]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsWithDefer]
+from typing import Union
+from typing_extensions import TypeIs
+
+class A: ...
+class B: ...
+
+def is_a(x: object) -> TypeIs[A]:
+    return defer_not_defined()  # E: Name "defer_not_defined" is not defined
+
+def main(x: Union[A, B]) -> None:
+    if is_a(x):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.B"
 [builtins fixtures/tuple.pyi]
