@@ -2393,7 +2393,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         seen_kw = False
         for i, kind in enumerate(callee.arg_kinds):
             mapped_args = formal_to_actual[i]
-            seen_kw = seen_kw or any(actual_kinds[k].is_named(star=True) for k in mapped_args)
+            seen_kw = (
+                seen_kw
+                or kind == ArgKind.ARG_NAMED_OPT
+                or any(actual_kinds[k].is_named(star=True) for k in mapped_args)
+            )
             if kind.is_required() and not mapped_args and not is_unexpected_arg_error:
                 # No actual for a mandatory formal
                 if (
