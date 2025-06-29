@@ -91,7 +91,12 @@ def _infer_value_type_with_auto_fallback(
     # Enums in stubs may have ... instead of actual values. If `_value_` is annotated
     # (manually or inherited from IntEnum, for example), it is a more reasonable guess
     # than literal ellipsis type.
-    if isinstance(proper_type, Instance) and proper_type.type.fullname in ELLIPSIS_TYPE_NAMES:
+    source_module = ctx.api.modules[ctx.type.type.fullname.rsplit(".", 1)[0]]
+    if (
+        source_module.is_stub
+        and isinstance(proper_type, Instance)
+        and proper_type.type.fullname in ELLIPSIS_TYPE_NAMES
+    ):
         if (
             isinstance(ctx.type, Instance)
             and (value_type := ctx.type.type.get("_value_"))
