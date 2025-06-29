@@ -17,6 +17,7 @@ from collections.abc import Iterable, Sequence
 from typing import Final, TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
+from mypy.checker import TypeChecker
 from mypy.nodes import TypeInfo, Var
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
@@ -129,6 +130,7 @@ def _infer_value_type_with_auto_fallback(
 
 
 def _is_defined_in_stub(ctx: mypy.plugin.AttributeContext) -> bool:
+    assert isinstance(ctx.api, TypeChecker)
     return (
         isinstance(ctx.type, Instance)
         and ctx.api.modules[ctx.type.type.fullname.rsplit(".", 1)[0]].is_stub
