@@ -2441,18 +2441,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         self.msg.fail("ParamSpec.kwargs should only be passed once", context)
                         ok = False
         if missing_contiguous_pos_block:
-            if ArgKind.ARG_STAR2 in actual_kinds:
-                # To generate a correct message, expand kwargs manually. If a name was
-                # missing from the call but doesn't belong to continuous positional prefix,
-                # it was already reported as a missing kwarg. All args before first prefix
-                # item are guaranteed to have been passed positionally.
-                names_to_use = [None] * missing_contiguous_pos_block[0] + [
-                    name
-                    for i, name in enumerate(callee.arg_names)
-                    if name is not None and i not in missing_contiguous_pos_block
-                ]
-            else:
-                names_to_use = actual_names
+            # To generate a correct message, expand kwargs manually. If a name was
+            # missing from the call but doesn't belong to continuous positional prefix,
+            # it was already reported as a missing kwarg. All args before first prefix
+            # item are guaranteed to have been passed positionally.
+            passed_or_reported_names = callee.arg_names[missing_contiguous_pos_block[-1] + 1 :]
+            assert None not in passed_or_reported_names
+            names_to_use = [None] * missing_contiguous_pos_block[0] + passed_or_reported_names
             self.msg.too_few_arguments(callee, context, names_to_use)
             if object_type and callable_name and "." in callable_name:
                 self.missing_classvar_callable_note(object_type, callable_name, context)

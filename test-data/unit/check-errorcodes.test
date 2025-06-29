@@ -242,7 +242,8 @@ g()  # E: Missing named argument "x" for "g"  [call-arg]
 
 def h(x: int, y: int, z: int) -> None: pass
 h(y=1, z=1)  # E: Missing positional argument "x" in call to "h"  [call-arg]
-h(y=1)  # E: Missing positional arguments "x", "z" in call to "h"  [call-arg]
+h(y=1)  # E: Missing named argument "z" for "h"  [call-arg] \
+        # E: Missing positional argument "x" in call to "h"  [call-arg]
 
 [case testErrorCodeArgType]
 def f(x: int) -> None: pass
