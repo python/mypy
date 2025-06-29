@@ -618,7 +618,6 @@ reveal_type(B.a)        # N: Revealed type is "Literal[__main__.B.a]?"
 reveal_type(A.x.name)   # N: Revealed type is "Literal['x']?"
 reveal_type(B.a.name)   # N: Revealed type is "Literal['a']?"
 
-# TODO: The revealed type should be 'int' here
 reveal_type(A.x.value)  # N: Revealed type is "builtins.int"
 reveal_type(B.a.value)  # N: Revealed type is "builtins.int"
 [builtins fixtures/enum.pyi]
@@ -767,9 +766,6 @@ is_x(reveal_type(B3.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(B3.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(B3.x.value)         # N: Revealed type is "Literal[1]?"
 reveal_type(B3.x._value_)       # N: Revealed type is "Literal[1]?"
-
-# TODO: C1.x.value and C2.x.value should also be of type 'int'
-# This requires either a typeshed change or a plugin refinement
 
 C1 = IntFlag('C1', 'x')
 class C2(IntFlag):
