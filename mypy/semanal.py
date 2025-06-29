@@ -1527,33 +1527,33 @@ class SemanticAnalyzer(
         assert isinstance(first_item, Decorator)
         deleted_items = []
         bare_setter_type = None
+        func_name = first_item.func.name
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
                 item.func.accept(self)
                 if item.decorators:
                     first_node = item.decorators[0]
-                    if isinstance(first_node, MemberExpr):
+                    if self._is_valid_property_decorator(first_node, func_name):
+                        # Get abstractness from the original definition.
+                        item.func.abstract_status = first_item.func.abstract_status
                         if first_node.name == "setter":
                             # The first item represents the entire property.
                             first_item.var.is_settable_property = True
-                            # Get abstractness from the original definition.
-                            item.func.abstract_status = first_item.func.abstract_status
                             setter_func_type = function_type(
                                 item.func, self.named_type("builtins.function")
                             )
                             assert isinstance(setter_func_type, CallableType)
                             bare_setter_type = setter_func_type
                             defn.setter_index = i + 1
-                        if first_node.name == "deleter":
-                            item.func.abstract_status = first_item.func.abstract_status
                         for other_node in item.decorators[1:]:
                             other_node.accept(self)
                     else:
                         self.fail(
-                            f"Only supported top decorator is @{first_item.func.name}.setter", item
+                            f'Only supported top decorators are "@{func_name}.setter" and "@{func_name}.deleter"',
+                            first_node,
                         )
             else:
-                self.fail(f'Unexpected definition for property "{first_item.func.name}"', item)
+                self.fail(f'Unexpected definition for property "{func_name}"', item)
                 deleted_items.append(i + 1)
         for i in reversed(deleted_items):
             del items[i]
@@ -1566,6 +1566,23 @@ class SemanticAnalyzer(
                             f"function {item.fullname} is deprecated: {deprecated}"
                         )
         return bare_setter_type
+
+    def _is_valid_property_decorator(
+        self, deco: Expression, property_name: str
+    ) -> TypeGuard[MemberExpr]:
+        if not isinstance(deco, MemberExpr):
+            return False
+        if not isinstance(deco.expr, NameExpr) or deco.expr.name != property_name:
+            return False
+        if deco.name not in {"setter", "deleter"}:
+            # This intentionally excludes getter. While `@prop.getter` is valid at
+            # runtime, that would mean replacing the already processed getter type.
+            # Such usage is almost definitely a mistake (except for overrides in
+            # subclasses but we don't support them anyway) and might be a typo
+            # (only one letter away from `setter`), it's likely almost never used,
+            # so supporting it properly won't pay off.
+            return False
+        return True
 
     def add_function_to_symbol_table(self, func: FuncDef | OverloadedFuncDef) -> None:
         if self.is_class_scope():
