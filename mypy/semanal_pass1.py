@@ -74,6 +74,10 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
                     if last.end_line is not None:
                         # We are on a Python version recent enough to support end lines.
                         self.skipped_lines |= set(range(next_def.line, last.end_line + 1))
+                    # To avoid running a new visitor here, let's assume nobody does
+                    # `assert sys.platform == 'foo'; import unknown` on one line
+                    # at top level.
+                    file.imports = [i for i in file.imports if i.line < next_def.line]
                 del file.defs[i + 1 :]
                 break
         file.skipped_lines = self.skipped_lines
