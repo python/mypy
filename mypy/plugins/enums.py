@@ -91,17 +91,14 @@ def _infer_value_type_with_auto_fallback(
     # Enums in stubs may have ... instead of actual values. If `_value_` is annotated
     # (manually or inherited from IntEnum, for example), it is a more reasonable guess
     # than literal ellipsis type.
-    source_module = ctx.api.modules[ctx.type.type.fullname.rsplit(".", 1)[0]]
     if (
-        source_module.is_stub
+        _is_defined_in_stub(ctx)
         and isinstance(proper_type, Instance)
         and proper_type.type.fullname in ELLIPSIS_TYPE_NAMES
+        and isinstance(ctx.type, Instance)
     ):
-        if (
-            isinstance(ctx.type, Instance)
-            and (value_type := ctx.type.type.get("_value_"))
-            and isinstance(var := value_type.node, Var)
-        ):
+        value_type = ctx.type.type.get("_value_")
+        if value_type is not None and isinstance(var := value_type.node, Var):
             return var.type
         return proper_type
     if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
@@ -129,6 +126,13 @@ def _infer_value_type_with_auto_fallback(
             return int_type
         return get_proper_type(node_type.ret_type)
     return ctx.default_attr_type
+
+
+def _is_defined_in_stub(ctx: mypy.plugin.AttributeContext) -> bool:
+    return (
+        isinstance(ctx.type, Instance)
+        and ctx.api.modules[ctx.type.type.fullname.rsplit(".", 1)[0]].is_stub
+    )
 
 
 def _implements_new(info: TypeInfo) -> bool:
