@@ -2389,14 +2389,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         )
 
         # Check for too many or few values for formals.
+        missing_contiguous_pos_block = []
+        seen_kw = False
         for i, kind in enumerate(callee.arg_kinds):
             mapped_args = formal_to_actual[i]
+            seen_kw = seen_kw or any(actual_kinds[k].is_named(star=True) for k in mapped_args)
             if kind.is_required() and not mapped_args and not is_unexpected_arg_error:
                 # No actual for a mandatory formal
-                if kind.is_positional():
-                    self.msg.too_few_arguments(callee, context, actual_names)
-                    if object_type and callable_name and "." in callable_name:
-                        self.missing_classvar_callable_note(object_type, callable_name, context)
+                if (
+                    kind.is_positional()
+                    and not seen_kw
+                    and (
+                        not missing_contiguous_pos_block
+                        or missing_contiguous_pos_block[-1] == i - 1
+                    )
+                ):
+                    missing_contiguous_pos_block.append(i)
                 else:
                     argname = callee.arg_names[i] or "?"
                     self.msg.missing_named_argument(callee, context, argname)
@@ -2432,6 +2440,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     if actual_kinds[mapped_args[0]] == nodes.ARG_STAR2 and paramspec_entries > 1:
                         self.msg.fail("ParamSpec.kwargs should only be passed once", context)
                         ok = False
+        if missing_contiguous_pos_block:
+            if ArgKind.ARG_STAR2 in actual_kinds:
+                # To generate a correct message, expand kwargs manually. If a name was
+                # missing from the call but doesn't belong to continuous positional prefix,
+                # it was already reported as a missing kwarg. All args before first prefix
+                # item are guaranteed to have been passed positionally.
+                names_to_use = [None] * missing_contiguous_pos_block[0] + [
+                    name
+                    for i, name in enumerate(callee.arg_names)
+                    if name is not None and i not in missing_contiguous_pos_block
+                ]
+            else:
+                names_to_use = actual_names
+            self.msg.too_few_arguments(callee, context, names_to_use)
+            if object_type and callable_name and "." in callable_name:
+                self.missing_classvar_callable_note(object_type, callable_name, context)
         return ok
 
     def check_for_extra_actual_arguments(
