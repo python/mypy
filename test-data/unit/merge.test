@@ -671,12 +671,12 @@ TypeInfo<2>(
     _NT<6>
     __annotations__<7> (builtins.dict[builtins.str<8>, Any]<9>)
     __doc__<10> (builtins.str<8>)
-    __match_args__<11> (Tuple[Literal['x']])
+    __match_args__<11> (tuple[Literal['x']])
     __new__<12>
     _asdict<13>
     _field_defaults<14> (builtins.dict[builtins.str<8>, Any]<9>)
     _field_types<15> (builtins.dict[builtins.str<8>, Any]<9>)
-    _fields<16> (Tuple[builtins.str<8>])
+    _fields<16> (tuple[builtins.str<8>])
     _make<17>
     _replace<18>
     _source<19> (builtins.str<8>)
@@ -695,12 +695,12 @@ TypeInfo<2>(
     _NT<6>
     __annotations__<7> (builtins.dict[builtins.str<8>, Any]<9>)
     __doc__<10> (builtins.str<8>)
-    __match_args__<11> (Tuple[Literal['x'], Literal['y']])
+    __match_args__<11> (tuple[Literal['x'], Literal['y']])
     __new__<12>
     _asdict<13>
     _field_defaults<14> (builtins.dict[builtins.str<8>, Any]<9>)
     _field_types<15> (builtins.dict[builtins.str<8>, Any]<9>)
-    _fields<16> (Tuple[builtins.str<8>, builtins.str<8>])
+    _fields<16> (tuple[builtins.str<8>, builtins.str<8>])
     _make<17>
     _replace<18>
     _source<19> (builtins.str<8>)
@@ -736,7 +736,7 @@ TypeInfo<2>(
     _asdict<12>
     _field_defaults<13> (builtins.dict[builtins.str<8>, Any]<9>)
     _field_types<14> (builtins.dict[builtins.str<8>, Any]<9>)
-    _fields<15> (Tuple[builtins.str<8>])
+    _fields<15> (tuple[builtins.str<8>])
     _make<16>
     _replace<17>
     _source<18> (builtins.str<8>)
@@ -759,7 +759,7 @@ TypeInfo<2>(
     _asdict<12>
     _field_defaults<13> (builtins.dict[builtins.str<8>, Any]<9>)
     _field_types<14> (builtins.dict[builtins.str<8>, Any]<9>)
-    _fields<15> (Tuple[builtins.str<8>, builtins.str<8>])
+    _fields<15> (tuple[builtins.str<8>, builtins.str<8>])
     _make<16>
     _replace<17>
     _source<18> (builtins.str<8>)
@@ -795,10 +795,10 @@ class A: pass
 a: Type[A]
 [out]
 ## target
-NameExpr:3: Type[target.A<0>]
+NameExpr:3: type[target.A<0>]
 ==>
 ## target
-NameExpr:3: Type[target.A<0>]
+NameExpr:3: type[target.A<0>]
 
 [case testTypeVar_types]
 import target
@@ -1332,23 +1332,25 @@ MypyFile:1<1>(
 [case testMergeTypedDict_symtable]
 import target
 [file target.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 D = TypedDict('D', {'a': A})
 d: D
 [file target.py.next]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 D = TypedDict('D', {'a': A, 'b': int})
 d: D
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [out]
 __main__:
     target: MypyFile<0>
 target:
     A: TypeInfo<1>
     D: TypeInfo<2>
-    TypedDict: FuncDef<3>
+    TypedDict: Var<3>
     d: Var<4>(TypedDict('target.D', {'a': target.A<1>}))
 ==>
 __main__:
@@ -1356,7 +1358,7 @@ __main__:
 target:
     A: TypeInfo<1>
     D: TypeInfo<2>
-    TypedDict: FuncDef<3>
+    TypedDict: Var<3>
     d: Var<4>(TypedDict('target.D', {'a': target.A<1>, 'b': builtins.int<5>}))
 
 [case testNewType_symtable]
@@ -1490,6 +1492,7 @@ from enum import Enum
 class A(Enum):
     X = 0
     Y = 1
+[builtins fixtures/enum.pyi]
 [out]
 TypeInfo<0>(
   Name(target.A)
@@ -1511,11 +1514,11 @@ TypeInfo<0>(
 [case testLiteralMerge]
 import target
 [file target.py]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal[3]) -> Literal['a']: pass
 bar: Literal[4] = 4
 [file target.py.next]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal['3']) -> Literal['b']: pass
 bar: Literal[5] = 5
 [builtins fixtures/tuple.pyi]
@@ -1525,7 +1528,7 @@ MypyFile:1<0>(
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
-  ImportFrom:1(typing_extensions, [Literal])
+  ImportFrom:1(typing, [Literal])
   FuncDef:2<2>(
     foo
     Args(
@@ -1543,7 +1546,7 @@ MypyFile:1<0>(
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
-  ImportFrom:1(typing_extensions, [Literal])
+  ImportFrom:1(typing, [Literal])
   FuncDef:2<2>(
     foo
     Args(

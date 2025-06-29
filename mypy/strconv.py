@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 import re
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 import mypy.nodes
 from mypy.options import Options
@@ -112,7 +113,7 @@ class StrConv(NodeVisitor[str]):
         if o.path != "main":
             # Insert path. Normalize directory separators to / to unify test
             # case# output in all platforms.
-            a.insert(0, o.path.replace(os.sep, "/"))
+            a.insert(0, o.path.replace(os.getcwd() + os.sep, "").replace(os.sep, "/"))
         if o.ignored_lines:
             a.append("IgnoredLines(%s)" % ", ".join(str(line) for line in sorted(o.ignored_lines)))
         return self.dump(a, o)
@@ -349,6 +350,8 @@ class StrConv(NodeVisitor[str]):
             a.append(p.upper_bound)
         if p.values:
             a.append(("Values", p.values))
+        if p.default:
+            a.append(("Default", [p.default]))
         return [("TypeParam", a)]
 
     # Expressions

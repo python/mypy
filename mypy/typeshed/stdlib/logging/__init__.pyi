@@ -6,12 +6,9 @@ from io import TextIOWrapper
 from re import Pattern
 from string import Template
 from time import struct_time
-from types import FrameType, TracebackType
+from types import FrameType, GenericAlias, TracebackType
 from typing import Any, ClassVar, Final, Generic, Literal, Protocol, TextIO, TypeVar, overload
 from typing_extensions import Self, TypeAlias, deprecated
-
-if sys.version_info >= (3, 11):
-    from types import GenericAlias
 
 __all__ = [
     "BASIC_FORMAT",
@@ -55,10 +52,9 @@ __all__ = [
     "setLogRecordFactory",
     "lastResort",
     "raiseExceptions",
+    "warn",
 ]
 
-if sys.version_info < (3, 13):
-    __all__ += ["warn"]
 if sys.version_info >= (3, 11):
     __all__ += ["getLevelNamesMapping"]
 if sys.version_info >= (3, 12):
@@ -157,17 +153,16 @@ class Logger(Filterer):
         stacklevel: int = 1,
         extra: Mapping[str, object] | None = None,
     ) -> None: ...
-    if sys.version_info < (3, 13):
-        def warn(
-            self,
-            msg: object,
-            *args: object,
-            exc_info: _ExcInfoType = None,
-            stack_info: bool = False,
-            stacklevel: int = 1,
-            extra: Mapping[str, object] | None = None,
-        ) -> None: ...
-
+    @deprecated("Deprecated; use warning() instead.")
+    def warn(
+        self,
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
+    ) -> None: ...
     def error(
         self,
         msg: object,
@@ -275,10 +270,7 @@ class Formatter:
     datefmt: str | None  # undocumented
     _style: PercentStyle  # undocumented
     default_time_format: str
-    if sys.version_info >= (3, 9):
-        default_msec_format: str | None
-    else:
-        default_msec_format: str
+    default_msec_format: str | None
 
     if sys.version_info >= (3, 10):
         def __init__(
@@ -381,6 +373,9 @@ class LoggerAdapter(Generic[_L]):
     else:
         extra: Mapping[str, object]
 
+    if sys.version_info >= (3, 13):
+        merge_extra: bool
+
     def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]: ...
     def debug(
         self,
@@ -412,18 +407,17 @@ class LoggerAdapter(Generic[_L]):
         extra: Mapping[str, object] | None = None,
         **kwargs: object,
     ) -> None: ...
-    if sys.version_info < (3, 13):
-        def warn(
-            self,
-            msg: object,
-            *args: object,
-            exc_info: _ExcInfoType = None,
-            stack_info: bool = False,
-            stacklevel: int = 1,
-            extra: Mapping[str, object] | None = None,
-            **kwargs: object,
-        ) -> None: ...
-
+    @deprecated("Deprecated; use warning() instead.")
+    def warn(
+        self,
+        msg: object,
+        *args: object,
+        exc_info: _ExcInfoType = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        extra: Mapping[str, object] | None = None,
+        **kwargs: object,
+    ) -> None: ...
     def error(
         self,
         msg: object,
@@ -523,17 +517,15 @@ def warning(
     stacklevel: int = 1,
     extra: Mapping[str, object] | None = None,
 ) -> None: ...
-
-if sys.version_info < (3, 13):
-    def warn(
-        msg: object,
-        *args: object,
-        exc_info: _ExcInfoType = None,
-        stack_info: bool = False,
-        stacklevel: int = 1,
-        extra: Mapping[str, object] | None = None,
-    ) -> None: ...
-
+@deprecated("Deprecated; use warning() instead.")
+def warn(
+    msg: object,
+    *args: object,
+    exc_info: _ExcInfoType = None,
+    stack_info: bool = False,
+    stacklevel: int = 1,
+    extra: Mapping[str, object] | None = None,
+) -> None: ...
 def error(
     msg: object,
     *args: object,
@@ -582,37 +574,20 @@ if sys.version_info >= (3, 11):
     def getLevelNamesMapping() -> dict[str, int]: ...
 
 def makeLogRecord(dict: Mapping[str, object]) -> LogRecord: ...
-
-if sys.version_info >= (3, 9):
-    def basicConfig(
-        *,
-        filename: StrPath | None = ...,
-        filemode: str = ...,
-        format: str = ...,
-        datefmt: str | None = ...,
-        style: _FormatStyle = ...,
-        level: _Level | None = ...,
-        stream: SupportsWrite[str] | None = ...,
-        handlers: Iterable[Handler] | None = ...,
-        force: bool | None = ...,
-        encoding: str | None = ...,
-        errors: str | None = ...,
-    ) -> None: ...
-
-else:
-    def basicConfig(
-        *,
-        filename: StrPath | None = ...,
-        filemode: str = ...,
-        format: str = ...,
-        datefmt: str | None = ...,
-        style: _FormatStyle = ...,
-        level: _Level | None = ...,
-        stream: SupportsWrite[str] | None = ...,
-        handlers: Iterable[Handler] | None = ...,
-        force: bool = ...,
-    ) -> None: ...
-
+def basicConfig(
+    *,
+    filename: StrPath | None = ...,
+    filemode: str = ...,
+    format: str = ...,
+    datefmt: str | None = ...,
+    style: _FormatStyle = ...,
+    level: _Level | None = ...,
+    stream: SupportsWrite[str] | None = ...,
+    handlers: Iterable[Handler] | None = ...,
+    force: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str | None = ...,
+) -> None: ...
 def shutdown(handlerList: Sequence[Any] = ...) -> None: ...  # handlerList is undocumented
 def setLoggerClass(klass: type[Logger]) -> None: ...
 def captureWarnings(capture: bool) -> None: ...
@@ -638,14 +613,10 @@ class FileHandler(StreamHandler[TextIOWrapper]):
     mode: str  # undocumented
     encoding: str | None  # undocumented
     delay: bool  # undocumented
-    if sys.version_info >= (3, 9):
-        errors: str | None  # undocumented
-        def __init__(
-            self, filename: StrPath, mode: str = "a", encoding: str | None = None, delay: bool = False, errors: str | None = None
-        ) -> None: ...
-    else:
-        def __init__(self, filename: StrPath, mode: str = "a", encoding: str | None = None, delay: bool = False) -> None: ...
-
+    errors: str | None  # undocumented
+    def __init__(
+        self, filename: StrPath, mode: str = "a", encoding: str | None = None, delay: bool = False, errors: str | None = None
+    ) -> None: ...
     def _open(self) -> TextIOWrapper: ...  # undocumented
 
 class NullHandler(Handler): ...

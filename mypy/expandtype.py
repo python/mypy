@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Final, Iterable, Mapping, Sequence, TypeVar, cast, overload
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Final, TypeVar, cast, overload
 
 from mypy.nodes import ARG_STAR, FakeInfo, Var
 from mypy.state import state
@@ -121,7 +122,7 @@ def freshen_function_type_vars(callee: F) -> F:
     """Substitute fresh type variables for generic function type variables."""
     if isinstance(callee, CallableType):
         if not callee.is_generic():
-            return cast(F, callee)
+            return callee
         tvs = []
         tvmap: dict[TypeVarId, Type] = {}
         for v in callee.variables:
@@ -179,6 +180,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
+        super().__init__()
         self.variables = variables
         self.recursive_tvar_guard: dict[TypeVarId, Type | None] = {}
 
@@ -224,6 +226,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             if isinstance(arg, UnpackType):
                 unpacked = get_proper_type(arg.type)
                 if isinstance(unpacked, Instance):
+                    # TODO: this and similar asserts below may be unsafe because get_proper_type()
+                    # may be called during semantic analysis before all invalid types are removed.
                     assert unpacked.type.fullname == "builtins.tuple"
                     args = list(unpacked.args)
         return t.copy_modified(args=args)
@@ -331,10 +335,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
         var_arg_type = get_proper_type(var_arg.type)
         new_unpack: Type
-        if isinstance(var_arg_type, Instance):
-            # we have something like Unpack[Tuple[Any, ...]]
-            new_unpack = UnpackType(var_arg.type.accept(self))
-        elif isinstance(var_arg_type, TupleType):
+        if isinstance(var_arg_type, TupleType):
             # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
             expanded_tuple = var_arg_type.accept(self)
             assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
@@ -346,6 +347,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             fallback = var_arg_type.tuple_fallback
             expanded_items = self.expand_unpack(var_arg)
             new_unpack = UnpackType(TupleType(expanded_items, fallback))
+        # Since get_proper_type() may be called in semanal.py before callable
+        # normalization happens, we need to also handle non-normal cases here.
+        elif isinstance(var_arg_type, Instance):
+            # we have something like Unpack[Tuple[Any, ...]]
+            new_unpack = UnpackType(var_arg.type.accept(self))
         else:
             # We have invalid type in Unpack. This can happen when expanding aliases
             # to Callable[[*Invalid], Ret]
@@ -454,15 +460,25 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         return t.copy_modified(items=items, fallback=fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        if cached := self.get_cached(t):
+            return cached
         fallback = t.fallback.accept(self)
         assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
-        return t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
+        result = t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
+        self.set_cached(t, result)
+        return result
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         # TODO: Verify this implementation is correct
         return t
 
     def visit_union_type(self, t: UnionType) -> Type:
+        # Use cache to avoid O(n**2) or worse expansion of types during translation
+        # (only for large unions, since caching adds overhead)
+        use_cache = len(t.items) > 3
+        if use_cache and (cached := self.get_cached(t)):
+            return cached
+
         expanded = self.expand_types(t.items)
         # After substituting for type variables in t.items, some resulting types
         # might be subtypes of others, however calling  make_simplified_union()
@@ -475,7 +491,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # otherwise a single item union of a type alias will break it. Note this should not
         # cause infinite recursion since pathological aliases like A = Union[A, B] are
         # banned at the semantic analysis level.
-        return get_proper_type(simplified)
+        result = get_proper_type(simplified)
+
+        if use_cache:
+            self.set_cached(t, result)
+        return result
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t

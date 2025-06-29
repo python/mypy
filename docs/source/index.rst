@@ -103,6 +103,7 @@ Contents
    error_code_list2
    additional_features
    faq
+   changelog
 
 .. toctree::
    :hidden:

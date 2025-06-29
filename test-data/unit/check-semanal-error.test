@@ -137,8 +137,7 @@ def f() -> None: ...  # E: Name "f" already defined (possibly by an import)
 [out]
 
 [case testRuntimeProtoTwoBases]
-from typing_extensions import Protocol, runtime_checkable
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Protocol, runtime_checkable
 
 T = TypeVar('T')
 
@@ -151,6 +150,7 @@ class C:
 
 x: P[int] = C()
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testSemanalDoesNotLeakSyntheticTypes]
 # flags: --cache-fine-grained

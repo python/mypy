@@ -1,12 +1,12 @@
 import pickle
 import sys
+from _pickle import _ReducedType
 from _typeshed import HasFileno, SupportsWrite, Unused
 from abc import ABCMeta
 from builtins import type as Type  # alias to avoid name clash
 from collections.abc import Callable
 from copyreg import _DispatchTableType
 from multiprocessing import connection
-from pickle import _ReducedType
 from socket import socket
 from typing import Any, Final
 
@@ -35,15 +35,16 @@ if sys.platform == "win32":
         handle: int, target_process: int | None = None, inheritable: bool = False, *, source_process: int | None = None
     ) -> int: ...
     def steal_handle(source_pid: int, handle: int) -> int: ...
-    def send_handle(conn: connection.PipeConnection, handle: int, destination_pid: int) -> None: ...
-    def recv_handle(conn: connection.PipeConnection) -> int: ...
+    def send_handle(conn: connection.PipeConnection[DupHandle, Any], handle: int, destination_pid: int) -> None: ...
+    def recv_handle(conn: connection.PipeConnection[Any, DupHandle]) -> int: ...
 
     class DupHandle:
         def __init__(self, handle: int, access: int, pid: int | None = None) -> None: ...
         def detach(self) -> int: ...
 
 else:
-    ACKNOWLEDGE: Final[bool]
+    if sys.version_info < (3, 14):
+        ACKNOWLEDGE: Final[bool]
 
     def recvfds(sock: socket, size: int) -> list[int]: ...
     def send_handle(conn: HasFileno, handle: int, destination_pid: Unused) -> None: ...

@@ -4,9 +4,11 @@ import types
 from _typeshed import ReadableBuffer, StrPath
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence
+from importlib import _bootstrap_external
 from importlib.machinery import ModuleSpec
 from io import BufferedReader
 from typing import IO, Any, Literal, Protocol, overload, runtime_checkable
+from typing_extensions import deprecated
 
 if sys.version_info >= (3, 11):
     __all__ = [
@@ -37,6 +39,7 @@ else:
 if sys.version_info < (3, 12):
     class Finder(metaclass=ABCMeta): ...
 
+@deprecated("Deprecated as of Python 3.7: Use importlib.resources.abc.TraversableResources instead.")
 class ResourceLoader(Loader):
     @abstractmethod
     def get_data(self, path: str) -> bytes: ...
@@ -56,7 +59,8 @@ class ExecutionLoader(InspectLoader):
     @abstractmethod
     def get_filename(self, fullname: str) -> str: ...
 
-class SourceLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
+class SourceLoader(_bootstrap_external.SourceLoader, ResourceLoader, ExecutionLoader, metaclass=ABCMeta):  # type: ignore[misc]  # incompatible definitions of source_to_code in the base classes
+    @deprecated("Deprecated as of Python 3.3: Use importlib.resources.abc.SourceLoader.path_stats instead.")
     def path_mtime(self, path: str) -> float: ...
     def set_data(self, path: str, data: bytes) -> None: ...
     def get_source(self, fullname: str) -> str | None: ...
@@ -101,7 +105,7 @@ else:
         # Not defined on the actual class, but expected to exist.
         def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
 
-class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
+class FileLoader(_bootstrap_external.FileLoader, ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     name: str
     path: str
     def __init__(self, fullname: str, path: str) -> None: ...
@@ -109,22 +113,22 @@ class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     def get_filename(self, name: str | None = None) -> str: ...
     def load_module(self, name: str | None = None) -> types.ModuleType: ...
 
-class ResourceReader(metaclass=ABCMeta):
-    @abstractmethod
-    def open_resource(self, resource: str) -> IO[bytes]: ...
-    @abstractmethod
-    def resource_path(self, resource: str) -> str: ...
-    if sys.version_info >= (3, 10):
+if sys.version_info < (3, 11):
+    class ResourceReader(metaclass=ABCMeta):
         @abstractmethod
-        def is_resource(self, path: str) -> bool: ...
-    else:
+        def open_resource(self, resource: str) -> IO[bytes]: ...
         @abstractmethod
-        def is_resource(self, name: str) -> bool: ...
+        def resource_path(self, resource: str) -> str: ...
+        if sys.version_info >= (3, 10):
+            @abstractmethod
+            def is_resource(self, path: str) -> bool: ...
+        else:
+            @abstractmethod
+            def is_resource(self, name: str) -> bool: ...
 
-    @abstractmethod
-    def contents(self) -> Iterator[str]: ...
+        @abstractmethod
+        def contents(self) -> Iterator[str]: ...
 
-if sys.version_info >= (3, 9):
     @runtime_checkable
     class Traversable(Protocol):
         @abstractmethod
@@ -145,10 +149,10 @@ if sys.version_info >= (3, 9):
         # which is not the case.
         @overload
         @abstractmethod
-        def open(self, mode: Literal["r"] = "r", /, *, encoding: str | None = None, errors: str | None = None) -> IO[str]: ...
+        def open(self, mode: Literal["r"] = "r", *, encoding: str | None = None, errors: str | None = None) -> IO[str]: ...
         @overload
         @abstractmethod
-        def open(self, mode: Literal["rb"], /) -> IO[bytes]: ...
+        def open(self, mode: Literal["rb"]) -> IO[bytes]: ...
         @property
         @abstractmethod
         def name(self) -> str: ...
@@ -170,3 +174,10 @@ if sys.version_info >= (3, 9):
         def resource_path(self, resource: Any) -> str: ...
         def is_resource(self, path: str) -> bool: ...
         def contents(self) -> Iterator[str]: ...
+
+elif sys.version_info < (3, 14):
+    from importlib.resources.abc import (
+        ResourceReader as ResourceReader,
+        Traversable as Traversable,
+        TraversableResources as TraversableResources,
+    )

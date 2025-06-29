@@ -1,147 +1,151 @@
 import _tkinter
 import sys
-from _typeshed import Incomplete, StrEnum, StrOrBytesPath
+from _typeshed import Incomplete, MaybeNone, StrOrBytesPath
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from tkinter.constants import *
 from tkinter.font import _FontDescription
-from types import TracebackType
-from typing import Any, Generic, Literal, NamedTuple, TypedDict, TypeVar, overload, type_check_only
+from types import GenericAlias, TracebackType
+from typing import Any, ClassVar, Generic, Literal, NamedTuple, Protocol, TypedDict, TypeVar, overload, type_check_only
 from typing_extensions import TypeAlias, TypeVarTuple, Unpack, deprecated
 
-if sys.version_info >= (3, 9):
-    __all__ = [
-        "TclError",
-        "NO",
-        "FALSE",
-        "OFF",
-        "YES",
-        "TRUE",
-        "ON",
-        "N",
-        "S",
-        "W",
-        "E",
-        "NW",
-        "SW",
-        "NE",
-        "SE",
-        "NS",
-        "EW",
-        "NSEW",
-        "CENTER",
-        "NONE",
-        "X",
-        "Y",
-        "BOTH",
-        "LEFT",
-        "TOP",
-        "RIGHT",
-        "BOTTOM",
-        "RAISED",
-        "SUNKEN",
-        "FLAT",
-        "RIDGE",
-        "GROOVE",
-        "SOLID",
-        "HORIZONTAL",
-        "VERTICAL",
-        "NUMERIC",
-        "CHAR",
-        "WORD",
-        "BASELINE",
-        "INSIDE",
-        "OUTSIDE",
-        "SEL",
-        "SEL_FIRST",
-        "SEL_LAST",
-        "END",
-        "INSERT",
-        "CURRENT",
-        "ANCHOR",
-        "ALL",
-        "NORMAL",
-        "DISABLED",
-        "ACTIVE",
-        "HIDDEN",
-        "CASCADE",
-        "CHECKBUTTON",
-        "COMMAND",
-        "RADIOBUTTON",
-        "SEPARATOR",
-        "SINGLE",
-        "BROWSE",
-        "MULTIPLE",
-        "EXTENDED",
-        "DOTBOX",
-        "UNDERLINE",
-        "PIESLICE",
-        "CHORD",
-        "ARC",
-        "FIRST",
-        "LAST",
-        "BUTT",
-        "PROJECTING",
-        "ROUND",
-        "BEVEL",
-        "MITER",
-        "MOVETO",
-        "SCROLL",
-        "UNITS",
-        "PAGES",
-        "TkVersion",
-        "TclVersion",
-        "READABLE",
-        "WRITABLE",
-        "EXCEPTION",
-        "EventType",
-        "Event",
-        "NoDefaultRoot",
-        "Variable",
-        "StringVar",
-        "IntVar",
-        "DoubleVar",
-        "BooleanVar",
-        "mainloop",
-        "getint",
-        "getdouble",
-        "getboolean",
-        "Misc",
-        "CallWrapper",
-        "XView",
-        "YView",
-        "Wm",
-        "Tk",
-        "Tcl",
-        "Pack",
-        "Place",
-        "Grid",
-        "BaseWidget",
-        "Widget",
-        "Toplevel",
-        "Button",
-        "Canvas",
-        "Checkbutton",
-        "Entry",
-        "Frame",
-        "Label",
-        "Listbox",
-        "Menu",
-        "Menubutton",
-        "Message",
-        "Radiobutton",
-        "Scale",
-        "Scrollbar",
-        "Text",
-        "OptionMenu",
-        "Image",
-        "PhotoImage",
-        "BitmapImage",
-        "image_names",
-        "image_types",
-        "Spinbox",
-        "LabelFrame",
-        "PanedWindow",
-    ]
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from enum import Enum
+
+__all__ = [
+    "TclError",
+    "NO",
+    "FALSE",
+    "OFF",
+    "YES",
+    "TRUE",
+    "ON",
+    "N",
+    "S",
+    "W",
+    "E",
+    "NW",
+    "SW",
+    "NE",
+    "SE",
+    "NS",
+    "EW",
+    "NSEW",
+    "CENTER",
+    "NONE",
+    "X",
+    "Y",
+    "BOTH",
+    "LEFT",
+    "TOP",
+    "RIGHT",
+    "BOTTOM",
+    "RAISED",
+    "SUNKEN",
+    "FLAT",
+    "RIDGE",
+    "GROOVE",
+    "SOLID",
+    "HORIZONTAL",
+    "VERTICAL",
+    "NUMERIC",
+    "CHAR",
+    "WORD",
+    "BASELINE",
+    "INSIDE",
+    "OUTSIDE",
+    "SEL",
+    "SEL_FIRST",
+    "SEL_LAST",
+    "END",
+    "INSERT",
+    "CURRENT",
+    "ANCHOR",
+    "ALL",
+    "NORMAL",
+    "DISABLED",
+    "ACTIVE",
+    "HIDDEN",
+    "CASCADE",
+    "CHECKBUTTON",
+    "COMMAND",
+    "RADIOBUTTON",
+    "SEPARATOR",
+    "SINGLE",
+    "BROWSE",
+    "MULTIPLE",
+    "EXTENDED",
+    "DOTBOX",
+    "UNDERLINE",
+    "PIESLICE",
+    "CHORD",
+    "ARC",
+    "FIRST",
+    "LAST",
+    "BUTT",
+    "PROJECTING",
+    "ROUND",
+    "BEVEL",
+    "MITER",
+    "MOVETO",
+    "SCROLL",
+    "UNITS",
+    "PAGES",
+    "TkVersion",
+    "TclVersion",
+    "READABLE",
+    "WRITABLE",
+    "EXCEPTION",
+    "EventType",
+    "Event",
+    "NoDefaultRoot",
+    "Variable",
+    "StringVar",
+    "IntVar",
+    "DoubleVar",
+    "BooleanVar",
+    "mainloop",
+    "getint",
+    "getdouble",
+    "getboolean",
+    "Misc",
+    "CallWrapper",
+    "XView",
+    "YView",
+    "Wm",
+    "Tk",
+    "Tcl",
+    "Pack",
+    "Place",
+    "Grid",
+    "BaseWidget",
+    "Widget",
+    "Toplevel",
+    "Button",
+    "Canvas",
+    "Checkbutton",
+    "Entry",
+    "Frame",
+    "Label",
+    "Listbox",
+    "Menu",
+    "Menubutton",
+    "Message",
+    "Radiobutton",
+    "Scale",
+    "Scrollbar",
+    "Text",
+    "OptionMenu",
+    "Image",
+    "PhotoImage",
+    "BitmapImage",
+    "image_names",
+    "image_types",
+    "Spinbox",
+    "LabelFrame",
+    "PanedWindow",
+]
 
 # Using anything from tkinter.font in this file means that 'import tkinter'
 # seems to also load tkinter.font. That's not how it actually works, but
@@ -186,57 +190,103 @@ _XYScrollCommand: TypeAlias = str | Callable[[float, float], object]
 _TakeFocusValue: TypeAlias = bool | Literal[0, 1, ""] | Callable[[str], bool | None]  # -takefocus in manual page named 'options'
 
 if sys.version_info >= (3, 11):
-    class _VersionInfoType(NamedTuple):
+    @type_check_only
+    class _VersionInfoTypeBase(NamedTuple):
         major: int
         minor: int
         micro: int
         releaselevel: str
         serial: int
 
-class EventType(StrEnum):
-    Activate = "36"
-    ButtonPress = "4"
-    Button = ButtonPress
-    ButtonRelease = "5"
-    Circulate = "26"
-    CirculateRequest = "27"
-    ClientMessage = "33"
-    Colormap = "32"
-    Configure = "22"
-    ConfigureRequest = "23"
-    Create = "16"
-    Deactivate = "37"
-    Destroy = "17"
-    Enter = "7"
-    Expose = "12"
-    FocusIn = "9"
-    FocusOut = "10"
-    GraphicsExpose = "13"
-    Gravity = "24"
-    KeyPress = "2"
-    Key = "2"
-    KeyRelease = "3"
-    Keymap = "11"
-    Leave = "8"
-    Map = "19"
-    MapRequest = "20"
-    Mapping = "34"
-    Motion = "6"
-    MouseWheel = "38"
-    NoExpose = "14"
-    Property = "28"
-    Reparent = "21"
-    ResizeRequest = "25"
-    Selection = "31"
-    SelectionClear = "29"
-    SelectionRequest = "30"
-    Unmap = "18"
-    VirtualEvent = "35"
-    Visibility = "15"
+    class _VersionInfoType(_VersionInfoTypeBase): ...
+
+if sys.version_info >= (3, 11):
+    class EventType(StrEnum):
+        Activate = "36"
+        ButtonPress = "4"
+        Button = ButtonPress
+        ButtonRelease = "5"
+        Circulate = "26"
+        CirculateRequest = "27"
+        ClientMessage = "33"
+        Colormap = "32"
+        Configure = "22"
+        ConfigureRequest = "23"
+        Create = "16"
+        Deactivate = "37"
+        Destroy = "17"
+        Enter = "7"
+        Expose = "12"
+        FocusIn = "9"
+        FocusOut = "10"
+        GraphicsExpose = "13"
+        Gravity = "24"
+        KeyPress = "2"
+        Key = "2"
+        KeyRelease = "3"
+        Keymap = "11"
+        Leave = "8"
+        Map = "19"
+        MapRequest = "20"
+        Mapping = "34"
+        Motion = "6"
+        MouseWheel = "38"
+        NoExpose = "14"
+        Property = "28"
+        Reparent = "21"
+        ResizeRequest = "25"
+        Selection = "31"
+        SelectionClear = "29"
+        SelectionRequest = "30"
+        Unmap = "18"
+        VirtualEvent = "35"
+        Visibility = "15"
+
+else:
+    class EventType(str, Enum):
+        Activate = "36"
+        ButtonPress = "4"
+        Button = ButtonPress
+        ButtonRelease = "5"
+        Circulate = "26"
+        CirculateRequest = "27"
+        ClientMessage = "33"
+        Colormap = "32"
+        Configure = "22"
+        ConfigureRequest = "23"
+        Create = "16"
+        Deactivate = "37"
+        Destroy = "17"
+        Enter = "7"
+        Expose = "12"
+        FocusIn = "9"
+        FocusOut = "10"
+        GraphicsExpose = "13"
+        Gravity = "24"
+        KeyPress = "2"
+        Key = KeyPress
+        KeyRelease = "3"
+        Keymap = "11"
+        Leave = "8"
+        Map = "19"
+        MapRequest = "20"
+        Mapping = "34"
+        Motion = "6"
+        MouseWheel = "38"
+        NoExpose = "14"
+        Property = "28"
+        Reparent = "21"
+        ResizeRequest = "25"
+        Selection = "31"
+        SelectionClear = "29"
+        SelectionRequest = "30"
+        Unmap = "18"
+        VirtualEvent = "35"
+        Visibility = "15"
 
 _W = TypeVar("_W", bound=Misc)
 # Events considered covariant because you should never assign to event.widget.
-_W_co = TypeVar("_W_co", covariant=True, bound=Misc)
+_W_co = TypeVar("_W_co", covariant=True, bound=Misc, default=Misc)
 
 class Event(Generic[_W_co]):
     serial: int
@@ -258,11 +308,13 @@ class Event(Generic[_W_co]):
     type: EventType
     widget: _W_co
     delta: int
+    if sys.version_info >= (3, 14):
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 def NoDefaultRoot() -> None: ...
 
 class Variable:
-    def __init__(self, master: Misc | None = None, value: Incomplete | None = None, name: str | None = None) -> None: ...
+    def __init__(self, master: Misc | None = None, value=None, name: str | None = None) -> None: ...
     def set(self, value) -> None: ...
     initialize = set
     def get(self): ...
@@ -279,6 +331,7 @@ class Variable:
     def trace_vinfo(self): ...
     def __eq__(self, other: object) -> bool: ...
     def __del__(self) -> None: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
 
 class StringVar(Variable):
     def __init__(self, master: Misc | None = None, value: str | None = None, name: str | None = None) -> None: ...
@@ -319,13 +372,16 @@ class _GridIndexInfo(TypedDict, total=False):
     uniform: str | None
     weight: int
 
+class _BusyInfo(TypedDict):
+    cursor: _Cursor
+
 class Misc:
     master: Misc | None
     tk: _tkinter.TkappType
     children: dict[str, Widget]
     def destroy(self) -> None: ...
     def deletecommand(self, name: str) -> None: ...
-    def tk_strictMotif(self, boolean: Incomplete | None = None): ...
+    def tk_strictMotif(self, boolean=None): ...
     def tk_bisque(self) -> None: ...
     def tk_setPalette(self, *args, **kw) -> None: ...
     def wait_variable(self, name: str | Variable = "PY_VAR") -> None: ...
@@ -352,7 +408,29 @@ class Misc:
     # after_idle is essentially partialmethod(after, "idle")
     def after_idle(self, func: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> str: ...
     def after_cancel(self, id: str) -> None: ...
+    if sys.version_info >= (3, 13):
+        def after_info(self, id: str | None = None) -> tuple[str, ...]: ...
+
     def bell(self, displayof: Literal[0] | Misc | None = 0) -> None: ...
+    if sys.version_info >= (3, 13):
+        # Supports options from `_BusyInfo``
+        def tk_busy_cget(self, option: Literal["cursor"]) -> _Cursor: ...
+        busy_cget = tk_busy_cget
+        def tk_busy_configure(self, cnf: Any = None, **kw: Any) -> Any: ...
+        tk_busy_config = tk_busy_configure
+        busy_configure = tk_busy_configure
+        busy_config = tk_busy_configure
+        def tk_busy_current(self, pattern: str | None = None) -> list[Misc]: ...
+        busy_current = tk_busy_current
+        def tk_busy_forget(self) -> None: ...
+        busy_forget = tk_busy_forget
+        def tk_busy_hold(self, **kw: Unpack[_BusyInfo]) -> None: ...
+        tk_busy = tk_busy_hold
+        busy_hold = tk_busy_hold
+        busy = tk_busy_hold
+        def tk_busy_status(self) -> bool: ...
+        busy_status = tk_busy_status
+
     def clipboard_get(self, *, displayof: Misc = ..., type: str = ...) -> str: ...
     def clipboard_clear(self, *, displayof: Misc = ...) -> None: ...
     def clipboard_append(self, string: str, *, displayof: Misc = ..., format: str = ..., type: str = ...) -> None: ...
@@ -366,15 +444,15 @@ class Misc:
     ) -> None: ...
     def option_clear(self) -> None: ...
     def option_get(self, name, className): ...
-    def option_readfile(self, fileName, priority: Incomplete | None = None) -> None: ...
+    def option_readfile(self, fileName, priority=None) -> None: ...
     def selection_clear(self, **kw) -> None: ...
     def selection_get(self, **kw): ...
     def selection_handle(self, command, **kw) -> None: ...
     def selection_own(self, **kw) -> None: ...
     def selection_own_get(self, **kw): ...
     def send(self, interp, cmd, *args): ...
-    def lower(self, belowThis: Incomplete | None = None) -> None: ...
-    def tkraise(self, aboveThis: Incomplete | None = None) -> None: ...
+    def lower(self, belowThis=None) -> None: ...
+    def tkraise(self, aboveThis=None) -> None: ...
     lift = tkraise
     if sys.version_info >= (3, 11):
         def info_patchlevel(self) -> _VersionInfoType: ...
@@ -509,7 +587,7 @@ class Misc:
         pad: _ScreenUnits = ...,
         uniform: str = ...,
         weight: int = ...,
-    ) -> _GridIndexInfo | Any: ...  # can be None but annoying to check
+    ) -> _GridIndexInfo | MaybeNone: ...  # can be None but annoying to check
     def grid_rowconfigure(
         self,
         index: int | str | list[int] | tuple[int, ...],
@@ -519,7 +597,7 @@ class Misc:
         pad: _ScreenUnits = ...,
         uniform: str = ...,
         weight: int = ...,
-    ) -> _GridIndexInfo | Any: ...  # can be None but annoying to check
+    ) -> _GridIndexInfo | MaybeNone: ...  # can be None but annoying to check
     columnconfigure = grid_columnconfigure
     rowconfigure = grid_rowconfigure
     def grid_location(self, x: _ScreenUnits, y: _ScreenUnits) -> tuple[int, int]: ...
@@ -576,7 +654,8 @@ class Misc:
     def __getitem__(self, key: str) -> Any: ...
     def cget(self, key: str) -> Any: ...
     def configure(self, cnf: Any = None) -> Any: ...
-    # TODO: config is an alias of configure, but adding that here creates lots of mypy errors
+    # TODO: config is an alias of configure, but adding that here creates
+    # conflict with the type of config in the subclasses. See #13149
 
 class CallWrapper:
     func: Incomplete
@@ -607,6 +686,38 @@ class YView:
     @overload
     def yview_scroll(self, number: _ScreenUnits, what: Literal["pixels"]) -> None: ...
 
+if sys.platform == "darwin":
+    @type_check_only
+    class _WmAttributes(TypedDict):
+        alpha: float
+        fullscreen: bool
+        modified: bool
+        notify: bool
+        titlepath: str
+        topmost: bool
+        transparent: bool
+        type: str  # Present, but not actually used on darwin
+
+elif sys.platform == "win32":
+    @type_check_only
+    class _WmAttributes(TypedDict):
+        alpha: float
+        transparentcolor: str
+        disabled: bool
+        fullscreen: bool
+        toolwindow: bool
+        topmost: bool
+
+else:
+    # X11
+    @type_check_only
+    class _WmAttributes(TypedDict):
+        alpha: float
+        topmost: bool
+        zoomed: bool
+        fullscreen: bool
+        type: str
+
 class Wm:
     @overload
     def wm_aspect(self, minNumer: int, minDenom: int, maxNumer: int, maxDenom: int) -> None: ...
@@ -615,12 +726,144 @@ class Wm:
         self, minNumer: None = None, minDenom: None = None, maxNumer: None = None, maxDenom: None = None
     ) -> tuple[int, int, int, int] | None: ...
     aspect = wm_aspect
+    if sys.version_info >= (3, 13):
+        @overload
+        def wm_attributes(self, *, return_python_dict: Literal[False] = False) -> tuple[Any, ...]: ...
+        @overload
+        def wm_attributes(self, *, return_python_dict: Literal[True]) -> _WmAttributes: ...
+
+    else:
+        @overload
+        def wm_attributes(self) -> tuple[Any, ...]: ...
+
     @overload
-    def wm_attributes(self) -> tuple[Any, ...]: ...
+    def wm_attributes(self, option: Literal["-alpha"], /) -> float: ...
+    @overload
+    def wm_attributes(self, option: Literal["-fullscreen"], /) -> bool: ...
+    @overload
+    def wm_attributes(self, option: Literal["-topmost"], /) -> bool: ...
+    if sys.platform == "darwin":
+        @overload
+        def wm_attributes(self, option: Literal["-modified"], /) -> bool: ...
+        @overload
+        def wm_attributes(self, option: Literal["-notify"], /) -> bool: ...
+        @overload
+        def wm_attributes(self, option: Literal["-titlepath"], /) -> str: ...
+        @overload
+        def wm_attributes(self, option: Literal["-transparent"], /) -> bool: ...
+        @overload
+        def wm_attributes(self, option: Literal["-type"], /) -> str: ...
+    elif sys.platform == "win32":
+        @overload
+        def wm_attributes(self, option: Literal["-transparentcolor"], /) -> str: ...
+        @overload
+        def wm_attributes(self, option: Literal["-disabled"], /) -> bool: ...
+        @overload
+        def wm_attributes(self, option: Literal["-toolwindow"], /) -> bool: ...
+    else:
+        # X11
+        @overload
+        def wm_attributes(self, option: Literal["-zoomed"], /) -> bool: ...
+        @overload
+        def wm_attributes(self, option: Literal["-type"], /) -> str: ...
+    if sys.version_info >= (3, 13):
+        @overload
+        def wm_attributes(self, option: Literal["alpha"], /) -> float: ...
+        @overload
+        def wm_attributes(self, option: Literal["fullscreen"], /) -> bool: ...
+        @overload
+        def wm_attributes(self, option: Literal["topmost"], /) -> bool: ...
+        if sys.platform == "darwin":
+            @overload
+            def wm_attributes(self, option: Literal["modified"], /) -> bool: ...
+            @overload
+            def wm_attributes(self, option: Literal["notify"], /) -> bool: ...
+            @overload
+            def wm_attributes(self, option: Literal["titlepath"], /) -> str: ...
+            @overload
+            def wm_attributes(self, option: Literal["transparent"], /) -> bool: ...
+            @overload
+            def wm_attributes(self, option: Literal["type"], /) -> str: ...
+        elif sys.platform == "win32":
+            @overload
+            def wm_attributes(self, option: Literal["transparentcolor"], /) -> str: ...
+            @overload
+            def wm_attributes(self, option: Literal["disabled"], /) -> bool: ...
+            @overload
+            def wm_attributes(self, option: Literal["toolwindow"], /) -> bool: ...
+        else:
+            # X11
+            @overload
+            def wm_attributes(self, option: Literal["zoomed"], /) -> bool: ...
+            @overload
+            def wm_attributes(self, option: Literal["type"], /) -> str: ...
+
     @overload
     def wm_attributes(self, option: str, /): ...
     @overload
-    def wm_attributes(self, option: str, value, /, *__other_option_value_pairs: Any) -> None: ...
+    def wm_attributes(self, option: Literal["-alpha"], value: float, /) -> Literal[""]: ...
+    @overload
+    def wm_attributes(self, option: Literal["-fullscreen"], value: bool, /) -> Literal[""]: ...
+    @overload
+    def wm_attributes(self, option: Literal["-topmost"], value: bool, /) -> Literal[""]: ...
+    if sys.platform == "darwin":
+        @overload
+        def wm_attributes(self, option: Literal["-modified"], value: bool, /) -> Literal[""]: ...
+        @overload
+        def wm_attributes(self, option: Literal["-notify"], value: bool, /) -> Literal[""]: ...
+        @overload
+        def wm_attributes(self, option: Literal["-titlepath"], value: str, /) -> Literal[""]: ...
+        @overload
+        def wm_attributes(self, option: Literal["-transparent"], value: bool, /) -> Literal[""]: ...
+    elif sys.platform == "win32":
+        @overload
+        def wm_attributes(self, option: Literal["-transparentcolor"], value: str, /) -> Literal[""]: ...
+        @overload
+        def wm_attributes(self, option: Literal["-disabled"], value: bool, /) -> Literal[""]: ...
+        @overload
+        def wm_attributes(self, option: Literal["-toolwindow"], value: bool, /) -> Literal[""]: ...
+    else:
+        # X11
+        @overload
+        def wm_attributes(self, option: Literal["-zoomed"], value: bool, /) -> Literal[""]: ...
+        @overload
+        def wm_attributes(self, option: Literal["-type"], value: str, /) -> Literal[""]: ...
+
+    @overload
+    def wm_attributes(self, option: str, value, /, *__other_option_value_pairs: Any) -> Literal[""]: ...
+    if sys.version_info >= (3, 13):
+        if sys.platform == "darwin":
+            @overload
+            def wm_attributes(
+                self,
+                *,
+                alpha: float = ...,
+                fullscreen: bool = ...,
+                modified: bool = ...,
+                notify: bool = ...,
+                titlepath: str = ...,
+                topmost: bool = ...,
+                transparent: bool = ...,
+            ) -> None: ...
+        elif sys.platform == "win32":
+            @overload
+            def wm_attributes(
+                self,
+                *,
+                alpha: float = ...,
+                transparentcolor: str = ...,
+                disabled: bool = ...,
+                fullscreen: bool = ...,
+                toolwindow: bool = ...,
+                topmost: bool = ...,
+            ) -> None: ...
+        else:
+            # X11
+            @overload
+            def wm_attributes(
+                self, *, alpha: float = ..., topmost: bool = ..., zoomed: bool = ..., fullscreen: bool = ..., type: str = ...
+            ) -> None: ...
+
     attributes = wm_attributes
     def wm_client(self, name: str | None = None) -> str: ...
     client = wm_client
@@ -647,29 +890,23 @@ class Wm:
     @overload
     def wm_geometry(self, newGeometry: str) -> None: ...
     geometry = wm_geometry
-    def wm_grid(
-        self,
-        baseWidth: Incomplete | None = None,
-        baseHeight: Incomplete | None = None,
-        widthInc: Incomplete | None = None,
-        heightInc: Incomplete | None = None,
-    ): ...
+    def wm_grid(self, baseWidth=None, baseHeight=None, widthInc=None, heightInc=None): ...
     grid = wm_grid
-    def wm_group(self, pathName: Incomplete | None = None): ...
+    def wm_group(self, pathName=None): ...
     group = wm_group
-    def wm_iconbitmap(self, bitmap: Incomplete | None = None, default: Incomplete | None = None): ...
+    def wm_iconbitmap(self, bitmap=None, default=None): ...
     iconbitmap = wm_iconbitmap
     def wm_iconify(self) -> None: ...
     iconify = wm_iconify
-    def wm_iconmask(self, bitmap: Incomplete | None = None): ...
+    def wm_iconmask(self, bitmap=None): ...
     iconmask = wm_iconmask
-    def wm_iconname(self, newName: Incomplete | None = None) -> str: ...
+    def wm_iconname(self, newName=None) -> str: ...
     iconname = wm_iconname
     def wm_iconphoto(self, default: bool, image1: _PhotoImageLike | str, /, *args: _PhotoImageLike | str) -> None: ...
     iconphoto = wm_iconphoto
     def wm_iconposition(self, x: int | None = None, y: int | None = None) -> tuple[int, int] | None: ...
     iconposition = wm_iconposition
-    def wm_iconwindow(self, pathName: Incomplete | None = None): ...
+    def wm_iconwindow(self, pathName=None): ...
     iconwindow = wm_iconwindow
     def wm_manage(self, widget) -> None: ...
     manage = wm_manage
@@ -736,6 +973,7 @@ class Tk(Misc, Wm):
         sync: bool = False,
         use: str | None = None,
     ) -> None: ...
+    # Keep this in sync with ttktheme.ThemedTk. See issue #13858
     @overload
     def configure(
         self,
@@ -785,7 +1023,7 @@ class Tk(Misc, Wm):
     def globalgetvar(self, *args, **kwargs): ...
     def globalsetvar(self, *args, **kwargs): ...
     def globalunsetvar(self, *args, **kwargs): ...
-    def interpaddr(self): ...
+    def interpaddr(self) -> int: ...
     def loadtk(self) -> None: ...
     def record(self, script, /): ...
     if sys.version_info < (3, 11):
@@ -1211,8 +1449,8 @@ class Canvas(Widget, XView, YView):
     @overload
     def tag_bind(self, tagOrId: str | int, *, func: str, add: Literal["", "+"] | bool | None = None) -> None: ...
     def tag_unbind(self, tagOrId: str | int, sequence: str, funcid: str | None = None) -> None: ...
-    def canvasx(self, screenx, gridspacing: Incomplete | None = None): ...
-    def canvasy(self, screeny, gridspacing: Incomplete | None = None): ...
+    def canvasx(self, screenx, gridspacing=None): ...
+    def canvasy(self, screeny, gridspacing=None): ...
     @overload
     def coords(self, tagOrId: str | int, /) -> list[float]: ...
     @overload
@@ -2148,11 +2386,12 @@ class Listbox(Widget, XView, YView):
         selectborderwidth: _ScreenUnits = 0,
         selectforeground: str = ...,
         # from listbox man page: "The value of the [selectmode] option may be
-        # arbitrary, but the default bindings expect it to be ..."
+        # arbitrary, but the default bindings expect it to be either single,
+        # browse, multiple, or extended"
         #
         # I have never seen anyone setting this to something else than what
         # "the default bindings expect", but let's support it anyway.
-        selectmode: str = "browse",
+        selectmode: str | Literal["single", "browse", "multiple", "extended"] = "browse",  # noqa: Y051
         setgrid: bool = False,
         state: Literal["normal", "disabled"] = "normal",
         takefocus: _TakeFocusValue = "",
@@ -2187,7 +2426,7 @@ class Listbox(Widget, XView, YView):
         selectbackground: str = ...,
         selectborderwidth: _ScreenUnits = ...,
         selectforeground: str = ...,
-        selectmode: str = ...,
+        selectmode: str | Literal["single", "browse", "multiple", "extended"] = ...,  # noqa: Y051
         setgrid: bool = ...,
         state: Literal["normal", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
@@ -2219,7 +2458,7 @@ class Listbox(Widget, XView, YView):
     select_set = selection_set
     def size(self) -> int: ...  # type: ignore[override]
     def itemcget(self, index: str | int, option): ...
-    def itemconfigure(self, index: str | int, cnf: Incomplete | None = None, **kw): ...
+    def itemconfigure(self, index: str | int, cnf=None, **kw): ...
     itemconfig = itemconfigure
 
 class Menu(Widget):
@@ -2899,7 +3138,7 @@ class Scrollbar(Widget):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     config = configure
-    def activate(self, index: Incomplete | None = None): ...
+    def activate(self, index=None): ...
     def delta(self, deltax: int, deltay: int) -> float: ...
     def fraction(self, x: int, y: int) -> float: ...
     def identify(self, x: int, y: int) -> Literal["arrow1", "arrow2", "slider", "trough1", "trough2", ""]: ...
@@ -2907,6 +3146,9 @@ class Scrollbar(Widget):
     def set(self, first: float | str, last: float | str) -> None: ...
 
 _TextIndex: TypeAlias = _tkinter.Tcl_Obj | str | float | Misc
+_WhatToCount: TypeAlias = Literal[
+    "chars", "displaychars", "displayindices", "displaylines", "indices", "lines", "xpixels", "ypixels"
+]
 
 class Text(Widget, XView, YView):
     def __init__(
@@ -3021,7 +3263,133 @@ class Text(Widget, XView, YView):
     config = configure
     def bbox(self, index: _TextIndex) -> tuple[int, int, int, int] | None: ...  # type: ignore[override]
     def compare(self, index1: _TextIndex, op: Literal["<", "<=", "==", ">=", ">", "!="], index2: _TextIndex) -> bool: ...
-    def count(self, index1, index2, *args): ...  # TODO
+    if sys.version_info >= (3, 13):
+        @overload
+        def count(self, index1: _TextIndex, index2: _TextIndex, *, return_ints: Literal[True]) -> int: ...
+        @overload
+        def count(
+            self, index1: _TextIndex, index2: _TextIndex, arg: _WhatToCount | Literal["update"], /, *, return_ints: Literal[True]
+        ) -> int: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg1: Literal["update"],
+            arg2: _WhatToCount,
+            /,
+            *,
+            return_ints: Literal[True],
+        ) -> int: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg1: _WhatToCount,
+            arg2: Literal["update"],
+            /,
+            *,
+            return_ints: Literal[True],
+        ) -> int: ...
+        @overload
+        def count(
+            self, index1: _TextIndex, index2: _TextIndex, arg1: _WhatToCount, arg2: _WhatToCount, /, *, return_ints: Literal[True]
+        ) -> tuple[int, int]: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg1: _WhatToCount | Literal["update"],
+            arg2: _WhatToCount | Literal["update"],
+            arg3: _WhatToCount | Literal["update"],
+            /,
+            *args: _WhatToCount | Literal["update"],
+            return_ints: Literal[True],
+        ) -> tuple[int, ...]: ...
+        @overload
+        def count(self, index1: _TextIndex, index2: _TextIndex, *, return_ints: Literal[False] = False) -> tuple[int] | None: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg: _WhatToCount | Literal["update"],
+            /,
+            *,
+            return_ints: Literal[False] = False,
+        ) -> tuple[int] | None: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg1: Literal["update"],
+            arg2: _WhatToCount,
+            /,
+            *,
+            return_ints: Literal[False] = False,
+        ) -> int | None: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg1: _WhatToCount,
+            arg2: Literal["update"],
+            /,
+            *,
+            return_ints: Literal[False] = False,
+        ) -> int | None: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg1: _WhatToCount,
+            arg2: _WhatToCount,
+            /,
+            *,
+            return_ints: Literal[False] = False,
+        ) -> tuple[int, int]: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg1: _WhatToCount | Literal["update"],
+            arg2: _WhatToCount | Literal["update"],
+            arg3: _WhatToCount | Literal["update"],
+            /,
+            *args: _WhatToCount | Literal["update"],
+            return_ints: Literal[False] = False,
+        ) -> tuple[int, ...]: ...
+    else:
+        @overload
+        def count(self, index1: _TextIndex, index2: _TextIndex) -> tuple[int] | None: ...
+        @overload
+        def count(
+            self, index1: _TextIndex, index2: _TextIndex, arg: _WhatToCount | Literal["update"], /
+        ) -> tuple[int] | None: ...
+        @overload
+        def count(self, index1: _TextIndex, index2: _TextIndex, arg1: Literal["update"], arg2: _WhatToCount, /) -> int | None: ...
+        @overload
+        def count(self, index1: _TextIndex, index2: _TextIndex, arg1: _WhatToCount, arg2: Literal["update"], /) -> int | None: ...
+        @overload
+        def count(self, index1: _TextIndex, index2: _TextIndex, arg1: _WhatToCount, arg2: _WhatToCount, /) -> tuple[int, int]: ...
+        @overload
+        def count(
+            self,
+            index1: _TextIndex,
+            index2: _TextIndex,
+            arg1: _WhatToCount | Literal["update"],
+            arg2: _WhatToCount | Literal["update"],
+            arg3: _WhatToCount | Literal["update"],
+            /,
+            *args: _WhatToCount | Literal["update"],
+        ) -> tuple[int, ...]: ...
+
     @overload
     def debug(self, boolean: None = None) -> bool: ...
     @overload
@@ -3253,7 +3621,7 @@ class Text(Widget, XView, YView):
     def yview_pickplace(self, *what): ...  # deprecated
 
 class _setit:
-    def __init__(self, var, value, callback: Incomplete | None = None) -> None: ...
+    def __init__(self, var, value, callback=None) -> None: ...
     def __call__(self, *args) -> None: ...
 
 # manual page: tk_optionMenu
@@ -3273,11 +3641,14 @@ class OptionMenu(Menubutton):
     # configure, config, cget are inherited from Menubutton
     # destroy and __getitem__ are overridden, signature does not change
 
-# Marker to indicate that it is a valid bitmap/photo image. PIL implements compatible versions
-# which don't share a class hierarchy. The actual API is a __str__() which returns a valid name,
-# not something that type checkers can detect.
+# This matches tkinter's image classes (PhotoImage and BitmapImage)
+# and PIL's tkinter-compatible class (PIL.ImageTk.PhotoImage),
+# but not a plain PIL image that isn't tkinter compatible.
+# The reason is that PIL has width and height attributes, not methods.
 @type_check_only
-class _Image: ...
+class _Image(Protocol):
+    def width(self) -> int: ...
+    def height(self) -> int: ...
 
 @type_check_only
 class _BitmapImageLike(_Image): ...
@@ -3288,17 +3659,13 @@ class _PhotoImageLike(_Image): ...
 class Image(_Image):
     name: Incomplete
     tk: _tkinter.TkappType
-    def __init__(
-        self, imgtype, name: Incomplete | None = None, cnf={}, master: Misc | _tkinter.TkappType | None = None, **kw
-    ) -> None: ...
+    def __init__(self, imgtype, name=None, cnf={}, master: Misc | _tkinter.TkappType | None = None, **kw) -> None: ...
     def __del__(self) -> None: ...
     def __setitem__(self, key, value) -> None: ...
     def __getitem__(self, key): ...
     configure: Incomplete
     config: Incomplete
-    def height(self) -> int: ...
     def type(self): ...
-    def width(self) -> int: ...
 
 class PhotoImage(Image, _PhotoImageLike):
     # This should be kept in sync with PIL.ImageTK.PhotoImage.__init__()
@@ -3363,6 +3730,7 @@ class PhotoImage(Image, _PhotoImageLike):
         self,
         data: (
             str
+            | bytes
             | list[str]
             | list[list[str]]
             | list[tuple[str, ...]]
@@ -3370,7 +3738,7 @@ class PhotoImage(Image, _PhotoImageLike):
             | tuple[list[str], ...]
             | tuple[tuple[str, ...], ...]
         ),
-        to: tuple[int, int] | None = None,
+        to: tuple[int, int] | tuple[int, int, int, int] | None = None,
     ) -> None: ...
     if sys.version_info >= (3, 13):
         def read(
@@ -3417,7 +3785,7 @@ class BitmapImage(Image, _BitmapImageLike):
     # This should be kept in sync with PIL.ImageTK.BitmapImage.__init__()
     def __init__(
         self,
-        name: Incomplete | None = None,
+        name=None,
         cnf: dict[str, Any] = {},
         master: Misc | _tkinter.TkappType | None = None,
         *,
@@ -3551,7 +3919,7 @@ class Spinbox(Widget, XView):
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     config = configure
     def bbox(self, index) -> tuple[int, int, int, int] | None: ...  # type: ignore[override]
-    def delete(self, first, last: Incomplete | None = None) -> Literal[""]: ...
+    def delete(self, first, last=None) -> Literal[""]: ...
     def get(self) -> str: ...
     def icursor(self, index): ...
     def identify(self, x: int, y: int) -> Literal["", "buttondown", "buttonup", "entry"]: ...
@@ -3564,8 +3932,8 @@ class Spinbox(Widget, XView):
     def scan_dragto(self, x): ...
     def selection(self, *args) -> tuple[int, ...]: ...
     def selection_adjust(self, index): ...
-    def selection_clear(self): ...
-    def selection_element(self, element: Incomplete | None = None): ...
+    def selection_clear(self): ...  # type: ignore[override]
+    def selection_element(self, element=None): ...
     def selection_from(self, index: int) -> None: ...
     def selection_present(self) -> None: ...
     def selection_range(self, start: int, end: int) -> None: ...
@@ -3708,7 +4076,7 @@ class PanedWindow(Widget):
     def sash_mark(self, index): ...
     def sash_place(self, index, x, y): ...
     def panecget(self, child, option): ...
-    def paneconfigure(self, tagOrId, cnf: Incomplete | None = None, **kw): ...
+    def paneconfigure(self, tagOrId, cnf=None, **kw): ...
     paneconfig: Incomplete
     def panes(self): ...
 

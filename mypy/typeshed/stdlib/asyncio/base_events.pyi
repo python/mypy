@@ -8,15 +8,14 @@ from asyncio.protocols import BaseProtocol
 from asyncio.tasks import Task
 from asyncio.transports import BaseTransport, DatagramTransport, ReadTransport, SubprocessTransport, Transport, WriteTransport
 from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import Executor, ThreadPoolExecutor
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Literal, TypeVar, overload
 from typing_extensions import TypeAlias, TypeVarTuple, Unpack
 
-if sys.version_info >= (3, 9):
-    __all__ = ("BaseEventLoop", "Server")
-else:
-    __all__ = ("BaseEventLoop",)
+# Keep asyncio.__all__ updated with any changes to __all__ here
+__all__ = ("BaseEventLoop", "Server")
 
 _T = TypeVar("_T")
 _Ts = TypeVarTuple("_Ts")
@@ -95,8 +94,8 @@ class BaseEventLoop(AbstractEventLoop):
     def call_soon_threadsafe(
         self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
     ) -> Handle: ...
-    def run_in_executor(self, executor: Any, func: Callable[[Unpack[_Ts]], _T], *args: Unpack[_Ts]) -> Future[_T]: ...
-    def set_default_executor(self, executor: Any) -> None: ...
+    def run_in_executor(self, executor: Executor | None, func: Callable[[Unpack[_Ts]], _T], *args: Unpack[_Ts]) -> Future[_T]: ...
+    def set_default_executor(self, executor: ThreadPoolExecutor) -> None: ...  # type: ignore[override]
     # Network I/O methods returning Futures.
     async def getaddrinfo(
         self,
@@ -452,6 +451,7 @@ class BaseEventLoop(AbstractEventLoop):
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
+        text: Literal[False] | None = None,
         **kwargs: Any,
     ) -> tuple[SubprocessTransport, _ProtocolT]: ...
     def add_reader(self, fd: FileDescriptorLike, callback: Callable[[Unpack[_Ts]], Any], *args: Unpack[_Ts]) -> None: ...
@@ -482,7 +482,7 @@ class BaseEventLoop(AbstractEventLoop):
     def set_debug(self, enabled: bool) -> None: ...
     if sys.version_info >= (3, 12):
         async def shutdown_default_executor(self, timeout: float | None = None) -> None: ...
-    elif sys.version_info >= (3, 9):
+    else:
         async def shutdown_default_executor(self) -> None: ...
 
     def __del__(self) -> None: ...

@@ -5,7 +5,7 @@ import unittest
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
-from mypyc.common import PLATFORM_SIZE
+from mypyc.common import HAVE_IMMORTAL, PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
@@ -28,6 +28,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     LoadAddress,
+    LoadLiteral,
     LoadMem,
     Op,
     Register,
@@ -53,6 +54,7 @@ from mypyc.ir.rtypes import (
     int64_rprimitive,
     int_rprimitive,
     list_rprimitive,
+    none_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
     short_int_rprimitive,
@@ -114,6 +116,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         compute_vtable(ir)
         ir.mro = [ir]
         self.r = add_local("r", RInstance(ir))
+        self.none = add_local("none", none_rprimitive)
 
         self.context = EmitterContext(NameGenerator([["mod"]]))
 
@@ -134,7 +137,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), "cpy_r_r0 = cpy_r_t.f1;")
 
-    def test_load_None(self) -> None:
+    def test_load_None(self) -> None:  # noqa: N802
         self.assert_emit(
             LoadAddress(none_object_op.type, none_object_op.src, 0),
             "cpy_r_r0 = (PyObject *)&_Py_NoneStruct;",
@@ -154,6 +157,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_int_neg(self) -> None:
+        assert int_neg_op.c_function_name is not None
         self.assert_emit(
             CallC(
                 int_neg_op.c_function_name,
@@ -302,7 +306,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_get_item(self) -> None:
         self.assert_emit(
             CallC(
-                list_get_item_op.c_function_name,
+                str(list_get_item_op.c_function_name),
                 [self.m, self.k],
                 list_get_item_op.return_type,
                 list_get_item_op.steals,
@@ -316,7 +320,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_set_item(self) -> None:
         self.assert_emit(
             CallC(
-                list_set_item_op.c_function_name,
+                str(list_set_item_op.c_function_name),
                 [self.l, self.n, self.o],
                 list_set_item_op.return_type,
                 list_set_item_op.steals,
@@ -352,7 +356,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_append(self) -> None:
         self.assert_emit(
             CallC(
-                list_append_op.c_function_name,
+                str(list_append_op.c_function_name),
                 [self.l, self.o],
                 list_append_op.return_type,
                 list_append_op.steals,
@@ -492,7 +496,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_get_item(self) -> None:
         self.assert_emit(
             CallC(
-                dict_get_item_op.c_function_name,
+                str(dict_get_item_op.c_function_name),
                 [self.d, self.o2],
                 dict_get_item_op.return_type,
                 dict_get_item_op.steals,
@@ -506,7 +510,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_set_item(self) -> None:
         self.assert_emit(
             CallC(
-                dict_set_item_op.c_function_name,
+                str(dict_set_item_op.c_function_name),
                 [self.d, self.o, self.o2],
                 dict_set_item_op.return_type,
                 dict_set_item_op.steals,
@@ -520,7 +524,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_update(self) -> None:
         self.assert_emit(
             CallC(
-                dict_update_op.c_function_name,
+                str(dict_update_op.c_function_name),
                 [self.d, self.o],
                 dict_update_op.return_type,
                 dict_update_op.steals,
@@ -804,9 +808,25 @@ else {
                 Extend(a, int_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_a;"""
             )
 
+    def test_inc_ref_none(self) -> None:
+        b = Box(self.none)
+        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+
+    def test_inc_ref_bool(self) -> None:
+        b = Box(self.b)
+        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+
+    def test_inc_ref_int_literal(self) -> None:
+        for x in -5, 0, 1, 5, 255, 256:
+            b = LoadLiteral(x, object_rprimitive)
+            self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+        for x in -1123355, -6, 257, 123235345:
+            b = LoadLiteral(x, object_rprimitive)
+            self.assert_emit([b, IncRef(b)], "CPy_INCREF(cpy_r_r0);")
+
     def assert_emit(
         self,
-        op: Op,
+        op: Op | list[Op],
         expected: str,
         next_block: BasicBlock | None = None,
         *,
@@ -815,7 +835,11 @@ else {
         skip_next: bool = False,
     ) -> None:
         block = BasicBlock(0)
-        block.ops.append(op)
+        if isinstance(op, Op):
+            block.ops.append(op)
+        else:
+            block.ops.extend(op)
+            op = op[-1]
         value_names = generate_names_for_ir(self.registers, [block])
         emitter = Emitter(self.context, value_names)
         declarations = Emitter(self.context, value_names)

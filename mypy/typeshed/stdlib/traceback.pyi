@@ -2,7 +2,7 @@ import sys
 from _typeshed import SupportsWrite, Unused
 from collections.abc import Generator, Iterable, Iterator, Mapping
 from types import FrameType, TracebackType
-from typing import Any, Literal, overload
+from typing import Any, ClassVar, Literal, overload
 from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
@@ -26,6 +26,9 @@ __all__ = [
     "walk_stack",
     "walk_tb",
 ]
+
+if sys.version_info >= (3, 14):
+    __all__ += ["print_list"]
 
 _FrameSummaryTuple: TypeAlias = tuple[str, int, str, str | None]
 
@@ -81,8 +84,6 @@ def print_stack(f: FrameType | None = None, limit: int | None = None, file: Supp
 def extract_tb(tb: TracebackType | None, limit: int | None = None) -> StackSummary: ...
 def extract_stack(f: FrameType | None = None, limit: int | None = None) -> StackSummary: ...
 def format_list(extracted_list: Iterable[FrameSummary | _FrameSummaryTuple]) -> list[str]: ...
-
-# undocumented
 def print_list(extracted_list: Iterable[FrameSummary | _FrameSummaryTuple], file: SupportsWrite[str] | None = None) -> None: ...
 
 if sys.version_info >= (3, 13):
@@ -113,15 +114,26 @@ if sys.version_info >= (3, 11):
         def emit(self, text_gen: str | Iterable[str], margin_char: str | None = None) -> Generator[str, None, None]: ...
 
 class TracebackException:
-    __cause__: TracebackException
-    __context__: TracebackException
+    __cause__: TracebackException | None
+    __context__: TracebackException | None
+    if sys.version_info >= (3, 11):
+        exceptions: list[TracebackException] | None
     __suppress_context__: bool
+    if sys.version_info >= (3, 11):
+        __notes__: list[str] | None
     stack: StackSummary
+
+    # These fields only exist for `SyntaxError`s, but there is no way to express that in the type system.
     filename: str
-    lineno: int
+    lineno: str | None
+    if sys.version_info >= (3, 10):
+        end_lineno: str | None
     text: str
     offset: int
+    if sys.version_info >= (3, 10):
+        end_offset: int | None
     msg: str
+
     if sys.version_info >= (3, 13):
         @property
         def exc_type_str(self) -> str: ...
@@ -218,6 +230,7 @@ class TracebackException:
         ) -> Self: ...
 
     def __eq__(self, other: object) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
     if sys.version_info >= (3, 11):
         def format(self, *, chain: bool = True, _ctx: _ExceptionPrintContext | None = None) -> Generator[str, None, None]: ...
     else:
@@ -231,7 +244,7 @@ class TracebackException:
     if sys.version_info >= (3, 11):
         def print(self, *, file: SupportsWrite[str] | None = None, chain: bool = True) -> None: ...
 
-class FrameSummary(Iterable[Any]):
+class FrameSummary:
     if sys.version_info >= (3, 11):
         def __init__(
             self,
@@ -276,9 +289,12 @@ class FrameSummary(Iterable[Any]):
     def __getitem__(self, pos: Literal[3]) -> str | None: ...
     @overload
     def __getitem__(self, pos: int) -> Any: ...
+    @overload
+    def __getitem__(self, pos: slice) -> tuple[Any, ...]: ...
     def __iter__(self) -> Iterator[Any]: ...
     def __eq__(self, other: object) -> bool: ...
     def __len__(self) -> Literal[4]: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
 
 class StackSummary(list[FrameSummary]):
     @classmethod

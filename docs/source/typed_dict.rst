@@ -89,7 +89,7 @@ A ``TypedDict`` object is not a subtype of the regular ``dict[...]``
 type (and vice versa), since :py:class:`dict` allows arbitrary keys to be
 added and removed, unlike ``TypedDict``. However, any ``TypedDict`` object is
 a subtype of (that is, compatible with) ``Mapping[str, object]``, since
-:py:class:`~typing.Mapping` only provides read-only access to the dictionary items:
+:py:class:`~collections.abc.Mapping` only provides read-only access to the dictionary items:
 
 .. code-block:: python
 
@@ -158,7 +158,7 @@ You must use string literals as keys when calling most of the methods,
 as otherwise mypy won't be able to check that the key is valid. List
 of supported operations:
 
-* Anything included in :py:class:`~typing.Mapping`:
+* Anything included in :py:class:`~collections.abc.Mapping`:
 
   * ``d[key]``
   * ``key in d``
@@ -235,6 +235,46 @@ and non-required keys, such as ``Movie`` above, will only be compatible with
 another ``TypedDict`` if all required keys in the other ``TypedDict`` are required keys in the
 first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
 in the first ``TypedDict``.
+
+Read-only items
+---------------
+
+You can use ``typing.ReadOnly``, introduced in Python 3.13, or
+``typing_extensions.ReadOnly`` to mark TypedDict items as read-only (:pep:`705`):
+
+.. code-block:: python
+
+    from typing import TypedDict
+
+    # Or "from typing ..." on Python 3.13+
+    from typing_extensions import ReadOnly
+
+    class Movie(TypedDict):
+        name: ReadOnly[str]
+        num_watched: int
+
+    m: Movie = {"name": "Jaws", "num_watched": 1}
+    m["name"] = "The Godfather"  # Error: "name" is read-only
+    m["num_watched"] += 1  # OK
+
+A TypedDict with a mutable item can be assigned to a TypedDict
+with a corresponding read-only item, and the type of the item can
+vary :ref:`covariantly <variance-of-generics>`:
+
+.. code-block:: python
+
+    class Entry(TypedDict):
+        name: ReadOnly[str | None]
+        year: ReadOnly[int]
+
+    class Movie(TypedDict):
+        name: str
+        year: int
+
+    def process_entry(i: Entry) -> None: ...
+
+    m: Movie = {"name": "Jaws", "year": 1975}
+    process_entry(m)  # OK
 
 Unions of TypedDicts
 --------------------

@@ -7,16 +7,18 @@ from socket import socket
 from typing import Literal
 from typing_extensions import Self, TypeVarTuple, Unpack, deprecated
 
+from . import events
 from .base_events import Server, _ProtocolFactory, _SSLContext
-from .events import AbstractEventLoop, BaseDefaultEventLoopPolicy
 from .selector_events import BaseSelectorEventLoop
 
 _Ts = TypeVarTuple("_Ts")
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.platform != "win32":
     if sys.version_info >= (3, 14):
-        __all__ = ("SelectorEventLoop", "DefaultEventLoopPolicy", "EventLoop")
+        __all__ = ("SelectorEventLoop", "_DefaultEventLoopPolicy", "EventLoop")
     elif sys.version_info >= (3, 13):
+        # Adds EventLoop
         __all__ = (
             "SelectorEventLoop",
             "AbstractChildWatcher",
@@ -28,23 +30,14 @@ if sys.platform != "win32":
             "DefaultEventLoopPolicy",
             "EventLoop",
         )
-    elif sys.version_info >= (3, 9):
+    else:
+        # adds PidfdChildWatcher
         __all__ = (
             "SelectorEventLoop",
             "AbstractChildWatcher",
             "SafeChildWatcher",
             "FastChildWatcher",
             "PidfdChildWatcher",
-            "MultiLoopChildWatcher",
-            "ThreadedChildWatcher",
-            "DefaultEventLoopPolicy",
-        )
-    else:
-        __all__ = (
-            "SelectorEventLoop",
-            "AbstractChildWatcher",
-            "SafeChildWatcher",
-            "FastChildWatcher",
             "MultiLoopChildWatcher",
             "ThreadedChildWatcher",
             "DefaultEventLoopPolicy",
@@ -64,7 +57,7 @@ if sys.version_info < (3, 14):
             @abstractmethod
             def remove_child_handler(self, pid: int) -> bool: ...
             @abstractmethod
-            def attach_loop(self, loop: AbstractEventLoop | None) -> None: ...
+            def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
             @abstractmethod
             def close(self) -> None: ...
             @abstractmethod
@@ -85,7 +78,7 @@ if sys.version_info < (3, 14):
             @abstractmethod
             def remove_child_handler(self, pid: int) -> bool: ...
             @abstractmethod
-            def attach_loop(self, loop: AbstractEventLoop | None) -> None: ...
+            def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
             @abstractmethod
             def close(self) -> None: ...
             @abstractmethod
@@ -105,7 +98,7 @@ if sys.platform != "win32":
             class BaseChildWatcher(AbstractChildWatcher, metaclass=ABCMeta):
                 def close(self) -> None: ...
                 def is_active(self) -> bool: ...
-                def attach_loop(self, loop: AbstractEventLoop | None) -> None: ...
+                def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
 
             @deprecated("Deprecated as of Python 3.12; will be removed in Python 3.14")
             class SafeChildWatcher(BaseChildWatcher):
@@ -135,7 +128,7 @@ if sys.platform != "win32":
             class BaseChildWatcher(AbstractChildWatcher, metaclass=ABCMeta):
                 def close(self) -> None: ...
                 def is_active(self) -> bool: ...
-                def attach_loop(self, loop: AbstractEventLoop | None) -> None: ...
+                def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
 
             class SafeChildWatcher(BaseChildWatcher):
                 def __enter__(self) -> Self: ...
@@ -159,7 +152,7 @@ if sys.platform != "win32":
 
     class _UnixSelectorEventLoop(BaseSelectorEventLoop):
         if sys.version_info >= (3, 13):
-            async def create_unix_server(  # type: ignore[override]
+            async def create_unix_server(
                 self,
                 protocol_factory: _ProtocolFactory,
                 path: StrPath | None = None,
@@ -173,8 +166,10 @@ if sys.platform != "win32":
                 cleanup_socket: bool = True,
             ) -> Server: ...
 
-    class _UnixDefaultEventLoopPolicy(BaseDefaultEventLoopPolicy):
-        if sys.version_info < (3, 14):
+    if sys.version_info >= (3, 14):
+        class _UnixDefaultEventLoopPolicy(events._BaseDefaultEventLoopPolicy): ...
+    else:
+        class _UnixDefaultEventLoopPolicy(events.BaseDefaultEventLoopPolicy):
             if sys.version_info >= (3, 12):
                 @deprecated("Deprecated as of Python 3.12; will be removed in Python 3.14")
                 def get_child_watcher(self) -> AbstractChildWatcher: ...
@@ -186,7 +181,10 @@ if sys.platform != "win32":
 
     SelectorEventLoop = _UnixSelectorEventLoop
 
-    DefaultEventLoopPolicy = _UnixDefaultEventLoopPolicy
+    if sys.version_info >= (3, 14):
+        _DefaultEventLoopPolicy = _UnixDefaultEventLoopPolicy
+    else:
+        DefaultEventLoopPolicy = _UnixDefaultEventLoopPolicy
 
     if sys.version_info >= (3, 13):
         EventLoop = SelectorEventLoop
@@ -205,7 +203,7 @@ if sys.platform != "win32":
                     self, pid: int, callback: Callable[[int, int, Unpack[_Ts]], object], *args: Unpack[_Ts]
                 ) -> None: ...
                 def remove_child_handler(self, pid: int) -> bool: ...
-                def attach_loop(self, loop: AbstractEventLoop | None) -> None: ...
+                def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
 
         else:
             class MultiLoopChildWatcher(AbstractChildWatcher):
@@ -219,7 +217,7 @@ if sys.platform != "win32":
                     self, pid: int, callback: Callable[[int, int, Unpack[_Ts]], object], *args: Unpack[_Ts]
                 ) -> None: ...
                 def remove_child_handler(self, pid: int) -> bool: ...
-                def attach_loop(self, loop: AbstractEventLoop | None) -> None: ...
+                def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
 
     if sys.version_info < (3, 14):
         class ThreadedChildWatcher(AbstractChildWatcher):
@@ -234,18 +232,17 @@ if sys.platform != "win32":
                 self, pid: int, callback: Callable[[int, int, Unpack[_Ts]], object], *args: Unpack[_Ts]
             ) -> None: ...
             def remove_child_handler(self, pid: int) -> bool: ...
-            def attach_loop(self, loop: AbstractEventLoop | None) -> None: ...
+            def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
 
-        if sys.version_info >= (3, 9):
-            class PidfdChildWatcher(AbstractChildWatcher):
-                def __enter__(self) -> Self: ...
-                def __exit__(
-                    self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
-                ) -> None: ...
-                def is_active(self) -> bool: ...
-                def close(self) -> None: ...
-                def attach_loop(self, loop: AbstractEventLoop | None) -> None: ...
-                def add_child_handler(
-                    self, pid: int, callback: Callable[[int, int, Unpack[_Ts]], object], *args: Unpack[_Ts]
-                ) -> None: ...
-                def remove_child_handler(self, pid: int) -> bool: ...
+        class PidfdChildWatcher(AbstractChildWatcher):
+            def __enter__(self) -> Self: ...
+            def __exit__(
+                self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
+            ) -> None: ...
+            def is_active(self) -> bool: ...
+            def close(self) -> None: ...
+            def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
+            def add_child_handler(
+                self, pid: int, callback: Callable[[int, int, Unpack[_Ts]], object], *args: Unpack[_Ts]
+            ) -> None: ...
+            def remove_child_handler(self, pid: int) -> bool: ...
