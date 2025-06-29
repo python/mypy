@@ -2536,7 +2536,8 @@ def check(thing: Things) -> None:
 
 [case testSunderValueTypeEllipsis]
 from foo.bar import (
-    Basic, FromStub, InheritedInt, InheritedStr, InheritedFlag, InheritedIntFlag
+    Basic, FromStub, InheritedInt, InheritedStr, InheritedFlag,
+    InheritedIntFlag, Wrapper
 )
 
 reveal_type(Basic.FOO)  # N: Revealed type is "Literal[foo.bar.Basic.FOO]?"
@@ -2546,6 +2547,10 @@ reveal_type(Basic.FOO._value_)  # N: Revealed type is "builtins.int"
 reveal_type(FromStub.FOO)  # N: Revealed type is "Literal[foo.bar.FromStub.FOO]?"
 reveal_type(FromStub.FOO.value)  # N: Revealed type is "builtins.int"
 reveal_type(FromStub.FOO._value_)  # N: Revealed type is "builtins.int"
+
+reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[foo.bar.Wrapper.Nested.FOO]?"
+reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.int"
 
 reveal_type(InheritedInt.FOO)  # N: Revealed type is "Literal[foo.bar.InheritedInt.FOO]?"
 reveal_type(InheritedInt.FOO.value)  # N: Revealed type is "builtins.int"
@@ -2574,6 +2579,11 @@ class Basic(Enum):
 class FromStub(Enum):
     _value_: int
     FOO = ...
+
+class Wrapper:
+    class Nested(Enum):
+        _value_: int
+        FOO = ...
 
 class InheritedInt(IntEnum):
     FOO = ...
@@ -2616,4 +2626,12 @@ class InheritedStr(StrEnum):
 reveal_type(InheritedStr.FOO)  # N: Revealed type is "Literal[__main__.InheritedStr.FOO]?"
 reveal_type(InheritedStr.FOO.value)  # N: Revealed type is "builtins.ellipsis"
 reveal_type(InheritedStr.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
+
+class Wrapper:
+    class Nested(StrEnum):
+        FOO = ...
+
+reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[__main__.Wrapper.Nested.FOO]?"
+reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
 [builtins fixtures/enum.pyi]

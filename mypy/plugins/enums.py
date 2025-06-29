@@ -131,10 +131,7 @@ def _infer_value_type_with_auto_fallback(
 
 def _is_defined_in_stub(ctx: mypy.plugin.AttributeContext) -> bool:
     assert isinstance(ctx.api, TypeChecker)
-    return (
-        isinstance(ctx.type, Instance)
-        and ctx.api.modules[ctx.type.type.fullname.rsplit(".", 1)[0]].is_stub
-    )
+    return isinstance(ctx.type, Instance) and ctx.api.modules[ctx.type.type.module_name].is_stub
 
 
 def _implements_new(info: TypeInfo) -> bool:
