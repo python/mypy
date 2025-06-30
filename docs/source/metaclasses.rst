@@ -91,33 +91,27 @@ so it's better not to combine metaclasses and class hierarchies:
 
 .. _PEP 673: https://peps.python.org/pep-0673/#valid-locations-for-self
 
-For some builtin types, mypy assumes that their metaclass is :py:class:`abc.ABCMeta`
-even if it's :py:class:`type`. In those cases, you can either
+For some builtin types, mypy may think their metaclass is :py:class:`abc.ABCMeta`
+even if it is :py:class:`type` at runtime. In those cases, you can either:
 
 * use :py:class:`abc.ABCMeta` instead of :py:class:`type` as the
-  superclass of your metaclass if that works in your use-case,
-* mute the error with ``# type: ignore[metaclass]``, or
-* compute the metaclass' superclass dynamically, which mypy doesn't understand
-  so it will also need to be muted.
+  superclass of your metaclass if that works in your use-case
+* mute the error with ``# type: ignore[metaclass]``
 
 .. code-block:: python
 
     import abc
 
-    assert type(tuple) is type  # metaclass of tuple is type
+    assert type(tuple) is type  # metaclass of tuple is type at runtime
 
-    # the problem:
+    # The problem:
     class M0(type): pass
-    class A0(tuple, metaclass=M1): pass  # Mypy Error: metaclass conflict
+    class A0(tuple, metaclass=M0): pass  # Mypy Error: metaclass conflict
 
-    # option 1: use ABCMeta instead of type
+    # Option 1: use ABCMeta instead of type
     class M1(abc.ABCMeta): pass
     class A1(tuple, metaclass=M1): pass
 
-    # option 2: mute the error
+    # Option 2: mute the error
     class M2(type): pass
     class A2(tuple, metaclass=M2): pass  # type: ignore[metaclass]
-
-    # option 3: compute the metaclass dynamically
-    class M3(type(tuple)): pass  # type: ignore[metaclass]
-    class A3(tuple, metaclass=M3): pass

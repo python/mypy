@@ -3403,6 +3403,7 @@ class TypeInfo(SymbolNode):
         return winner
 
     def explain_metaclass_conflict(self) -> str | None:
+        # Compare to logic in calculate_metaclass_type
         declared = self.declared_metaclass
         if declared is not None and not declared.type.has_base("builtins.type"):
             return None
