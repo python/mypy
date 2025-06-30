@@ -1477,23 +1477,18 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
         items = [bind_self_fast(c, original_type) for c in method.items]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    func: CallableType = method
-    if not func.arg_types:
+    if not method.arg_types:
         # Invalid method, return something.
         return method
-    if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
+    if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # See typeops.py for details.
         return method
-    original_type = get_proper_type(original_type)
-    if isinstance(original_type, CallableType) and original_type.is_type_obj():
-        original_type = TypeType.make_normalized(original_type.ret_type)
-    res = func.copy_modified(
-        arg_types=func.arg_types[1:],
-        arg_kinds=func.arg_kinds[1:],
-        arg_names=func.arg_names[1:],
+    return method.copy_modified(
+        arg_types=method.arg_types[1:],
+        arg_kinds=method.arg_kinds[1:],
+        arg_names=method.arg_names[1:],
         is_bound=True,
     )
-    return cast(F, res)
 
 
 def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
