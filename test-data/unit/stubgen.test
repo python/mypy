@@ -4756,15 +4756,17 @@ from _typeshed import Incomplete
 
 def polar(*args, **kwargs) -> Incomplete: ...
 
-
 [case testPydanticBaseModel]
 import pydantic
+from typing import Dict, List, Optional, Union
 
 class User(pydantic.BaseModel):
     id: int
     name: str
     active: bool = True
     optional_field: str | None = None
+    tags: List[str] = []
+    properties: Dict[str, Union[str, int, float, bool]] = {}
 [out]
 import pydantic
 
@@ -4773,22 +4775,8 @@ class User(pydantic.BaseModel):
     name: str
     active: bool = ...
     optional_field: str | None = ...
-
-[case testPydanticBaseModelWithAnnotationsOnly]
-import pydantic
-
-class ConfigSettings(pydantic.BaseModel):
-    # Fields without initialization
-    db_name: str
-    port: int
-    debug: bool
-[out]
-import pydantic
-
-class ConfigSettings(pydantic.BaseModel):
-    db_name: str
-    port: int
-    debug: bool
+    tags: list[str] = ...
+    properties: dict[str, str | int | float | bool] = ...
 
 [case testPydanticNestedBaseModel]
 from pydantic import BaseModel
@@ -4813,24 +4801,6 @@ class User(BaseModel):
     age: int
     address: Address | None = ...
 
-[case testPydanticBaseModelComplex]
-from pydantic import BaseModel
-from typing import Dict, List, Optional, Union
-
-class Item(BaseModel):
-    name: str
-    description: Optional[str] = None
-    tags: List[str] = []
-    properties: Dict[str, Union[str, int, float, bool]] = {}
-[out]
-from pydantic import BaseModel
-
-class Item(BaseModel):
-    name: str
-    description: str | None = ...
-    tags: list[str] = ...
-    properties: dict[str, str | int | float | bool] = ...
-
 [case testPydanticBaseModelInheritance]
 from pydantic import BaseModel
 
@@ -4840,7 +4810,7 @@ class BaseUser(BaseModel):
 
 class User(BaseUser):
     name: str
-    email: str
+    email: str = '@'
 [out]
 from pydantic import BaseModel
 
@@ -4850,7 +4820,7 @@ class BaseUser(BaseModel):
 
 class User(BaseUser):
     name: str
-    email: str
+    email: str = ...
 
 [case testPydanticModelWithMethods]
 from pydantic import BaseModel
@@ -4860,11 +4830,11 @@ class User(BaseModel):
     name: str
 
     def get_display_name(self) -> str:
-        return f"User {self.name}"
+        return 'a'
 
     @property
     def display_id(self) -> str:
-        return f"ID: {self.id}"
+        return 'b'
 [out]
 from pydantic import BaseModel
 
