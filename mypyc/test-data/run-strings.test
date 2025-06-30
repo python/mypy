@@ -881,9 +881,9 @@ def test_count_start_emoji() -> None:
     assert string.count("ñ", -8) == 2, string.count("ñ", -8)
 def test_count_start_end_emoji() -> None:
     string = "😴🚀ñ🚀ñ🚀"
-    assert string.count("😴", 0, 4) == 0, string.count("😴", 0, 4)
-    assert string.count("🚀", 0, 4) == 1, string.count("🚀", 0, 4)
-    assert string.count("ñ", 0, 4) == 2, string.count("ñ", 0, 4)
+    assert string.count("😴", 0, 4) == 1, string.count("😴", 0, 4)
+    assert string.count("🚀", 0, 4) == 2, string.count("🚀", 0, 4)
+    assert string.count("ñ", 0, 4) == 1, string.count("ñ", 0, 4)
 def test_count_multi_emoji() -> None:
     string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
     assert string.count("😴😴😴") == 1, string.count("😴😴😴")
