@@ -51,6 +51,32 @@ print(2, a)
 1 [-1, 5]
 2 [340282366920938463463374607431768211461, -170141183460469231731687303715884105736]
 
+[case testListClear]
+from typing import List, Any
+from copysubclass import subc
+
+def test_list_clear() -> None:
+    l1 = [1, 2, 3, -4, 5]
+    l1.clear()
+    assert l1 == []
+    l1.clear()
+    assert l1 == []
+    l2: List[Any] = []
+    l2.clear()
+    assert l2 == []
+    l3 = [1, 2, 3, "abcdef"]
+    l3.clear()
+    assert l3 == []
+    # subclass testing
+    l4: subc = subc([1, 2, 3])
+    l4.clear()
+    assert l4 == []
+
+[file copysubclass.py]
+from typing import Any
+class subc(list[Any]):
+    pass
+
 [case testListCopy]
 from typing import List
 from copysubclass import subc

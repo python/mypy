@@ -271,6 +271,15 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# list.clear()
+method_op(
+    name="clear",
+    arg_types=[list_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyList_Clear",
+    error_kind=ERR_FALSE,
+)
+
 # list.copy()
 method_op(
     name="copy",
