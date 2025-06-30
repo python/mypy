@@ -2601,6 +2601,28 @@ def f(t: T) -> None:
             reveal_type(k)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.K]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchTypeObjectTypeVar]
+# flags: --warn-unreachable
+from typing import TypeVar
+import b
+
+T_Choice = TypeVar("T_Choice", bound=b.One | b.Two)
+
+def switch(choice: type[T_Choice]) -> None:
+    match choice:
+        case b.One:
+            reveal_type(choice)  # N: Revealed type is "def () -> b.One"
+        case b.Two:
+            reveal_type(choice)  # N: Revealed type is "def () -> b.Two"
+        case _:
+            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
+
+[file b.py]
+class One: ...
+class Two: ...
+
+[builtins fixtures/tuple.pyi]
+
 [case testNewRedefineMatchBasics]
 # flags: --allow-redefinition-new --local-partial-types
 

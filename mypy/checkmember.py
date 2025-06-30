@@ -45,7 +45,6 @@ from mypy.typeops import (
     freeze_all_type_vars,
     function_type,
     get_all_type_vars,
-    get_type_vars,
     make_simplified_union,
     supported_self_type,
     tuple_fallback,
@@ -1196,31 +1195,36 @@ def analyze_class_attribute_access(
 
         if isinstance(node.node, Var):
             assert isuper is not None
+            object_type = get_proper_type(mx.self_type)
             # Check if original variable type has type variables. For example:
             #     class C(Generic[T]):
             #         x: T
             #     C.x  # Error, ambiguous access
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
             # Exception is Self type wrapped in ClassVar, that is safe.
+            prohibit_self = not node.node.is_classvar
             def_vars = set(node.node.info.defn.type_vars)
-            if not node.node.is_classvar and node.node.info.self_type:
+            if prohibit_self and node.node.info.self_type:
                 def_vars.add(node.node.info.self_type)
-            # TODO: should we include ParamSpec etc. here (i.e. use get_all_type_vars)?
-            typ_vars = set(get_type_vars(t))
-            if def_vars & typ_vars:
-                # Exception: access on Type[...], including first argument of class methods is OK.
-                if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
-                    if node.node.is_classvar:
-                        message = message_registry.GENERIC_CLASS_VAR_ACCESS
-                    else:
-                        message = message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS
-                    mx.fail(message)
+            # Exception: access on Type[...], including first argument of class methods is OK.
+            prohibit_generic = not isinstance(object_type, TypeType) or node.implicit
+            if prohibit_generic and def_vars & set(get_all_type_vars(t)):
+                if node.node.is_classvar:
+                    message = message_registry.GENERIC_CLASS_VAR_ACCESS
+                else:
+                    message = message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS
+                mx.fail(message)
             t = expand_self_type_if_needed(t, mx, node.node, itype, is_class=True)
+            t = expand_type_by_instance(t, isuper)
             # Erase non-mapped variables, but keep mapped ones, even if there is an error.
             # In the above example this means that we infer following types:
             #     C.x -> Any
             #     C[int].x -> int
-            t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
+            if prohibit_generic:
+                erase_vars = set(itype.type.defn.type_vars)
+                if prohibit_self and itype.type.self_type:
+                    erase_vars.add(itype.type.self_type)
+                t = erase_typevars(t, {tv.id for tv in erase_vars})
 
         is_classmethod = (
             (is_decorated and cast(Decorator, node.node).func.is_class)
@@ -1473,23 +1477,18 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
         items = [bind_self_fast(c, original_type) for c in method.items]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    func: CallableType = method
-    if not func.arg_types:
+    if not method.arg_types:
         # Invalid method, return something.
         return method
-    if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
+    if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # See typeops.py for details.
         return method
-    original_type = get_proper_type(original_type)
-    if isinstance(original_type, CallableType) and original_type.is_type_obj():
-        original_type = TypeType.make_normalized(original_type.ret_type)
-    res = func.copy_modified(
-        arg_types=func.arg_types[1:],
-        arg_kinds=func.arg_kinds[1:],
-        arg_names=func.arg_names[1:],
+    return method.copy_modified(
+        arg_types=method.arg_types[1:],
+        arg_kinds=method.arg_kinds[1:],
+        arg_names=method.arg_names[1:],
         is_bound=True,
     )
-    return cast(F, res)
 
 
 def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
