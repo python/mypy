@@ -864,9 +864,9 @@ def test_count_multi_start_end() -> None:
     assert string.count("ccc", 0, 12) == 1, string.count("ccc", 0, 12)
 def test_count_emoji() -> None:
     string = "ñbñ🚀ñ"
-    assert string.count("😴") == 1  # 😴 appeared once
-    assert string.count("🚀") == 2  # 🚀 launched twice
-    assert string.count("ñ") == 2  # ñ hanging around twice
+    assert string.count("😴") == 1
+    assert string.count("🚀") == 2
+    assert string.count("ñ") == 2
 def test_count_start_emoji() -> None:
     string = "ñbñ🚀ñ"
     assert string.count("😴", 2) == string.count("😴", -4) == 0, (string.count("😴", 2), string.count("😴", -4))
@@ -892,13 +892,12 @@ def test_count_multi_start_emoji() -> None:
     assert string.count("😴😴😴", 6) == string.count("😴😴😴", -12) == 0, (string.count("😴😴😴", 6), string.count("😴😴😴", -12))
     assert string.count("🚀ñ", 6) == string.count("🚀ñ", -12) == 1, (string.count("🚀ñ", 6), string.count("🚀ñ", -12))
     assert string.count("ññ", 6) == string.count("ññ", -12) == 2, (string.count("ññ", 6), string.count("ññ", -12))
-    # Boundary pushing 🎢
+    # Out of bounds
     assert string.count("😴", 20) == 0
     assert string.count("😴", -20) == 1
     assert string.count("🚀", 20) == 0
     assert string.count("ñ", -20) == 5
 def test_count_multi_start_end_emoji() -> None:
-    # Tuning in a specific range 📻
     string = "😴😴😴🚀🚀ñññ🚀ñññ🚀"
     assert string.count("😴", 0, 12) == 3, string.count("😴", 0, 12)
     assert string.count("🚀", 0, 12) == 2, string.count("🚀", 0, 12)
