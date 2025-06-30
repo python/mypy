@@ -799,6 +799,35 @@ class GetAttr(RegisterOp):
         return visitor.visit_get_attr(self)
 
 
+class GetAttrNullable(RegisterOp):
+    """obj.attr (for a native object) - allows NULL without raising AttributeError
+
+    This is used for spill targets where NULL indicates the non-return path was taken.
+    Unlike GetAttr, this won't raise AttributeError when the attribute is NULL.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, obj: Value, attr: str, line: int, *, borrow: bool = False) -> None:
+        super().__init__(line)
+        self.obj = obj
+        self.attr = attr
+        assert isinstance(obj.type, RInstance), "Attribute access not supported: %s" % obj.type
+        self.class_type = obj.type
+        attr_type = obj.type.attr_type(attr)
+        self.type = attr_type
+        self.is_borrowed = borrow and attr_type.is_refcounted
+
+    def sources(self) -> list[Value]:
+        return [self.obj]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.obj,) = new
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_get_attr_nullable(self)
+
+
 class SetAttr(RegisterOp):
     """obj.attr = src (for a native object)
 
@@ -1726,6 +1755,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_get_attr(self, op: GetAttr) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_get_attr_nullable(self, op: GetAttrNullable) -> T:
         raise NotImplementedError
 
     @abstractmethod

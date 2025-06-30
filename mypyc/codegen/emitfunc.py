@@ -40,6 +40,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetAttrNullable,
     GetElementPtr,
     Goto,
     IncRef,
@@ -425,6 +426,24 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.op_index += 1
             elif not always_defined:
                 self.emitter.emit_line("}")
+
+    def visit_get_attr_nullable(self, op: GetAttrNullable) -> None:
+        """Handle GetAttrNullable which allows NULL without raising AttributeError."""
+        dest = self.reg(op)
+        obj = self.reg(op.obj)
+        rtype = op.class_type
+        cl = rtype.class_ir
+        attr_rtype, decl_cl = cl.attr_details(op.attr)
+
+        # Direct struct access without NULL check
+        attr_expr = self.get_attr_expr(obj, op, decl_cl)
+        self.emitter.emit_line(f"{dest} = {attr_expr};")
+
+        # Only emit inc_ref if not NULL
+        if attr_rtype.is_refcounted and not op.is_borrowed:
+            self.emitter.emit_line(f"if ({dest} != NULL) {{")
+            self.emitter.emit_inc_ref(dest, attr_rtype)
+            self.emitter.emit_line("}")
 
     def next_branch(self) -> Branch | None:
         if self.op_index + 1 < len(self.ops):

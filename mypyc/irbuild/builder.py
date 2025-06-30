@@ -72,6 +72,7 @@ from mypyc.ir.ops import (
     Branch,
     ComparisonOp,
     GetAttr,
+    GetAttrNullable,
     InitStatic,
     Integer,
     IntOp,
@@ -707,6 +708,15 @@ class IRBuilder:
                 return self.py_get_attr(target.obj, target.attr, line)
 
         assert False, "Unsupported lvalue: %r" % target
+
+    def read_nullable_attr(self, obj: Value, attr: str, line: int = -1) -> Value:
+        """Read an attribute that might be NULL without raising AttributeError.
+
+        This is used for reading spill targets in try/finally blocks where NULL
+        indicates the non-return path was taken.
+        """
+        assert isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
+        return self.add(GetAttrNullable(obj, attr, line))
 
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):

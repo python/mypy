@@ -24,6 +24,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetAttrNullable,
     GetElementPtr,
     Goto,
     IncRef,
@@ -207,6 +208,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_get_attr(self, op: GetAttr) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_get_attr_nullable(self, op: GetAttrNullable) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
     def visit_set_attr(self, op: SetAttr) -> GenAndKill[T]:
