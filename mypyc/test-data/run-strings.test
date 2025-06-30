@@ -864,18 +864,20 @@ def test_count_multi_start_end() -> None:
     assert string.count("ccc", 0, 12) == 1, string.count("ccc", 0, 12)
 def test_count_emoji() -> None:
     string = "😴🚀ñ🚀ñ🚀"
-    assert string.count("😴") == 0, string.count("😴")
-    assert string.count("🚀") == 1, string.count("🚀")
-    assert string.count("ñ") == 3, string.count("ñ")
+    assert string.count("😴") == 1, string.count("😴")
+    assert string.count("🚀") == 3, string.count("🚀")
+    assert string.count("ñ") == 2, string.count("ñ")
 def test_count_start_emoji() -> None:
     string = "😴🚀ñ🚀ñ🚀"
     assert string.count("😴", 2) == string.count("😴", -4) == 0, (string.count("😴", 2), string.count("😴", -4))
     assert string.count("🚀", 2) == string.count("🚀", -4) == 2, (string.count("🚀", 2), string.count("🚀", -4))
-    assert string.count("ñ", 2) == string.count("ñ", -4) == 1, (string.count("ñ", 2), string.count("ñ", -4))
+    assert string.count("ñ", 2) == string.count("ñ", -4) == 2, (string.count("ñ", 2), string.count("ñ", -4))
     # Out of bounds
     assert string.count("😴", 8) == 0, string.count("😴", 8)
-    assert string.count("😴", -8) == 0, string.count("😴", -8)
+    assert string.count("😴", -8) == 1, string.count("😴", -8)
     assert string.count("🚀", 8) == 0, string.count("🚀", 8)
+    assert string.count("🚀", -8) == 3, string.count("🚀", -8)
+    assert string.count("ñ", 8) == 0, string.count("ñ", 8)
     assert string.count("ñ", -8) == 2, string.count("ñ", -8)
 def test_count_start_end_emoji() -> None:
     string = "😴🚀ñ🚀ñ🚀"
@@ -885,18 +887,20 @@ def test_count_start_end_emoji() -> None:
 def test_count_multi_emoji() -> None:
     string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
     assert string.count("😴😴😴") == 1, string.count("😴😴😴")
-    assert string.count("🚀🚀🚀") == 1, string.count("🚀🚀🚀")
-    assert string.count("ñññ") == 6, string.count("ñññ")
+    assert string.count("🚀🚀🚀") == 3, string.count("🚀🚀🚀")
+    assert string.count("ñññ") == 2, string.count("ñññ")
 def test_count_multi_start_emoji() -> None:
     string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
     assert string.count("😴😴😴", 6) == string.count("😴😴😴", -12) == 0, (string.count("😴😴😴", 6), string.count("😴😴😴", -12))
-    assert string.count("🚀🚀🚀", 6) == string.count("🚀🚀🚀", -12) == 1, (string.count("🚀🚀🚀", 6), string.count("🚀🚀🚀", -12))
+    assert string.count("🚀🚀🚀", 6) == string.count("🚀🚀🚀", -12) == 2, (string.count("🚀🚀🚀", 6), string.count("🚀🚀🚀", -12))
     assert string.count("ñññ", 6) == string.count("ñññ", -12) == 2, (string.count("ñññ", 6), string.count("ñññ", -12))
     # Out of bounds
     assert string.count("😴😴😴", 20) == 0, string.count("😴😴😴", 20)
     assert string.count("😴😴😴", -20) == 1, string.count("😴😴😴", -20)
     assert string.count("🚀🚀🚀", 20) == 0, string.count("🚀🚀🚀", 20)
-    assert string.count("ñññ", -20) == 5, string.count("ñññ", -20)
+    assert string.count("🚀🚀🚀", -20) == 3, string.count("🚀🚀🚀", -20)
+    assert string.count("ñññ", 20) == 0, string.count("ñññ", 20)
+    assert string.count("ñññ", -20) == 2, string.count("ñññ", -20)
 def test_count_multi_start_end_emoji() -> None:
     string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
     assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
