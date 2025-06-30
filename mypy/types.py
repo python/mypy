@@ -181,6 +181,8 @@ DATACLASS_TRANSFORM_NAMES: Final = (
 # Supported @override decorator names.
 OVERRIDE_DECORATOR_NAMES: Final = ("typing.override", "typing_extensions.override")
 
+ELLIPSIS_TYPE_NAMES: Final = ("builtins.ellipsis", "types.EllipsisType")
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
@@ -1574,7 +1576,7 @@ class Instance(ProperType):
         return (
             self.type.is_enum
             and len(self.type.enum_members) == 1
-            or self.type.fullname in {"builtins.ellipsis", "types.EllipsisType"}
+            or self.type.fullname in ELLIPSIS_TYPE_NAMES
         )
 
 
