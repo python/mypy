@@ -799,7 +799,7 @@ class GetAttr(RegisterOp):
         return visitor.visit_get_attr(self)
 
 
-class GetAttrNullable(RegisterOp):
+class GetAttrNullable(GetAttr):
     """obj.attr (for a native object) - allows NULL without raising AttributeError
 
     This is used for spill targets where NULL indicates the non-return path was taken.
@@ -809,20 +809,9 @@ class GetAttrNullable(RegisterOp):
     error_kind = ERR_NEVER
 
     def __init__(self, obj: Value, attr: str, line: int, *, borrow: bool = False) -> None:
-        super().__init__(line)
-        self.obj = obj
-        self.attr = attr
-        assert isinstance(obj.type, RInstance), "Attribute access not supported: %s" % obj.type
-        self.class_type = obj.type
-        attr_type = obj.type.attr_type(attr)
-        self.type = attr_type
-        self.is_borrowed = borrow and attr_type.is_refcounted
-
-    def sources(self) -> list[Value]:
-        return [self.obj]
-
-    def set_sources(self, new: list[Value]) -> None:
-        (self.obj,) = new
+        super().__init__(obj, attr, line, borrow=borrow)
+        # Override error_kind since GetAttr sets it based on attr_type.error_overlap
+        self.error_kind = ERR_NEVER
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_get_attr_nullable(self)
