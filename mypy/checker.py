@@ -2955,15 +2955,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if typ.metaclass_type is None and any(
             base.type.metaclass_type is not None for base in typ.bases
         ):
-            explanation = typ.explain_metaclass_conflict() or ""
-            if explanation:
-                explanation = f" - {explanation}"
             self.fail(
                 "Metaclass conflict: the metaclass of a derived class must be "
-                f"a (non-strict) subclass of the metaclasses of all its bases{explanation}",
+                "a (non-strict) subclass of the metaclasses of all its bases",
                 typ,
                 code=codes.METACLASS,
             )
+            explanation = typ.explain_metaclass_conflict()
+            if explanation:
+                self.note(explanation, typ, code=codes.METACLASS)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:

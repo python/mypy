@@ -3434,7 +3434,7 @@ class TypeInfo(SymbolNode):
                 continue
             # metaclass conflict
             conflict = f"{super_meta.type.fullname} (metaclass of {super_class.fullname})"
-            return f"{' > '.join(resolution_steps)} conflicting with {conflict}"
+            return f"{' > '.join(resolution_steps)} conflicts with {conflict}"
 
         return None
 
