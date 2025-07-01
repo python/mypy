@@ -72,7 +72,6 @@ from mypyc.ir.ops import (
     Branch,
     ComparisonOp,
     GetAttr,
-    GetAttrNullable,
     InitStatic,
     Integer,
     IntOp,
@@ -716,7 +715,7 @@ class IRBuilder:
         indicates the non-return path was taken.
         """
         assert isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
-        return self.add(GetAttrNullable(obj, attr, line))
+        return self.add(GetAttr(obj, attr, line, allow_null=True))
 
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):

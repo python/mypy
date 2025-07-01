@@ -16,7 +16,6 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
-    GetAttrNullable,
     GetElementPtr,
     Goto,
     InitStatic,
@@ -109,13 +108,6 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_get_attr(self, op: GetAttr) -> GenAndKill:
-        cl = op.class_type.class_ir
-        if cl.get_method(op.attr):
-            # Property -- calls a function
-            return self.check_register_op(op)
-        return CLEAN
-
-    def visit_get_attr_nullable(self, op: GetAttrNullable) -> GenAndKill:
         cl = op.class_type.class_ir
         if cl.get_method(op.attr):
             # Property -- calls a function

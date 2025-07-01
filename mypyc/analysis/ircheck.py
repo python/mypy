@@ -21,7 +21,6 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
-    GetAttrNullable,
     GetElementPtr,
     Goto,
     IncRef,
@@ -317,10 +316,6 @@ class OpChecker(OpVisitor[None]):
             )
 
     def visit_get_attr(self, op: GetAttr) -> None:
-        # Nothing to do.
-        pass
-
-    def visit_get_attr_nullable(self, op: GetAttrNullable) -> None:
         # Nothing to do.
         pass
 

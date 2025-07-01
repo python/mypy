@@ -28,7 +28,6 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
-    GetAttrNullable,
     GetElementPtr,
     Goto,
     IncRef,
@@ -128,9 +127,6 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format("%r = %s%r.%s", op, self.borrow_prefix(op), op.obj, op.attr)
-
-    def visit_get_attr_nullable(self, op: GetAttrNullable) -> str:
-        return self.format("%r = %s%r.%s?", op, self.borrow_prefix(op), op.obj, op.attr)
 
     def borrow_prefix(self, op: Op) -> str:
         if op.is_borrowed:
