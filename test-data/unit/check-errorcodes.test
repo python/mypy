@@ -1276,7 +1276,9 @@ class X(type): pass
 class Y(type): pass
 class A(metaclass=X): pass
 class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases  [metaclass] \
-                               # N: __main__.Y (meta of __main__.B) conflicts with __main__.X (metaclass of __main__.A)
+                               # N: "__main__.Y" (metaclass of "__main__.B") conflicts with "__main__.X" (metaclass of "__main__.A")
+
+
 
 
 [case testOverloadedFunctionSignature]

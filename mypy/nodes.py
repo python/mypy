@@ -3414,7 +3414,7 @@ class TypeInfo(SymbolNode):
         if declared is None:
             resolution_steps = []
         else:
-            resolution_steps = [f"{declared.type.fullname} (meta of {self.fullname})"]
+            resolution_steps = [f'"{declared.type.fullname}" (metaclass of "{self.fullname}")']
         for super_class in self.mro[1:]:
             super_meta = super_class.declared_metaclass
             if super_meta is None or super_meta.type is None:
@@ -3422,7 +3422,7 @@ class TypeInfo(SymbolNode):
             if winner is None:
                 winner = super_meta
                 resolution_steps.append(
-                    f"{winner.type.fullname} (metaclass of {super_class.fullname})"
+                    f'"{winner.type.fullname}" (metaclass of "{super_class.fullname}")'
                 )
                 continue
             if winner.type.has_base(super_meta.type.fullname):
@@ -3430,11 +3430,11 @@ class TypeInfo(SymbolNode):
             if super_meta.type.has_base(winner.type.fullname):
                 winner = super_meta
                 resolution_steps.append(
-                    f"{winner.type.fullname} (metaclass of {super_class.fullname})"
+                    f'"{winner.type.fullname}" (metaclass of "{super_class.fullname}")'
                 )
                 continue
             # metaclass conflict
-            conflict = f"{super_meta.type.fullname} (metaclass of {super_class.fullname})"
+            conflict = f'"{super_meta.type.fullname}" (metaclass of "{super_class.fullname}")'
             return f"{' > '.join(resolution_steps)} conflicts with {conflict}"
 
         return None
