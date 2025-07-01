@@ -29,6 +29,23 @@ PyObject *CPyList_Build(Py_ssize_t len, ...) {
     return res;
 }
 
+char CPyList_Clear(PyObject *list) {
+    if (PyList_CheckExact(list)) {
+        PyList_Clear(list);
+    } else {
+        _Py_IDENTIFIER(clear);
+        PyObject *name = _PyUnicode_FromId(&PyId_clear);
+        if (name == NULL) {
+            return 0;
+        }
+        PyObject *res = PyObject_CallMethodNoArgs(list, name);
+        if (res == NULL) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 PyObject *CPyList_Copy(PyObject *list) {
     if(PyList_CheckExact(list)) {
         return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
