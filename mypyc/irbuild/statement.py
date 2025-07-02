@@ -46,6 +46,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypyc.common import TEMP_ATTR_NAME
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NO_TRACEBACK_LINE_NO,
@@ -653,10 +654,15 @@ def try_finally_resolve_control(
     if ret_reg:
         builder.activate_block(rest)
         return_block, rest = BasicBlock(), BasicBlock()
-        builder.add(Branch(builder.read(ret_reg), rest, return_block, Branch.IS_ERROR))
+        # For spill targets in try/finally, use nullable read to avoid AttributeError
+        if isinstance(ret_reg, AssignmentTargetAttr) and ret_reg.attr.startswith(TEMP_ATTR_NAME):
+            ret_val = builder.read_nullable_attr(ret_reg.obj, ret_reg.attr, -1)
+        else:
+            ret_val = builder.read(ret_reg)
+        builder.add(Branch(ret_val, rest, return_block, Branch.IS_ERROR))
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)
+        builder.nonlocal_control[-1].gen_return(builder, ret_val, -1)
 
     # TODO: handle break/continue
     builder.activate_block(rest)
