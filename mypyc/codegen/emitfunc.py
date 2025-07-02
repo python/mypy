@@ -358,6 +358,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
     def visit_get_attr(self, op: GetAttr) -> None:
+        if op.allow_null:
+            self.get_attr_with_allow_null(op)
+            return
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
@@ -425,6 +428,24 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.op_index += 1
             elif not always_defined:
                 self.emitter.emit_line("}")
+
+    def get_attr_with_allow_null(self, op: GetAttr) -> None:
+        """Handle GetAttr with allow_null=True which allows NULL without raising AttributeError."""
+        dest = self.reg(op)
+        obj = self.reg(op.obj)
+        rtype = op.class_type
+        cl = rtype.class_ir
+        attr_rtype, decl_cl = cl.attr_details(op.attr)
+
+        # Direct struct access without NULL check
+        attr_expr = self.get_attr_expr(obj, op, decl_cl)
+        self.emitter.emit_line(f"{dest} = {attr_expr};")
+
+        # Only emit inc_ref if not NULL
+        if attr_rtype.is_refcounted and not op.is_borrowed:
+            self.emitter.emit_line(f"if ({dest} != NULL) {{")
+            self.emitter.emit_inc_ref(dest, attr_rtype)
+            self.emitter.emit_line("}")
 
     def next_branch(self) -> Branch | None:
         if self.op_index + 1 < len(self.ops):
