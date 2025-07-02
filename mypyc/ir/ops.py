@@ -3,10 +3,24 @@
 Opcodes operate on abstract values (Value) in a register machine. Each
 value has a type (RType). A value can hold various things, such as:
 
-- local variables (Register)
+- local variables or temporaries (Register)
 - intermediate values of expressions (RegisterOp subclasses)
 - condition flags (true/false)
 - literals (integer literals, True, False, etc.)
+
+NOTE: As a convention, we don't create subclasses of concrete Value/Op
+      subclasses (e.g. you shouldn't define a subclass of Integer, which
+      is a concrete class).
+
+      If you want to introduce a variant of an existing class, you'd
+      typically add an attribute (e.g. a flag) to an existing concrete
+      class to enable the new behavior. Sometimes adding a new abstract
+      base class is also an option, or just creating a new subclass
+      without any inheritance relationship (some duplication of code
+      is preferred over introducing complex implementation inheritance).
+
+      This makes it possible to use isinstance(x, <concrete Value
+      subclass>) checks without worrying about potential subclasses.
 """
 
 from __future__ import annotations
@@ -257,7 +271,7 @@ class Op(Value):
 
 
 class BaseAssign(Op):
-    """Base class for ops that assign to a register."""
+    """Abstract base class for ops that assign to a register."""
 
     def __init__(self, dest: Register, line: int = -1) -> None:
         super().__init__(line)
@@ -320,7 +334,7 @@ class AssignMulti(BaseAssign):
 
 
 class ControlOp(Op):
-    """Control flow operation."""
+    """Abstract base class for control flow operations."""
 
     def targets(self) -> Sequence[BasicBlock]:
         """Get all basic block targets of the control operation."""

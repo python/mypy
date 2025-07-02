@@ -18,6 +18,21 @@ are erased to the single RType 'builtins.list' (list_rprimitive).
 
 mypyc.irbuild.mapper.Mapper.type_to_rtype converts mypy Types to mypyc
 RTypes.
+
+NOTE: As a convention, we don't create subclasses of concrete RType
+      subclasses (e.g. you shouldn't define a subclass of RTuple, which
+      is a concrete class). We prefer a flat class hierarchy.
+
+      If you want to introduce a variant of an existing class, you'd
+      typically add an attribute (e.g. a flag) to an existing concrete
+      class to enable the new behavior. In rare cases, adding a new
+      abstract base class could also be an option. Adding a completely
+      separate class and sharing some functionality using module-level
+      helper functions may also be reasonable.
+
+      This makes it possible to use isinstance(x, <concrete RType
+      subclass>) checks without worrying about potential subclasses
+      and avoids most trouble caused by implementation inheritance.
 """
 
 from __future__ import annotations
