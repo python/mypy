@@ -190,7 +190,9 @@ exit! a exception!
 ((1,), 'exception!')
 
 [case testYieldNested]
-from typing import Callable, Generator
+from typing import Callable, Generator, Iterator, TypeVar, overload
+
+from testutil import run_generator
 
 def normal(a: int, b: float) -> Callable:
     def generator(x: int, y: str) -> Generator:
@@ -235,15 +237,43 @@ def outer() -> Generator:
             yield i
     return recursive(10)
 
-[file driver.py]
-from native import normal, generator, triple, another_triple, outer
-from testutil import run_generator
+def test_return_nested_generator() -> None:
+    assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
+    assert run_generator(generator(1)) == ((1, 2, 3), None)
+    assert run_generator(triple()()) == ((1, 2, 3), None)
+    assert run_generator(another_triple()()) == ((1,), None)
+    assert run_generator(outer()) == ((0, 1, 2, 3, 4), None)
 
-assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
-assert run_generator(generator(1)) == ((1, 2, 3), None)
-assert run_generator(triple()()) == ((1, 2, 3), None)
-assert run_generator(another_triple()()) == ((1,), None)
-assert run_generator(outer()) == ((0, 1, 2, 3, 4), None)
+def call_nested(x: int) -> list[int]:
+    def generator() -> Iterator[int]:
+        n = int() + 2
+        yield x
+        yield n * x
+
+    a = []
+    for x in generator():
+        a.append(x)
+    return a
+
+T = TypeVar("T")
+
+def deco(f: T) -> T:
+    return f
+
+def call_nested_decorated(x: int) -> list[int]:
+    @deco
+    def generator() -> Iterator[int]:
+        n = int() + 3
+        yield x
+        yield n * x
+
+    a = []
+    for x in generator():
+        a.append(x)
+    return a
+
+def test_call_nested_generator_in_function() -> None:
+    assert call_nested_decorated(5) == [5, 15]
 
 [case testYieldThrow]
 from typing import Generator, Iterable, Any, Union

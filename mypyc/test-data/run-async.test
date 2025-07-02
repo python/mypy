@@ -563,8 +563,10 @@ def test_bool() -> None:
 def run(x: object) -> object: ...
 
 [case testRunAsyncNestedFunctions]
+from __future__ import annotations
+
 import asyncio
-from typing import cast, Iterator
+from typing import cast, Iterator, overload, Awaitable, Any, TypeVar
 
 from testutil import assertRaises
 
@@ -641,6 +643,37 @@ def test_async_def_contains_two_nested_functions() -> None:
         (5 + 3 + 1), (7 + 4 + 10 + 1)
     )
 
+async def async_def_contains_overloaded_async_def(n: int) -> int:
+    @overload
+    async def f(x: int) -> int: ...
+
+    @overload
+    async def f(x: str) -> str: ...
+
+    async def f(x: int | str) -> Any:
+        return x
+
+    return (await f(n)) + 1
+
+
+def test_async_def_contains_overloaded_async_def() -> None:
+    assert asyncio.run(async_def_contains_overloaded_async_def(5)) == 6
+
+T = TypeVar("T")
+
+def deco(f: T) -> T:
+    return f
+
+async def async_def_contains_decorated_async_def(n: int) -> int:
+    @deco
+    async def f(x: int) -> int:
+        return x + 2
+
+    return (await f(n)) + 1
+
+
+def test_async_def_contains_decorated_async_def() -> None:
+    assert asyncio.run(async_def_contains_decorated_async_def(7)) == 10
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 

@@ -116,7 +116,7 @@ def build_type_map(
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
-    # is conditionally defined.
+    # is conditionally defined. This doesn't include nested functions!
     for module in modules:
         for func in get_module_func_defs(module):
             prepare_func_def(module.fullname, None, func, mapper, options)
@@ -180,8 +180,24 @@ def prepare_func_def(
     mapper: Mapper,
     options: CompilerOptions,
 ) -> FuncDecl:
+    create_generator_class_if_needed(module_name, class_name, fdef, mapper)
+
+    kind = (
+        FUNC_STATICMETHOD
+        if fdef.is_static
+        else (FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
+    )
+    sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
+    decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
+    mapper.func_to_decl[fdef] = decl
+    return decl
+
+
+def create_generator_class_if_needed(
+    module_name: str, class_name: str | None, fdef: FuncDef, mapper: Mapper, name_suffix: str = ""
+) -> None:
     if fdef.is_coroutine or fdef.is_generator:
-        name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen"
+        name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen" + name_suffix
         cir = ClassIR(name, module_name, is_generated=True, is_final_class=True)
         cir.reuse_freed_instance = True
         mapper.fdef_to_generator[fdef] = cir
@@ -205,16 +221,6 @@ def prepare_func_def(
             internal=True,
         )
         cir.method_decls[helper_fn_decl.name] = helper_fn_decl
-
-    kind = (
-        FUNC_STATICMETHOD
-        if fdef.is_static
-        else (FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
-    )
-    sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
-    decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
-    mapper.func_to_decl[fdef] = decl
-    return decl
 
 
 def prepare_method_def(
