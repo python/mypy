@@ -2,6 +2,7 @@
 
 [case testRunAsyncBasics]
 import asyncio
+from typing import Callable, Awaitable
 
 from testutil import assertRaises
 
@@ -71,6 +72,40 @@ def test_exception() -> None:
         asyncio.run(exc4())
     assert asyncio.run(exc5()) == 3
     assert asyncio.run(exc6()) == 3
+
+async def indirect_call(x: int, c: Callable[[int], Awaitable[int]]) -> int:
+    return await c(x)
+
+async def indirect_call_2(a: Awaitable[None]) -> None:
+    await a
+
+async def indirect_call_3(a: Awaitable[float]) -> float:
+    return (await a) + 1.0
+
+async def inc(x: int) -> int:
+    await asyncio.sleep(0)
+    return x + 1
+
+async def ident(x: float, err: bool = False) -> float:
+    await asyncio.sleep(0.0)
+    if err:
+        raise MyError()
+    return x + float("0.0")
+
+def test_indirect_call() -> None:
+    assert asyncio.run(indirect_call(3, inc)) == 4
+
+    with assertRaises(MyError):
+        asyncio.run(indirect_call_2(exc1()))
+
+    assert asyncio.run(indirect_call_3(ident(2.0))) == 3.0
+    assert asyncio.run(indirect_call_3(ident(-113.0))) == -112.0
+    assert asyncio.run(indirect_call_3(ident(-114.0))) == -113.0
+
+    with assertRaises(MyError):
+        asyncio.run(indirect_call_3(ident(1.0, True)))
+    with assertRaises(MyError):
+        asyncio.run(indirect_call_3(ident(-113.0, True)))
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
