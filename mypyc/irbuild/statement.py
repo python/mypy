@@ -932,7 +932,7 @@ def emit_yield_from_or_await(
     to_yield_reg = Register(object_rprimitive)
     received_reg = Register(object_rprimitive)
 
-    if isinstance(val, Call) and isinstance(val.type, RInstance) and val.type.class_ir.is_generated:
+    if isinstance(val, (Call, MethodCall)) and isinstance(val.type, RInstance) and val.type.class_ir.is_generated:
         # XXX is_generator not is_generated !!!!!!! FIXME FIXME
         iter_val = val
     else:
