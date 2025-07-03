@@ -73,4 +73,8 @@ def infer_type_arguments(
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
     constraints = infer_constraints(template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
+
+    # for tp in type_vars:
+    #     constraints.append(Constraint(tp, SUPERTYPE_OF, UninhabitedType()))
+
     return solve_constraints(type_vars, constraints, skip_unsatisfied=skip_unsatisfied)[0]

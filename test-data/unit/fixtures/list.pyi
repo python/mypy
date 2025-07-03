@@ -1,8 +1,9 @@
 # Builtins stub used in list-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, Sequence, overload
+from typing import TypeVar, Generic, Iterable, Iterator, Sequence, overload, Union
 
 T = TypeVar('T')
+_S = TypeVar("_S")
 
 class object:
     def __init__(self) -> None: pass
@@ -19,7 +20,7 @@ class list(Sequence[T]):
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
     def __contains__(self, item: object) -> bool: pass
-    def __add__(self, x: list[T]) -> list[T]: pass
+    def __add__(self, x: list[_S]) -> list[Union[_S, T]]: pass
     def __mul__(self, x: int) -> list[T]: pass
     def __getitem__(self, x: int) -> T: pass
     def __setitem__(self, x: int, v: T) -> None: pass
