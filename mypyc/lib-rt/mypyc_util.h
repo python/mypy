@@ -43,7 +43,7 @@
 #define CPyThreadLocal __thread
 
 #else
-#error "Cannot define CPyThreadLocal for this compiler/target"
+#error "Can't define CPyThreadLocal for this compiler/target (consider using a non-free-threaded Python build)"
 #endif
 
 #endif // Py_GIL_DISABLED
