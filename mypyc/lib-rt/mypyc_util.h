@@ -23,6 +23,31 @@
 #define CPy_NOINLINE
 #endif
 
+#ifndef Py_GIL_DISABLED
+
+// Everything is running in the same thread, so no need for thread locals
+#define CPyThreadLocal
+
+#else
+
+// 1. Use C11 standard thread_local storage, if available
+#if defined(__STDC_VERSION__)  && __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_THREADS__)
+#define CPyThreadLocal _Thread_local
+
+// 2. Microsoft Visual Studio fallback
+#elif defined(_MSC_VER)
+#define CPyThreadLocal __declspec(thread)
+
+// 3. GNU thread local storage for GCC/Clang targets that still need it
+#elif defined(__GNUC__) || defined(__clang__)
+#define CPyThreadLocal __thread
+
+#else
+#error "Can't define CPyThreadLocal for this compiler/target (consider using a non-free-threaded Python build)"
+#endif
+
+#endif // Py_GIL_DISABLED
+
 // INCREF and DECREF that assert the pointer is not NULL.
 // asserts are disabled in release builds so there shouldn't be a perf hit.
 // I'm honestly kind of surprised that this isn't done by default.
