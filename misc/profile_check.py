@@ -25,6 +25,8 @@ This is the recommended way to configure CPython for profiling:
       CFLAGS="-O2 -g -fno-omit-frame-pointer"
 """
 
+from __future__ import annotations
+
 import argparse
 import glob
 import os
