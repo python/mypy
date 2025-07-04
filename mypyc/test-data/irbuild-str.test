@@ -562,3 +562,24 @@ L0:
     r3 = box(native_int, r1)
     r4 = unbox(int, r3)
     return r4
+
+[case testLower]
+def do_lower(s: str) -> str:
+    return s.lower()
+[out]
+def do_lower(s):
+    s, r0 :: str
+L0:
+    r0 = CPyStr_Lower(s)
+    return r0
+
+[case testUpper]
+def do_upper(s: str) -> str:
+    return s.upper()
+[out]
+def do_upper(s):
+    s, r0 :: str
+L0:
+    r0 = CPyStr_Upper(s)
+    return r0
+

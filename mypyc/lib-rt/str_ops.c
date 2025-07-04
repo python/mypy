@@ -546,3 +546,122 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
         PyExc_TypeError, "ord() expected a character, but a string of length %zd found", s);
     return CPY_INT_TAG;
 }
+
+// Fast ASCII lower/upper tables
+static const unsigned char ascii_lower_table[128] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+    32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+    48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+    64, 97, 98, 99,100,101,102,103,104,105,106,107,108,109,110,111,
+   112,113,114,115,116,117,118,119,120,121,122, 91, 92, 93, 94, 95,
+    96, 97, 98, 99,100,101,102,103,104,105,106,107,108,109,110,111,
+   112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127
+};
+
+static const unsigned char ascii_upper_table[128] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+    32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+    48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+    64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
+    80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
+    96, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
+    80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,123,124,125,126,127
+};
+
+// Helper for lower/upper: get the lower/upper code point for a character
+static inline Py_UCS4 tolower_ucs4(Py_UCS4 ch) {
+    if (ch < 128) {
+        return ascii_lower_table[ch];
+    }
+#ifdef Py_UNICODE_TOLOWER
+    return Py_UNICODE_TOLOWER(ch);
+#else
+    // fallback: no-op for non-ASCII if macro is unavailable
+    return ch;
+#endif
+}
+
+static inline Py_UCS4 toupper_ucs4(Py_UCS4 ch) {
+    if (ch < 128) {
+        return ascii_upper_table[ch];
+    }
+#ifdef Py_UNICODE_TOUPPER
+    return Py_UNICODE_TOUPPER(ch);
+#else
+    // fallback: no-op for non-ASCII if macro is unavailable
+    return ch;
+#endif
+}
+
+// Implementation of s.lower()
+PyObject *CPyStr_Lower(PyObject *self) {
+    if (PyUnicode_READY(self) == -1)
+        return NULL;
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    int kind = PyUnicode_KIND(self);
+    void *data = PyUnicode_DATA(self);
+
+    // Fast path: check if already all lower
+    int unchanged = 1;
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (tolower_ucs4(ch) != ch) {
+            unchanged = 0;
+            break;
+        }
+    }
+    if (unchanged) {
+        return Py_NewRef(self);
+    }
+
+    Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(self);
+    PyObject *res = PyUnicode_New(len, maxchar);
+    if (!res)
+        return NULL;
+    int res_kind = PyUnicode_KIND(res);
+    void *res_data = PyUnicode_DATA(res);
+
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        Py_UCS4 lower = tolower_ucs4(ch);
+        PyUnicode_WRITE(res_kind, res_data, i, lower);
+    }
+    return res;
+}
+
+// Implementation of s.upper()
+PyObject *CPyStr_Upper(PyObject *self) {
+    if (PyUnicode_READY(self) == -1)
+        return NULL;
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    int kind = PyUnicode_KIND(self);
+    void *data = PyUnicode_DATA(self);
+
+    int unchanged = 1;
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (toupper_ucs4(ch) != ch) {
+            unchanged = 0;
+            break;
+        }
+    }
+    if (unchanged) {
+        return Py_NewRef(self);
+    }
+
+    Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(self);
+    PyObject *res = PyUnicode_New(len, maxchar);
+    if (!res)
+        return NULL;
+    int res_kind = PyUnicode_KIND(res);
+    void *res_data = PyUnicode_DATA(res);
+
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        Py_UCS4 upper = toupper_ucs4(ch);
+        PyUnicode_WRITE(res_kind, res_data, i, upper);
+    }
+    return res;
+}
