@@ -811,17 +811,23 @@ class GetAttr(RegisterOp):
     error_kind = ERR_MAGIC
 
     def __init__(
-        self, obj: Value, attr: str, line: int, *, borrow: bool = False, allow_null: bool = False
+        self,
+        obj: Value,
+        attr: str,
+        line: int,
+        *,
+        borrow: bool = False,
+        allow_error_value: bool = False,
     ) -> None:
         super().__init__(line)
         self.obj = obj
         self.attr = attr
-        self.allow_null = allow_null
+        self.allow_error_value = allow_error_value
         assert isinstance(obj.type, RInstance), "Attribute access not supported: %s" % obj.type
         self.class_type = obj.type
         attr_type = obj.type.attr_type(attr)
         self.type = attr_type
-        if allow_null:
+        if allow_error_value:
             self.error_kind = ERR_NEVER
         elif attr_type.error_overlap:
             self.error_kind = ERR_MAGIC_OVERLAPPING
