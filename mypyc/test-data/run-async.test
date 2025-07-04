@@ -561,3 +561,388 @@ def test_bool() -> None:
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
+
+[case testRunAsyncNestedFunctions]
+import asyncio
+from typing import cast, Iterator
+
+from testutil import assertRaises
+
+def normal_contains_async_def(x: int) -> int:
+    async def f(y: int) -> int:
+        return x + y
+
+    return 5 + cast(int, asyncio.run(f(6)))
+
+def test_def_contains_async_def() -> None:
+    assert normal_contains_async_def(3) == 14
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def async_def_contains_normal(x: int) -> int:
+    def nested(y: int, z: int) -> int:
+        return x + y + z
+
+    a = x
+    a += nested((await inc(3)), (await inc(4)))
+    return a
+
+def test_async_def_contains_normal() -> None:
+    assert normal_contains_async_def(2) == (2 + 2 + 4 + 5)
+
+async def async_def_contains_async_def(x: int) -> int:
+    async def f(y: int) -> int:
+        return (await inc(x)) + (await inc(y))
+
+    return (await f(1)) + (await f(2))
+
+def test_async_def_contains_async_def() -> None:
+    assert asyncio.run(async_def_contains_async_def(3)) == (3 + 1 + 1 + 1) + (3 + 1 + 2 + 1)
+
+async def async_def_contains_generator(x: int) -> tuple[int, int, int]:
+    def gen(y: int) -> Iterator[int]:
+        yield x + 1
+        yield x + y
+
+    it = gen(4)
+    res = x + 10, next(it), next(it)
+
+    with assertRaises(StopIteration):
+        next(it)
+
+    return res
+
+def test_async_def_contains_generator() -> None:
+    assert asyncio.run(async_def_contains_generator(3)) == (13, 4, 7)
+
+def generator_contains_async_def(x: int) -> Iterator[int]:
+    async def f(y: int) -> int:
+        return (await inc(x)) + (await inc(y))
+
+    yield cast(int, asyncio.run(f(2)))
+    yield cast(int, asyncio.run(f(3)))
+    yield x + 10
+
+def test_generator_contains_async_def() -> None:
+    assert list(generator_contains_async_def(5)) == [6 + 3, 6 + 4, 15]
+
+async def async_def_contains_two_nested_functions(x: int, y: int) -> tuple[int, int]:
+    def f(a: int) -> int:
+        return x + a
+
+    def g(b: int, c: int) -> int:
+        return y + b + c
+
+    return (await inc(f(3))), (await inc(g(4, 10)))
+
+def test_async_def_contains_two_nested_functions() -> None:
+    assert asyncio.run(async_def_contains_two_nested_functions(5, 7)) == (
+        (5 + 3 + 1), (7 + 4 + 10 + 1)
+    )
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+
+[case testAsyncTryFinallyMixedReturn]
+# This used to raise an AttributeError, when:
+# - the try block contains multiple paths
+# - at least one of those explicitly returns
+# - at least one of those does not explicitly return
+# - the non-returning path is taken at runtime
+
+import asyncio
+
+
+async def test_mixed_return(b: bool) -> bool:
+  try:
+      if b:
+          return b
+  finally:
+      pass
+  return b
+
+
+async def test_run() -> None:
+  # Test return path
+  result1 = await test_mixed_return(True)
+  assert result1 == True
+
+  # Test non-return path
+  result2 = await test_mixed_return(False)
+  assert result2 == False
+
+
+def test_async_try_finally_mixed_return() -> None:
+  asyncio.run(test_run())
+
+[file driver.py]
+from native import test_async_try_finally_mixed_return
+test_async_try_finally_mixed_return()
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+
+[case testAsyncWithMixedReturn]
+# This used to raise an AttributeError, related to
+# testAsyncTryFinallyMixedReturn, this is essentially
+# a far more extensive version of that test surfacing
+# more edge cases
+
+import asyncio
+from typing import Optional, Type, Literal
+
+
+class AsyncContextManager:
+    async def __aenter__(self) -> "AsyncContextManager":
+        return self
+
+    async def __aexit__(
+        self,
+        t: Optional[Type[BaseException]],
+        v: Optional[BaseException],
+        tb: object,
+    ) -> Literal[False]:
+        return False
+
+
+# Simple async functions (generator class)
+async def test_gen_1(b: bool) -> bool:
+    async with AsyncContextManager():
+        if b:
+            return b
+    return b
+
+
+async def test_gen_2(b: bool) -> bool:
+    async with AsyncContextManager():
+        if b:
+            return b
+        else:
+            return b
+
+
+async def test_gen_3(b: bool) -> bool:
+    async with AsyncContextManager():
+        if b:
+            return b
+        else:
+            pass
+    return b
+
+
+async def test_gen_4(b: bool) -> bool:
+    ret: bool
+    async with AsyncContextManager():
+        if b:
+            ret = b
+        else:
+            ret = b
+    return ret
+
+
+async def test_gen_5(i: int) -> int:
+    async with AsyncContextManager():
+        if i == 1:
+            return i
+        elif i == 2:
+            pass
+        elif i == 3:
+            return i
+    return i
+
+
+async def test_gen_6(i: int) -> int:
+    async with AsyncContextManager():
+        if i == 1:
+            return i
+        elif i == 2:
+            return i
+        elif i == 3:
+            return i
+    return i
+
+
+async def test_gen_7(i: int) -> int:
+    async with AsyncContextManager():
+        if i == 1:
+            return i
+        elif i == 2:
+            return i
+        elif i == 3:
+            return i
+        else:
+            return i
+
+
+# Async functions with nested functions (environment class)
+async def test_env_1(b: bool) -> bool:
+    def helper() -> bool:
+        return True
+
+    async with AsyncContextManager():
+        if b:
+            return helper()
+    return b
+
+
+async def test_env_2(b: bool) -> bool:
+    def helper() -> bool:
+        return True
+
+    async with AsyncContextManager():
+        if b:
+            return helper()
+        else:
+            return b
+
+
+async def test_env_3(b: bool) -> bool:
+    def helper() -> bool:
+        return True
+
+    async with AsyncContextManager():
+        if b:
+            return helper()
+        else:
+            pass
+    return b
+
+
+async def test_env_4(b: bool) -> bool:
+    def helper() -> bool:
+        return True
+
+    ret: bool
+    async with AsyncContextManager():
+        if b:
+            ret = helper()
+        else:
+            ret = b
+    return ret
+
+
+async def test_env_5(i: int) -> int:
+    def helper() -> int:
+        return 1
+
+    async with AsyncContextManager():
+        if i == 1:
+            return helper()
+        elif i == 2:
+            pass
+        elif i == 3:
+            return i
+    return i
+
+
+async def test_env_6(i: int) -> int:
+    def helper() -> int:
+        return 1
+
+    async with AsyncContextManager():
+        if i == 1:
+            return helper()
+        elif i == 2:
+            return i
+        elif i == 3:
+            return i
+    return i
+
+
+async def test_env_7(i: int) -> int:
+    def helper() -> int:
+        return 1
+
+    async with AsyncContextManager():
+        if i == 1:
+            return helper()
+        elif i == 2:
+            return i
+        elif i == 3:
+            return i
+        else:
+            return i
+
+
+async def run_all_tests() -> None:
+    # Test simple async functions (generator class)
+    # test_env_1: mixed return/no-return
+    assert await test_gen_1(True) is True
+    assert await test_gen_1(False) is False
+
+    # test_gen_2: all branches return
+    assert await test_gen_2(True) is True
+    assert await test_gen_2(False) is False
+
+    # test_gen_3: mixed return/pass
+    assert await test_gen_3(True) is True
+    assert await test_gen_3(False) is False
+
+    # test_gen_4: no returns in async with
+    assert await test_gen_4(True) is True
+    assert await test_gen_4(False) is False
+
+    # test_gen_5: multiple branches, some return
+    assert await test_gen_5(0) == 0
+    assert await test_gen_5(1) == 1
+    assert await test_gen_5(2) == 2
+    assert await test_gen_5(3) == 3
+
+    # test_gen_6: all explicit branches return, implicit fallthrough
+    assert await test_gen_6(0) == 0
+    assert await test_gen_6(1) == 1
+    assert await test_gen_6(2) == 2
+    assert await test_gen_6(3) == 3
+
+    # test_gen_7: all branches return including else
+    assert await test_gen_7(0) == 0
+    assert await test_gen_7(1) == 1
+    assert await test_gen_7(2) == 2
+    assert await test_gen_7(3) == 3
+
+    # Test async functions with nested functions (environment class)
+    # test_env_1: mixed return/no-return
+    assert await test_env_1(True) is True
+    assert await test_env_1(False) is False
+
+    # test_env_2: all branches return
+    assert await test_env_2(True) is True
+    assert await test_env_2(False) is False
+
+    # test_env_3: mixed return/pass
+    assert await test_env_3(True) is True
+    assert await test_env_3(False) is False
+
+    # test_env_4: no returns in async with
+    assert await test_env_4(True) is True
+    assert await test_env_4(False) is False
+
+    # test_env_5: multiple branches, some return
+    assert await test_env_5(0) == 0
+    assert await test_env_5(1) == 1
+    assert await test_env_5(2) == 2
+    assert await test_env_5(3) == 3
+
+    # test_env_6: all explicit branches return, implicit fallthrough
+    assert await test_env_6(0) == 0
+    assert await test_env_6(1) == 1
+    assert await test_env_6(2) == 2
+    assert await test_env_6(3) == 3
+
+    # test_env_7: all branches return including else
+    assert await test_env_7(0) == 0
+    assert await test_env_7(1) == 1
+    assert await test_env_7(2) == 2
+    assert await test_env_7(3) == 3
+
+
+def test_async_with_mixed_return() -> None:
+    asyncio.run(run_all_tests())
+
+[file driver.py]
+from native import test_async_with_mixed_return
+test_async_with_mixed_return()
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...

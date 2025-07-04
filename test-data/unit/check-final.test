@@ -41,7 +41,7 @@ class C:
     def __init__(self, x: Tuple[int, Any]) -> None:
         self.x: Final = x
         self.y: Final[float] = 1
-reveal_type(C((1, 2)).x)  # N: Revealed type is "Tuple[builtins.int, Any]"
+reveal_type(C((1, 2)).x)  # N: Revealed type is "tuple[builtins.int, Any]"
 reveal_type(C((1, 2)).y)  # N: Revealed type is "builtins.float"
 [builtins fixtures/tuple.pyi]
 [out]
@@ -251,7 +251,7 @@ class C(Generic[T]):
         self.x: Final = x
         self.y: Final = 1
 
-reveal_type(C((1, 2)).x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(C((1, 2)).x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 C.x  # E: Cannot access final instance attribute "x" on class object \
      # E: Access to generic instance variables via class is ambiguous
 C.y  # E: Cannot access final instance attribute "y" on class object

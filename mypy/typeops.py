@@ -125,7 +125,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
     )
 
 
-def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
+def get_self_type(func: CallableType, def_info: TypeInfo) -> Type | None:
+    default_self = fill_typevars(def_info)
     if isinstance(get_proper_type(func.ret_type), UninhabitedType):
         return func.ret_type
     elif func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
@@ -185,6 +186,7 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     arg_kinds=[ARG_STAR, ARG_STAR2],
                     arg_names=["_args", "_kwds"],
                     ret_type=any_type,
+                    is_bound=True,
                     fallback=named_type("builtins.function"),
                 )
                 return class_callable(sig, info, fallback, None, is_new=False)
@@ -226,9 +228,8 @@ def type_object_type_from_function(
     # self-types only in the defining class, similar to __new__ (but not exactly the same,
     # see comment in class_callable below). This is mostly useful for annotating library
     # classes such as subprocess.Popen.
-    default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
-        orig_self_types = [get_self_type(it, default_self) for it in signature.items]
+        orig_self_types = [get_self_type(it, def_info) for it in signature.items]
     else:
         orig_self_types = [None] * len(signature.items)
 
@@ -244,7 +245,7 @@ def type_object_type_from_function(
     # We need to map B's __init__ to the type (List[T]) -> None.
     signature = bind_self(
         signature,
-        original_type=default_self,
+        original_type=fill_typevars(info),
         is_classmethod=is_new,
         # Explicit instance self annotations have special handling in class_callable(),
         # we don't need to bind any type variables in them if they are generic.
@@ -415,10 +416,10 @@ def bind_self(
             ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    func = method
+    func: CallableType = method
     if not func.arg_types:
         # Invalid method, return something.
-        return cast(F, func)
+        return method
     if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
@@ -427,7 +428,7 @@ def bind_self(
 
         # In the case of **kwargs we should probably emit an error, but
         # for now we simply skip it, to avoid crashes down the line.
-        return cast(F, func)
+        return method
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
@@ -471,15 +472,12 @@ def bind_self(
     else:
         variables = func.variables
 
-    original_type = get_proper_type(original_type)
-    if isinstance(original_type, CallableType) and original_type.is_type_obj():
-        original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
         arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
         arg_names=func.arg_names[1:],
         variables=variables,
-        bound_args=[original_type],
+        is_bound=True,
     )
     return cast(F, res)
 
@@ -889,7 +887,7 @@ def callable_type(
     fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and (not fdef.is_static or fdef.name == "__new__") and fdef.arg_names:
+    if fdef.info and fdef.has_self_or_cls_argument and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == "__new__":
             self_type = TypeType.make_normalized(self_type)
@@ -1190,6 +1188,10 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
     if isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Look up __method__ on the metaclass for class objects.
         return custom_special_method(typ.fallback, name, check_all)
+    if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+        if typ.item.type.metaclass_type:
+            # Look up __method__ on the metaclass for class objects.
+            return custom_special_method(typ.item.type.metaclass_type, name, check_all)
     if isinstance(typ, AnyType):
         # Avoid false positives in uncertain cases.
         return True
@@ -1257,7 +1259,7 @@ def get_protocol_member(
 
         return type_object_type(left.type, named_type)
 
-    if member == "__call__" and left.type.is_metaclass():
+    if member == "__call__" and left.type.is_metaclass(precise=True):
         # Special case: we want to avoid falling back to metaclass __call__
         # if constructor signature didn't match, this can cause many false negatives.
         return None

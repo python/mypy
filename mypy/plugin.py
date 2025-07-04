@@ -119,14 +119,14 @@ analyzed.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Callable, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, TypeVar
 
 from mypy_extensions import mypyc_attr, trait
 
 from mypy.errorcodes import ErrorCode
+from mypy.errors import ErrorInfo
 from mypy.lookup import lookup_fully_qualified
 from mypy.message_registry import ErrorMessage
-from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ArgKind,
     CallExpr,
@@ -138,7 +138,6 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     CallableType,
     FunctionLike,
@@ -148,6 +147,10 @@ from mypy.types import (
     TypeList,
     UnboundType,
 )
+
+if TYPE_CHECKING:
+    from mypy.messages import MessageBuilder
+    from mypy.tvar_scope import TypeVarLikeScope
 
 
 @trait
@@ -238,7 +241,7 @@ class CheckerPluginInterface:
     @abstractmethod
     def fail(
         self, msg: str | ErrorMessage, ctx: Context, /, *, code: ErrorCode | None = None
-    ) -> None:
+    ) -> ErrorInfo | None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
