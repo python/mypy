@@ -271,14 +271,14 @@ class IterationDependentErrors:
             context.end_column = error_info[5]
             yield error_info[1], context, error_info[0]
 
-    def yield_revealed_type_infos(self) -> Iterator[tuple[Type, Context]]:
+    def yield_revealed_type_infos(self) -> Iterator[tuple[list[Type], Context]]:
         """Yield all types revealed in at least one iteration step."""
 
         for note_info, types in self.revealed_types.items():
             context = Context(line=note_info[0], column=note_info[1])
             context.end_line = note_info[2]
             context.end_column = note_info[3]
-            yield make_simplified_union(types), context
+            yield types, context
 
 
 class IterationErrorWatcher(ErrorWatcher):

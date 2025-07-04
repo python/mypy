@@ -2510,8 +2510,8 @@ class MessageBuilder:
     def iteration_dependent_errors(self, iter_errors: IterationDependentErrors) -> None:
         for error_info in iter_errors.yield_uselessness_error_infos():
             self.fail(*error_info[:2], code=error_info[2])
-        for note_info, context in iter_errors.yield_revealed_type_infos():
-            self.reveal_type(note_info, context)
+        for types, context in iter_errors.yield_revealed_type_infos():
+            self.reveal_type(mypy.typeops.make_simplified_union(types), context)
 
 
 def quote_type_string(type_string: str) -> str:
