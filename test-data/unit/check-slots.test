@@ -496,6 +496,29 @@ class A:
         self.missing = 3
 [builtins fixtures/dict.pyi]
 
+[case testSlotsNotInClass]
+# Shouldn't be triggered
+__slots__ = [1, 2]
+reveal_type(__slots__)  # N: Revealed type is "builtins.list[builtins.int]"
+
+def foo() -> None:
+    __slots__ = 1
+    reveal_type(__slots__)  # N: Revealed type is "builtins.int"
+
+[case testSlotsEmptyList]
+class A:
+    __slots__ = []
+    reveal_type(__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
+
+reveal_type(A.__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
+
+[case testSlotsEmptySet]
+class A:
+    __slots__ = set()
+    reveal_type(__slots__)  # N: Revealed type is "builtins.set[builtins.str]"
+
+reveal_type(A.__slots__)  # N: Revealed type is "builtins.set[builtins.str]"
+[builtins fixtures/set.pyi]
 
 [case testSlotsWithAny]
 from typing import Any
