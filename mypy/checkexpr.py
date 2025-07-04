@@ -121,6 +121,7 @@ from mypy.state import state
 from mypy.subtypes import (
     find_member,
     is_equivalent,
+    is_proper_subtype,
     is_same_type,
     is_subtype,
     non_method_protocol_members,
@@ -2097,7 +2098,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         )
 
     def _infer_constraints_from_context(
-        self, callee: CallableType, error_context: Context
+        self, callee: CallableType, error_context: Context, erase: bool = True
     ) -> list[Constraint]:
         """Unify callable return type to type context to infer type vars.
 
@@ -2113,7 +2114,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # and they are not potential results; thus we replace them with the
         # special ErasedType type. On the other hand, class type variables are
         # valid results.
-        erased_ctx = replace_meta_vars(ctx, ErasedType())
+        if erase:
+            erased_ctx = replace_meta_vars(ctx, ErasedType())
+        else:
+            erased_ctx = ctx
         ret_type = callee.ret_type
         if is_overlapping_none(ret_type) and is_overlapping_none(ctx):
             # If both the context and the return type are optional, unwrap the optional,
@@ -2172,10 +2176,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def _filter_args(self, args: list[Type | None]) -> list[Type | None]:
         new_args: list[Type | None] = []
         for arg in args:
-            if has_uninhabited_component(arg) or has_erased_component(arg):
+            if arg is None:
                 new_args.append(None)
+                continue
             else:
+                arg = replace_meta_vars(arg, ErasedType())
                 new_args.append(arg)
+            # if has_erased_component(arg) or has_uninhabited_component(arg):
+            #     new_args.append(None)
+            # else:
+            #     new_args.append(arg)
         return new_args
 
     def infer_function_type_arguments(
@@ -2228,18 +2238,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             new_inferred_args = None
 
             if True:  # NEW CODE
-                extra_constraints = self._infer_constraints_from_context(callee_type, context)
-
-                # outer_solution
-                _outer_solution = solve_constraints(
-                    callee_type.variables,
-                    extra_constraints,
-                    strict=self.chk.in_checked_function(),
-                    allow_polymorphic=False,
-                )
-                outer_solution = (self._filter_args(_outer_solution[0]), _outer_solution[1])
-
-                # inner solution
                 constraints = infer_constraints_for_callable(
                     callee_type,
                     pass1_args,
@@ -2248,38 +2246,84 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     formal_to_actual,
                     context=self.argument_infer_context(),
                 )
-                inner_solution = solve_constraints(
+
+                extra_constraints = self._infer_constraints_from_context(
+                    callee_type, context, erase=False
+                )
+                erased_constraints = self._infer_constraints_from_context(
+                    callee_type, context, erase=True
+                )
+
+                _outer_solution = solve_constraints(
+                    callee_type.variables,
+                    extra_constraints,
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=False,
+                )
+
+                _inner_solution = solve_constraints(
                     callee_type.variables,
                     constraints,
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=False,
                 )
+                # NOTE: The order of constraints is important here!
+                #  solve(outer + inner) and solve(inner + outer) may yield different results.
+                _joint_solution = solve_constraints(
+                    callee_type.variables,
+                    constraints + extra_constraints,
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=False,
+                )
 
-                joint_solution = solve_constraints(
+                _reverse_joint_solution = solve_constraints(
                     callee_type.variables,
                     extra_constraints + constraints,
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=False,
                 )
 
-                # check if we can use the joint solution, otherwise fallback to outer_solution
-                for var1, var2 in zip(
-                    outer_solution[0], joint_solution[0]
-                ):  # tuple[Type | None, Type | None]
-                    if var2 is None and var1 is not None:
-                        # using both constraints did not find a solution for this variable
-                        # so we fallback to outer_solution, apply the solution, and then recompute the inner part
-                        use_joint = False
-                        break
-                else:
-                    use_joint = True
+                _erased_outer_solution = solve_constraints(
+                    callee_type.variables,
+                    erased_constraints,
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=False,
+                )
+
+                _erased_joint_solution = solve_constraints(
+                    callee_type.variables,
+                    constraints + erased_constraints,
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=False,
+                )
+
+                _erased_reverse_joint_solution = solve_constraints(
+                    callee_type.variables,
+                    erased_constraints + constraints,
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=False,
+                )
+
+                # Now, we select the solution to use.
+                #  Note: Since joint uses both outer and inner constraints,
+                #     and solution discovered by joint is also a solution for outer and inner.
+                #     therefore, we can pick either inner or outer as a substitute for joint,
+                #     and then try to solve again using only the inner constraints.
+                # joint_solution = (self._filter_args(_joint_solution[0]), _joint_solution[1])
+                # reverse_joint_solution = (self._filter_args(_reverse_joint_solution[0]), _reverse_joint_solution[1])
+                outer_solution = (self._filter_args(_outer_solution[0]), _outer_solution[1])
+                inner_solution = (self._filter_args(_inner_solution[0]), _inner_solution[1])
+                joint_solution = _joint_solution
+                reverse_joint_solution = _reverse_joint_solution
+
+                target_solution = _erased_reverse_joint_solution
 
                 use_joint = True
                 use_outer = True
                 use_inner = True
-
+                # check if we can use the joint solution, otherwise fallback to outer_solution
                 for outer_tp, inner_tp, joint_tp in zip(
-                    outer_solution[0], inner_solution[0], joint_solution[0]
+                    outer_solution[0], inner_solution[0], target_solution[0]
                 ):
                     if joint_tp is None and outer_tp is not None:
                         use_joint = False
@@ -2291,8 +2335,55 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     if has_erased_component(inner_tp):
                         use_inner = False
 
+                combined_solution = []
+                for outer_tp, joint_tp in zip(outer_solution[0], target_solution[0]):
+                    if (
+                        outer_tp is not None
+                        and joint_tp is not None
+                        and is_proper_subtype(outer_tp, joint_tp)
+                    ):
+                        # If outer is a subtype of joint, we can use joint.
+                        combined_solution.append(outer_tp)
+                    else:
+                        # Otherwise, we use joint.
+                        combined_solution.append(joint_tp)
+
+                _num = arg_pass_nums
+                _c0 = constraints
+                _c1 = extra_constraints
+                _c2 = erased_constraints
+
+                _x0 = _outer_solution[0]
+                _x2 = _inner_solution[0]
+                _x3 = _joint_solution[0]
+                _x4 = _reverse_joint_solution[0]
+
+                _e0 = _erased_outer_solution[0]
+                _e2 = _erased_joint_solution[0]
+                _e3 = _erased_reverse_joint_solution[0]
+
+                _s1 = outer_solution[0]
+                _s2 = inner_solution[0]
+                _s3 = joint_solution[0]
+                _s4 = reverse_joint_solution[0]
+                _s5 = combined_solution
+
+                _u0 = use_inner, use_outer, use_joint
+
+                # if the outer solution is more concrete than the joint solution, use the outer solution (2 step)
+                if all(
+                    (joint_tp is None and outer_tp is None)
+                    or (
+                        (joint_tp is not None and outer_tp is not None)
+                        and is_subtype(outer_tp, joint_tp)
+                    )
+                    for outer_tp, joint_tp in zip(outer_solution[0], target_solution[0])
+                ):
+                    use_joint = False
+                    use_outer = True
+
                 if use_joint:
-                    new_inferred_args = joint_solution[0]
+                    new_inferred_args = target_solution[0]
                     # inferred_args = [
                     #     # Usually, joint_tp <: outer_tp (since superset of constraints),
                     #     # fixes some cases where we would get `Literal[4]?` rather than `Literal[4]`
