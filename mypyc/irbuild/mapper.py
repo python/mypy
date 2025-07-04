@@ -178,7 +178,7 @@ class Mapper:
                 # Give a more precise type for generators, so that we can optimize
                 # code that uses them. They return a generator object, which has a
                 # specific class. Without this, the type would have to be 'object'.
-                ret = RInstance(self.fdef_to_generator[fdef])
+                ret: RType = RInstance(self.fdef_to_generator[fdef])
             else:
                 ret = self.type_to_rtype(fdef.type.ret_type)
         else:

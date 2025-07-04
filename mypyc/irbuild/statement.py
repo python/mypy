@@ -939,7 +939,7 @@ def emit_yield_from_or_await(
         and val.type.class_ir.has_method(helper_method)
     ):
         # This is a generated generator class, and we can use a fast path.
-        iter_val = val
+        iter_val: Value = val
     else:
         get_op = coro_op if is_await else iter_op
         if isinstance(get_op, PrimitiveDescription):
