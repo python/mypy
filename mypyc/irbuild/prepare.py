@@ -38,7 +38,7 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import PROPSET_PREFIX, get_id_from_name, SELF_NAME
+from mypyc.common import PROPSET_PREFIX, SELF_NAME, get_id_from_name
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -51,7 +51,14 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
+from mypyc.ir.rtypes import (
+    RInstance,
+    RType,
+    dict_rprimitive,
+    none_rprimitive,
+    object_rprimitive,
+    tuple_rprimitive,
+)
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
@@ -62,7 +69,6 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
-from mypyc.ir.rtypes import object_rprimitive
 
 
 def build_type_map(
@@ -220,11 +226,7 @@ def create_generator_class_if_needed(
 
         # The implementation of most generator functionality is behind this magic method.
         helper_fn_decl = FuncDecl(
-            "__mypyc_generator_helper__",
-            name,
-            module_name,
-            helper_sig,
-            internal=True,
+            "__mypyc_generator_helper__", name, module_name, helper_sig, internal=True
         )
         cir.method_decls[helper_fn_decl.name] = helper_fn_decl
 

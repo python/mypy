@@ -933,7 +933,11 @@ def emit_yield_from_or_await(
     received_reg = Register(object_rprimitive)
 
     helper_method = "__mypyc_generator_helper__"
-    if isinstance(val, (Call, MethodCall)) and isinstance(val.type, RInstance) and val.type.class_ir.has_method(helper_method):
+    if (
+        isinstance(val, (Call, MethodCall))
+        and isinstance(val.type, RInstance)
+        and val.type.class_ir.has_method(helper_method)
+    ):
         # This is a generated generator class, and we can use a fast path.
         iter_val = val
     else:
