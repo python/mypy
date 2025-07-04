@@ -932,8 +932,9 @@ def emit_yield_from_or_await(
     to_yield_reg = Register(object_rprimitive)
     received_reg = Register(object_rprimitive)
 
-    if isinstance(val, (Call, MethodCall)) and isinstance(val.type, RInstance) and val.type.class_ir.is_generated:
-        # XXX is_generator not is_generated !!!!!!! FIXME FIXME
+    helper_method = "__mypyc_generator_helper__"
+    if isinstance(val, (Call, MethodCall)) and isinstance(val.type, RInstance) and val.type.class_ir.has_method(helper_method):
+        # This is a generated generator class, and we can use a fast path.
         iter_val = val
     else:
         get_op = coro_op if is_await else iter_op
@@ -946,7 +947,6 @@ def emit_yield_from_or_await(
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
 
-    helper_method = "__mypyc_generator_helper__"
     if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
         obj = builder.read(iter_reg)
         nn = builder.none_object()
