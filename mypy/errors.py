@@ -15,7 +15,6 @@ from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode,
 from mypy.nodes import Context
 from mypy.options import Options
 from mypy.scope import Scope
-from mypy.typeops import make_simplified_union
 from mypy.types import Type
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 from mypy.version import __version__ as mypy_version
