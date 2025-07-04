@@ -152,6 +152,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
 
 def setup_generator_class(builder: IRBuilder) -> ClassIR:
     mapper = builder.mapper
+    assert isinstance(builder.fn_info.fitem, FuncDef)
     generator_class_ir = mapper.fdef_to_generator[builder.fn_info.fitem]
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
