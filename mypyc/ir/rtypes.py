@@ -18,12 +18,27 @@ are erased to the single RType 'builtins.list' (list_rprimitive).
 
 mypyc.irbuild.mapper.Mapper.type_to_rtype converts mypy Types to mypyc
 RTypes.
+
+NOTE: As a convention, we don't create subclasses of concrete RType
+      subclasses (e.g. you shouldn't define a subclass of RTuple, which
+      is a concrete class). We prefer a flat class hierarchy.
+
+      If you want to introduce a variant of an existing class, you'd
+      typically add an attribute (e.g. a flag) to an existing concrete
+      class to enable the new behavior. In rare cases, adding a new
+      abstract base class could also be an option. Adding a completely
+      separate class and sharing some functionality using module-level
+      helper functions may also be reasonable.
+
+      This makes it possible to use isinstance(x, <concrete RType
+      subclass>) checks without worrying about potential subclasses
+      and avoids most trouble caused by implementation inheritance.
 """
 
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar, final
 from typing_extensions import TypeGuard
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
@@ -155,6 +170,7 @@ class RTypeVisitor(Generic[T]):
         raise NotImplementedError
 
 
+@final
 class RVoid(RType):
     """The void type (no value).
 
@@ -187,6 +203,7 @@ class RVoid(RType):
 void_rtype: Final = RVoid()
 
 
+@final
 class RPrimitive(RType):
     """Primitive type such as 'object' or 'int'.
 
@@ -650,6 +667,7 @@ class TupleNameVisitor(RTypeVisitor[str]):
         assert False, "rvoid in tuple?"
 
 
+@final
 class RTuple(RType):
     """Fixed-length unboxed tuple (represented as a C struct).
 
@@ -791,6 +809,7 @@ def compute_aligned_offsets_and_size(types: list[RType]) -> tuple[list[int], int
     return offsets, final_size
 
 
+@final
 class RStruct(RType):
     """C struct type"""
 
@@ -844,6 +863,7 @@ class RStruct(RType):
         assert False
 
 
+@final
 class RInstance(RType):
     """Instance of user-defined class (compiled to C extension class).
 
@@ -904,6 +924,7 @@ class RInstance(RType):
         return self.name
 
 
+@final
 class RUnion(RType):
     """union[x, ..., y]"""
 
@@ -994,6 +1015,7 @@ def is_optional_type(rtype: RType) -> bool:
     return optional_value_type(rtype) is not None
 
 
+@final
 class RArray(RType):
     """Fixed-length C array type (for example, int[5]).
 

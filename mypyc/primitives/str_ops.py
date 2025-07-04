@@ -277,6 +277,34 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# str.count(substring)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyStr_Count",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(0, c_pyssize_t_rprimitive)],
+)
+
+# str.count(substring, start)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyStr_Count",
+    error_kind=ERR_NEG_INT,
+)
+
+# str.count(substring, start, end)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyStr_CountFull",
+    error_kind=ERR_NEG_INT,
+)
+
 # str.replace(old, new)
 method_op(
     name="replace",

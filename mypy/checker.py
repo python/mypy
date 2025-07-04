@@ -2962,7 +2962,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 "Metaclass conflict: the metaclass of a derived class must be "
                 "a (non-strict) subclass of the metaclasses of all its bases",
                 typ,
+                code=codes.METACLASS,
             )
+            explanation = typ.explain_metaclass_conflict()
+            if explanation:
+                self.note(explanation, typ, code=codes.METACLASS)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:
