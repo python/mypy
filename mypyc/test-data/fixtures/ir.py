@@ -245,6 +245,7 @@ class list(Generic[_T], Sequence[_T], Iterable[_T]):
     def reverse(self) -> None: pass
     def remove(self, o: _T) -> None: pass
     def index(self, o: _T) -> int: pass
+    def clear(self) -> None: pass
     def copy(self) -> List[_T]: pass
 
 class dict(Mapping[_K, _V]):
