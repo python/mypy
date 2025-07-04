@@ -421,7 +421,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_get_attr_nullable_with_tuple(self) -> None:
         self.assert_emit(
-            GetAttr(self.r, "t", 1, allow_null=True),
+            GetAttr(self.r, "t", 1, allow_error_value=True),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_t;
                if (cpy_r_r0.f0 != NULL) {
                    CPy_INCREF(cpy_r_r0.f0);

@@ -361,8 +361,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
     def visit_get_attr(self, op: GetAttr) -> None:
-        if op.allow_null:
-            self.get_attr_with_allow_null(op)
+        if op.allow_error_value:
+            self.get_attr_with_allow_error_value(op)
             return
         dest = self.reg(op)
         obj = self.reg(op.obj)
@@ -432,8 +432,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif not always_defined:
                 self.emitter.emit_line("}")
 
-    def get_attr_with_allow_null(self, op: GetAttr) -> None:
-        """Handle GetAttr with allow_null=True which allows NULL without raising AttributeError."""
+    def get_attr_with_allow_error_value(self, op: GetAttr) -> None:
+        """Handle GetAttr with allow_error_value=True.
+
+        This allows NULL or other error value without raising AttributeError.
+        """
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
