@@ -29,6 +29,9 @@ for fn in [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10]:
     assert getattr(fn, "__doc__") is None
 
 [case testSignaturesValidDefaults]
+from typing import Final
+A: Final = 1
+
 def default_int(x=1): pass
 def default_str(x="a"): pass
 def default_float(x=1.0): pass
@@ -38,6 +41,7 @@ def default_none(x=None): pass
 def default_tuple_empty(x=()): pass
 def default_tuple_literals(x=(1, "a", 1.0, False, True, None, (), (1,2,(3,4)))): pass
 def default_tuple_singleton(x=(1,)): pass
+def default_named_constant(x=A): pass
 
 [file driver.py]
 import inspect
@@ -51,6 +55,7 @@ assert str(inspect.signature(default_false)) == "(x=False)"
 assert str(inspect.signature(default_none)) == "(x=None)"
 assert str(inspect.signature(default_tuple_empty)) == "(x=())"
 assert str(inspect.signature(default_tuple_literals)) == "(x=(1, 'a', 1.0, False, True, None, (), (1, 2, (3, 4))))"
+assert str(inspect.signature(default_named_constant)) == "(x=1)"
 
 # Check __text_signature__ directly since inspect.signature produces
 # an incorrect signature for 1-tuple default arguments prior to
@@ -76,25 +81,42 @@ assert str(inspect.signature(f4)) == r"""(x='\\ \x07 \x08 \x0c \n \r \t \x0b \x0
 assert str(inspect.signature(f5)) == """(x='\N{BANANA}sv')"""
 
 [case testSignaturesIrrepresentableDefaults]
-def bad1(x=[]): pass
-def bad2(x={}): pass
-def bad3(x=set()): pass
-def bad4(x=int): pass
-def bad5(x=lambda: None): pass
-def bad6(x=bad1): pass
-# note: inspect supports constant folding for defaults in text signatures
-def bad7(x=1+2): pass
-def bad8(x=1-2): pass
-def bad9(x=1|2): pass
-def bad10(x=float("nan")): pass
-def bad11(x=([],)): pass
+import enum
+class Color(enum.Enum):
+    RED = 1
+misc = object()
+
+# Default arguments that cannot be represented in a __text_signature__
+def bad_object(x=misc): pass
+def bad_list_nonliteral(x=[misc]): pass
+def bad_dict_nonliteral(x={'a': misc}): pass
+def bad_set_nonliteral(x={misc}): pass
+def bad_set_empty(x=set()): pass  # supported by ast.literal_eval, but not by inspect._signature_fromstr
+def bad_nan(x=float("nan")): pass
+def bad_enum(x=Color.RED): pass
+
+# TODO: Default arguments that could potentially be represented in a
+# __text_signature__, but which are not currently supported.
+# See 'inspect._signature_fromstr' for what default values are supported at runtime.
+def bad_complex(x=1+2j): pass
+def bad_list_empty(x=[]): pass
+def bad_list_literals(x=[1, 2, 3]): pass
+def bad_dict_empty(x={}): pass
+def bad_dict_literals(x={'a': 1}): pass
+def bad_set_literals(x={1, 2, 3}): pass
+def bad_tuple_literals(x=([1, 2, 3], {'a': 1}, {1, 2, 3})): pass
+def bad_ellipsis(x=...): pass
+def bad_literal_fold(x=1+2): pass
 
 [file driver.py]
 import inspect
 from testutil import assertRaises
-from native import *
+import native
 
-for bad in [bad1, bad2, bad3, bad4, bad5, bad6, bad7, bad8, bad9, bad10, bad11]:
+all_bad = [fn for name, fn in vars(native).items() if name.startswith("bad_")]
+assert all_bad
+
+for bad in all_bad:
     assert bad.__text_signature__ is None, f"{bad.__name__} has unexpected __text_signature__"
     with assertRaises(ValueError, "no signature found for builtin"):
         inspect.signature(bad)
