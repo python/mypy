@@ -2348,6 +2348,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         # Otherwise, we use joint.
                         combined_solution.append(joint_tp)
 
+                # if the outer solution is more concrete than the joint solution, use the outer solution (2 step)
+                if all(
+                    (joint_tp is None and outer_tp is None)
+                    or (
+                        (joint_tp is not None and outer_tp is not None)
+                        and is_subtype(outer_tp, joint_tp)
+                    )
+                    for outer_tp, joint_tp in zip(outer_solution[0], target_solution[0])
+                ):
+                    use_joint = False
+                    use_outer = True
+
                 _num = arg_pass_nums
                 _c0 = constraints
                 _c1 = extra_constraints
@@ -2366,21 +2378,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 _s2 = inner_solution[0]
                 _s3 = joint_solution[0]
                 _s4 = reverse_joint_solution[0]
-                _s5 = combined_solution
-
+                _t0 = target_solution[0]
                 _u0 = use_inner, use_outer, use_joint
-
-                # if the outer solution is more concrete than the joint solution, use the outer solution (2 step)
-                if all(
-                    (joint_tp is None and outer_tp is None)
-                    or (
-                        (joint_tp is not None and outer_tp is not None)
-                        and is_subtype(outer_tp, joint_tp)
-                    )
-                    for outer_tp, joint_tp in zip(outer_solution[0], target_solution[0])
-                ):
-                    use_joint = False
-                    use_outer = True
 
                 if use_joint:
                     new_inferred_args = target_solution[0]
