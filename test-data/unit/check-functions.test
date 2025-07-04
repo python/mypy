@@ -3694,3 +3694,19 @@ def defer() -> int: ...
 [out]
 main: note: In function "a":
 main:6: error: Unsupported operand types for + ("int" and "str")
+
+[case testNoExtraNoteForUnpacking]
+from typing import Protocol
+
+class P(Protocol):
+    arg: int
+    # Something that list and dict also have
+    def __contains__(self, item: object) -> bool: ...
+
+def foo(x: P, y: P) -> None: ...
+
+args: list[object]
+foo(*args)  # E: Argument 1 to "foo" has incompatible type "*list[object]"; expected "P"
+kwargs: dict[str, object]
+foo(**kwargs)  # E: Argument 1 to "foo" has incompatible type "**dict[str, object]"; expected "P"
+[builtins fixtures/dict.pyi]
