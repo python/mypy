@@ -196,6 +196,11 @@ def prepare_func_def(
 def create_generator_class_if_needed(
     module_name: str, class_name: str | None, fdef: FuncDef, mapper: Mapper, name_suffix: str = ""
 ) -> None:
+    """If function is a generator/async function, declare a generator class.
+
+    Each generator and async function gets a dedicated class that implements the
+    generator protocol with generated methods.
+    """
     if fdef.is_coroutine or fdef.is_generator:
         name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen" + name_suffix
         cir = ClassIR(name, module_name, is_generated=True, is_final_class=True)
@@ -213,6 +218,7 @@ def create_generator_class_if_needed(
             object_rprimitive,
         )
 
+        # The implementation of most generator functionality is behind this magic method.
         helper_fn_decl = FuncDecl(
             "__mypyc_generator_helper__",
             name,
