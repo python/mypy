@@ -472,9 +472,6 @@ def bind_self(
     else:
         variables = func.variables
 
-    original_type = get_proper_type(original_type)
-    if isinstance(original_type, CallableType) and original_type.is_type_obj():
-        original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
         arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],

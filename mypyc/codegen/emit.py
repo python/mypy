@@ -1115,6 +1115,31 @@ class Emitter:
         else:
             assert False, "emit_gc_clear() not implemented for %s" % repr(rtype)
 
+    def emit_reuse_clear(self, target: str, rtype: RType) -> None:
+        """Emit attribute clear before object is added into freelist.
+
+        Assume that 'target' represents a C expression that refers to a
+        struct member, such as 'self->x'.
+
+        Unlike emit_gc_clear(), initialize attribute value to match a freshly
+        allocated object.
+        """
+        if isinstance(rtype, RTuple):
+            for i, item_type in enumerate(rtype.types):
+                self.emit_reuse_clear(f"{target}.f{i}", item_type)
+        elif not rtype.is_refcounted:
+            self.emit_line(f"{target} = {rtype.c_undefined};")
+        elif isinstance(rtype, RPrimitive) and rtype.name == "builtins.int":
+            self.emit_line(f"if (CPyTagged_CheckLong({target})) {{")
+            self.emit_line(f"CPyTagged __tmp = {target};")
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+            self.emit_line("Py_XDECREF(CPyTagged_LongAsObject(__tmp));")
+            self.emit_line("} else {")
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+            self.emit_line("}")
+        else:
+            self.emit_gc_clear(target, rtype)
+
     def emit_traceback(
         self, source_path: str, module_name: str, traceback_entry: tuple[str, int]
     ) -> None:
