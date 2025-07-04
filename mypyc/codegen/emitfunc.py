@@ -209,6 +209,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.label is not self.next_block:
             self.emit_line("goto %s;" % self.label(op.label))
 
+    def error_value_check(self, value: Value, compare: str) -> str:
+        typ = value.type
+        if isinstance(typ, RTuple):
+            # TODO: What about empty tuple?
+            return self.emitter.tuple_undefined_check_cond(
+                typ, self.reg(value), self.c_error_value, compare
+            )
+        else:
+            return f"{self.reg(value)} {compare} {self.c_error_value(typ)}"
+
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
         negated = op.negated
@@ -225,15 +235,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             expr_result = self.reg(op.value)
             cond = f"{neg}{expr_result}"
         elif op.op == Branch.IS_ERROR:
-            typ = op.value.type
             compare = "!=" if negated else "=="
-            if isinstance(typ, RTuple):
-                # TODO: What about empty tuple?
-                cond = self.emitter.tuple_undefined_check_cond(
-                    typ, self.reg(op.value), self.c_error_value, compare
-                )
-            else:
-                cond = f"{self.reg(op.value)} {compare} {self.c_error_value(typ)}"
+            cond = self.error_value_check(op.value, compare)
         else:
             assert False, "Invalid branch"
 
@@ -443,7 +446,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         # Only emit inc_ref if not NULL
         if attr_rtype.is_refcounted and not op.is_borrowed:
-            self.emitter.emit_line(f"if ({dest} != NULL) {{")
+            check = self.error_value_check(op, "!=")
+            self.emitter.emit_line(f"if ({check}) {{")
             self.emitter.emit_inc_ref(dest, attr_rtype)
             self.emitter.emit_line("}")
 
