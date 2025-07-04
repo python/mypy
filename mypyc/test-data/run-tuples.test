@@ -203,6 +203,22 @@ def f7(x: List[Tuple[int, int]]) -> int:
 def test_unbox_tuple() -> None:
     assert f7([(5, 6)]) == 11
 
+def test_comparison() -> None:
+    assert ('x','y') == ('x','y')
+    assert not(('x','y') != ('x','y'))
+
+    assert ('x','y') != ('x','y',1)
+    assert not(('x','y') == ('x','y',1))
+
+    assert ('x','y',1) != ('x','y')
+    assert not(('x','y',1) == ('x','y'))
+
+    assert ('x','y') != ()
+    assert not(('x','y') == ())
+
+    assert () != ('x','y')
+    assert not(() == ('x','y'))
+
 # Test that order is irrelevant to unions. Really I only care that this builds.
 
 class A:
