@@ -811,7 +811,13 @@ class GetAttr(RegisterOp):
     error_kind = ERR_MAGIC
 
     def __init__(
-        self, obj: Value, attr: str, line: int, *, borrow: bool = False, allow_error_value: bool = False
+        self,
+        obj: Value,
+        attr: str,
+        line: int,
+        *,
+        borrow: bool = False,
+        allow_error_value: bool = False,
     ) -> None:
         super().__init__(line)
         self.obj = obj
