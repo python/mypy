@@ -107,6 +107,29 @@ def test_indirect_call() -> None:
     with assertRaises(MyError):
         asyncio.run(indirect_call_3(ident(-113.0, True)))
 
+class C:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    async def add(self, x: int, err: bool = False) -> int:
+        await asyncio.sleep(0)
+        if err:
+            raise MyError()
+        return x + self.n
+
+async def method_call(x: int) -> int:
+    c = C(5)
+    return await c.add(x)
+
+async def method_call_exception() -> int:
+    c = C(5)
+    return await c.add(3, err=True)
+
+def test_async_method_call() -> None:
+    assert asyncio.run(method_call(3)) == 8
+    with assertRaises(MyError):
+        asyncio.run(method_call_exception())
+
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
 # eh, we could use the real type but it doesn't seem important
