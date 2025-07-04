@@ -111,6 +111,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "y": int_rprimitive,
             "i1": int64_rprimitive,
             "i2": int32_rprimitive,
+            "t": RTuple([object_rprimitive, object_rprimitive]),
         }
         ir.bitmap_attrs = ["i1", "i2"]
         compute_vtable(ir)
@@ -414,6 +415,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_i1;
                if (unlikely(cpy_r_r0 == -113) && !(((mod___AObject *)cpy_r_r)->bitmap & 1)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'i1' of 'A' undefined");
+               }
+            """,
+        )
+
+    def test_get_attr_nullable_with_tuple(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, "t", 1, allow_null=True),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_t;
+               if (cpy_r_r0.f0 != NULL) {
+                   CPy_INCREF(cpy_r_r0.f0);
+                   CPy_INCREF(cpy_r_r0.f1);
                }
             """,
         )
