@@ -2008,7 +2008,7 @@ class D:
     def __set__(self, inst, v, other): pass
 class A:
     f = D()
-A().f = 'x'  # E: Too few arguments for "__set__"
+A().f = 'x'  # E: Missing positional argument "other" in call to "__set__"
 
 [case testDescriptorDunderSetWrongArgTypes]
 class D:
@@ -2036,7 +2036,7 @@ class D:
     def __get__(self, inst, own, other): pass
 class A:
     f = D()
-A().f = 'x'  # E: Too few arguments for "__get__"
+A().f = 'x'  # E: Missing positional argument "other" in call to "__get__"
 
 [case testDescriptorDunderGetWrongArgTypeForInstance]
 from typing import Any

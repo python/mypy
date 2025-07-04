@@ -2467,6 +2467,79 @@ f(b=4) # E: Missing positional argument "a" in call to "f"
 def f(a, b, c, d=None) -> None: pass
 f(1, d=3) # E: Missing positional arguments "b", "c" in call to "f"
 
+[case testMissingArgumentsErrorFromTypedDict]
+from typing import Optional,TypedDict
+
+class DA(TypedDict):
+    a: int
+class DB(TypedDict):
+    b: int
+class DC(TypedDict):
+    c: int
+
+class DAB(DA, DB): pass
+class DAC(DA, DC): pass
+class DBC(DB, DC): pass
+class DABC(DA, DB, DC): pass
+
+da: DA
+db: DB
+dc: DC
+dab: DAB
+dac: DAC
+dbc: DBC
+dabc: DABC
+
+def f(a: int, b: int, c: int, d: Optional[int] = None) -> None: pass
+
+f(**da)  # E: Missing named argument "b" for "f" \
+         # E: Missing named argument "c" for "f"
+f(**db)  # E: Missing named argument "c" for "f" \
+         # E: Missing positional argument "a" in call to "f"
+f(**dc)  # E: Missing positional arguments "a", "b" in call to "f"
+f(**dab)  # E: Missing named argument "c" for "f"
+f(**dac)  # E: Missing named argument "b" for "f"
+f(**dbc)  # E: Missing positional argument "a" in call to "f"
+f(**dabc)
+
+def g(a: int, /, b: int, c: int) -> None: pass
+
+g(**da)  # E: Extra argument "a" from **args for "g"
+g(0, **da)  # E: Extra argument "a" from **args for "g"
+g(**db)  # E: Missing named argument "c" for "g" \
+         # E: Too few arguments for "g"
+g(0, **db)  # E: Missing named argument "c" for "g"
+g(**dc)  # E: Too few arguments for "g"
+g(0, **dc)  # E: Missing positional argument "b" in call to "g"
+g(**dab)  # E: Extra argument "a" from **args for "g"
+g(0, **dab)  # E: Extra argument "a" from **args for "g"
+g(**dac)  # E: Extra argument "a" from **args for "g"
+g(0, **dac)  # E: Extra argument "a" from **args for "g"
+g(**dbc)  # E: Too few arguments for "g"
+g(0, **dbc)
+g(**dabc)  # E: Extra argument "a" from **args for "g"
+
+def h(a: int, b: int, /, c: int) -> None: pass
+
+h(**da)  # E: Extra argument "a" from **args for "h"
+h(0, **da)  # E: Extra argument "a" from **args for "h"
+h(0, 1, **da)  # E: Extra argument "a" from **args for "h"
+h(**db)  # E: Extra argument "b" from **args for "h"
+h(0, **db)  # E: Extra argument "b" from **args for "h"
+h(0, 1, **db)  # E: Extra argument "b" from **args for "h"
+h(**dc)  # E: Too few arguments for "h"
+h(0, **dc)  # E: Too few arguments for "h"
+h(0, 1, **dc)
+h(**dab)  # E: Extra argument "b" from **args for "h"
+h(0, **dab)  # E: Extra argument "b" from **args for "h"
+h(**dac)  # E: Extra argument "a" from **args for "h"
+h(0, **dac)  # E: Extra argument "a" from **args for "h"
+h(**dbc)  # E: Extra argument "b" from **args for "h"
+h(0, **dbc)  # E: Extra argument "b" from **args for "h"
+h(**dabc)  # E: Extra argument "b" from **args for "h"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testReturnTypeLineNumberWithDecorator]
 def dec(f): pass
 
