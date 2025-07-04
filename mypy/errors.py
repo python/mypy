@@ -585,8 +585,7 @@ class Errors:
         if info.code in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND):
             self.seen_import_error = True
 
-    @property
-    def watchers(self) -> Iterator[ErrorWatcher]:
+    def get_watchers(self) -> Iterator[ErrorWatcher]:
         """Yield the `ErrorWatcher` stack from top to bottom."""
         i = len(self._watchers)
         while i > 0:
@@ -598,7 +597,7 @@ class Errors:
         process ErrorWatcher stack from top to bottom,
         stopping early if error needs to be filtered out
         """
-        return any(w.on_error(file, info) for w in self.watchers)
+        return any(w.on_error(file, info) for w in self.get_watchers())
 
     def add_error_info(self, info: ErrorInfo) -> None:
         file, lines = info.origin

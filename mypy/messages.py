@@ -1750,7 +1750,7 @@ class MessageBuilder:
         # Search for an error watcher that modifies the "normal" behaviour (we do not
         # rely on the normal `ErrorWatcher` filtering approach because we might need to
         # collect the original types for a later unionised response):
-        for watcher in self.errors.watchers:
+        for watcher in self.errors.get_watchers():
             # The `reveal_type` statement should be ignored:
             if watcher.filter_revealed_type:
                 return
