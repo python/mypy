@@ -582,4 +582,3 @@ def do_upper(s):
 L0:
     r0 = CPyStr_Upper(s)
     return r0
-
