@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Callable
 
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
-from mypyc.codegen.emitfunc import native_function_header
+from mypyc.codegen.emitfunc import native_function_doc_initializer, native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_bin_op_wrapper,
     generate_bool_wrapper,
@@ -21,7 +22,13 @@ from mypyc.codegen.emitwrapper import (
 )
 from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
-from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    get_text_signature,
+)
 from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
@@ -367,6 +374,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if has_managed_dict(cl, emitter):
         flags.append("Py_TPFLAGS_MANAGED_DICT")
     fields["tp_flags"] = " | ".join(flags)
+
+    fields["tp_doc"] = native_class_doc_initializer(cl)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
     emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
@@ -915,7 +924,8 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
         elif fn.decl.kind == FUNC_CLASSMETHOD:
             flags.append("METH_CLASS")
 
-        emitter.emit_line(" {}, NULL}},".format(" | ".join(flags)))
+        doc = native_function_doc_initializer(fn)
+        emitter.emit_line(" {}, {}}},".format(" | ".join(flags), doc))
 
     # Provide a default __getstate__ and __setstate__
     if not cl.has_method("__setstate__") and not cl.has_method("__getstate__"):
@@ -1173,3 +1183,16 @@ def has_managed_dict(cl: ClassIR, emitter: Emitter) -> bool:
         and cl.has_dict
         and cl.builtin_base != "PyBaseExceptionObject"
     )
+
+
+def native_class_doc_initializer(cl: ClassIR) -> str:
+    init_fn = cl.get_method("__init__")
+    if init_fn is not None:
+        text_sig = get_text_signature(init_fn, bound=True)
+        if text_sig is None:
+            return "NULL"
+        text_sig = text_sig.replace("__init__", cl.name, 1)
+    else:
+        text_sig = f"{cl.name}()"
+    docstring = f"{text_sig}\n--\n\n"
+    return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
