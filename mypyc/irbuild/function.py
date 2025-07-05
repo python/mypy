@@ -261,7 +261,7 @@ def gen_func_item(
         )
 
         # Re-enter the FuncItem and visit the body of the function this time.
-        gen_generator_func_body(builder, fn_info, sig, func_reg)
+        gen_generator_func_body(builder, fn_info, func_reg)
     else:
         func_ir, func_reg = gen_func_body(builder, sig, cdef, is_singledispatch)
 
