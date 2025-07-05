@@ -618,7 +618,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if on_enter_body is not None:
                         on_enter_body()
 
-                    with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                    with IterationErrorWatcher(self.msg.errors, iter_errors):
                         self.accept(body)
 
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
@@ -641,10 +641,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            for error_info in watcher.yield_error_infos():
-                self.msg.fail(*error_info[:2], code=error_info[2])
-            for note_info in watcher.yield_note_infos(self.options):
-                self.note(*note_info)
+            self.msg.iteration_dependent_errors(iter_errors)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
             if exit_condition:
@@ -3041,7 +3038,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if isinstance(s.expr, EllipsisExpr):
                 return True
             elif isinstance(s.expr, CallExpr):
-                with self.expr_checker.msg.filter_errors():
+                with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
                     typ = get_proper_type(
                         self.expr_checker.accept(
                             s.expr, allow_none_return=True, always_allow_any=True
@@ -4969,7 +4966,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if s.finally_body:
                 # First we check finally_body is type safe on all abnormal exit paths
                 iter_errors = IterationDependentErrors()
-                with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                with IterationErrorWatcher(self.msg.errors, iter_errors):
                     self.accept(s.finally_body)
 
         if s.finally_body:
@@ -4986,13 +4983,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # that follows the try statement.)
             assert iter_errors is not None
             if not self.binder.is_unreachable():
-                with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                with IterationErrorWatcher(self.msg.errors, iter_errors):
                     self.accept(s.finally_body)
-
-            for error_info in watcher.yield_error_infos():
-                self.msg.fail(*error_info[:2], code=error_info[2])
-            for note_info in watcher.yield_note_infos(self.options):
-                self.msg.note(*note_info)
+            self.msg.iteration_dependent_errors(iter_errors)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.
