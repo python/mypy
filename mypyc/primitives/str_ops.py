@@ -428,3 +428,21 @@ function_op(
     c_function_name="CPyStr_Ord",
     error_kind=ERR_MAGIC,
 )
+
+# str.lower()
+method_op(
+    name="lower",
+    arg_types=[str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Lower",
+    error_kind=ERR_MAGIC,
+)
+
+# str.upper()
+method_op(
+    name="upper",
+    arg_types=[str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Upper",
+    error_kind=ERR_MAGIC,
+)

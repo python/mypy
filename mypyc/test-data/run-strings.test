@@ -906,3 +906,21 @@ def test_count_multi_start_end_emoji() -> None:
     assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
     assert string.count("🚀🚀🚀", 0, 12) == 2, string.count("🚀🚀🚀", 0, 12)
     assert string.count("ñññ", 0, 12) == 1, string.count("ñññ", 0, 12)
+
+[case testLower]
+def test_str_lower() -> None:
+    assert "".lower() == ""
+    assert "ABC".lower() == "abc"
+    assert "abc".lower() == "abc"
+    assert "AbC123".lower() == "abc123"
+    assert "áÉÍ".lower() == "áéí"
+    assert "😴🚀".lower() == "😴🚀"
+
+[case testUpper]
+def test_str_upper() -> None:
+    assert "".upper() == ""
+    assert "abc".upper() == "ABC"
+    assert "ABC".upper() == "ABC"
+    assert "AbC123".upper() == "ABC123"
+    assert "áéí".upper() == "ÁÉÍ"
+    assert "😴🚀".upper() == "😴🚀"
