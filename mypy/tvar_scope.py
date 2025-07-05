@@ -10,31 +10,39 @@ from mypy.nodes import (
 from mypy.types import (
     ParamSpecFlavor,
     ParamSpecType,
+    TrivialSyntheticTypeTranslator,
+    TypeAliasType,
     TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
 )
-from mypy.typetraverser import TypeTraverserVisitor
 
 
-class TypeVarLikeNamespaceSetter(TypeTraverserVisitor):
+class TypeVarLikeNamespaceSetter(TrivialSyntheticTypeTranslator):
     """Set namespace for all TypeVarLikeTypes types."""
 
     def __init__(self, namespace: str) -> None:
+        super().__init__()
         self.namespace = namespace
 
-    def visit_type_var(self, t: TypeVarType) -> None:
-        t.id.namespace = self.namespace
-        super().visit_type_var(t)
+    def visit_type_var(self, t: TypeVarType) -> TypeVarType:
+        return t.copy_modified(
+            id=TypeVarId(raw_id=t.id.raw_id, meta_level=t.id.meta_level, namespace=self.namespace)
+        )
 
-    def visit_param_spec(self, t: ParamSpecType) -> None:
-        t.id.namespace = self.namespace
-        return super().visit_param_spec(t)
+    def visit_param_spec(self, t: ParamSpecType) -> ParamSpecType:
+        return t.copy_modified(
+            id=TypeVarId(raw_id=t.id.raw_id, meta_level=t.id.meta_level, namespace=self.namespace)
+        )
 
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
-        t.id.namespace = self.namespace
-        super().visit_type_var_tuple(t)
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> TypeVarTupleType:
+        return t.copy_modified(
+            id=TypeVarId(raw_id=t.id.raw_id, meta_level=t.id.meta_level, namespace=self.namespace)
+        )
+
+    def visit_type_alias_type(self, t: TypeAliasType, /) -> TypeAliasType:
+        return t
 
 
 class TypeVarLikeScope:
@@ -106,7 +114,7 @@ class TypeVarLikeScope:
             self.func_id -= 1
             i = self.func_id
         namespace = self.namespace
-        tvar_expr.default.accept(TypeVarLikeNamespaceSetter(namespace))
+        default = tvar_expr.default.accept(TypeVarLikeNamespaceSetter(namespace))
 
         if isinstance(tvar_expr, TypeVarExpr):
             tvar_def: TypeVarLikeType = TypeVarType(
@@ -115,7 +123,7 @@ class TypeVarLikeScope:
                 id=TypeVarId(i, namespace=namespace),
                 values=tvar_expr.values,
                 upper_bound=tvar_expr.upper_bound,
-                default=tvar_expr.default,
+                default=default,
                 variance=tvar_expr.variance,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
@@ -127,7 +135,7 @@ class TypeVarLikeScope:
                 id=TypeVarId(i, namespace=namespace),
                 flavor=ParamSpecFlavor.BARE,
                 upper_bound=tvar_expr.upper_bound,
-                default=tvar_expr.default,
+                default=default,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
@@ -138,7 +146,7 @@ class TypeVarLikeScope:
                 id=TypeVarId(i, namespace=namespace),
                 upper_bound=tvar_expr.upper_bound,
                 tuple_fallback=tvar_expr.tuple_fallback,
-                default=tvar_expr.default,
+                default=default,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
