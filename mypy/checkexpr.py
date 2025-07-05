@@ -2138,6 +2138,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             #     variables in an expression are inferred at the same time.
             #     (And this is hard, also we need to be careful with lambdas that require
             #     two passes.)
+        # ret_as_union = make_simplified_union([ret_type])
+        # erased_ctx_as_union = make_simplified_union([ctx])
+        # if isinstance(ret_as_union, UnionType) and isinstance(erased_ctx_as_union, UnionType):
+        #     new_ret = [val for val in ret_as_union.items if val not in erased_ctx_as_union.items]
+        #     new_ctx = [val for val in erased_ctx_as_union.items if val not in ret_as_union.items]
+        #     ret_type = make_simplified_union(new_ret)
+        #     erased_ctx = make_simplified_union(new_ctx)
+
         proper_ret = get_proper_type(ret_type)
         if (
             isinstance(proper_ret, TypeVarType)
@@ -2187,6 +2195,33 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # else:
             #     new_args.append(arg)
         return new_args
+
+    def intersect_solutions(self, sol1: list[Type | None], sol2: list[Type | None]):
+        # first, ensure that the None-patterns agree
+        assert len(sol1) == len(sol2)
+
+        virtual_vars = []
+        constraints = []
+
+        for i, (tp1, tp2) in enumerate(zip(sol1, sol2)):
+            new_id = TypeVarId.new(-1)
+            name = f"V{i}"
+            new_tvar = TypeVarType(
+                name,
+                name,
+                new_id,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
+            virtual_vars.append(new_tvar)
+            if tp1 is not None:
+                c1 = Constraint(new_tvar, SUBTYPE_OF, tp1)
+                constraints.append(c1)
+            if tp2 is not None:
+                c2 = Constraint(new_tvar, SUBTYPE_OF, tp2)
+                constraints.append(c2)
+        return virtual_vars, constraints
 
     def infer_function_type_arguments(
         self,
@@ -2315,8 +2350,36 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 inner_solution = (self._filter_args(_inner_solution[0]), _inner_solution[1])
                 joint_solution = _joint_solution
                 reverse_joint_solution = _reverse_joint_solution
-
                 target_solution = _erased_reverse_joint_solution
+
+                if True:  # compute the outer and target return types.
+                    # Only substitute non-Uninhabited and non-erased types.
+                    new_args: list[Type | None] = []
+                    for arg in outer_solution[0]:
+                        if has_uninhabited_component(arg) or has_erased_component(arg):
+                            new_args.append(None)
+                        else:
+                            new_args.append(arg)
+                    # Don't show errors after we have only used the outer context for inference.
+                    # We will use argument context to infer more variables.
+                    outer_callee = self.apply_generic_arguments(
+                        callee_type, new_args, context, skip_unsatisfied=True
+                    )
+                    outer_ret_type = get_proper_type(outer_callee.ret_type)
+
+                    # Only substitute non-Uninhabited and non-erased types.
+                    new_args: list[Type | None] = []
+                    for arg in target_solution[0]:
+                        if has_uninhabited_component(arg) or has_erased_component(arg):
+                            new_args.append(None)
+                        else:
+                            new_args.append(arg)
+                    # Don't show errors after we have only used the outer context for inference.
+                    # We will use argument context to infer more variables.
+                    target_callee = self.apply_generic_arguments(
+                        callee_type, new_args, context, skip_unsatisfied=True
+                    )
+                    target_ret_type = get_proper_type(target_callee.ret_type)
 
                 use_joint = True
                 use_outer = True
@@ -2348,17 +2411,45 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         # Otherwise, we use joint.
                         combined_solution.append(joint_tp)
 
+                # new_vars, new_constraints = self.intersect_solutions(outer_solution[0], target_solution[0])
+                # intersected_solution = solve_constraints(
+                #     new_vars,
+                #     new_constraints,
+                #     strict=self.chk.in_checked_function(),
+                #     allow_polymorphic=False,
+                # )
+
                 # if the outer solution is more concrete than the joint solution, use the outer solution (2 step)
-                if all(
-                    (joint_tp is None and outer_tp is None)
-                    or (
-                        (joint_tp is not None and outer_tp is not None)
-                        and is_subtype(outer_tp, joint_tp)
-                    )
-                    for outer_tp, joint_tp in zip(outer_solution[0], target_solution[0])
+                # if all(
+                #     (joint_tp is None and outer_tp is None)
+                #     or (
+                #         (joint_tp is not None and outer_tp is not None)
+                #         and (
+                #             is_subtype(outer_tp, joint_tp)
+                #             or (
+                #                 isinstance(outer_tp, UnionType)
+                #                 and any(is_subtype(val, joint_tp) for val in outer_tp.items)
+                #             )
+                #         )
+                #     )
+                #     for outer_tp, joint_tp in zip(outer_solution[0], target_solution[0])
+                # ):
+                #     use_joint = False
+                #     use_outer = True
+
+                # if the outer solution is more concrete than the joint solution, use the outer solution (2 step)
+                if is_subtype(outer_ret_type, target_ret_type) or (
+                    isinstance(outer_ret_type, UnionType)
+                    and any(is_subtype(val, target_ret_type) for val in outer_ret_type.items)
                 ):
                     use_joint = False
                     use_outer = True
+
+                # what if the outer context is a union type?
+                #   we may have a case like:
+                #   outer : int | Literal["foo"]
+                #   inner: Literal["foo"]?  (which gets translated into str later)
+                #   here, we would want `Literal["foo"]` to be used as the solution,
 
                 _num = arg_pass_nums
                 _c0 = constraints
@@ -2379,6 +2470,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 _s3 = joint_solution[0]
                 _s4 = reverse_joint_solution[0]
                 _t0 = target_solution[0]
+
+                _r1 = outer_ret_type
+                _r2 = target_ret_type
+                _y1 = outer_callee
+                _y2 = target_callee
                 _u0 = use_inner, use_outer, use_joint
 
                 if use_joint:
