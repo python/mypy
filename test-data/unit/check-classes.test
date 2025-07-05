@@ -772,7 +772,7 @@ class A:
 class B(A):
     @property
     def f(self) -> Callable[[object], None]: pass
-    @func.setter
+    @f.setter
     def f(self, x: object) -> None: pass
 [builtins fixtures/property.pyi]
 
@@ -786,7 +786,7 @@ class A:
 class B(A):
     @property
     def f(self) -> Callable[[object], None]: pass
-    @func.setter
+    @f.setter
     def f(self, x: object) -> None: pass
 [builtins fixtures/property.pyi]
 
@@ -1622,7 +1622,81 @@ class A:
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return ''
 [builtins fixtures/property.pyi]
+
+[case testPropertyNameIsChecked]
+class A:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+
+a = A()
+reveal_type(a.f)  # N: Revealed type is "builtins.str"
+a.f = ''  # E: Property "f" defined in "A" is read-only
+
+class B:
+    @property
+    def f(self) -> str: ...
+    @not_f.deleter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self) -> None: ...
+
+class C:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @not_f.deleter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testPropertyAttributeIsChecked]
+class A:
+    @property
+    def f(self) -> str: ...
+    @f.unknown  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @f.bad.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @f  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @int  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testPropertyNameAndAttributeIsCheckedPretty]
+# flags: --pretty
+class A:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter
+    def f(self, val: str) -> None: ...
+    @not_f.deleter
+    def f(self) -> None: ...
+
+class B:
+    @property
+    def f(self) -> str: ...
+    @f.unknown
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
 [out]
+main:5: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @not_f.setter
+         ^~~~~~~~~~~~
+main:7: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @not_f.deleter
+         ^~~~~~~~~~~~~
+main:13: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @f.unknown
+         ^~~~~~~~~
+
+[case testPropertyGetterDecoratorIsRejected]
+class A:
+    @property
+    def f(self) -> str: ...
+    @f.getter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
 
 [case testDynamicallyTypedProperty]
 import typing
@@ -7739,7 +7813,7 @@ class A:
     def y(self) -> int: ...
     @y.setter
     def y(self, value: int) -> None: ...
-    @dec  # E: Only supported top decorator is @y.setter
+    @dec  # E: Only supported top decorators are "@y.setter" and "@y.deleter"
     def y(self) -> None: ...
 
 reveal_type(A().y)  # N: Revealed type is "builtins.int"
