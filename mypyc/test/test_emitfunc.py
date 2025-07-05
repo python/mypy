@@ -19,6 +19,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    CString,
     DecRef,
     Extend,
     GetAttr,
@@ -49,6 +50,7 @@ from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
     c_int_rprimitive,
+    cstring_rprimitive,
     dict_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -823,6 +825,30 @@ else {
         for x in -1123355, -6, 257, 123235345:
             b = LoadLiteral(x, object_rprimitive)
             self.assert_emit([b, IncRef(b)], "CPy_INCREF(cpy_r_r0);")
+
+    def test_c_string(self) -> None:
+        s = Register(cstring_rprimitive, "s")
+        self.assert_emit(Assign(s, CString(b"foo")), """cpy_r_s = "foo";""")
+        self.assert_emit(Assign(s, CString(b'fo "o')), r"""cpy_r_s = "fo \"o";""")
+        self.assert_emit(Assign(s, CString(b"\x00")), r"""cpy_r_s = "\x00";""")
+        self.assert_emit(Assign(s, CString(b"\\")), r"""cpy_r_s = "\\";""")
+        for i in range(256):
+            b = bytes([i])
+            if b == b"\n":
+                target = "\\n"
+            elif b == b"\r":
+                target = "\\r"
+            elif b == b"\t":
+                target = "\\t"
+            elif b == b'"':
+                target = '\\"'
+            elif b == b"\\":
+                target = "\\\\"
+            elif i < 32 or i >= 127:
+                target = "\\x%.2x" % i
+            else:
+                target = b.decode("ascii")
+            self.assert_emit(Assign(s, CString(b)), f'cpy_r_s = "{target}";')
 
     def assert_emit(
         self,

@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
+    cstring_rprimitive,
     float_rprimitive,
     int_rprimitive,
     is_bit_rprimitive,
@@ -227,6 +228,20 @@ class Float(Value):
     def __init__(self, value: float, line: int = -1) -> None:
         self.value = value
         self.type = float_rprimitive
+        self.line = line
+
+
+@final
+class CString(Value):
+    """C string literal (zero-terminated).
+
+    You can also include zero values in the value, but then you'll need to track
+    the length of the string separately.
+    """
+
+    def __init__(self, value: bytes, line: int = -1) -> None:
+        self.value = value
+        self.type = cstring_rprimitive
         self.line = line
 
 
