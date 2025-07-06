@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Final, NamedTuple, TypeVar, Union
+from typing import NamedTuple, TypeVar, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.messages import format_type
@@ -9,6 +9,7 @@ from mypy.nodes import ARG_POS, Argument, Block, ClassDef, Context, SymbolTable,
 from mypy.options import Options
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from mypy.plugins.common import add_method_to_class
+from mypy.plugins.singledispatch_const import REGISTER_RETURN_CLASS
 from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType,
@@ -33,13 +34,6 @@ class RegisterCallableInfo(NamedTuple):
     singledispatch_obj: Instance
 
 
-SINGLEDISPATCH_TYPE: Final = "functools._SingleDispatchCallable"
-
-SINGLEDISPATCH_REGISTER_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.register"
-
-SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.__call__"
-
-
 def get_singledispatch_info(typ: Instance) -> SingledispatchTypeVars | None:
     if len(typ.args) == 2:
         return SingledispatchTypeVars(*typ.args)  # type: ignore[arg-type]
@@ -54,11 +48,6 @@ def get_first_arg(args: list[list[T]]) -> T | None:
     if args and args[0]:
         return args[0][0]
     return None
-
-
-REGISTER_RETURN_CLASS: Final = "_SingleDispatchRegisterCallable"
-
-REGISTER_CALLABLE_CALL_METHOD: Final = f"functools.{REGISTER_RETURN_CLASS}.__call__"
 
 
 def make_fake_register_class_instance(
