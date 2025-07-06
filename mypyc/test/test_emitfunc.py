@@ -829,7 +829,7 @@ else {
     def test_c_string(self) -> None:
         s = Register(cstring_rprimitive, "s")
         self.assert_emit(Assign(s, CString(b"foo")), """cpy_r_s = "foo";""")
-        self.assert_emit(Assign(s, CString(b'fo "o')), r"""cpy_r_s = "fo \"o";""")
+        self.assert_emit(Assign(s, CString(b'foo "o')), r"""cpy_r_s = "foo \"o";""")
         self.assert_emit(Assign(s, CString(b"\x00")), r"""cpy_r_s = "\x00";""")
         self.assert_emit(Assign(s, CString(b"\\")), r"""cpy_r_s = "\\";""")
         for i in range(256):
