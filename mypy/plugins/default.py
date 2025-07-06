@@ -15,7 +15,7 @@ from mypy.plugin import (
     MethodSigContext,
     Plugin,
 )
-from mypy.plugins import singledispatch_const
+from mypy.plugins import constants
 from mypy.plugins.common import try_getting_str_literals
 from mypy.subtypes import is_subtype
 from mypy.typeops import is_literal_type_like, make_simplified_union
@@ -52,17 +52,21 @@ class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        from mypy.plugins import ctypes, enums, singledispatch
-
         if fullname == "_ctypes.Array":
+            from mypy.plugins import ctypes
+
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
+            from mypy.plugins import singledispatch
+
             return singledispatch.create_singledispatch_function_callback
         elif fullname == "functools.partial":
             import mypy.plugins.functools
 
             return mypy.plugins.functools.partial_new_callback
         elif fullname == "enum.member":
+            from mypy.plugins import enums
+
             return enums.enum_member_callback
 
         return None
@@ -70,13 +74,17 @@ class DefaultPlugin(Plugin):
     def get_function_signature_hook(
         self, fullname: str
     ) -> Callable[[FunctionSigContext], FunctionLike] | None:
-        from mypy.plugins import attrs, dataclasses
-
         if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
+            from mypy.plugins import attrs
+
             return attrs.evolve_function_sig_callback
         elif fullname in ("attr.fields", "attrs.fields"):
+            from mypy.plugins import attrs
+
             return attrs.fields_function_sig_callback
         elif fullname == "dataclasses.replace":
+            from mypy.plugins import dataclasses
+
             return dataclasses.replace_function_sig_callback
         return None
 
@@ -93,7 +101,7 @@ class DefaultPlugin(Plugin):
             from mypy.plugins import ctypes
 
             return ctypes.array_setitem_callback
-        elif fullname == singledispatch_const.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
+        elif fullname == constants.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
             from mypy.plugins import singledispatch
 
             return singledispatch.call_singledispatch_function_callback
@@ -126,11 +134,11 @@ class DefaultPlugin(Plugin):
             from mypy.plugins import ctypes
 
             return ctypes.array_iter_callback
-        elif fullname == singledispatch_const.SINGLEDISPATCH_REGISTER_METHOD:
+        elif fullname == constants.SINGLEDISPATCH_REGISTER_METHOD:
             from mypy.plugins import singledispatch
 
             return singledispatch.singledispatch_register_callback
-        elif fullname == singledispatch_const.REGISTER_CALLABLE_CALL_METHOD:
+        elif fullname == constants.SINGLEDISPATCH_REGISTER_CALLABLE_CALL_METHOD:
             from mypy.plugins import singledispatch
 
             return singledispatch.call_singledispatch_function_after_register_argument
@@ -141,15 +149,21 @@ class DefaultPlugin(Plugin):
         return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
-        from mypy.plugins import ctypes, enums
-
         if fullname == "_ctypes.Array.value":
+            from mypy.plugins import ctypes
+
             return ctypes.array_value_callback
         elif fullname == "_ctypes.Array.raw":
+            from mypy.plugins import ctypes
+
             return ctypes.array_raw_callback
-        elif fullname in enums.ENUM_NAME_ACCESS:
+        elif fullname in constants.ENUM_NAME_ACCESS:
+            from mypy.plugins import enums
+
             return enums.enum_name_callback
-        elif fullname in enums.ENUM_VALUE_ACCESS:
+        elif fullname in constants.ENUM_VALUE_ACCESS:
+            from mypy.plugins import enums
+
             return enums.enum_value_callback
         return None
 

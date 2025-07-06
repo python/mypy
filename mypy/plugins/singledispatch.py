@@ -9,7 +9,7 @@ from mypy.nodes import ARG_POS, Argument, Block, ClassDef, Context, SymbolTable,
 from mypy.options import Options
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from mypy.plugins.common import add_method_to_class
-from mypy.plugins.singledispatch_const import REGISTER_RETURN_CLASS
+from mypy.plugins.constants import SINGLEDISPATCH_REGISTER_RETURN_CLASS
 from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType,
@@ -53,8 +53,8 @@ def get_first_arg(args: list[list[T]]) -> T | None:
 def make_fake_register_class_instance(
     api: CheckerPluginInterface, type_args: Sequence[Type]
 ) -> Instance:
-    defn = ClassDef(REGISTER_RETURN_CLASS, Block([]))
-    defn.fullname = f"functools.{REGISTER_RETURN_CLASS}"
+    defn = ClassDef(SINGLEDISPATCH_REGISTER_RETURN_CLASS, Block([]))
+    defn.fullname = f"functools.{SINGLEDISPATCH_REGISTER_RETURN_CLASS}"
     info = TypeInfo(SymbolTable(), defn, "functools")
     obj_type = api.named_generic_type("builtins.object", []).type
     info.bases = [Instance(obj_type, [])]
