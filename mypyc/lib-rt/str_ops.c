@@ -579,8 +579,8 @@ PyObject *CPyStr_Lower(PyObject *self) {
     // Unified loop for all Unicode kinds
     for (Py_ssize_t i = 0; i < len; i++) {
         Py_UCS4 ch = PyUnicode_READ(kind, data, i);
-        Py_UCS4 lower = Py_UNICODE_TOLOWER(ch);
-        PyUnicode_WRITE(res_kind, res_data, i, lower);
+        Py_UCS4 rch = Py_UNICODE_TOLOWER(ch);
+        PyUnicode_WRITE(res_kind, res_data, i, rch);
     }
     return res;
 }
@@ -617,8 +617,8 @@ PyObject *CPyStr_Upper(PyObject *self) {
     // Unified loop for all Unicode kinds
     for (Py_ssize_t i = 0; i < len; i++) {
         Py_UCS4 ch = PyUnicode_READ(kind, data, i);
-        Py_UCS4 upper = Py_UNICODE_TOUPPER(ch);
-        PyUnicode_WRITE(res_kind, res_data, i, upper);
+        Py_UCS4 rch = Py_UNICODE_TOUPPER(ch);
+        PyUnicode_WRITE(res_kind, res_data, i, rch);
     }
     return res;
 }
