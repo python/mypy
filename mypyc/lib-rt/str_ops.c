@@ -575,24 +575,14 @@ static inline Py_UCS4 tolower_ucs4(Py_UCS4 ch) {
     if (ch < 128) {
         return ascii_lower_table[ch];
     }
-#ifdef Py_UNICODE_TOLOWER
     return Py_UNICODE_TOLOWER(ch);
-#else
-    // fallback: no-op for non-ASCII if macro is unavailable
-    return ch;
-#endif
 }
 
 static inline Py_UCS4 toupper_ucs4(Py_UCS4 ch) {
     if (ch < 128) {
         return ascii_upper_table[ch];
     }
-#ifdef Py_UNICODE_TOUPPER
     return Py_UNICODE_TOUPPER(ch);
-#else
-    // fallback: no-op for non-ASCII if macro is unavailable
-    return ch;
-#endif
 }
 
 // Implementation of s.lower()
