@@ -570,20 +570,6 @@ static const unsigned char ascii_upper_table[128] = {
     80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,123,124,125,126,127
 };
 
-// Helper for lower/upper: get the lower/upper code point for a character
-static inline Py_UCS4 tolower_ucs4(Py_UCS4 ch) {
-    if (ch < 128) {
-        return ascii_lower_table[ch];
-    }
-    return Py_UNICODE_TOLOWER(ch);
-}
-
-static inline Py_UCS4 toupper_ucs4(Py_UCS4 ch) {
-    if (ch < 128) {
-        return ascii_upper_table[ch];
-    }
-    return Py_UNICODE_TOUPPER(ch);
-}
 
 // Implementation of s.lower()
 PyObject *CPyStr_Lower(PyObject *self) {
@@ -593,29 +579,26 @@ PyObject *CPyStr_Lower(PyObject *self) {
     int kind = PyUnicode_KIND(self);
     void *data = PyUnicode_DATA(self);
 
-    // Fast path: check if already all lower
-    int unchanged = 1;
-    for (Py_ssize_t i = 0; i < len; i++) {
-        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
-        if (tolower_ucs4(ch) != ch) {
-            unchanged = 0;
-            break;
-        }
-    }
-    if (unchanged) {
-        return Py_NewRef(self);
-    }
-
     Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(self);
     PyObject *res = PyUnicode_New(len, maxchar);
-    if (!res)
+    if (res == NULL)
         return NULL;
     int res_kind = PyUnicode_KIND(res);
     void *res_data = PyUnicode_DATA(res);
 
+    // Fast path for ASCII strings
+    if (PyUnicode_IS_ASCII(self)) {
+        for (Py_ssize_t i = 0; i < len; i++) {
+            Py_UCS1 ch = ((Py_UCS1 *)data)[i];
+            Py_UCS1 lower = ascii_lower_table[ch];
+            ((Py_UCS1 *)res_data)[i] = lower;
+        }
+        return res;
+    }
+
     for (Py_ssize_t i = 0; i < len; i++) {
         Py_UCS4 ch = PyUnicode_READ(kind, data, i);
-        Py_UCS4 lower = tolower_ucs4(ch);
+        Py_UCS4 lower = Py_UNICODE_TOLOWER(ch);
         PyUnicode_WRITE(res_kind, res_data, i, lower);
     }
     return res;
@@ -629,28 +612,26 @@ PyObject *CPyStr_Upper(PyObject *self) {
     int kind = PyUnicode_KIND(self);
     void *data = PyUnicode_DATA(self);
 
-    int unchanged = 1;
-    for (Py_ssize_t i = 0; i < len; i++) {
-        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
-        if (toupper_ucs4(ch) != ch) {
-            unchanged = 0;
-            break;
-        }
-    }
-    if (unchanged) {
-        return Py_NewRef(self);
-    }
-
     Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(self);
     PyObject *res = PyUnicode_New(len, maxchar);
-    if (!res)
+    if (res == NULL)
         return NULL;
     int res_kind = PyUnicode_KIND(res);
     void *res_data = PyUnicode_DATA(res);
 
+    // Fast path for ASCII strings
+    if (PyUnicode_IS_ASCII(self)) {
+        for (Py_ssize_t i = 0; i < len; i++) {
+            Py_UCS1 ch = ((Py_UCS1 *)data)[i];
+            Py_UCS1 upper = ascii_upper_table[ch];
+            ((Py_UCS1 *)res_data)[i] = upper;
+        }
+        return res;
+    }
+
     for (Py_ssize_t i = 0; i < len; i++) {
         Py_UCS4 ch = PyUnicode_READ(kind, data, i);
-        Py_UCS4 upper = toupper_ucs4(ch);
+        Py_UCS4 upper = Py_UNICODE_TOUPPER(ch);
         PyUnicode_WRITE(res_kind, res_data, i, upper);
     }
     return res;
