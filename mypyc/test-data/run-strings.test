@@ -915,6 +915,8 @@ def test_str_lower() -> None:
     assert "AbC123".lower() == "abc123"
     assert "áÉÍ".lower() == "áéí"
     assert "😴🚀".lower() == "😴🚀"
+    # Special
+    assert "SS".lower() == "ss"
 
 [case testUpper]
 def test_str_upper() -> None:
