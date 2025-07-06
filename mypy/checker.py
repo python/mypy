@@ -5225,9 +5225,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             s.expr.accept(self.expr_checker)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
-                    self.binder.assign_type(
-                        elt, DeletedType(source=elt.name), get_declaration(elt)
-                    )
+                    # For local variables, completely remove type binding to allow reuse
+                    if (isinstance(elt.node, Var) and 
+                        elt.node.is_inferred and 
+                        not elt.node.is_property and
+                        not elt.node.is_classvar and
+                        elt.node.is_local):
+                        # Completely remove the variable from type tracking
+                        self.binder.cleanse(elt)
+                        # Also remove from type map if present
+                        if hasattr(self, 'type_map') and elt in self.type_map:
+                            del self.type_map[elt]
+                    else:
+                        # For non-local variables, use the existing DeletedType behavior
+                        self.binder.assign_type(
+                            elt, DeletedType(source=elt.name), get_declaration(elt)
+                        )
 
     def visit_decorator(self, e: Decorator) -> None:
         for d in e.decorators:
@@ -5306,7 +5319,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 self.fail(message_registry.BAD_CONSTRUCTOR_TYPE, e)
 
         if e.func.original_def and isinstance(sig, FunctionLike):
-            # Function definition overrides function definition.
+            # Function signature processing continues herection definition overrides function definition.
             self.check_func_def_override(e.func, sig)
 
     def check_for_untyped_decorator(

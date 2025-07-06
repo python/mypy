@@ -1,0 +1,37 @@
+[case testDelVariableReuse]
+def test_del_reuse() -> None:
+    x = 1
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+    del x
+    x = "hello"
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+[case testDelVariableReuseConditional]
+def test_del_conditional() -> None:
+    x = 1
+    if True:
+        del x
+        x = "hello"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+[case testDelVariableNotLocal]
+x = 1
+def test_del_global() -> None:
+    global x
+    del x
+    x = "hello"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testDelIndexExpr]
+def test_del_index() -> None:
+    d = {"key": 1}
+    del d["key"]
+    d["key"] = "hello"  # OK - this should work normally
+
+[case testDelAttribute]
+class C:
+    attr: int = 1
+
+def test_del_attr() -> None:
+    c = C()
+    del c.attr
+    c.attr = "hello"  # E: Incompatible types in assignment (expression has type "str", target has type "int")
