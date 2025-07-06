@@ -5226,15 +5226,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
                     # For local variables, completely remove type binding to allow reuse
-                    if (isinstance(elt.node, Var) and 
-                        elt.node.is_inferred and 
-                        not elt.node.is_property and
-                        not elt.node.is_classvar and
-                        elt.node.is_local):
+                    if (
+                        isinstance(elt.node, Var)
+                        and elt.node.is_inferred
+                        and not elt.node.is_property
+                        and not elt.node.is_classvar
+                        and elt.node.is_local
+                    ):
                         # Completely remove the variable from type tracking
                         self.binder.cleanse(elt)
                         # Also remove from type map if present
-                        if hasattr(self, 'type_map') and elt in self.type_map:
+                        if hasattr(self, "type_map") and elt in self.type_map:
                             del self.type_map[elt]
                     else:
                         # For non-local variables, use the existing DeletedType behavior

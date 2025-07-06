@@ -474,9 +474,6 @@ class MemoryXmlReporter(AbstractReporter):
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
         self.last_xml: Any | None = None
         self.files: list[FileInfo] = []
-        
-
-    
 
     # XML doesn't like control characters, but they are sometimes
     # legal in source code (e.g. comments, string literals).
@@ -535,10 +532,6 @@ class MemoryXmlReporter(AbstractReporter):
         self.last_xml = doc
         self.files.append(file_info)
 
-        
-        
-
-    
     @staticmethod
     def _get_any_info_for_line(visitor: stats.StatisticsVisitor, lineno: int) -> str:
         if lineno in visitor.any_line_map:

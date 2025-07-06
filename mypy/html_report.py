@@ -10,7 +10,13 @@ from typing import Any
 from mypy import stats
 from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
-from mypy.report import AbstractReporter, FileInfo, iterate_python_lines, register_reporter, should_skip_path
+from mypy.report import (
+    AbstractReporter,
+    FileInfo,
+    iterate_python_lines,
+    register_reporter,
+    should_skip_path,
+)
 from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
@@ -64,7 +70,7 @@ class MemoryHtmlReporter(AbstractReporter):
         tree.accept(visitor)
 
         file_info = FileInfo(path, tree._fullname)
-        
+
         # Generate HTML for this file
         html_lines = [
             "<!DOCTYPE html>",
@@ -94,23 +100,23 @@ class MemoryHtmlReporter(AbstractReporter):
             "            <th>Precision</th>",
             "            <th>Code</th>",
             "            <th>Notes</th>",
-            "        </tr>"
+            "        </tr>",
         ]
 
         for lineno, line_text in iterate_python_lines(path):
             status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
             file_info.counts[status] += 1
-            
+
             precision = stats.precision_names[status]
             any_info = self._get_any_info_for_line(visitor, lineno)
-            
+
             # Escape HTML special characters in the line content
             content = line_text.rstrip("\n")
             content = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            
+
             # Add CSS class based on precision
             css_class = precision.lower()
-            
+
             html_lines.append(
                 f"        <tr class='{css_class}'>"
                 f"<td>{lineno}</td>"
@@ -119,13 +125,9 @@ class MemoryHtmlReporter(AbstractReporter):
                 f"<td>{any_info}</td>"
                 "</tr>"
             )
-            
-        html_lines.extend([
-            "    </table>",
-            "</body>",
-            "</html>"
-        ])
-        
+
+        html_lines.extend(["    </table>", "</body>", "</html>"])
+
         self.last_html[path] = "\n".join(html_lines)
         self.files.append(file_info)
 
@@ -144,7 +146,7 @@ class MemoryHtmlReporter(AbstractReporter):
 
     def on_finish(self) -> None:
         output_files = sorted(self.files, key=lambda x: x.module)
-        
+
         # Generate index HTML
         html_lines = [
             "<!DOCTYPE html>",
@@ -176,7 +178,7 @@ class MemoryHtmlReporter(AbstractReporter):
             "            <th>Empty</th>",
             "            <th>Unanalyzed</th>",
             "            <th>Total</th>",
-            "        </tr>"
+            "        </tr>",
         ]
 
         for file_info in output_files:
@@ -193,13 +195,9 @@ class MemoryHtmlReporter(AbstractReporter):
                 f"<td>{file_info.total()}</td>"
                 "</tr>"
             )
-            
-        html_lines.extend([
-            "    </table>",
-            "</body>",
-            "</html>"
-        ])
-        
+
+        html_lines.extend(["    </table>", "</body>", "</html>"])
+
         self.index_html = "\n".join(html_lines)
 
 
@@ -227,14 +225,14 @@ class HtmlReporter(AbstractReporter):
         last_html = self.memory_html.last_html
         if not last_html:
             return
-        
+
         path = os.path.relpath(tree.path)
         if path.startswith("..") or path not in last_html:
             return
-            
+
         out_path = os.path.join(self.output_dir, "html", path + ".html")
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        
+
         with open(out_path, "w", encoding="utf-8") as out_file:
             out_file.write(last_html[path])
 
@@ -242,20 +240,21 @@ class HtmlReporter(AbstractReporter):
         index_html = self.memory_html.index_html
         if index_html is None:
             return
-            
+
         out_path = os.path.join(self.output_dir, "index.html")
         out_css = os.path.join(self.output_dir, "mypy-html.css")
-        
+
         with open(out_path, "w", encoding="utf-8") as out_file:
             out_file.write(index_html)
-            
+
         # Copy CSS file if it exists
         if os.path.exists(self.memory_html.css_html_path):
             shutil.copyfile(self.memory_html.css_html_path, out_css)
         else:
             # Create a basic CSS file if the original doesn't exist
             with open(out_css, "w", encoding="utf-8") as css_file:
-                css_file.write("""
+                css_file.write(
+                    """
                 body { font-family: Arial, sans-serif; margin: 20px; }
                 h1 { color: #333; }
                 table { border-collapse: collapse; width: 100%; }
@@ -268,8 +267,9 @@ class HtmlReporter(AbstractReporter):
                 pre { margin: 0; white-space: pre-wrap; }
                 a { color: #337ab7; text-decoration: none; }
                 a:hover { text-decoration: underline; }
-                """)
-                
+                """
+                )
+
         print("Generated HTML report:", os.path.abspath(out_path))
 
 
