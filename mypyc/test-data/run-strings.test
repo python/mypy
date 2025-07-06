@@ -917,6 +917,7 @@ def test_str_lower() -> None:
     assert "😴🚀".lower() == "😴🚀"
     # Special
     assert "SS".lower() == "ss"
+    assert "Σ".lower() == "σ"  # Greek capital sigma -> small sigma
 
 [case testUpper]
 def test_str_upper() -> None:
