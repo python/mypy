@@ -918,6 +918,8 @@ def test_str_lower() -> None:
     # Special
     assert "SS".lower() == "ss"
     assert "Σ".lower() == "σ"  # Greek capital sigma -> small sigma
+    #assert "İ".lower() == "i̇"  # TODO: Latin capital letter I with dot above -> 'i' + combining dot
+    #assert len("İ".lower()) == 2  # TODO: Confirms length change
 
 [case testUpper]
 def test_str_upper() -> None:
@@ -927,3 +929,7 @@ def test_str_upper() -> None:
     assert "AbC123".upper() == "ABC123"
     assert "áéí".upper() == "ÁÉÍ"
     assert "😴🚀".upper() == "😴🚀"
+    # Special
+    #assert "ß".upper() == "SS"     # TODO: German sharp S -> double S
+    #assert "ﬃ".upper() == "FFI"    # TODO: Ligature 'ffi' -> separate letters
+    #assert len("ﬃ".upper()) == 3   # TODO: Confirm length increases
