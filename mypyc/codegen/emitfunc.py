@@ -913,6 +913,10 @@ _translation_table: Final[dict[int, str]] = {}
 
 
 def encode_c_string_literal(b: bytes) -> str:
+    """Convert bytestring to the C string literal syntax (with necessary escaping).
+
+    For example, b'foo\n' gets coverted to 'foo\\n' (note that double quotes are not added).
+    """
     if not _translation_table:
         # Initialize the translation table on the first call.
         d = {
