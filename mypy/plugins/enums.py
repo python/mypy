@@ -14,7 +14,7 @@ semanal_enum.py).
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Final, TypeVar, cast
+from typing import TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo
