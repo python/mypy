@@ -390,6 +390,15 @@ def check_type_parameter(
 
 
 class SubtypeVisitor(TypeVisitor[bool]):
+    __slots__ = (
+        "right",
+        "orig_right",
+        "proper_subtype",
+        "subtype_context",
+        "options",
+        "_subtype_kind",
+    )
+
     def __init__(self, right: Type, subtype_context: SubtypeContext, proper_subtype: bool) -> None:
         self.right = get_proper_type(right)
         self.orig_right = right
