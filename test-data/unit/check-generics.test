@@ -2929,8 +2929,8 @@ def mix(fs: List[Callable[[S], T]]) -> Callable[[S], List[T]]:
 def id(__x: U) -> U:
     ...
 fs = [id, id, id]
-reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`11) -> builtins.list[S`11]"
-reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`13) -> builtins.list[S`13]"
+reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`7) -> builtins.list[S`7]"
+reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`9) -> builtins.list[S`9]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCurry]
