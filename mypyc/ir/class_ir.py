@@ -204,6 +204,12 @@ class ClassIR:
         # If this is a generator environment class, what is the actual method for it
         self.env_user_function: FuncIR | None = None
 
+        # If True, keep one freed, cleared instance available for immediate reuse to
+        # speed up allocations. This helps if many objects are freed quickly, before
+        # other instances of the same class are allocated. This is effectively a
+        # per-type free "list" of up to length 1.
+        self.reuse_freed_instance = False
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -403,6 +409,7 @@ class ClassIR:
             "_sometimes_initialized_attrs": sorted(self._sometimes_initialized_attrs),
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
+            "reuse_freed_instance": self.reuse_freed_instance,
         }
 
     @classmethod
@@ -458,6 +465,7 @@ class ClassIR:
         ir.env_user_function = (
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
+        ir.reuse_freed_instance = data["reuse_freed_instance"]
 
         return ir
 

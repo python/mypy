@@ -156,6 +156,7 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     name = f"{builder.fn_info.namespaced_name()}_gen"
 
     generator_class_ir = ClassIR(name, builder.module_name, is_generated=True, is_final_class=True)
+    generator_class_ir.reuse_freed_instance = True
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
     else:

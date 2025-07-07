@@ -1507,6 +1507,10 @@ class LowLevelIRBuilder:
         assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
         equal = True if op == "==" else False
         result = Register(bool_rprimitive)
+        # tuples of different lengths
+        if len(lhs.type.types) != len(rhs.type.types):
+            self.add(Assign(result, self.false() if equal else self.true(), line))
+            return result
         # empty tuples
         if len(lhs.type.types) == 0 and len(rhs.type.types) == 0:
             self.add(Assign(result, self.true() if equal else self.false(), line))

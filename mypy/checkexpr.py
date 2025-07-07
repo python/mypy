@@ -2684,9 +2684,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 context=context,
                 outer_context=outer_context,
             )
-            self.msg.incompatible_argument_note(
-                original_caller_type, callee_type, context, parent_error=error
-            )
+            if not caller_kind.is_star():
+                # For *args and **kwargs this note would be incorrect - we're comparing
+                # iterable/mapping type with union of relevant arg types.
+                self.msg.incompatible_argument_note(
+                    original_caller_type, callee_type, context, parent_error=error
+                )
             if not self.msg.prefer_simple_messages():
                 self.chk.check_possible_missing_await(
                     caller_type, callee_type, context, error.code

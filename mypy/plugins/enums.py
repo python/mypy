@@ -14,11 +14,10 @@ semanal_enum.py).
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Final, TypeVar, cast
+from typing import TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo
-from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
 from mypy.typeops import fixup_partial_type, make_simplified_union
 from mypy.types import (
@@ -30,13 +29,6 @@ from mypy.types import (
     get_proper_type,
     is_named_instance,
 )
-
-ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
-    f"{prefix}._name_" for prefix in ENUM_BASES
-}
-ENUM_VALUE_ACCESS: Final = {f"{prefix}.value" for prefix in ENUM_BASES} | {
-    f"{prefix}._value_" for prefix in ENUM_BASES
-}
 
 
 def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
