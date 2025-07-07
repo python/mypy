@@ -201,6 +201,7 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "exclude": lambda s: [s.strip()],
     "packages": try_split,
     "modules": try_split,
+    "user_builtins_name": try_split,
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -223,6 +224,7 @@ toml_config_types.update(
         "exclude": str_or_array_as_list,
         "packages": try_split,
         "modules": try_split,
+        "user_builtins_name": try_split,
     }
 )
 
