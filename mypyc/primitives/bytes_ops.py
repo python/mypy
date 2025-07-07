@@ -18,6 +18,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -105,5 +106,29 @@ function_op(
     arg_types=[bytes_rprimitive],
     return_type=int_rprimitive,
     c_function_name="CPyBytes_Ord",
+    error_kind=ERR_MAGIC,
+)
+
+bytes_decode_utf8_strict = custom_primitive_op(
+    name="decode",
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeUtf8",
+    error_kind=ERR_MAGIC,
+)
+
+bytes_decode_latin1_strict = custom_primitive_op(
+    name="decode_latin1",
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeLatin1",
+    error_kind=ERR_MAGIC,
+)
+
+bytes_decode_ascii_strict = custom_primitive_op(
+    name="decode_ascii",
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeAscii",
     error_kind=ERR_MAGIC,
 )
