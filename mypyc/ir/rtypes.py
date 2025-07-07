@@ -254,13 +254,11 @@ class RPrimitive(RType):
         elif ctype == "CPyPtr":
             # TODO: Invent an overlapping error value?
             self.c_undefined = "0"
-        elif ctype == "PyObject *":
-            # Boxed types use the null pointer as the error value.
+        elif ctype.endswith("*"):
+            # Boxed and pointer types use the null pointer as the error value.
             self.c_undefined = "NULL"
         elif ctype == "char":
             self.c_undefined = "2"
-        elif ctype in ("PyObject **", "void *"):
-            self.c_undefined = "NULL"
         elif ctype == "double":
             self.c_undefined = "-113.0"
         elif ctype in ("uint8_t", "uint16_t", "uint32_t", "uint64_t"):
@@ -443,6 +441,10 @@ pointer_rprimitive: Final = RPrimitive("ptr", is_unboxed=True, is_refcounted=Fal
 # Untyped pointer, represented as void * in the C backend
 c_pointer_rprimitive: Final = RPrimitive(
     "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *"
+)
+
+cstring_rprimitive: Final = RPrimitive(
+    "cstring", is_unboxed=True, is_refcounted=False, ctype="const char *"
 )
 
 # The type corresponding to mypyc.common.BITMAP_TYPE
