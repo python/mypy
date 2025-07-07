@@ -2472,7 +2472,7 @@ x: Optional[float]
 while b():
     x = None
     while b():
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(x)  # N: Revealed type is "Union[None, builtins.int]"
         if x is None or b():
             x = i()
             reveal_type(x)  # N: Revealed type is "builtins.int"
