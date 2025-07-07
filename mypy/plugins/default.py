@@ -15,6 +15,7 @@ from mypy.plugin import (
     MethodSigContext,
     Plugin,
 )
+from mypy.plugins import constants
 from mypy.plugins.common import try_getting_str_literals
 from mypy.subtypes import is_subtype
 from mypy.typeops import is_literal_type_like, make_simplified_union
@@ -36,22 +37,36 @@ from mypy.types import (
     get_proper_types,
 )
 
+TD_SETDEFAULT_NAMES: Final = {n + ".setdefault" for n in TPDICT_FB_NAMES}
+TD_POP_NAMES: Final = {n + ".pop" for n in TPDICT_FB_NAMES}
+
+TD_UPDATE_METHOD_NAMES: Final = (
+    {n + ".update" for n in TPDICT_FB_NAMES}
+    | {n + ".__or__" for n in TPDICT_FB_NAMES}
+    | {n + ".__ror__" for n in TPDICT_FB_NAMES}
+    | {n + ".__ior__" for n in TPDICT_FB_NAMES}
+)
+
 
 class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        from mypy.plugins import ctypes, enums, singledispatch
-
         if fullname == "_ctypes.Array":
+            from mypy.plugins import ctypes
+
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
+            from mypy.plugins import singledispatch
+
             return singledispatch.create_singledispatch_function_callback
         elif fullname == "functools.partial":
             import mypy.plugins.functools
 
             return mypy.plugins.functools.partial_new_callback
         elif fullname == "enum.member":
+            from mypy.plugins import enums
+
             return enums.enum_member_callback
 
         return None
@@ -59,47 +74,42 @@ class DefaultPlugin(Plugin):
     def get_function_signature_hook(
         self, fullname: str
     ) -> Callable[[FunctionSigContext], FunctionLike] | None:
-        from mypy.plugins import attrs, dataclasses
-
         if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
+            from mypy.plugins import attrs
+
             return attrs.evolve_function_sig_callback
         elif fullname in ("attr.fields", "attrs.fields"):
+            from mypy.plugins import attrs
+
             return attrs.fields_function_sig_callback
         elif fullname == "dataclasses.replace":
+            from mypy.plugins import dataclasses
+
             return dataclasses.replace_function_sig_callback
         return None
 
     def get_method_signature_hook(
         self, fullname: str
     ) -> Callable[[MethodSigContext], FunctionLike] | None:
-        from mypy.plugins import ctypes, singledispatch
-
         if fullname == "typing.Mapping.get":
             return typed_dict_get_signature_callback
-        elif fullname in {n + ".setdefault" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_SETDEFAULT_NAMES:
             return typed_dict_setdefault_signature_callback
-        elif fullname in {n + ".pop" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_POP_NAMES:
             return typed_dict_pop_signature_callback
         elif fullname == "_ctypes.Array.__setitem__":
+            from mypy.plugins import ctypes
+
             return ctypes.array_setitem_callback
-        elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
+        elif fullname == constants.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
+            from mypy.plugins import singledispatch
+
             return singledispatch.call_singledispatch_function_callback
-
-        typed_dict_updates = set()
-        for n in TPDICT_FB_NAMES:
-            typed_dict_updates.add(n + ".update")
-            typed_dict_updates.add(n + ".__or__")
-            typed_dict_updates.add(n + ".__ror__")
-            typed_dict_updates.add(n + ".__ior__")
-
-        if fullname in typed_dict_updates:
+        elif fullname in TD_UPDATE_METHOD_NAMES:
             return typed_dict_update_signature_callback
-
         return None
 
     def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
-        from mypy.plugins import ctypes, singledispatch
-
         if fullname == "typing.Mapping.get":
             return typed_dict_get_callback
         elif fullname == "builtins.int.__pow__":
@@ -117,12 +127,20 @@ class DefaultPlugin(Plugin):
         elif fullname in {n + ".__delitem__" for n in TPDICT_FB_NAMES}:
             return typed_dict_delitem_callback
         elif fullname == "_ctypes.Array.__getitem__":
+            from mypy.plugins import ctypes
+
             return ctypes.array_getitem_callback
         elif fullname == "_ctypes.Array.__iter__":
+            from mypy.plugins import ctypes
+
             return ctypes.array_iter_callback
-        elif fullname == singledispatch.SINGLEDISPATCH_REGISTER_METHOD:
+        elif fullname == constants.SINGLEDISPATCH_REGISTER_METHOD:
+            from mypy.plugins import singledispatch
+
             return singledispatch.singledispatch_register_callback
-        elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
+        elif fullname == constants.SINGLEDISPATCH_REGISTER_CALLABLE_CALL_METHOD:
+            from mypy.plugins import singledispatch
+
             return singledispatch.call_singledispatch_function_after_register_argument
         elif fullname == "functools.partial.__call__":
             import mypy.plugins.functools
@@ -131,15 +149,21 @@ class DefaultPlugin(Plugin):
         return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
-        from mypy.plugins import ctypes, enums
-
         if fullname == "_ctypes.Array.value":
+            from mypy.plugins import ctypes
+
             return ctypes.array_value_callback
         elif fullname == "_ctypes.Array.raw":
+            from mypy.plugins import ctypes
+
             return ctypes.array_raw_callback
-        elif fullname in enums.ENUM_NAME_ACCESS:
+        elif fullname in constants.ENUM_NAME_ACCESS:
+            from mypy.plugins import enums
+
             return enums.enum_name_callback
-        elif fullname in enums.ENUM_VALUE_ACCESS:
+        elif fullname in constants.ENUM_VALUE_ACCESS:
+            from mypy.plugins import enums
+
             return enums.enum_value_callback
         return None
 
