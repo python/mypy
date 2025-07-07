@@ -1,4 +1,6 @@
-"""Compile mypy using mypyc and profile self-check using perf.
+"""Compile mypy using mypyc and profile type checking using perf.
+
+By default does a self check.
 
 Notes:
  - Only Linux is supported for now (TODO: add support for other profilers)
@@ -23,6 +25,8 @@ This is the recommended way to configure CPython for profiling:
       CFLAGS="-O2 -g -fno-omit-frame-pointer"
 """
 
+from __future__ import annotations
+
 import argparse
 import glob
 import os
@@ -41,24 +45,28 @@ CFLAGS = "-O2 -fno-omit-frame-pointer -g"
 TARGET_DIR = "mypy.profile.tmpdir"
 
 
-def _profile_self_check(target_dir: str) -> None:
+def _profile_type_check(target_dir: str, code: str | None) -> None:
     cache_dir = os.path.join(target_dir, ".mypy_cache")
     if os.path.exists(cache_dir):
         shutil.rmtree(cache_dir)
-    files = []
-    for pat in "mypy/*.py", "mypy/*/*.py", "mypyc/*.py", "mypyc/test/*.py":
-        files.extend(glob.glob(pat))
-    self_check_cmd = ["python", "-m", "mypy", "--config-file", "mypy_self_check.ini"] + files
-    cmdline = ["perf", "record", "-g"] + self_check_cmd
+    args = []
+    if code is None:
+        args.extend(["--config-file", "mypy_self_check.ini"])
+        for pat in "mypy/*.py", "mypy/*/*.py", "mypyc/*.py", "mypyc/test/*.py":
+            args.extend(glob.glob(pat))
+    else:
+        args.extend(["-c", code])
+    check_cmd = ["python", "-m", "mypy"] + args
+    cmdline = ["perf", "record", "-g"] + check_cmd
     t0 = time.time()
     subprocess.run(cmdline, cwd=target_dir, check=True)
     elapsed = time.time() - t0
     print(f"{elapsed:.2f}s elapsed")
 
 
-def profile_self_check(target_dir: str) -> None:
+def profile_type_check(target_dir: str, code: str | None) -> None:
     try:
-        _profile_self_check(target_dir)
+        _profile_type_check(target_dir, code)
     except subprocess.CalledProcessError:
         print("\nProfiling failed! You may missing some permissions.")
         print("\nThis may help (note that it has security implications):")
@@ -92,7 +100,7 @@ def main() -> None:
     check_requirements()
 
     parser = argparse.ArgumentParser(
-        description="Compile mypy and profile self checking using 'perf'."
+        description="Compile mypy and profile type checking using 'perf' (by default, self check)."
     )
     parser.add_argument(
         "--multi-file",
@@ -102,9 +110,17 @@ def main() -> None:
     parser.add_argument(
         "--skip-compile", action="store_true", help="use compiled mypy from previous run"
     )
+    parser.add_argument(
+        "-c",
+        metavar="CODE",
+        default=None,
+        type=str,
+        help="profile type checking Python code fragment instead of mypy self-check",
+    )
     args = parser.parse_args()
     multi_file: bool = args.multi_file
     skip_compile: bool = args.skip_compile
+    code: str | None = args.c
 
     target_dir = TARGET_DIR
 
@@ -116,7 +132,7 @@ def main() -> None:
     elif not os.path.isdir(target_dir):
         sys.exit("error: Can't find compile mypy from previous run -- can't use --skip-compile")
 
-    profile_self_check(target_dir)
+    profile_type_check(target_dir, code)
 
     print()
     print('NOTE: Compile CPython using CFLAGS="-O2 -g -fno-omit-frame-pointer" for good results')
