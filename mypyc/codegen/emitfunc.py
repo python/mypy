@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import (
     HAVE_IMMORTAL,
@@ -16,7 +17,14 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    all_values,
+    get_text_signature,
+)
 from mypyc.ir.ops import (
     ERR_FALSE,
     NAMESPACE_MODULE,
@@ -33,6 +41,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    CString,
     DecRef,
     Extend,
     Float,
@@ -103,6 +112,14 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
         name=emitter.native_function_name(fn),
         args=", ".join(args) or "void",
     )
+
+
+def native_function_doc_initializer(func: FuncIR) -> str:
+    text_sig = get_text_signature(func)
+    if text_sig is None:
+        return "NULL"
+    docstring = f"{text_sig}\n--\n\n"
+    return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
 
 
 def generate_native_function(
@@ -209,6 +226,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.label is not self.next_block:
             self.emit_line("goto %s;" % self.label(op.label))
 
+    def error_value_check(self, value: Value, compare: str) -> str:
+        typ = value.type
+        if isinstance(typ, RTuple):
+            # TODO: What about empty tuple?
+            return self.emitter.tuple_undefined_check_cond(
+                typ, self.reg(value), self.c_error_value, compare
+            )
+        else:
+            return f"{self.reg(value)} {compare} {self.c_error_value(typ)}"
+
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
         negated = op.negated
@@ -225,15 +252,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             expr_result = self.reg(op.value)
             cond = f"{neg}{expr_result}"
         elif op.op == Branch.IS_ERROR:
-            typ = op.value.type
             compare = "!=" if negated else "=="
-            if isinstance(typ, RTuple):
-                # TODO: What about empty tuple?
-                cond = self.emitter.tuple_undefined_check_cond(
-                    typ, self.reg(op.value), self.c_error_value, compare
-                )
-            else:
-                cond = f"{self.reg(op.value)} {compare} {self.c_error_value(typ)}"
+            cond = self.error_value_check(op.value, compare)
         else:
             assert False, "Invalid branch"
 
@@ -358,8 +378,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
     def visit_get_attr(self, op: GetAttr) -> None:
-        if op.allow_null:
-            self.get_attr_with_allow_null(op)
+        if op.allow_error_value:
+            self.get_attr_with_allow_error_value(op)
             return
         dest = self.reg(op)
         obj = self.reg(op.obj)
@@ -429,8 +449,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif not always_defined:
                 self.emitter.emit_line("}")
 
-    def get_attr_with_allow_null(self, op: GetAttr) -> None:
-        """Handle GetAttr with allow_null=True which allows NULL without raising AttributeError."""
+    def get_attr_with_allow_error_value(self, op: GetAttr) -> None:
+        """Handle GetAttr with allow_error_value=True.
+
+        This allows NULL or other error value without raising AttributeError.
+        """
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
@@ -443,7 +466,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         # Only emit inc_ref if not NULL
         if attr_rtype.is_refcounted and not op.is_borrowed:
-            self.emitter.emit_line(f"if ({dest} != NULL) {{")
+            check = self.error_value_check(op, "!=")
+            self.emitter.emit_line(f"if ({check}) {{")
             self.emitter.emit_inc_ref(dest, attr_rtype)
             self.emitter.emit_line("}")
 
@@ -843,6 +867,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif r == "nan":
                 return "NAN"
             return r
+        elif isinstance(reg, CString):
+            return '"' + encode_c_string_literal(reg.value) + '"'
         else:
             return self.emitter.reg(reg)
 
@@ -904,3 +930,30 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return "(uint64_t)"
         else:
             return ""
+
+
+_translation_table: Final[dict[int, str]] = {}
+
+
+def encode_c_string_literal(b: bytes) -> str:
+    """Convert bytestring to the C string literal syntax (with necessary escaping).
+
+    For example, b'foo\n' gets converted to 'foo\\n' (note that double quotes are not added).
+    """
+    if not _translation_table:
+        # Initialize the translation table on the first call.
+        d = {
+            ord("\n"): "\\n",
+            ord("\r"): "\\r",
+            ord("\t"): "\\t",
+            ord('"'): '\\"',
+            ord("\\"): "\\\\",
+        }
+        for i in range(256):
+            if i not in d:
+                if i < 32 or i >= 127:
+                    d[i] = "\\x%.2x" % i
+                else:
+                    d[i] = chr(i)
+        _translation_table.update(str.maketrans(d))
+    return b.decode("latin1").translate(_translation_table)
