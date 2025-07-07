@@ -280,6 +280,9 @@ def prepare_class_def(
     if attrs.get("serializable") is True:
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
+    if attrs.get("supports_weakref") is True:
+        # Has a tp_weakrefoffset slot allowing the creation of weak references (including subclasses)
+        ir.supports_weakref = True
 
     # Check for subclassing from builtin types
     for cls in info.mro:
