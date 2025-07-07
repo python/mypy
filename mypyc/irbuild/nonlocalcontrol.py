@@ -14,7 +14,6 @@ from mypyc.ir.ops import (
     Branch,
     Goto,
     Integer,
-    LoadErrorValue,
     Register,
     Return,
     SetMem,
@@ -130,6 +129,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # native function.
         builder.add(SetMem(object_rprimitive, stop_iter_reg, value))
         builder.add(Return(Integer(0, object_rprimitive)))
+
 
 class CleanupNonlocalControl(NonlocalControl):
     """Abstract nonlocal control that runs some cleanup code."""

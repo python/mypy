@@ -56,6 +56,7 @@ from mypyc.ir.rtypes import (
     RType,
     dict_rprimitive,
     none_rprimitive,
+    object_pointer_rprimitive,
     object_rprimitive,
     tuple_rprimitive,
 )
@@ -69,7 +70,6 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
-from mypyc.ir.rtypes import object_rprimitive, object_pointer_rprimitive
 
 
 def build_type_map(
