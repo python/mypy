@@ -113,20 +113,22 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # (???).
 
         true, false = BasicBlock(), BasicBlock()
-        r = builder.fn_info.generator_class.stop_iter_value_reg
+        stop_iter_reg = builder.fn_info.generator_class.stop_iter_value_reg
 
-        builder.add(Branch(r, true, false, Branch.IS_ERROR))
+        builder.add(Branch(stop_iter_reg, true, false, Branch.IS_ERROR))
 
         builder.activate_block(true)
-
+        # The default/slow path is to raise a StopIteration exception with
+        # return value.
         builder.call_c(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.builder.pop_error_handler()
 
         builder.activate_block(false)
-
-        # Assign to provided pointer instead of raising an exception
-        builder.add(SetMem(object_rprimitive, r, value))
+        # Store return value via caller-provided pointer instead of raising
+        # an exception. This fast path can only be used when the caller is a
+        # native function.
+        builder.add(SetMem(object_rprimitive, stop_iter_reg, value))
         builder.add(Return(Integer(0, object_rprimitive)))
 
 class CleanupNonlocalControl(NonlocalControl):

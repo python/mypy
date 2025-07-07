@@ -958,6 +958,9 @@ def emit_yield_from_or_await(
 
     if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
         # Second fast path optimization: call helper directly (see also comment above).
+        #
+        # Calling a generated generator, so avoid raising StopIteration by passing
+        # an extra PyObject ** argument to helper where the stop iteration value is stored.
         fast_path = True
         obj = builder.read(iter_reg)
         nn = builder.none_object()
@@ -974,12 +977,12 @@ def emit_yield_from_or_await(
 
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
-    # Try extracting a return value from a StopIteration and return it.
-    # If it wasn't, this reraises the exception.
     builder.activate_block(stop_block)
     if fast_path:
         builder.assign(result, stop_iter_val, line)
     else:
+        # Try extracting a return value from a StopIteration and return it.
+        # If it wasn't, this reraises the exception.
         builder.assign(result, builder.call_c(check_stop_op, [], line), line)
     # Clear the spilled iterator/coroutine so that it will be freed.
     # Otherwise, the freeing of the spilled register would likely be delayed.
