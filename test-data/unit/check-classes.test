@@ -772,7 +772,7 @@ class A:
 class B(A):
     @property
     def f(self) -> Callable[[object], None]: pass
-    @func.setter
+    @f.setter
     def f(self, x: object) -> None: pass
 [builtins fixtures/property.pyi]
 
@@ -786,7 +786,7 @@ class A:
 class B(A):
     @property
     def f(self) -> Callable[[object], None]: pass
-    @func.setter
+    @f.setter
     def f(self, x: object) -> None: pass
 [builtins fixtures/property.pyi]
 
@@ -1622,7 +1622,81 @@ class A:
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return ''
 [builtins fixtures/property.pyi]
+
+[case testPropertyNameIsChecked]
+class A:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+
+a = A()
+reveal_type(a.f)  # N: Revealed type is "builtins.str"
+a.f = ''  # E: Property "f" defined in "A" is read-only
+
+class B:
+    @property
+    def f(self) -> str: ...
+    @not_f.deleter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self) -> None: ...
+
+class C:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @not_f.deleter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testPropertyAttributeIsChecked]
+class A:
+    @property
+    def f(self) -> str: ...
+    @f.unknown  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @f.bad.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @f  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @int  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testPropertyNameAndAttributeIsCheckedPretty]
+# flags: --pretty
+class A:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter
+    def f(self, val: str) -> None: ...
+    @not_f.deleter
+    def f(self) -> None: ...
+
+class B:
+    @property
+    def f(self) -> str: ...
+    @f.unknown
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
 [out]
+main:5: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @not_f.setter
+         ^~~~~~~~~~~~
+main:7: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @not_f.deleter
+         ^~~~~~~~~~~~~
+main:13: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @f.unknown
+         ^~~~~~~~~
+
+[case testPropertyGetterDecoratorIsRejected]
+class A:
+    @property
+    def f(self) -> str: ...
+    @f.getter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
 
 [case testDynamicallyTypedProperty]
 import typing
@@ -2486,6 +2560,60 @@ reveal_type(Num3() + Num1())  # N: Revealed type is "__main__.Num3"
 
 reveal_type(Num2() + Num3())  # N: Revealed type is "__main__.Num2"
 reveal_type(Num3() + Num2())  # N: Revealed type is "__main__.Num3"
+
+[case testReverseOperatorWithOverloads3]
+from typing import Union, overload
+
+class A:
+    def __mul__(self, value: A, /) -> A: ...
+    def __rmul__(self, value: A, /) -> A: ...
+
+class B:
+    @overload
+    def __mul__(self, other: B, /) -> B: ...
+    @overload
+    def __mul__(self, other: A, /) -> str: ...
+    def __mul__(self, other: Union[B, A], /) -> Union[B, str]: pass
+
+    @overload
+    def __rmul__(self, other: B, /) -> B: ...
+    @overload
+    def __rmul__(self, other: A, /) -> str: ...
+    def __rmul__(self, other: Union[B, A], /) -> Union[B, str]: pass
+
+[case testReverseOperatorWithOverloadsNested]
+from typing import Union, overload
+
+class A:
+    def __mul__(self, value: A, /) -> A: ...
+    def __rmul__(self, value: A, /) -> A: ...
+
+class B:
+    @overload
+    def __mul__(self, other: B, /) -> B: ...
+    @overload
+    def __mul__(self, other: A, /) -> str: ...
+    def __mul__(self, other: Union[B, A], /) -> Union[B, str]: pass
+
+    @overload
+    def __rmul__(self, other: B, /) -> B: ...
+    @overload
+    def __rmul__(self, other: A, /) -> str: ...
+    def __rmul__(self, other: Union[B, A], /) -> Union[B, str]:
+        class A1:
+            def __add__(self, other: C1) -> int: ...
+
+        class B1:
+            def __add__(self, other: C1) -> int: ...
+
+        class C1:
+            @overload
+            def __radd__(self, other: A1) -> str: ...   # E: Signatures of "__radd__" of "C1" and "__add__" of "A1" are unsafely overlapping
+            @overload
+            def __radd__(self, other: B1) -> str: ...   # E: Signatures of "__radd__" of "C1" and "__add__" of "B1" are unsafely overlapping
+            def __radd__(self, other): pass
+
+        return ""
 
 [case testDivReverseOperator]
 # No error: __div__ has no special meaning in Python 3
@@ -4588,6 +4716,23 @@ reveal_type(a.a)  # N: Revealed type is "def (a: builtins.int)"
 reveal_type(a.c)  # N: Revealed type is "def (a: builtins.int)"
 [builtins fixtures/staticmethod.pyi]
 
+[case testClassStaticMethodIndirectOverloaded]
+from typing import overload
+class A:
+    @overload
+    @staticmethod
+    def a(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def a(x: str) -> str: ...
+    @staticmethod
+    def a(x):
+        ...
+    c = a
+reveal_type(A.c)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
+reveal_type(A().c)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
+[builtins fixtures/staticmethod.pyi]
+
 [case testClassStaticMethodSubclassing]
 class A:
     @staticmethod
@@ -4686,8 +4831,8 @@ class C(B):
 class X(type): pass
 class Y(type): pass
 class A(metaclass=X): pass
-class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
-
+class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                               # N: "__main__.Y" (metaclass of "__main__.B") conflicts with "__main__.X" (metaclass of "__main__.A")
 [case testMetaclassNoTypeReveal]
 class M:
     x = 0  # type: int
@@ -5666,8 +5811,8 @@ def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C2(C1, six.with_metaclass(M)): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
-@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported  \
-    # E: Argument 1 to "add_metaclass" has incompatible type "type[A]"; expected "type[type]"
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported \
+                       # E: Argument 1 to "add_metaclass" has incompatible type "type[A]"; expected "type[type]"
 
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
@@ -5683,8 +5828,10 @@ class CD(six.with_metaclass(M)): pass  # E: Multiple metaclass definitions
 class M1(type): pass
 class Q1(metaclass=M1): pass
 @six.add_metaclass(M)
-class CQA(Q1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
-class CQW(six.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class CQA(Q1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                     # N: "__main__.M" (metaclass of "__main__.CQA") conflicts with "__main__.M1" (metaclass of "__main__.Q1")
+class CQW(six.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                            # N: "__main__.M" (metaclass of "__main__.CQW") conflicts with "__main__.M1" (metaclass of "__main__.Q1")
 [builtins fixtures/tuple.pyi]
 
 [case testSixMetaclassAny]
@@ -5802,7 +5949,8 @@ class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not sup
 
 class M1(type): pass
 class Q1(metaclass=M1): pass
-class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                                     # N: "__main__.M" (metaclass of "__main__.CQW") conflicts with "__main__.M1" (metaclass of "__main__.Q1")
 [builtins fixtures/tuple.pyi]
 
 [case testFutureMetaclassAny]
@@ -7271,18 +7419,56 @@ class ChildOfCorrectSubclass1(CorrectSubclass1): ...
 class CorrectWithType1(C, A1): ...
 class CorrectWithType2(B, C): ...
 
-class Conflict1(A1, B, E): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
-class Conflict2(A, B): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
-class Conflict3(B, A): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class Conflict1(A1, B, E): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                # N: "__main__.MyMeta1" (metaclass of "__main__.A") conflicts with "__main__.MyMeta2" (metaclass of "__main__.B")
+class Conflict2(A, B): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                            # N: "__main__.MyMeta1" (metaclass of "__main__.A") conflicts with "__main__.MyMeta2" (metaclass of "__main__.B")
+class Conflict3(B, A): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                            # N: "__main__.MyMeta2" (metaclass of "__main__.B") conflicts with "__main__.MyMeta1" (metaclass of "__main__.A")
 
-class ChildOfConflict1(Conflict3): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class ChildOfConflict1(Conflict3): ...
 class ChildOfConflict2(Conflict3, metaclass=CorrectMeta): ...
 
 class ConflictingMeta(MyMeta1, MyMeta3): ...
-class Conflict4(A1, B, E, metaclass=ConflictingMeta): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class Conflict4(A1, B, E, metaclass=ConflictingMeta): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                                           # N: "__main__.ConflictingMeta" (metaclass of "__main__.Conflict4") conflicts with "__main__.MyMeta2" (metaclass of "__main__.B")
 
-class ChildOfCorrectButWrongMeta(CorrectSubclass1, metaclass=ConflictingMeta):  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class ChildOfCorrectButWrongMeta(CorrectSubclass1, metaclass=ConflictingMeta):  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                                                                # N: "__main__.ConflictingMeta" (metaclass of "__main__.ChildOfCorrectButWrongMeta") conflicts with "__main__.CorrectMeta" (metaclass of "__main__.CorrectSubclass1")
     ...
+
+[case testMetaClassConflictIssue14033]
+class M1(type): pass
+class M2(type): pass
+class Mx(M1, M2): pass
+
+class A1(metaclass=M1): pass
+class A2(A1): pass
+
+class B1(metaclass=M2): pass
+
+class C1(metaclass=Mx): pass
+
+class TestABC(A2, B1, C1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                 # N: "__main__.M1" (metaclass of "__main__.A1") conflicts with "__main__.M2" (metaclass of "__main__.B1")
+class TestBAC(B1, A2, C1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                 # N: "__main__.M2" (metaclass of "__main__.B1") conflicts with "__main__.M1" (metaclass of "__main__.A1")
+
+# should not warn again for children
+class ChildOfTestABC(TestABC): pass
+
+# no metaclass is assumed if super class has a metaclass conflict
+class ChildOfTestABCMetaMx(TestABC, metaclass=Mx): pass
+class ChildOfTestABCMetaM1(TestABC, metaclass=M1): pass
+
+class TestABCMx(A2, B1, C1, metaclass=Mx): pass
+class TestBACMx(B1, A2, C1, metaclass=Mx): pass
+
+class TestACB(A2, C1, B1): pass
+class TestBCA(B1, C1, A2): pass
+
+class TestCAB(C1, A2, B1): pass
+class TestCBA(C1, B1, A2): pass
 
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any
@@ -7627,7 +7813,7 @@ class A:
     def y(self) -> int: ...
     @y.setter
     def y(self, value: int) -> None: ...
-    @dec  # E: Only supported top decorator is @y.setter
+    @dec  # E: Only supported top decorators are "@y.setter" and "@y.deleter"
     def y(self) -> None: ...
 
 reveal_type(A().y)  # N: Revealed type is "builtins.int"
@@ -8779,3 +8965,21 @@ class C:
 C().foo = "no"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 C().bar = "fine"
 [builtins fixtures/property.pyi]
+
+[case testCorrectConstructorTypeWithAnyFallback]
+from typing import Generic, TypeVar
+
+class B(Unknown):  # type: ignore
+    def __init__(self) -> None: ...
+class C(B): ...
+
+reveal_type(C)  # N: Revealed type is "def () -> __main__.C"
+
+T = TypeVar("T")
+class BG(Generic[T], Unknown):  # type: ignore
+    def __init__(self) -> None: ...
+class CGI(BG[int]): ...
+class CGT(BG[T]): ...
+
+reveal_type(CGI)  # N: Revealed type is "def () -> __main__.CGI"
+reveal_type(CGT)  # N: Revealed type is "def [T] () -> __main__.CGT[T`1]"

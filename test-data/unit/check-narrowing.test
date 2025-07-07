@@ -2346,7 +2346,7 @@ def f() -> bool: ...
 
 y = None
 while f():
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "Union[None, builtins.int]"
     y = 1
 reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 
@@ -2478,6 +2478,25 @@ while b():
             reveal_type(x)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/bool.pyi]
+
+[case testAvoidFalseUnreachableInFinally]
+# flags: --allow-redefinition-new --local-partial-types --warn-unreachable
+def f() -> None:
+    try:
+        x = 1
+        if int():
+            x = ""
+            return
+        if int():
+            x = None
+            return
+    finally:
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+        if isinstance(x, str):
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+
+[builtins fixtures/isinstancelist.pyi]
 
 [case testNarrowingTypeVarMultiple]
 from typing import TypeVar
@@ -2626,3 +2645,22 @@ def baz(item: Base) -> None:
         reveal_type(item)  # N: Revealed type is "__main__.<subclass of "__main__.Base" and "__main__.BarMixin">"
         item.bar()
 [builtins fixtures/isinstance.pyi]
+
+[case testCustomSetterNarrowingReWidened]
+class B: ...
+class C(B): ...
+class C1(B): ...
+class D(C): ...
+
+class Test:
+    @property
+    def foo(self) -> C: ...
+    @foo.setter
+    def foo(self, val: B) -> None: ...
+
+t: Test
+t.foo = D()
+reveal_type(t.foo)  # N: Revealed type is "__main__.D"
+t.foo = C1()
+reveal_type(t.foo)  # N: Revealed type is "__main__.C"
+[builtins fixtures/property.pyi]

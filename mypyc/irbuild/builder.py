@@ -708,6 +708,15 @@ class IRBuilder:
 
         assert False, "Unsupported lvalue: %r" % target
 
+    def read_nullable_attr(self, obj: Value, attr: str, line: int = -1) -> Value:
+        """Read an attribute that might be NULL without raising AttributeError.
+
+        This is used for reading spill targets in try/finally blocks where NULL
+        indicates the non-return path was taken.
+        """
+        assert isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
+        return self.add(GetAttr(obj, attr, line, allow_null=True))
+
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
             self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line)))
