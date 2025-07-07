@@ -46,12 +46,15 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypyc.common import TEMP_ATTR_NAME
 from mypyc.ir.ops import (
+    ERR_NEVER,
     NAMESPACE_MODULE,
     NO_TRACEBACK_LINE_NO,
     Assign,
     BasicBlock,
     Branch,
+    Call,
     InitStatic,
     Integer,
     LoadAddress,
@@ -653,10 +656,15 @@ def try_finally_resolve_control(
     if ret_reg:
         builder.activate_block(rest)
         return_block, rest = BasicBlock(), BasicBlock()
-        builder.add(Branch(builder.read(ret_reg), rest, return_block, Branch.IS_ERROR))
+        # For spill targets in try/finally, use nullable read to avoid AttributeError
+        if isinstance(ret_reg, AssignmentTargetAttr) and ret_reg.attr.startswith(TEMP_ATTR_NAME):
+            ret_val = builder.read_nullable_attr(ret_reg.obj, ret_reg.attr, -1)
+        else:
+            ret_val = builder.read(ret_reg)
+        builder.add(Branch(ret_val, rest, return_block, Branch.IS_ERROR))
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)
+        builder.nonlocal_control[-1].gen_return(builder, ret_val, -1)
 
     # TODO: handle break/continue
     builder.activate_block(rest)
@@ -924,16 +932,41 @@ def emit_yield_from_or_await(
     to_yield_reg = Register(object_rprimitive)
     received_reg = Register(object_rprimitive)
 
-    get_op = coro_op if is_await else iter_op
-    if isinstance(get_op, PrimitiveDescription):
-        iter_val = builder.primitive_op(get_op, [val], line)
+    helper_method = "__mypyc_generator_helper__"
+    if (
+        isinstance(val, (Call, MethodCall))
+        and isinstance(val.type, RInstance)
+        and val.type.class_ir.has_method(helper_method)
+    ):
+        # This is a generated native generator class, and we can use a fast path.
+        # This allows two optimizations:
+        # 1) No need to call CPy_GetCoro() or iter() since for native generators
+        #    it just returns the generator object (implemented here).
+        # 2) Instead of calling next(), call generator helper method directly,
+        #    since next() just calls __next__ which calls the helper method.
+        iter_val: Value = val
     else:
-        iter_val = builder.call_c(get_op, [val], line)
+        get_op = coro_op if is_await else iter_op
+        if isinstance(get_op, PrimitiveDescription):
+            iter_val = builder.primitive_op(get_op, [val], line)
+        else:
+            iter_val = builder.call_c(get_op, [val], line)
 
     iter_reg = builder.maybe_spill_assignable(iter_val)
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
-    _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+
+    if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
+        # Second fast path optimization: call helper directly (see also comment above).
+        obj = builder.read(iter_reg)
+        nn = builder.none_object()
+        m = MethodCall(obj, helper_method, [nn, nn, nn, nn], line)
+        # Generators have custom error handling, so disable normal error handling.
+        m.error_kind = ERR_NEVER
+        _y_init = builder.add(m)
+    else:
+        _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
     # Try extracting a return value from a StopIteration and return it.
@@ -942,7 +975,7 @@ def emit_yield_from_or_await(
     builder.assign(result, builder.call_c(check_stop_op, [], line), line)
     # Clear the spilled iterator/coroutine so that it will be freed.
     # Otherwise, the freeing of the spilled register would likely be delayed.
-    err = builder.add(LoadErrorValue(object_rprimitive))
+    err = builder.add(LoadErrorValue(iter_reg.type))
     builder.assign(iter_reg, err, line)
     builder.goto(done_block)
 

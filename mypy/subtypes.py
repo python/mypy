@@ -155,15 +155,13 @@ def is_subtype(
             options=options,
         )
     else:
-        assert not any(
-            {
-                ignore_type_params,
-                ignore_pos_arg_names,
-                ignore_declared_variance,
-                always_covariant,
-                ignore_promotions,
-                options,
-            }
+        assert (
+            not ignore_type_params
+            and not ignore_pos_arg_names
+            and not ignore_declared_variance
+            and not always_covariant
+            and not ignore_promotions
+            and options is None
         ), "Don't pass both context and individual flags"
     if type_state.is_assumed_subtype(left, right):
         return True
