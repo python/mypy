@@ -1141,7 +1141,7 @@ class IRBuilder:
         )
 
     def shortcircuit_expr(self, expr: OpExpr) -> Value:
-        def handle_right():
+        def handle_right() -> Value:
             if expr.right_unreachable:
                 self.builder.add(
                     RaiseStandardError(
