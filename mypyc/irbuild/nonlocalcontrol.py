@@ -113,6 +113,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
 
         true, false = BasicBlock(), BasicBlock()
         stop_iter_reg = builder.fn_info.generator_class.stop_iter_value_reg
+        assert stop_iter_reg is not None
 
         builder.add(Branch(stop_iter_reg, true, false, Branch.IS_ERROR))
 
@@ -124,9 +125,9 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         builder.builder.pop_error_handler()
 
         builder.activate_block(false)
-        # Store return value via caller-provided pointer instead of raising
-        # an exception. This fast path can only be used when the caller is a
-        # native function.
+        # The fast path is to store return value via caller-provided pointer
+        # instead of raising an exception. This can only be used when the
+        # caller is a native function.
         builder.add(SetMem(object_rprimitive, stop_iter_reg, value))
         builder.add(Return(Integer(0, object_rprimitive)))
 

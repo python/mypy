@@ -103,6 +103,7 @@ from mypyc.primitives.exc_ops import (
     get_exc_info_op,
     get_exc_value_op,
     keep_propagating_op,
+    propagate_if_error_op,
     raise_exception_op,
     reraise_exception_op,
     restore_exc_info_op,
@@ -965,7 +966,8 @@ def emit_yield_from_or_await(
         obj = builder.read(iter_reg)
         nn = builder.none_object()
         stop_iter_val = Register(object_rprimitive)
-        builder.assign(stop_iter_val, Integer(0, object_rprimitive), line)
+        err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
+        builder.assign(stop_iter_val, err, line)
         ptr = builder.add(LoadAddress(object_pointer_rprimitive, stop_iter_val))
         m = MethodCall(obj, helper_method, [nn, nn, nn, nn, ptr], line)
         # Generators have custom error handling, so disable normal error handling.
@@ -979,6 +981,7 @@ def emit_yield_from_or_await(
 
     builder.activate_block(stop_block)
     if fast_path:
+        builder.primitive_op(propagate_if_error_op, [stop_iter_val], line)
         builder.assign(result, stop_iter_val, line)
     else:
         # Try extracting a return value from a StopIteration and return it.
