@@ -938,7 +938,12 @@ def emit_yield_from_or_await(
         and isinstance(val.type, RInstance)
         and val.type.class_ir.has_method(helper_method)
     ):
-        # This is a generated generator class, and we can use a fast path.
+        # This is a generated native generator class, and we can use a fast path.
+        # This allows two optimizations:
+        # 1) No need to call CPy_GetCoro() or iter() since for native generators
+        #    it just returns the generator object (implemented here).
+        # 2) Instead of calling next(), call generator helper method directly,
+        #    since next() just calls __next__ which calls the helper method.
         iter_val: Value = val
     else:
         get_op = coro_op if is_await else iter_op
@@ -952,6 +957,7 @@ def emit_yield_from_or_await(
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
 
     if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
+        # Second fast path optimization: call helper directly (see also comment above).
         obj = builder.read(iter_reg)
         nn = builder.none_object()
         m = MethodCall(obj, helper_method, [nn, nn, nn, nn], line)
