@@ -2446,6 +2446,39 @@ while x is not None and b():
     x = f()
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowPromotionsInsideUnions1]
+
+from typing import Union
+
+x: Union[str, float, None]
+y: Union[int, str]
+x = y
+reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+z: Union[complex, str]
+z = x
+reveal_type(z)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowPromotionsInsideUnions2]
+# flags: --warn-unreachable
+
+from typing import Optional
+
+def b() -> bool: ...
+def i() -> int: ...
+x: Optional[float]
+
+while b():
+    x = None
+    while b():
+        reveal_type(x)  # N: Revealed type is "Union[None, builtins.int]"
+        if x is None or b():
+            x = i()
+            reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/bool.pyi]
+
 [case testAvoidFalseUnreachableInFinally]
 # flags: --allow-redefinition-new --local-partial-types --warn-unreachable
 def f() -> None:
