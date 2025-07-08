@@ -357,9 +357,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self._arg_infer_context_cache = None
 
         self.overload_stack_depth = 0
-        self.ops_stack_depth = 0
         self._args_cache: dict[tuple[int, ...], list[Type]] = {}
-        self._ops_cache: dict[int, Type] = {}
 
     def reset(self) -> None:
         self.resolved_type = {}
@@ -1687,14 +1685,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self.overload_stack_depth -= 1
         if self.overload_stack_depth == 0:
             self._args_cache.clear()
-
-    @contextmanager
-    def ops_context(self) -> Iterator[None]:
-        self.ops_stack_depth += 1
-        yield
-        self.ops_stack_depth -= 1
-        if self.ops_stack_depth == 0:
-            self._ops_cache.clear()
 
     def check_callable_call(
         self,
@@ -3502,9 +3492,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if isinstance(e.left, StrExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
 
-        key = id(e)
-        if key in self._ops_cache:
-            return self._ops_cache[key]
         left_type = self.accept(e.left)
 
         proper_left_type = get_proper_type(left_type)
@@ -3574,30 +3561,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
 
         if e.op in operators.op_methods:
-            with self.ops_context():
-                method = operators.op_methods[e.op]
-                if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
-                    result, method_type = self.check_op(
-                        method,
-                        base_type=left_type,
-                        arg=e.right,
-                        context=e,
-                        allow_reverse=use_reverse is UseReverse.DEFAULT,
-                    )
-                elif use_reverse is UseReverse.ALWAYS:
-                    result, method_type = self.check_op(
-                        # The reverse operator here gives better error messages:
-                        operators.reverse_op_methods[method],
-                        base_type=self.accept(e.right),
-                        arg=e.left,
-                        context=e,
-                        allow_reverse=False,
-                    )
-                else:
-                    assert_never(use_reverse)
-                e.method_type = method_type
-                self._ops_cache[key] = result
-                return result
+            method = operators.op_methods[e.op]
+            if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
+                result, method_type = self.check_op(
+                    method,
+                    base_type=left_type,
+                    arg=e.right,
+                    context=e,
+                    allow_reverse=use_reverse is UseReverse.DEFAULT,
+                )
+            elif use_reverse is UseReverse.ALWAYS:
+                result, method_type = self.check_op(
+                    # The reverse operator here gives better error messages:
+                    operators.reverse_op_methods[method],
+                    base_type=self.accept(e.right),
+                    arg=e.left,
+                    context=e,
+                    allow_reverse=False,
+                )
+            else:
+                assert_never(use_reverse)
+            e.method_type = method_type
+            return result
         else:
             raise RuntimeError(f"Unknown operator {e.op}")
 
