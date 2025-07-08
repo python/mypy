@@ -5079,10 +5079,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.resolved_type[e] = NoneType()
                 return None
             values.append(self.accept(item))
-        vt = join.join_type_list(values)
-        if not allow_fast_container_literal(vt):
-            self.resolved_type[e] = NoneType()
-            return None
+
+        values = [v for i, v in enumerate(values) if v not in values[:i]]
+        if len(values) == 1:
+            # If only one non-duplicate item remains, there's no need running whole
+            # inference cycle over it. This helps in pathological cases where items
+            # are complex overloads.
+            # https://github.com/python/mypy/issues/14718
+            vt = values[0]
+        else:
+            vt = join.join_type_list(values)
+            if not allow_fast_container_literal(vt):
+                self.resolved_type[e] = NoneType()
+                return None
         ct = self.chk.named_generic_type(container_fullname, [vt])
         self.resolved_type[e] = ct
         return ct
