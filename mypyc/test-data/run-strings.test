@@ -92,6 +92,64 @@ assert remove_prefix_suffix('', '') == ('', '')
 assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
 assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
 
+[case testStringEquality]
+def eq(a: str, b: str) -> bool:
+    return a == b
+def ne(a: str, b: str) -> bool:
+    return a != b
+
+def test_basic() -> None:
+    xy = "xy"
+    xy2 = str().join(["x", "y"])
+    xx = "xx"
+    yy = "yy"
+    xxx = "xxx"
+
+    assert eq("", str())
+    assert not ne("", str())
+
+    assert eq("x", "x" + str())
+    assert ne("x", "y")
+
+    assert eq(xy, xy)
+    assert eq(xy, xy2)
+    assert not eq(xy, yy)
+    assert ne(xy, xx)
+    assert not ne(xy, xy)
+    assert not ne(xy, xy2)
+
+    assert ne(xx, xxx)
+    assert ne(xxx, xx)
+    assert ne("x", "")
+    assert ne("", "x")
+
+    assert ne("XX", xx)
+    assert ne(yy, xy)
+
+def test_unicode() -> None:
+    assert eq(chr(200), chr(200) + str())
+    assert ne(chr(200), chr(201))
+
+    assert eq(chr(1234), chr(1234) + str())
+    assert ne(chr(1234), chr(1235))
+
+    assert eq("\U0001f4a9", "\U0001f4a9" + str())
+    assert eq("\U0001f4a9", "\U0001F4A9" + str())
+    assert ne("\U0001f4a9", "\U0002f4a9" + str())
+    assert ne("\U0001f4a9", "\U0001f5a9" + str())
+    assert ne("\U0001f4a9", "\U0001f4a8" + str())
+
+    assert eq("foobar\u1234", "foobar\u1234" + str())
+    assert eq("\u1234foobar", "\u1234foobar" + str())
+    assert ne("foobar\uf234", "foobar\uf235")
+    assert ne("foobar\uf234", "foobar\uf334")
+    assert ne("foobar\u1234", "Foobar\u1234" + str())
+
+    assert eq("foo\U0001f4a9", "foo\U0001f4a9" + str())
+    assert eq("\U0001f4a9foo", "\U0001f4a9foo" + str())
+    assert ne("foo\U0001f4a9", "foo\U0001f4a8" + str())
+    assert ne("\U0001f4a9foo", "\U0001f4a8foo" + str())
+
 [case testStringOps]
 from typing import List, Optional, Tuple
 from testutil import assertRaises
