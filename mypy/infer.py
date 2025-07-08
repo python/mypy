@@ -13,7 +13,7 @@ from mypy.constraints import (
 )
 from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
-from mypy.types import CallableType, Instance, Type, TypeVarLikeType, UninhabitedType
+from mypy.types import CallableType, Instance, Type, TypeVarLikeType
 
 
 class ArgumentInferContext(NamedTuple):
@@ -63,9 +63,6 @@ def infer_function_type_arguments(
     return solve_constraints(type_vars, constraints, strict, allow_polymorphic)
 
 
-from mypy.constraints import Constraint
-
-
 def infer_type_arguments(
     type_vars: Sequence[TypeVarLikeType],
     template: Type,
@@ -76,9 +73,4 @@ def infer_type_arguments(
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
     constraints = infer_constraints(template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
-
-    # Not needed?!
-    for tp in type_vars:
-        constraints.append(Constraint(tp, SUPERTYPE_OF, UninhabitedType()))
-
     return solve_constraints(type_vars, constraints, skip_unsatisfied=skip_unsatisfied)[0]

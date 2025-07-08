@@ -3384,7 +3384,7 @@ def f(x: T, y: S) -> Union[T, S]: ...
 def g(x: T, y: S) -> Union[T, S]: ...
 
 x = [f, g]
-reveal_type(x)  # N: Revealed type is "builtins.list[def [T, S] (x: T`12, y: S`13) -> Union[T`12, S`13]]"
+reveal_type(x)  # N: Revealed type is "builtins.list[def [T, S] (x: T`6, y: S`7) -> Union[T`6, S`7]]"
 [builtins fixtures/list.pyi]
 
 [case testTypeVariableClashErrorMessage]
