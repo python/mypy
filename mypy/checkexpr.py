@@ -18,7 +18,12 @@ from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_
 from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
-from mypy.constraints import SUBTYPE_OF, Constraint, infer_constraints
+from mypy.constraints import (
+    SUBTYPE_OF,
+    Constraint,
+    infer_constraints,
+    infer_constraints_for_callable,
+)
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
 from mypy.expandtype import (
@@ -27,13 +32,7 @@ from mypy.expandtype import (
     freshen_all_functions_type_vars,
     freshen_function_type_vars,
 )
-from mypy.infer import (
-    ArgumentInferContext,
-    infer_constraints_for_callable,
-    infer_function_type_arguments,
-    infer_type_arguments,
-    solve_constraints,
-)
+from mypy.infer import ArgumentInferContext, infer_function_type_arguments
 from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
@@ -117,6 +116,7 @@ from mypy.plugin import (
     Plugin,
 )
 from mypy.semanal_enum import ENUM_BASES
+from mypy.solve import solve_constraints
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
@@ -198,12 +198,7 @@ from mypy.types import (
     is_named_instance,
     split_with_prefix_and_suffix,
 )
-from mypy.types_utils import (
-    is_generic_instance,
-    is_overlapping_none,
-    is_self_type_like,
-    remove_optional,
-)
+from mypy.types_utils import is_generic_instance, is_self_type_like, remove_optional
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.util import split_module_names
@@ -1999,9 +1994,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         assert all(tp is not None for tp in res)
         return cast(list[Type], res)
 
-    def infer_function_type_arguments_using_context(
-        self, callable: CallableType, error_context: Context
-    ) -> CallableType:
+    def infer_constraints_from_context(
+        self, callee: CallableType, error_context: Context
+    ) -> list[Constraint]:
         """Unify callable return type to type context to infer type vars.
 
         For example, if the return type is set[t] where 't' is a type variable
@@ -2010,23 +2005,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """
         ctx = self.type_context[-1]
         if not ctx:
-            return callable
+            return []
         # The return type may have references to type metavariables that
         # we are inferring right now. We must consider them as indeterminate
         # and they are not potential results; thus we replace them with the
         # special ErasedType type. On the other hand, class type variables are
         # valid results.
-        erased_ctx = replace_meta_vars(ctx, ErasedType())
-        ret_type = callable.ret_type
-        if is_overlapping_none(ret_type) and is_overlapping_none(ctx):
-            # If both the context and the return type are optional, unwrap the optional,
-            # since in 99% cases this is what a user expects. In other words, we replace
-            #     Optional[T] <: Optional[int]
-            # with
-            #     T <: int
-            # while the former would infer T <: Optional[int].
-            ret_type = remove_optional(ret_type)
-            erased_ctx = remove_optional(erased_ctx)
+        erased_ctx = get_proper_type(replace_meta_vars(ctx, ErasedType()))
+        proper_ret = get_proper_type(callee.ret_type)
+        if isinstance(proper_ret, UnionType) and isinstance(erased_ctx, UnionType):
+            # If both the context and the return type are unions, we simplify shared items
+            #   e.g.  T | None <: int | None  =>  T <: int
+            #   since the former would infer T <: int | None.
+            #   whereas the latter would infer the more precise T <: int.
+            new_ret = [val for val in proper_ret.items if val not in erased_ctx.items]
+            new_ctx = [val for val in erased_ctx.items if val not in proper_ret.items]
+            proper_ret = make_simplified_union(new_ret)
+            erased_ctx = make_simplified_union(new_ctx)
             #
             # TODO: Instead of this hack and the one below, we need to use outer and
             # inner contexts at the same time. This is however not easy because of two
@@ -2037,7 +2032,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             #     variables in an expression are inferred at the same time.
             #     (And this is hard, also we need to be careful with lambdas that require
             #     two passes.)
-        proper_ret = get_proper_type(ret_type)
         if (
             isinstance(proper_ret, TypeVarType)
             or isinstance(proper_ret, UnionType)
@@ -2067,104 +2061,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # TODO: we may want to add similar exception if all arguments are lambdas, since
             # in this case external context is almost everything we have.
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
-                return callable.copy_modified()
-        args = infer_type_arguments(
-            callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
-        )
-        # Only substitute non-Uninhabited and non-erased types.
-        new_args: list[Type | None] = []
-        for arg in args:
-            if has_uninhabited_component(arg) or has_erased_component(arg):
-                new_args.append(None)
-            else:
-                new_args.append(arg)
-        # Don't show errors after we have only used the outer context for inference.
-        # We will use argument context to infer more variables.
-        return self.apply_generic_arguments(
-            callable, new_args, error_context, skip_unsatisfied=True
-        )
-
-    def _infer_constraints_from_context(
-        self, callee: CallableType, error_context: Context
-    ) -> list[Constraint]:
-        """Unify callable return type to type context to infer type vars.
-
-        For example, if the return type is set[t] where 't' is a type variable
-        of callable, and if the context is set[int], return callable modified
-        by substituting 't' with 'int'.
-        """
-        ctx = self.type_context[-1]
-        if not ctx:
-            return []
-        # if is_overlapping_none(ret_type) and is_overlapping_none(ctx):
-        #     # If both the context and the return type are optional, unwrap the optional,
-        #     # since in 99% cases this is what a user expects. In other words, we replace
-        #     #     Optional[T] <: Optional[int]
-        #     # with
-        #     #     T <: int
-        #     # while the former would infer T <: Optional[int].
-        #     ret_type = remove_optional(ret_type)
-        #     erased_ctx = remove_optional(erased_ctx)
-        #     #
-        #     # TODO: Instead of this hack and the one below, we need to use outer and
-        #     # inner contexts at the same time. This is however not easy because of two
-        #     # reasons:
-        #     #   * We need to support constraints like [1 <: 2, 2 <: X], i.e. with variables
-        #     #     on both sides. (This is not too hard.)
-        #     #   * We need to update all the inference "infrastructure", so that all
-        #     #     variables in an expression are inferred at the same time.
-        #     #     (And this is hard, also we need to be careful with lambdas that require
-        #     #     two passes.)
-        ret_type = callee.ret_type
-        if isinstance(ret_type, UnionType) and isinstance(ctx, UnionType):
-            # If both the context and the return type are unions, we simplify shared items
-            #   e.g.  T | None <: int | None  =>  T <: int
-            #   since the former would infer T <: int | None.
-            #   whereas the latter would infer the more precise T <: int.
-
-            new_ret = [val for val in ret_type.items if val not in ctx.items]
-            new_ctx = [val for val in ctx.items if val not in ret_type.items]
-            ret_type = make_simplified_union(new_ret)
-            ctx = make_simplified_union(new_ctx)
-
-        proper_ret = get_proper_type(ret_type)
-        if isinstance(proper_ret, TypeVarType) or (
-            isinstance(proper_ret, UnionType)
-            and all(isinstance(get_proper_type(u), TypeVarType) for u in proper_ret.items)
-        ):
-            # Another special case: the return type is a type variable. If it's unrestricted,
-            # we could infer a too general type for the type variable if we use context,
-            # and this could result in confusing and spurious type errors elsewhere.
-            #
-            # So we give up and just use function arguments for type inference, with just two
-            # exceptions:
-            #
-            # 1. If the context is a generic instance type, actually use it as context, as
-            #    this *seems* to usually be the reasonable thing to do.
-            #
-            #    See also github issues #462 and #360.
-            #
-            # 2. If the context is some literal type, we want to "propagate" that information
-            #    down so that we infer a more precise type for literal expressions. For example,
-            #    the expression `3` normally has an inferred type of `builtins.int`: but if it's
-            #    in a literal context like below, we want it to infer `Literal[3]` instead.
-            #
-            #        def expects_literal(x: Literal[3]) -> None: pass
-            #        def identity(x: T) -> T: return x
-            #
-            #        expects_literal(identity(3))  # Should type-check
-            # TODO: we may want to add similar exception if all arguments are lambdas, since
-            # in this case external context is almost everything we have.
-            if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return []
-
-        # The return type may have references to type metavariables that
-        # we are inferring right now. We must consider them as indeterminate
-        # and they are not potential results; thus we replace them with the
-        # special ErasedType type. On the other hand, class type variables are
-        # valid results.
-        erased_ctx = replace_meta_vars(ctx, ErasedType())
-        constraints = infer_constraints(ret_type, erased_ctx, SUBTYPE_OF)
+        constraints = infer_constraints(proper_ret, erased_ctx, SUBTYPE_OF)
         return constraints
 
     def infer_function_type_arguments(
@@ -2204,17 +2102,25 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 else:
                     pass1_args.append(arg)
 
-            inferred_args, _ = infer_function_type_arguments(
-                callee_type,
-                pass1_args,
-                arg_kinds,
-                arg_names,
-                formal_to_actual,
-                context=self.argument_infer_context(),
-                strict=self.chk.in_checked_function(),
-            )
-
             if True:  # NEW CODE
+                outer_constraints = self.infer_constraints_from_context(callee_type, context)
+                outer_solution = solve_constraints(
+                    callee_type.variables,
+                    outer_constraints,
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=False,
+                )
+                outer_args = [
+                    None if has_uninhabited_component(arg) or has_erased_component(arg) else arg
+                    for arg in outer_solution[0]
+                ]
+                outer_solution = (outer_args, outer_solution[1])
+                outer_callee = self.apply_generic_arguments(
+                    callee_type, outer_solution[0], context, skip_unsatisfied=True
+                )
+                outer_ret_type = get_proper_type(outer_callee.ret_type)
+
+                # NOTE: inner solution not needed
                 inner_constraints = infer_constraints_for_callable(
                     callee_type,
                     pass1_args,
@@ -2223,147 +2129,89 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     formal_to_actual,
                     context=self.argument_infer_context(),
                 )
-
-                outer_constraints = self._infer_constraints_from_context(callee_type, context)
-
-                outer_solution = solve_constraints(
-                    callee_type.variables,
-                    outer_constraints,
-                    strict=self.chk.in_checked_function(),
-                    allow_polymorphic=False,
-                )
-
                 inner_solution = solve_constraints(
                     callee_type.variables,
                     inner_constraints,
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=False,
                 )
+                inner_args = [
+                    None if has_uninhabited_component(arg) or has_erased_component(arg) else arg
+                    for arg in inner_solution[0]
+                ]
+                inner_solution = (inner_args, inner_solution[1])
+                # inner_callee = self.apply_generic_arguments(
+                #     callee_type,
+                #     inner_solution[0],  # no filtering here
+                #     context,
+                #     skip_unsatisfied=True,
+                # )
+                # inner_ret_type = get_proper_type(inner_callee.ret_type)
+
                 # NOTE: The order of constraints is important here!
                 #  solve(outer + inner) and solve(inner + outer) may yield different results.
-
+                #  we need to use outer first.
                 joint_solution = solve_constraints(
                     callee_type.variables,
                     outer_constraints + inner_constraints,
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=False,
                 )
-
-                reverse_joint_solution = solve_constraints(
-                    callee_type.variables,
-                    inner_constraints + outer_constraints,
-                    strict=self.chk.in_checked_function(),
-                    allow_polymorphic=False,
+                joint_args = [
+                    None if has_uninhabited_component(arg) or has_erased_component(arg) else arg
+                    for arg in joint_solution[0]
+                ]
+                joint_solution = (joint_args, joint_solution[1])
+                joint_callee = self.apply_generic_arguments(
+                    callee_type, joint_solution[0], context, skip_unsatisfied=True
                 )
+                joint_ret_type = get_proper_type(joint_callee.ret_type)
 
-                target_solution = joint_solution
-
-                # Now, we select the solution to use.
-                #  Note: Since joint uses both outer and inner constraints,
-                #     and solution discovered by joint is also a solution for outer and inner.
-                #     therefore, we can pick either inner or outer as a substitute for joint,
-                #     and then try to solve again using only the inner constraints.
+                # Now, we select which solution to use.
                 use_joint = True
-                use_outer = True
-                use_inner = True
+                use_outer = False
+                use_inner = False
 
-                if True:  # compute the outer and target return types.
-                    if True:
-                        outer_callee = self.apply_generic_arguments(
-                            callee_type, outer_solution[0], context, skip_unsatisfied=True
-                        )
-                        outer_ret_type = get_proper_type(outer_callee.ret_type)
-
-                        target_callee = self.apply_generic_arguments(
-                            callee_type, target_solution[0], context, skip_unsatisfied=True
-                        )
-                        target_ret_type = get_proper_type(target_callee.ret_type)
-                    else:
-                        # Only substitute non-Uninhabited and non-erased types.
-                        new_args: list[Type | None] = []
-                        for arg in outer_solution[0]:
-                            if has_uninhabited_component(arg) or has_erased_component(arg):
-                                new_args.append(None)
-                            else:
-                                new_args.append(arg)
-                        # Don't show errors after we have only used the outer context for inference.
-                        # We will use argument context to infer more variables.
-                        outer_callee = self.apply_generic_arguments(
-                            callee_type, new_args, context, skip_unsatisfied=True
-                        )
-                        outer_ret_type = get_proper_type(outer_callee.ret_type)
-
-                        # Only substitute non-Uninhabited and non-erased types.
-                        new_args: list[Type | None] = []
-                        for arg in target_solution[0]:
-                            if has_uninhabited_component(arg) or has_erased_component(arg):
-                                new_args.append(None)
-                            else:
-                                new_args.append(arg)
-                        # Don't show errors after we have only used the outer context for inference.
-                        # We will use argument context to infer more variables.
-                        target_callee = self.apply_generic_arguments(
-                            callee_type, new_args, context, skip_unsatisfied=True
-                        )
-                        target_ret_type = get_proper_type(target_callee.ret_type)
+                # NOTE: inner solution not needed
+                # if (
+                #     # joint constraints failed to produce a complete solution
+                #     None in joint_solution[0]
+                #     # If the inner solution is more concrete than the joint solution, prefer the inner solution.
+                #     or is_subtype(inner_ret_type, joint_ret_type)
+                #     or (  # HACK to fix testLiteralAndGenericWithUnion
+                #         isinstance(inner_ret_type, UnionType)
+                #         and any(is_subtype(val, joint_ret_type) for val in inner_ret_type.items)
+                #     )
+                # ):
+                #     use_joint = False
+                #     use_outer = False
+                #     use_inner = True
 
                 if (
                     # joint constraints failed to produce a complete solution
                     None in joint_solution[0]
-                    # If the outer solution is more concrete than the joint solution, use the outer solution.
-                    or is_subtype(outer_ret_type, target_ret_type)
+                    # If the outer solution is more concrete than the joint solution, prefer the outer solution.
+                    or is_subtype(outer_ret_type, joint_ret_type)
                     or (  # HACK to fix testLiteralAndGenericWithUnion
                         isinstance(outer_ret_type, UnionType)
-                        and any(is_subtype(val, target_ret_type) for val in outer_ret_type.items)
+                        and any(is_subtype(val, joint_ret_type) for val in outer_ret_type.items)
                     )
                 ):
                     use_joint = False
+                    use_outer = True
+                    use_inner = False
 
                 if use_joint:
-                    target_solution = reverse_joint_solution
-                elif use_outer:
-                    target_solution = outer_solution
+                    inferred_args = joint_solution[0]
                 elif use_inner:
-                    target_solution = inner_solution
-                else:
-                    raise AssertionError
-
-                if __debug__:
-                    _num = arg_pass_nums
-                    _c0 = inner_constraints
-                    _c1 = outer_constraints
-
-                    _s1 = outer_solution[0]
-                    _s2 = inner_solution[0]
-                    _s3 = joint_solution[0]
-                    _s4 = reverse_joint_solution[0]
-                    _t0 = target_solution[0]
-
-                    _r1 = outer_ret_type
-                    _r2 = target_ret_type
-                    _y1 = outer_callee
-                    _y2 = target_callee
-                    _u0 = use_outer, use_joint
-
-                if use_joint:
-                    # inferred_args = target_solution[0]
-                    pass
+                    inferred_args = inner_solution[0]
                 elif use_outer:
                     # If we cannot use the joint solution, fallback to outer_solution
-                    inferred_args = target_solution[0]
-
-                    # Only substitute non-Uninhabited and non-erased types.
-                    new_args: list[Type | None] = []
-                    for arg in inferred_args:
-                        if has_uninhabited_component(arg) or has_erased_component(arg):
-                            new_args.append(None)
-                        else:
-                            new_args.append(arg)
-
+                    inferred_args = outer_solution[0]
                     # Don't show errors after we have only used the outer context for inference.
                     # We will use argument context to infer more variables.
                     callee_type = self.apply_generic_arguments(
-                        callee_type, new_args, context, skip_unsatisfied=True
+                        callee_type, inferred_args, context, skip_unsatisfied=True
                     )
                     if need_refresh:
                         # Argument kinds etc. may have changed due to
@@ -2376,20 +2224,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                             callee_type.arg_names,
                             lambda i: self.accept(args[i]),
                         )
-                    inferred_args, _ = infer_function_type_arguments(
+
+                    # ??? QUESTION: Do we need to recompute arg_types and pass1_args here???
+                    # recompute and apply inner solution.
+                    inner_constraints = infer_constraints_for_callable(
                         callee_type,
                         pass1_args,
                         arg_kinds,
                         arg_names,
                         formal_to_actual,
                         context=self.argument_infer_context(),
-                        strict=self.chk.in_checked_function(),
                     )
-                elif use_inner:
-                    # inferred_args = inner_solution[0]
-                    pass
+                    inner_solution = solve_constraints(
+                        callee_type.variables,
+                        inner_constraints,
+                        strict=self.chk.in_checked_function(),
+                        allow_polymorphic=False,
+                    )
+                    inferred_args = inner_solution[0]
                 else:
                     raise RuntimeError("No solution found for function type arguments")
+            else:  # END NEW CODE
+                pass
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
