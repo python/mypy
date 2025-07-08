@@ -350,13 +350,9 @@ def gen_func_ir(
                 func_decl.is_prop_getter,
                 func_decl.is_prop_setter,
             )
-            func_ir = FuncIR(
-                func_decl, args, blocks, fitem.line, traceback_name=fitem.name
-            )
+            func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:
-            func_ir = FuncIR(
-                func_decl, args, blocks, fitem.line, traceback_name=fitem.name
-            )
+            func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
     return (func_ir, func_reg)
 
 
