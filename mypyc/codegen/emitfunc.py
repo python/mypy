@@ -160,7 +160,7 @@ def generate_native_function(
     # eliminated during code generation.
     for block in fn.blocks:
         terminator = block.terminator
-        assert isinstance(terminator, ControlOp)
+        assert isinstance(terminator, ControlOp), terminator
 
         for target in terminator.targets():
             is_next_block = target.label == block.label + 1
@@ -309,7 +309,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
         typ = op.dest.type
-        assert isinstance(typ, RArray)
+        assert isinstance(typ, RArray), typ
         dest = self.reg(op.dest)
         # RArray values can only be assigned to once, so we can always
         # declare them on initialization.
@@ -586,7 +586,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def emit_method_call(self, dest: str, op_obj: Value, name: str, op_args: list[Value]) -> None:
         obj = self.reg(op_obj)
         rtype = op_obj.type
-        assert isinstance(rtype, RInstance)
+        assert isinstance(rtype, RInstance), rtype
         class_ir = rtype.class_ir
         method = rtype.class_ir.get_method(name)
         assert method is not None
@@ -805,7 +805,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         # TODO: support tuple type
-        assert isinstance(op.src_type, RStruct)
+        assert isinstance(op.src_type, RStruct), op.src_type
         assert op.field in op.src_type.names, "Invalid field name."
         self.emit_line(
             "{} = ({})&(({} *){})->{};".format(

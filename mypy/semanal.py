@@ -6630,7 +6630,7 @@ class SemanticAnalyzer(
         sym = self.lookup_fully_qualified(fullname)
         assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
-        assert isinstance(node, TypeInfo)
+        assert isinstance(node, TypeInfo), node
         if args:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)

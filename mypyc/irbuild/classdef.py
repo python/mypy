@@ -415,7 +415,7 @@ class AttrsClassBuilder(DataClassBuilder):
                 type_name = stmt.rvalue.args[index]
                 if isinstance(type_name, NameExpr) and isinstance(type_name.node, TypeInfo):
                     lvalue = stmt.lvalues[0]
-                    assert isinstance(lvalue, NameExpr)
+                    assert isinstance(lvalue, NameExpr), lvalue
                     return type_name.node
         return None
 
@@ -756,7 +756,7 @@ def generate_attr_defaults_init(
         self_var = builder.self()
         for stmt in default_assignments:
             lvalue = stmt.lvalues[0]
-            assert isinstance(lvalue, NameExpr)
+            assert isinstance(lvalue, NameExpr), lvalue
             if not stmt.is_final_def and not is_constant(stmt.rvalue):
                 builder.warning("Unsupported default attribute value", stmt.rvalue.line)
 
@@ -862,7 +862,7 @@ def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) ->
     dec_class = type_obj
     for d in reversed(decorators):
         decorator = d.accept(builder.visitor)
-        assert isinstance(decorator, Value)
+        assert isinstance(decorator, Value), decorator
         dec_class = builder.py_call(decorator, [dec_class], dec_class.line)
     return dec_class
 
@@ -873,7 +873,7 @@ def cache_class_attrs(
     """Add class attributes to be cached to the global cache."""
     typ = builder.load_native_type_object(cdef.info.fullname)
     for lval, rtype in attrs_to_cache:
-        assert isinstance(lval, NameExpr)
+        assert isinstance(lval, NameExpr), lval
         rval = builder.py_get_attr(typ, lval.name, cdef.line)
         builder.init_final_static(lval, rval, cdef.name, type_override=rtype)
 

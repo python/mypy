@@ -290,7 +290,7 @@ def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
 
     for module, target, node, active_type in order_by_subclassing(all_targets):
         analyzer = graph[module].manager.semantic_analyzer
-        assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
+        assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator)), node
         process_top_level_function(
             analyzer, graph[module], module, target, node, active_type, patches
         )

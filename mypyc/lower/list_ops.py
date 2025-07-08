@@ -22,7 +22,7 @@ def buf_init_item(builder: LowLevelIRBuilder, args: list[Value], line: int) -> V
     base = args[0]
     index_value = args[1]
     value = args[2]
-    assert isinstance(index_value, Integer)
+    assert isinstance(index_value, Integer), index_value
     index = index_value.numeric_value()
     if index == 0:
         ptr = base

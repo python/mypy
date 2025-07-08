@@ -610,7 +610,7 @@ class DataclassTransformer:
                 # We will issue an error later.
                 continue
 
-            assert isinstance(node, Var)
+            assert isinstance(node, Var), node
 
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:
