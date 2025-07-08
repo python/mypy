@@ -221,7 +221,7 @@ def create_generator_class_if_needed(
                 RuntimeArg("value", object_rprimitive),
                 RuntimeArg("traceback", object_rprimitive),
                 RuntimeArg("arg", object_rprimitive),
-                # If not NULL, store value via this instead of raising StopIteration
+                # If non-NULL, used to store return value instead of raising StopIteration(retv)
                 RuntimeArg("stop_iter_ptr", object_pointer_rprimitive),
             ),
             object_rprimitive,
