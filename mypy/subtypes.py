@@ -89,6 +89,17 @@ TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeCont
 
 
 class SubtypeContext:
+    __slots__ = (
+        "ignore_type_params",
+        "ignore_pos_arg_names",
+        "ignore_declared_variance",
+        "always_covariant",
+        "ignore_promotions",
+        "erase_instances",
+        "keep_erased_types",
+        "options",
+    )
+
     def __init__(
         self,
         *,
