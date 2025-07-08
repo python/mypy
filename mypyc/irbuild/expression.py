@@ -117,9 +117,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if expr.node is None:
         builder.add(
             RaiseStandardError(
-                RaiseStandardError.RUNTIME_ERROR,
-                "mypyc internal error: should be unreachable",
-                expr.line,
+                RaiseStandardError.NAME_ERROR, f'name "{expr.name}" is not defined', expr.line
             )
         )
         return builder.none()
