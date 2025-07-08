@@ -356,6 +356,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         self._arg_infer_context_cache = None
 
+        self.overload_stack_depth = 0
+        self._args_cache = {}
+
     def reset(self) -> None:
         self.resolved_type = {}
 
@@ -1613,9 +1616,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 object_type,
             )
         elif isinstance(callee, Overloaded):
-            return self.check_overload_call(
-                callee, args, arg_kinds, arg_names, callable_name, object_type, context
-            )
+            with self.overload_context(callee.name()):
+                return self.check_overload_call(
+                    callee, args, arg_kinds, arg_names, callable_name, object_type, context
+                )
         elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
             return self.check_any_type_call(args, callee)
         elif isinstance(callee, UnionType):
@@ -1673,6 +1677,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             )
         else:
             return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
+
+    @contextmanager
+    def overload_context(self, fn):
+        self.overload_stack_depth += 1
+        yield
+        self.overload_stack_depth -= 1
+        if self.overload_stack_depth == 0:
+            self._args_cache.clear()
 
     def check_callable_call(
         self,
@@ -1937,6 +1949,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         In short, we basically recurse on each argument without considering
         in what context the argument was called.
         """
+        can_cache = not any(isinstance(t, TempNode) for t in args)
+        key = tuple(map(id, args))
+        if can_cache and key in self._args_cache:
+            return self._args_cache[key]
         res: list[Type] = []
 
         for arg in args:
@@ -1945,6 +1961,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 res.append(NoneType())
             else:
                 res.append(arg_type)
+        if can_cache:
+            self._args_cache[key] = res
         return res
 
     def infer_more_unions_for_recursive_type(self, type_context: Type) -> bool:
@@ -2917,17 +2935,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
-            with self.msg.filter_errors() as w:
-                with self.chk.local_type_map() as m:
-                    ret_type, infer_type = self.check_call(
-                        callee=typ,
-                        args=args,
-                        arg_kinds=arg_kinds,
-                        arg_names=arg_names,
-                        context=context,
-                        callable_name=callable_name,
-                        object_type=object_type,
-                    )
+            with self.msg.filter_errors() as w, self.chk.local_type_map() as m:
+                ret_type, infer_type = self.check_call(
+                    callee=typ,
+                    args=args,
+                    arg_kinds=arg_kinds,
+                    arg_names=arg_names,
+                    context=context,
+                    callable_name=callable_name,
+                    object_type=object_type,
+                )
             is_match = not w.has_new_errors()
             if is_match:
                 # Return early if possible; otherwise record info, so we can
@@ -3474,6 +3491,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
             if isinstance(e.left, StrExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+
+        key = id(e)
+        if key in self._args_cache:
+            return self._args_cache[key]
         left_type = self.accept(e.left)
 
         proper_left_type = get_proper_type(left_type)
@@ -3543,28 +3564,30 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
 
         if e.op in operators.op_methods:
-            method = operators.op_methods[e.op]
-            if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
-                result, method_type = self.check_op(
-                    method,
-                    base_type=left_type,
-                    arg=e.right,
-                    context=e,
-                    allow_reverse=use_reverse is UseReverse.DEFAULT,
-                )
-            elif use_reverse is UseReverse.ALWAYS:
-                result, method_type = self.check_op(
-                    # The reverse operator here gives better error messages:
-                    operators.reverse_op_methods[method],
-                    base_type=self.accept(e.right),
-                    arg=e.left,
-                    context=e,
-                    allow_reverse=False,
-                )
-            else:
-                assert_never(use_reverse)
-            e.method_type = method_type
-            return result
+            with self.overload_context(e.op):
+                method = operators.op_methods[e.op]
+                if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
+                    result, method_type = self.check_op(
+                        method,
+                        base_type=left_type,
+                        arg=e.right,
+                        context=e,
+                        allow_reverse=use_reverse is UseReverse.DEFAULT,
+                    )
+                elif use_reverse is UseReverse.ALWAYS:
+                    result, method_type = self.check_op(
+                        # The reverse operator here gives better error messages:
+                        operators.reverse_op_methods[method],
+                        base_type=self.accept(e.right),
+                        arg=e.left,
+                        context=e,
+                        allow_reverse=False,
+                    )
+                else:
+                    assert_never(use_reverse)
+                e.method_type = method_type
+                self._args_cache[key] = result
+                return result
         else:
             raise RuntimeError(f"Unknown operator {e.op}")
 
