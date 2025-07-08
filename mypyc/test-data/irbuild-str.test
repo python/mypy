@@ -65,42 +65,18 @@ def neq(x: str, y: str) -> bool:
 [out]
 def eq(x, y):
     x, y :: str
-    r0 :: i32
-    r1 :: bit
-    r2 :: object
-    r3, r4, r5 :: bit
+    r0 :: bool
 L0:
-    r0 = PyUnicode_Compare(x, y)
-    r1 = r0 == -1
-    if r1 goto L1 else goto L3 :: bool
-L1:
-    r2 = PyErr_Occurred()
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
-L2:
-    r4 = CPy_KeepPropagating()
-L3:
-    r5 = r0 == 0
-    return r5
+    r0 = CPyStr_Equal(x, y)
+    return r0
 def neq(x, y):
     x, y :: str
-    r0 :: i32
+    r0 :: bool
     r1 :: bit
-    r2 :: object
-    r3, r4, r5 :: bit
 L0:
-    r0 = PyUnicode_Compare(x, y)
-    r1 = r0 == -1
-    if r1 goto L1 else goto L3 :: bool
-L1:
-    r2 = PyErr_Occurred()
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
-L2:
-    r4 = CPy_KeepPropagating()
-L3:
-    r5 = r0 != 0
-    return r5
+    r0 = CPyStr_Equal(x, y)
+    r1 = r0 == 0
+    return r1
 
 [case testStrReplace]
 from typing import Optional
