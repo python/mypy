@@ -357,7 +357,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self._arg_infer_context_cache = None
 
         self.overload_stack_depth = 0
-        self._args_cache = {}
+        self.ops_stack_depth = 0
+        self._args_cache: dict[tuple[int, ...], list[Type]] = {}
+        self._ops_cache: dict[int, Type] = {}
 
     def reset(self) -> None:
         self.resolved_type = {}
@@ -1616,7 +1618,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 object_type,
             )
         elif isinstance(callee, Overloaded):
-            with self.overload_context(callee.name()):
+            with self.overload_context():
                 return self.check_overload_call(
                     callee, args, arg_kinds, arg_names, callable_name, object_type, context
                 )
@@ -1679,12 +1681,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
 
     @contextmanager
-    def overload_context(self, fn):
+    def overload_context(self) -> Iterator[None]:
         self.overload_stack_depth += 1
         yield
         self.overload_stack_depth -= 1
         if self.overload_stack_depth == 0:
             self._args_cache.clear()
+
+    @contextmanager
+    def ops_context(self) -> Iterator[None]:
+        self.ops_stack_depth += 1
+        yield
+        self.ops_stack_depth -= 1
+        if self.ops_stack_depth == 0:
+            self._ops_cache.clear()
 
     def check_callable_call(
         self,
@@ -3493,8 +3503,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
 
         key = id(e)
-        if key in self._args_cache:
-            return self._args_cache[key]
+        if key in self._ops_cache:
+            return self._ops_cache[key]
         left_type = self.accept(e.left)
 
         proper_left_type = get_proper_type(left_type)
@@ -3564,7 +3574,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
 
         if e.op in operators.op_methods:
-            with self.overload_context(e.op):
+            with self.ops_context():
                 method = operators.op_methods[e.op]
                 if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
                     result, method_type = self.check_op(
@@ -3586,7 +3596,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 else:
                     assert_never(use_reverse)
                 e.method_type = method_type
-                self._args_cache[key] = result
+                self._ops_cache[key] = result
                 return result
         else:
             raise RuntimeError(f"Unknown operator {e.op}")
