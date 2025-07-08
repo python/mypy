@@ -2752,7 +2752,7 @@ class B:
     @property
     @dec
     def f(self) -> int: pass
-    @dec # E: Only supported top decorator is @f.setter
+    @dec # E: Only supported top decorators are "@f.setter" and "@f.deleter"
     @f.setter
     def f(self, v: int) -> None: pass
 
@@ -2764,7 +2764,6 @@ class C:
     @dec
     def f(self, v: int) -> None: pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testInvalidArgCountForProperty]
 from typing import Callable, TypeVar
@@ -2783,7 +2782,6 @@ class A:
     @property
     def h(self, *args, **kwargs) -> int: pass   # OK
 [builtins fixtures/property.pyi]
-[out]
 
 [case testSubtypingUnionGenericBounds]
 from typing import Callable, TypeVar, Union, Sequence

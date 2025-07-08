@@ -453,3 +453,26 @@ L0:
     r0 = CPySequence_Multiply(a, 4)
     b = r0
     return 1
+
+[case testTupleFloatElementComparison]
+def f(x: tuple[float], y: tuple[float]) -> bool:
+    return x == y
+
+[out]
+def f(x, y):
+    x, y :: tuple[float]
+    r0, r1 :: float
+    r2 :: bit
+    r3 :: bool
+L0:
+    r0 = x[0]
+    r1 = y[0]
+    r2 = r0 == r1
+    if not r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = 0
+    goto L3
+L2:
+    r3 = 1
+L3:
+    return r3

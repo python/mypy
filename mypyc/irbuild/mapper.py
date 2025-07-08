@@ -64,6 +64,8 @@ class Mapper:
         self.type_to_ir: dict[TypeInfo, ClassIR] = {}
         self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
         self.symbol_fullnames: set[str] = set()
+        # The corresponding generator class that implements a generator/async function
+        self.fdef_to_generator: dict[FuncDef, ClassIR] = {}
 
     def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
@@ -171,7 +173,14 @@ class Mapper:
                 for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)
             ]
             arg_pos_onlys = [name is None for name in fdef.type.arg_names]
-            ret = self.type_to_rtype(fdef.type.ret_type)
+            # TODO: We could probably support decorators sometimes (static and class method?)
+            if (fdef.is_coroutine or fdef.is_generator) and not fdef.is_decorated:
+                # Give a more precise type for generators, so that we can optimize
+                # code that uses them. They return a generator object, which has a
+                # specific class. Without this, the type would have to be 'object'.
+                ret: RType = RInstance(self.fdef_to_generator[fdef])
+            else:
+                ret = self.type_to_rtype(fdef.type.ret_type)
         else:
             # Handle unannotated functions
             arg_types = [object_rprimitive for _ in fdef.arguments]

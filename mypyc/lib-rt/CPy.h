@@ -667,6 +667,7 @@ PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+char CPyList_Clear(PyObject *list);
 PyObject *CPyList_Copy(PyObject *list);
 int CPySequence_Check(PyObject *obj);
 
@@ -752,6 +753,8 @@ bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
+Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
+Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
 
 

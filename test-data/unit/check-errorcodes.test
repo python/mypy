@@ -1239,6 +1239,47 @@ def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of inpu
 
 [builtins fixtures/tuple.pyi]
 
+[case testDynamicMetaclass]
+class A(metaclass=type(tuple)): pass  # E: Dynamic metaclass not supported for "A"  [metaclass]
+[builtins fixtures/tuple.pyi]
+
+[case testMetaclassOfTypeAny]
+# mypy: disallow-subclassing-any=True
+from typing import Any
+foo: Any = ...
+class A(metaclass=foo): pass  # E: Class cannot use "foo" as a metaclass (has type "Any")  [metaclass]
+
+[case testMetaclassOfWrongType]
+class Foo:
+    bar = 1
+class A2(metaclass=Foo.bar): pass  # E: Invalid metaclass "Foo.bar"  [metaclass]
+
+[case testMetaclassNotTypeSubclass]
+class M: pass
+class A(metaclass=M): pass  # E: Metaclasses not inheriting from "type" are not supported  [metaclass]
+
+[case testMultipleMetaclasses]
+import six
+class M1(type): pass
+
+@six.add_metaclass(M1)
+class A1(metaclass=M1): pass  # E: Multiple metaclass definitions  [metaclass]
+
+class A2(six.with_metaclass(M1), metaclass=M1): pass  # E: Multiple metaclass definitions  [metaclass]
+
+@six.add_metaclass(M1)
+class A3(six.with_metaclass(M1)): pass  # E: Multiple metaclass definitions  [metaclass]
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidMetaclassStructure]
+class X(type): pass
+class Y(type): pass
+class A(metaclass=X): pass
+class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases  [metaclass] \
+                               # N: "__main__.Y" (metaclass of "__main__.B") conflicts with "__main__.X" (metaclass of "__main__.A")
+
+
+
 
 [case testOverloadedFunctionSignature]
 from typing import overload, Union

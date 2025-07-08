@@ -17,11 +17,7 @@ def f():
     r8, r9, r10 :: bit
     r11, r12 :: bool
     r13 :: object
-    r14 :: str
-    r15 :: object
-    r16 :: tuple[int, int]
-    r17, r18 :: object
-    r19, y :: bool
+    r14, y :: bool
 L0:
     r0 = sys :: module
     r1 = 'platform'
@@ -46,13 +42,8 @@ L4:
 L5:
     r12 = raise RuntimeError('mypyc internal error: should be unreachable')
     r13 = box(None, 1)
-    r14 = 'version_info'
-    r15 = CPyObject_GetAttr(r13, r14)
-    r16 = (6, 10)
-    r17 = box(tuple[int, int], r16)
-    r18 = PyObject_RichCompare(r15, r17, 4)
-    r19 = unbox(bool, r18)
-    r11 = r19
+    r14 = unbox(bool, r13)
+    r11 = r14
 L6:
     y = r11
     return 1

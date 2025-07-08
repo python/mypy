@@ -19,6 +19,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    CString,
     DecRef,
     Extend,
     GetAttr,
@@ -49,6 +50,7 @@ from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
     c_int_rprimitive,
+    cstring_rprimitive,
     dict_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -111,6 +113,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "y": int_rprimitive,
             "i1": int64_rprimitive,
             "i2": int32_rprimitive,
+            "t": RTuple([object_rprimitive, object_rprimitive]),
         }
         ir.bitmap_attrs = ["i1", "i2"]
         compute_vtable(ir)
@@ -414,6 +417,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_i1;
                if (unlikely(cpy_r_r0 == -113) && !(((mod___AObject *)cpy_r_r)->bitmap & 1)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'i1' of 'A' undefined");
+               }
+            """,
+        )
+
+    def test_get_attr_nullable_with_tuple(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, "t", 1, allow_error_value=True),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_t;
+               if (cpy_r_r0.f0 != NULL) {
+                   CPy_INCREF(cpy_r_r0.f0);
+                   CPy_INCREF(cpy_r_r0.f1);
                }
             """,
         )
@@ -823,6 +837,30 @@ else {
         for x in -1123355, -6, 257, 123235345:
             b = LoadLiteral(x, object_rprimitive)
             self.assert_emit([b, IncRef(b)], "CPy_INCREF(cpy_r_r0);")
+
+    def test_c_string(self) -> None:
+        s = Register(cstring_rprimitive, "s")
+        self.assert_emit(Assign(s, CString(b"foo")), """cpy_r_s = "foo";""")
+        self.assert_emit(Assign(s, CString(b'foo "o')), r"""cpy_r_s = "foo \"o";""")
+        self.assert_emit(Assign(s, CString(b"\x00")), r"""cpy_r_s = "\x00";""")
+        self.assert_emit(Assign(s, CString(b"\\")), r"""cpy_r_s = "\\";""")
+        for i in range(256):
+            b = bytes([i])
+            if b == b"\n":
+                target = "\\n"
+            elif b == b"\r":
+                target = "\\r"
+            elif b == b"\t":
+                target = "\\t"
+            elif b == b'"':
+                target = '\\"'
+            elif b == b"\\":
+                target = "\\\\"
+            elif i < 32 or i >= 127:
+                target = "\\x%.2x" % i
+            else:
+                target = b.decode("ascii")
+            self.assert_emit(Assign(s, CString(b)), f'cpy_r_s = "{target}";')
 
     def assert_emit(
         self,

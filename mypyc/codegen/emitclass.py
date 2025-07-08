@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Callable
 
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
-from mypyc.codegen.emitfunc import native_function_header
+from mypyc.codegen.emitfunc import native_function_doc_initializer, native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_bin_op_wrapper,
     generate_bool_wrapper,
@@ -21,7 +22,13 @@ from mypyc.codegen.emitwrapper import (
 )
 from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
-from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    get_text_signature,
+)
 from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
@@ -186,6 +193,29 @@ def generate_class_type_decl(
         )
 
 
+def generate_class_reuse(
+    cl: ClassIR, c_emitter: Emitter, external_emitter: Emitter, emitter: Emitter
+) -> None:
+    """Generate a definition of a single-object per-class free "list".
+
+    This speeds up object allocation and freeing when there are many short-lived
+    objects.
+
+    TODO: Generalize to support a free list with up to N objects.
+    """
+    assert cl.reuse_freed_instance
+
+    # The free list implementation doesn't support class hierarchies
+    assert cl.is_final_class or cl.children == []
+
+    context = c_emitter.context
+    name = cl.name_prefix(c_emitter.names) + "_free_instance"
+    struct_name = cl.struct_name(c_emitter.names)
+    context.declarations[name] = HeaderDeclaration(
+        f"CPyThreadLocal {struct_name} *{name};", needs_export=True
+    )
+
+
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     """Generate C code for a class.
 
@@ -344,6 +374,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if has_managed_dict(cl, emitter):
         flags.append("Py_TPFLAGS_MANAGED_DICT")
     fields["tp_flags"] = " | ".join(flags)
+
+    fields["tp_doc"] = native_class_doc_initializer(cl)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
     emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
@@ -557,7 +589,22 @@ def generate_setup_for_class(
     emitter.emit_line("static PyObject *")
     emitter.emit_line(f"{func_name}(PyTypeObject *type)")
     emitter.emit_line("{")
-    emitter.emit_line(f"{cl.struct_name(emitter.names)} *self;")
+    struct_name = cl.struct_name(emitter.names)
+    emitter.emit_line(f"{struct_name} *self;")
+
+    prefix = cl.name_prefix(emitter.names)
+    if cl.reuse_freed_instance:
+        # Attempt to use a per-type free list first (a free "list" with up to one object only).
+        emitter.emit_line(f"if ({prefix}_free_instance != NULL) {{")
+        emitter.emit_line(f"self = {prefix}_free_instance;")
+        emitter.emit_line(f"{prefix}_free_instance = NULL;")
+        emitter.emit_line("Py_SET_REFCNT(self, 1);")
+        emitter.emit_line("PyObject_GC_Track(self);")
+        if defaults_fn is not None:
+            emit_attr_defaults_func_call(defaults_fn, "self", emitter)
+        emitter.emit_line("return (PyObject *)self;")
+        emitter.emit_line("}")
+
     emitter.emit_line(f"self = ({cl.struct_name(emitter.names)} *)type->tp_alloc(type, 0);")
     emitter.emit_line("if (self == NULL)")
     emitter.emit_line("    return NULL;")
@@ -571,9 +618,7 @@ def generate_setup_for_class(
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
 
-    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
-        field = emitter.bitmap_field(i)
-        emitter.emit_line(f"self->{field} = 0;")
+    emit_clear_bitmaps(cl, emitter)
 
     if cl.has_method("__call__"):
         name = cl.method_decl("__call__").cname(emitter.names)
@@ -590,17 +635,32 @@ def generate_setup_for_class(
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
-        emitter.emit_lines(
-            "if ({}{}((PyObject *)self) == 0) {{".format(
-                NATIVE_PREFIX, defaults_fn.cname(emitter.names)
-            ),
-            "Py_DECREF(self);",
-            "return NULL;",
-            "}",
-        )
+        emit_attr_defaults_func_call(defaults_fn, "self", emitter)
 
     emitter.emit_line("return (PyObject *)self;")
     emitter.emit_line("}")
+
+
+def emit_clear_bitmaps(cl: ClassIR, emitter: Emitter) -> None:
+    """Emit C code to clear bitmaps that track if attributes have an assigned value."""
+    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
+        field = emitter.bitmap_field(i)
+        emitter.emit_line(f"self->{field} = 0;")
+
+
+def emit_attr_defaults_func_call(defaults_fn: FuncIR, self_name: str, emitter: Emitter) -> None:
+    """Emit C code to initialize attribute defaults by calling defaults_fn.
+
+    The code returns NULL on a raised exception.
+    """
+    emitter.emit_lines(
+        "if ({}{}((PyObject *){}) == 0) {{".format(
+            NATIVE_PREFIX, defaults_fn.cname(emitter.names), self_name
+        ),
+        "Py_DECREF(self);",
+        "return NULL;",
+        "}",
+    )
 
 
 def generate_constructor_for_class(
@@ -787,11 +847,34 @@ def generate_dealloc_for_class(
         emitter.emit_line("Py_TYPE(self)->tp_finalize((PyObject *)self);")
         emitter.emit_line("}")
     emitter.emit_line("PyObject_GC_UnTrack(self);")
+    if cl.reuse_freed_instance:
+        emit_reuse_dealloc(cl, emitter)
     # The trashcan is needed to handle deep recursive deallocations
     emitter.emit_line(f"CPy_TRASHCAN_BEGIN(self, {dealloc_func_name})")
     emitter.emit_line(f"{clear_func_name}(self);")
     emitter.emit_line("Py_TYPE(self)->tp_free((PyObject *)self);")
     emitter.emit_line("CPy_TRASHCAN_END(self)")
+    emitter.emit_line("}")
+
+
+def emit_reuse_dealloc(cl: ClassIR, emitter: Emitter) -> None:
+    """Emit code to deallocate object by putting it to per-type free list.
+
+    The free "list" currently can have up to one object.
+    """
+    prefix = cl.name_prefix(emitter.names)
+    emitter.emit_line(f"if ({prefix}_free_instance == NULL) {{")
+    emitter.emit_line(f"{prefix}_free_instance = self;")
+
+    # Clear attributes and free referenced objects.
+
+    emit_clear_bitmaps(cl, emitter)
+
+    for base in reversed(cl.base_mro):
+        for attr, rtype in base.attributes.items():
+            emitter.emit_reuse_clear(f"self->{emitter.attr(attr)}", rtype)
+
+    emitter.emit_line("return;")
     emitter.emit_line("}")
 
 
@@ -841,7 +924,8 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
         elif fn.decl.kind == FUNC_CLASSMETHOD:
             flags.append("METH_CLASS")
 
-        emitter.emit_line(" {}, NULL}},".format(" | ".join(flags)))
+        doc = native_function_doc_initializer(fn)
+        emitter.emit_line(" {}, {}}},".format(" | ".join(flags), doc))
 
     # Provide a default __getstate__ and __setstate__
     if not cl.has_method("__setstate__") and not cl.has_method("__getstate__"):
@@ -1099,3 +1183,16 @@ def has_managed_dict(cl: ClassIR, emitter: Emitter) -> bool:
         and cl.has_dict
         and cl.builtin_base != "PyBaseExceptionObject"
     )
+
+
+def native_class_doc_initializer(cl: ClassIR) -> str:
+    init_fn = cl.get_method("__init__")
+    if init_fn is not None:
+        text_sig = get_text_signature(init_fn, bound=True)
+        if text_sig is None:
+            return "NULL"
+        text_sig = text_sig.replace("__init__", cl.name, 1)
+    else:
+        text_sig = f"{cl.name}()"
+    docstring = f"{text_sig}\n--\n\n"
+    return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))

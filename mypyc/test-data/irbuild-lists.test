@@ -220,6 +220,18 @@ L0:
     r1 = r0 << 1
     return r1
 
+[case testListClear]
+from typing import List
+def f(l: List[int]) -> None:
+    return l.clear()
+[out]
+def f(l):
+    l :: list
+    r0 :: bit
+L0:
+    r0 = CPyList_Clear(l)
+    return 1
+
 [case testListCopy]
 from typing import List
 from typing import Any

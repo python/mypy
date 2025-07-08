@@ -92,6 +92,64 @@ assert remove_prefix_suffix('', '') == ('', '')
 assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
 assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
 
+[case testStringEquality]
+def eq(a: str, b: str) -> bool:
+    return a == b
+def ne(a: str, b: str) -> bool:
+    return a != b
+
+def test_basic() -> None:
+    xy = "xy"
+    xy2 = str().join(["x", "y"])
+    xx = "xx"
+    yy = "yy"
+    xxx = "xxx"
+
+    assert eq("", str())
+    assert not ne("", str())
+
+    assert eq("x", "x" + str())
+    assert ne("x", "y")
+
+    assert eq(xy, xy)
+    assert eq(xy, xy2)
+    assert not eq(xy, yy)
+    assert ne(xy, xx)
+    assert not ne(xy, xy)
+    assert not ne(xy, xy2)
+
+    assert ne(xx, xxx)
+    assert ne(xxx, xx)
+    assert ne("x", "")
+    assert ne("", "x")
+
+    assert ne("XX", xx)
+    assert ne(yy, xy)
+
+def test_unicode() -> None:
+    assert eq(chr(200), chr(200) + str())
+    assert ne(chr(200), chr(201))
+
+    assert eq(chr(1234), chr(1234) + str())
+    assert ne(chr(1234), chr(1235))
+
+    assert eq("\U0001f4a9", "\U0001f4a9" + str())
+    assert eq("\U0001f4a9", "\U0001F4A9" + str())
+    assert ne("\U0001f4a9", "\U0002f4a9" + str())
+    assert ne("\U0001f4a9", "\U0001f5a9" + str())
+    assert ne("\U0001f4a9", "\U0001f4a8" + str())
+
+    assert eq("foobar\u1234", "foobar\u1234" + str())
+    assert eq("\u1234foobar", "\u1234foobar" + str())
+    assert ne("foobar\uf234", "foobar\uf235")
+    assert ne("foobar\uf234", "foobar\uf334")
+    assert ne("foobar\u1234", "Foobar\u1234" + str())
+
+    assert eq("foo\U0001f4a9", "foo\U0001f4a9" + str())
+    assert eq("\U0001f4a9foo", "\U0001f4a9foo" + str())
+    assert ne("foo\U0001f4a9", "foo\U0001f4a8" + str())
+    assert ne("\U0001f4a9foo", "\U0001f4a8foo" + str())
+
 [case testStringOps]
 from typing import List, Optional, Tuple
 from testutil import assertRaises
@@ -815,3 +873,94 @@ def test_unicode_range() -> None:
     assert "\u2029 \U0010AAAA\U00104444B\u205F ".strip() == "\U0010AAAA\U00104444B"
     assert " \u3000\u205F ".strip() == ""
     assert "\u2029 \U00102865\u205F ".rstrip() == "\u2029 \U00102865"
+
+[case testCount]
+# mypy: disable-error-code="attr-defined"
+def test_count() -> None:
+    string = "abcbcb"
+    assert string.count("a") == 1
+    assert string.count("b") == 3
+    assert string.count("c") == 2
+def test_count_start() -> None:
+    string = "abcbcb"
+    assert string.count("a", 2) == string.count("a", -4) == 0, (string.count("a", 2), string.count("a", -4))
+    assert string.count("b", 2) == string.count("b", -4) == 2, (string.count("b", 2), string.count("b", -4))
+    assert string.count("c", 2) == string.count("c", -4) == 2, (string.count("c", 2), string.count("c", -4))
+    # out of bounds
+    assert string.count("a", 8) == 0
+    assert string.count("a", -8) == 1
+    assert string.count("b", 8) == 0
+    assert string.count("b", -8) == 3
+    assert string.count("c", 8) == 0
+    assert string.count("c", -8) == 2
+def test_count_start_end() -> None:
+    string = "abcbcb"
+    assert string.count("a", 0, 4) == 1, string.count("a", 0, 4)
+    assert string.count("b", 0, 4) == 2, string.count("b", 0, 4)
+    assert string.count("c", 0, 4) == 1, string.count("c", 0, 4)
+def test_count_multi() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa") == 1, string.count("aaa")
+    assert string.count("bbb") == 3, string.count("bbb")
+    assert string.count("ccc") == 2, string.count("ccc")
+def test_count_multi_start() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa", 6) == string.count("aaa", -12) == 0, (string.count("aaa", 6), string.count("aaa", -12))
+    assert string.count("bbb", 6) == string.count("bbb", -12) == 2, (string.count("bbb", 6), string.count("bbb", -12))
+    assert string.count("ccc", 6) == string.count("ccc", -12) == 2, (string.count("ccc", 6), string.count("ccc", -12))
+    # out of bounds
+    assert string.count("aaa", 20) == 0
+    assert string.count("aaa", -20) == 1
+    assert string.count("bbb", 20) == 0
+    assert string.count("bbb", -20) == 3
+    assert string.count("ccc", 20) == 0
+    assert string.count("ccc", -20) == 2
+def test_count_multi_start_end() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa", 0, 12) == 1, string.count("aaa", 0, 12)
+    assert string.count("bbb", 0, 12) == 2, string.count("bbb", 0, 12)
+    assert string.count("ccc", 0, 12) == 1, string.count("ccc", 0, 12)
+def test_count_emoji() -> None:
+    string = "😴🚀ñ🚀ñ🚀"
+    assert string.count("😴") == 1, string.count("😴")
+    assert string.count("🚀") == 3, string.count("🚀")
+    assert string.count("ñ") == 2, string.count("ñ")
+def test_count_start_emoji() -> None:
+    string = "😴🚀ñ🚀ñ🚀"
+    assert string.count("😴", 2) == string.count("😴", -4) == 0, (string.count("😴", 2), string.count("😴", -4))
+    assert string.count("🚀", 2) == string.count("🚀", -4) == 2, (string.count("🚀", 2), string.count("🚀", -4))
+    assert string.count("ñ", 2) == string.count("ñ", -4) == 2, (string.count("ñ", 2), string.count("ñ", -4))
+    # Out of bounds
+    assert string.count("😴", 8) == 0, string.count("😴", 8)
+    assert string.count("😴", -8) == 1, string.count("😴", -8)
+    assert string.count("🚀", 8) == 0, string.count("🚀", 8)
+    assert string.count("🚀", -8) == 3, string.count("🚀", -8)
+    assert string.count("ñ", 8) == 0, string.count("ñ", 8)
+    assert string.count("ñ", -8) == 2, string.count("ñ", -8)
+def test_count_start_end_emoji() -> None:
+    string = "😴🚀ñ🚀ñ🚀"
+    assert string.count("😴", 0, 4) == 1, string.count("😴", 0, 4)
+    assert string.count("🚀", 0, 4) == 2, string.count("🚀", 0, 4)
+    assert string.count("ñ", 0, 4) == 1, string.count("ñ", 0, 4)
+def test_count_multi_emoji() -> None:
+    string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
+    assert string.count("😴😴😴") == 1, string.count("😴😴😴")
+    assert string.count("🚀🚀🚀") == 3, string.count("🚀🚀🚀")
+    assert string.count("ñññ") == 2, string.count("ñññ")
+def test_count_multi_start_emoji() -> None:
+    string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
+    assert string.count("😴😴😴", 6) == string.count("😴😴😴", -12) == 0, (string.count("😴😴😴", 6), string.count("😴😴😴", -12))
+    assert string.count("🚀🚀🚀", 6) == string.count("🚀🚀🚀", -12) == 2, (string.count("🚀🚀🚀", 6), string.count("🚀🚀🚀", -12))
+    assert string.count("ñññ", 6) == string.count("ñññ", -12) == 2, (string.count("ñññ", 6), string.count("ñññ", -12))
+    # Out of bounds
+    assert string.count("😴😴😴", 20) == 0, string.count("😴😴😴", 20)
+    assert string.count("😴😴😴", -20) == 1, string.count("😴😴😴", -20)
+    assert string.count("🚀🚀🚀", 20) == 0, string.count("🚀🚀🚀", 20)
+    assert string.count("🚀🚀🚀", -20) == 3, string.count("🚀🚀🚀", -20)
+    assert string.count("ñññ", 20) == 0, string.count("ñññ", 20)
+    assert string.count("ñññ", -20) == 2, string.count("ñññ", -20)
+def test_count_multi_start_end_emoji() -> None:
+    string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
+    assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
+    assert string.count("🚀🚀🚀", 0, 12) == 2, string.count("🚀🚀🚀", 0, 12)
+    assert string.count("ñññ", 0, 12) == 1, string.count("ñññ", 0, 12)

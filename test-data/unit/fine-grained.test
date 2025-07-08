@@ -2936,10 +2936,12 @@ a.py:6: error: Argument 1 to "f" has incompatible type "type[B]"; expected "M"
 
 [case testFineMetaclassRecalculation]
 import a
+
 [file a.py]
 from b import B
 class M2(type): pass
 class D(B, metaclass=M2): pass
+
 [file b.py]
 import c
 class B: pass
@@ -2949,27 +2951,31 @@ import c
 class B(metaclass=c.M): pass
 
 [file c.py]
-class M(type):
-    pass
+class M(type): pass
 [out]
 ==
 a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+a.py:3: note: "a.M2" (metaclass of "a.D") conflicts with "c.M" (metaclass of "b.B")
 
 [case testFineMetaclassDeclaredUpdate]
 import a
+
 [file a.py]
 import b
 class B(metaclass=b.M): pass
 class D(B, metaclass=b.M2): pass
+
 [file b.py]
 class M(type): pass
 class M2(M): pass
+
 [file b.py.2]
 class M(type): pass
 class M2(type): pass
 [out]
 ==
 a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+a.py:3: note: "b.M2" (metaclass of "a.D") conflicts with "b.M" (metaclass of "a.B")
 
 [case testFineMetaclassRemoveFromClass]
 import a

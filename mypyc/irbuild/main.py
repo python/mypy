@@ -25,7 +25,7 @@ from __future__ import annotations
 from typing import Any, Callable, TypeVar, cast
 
 from mypy.build import Graph
-from mypy.nodes import ClassDef, Expression, MypyFile
+from mypy.nodes import ClassDef, Expression, FuncDef, MypyFile
 from mypy.state import state
 from mypy.types import Type
 from mypyc.analysis.attrdefined import analyze_always_defined_attrs
@@ -37,7 +37,11 @@ from mypyc.ir.rtypes import none_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
-from mypyc.irbuild.prepare import build_type_map, find_singledispatch_register_impls
+from mypyc.irbuild.prepare import (
+    build_type_map,
+    create_generator_class_if_needed,
+    find_singledispatch_register_impls,
+)
 from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.options import CompilerOptions
@@ -75,6 +79,15 @@ def build_ir(
         # First pass to determine free symbols.
         pbv = PreBuildVisitor(errors, module, singledispatch_info.decorators_to_remove, types)
         module.accept(pbv)
+
+        # Declare generator classes for nested async functions and generators.
+        for fdef in pbv.nested_funcs:
+            if isinstance(fdef, FuncDef):
+                # Make generator class name sufficiently unique.
+                suffix = f"___{fdef.line}"
+                create_generator_class_if_needed(
+                    module.fullname, None, fdef, mapper, name_suffix=suffix
+                )
 
         # Construct and configure builder objects (cyclic runtime dependency).
         visitor = IRBuilderVisitor()

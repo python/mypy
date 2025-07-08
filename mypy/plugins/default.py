@@ -15,7 +15,51 @@ from mypy.plugin import (
     MethodSigContext,
     Plugin,
 )
+from mypy.plugins.attrs import (
+    attr_class_maker_callback,
+    attr_class_makers,
+    attr_dataclass_makers,
+    attr_define_makers,
+    attr_frozen_makers,
+    attr_tag_callback,
+    evolve_function_sig_callback,
+    fields_function_sig_callback,
+)
 from mypy.plugins.common import try_getting_str_literals
+from mypy.plugins.constants import (
+    ENUM_NAME_ACCESS,
+    ENUM_VALUE_ACCESS,
+    SINGLEDISPATCH_CALLABLE_CALL_METHOD,
+    SINGLEDISPATCH_REGISTER_CALLABLE_CALL_METHOD,
+    SINGLEDISPATCH_REGISTER_METHOD,
+)
+from mypy.plugins.ctypes import (
+    array_constructor_callback,
+    array_getitem_callback,
+    array_iter_callback,
+    array_raw_callback,
+    array_setitem_callback,
+    array_value_callback,
+)
+from mypy.plugins.dataclasses import (
+    dataclass_class_maker_callback,
+    dataclass_makers,
+    dataclass_tag_callback,
+    replace_function_sig_callback,
+)
+from mypy.plugins.enums import enum_member_callback, enum_name_callback, enum_value_callback
+from mypy.plugins.functools import (
+    functools_total_ordering_maker_callback,
+    functools_total_ordering_makers,
+    partial_call_callback,
+    partial_new_callback,
+)
+from mypy.plugins.singledispatch import (
+    call_singledispatch_function_after_register_argument,
+    call_singledispatch_function_callback,
+    create_singledispatch_function_callback,
+    singledispatch_register_callback,
+)
 from mypy.subtypes import is_subtype
 from mypy.typeops import is_literal_type_like, make_simplified_union
 from mypy.types import (
@@ -36,70 +80,60 @@ from mypy.types import (
     get_proper_types,
 )
 
+TD_SETDEFAULT_NAMES: Final = {n + ".setdefault" for n in TPDICT_FB_NAMES}
+TD_POP_NAMES: Final = {n + ".pop" for n in TPDICT_FB_NAMES}
+
+TD_UPDATE_METHOD_NAMES: Final = (
+    {n + ".update" for n in TPDICT_FB_NAMES}
+    | {n + ".__or__" for n in TPDICT_FB_NAMES}
+    | {n + ".__ror__" for n in TPDICT_FB_NAMES}
+    | {n + ".__ior__" for n in TPDICT_FB_NAMES}
+)
+
 
 class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        from mypy.plugins import ctypes, enums, singledispatch
-
         if fullname == "_ctypes.Array":
-            return ctypes.array_constructor_callback
+            return array_constructor_callback
         elif fullname == "functools.singledispatch":
-            return singledispatch.create_singledispatch_function_callback
+            return create_singledispatch_function_callback
         elif fullname == "functools.partial":
-            import mypy.plugins.functools
-
-            return mypy.plugins.functools.partial_new_callback
+            return partial_new_callback
         elif fullname == "enum.member":
-            return enums.enum_member_callback
-
+            return enum_member_callback
         return None
 
     def get_function_signature_hook(
         self, fullname: str
     ) -> Callable[[FunctionSigContext], FunctionLike] | None:
-        from mypy.plugins import attrs, dataclasses
-
         if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
-            return attrs.evolve_function_sig_callback
+            return evolve_function_sig_callback
         elif fullname in ("attr.fields", "attrs.fields"):
-            return attrs.fields_function_sig_callback
+            return fields_function_sig_callback
         elif fullname == "dataclasses.replace":
-            return dataclasses.replace_function_sig_callback
+            return replace_function_sig_callback
         return None
 
     def get_method_signature_hook(
         self, fullname: str
     ) -> Callable[[MethodSigContext], FunctionLike] | None:
-        from mypy.plugins import ctypes, singledispatch
-
         if fullname == "typing.Mapping.get":
             return typed_dict_get_signature_callback
-        elif fullname in {n + ".setdefault" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_SETDEFAULT_NAMES:
             return typed_dict_setdefault_signature_callback
-        elif fullname in {n + ".pop" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_POP_NAMES:
             return typed_dict_pop_signature_callback
         elif fullname == "_ctypes.Array.__setitem__":
-            return ctypes.array_setitem_callback
-        elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
-            return singledispatch.call_singledispatch_function_callback
-
-        typed_dict_updates = set()
-        for n in TPDICT_FB_NAMES:
-            typed_dict_updates.add(n + ".update")
-            typed_dict_updates.add(n + ".__or__")
-            typed_dict_updates.add(n + ".__ror__")
-            typed_dict_updates.add(n + ".__ior__")
-
-        if fullname in typed_dict_updates:
+            return array_setitem_callback
+        elif fullname == SINGLEDISPATCH_CALLABLE_CALL_METHOD:
+            return call_singledispatch_function_callback
+        elif fullname in TD_UPDATE_METHOD_NAMES:
             return typed_dict_update_signature_callback
-
         return None
 
     def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
-        from mypy.plugins import ctypes, singledispatch
-
         if fullname == "typing.Mapping.get":
             return typed_dict_get_callback
         elif fullname == "builtins.int.__pow__":
@@ -117,74 +151,63 @@ class DefaultPlugin(Plugin):
         elif fullname in {n + ".__delitem__" for n in TPDICT_FB_NAMES}:
             return typed_dict_delitem_callback
         elif fullname == "_ctypes.Array.__getitem__":
-            return ctypes.array_getitem_callback
+            return array_getitem_callback
         elif fullname == "_ctypes.Array.__iter__":
-            return ctypes.array_iter_callback
-        elif fullname == singledispatch.SINGLEDISPATCH_REGISTER_METHOD:
-            return singledispatch.singledispatch_register_callback
-        elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
-            return singledispatch.call_singledispatch_function_after_register_argument
+            return array_iter_callback
+        elif fullname == SINGLEDISPATCH_REGISTER_METHOD:
+            return singledispatch_register_callback
+        elif fullname == SINGLEDISPATCH_REGISTER_CALLABLE_CALL_METHOD:
+            return call_singledispatch_function_after_register_argument
         elif fullname == "functools.partial.__call__":
-            import mypy.plugins.functools
-
-            return mypy.plugins.functools.partial_call_callback
+            return partial_call_callback
         return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
-        from mypy.plugins import ctypes, enums
-
         if fullname == "_ctypes.Array.value":
-            return ctypes.array_value_callback
+            return array_value_callback
         elif fullname == "_ctypes.Array.raw":
-            return ctypes.array_raw_callback
-        elif fullname in enums.ENUM_NAME_ACCESS:
-            return enums.enum_name_callback
-        elif fullname in enums.ENUM_VALUE_ACCESS:
-            return enums.enum_value_callback
+            return array_raw_callback
+        elif fullname in ENUM_NAME_ACCESS:
+            return enum_name_callback
+        elif fullname in ENUM_VALUE_ACCESS:
+            return enum_value_callback
         return None
 
     def get_class_decorator_hook(self, fullname: str) -> Callable[[ClassDefContext], None] | None:
-        from mypy.plugins import attrs, dataclasses
-
         # These dataclass and attrs hooks run in the main semantic analysis pass
         # and only tag known dataclasses/attrs classes, so that the second
         # hooks (in get_class_decorator_hook_2) can detect dataclasses/attrs classes
         # in the MRO.
-        if fullname in dataclasses.dataclass_makers:
-            return dataclasses.dataclass_tag_callback
+        if fullname in dataclass_makers:
+            return dataclass_tag_callback
         if (
-            fullname in attrs.attr_class_makers
-            or fullname in attrs.attr_dataclass_makers
-            or fullname in attrs.attr_frozen_makers
-            or fullname in attrs.attr_define_makers
+            fullname in attr_class_makers
+            or fullname in attr_dataclass_makers
+            or fullname in attr_frozen_makers
+            or fullname in attr_define_makers
         ):
-            return attrs.attr_tag_callback
-
+            return attr_tag_callback
         return None
 
     def get_class_decorator_hook_2(
         self, fullname: str
     ) -> Callable[[ClassDefContext], bool] | None:
-        import mypy.plugins.functools
-        from mypy.plugins import attrs, dataclasses
-
-        if fullname in dataclasses.dataclass_makers:
-            return dataclasses.dataclass_class_maker_callback
-        elif fullname in mypy.plugins.functools.functools_total_ordering_makers:
-            return mypy.plugins.functools.functools_total_ordering_maker_callback
-        elif fullname in attrs.attr_class_makers:
-            return attrs.attr_class_maker_callback
-        elif fullname in attrs.attr_dataclass_makers:
-            return partial(attrs.attr_class_maker_callback, auto_attribs_default=True)
-        elif fullname in attrs.attr_frozen_makers:
+        if fullname in dataclass_makers:
+            return dataclass_class_maker_callback
+        elif fullname in functools_total_ordering_makers:
+            return functools_total_ordering_maker_callback
+        elif fullname in attr_class_makers:
+            return attr_class_maker_callback
+        elif fullname in attr_dataclass_makers:
+            return partial(attr_class_maker_callback, auto_attribs_default=True)
+        elif fullname in attr_frozen_makers:
             return partial(
-                attrs.attr_class_maker_callback, auto_attribs_default=None, frozen_default=True
+                attr_class_maker_callback, auto_attribs_default=None, frozen_default=True
             )
-        elif fullname in attrs.attr_define_makers:
+        elif fullname in attr_define_makers:
             return partial(
-                attrs.attr_class_maker_callback, auto_attribs_default=None, slots_default=True
+                attr_class_maker_callback, auto_attribs_default=None, slots_default=True
             )
-
         return None
 
 

@@ -708,6 +708,11 @@ class IRBuilder:
 
         assert False, "Unsupported lvalue: %r" % target
 
+    def read_nullable_attr(self, obj: Value, attr: str, line: int = -1) -> Value:
+        """Read an attribute that might have an error value without raising AttributeError."""
+        assert isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
+        return self.add(GetAttr(obj, attr, line, allow_error_value=True))
+
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
             self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line)))
@@ -1136,12 +1141,20 @@ class IRBuilder:
         )
 
     def shortcircuit_expr(self, expr: OpExpr) -> Value:
+        def handle_right() -> Value:
+            if expr.right_unreachable:
+                self.builder.add(
+                    RaiseStandardError(
+                        RaiseStandardError.RUNTIME_ERROR,
+                        "mypyc internal error: should be unreachable",
+                        expr.right.line,
+                    )
+                )
+                return self.builder.none()
+            return self.accept(expr.right)
+
         return self.builder.shortcircuit_helper(
-            expr.op,
-            self.node_type(expr),
-            lambda: self.accept(expr.left),
-            lambda: self.accept(expr.right),
-            expr.line,
+            expr.op, self.node_type(expr), lambda: self.accept(expr.left), handle_right, expr.line
         )
 
     # Basic helpers

@@ -1507,6 +1507,10 @@ class LowLevelIRBuilder:
         assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
         equal = True if op == "==" else False
         result = Register(bool_rprimitive)
+        # tuples of different lengths
+        if len(lhs.type.types) != len(rhs.type.types):
+            self.add(Assign(result, self.false() if equal else self.true(), line))
+            return result
         # empty tuples
         if len(lhs.type.types) == 0 and len(rhs.type.types) == 0:
             self.add(Assign(result, self.true() if equal else self.false(), line))
@@ -1530,7 +1534,7 @@ class LowLevelIRBuilder:
             compare = self.binary_op(lhs_item, rhs_item, op, line)
             # Cast to bool if necessary since most types uses comparison returning a object type
             # See generic_ops.py for more information
-            if not is_bool_rprimitive(compare.type):
+            if not (is_bool_rprimitive(compare.type) or is_bit_rprimitive(compare.type)):
                 compare = self.primitive_op(bool_op, [compare], line)
             if i < len(lhs.type.types) - 1:
                 branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL)

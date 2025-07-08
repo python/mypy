@@ -21,6 +21,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    CString,
     DecRef,
     Extend,
     Float,
@@ -327,6 +328,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                         result.append(str(arg.value))
                     elif isinstance(arg, Float):
                         result.append(repr(arg.value))
+                    elif isinstance(arg, CString):
+                        result.append(f"CString({arg.value!r})")
                     else:
                         result.append(self.names[arg])
                 elif typespec == "d":
