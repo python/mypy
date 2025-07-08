@@ -886,7 +886,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         """Check if a class directly or indirectly inherits from pydantic.BaseModel"""
         for base_type_expr in class_def.base_type_exprs:
             if (
-                isinstance(base_type_expr, (NameExpr, MemberExpr)) 
+                isinstance(base_type_expr, (NameExpr, MemberExpr))
                 and self.get_fullname(base_type_expr) == "pydantic.BaseModel"
             ):
                 return True
