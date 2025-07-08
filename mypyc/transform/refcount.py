@@ -127,7 +127,7 @@ def transform_block(
                 # For assignments to registers that were already live,
                 # decref the old value.
                 if dest not in pre_borrow[key] and dest in pre_live[key]:
-                    assert isinstance(op, Assign)
+                    assert isinstance(op, Assign), op
                     maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
         # Strip KeepAlive. Its only purpose is to help with this transform.
