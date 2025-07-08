@@ -56,6 +56,7 @@ from mypyc.ir.rtypes import (
     RType,
     dict_rprimitive,
     none_rprimitive,
+    object_pointer_rprimitive,
     object_rprimitive,
     tuple_rprimitive,
 )
@@ -220,6 +221,8 @@ def create_generator_class_if_needed(
                 RuntimeArg("value", object_rprimitive),
                 RuntimeArg("traceback", object_rprimitive),
                 RuntimeArg("arg", object_rprimitive),
+                # If non-NULL, used to store return value instead of raising StopIteration(retv)
+                RuntimeArg("stop_iter_ptr", object_pointer_rprimitive),
             ),
             object_rprimitive,
         )

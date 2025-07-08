@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from mypyc.ir.ops import ERR_ALWAYS, ERR_FALSE, ERR_NEVER
 from mypyc.ir.rtypes import bit_rprimitive, exc_rtuple, object_rprimitive, void_rtype
-from mypyc.primitives.registry import custom_op
+from mypyc.primitives.registry import custom_op, custom_primitive_op
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
 # that the argument is an exception object, and raise it.
@@ -59,6 +59,16 @@ keep_propagating_op = custom_op(
     arg_types=[],
     return_type=bit_rprimitive,
     c_function_name="CPy_KeepPropagating",
+    error_kind=ERR_FALSE,
+)
+
+# If argument is NULL, propagate currently raised exception (in this case
+# an exception must have been raised). If this can be used, it's faster
+# than using PyErr_Occurred().
+propagate_if_error_op = custom_primitive_op(
+    "propagate_if_error",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
     error_kind=ERR_FALSE,
 )
 
