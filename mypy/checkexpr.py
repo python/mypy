@@ -2103,6 +2103,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     pass1_args.append(arg)
 
             if True:  # NEW CODE
+                # compute the inner constraints
+                inner_constraints = infer_constraints_for_callable(
+                    callee_type,
+                    pass1_args,
+                    arg_kinds,
+                    arg_names,
+                    formal_to_actual,
+                    context=self.argument_infer_context(),
+                )
+
+                # compute the outer solution
                 outer_constraints = self.infer_constraints_from_context(callee_type, context)
                 outer_solution = solve_constraints(
                     callee_type.variables,
@@ -2120,34 +2131,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 )
                 outer_ret_type = get_proper_type(outer_callee.ret_type)
 
-                # NOTE: inner solution not needed
-                inner_constraints = infer_constraints_for_callable(
-                    callee_type,
-                    pass1_args,
-                    arg_kinds,
-                    arg_names,
-                    formal_to_actual,
-                    context=self.argument_infer_context(),
-                )
-                inner_solution = solve_constraints(
-                    callee_type.variables,
-                    inner_constraints,
-                    strict=self.chk.in_checked_function(),
-                    allow_polymorphic=False,
-                )
-                inner_args = [
-                    None if has_uninhabited_component(arg) or has_erased_component(arg) else arg
-                    for arg in inner_solution[0]
-                ]
-                inner_solution = (inner_args, inner_solution[1])
-                # inner_callee = self.apply_generic_arguments(
-                #     callee_type,
-                #     inner_solution[0],  # no filtering here
-                #     context,
-                #     skip_unsatisfied=True,
-                # )
-                # inner_ret_type = get_proper_type(inner_callee.ret_type)
-
+                # compute the joint solution using both inner and outer constraints.
                 # NOTE: The order of constraints is important here!
                 #  solve(outer + inner) and solve(inner + outer) may yield different results.
                 #  we need to use outer first.
@@ -2167,27 +2151,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 )
                 joint_ret_type = get_proper_type(joint_callee.ret_type)
 
-                # Now, we select which solution to use.
-                use_joint = True
-                use_outer = False
-                use_inner = False
-
-                # NOTE: inner solution not needed
-                # if (
-                #     # joint constraints failed to produce a complete solution
-                #     None in joint_solution[0]
-                #     # If the inner solution is more concrete than the joint solution, prefer the inner solution.
-                #     or is_subtype(inner_ret_type, joint_ret_type)
-                #     or (  # HACK to fix testLiteralAndGenericWithUnion
-                #         isinstance(inner_ret_type, UnionType)
-                #         and any(is_subtype(val, joint_ret_type) for val in inner_ret_type.items)
-                #     )
-                # ):
-                #     use_joint = False
-                #     use_outer = False
-                #     use_inner = True
-
-                if (
+                if (  # determine which solution to take
                     # joint constraints failed to produce a complete solution
                     None in joint_solution[0]
                     # If the outer solution is more concrete than the joint solution, prefer the outer solution.
@@ -2198,14 +2162,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                 ):
                     use_joint = False
-                    use_outer = True
-                    use_inner = False
+                else:
+                    use_joint = True
 
                 if use_joint:
                     inferred_args = joint_solution[0]
-                elif use_inner:
-                    inferred_args = inner_solution[0]
-                elif use_outer:
+                else:
                     # If we cannot use the joint solution, fallback to outer_solution
                     inferred_args = outer_solution[0]
                     # Don't show errors after we have only used the outer context for inference.
@@ -2242,8 +2204,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         allow_polymorphic=False,
                     )
                     inferred_args = inner_solution[0]
-                else:
-                    raise RuntimeError("No solution found for function type arguments")
             else:  # END NEW CODE
                 pass
 
