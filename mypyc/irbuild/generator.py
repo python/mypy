@@ -32,7 +32,12 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import RInstance, int32_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import (
+    RInstance,
+    int32_rprimitive,
+    object_pointer_rprimitive,
+    object_rprimitive,
+)
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
@@ -45,6 +50,7 @@ from mypyc.irbuild.env_class import (
     setup_func_for_recursive_call,
 )
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.primitives.exc_ops import (
     error_catch_op,
     exc_matches_op,
@@ -152,7 +158,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
 
 def setup_generator_class(builder: IRBuilder) -> ClassIR:
     mapper = builder.mapper
-    assert isinstance(builder.fn_info.fitem, FuncDef)
+    assert isinstance(builder.fn_info.fitem, FuncDef), builder.fn_info.fitem
     generator_class_ir = mapper.fdef_to_generator[builder.fn_info.fitem]
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
@@ -231,11 +237,11 @@ def add_helper_to_generator_class(
     builder: IRBuilder, arg_regs: list[Register], blocks: list[BasicBlock], fn_info: FuncInfo
 ) -> FuncDecl:
     """Generates a helper method for a generator class, called by '__next__' and 'throw'."""
-    helper_fn_decl = fn_info.generator_class.ir.method_decls["__mypyc_generator_helper__"]
+    helper_fn_decl = fn_info.generator_class.ir.method_decls[GENERATOR_HELPER_NAME]
     helper_fn_ir = FuncIR(
         helper_fn_decl, arg_regs, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name
     )
-    fn_info.generator_class.ir.methods["__mypyc_generator_helper__"] = helper_fn_ir
+    fn_info.generator_class.ir.methods[GENERATOR_HELPER_NAME] = helper_fn_ir
     builder.functions.append(helper_fn_ir)
     fn_info.env_class.env_user_function = helper_fn_ir
 
@@ -256,7 +262,14 @@ def add_next_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl: 
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), none_reg, none_reg, none_reg, none_reg],
+                [
+                    builder.self(),
+                    none_reg,
+                    none_reg,
+                    none_reg,
+                    none_reg,
+                    Integer(0, object_pointer_rprimitive),
+                ],
                 fn_info.fitem.line,
             )
         )
@@ -272,7 +285,14 @@ def add_send_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl: 
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), none_reg, none_reg, none_reg, builder.read(arg)],
+                [
+                    builder.self(),
+                    none_reg,
+                    none_reg,
+                    none_reg,
+                    builder.read(arg),
+                    Integer(0, object_pointer_rprimitive),
+                ],
                 fn_info.fitem.line,
             )
         )
@@ -297,7 +317,14 @@ def add_throw_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl:
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), builder.read(typ), builder.read(val), builder.read(tb), none_reg],
+                [
+                    builder.self(),
+                    builder.read(typ),
+                    builder.read(val),
+                    builder.read(tb),
+                    none_reg,
+                    Integer(0, object_pointer_rprimitive),
+                ],
                 fn_info.fitem.line,
             )
         )
@@ -377,8 +404,15 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     # TODO: Use the right type here instead of object?
     exc_arg = builder.add_local(Var("arg"), object_rprimitive, is_arg=True)
 
+    # Parameter that can used to pass a pointer which can used instead of
+    # raising StopIteration(value). If the value is NULL, this won't be used.
+    stop_iter_value_arg = builder.add_local(
+        Var("stop_iter_ptr"), object_pointer_rprimitive, is_arg=True
+    )
+
     cls.exc_regs = (exc_type, exc_val, exc_tb)
     cls.send_arg_reg = exc_arg
+    cls.stop_iter_value_reg = stop_iter_value_arg
 
     cls.self_reg = builder.read(self_target, fitem.line)
     if builder.fn_info.can_merge_generator_and_env_classes():

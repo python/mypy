@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -56,6 +56,7 @@ from mypyc.ir.rtypes import (
     RType,
     dict_rprimitive,
     none_rprimitive,
+    object_pointer_rprimitive,
     object_rprimitive,
     tuple_rprimitive,
 )
@@ -69,6 +70,8 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
+
+GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 
 
 def build_type_map(
@@ -220,13 +223,15 @@ def create_generator_class_if_needed(
                 RuntimeArg("value", object_rprimitive),
                 RuntimeArg("traceback", object_rprimitive),
                 RuntimeArg("arg", object_rprimitive),
+                # If non-NULL, used to store return value instead of raising StopIteration(retv)
+                RuntimeArg("stop_iter_ptr", object_pointer_rprimitive),
             ),
             object_rprimitive,
         )
 
         # The implementation of most generator functionality is behind this magic method.
         helper_fn_decl = FuncDecl(
-            "__mypyc_generator_helper__", name, module_name, helper_sig, internal=True
+            GENERATOR_HELPER_NAME, name, module_name, helper_sig, internal=True
         )
         cir.method_decls[helper_fn_decl.name] = helper_fn_decl
 
