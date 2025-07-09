@@ -89,7 +89,7 @@ from mypyc.primitives.dict_ops import (
     dict_setdefault_spec_init_op,
     dict_values_op,
 )
-from mypyc.primitives.list_ops import new_list_set_item_op
+from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.str_ops import (
     str_encode_ascii_strict,
     str_encode_latin1_strict,
@@ -546,6 +546,9 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
     return retval
 
 
+isinstance_primitives = {"list": isinstance_list}
+
+
 @specialize_function("builtins.isinstance")
 def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for builtins.isinstance.
@@ -554,11 +557,10 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     there is no need to coerce something to a new type before checking
     what type it is, and the coercion could lead to bugs.
     """
-    if (
-        len(expr.args) == 2
-        and expr.arg_kinds == [ARG_POS, ARG_POS]
-        and isinstance(expr.args[1], (RefExpr, TupleExpr))
-    ):
+    if not (len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]):
+        return None
+
+    if isinstance(expr.args[1], (RefExpr, TupleExpr)):
         builder.types[expr.args[0]] = AnyType(TypeOfAny.from_error)
 
         irs = builder.flatten_classes(expr.args[1])
@@ -569,6 +571,15 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             )
             obj = builder.accept(expr.args[0], can_borrow=can_borrow)
             return builder.builder.isinstance_helper(obj, irs, expr.line)
+
+    if isinstance(expr.args[1], RefExpr):
+        node = expr.args[1].node
+        if node:
+            desc = isinstance_primitives.get(node.name)
+            if desc:
+                obj = builder.accept(expr.args[0])
+                return builder.primitive_op(desc, [obj], expr.line)
+
     return None
 
 
