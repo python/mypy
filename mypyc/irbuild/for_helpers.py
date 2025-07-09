@@ -58,6 +58,7 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.primitives.dict_ops import (
     dict_check_size_op,
@@ -518,10 +519,9 @@ def make_for_loop_generator(
     if iterable_expr_reg is None:
         iterable_expr_reg = builder.accept(expr)
 
-    helper_method = "__mypyc_generator_helper__"
     it = iterable_expr_reg.type
     for_obj: ForNativeGenerator | ForIterable
-    if isinstance(it, RInstance) and it.class_ir.has_method(helper_method):
+    if isinstance(it, RInstance) and it.class_ir.has_method(GENERATOR_HELPER_NAME):
         # Directly call generator object methods if iterating over a native generator.
         for_obj = ForNativeGenerator(builder, index, body_block, loop_exit, line, nested)
     else:
@@ -656,14 +656,13 @@ class ForNativeGenerator(ForGenerator):
     def gen_condition(self) -> None:
         builder = self.builder
         line = self.line
-        helper_method = "__mypyc_generator_helper__"
         self.return_value = Register(object_rprimitive)
         err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
         builder.assign(self.return_value, err, line)
         ptr = builder.add(LoadAddress(object_pointer_rprimitive, self.return_value))
         nn = builder.none_object()
-        helper_call =(
-            MethodCall(builder.read(self.iter_target), helper_method, [nn, nn, nn, nn, ptr], line)
+        helper_call = MethodCall(
+            builder.read(self.iter_target), GENERATOR_HELPER_NAME, [nn, nn, nn, nn, ptr], line
         )
         # We provide custom handling for error values.
         helper_call.error_kind = ERR_NEVER
