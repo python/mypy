@@ -498,29 +498,23 @@ def nested_union(a: Union[List[str], List[Optional[str]]]) -> None:
 [out]
 def narrow(a):
     a :: union[list, int]
-    r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3 :: bool
-    r4 :: list
-    r5 :: native_int
-    r6 :: short_int
-    r7 :: int
+    r0 :: bit
+    r1 :: list
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: int
 L0:
-    r0 = load_address PyList_Type
-    r1 = PyObject_IsInstance(a, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r0 = PyList_Check(a)
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r4 = borrow cast(list, a)
-    r5 = var_object_size r4
-    r6 = r5 << 1
+    r1 = borrow cast(list, a)
+    r2 = var_object_size r1
+    r3 = r2 << 1
     keep_alive a
-    return r6
+    return r3
 L2:
-    r7 = unbox(int, a)
-    return r7
+    r4 = unbox(int, a)
+    return r4
 def loop(a):
     a :: list
     r0 :: short_int

@@ -55,6 +55,15 @@ function_op(
     extra_int_constants=[(0, int_rprimitive)],
 )
 
+# isinstance(obj, list)
+isinstance_list = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyList_Check",
+    error_kind=ERR_NEVER,
+)
+
 new_list_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=list_rprimitive,
