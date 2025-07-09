@@ -659,6 +659,10 @@ class ForNativeGenerator(ForGenerator):
         self.return_value = Register(object_rprimitive)
         err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
         builder.assign(self.return_value, err, line)
+
+        # Call generated generator helper method, passing a PyObject ** as the final
+        # argument that will be used to store the return value in this register. This
+        # is faster than raising StopIteration.
         ptr = builder.add(LoadAddress(object_pointer_rprimitive, self.return_value))
         nn = builder.none_object()
         helper_call = MethodCall(
@@ -666,6 +670,7 @@ class ForNativeGenerator(ForGenerator):
         )
         # We provide custom handling for error values.
         helper_call.error_kind = ERR_NEVER
+
         self.next_reg = builder.add(helper_call)
         builder.add(Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR))
 
@@ -684,6 +689,8 @@ class ForNativeGenerator(ForGenerator):
         pass
 
     def gen_cleanup(self) -> None:
+        # If return value is NULL (it wasn't assigned to by the generator helper method),
+        # an exception was raised.
         self.builder.primitive_op(propagate_if_error_op, [self.return_value], self.line)
 
 
