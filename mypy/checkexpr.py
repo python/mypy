@@ -2112,6 +2112,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     formal_to_actual,
                     context=self.argument_infer_context(),
                 )
+                # HACK: convert "Literal?" constraints to their non-literal versions.
+                inner_constraints = [
+                    Constraint(
+                        c.original_type_var,
+                        c.op,
+                        (
+                            c.target.copy_modified(last_known_value=None)
+                            if isinstance(c.target, Instance)
+                            else c.target
+                        ),
+                    )
+                    for c in inner_constraints
+                ]
 
                 # compute the outer solution
                 outer_constraints = self.infer_constraints_from_context(callee_type, context)
@@ -2135,9 +2148,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # NOTE: The order of constraints is important here!
                 #  solve(outer + inner) and solve(inner + outer) may yield different results.
                 #  we need to use outer first.
+                joint_constraints = outer_constraints + inner_constraints
                 joint_solution = solve_constraints(
                     callee_type.variables,
-                    outer_constraints + inner_constraints,
+                    joint_constraints,
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=False,
                 )
@@ -2156,10 +2170,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     None in joint_solution[0]
                     # If the outer solution is more concrete than the joint solution, prefer the outer solution.
                     or is_subtype(outer_ret_type, joint_ret_type)
-                    or (  # HACK to fix testLiteralAndGenericWithUnion
-                        isinstance(outer_ret_type, UnionType)
-                        and any(is_subtype(val, joint_ret_type) for val in outer_ret_type.items)
-                    )
                 ):
                     use_joint = False
                 else:

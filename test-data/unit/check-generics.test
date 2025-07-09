@@ -2998,7 +2998,7 @@ def lift(f: F[T]) -> F[Optional[T]]: ...
 def g(x: T) -> T:
     return x
 
-reveal_type(lift(g))  # N: Revealed type is "def [T] (Union[T`1, None]) -> Union[T`1, None]"
+reveal_type(lift(g))  # N: Revealed type is "__main__.F[Union[T`-1, None]]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrder]
@@ -3198,11 +3198,11 @@ def dec(f: Callable[P, Callable[[T], S]]) -> Callable[Concatenate[T, P], S]: ...
 def id() -> Callable[[U], U]: ...
 def either(x: U) -> Callable[[U], U]: ...
 def pair(x: U) -> Callable[[V], Tuple[V, U]]: ...
-reveal_type(dec(id))  # N: Revealed type is "def [T] (T`3) -> T`3"
-reveal_type(dec(either))  # N: Revealed type is "def [T] (T`6, x: T`6) -> T`6"
-reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`9, x: U`-1) -> tuple[T`9, U`-1]"
+reveal_type(dec(id))  # N: Revealed type is "def (U`-1) -> U`-1"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (T`7, x: T`7) -> T`7"
+reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`10, x: U`-1) -> tuple[T`10, U`-1]"
 # This is counter-intuitive but looks correct, dec matches itself only if P can be empty
-reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`13, f: def () -> def (T`13) -> S`14) -> S`14"
+reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`14, f: def () -> def (T`14) -> S`15) -> S`15"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecVsParamSpec]
