@@ -360,6 +360,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self._args_cache: dict[tuple[int, ...], list[Type]] = {}
 
     def reset(self) -> None:
+        assert self.overload_stack_depth == 0
+        assert not self._args_cache
         self.resolved_type = {}
 
     def visit_name_expr(self, e: NameExpr) -> Type:
@@ -1949,7 +1951,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         In short, we basically recurse on each argument without considering
         in what context the argument was called.
         """
-        can_cache = not any(isinstance(t, TempNode) for t in args)
+        # We can only use this hack locally while checking a single nested overloaded
+        # call. This saves a lot of rechecking, but is not generally safe. Cache is
+        # pruned upon leaving the outermost overload.
+        can_cache = self.overload_stack_depth > 0 and not any(
+            isinstance(t, TempNode) for t in args
+        )
         key = tuple(map(id, args))
         if can_cache and key in self._args_cache:
             return self._args_cache[key]
