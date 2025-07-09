@@ -1,5 +1,7 @@
 # Test cases for weakrefs (compile and run)
 
+[typing fixtures/typing-full.pyi]
+
 [case testWeakrefRef]
 import asyncio
 import pytest  # type: ignore [import-not-found]
