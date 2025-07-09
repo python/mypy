@@ -121,6 +121,7 @@ from mypy.state import state
 from mypy.subtypes import (
     find_member,
     is_equivalent,
+    is_proper_subtype,
     is_same_type,
     is_subtype,
     non_method_protocol_members,
@@ -2171,7 +2172,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     # joint constraints failed to produce a complete solution
                     None in joint_solution[0]
                     # If the outer solution is more concrete than the joint solution, prefer the outer solution.
-                    or is_subtype(outer_ret_type, joint_ret_type)
+                    or (
+                        is_subtype(outer_ret_type, joint_ret_type)
+                        and not is_proper_subtype(joint_ret_type, outer_ret_type)
+                    )
                 ):
                     use_joint = False
                 else:

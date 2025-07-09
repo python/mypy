@@ -3657,3 +3657,43 @@ t2.foo = [B()]
 t2.foo = [C()]
 t2.foo = [1]  # E: Value of type variable "T" of "foo" of "Test" cannot be "int"
 [builtins fixtures/property.pyi]
+
+[case testContextFreeConcatInvariantType]
+from typing import Iterable, Iterator, TypeVar, Generic, Union
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Vec(Generic[T]):
+    def getitem(self, i: int) -> T: ...            # ensure invariance of T
+    def setitem(self, i: int, v: T) -> None: ...   # ensure invariance of T
+    def __iter__(self) -> Iterator[T]: ...
+    def __add__(self, other: "Vec[S]") -> "Vec[Union[T, S]]": ...
+
+mix: Vec[Union[int, str]]
+strings: Vec[str]
+mix = mix + strings
+mix = strings + mix
+reveal_type(mix + strings)  # N: Revealed type is "__main__.Vec[Union[builtins.int, builtins.str]]"
+reveal_type(strings + mix)  # N: Revealed type is "__main__.Vec[Union[builtins.str, builtins.int]]"
+[builtins fixtures/list.pyi]
+
+
+[case testInContextConcatInvariantType]
+# https://github.com/python/mypy/issues/3933#issuecomment-2272804302
+from typing import Iterable, Iterator, TypeVar, Generic, Union
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Vec(Generic[T]):
+    def getitem(self, i: int) -> T: ...            # ensure invariance of T
+    def setitem(self, i: int, v: T) -> None: ...   # ensure invariance of T
+    def __iter__(self) -> Iterator[T]: ...
+    def __add__(self, other: "Vec[S]") -> "Vec[Union[T, S]]": ...
+
+def identity_on_iterable(arg: Iterable[T]) -> Iterable[T]: return arg
+x: Vec[str]
+y: Vec[None]
+reveal_type( identity_on_iterable(y + x) )  # N: Revealed type is "typing.Iterable[Union[None, builtins.str]]"
+reveal_type( identity_on_iterable(x + y) )  # N: Revealed type is "typing.Iterable[Union[builtins.str, None]]"
