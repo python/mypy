@@ -14,7 +14,7 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -546,7 +546,7 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
     return retval
 
 
-isinstance_primitives = {"list": isinstance_list}
+isinstance_primitives: Final = {"builtins.list": isinstance_list}
 
 
 @specialize_function("builtins.isinstance")
@@ -575,7 +575,7 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     if isinstance(expr.args[1], RefExpr):
         node = expr.args[1].node
         if node:
-            desc = isinstance_primitives.get(node.name)
+            desc = isinstance_primitives.get(node.fullname)
             if desc:
                 obj = builder.accept(expr.args[0])
                 return builder.primitive_op(desc, [obj], expr.line)
