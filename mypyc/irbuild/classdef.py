@@ -564,11 +564,11 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
     if cdef.metaclass:
         declared_metaclass = builder.accept(cdef.metaclass)
     else:
-        if cdef.info.typeddict_type is not None and builder.options.capi_version >= (3, 9):
+        if cdef.info.typeddict_type is not None:
             # In Python 3.9, the metaclass for class-based TypedDict is typing._TypedDictMeta.
             # We can't easily calculate it generically, so special case it.
             return builder.get_module_attr("typing", "_TypedDictMeta", cdef.line)
-        elif cdef.info.is_named_tuple and builder.options.capi_version >= (3, 9):
+        elif cdef.info.is_named_tuple:
             # In Python 3.9, the metaclass for class-based NamedTuple is typing.NamedTupleMeta.
             # We can't easily calculate it generically, so special case it.
             return builder.get_module_attr("typing", "NamedTupleMeta", cdef.line)
@@ -634,7 +634,7 @@ def add_non_ext_class_attr_ann(
             if builder.current_module == type_info.module_name and stmt.line < type_info.line:
                 typ = builder.load_str(type_info.fullname)
             else:
-                typ = load_type(builder, type_info, stmt.line)
+                typ = load_type(builder, type_info, stmt.unanalyzed_type, stmt.line)
 
     if typ is None:
         # FIXME: if get_type_info is not provided, don't fall back to stmt.type?
@@ -650,7 +650,7 @@ def add_non_ext_class_attr_ann(
             # actually a forward reference due to the __annotations__ future?
             typ = builder.load_str(stmt.unanalyzed_type.original_str_expr)
         elif isinstance(ann_type, Instance):
-            typ = load_type(builder, ann_type.type, stmt.line)
+            typ = load_type(builder, ann_type.type, stmt.unanalyzed_type, stmt.line)
         else:
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
 

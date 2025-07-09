@@ -548,7 +548,7 @@ MypyFile:1(
       NameExpr(x)
       NameExpr(y))
     NameExpr(z)
-    Tuple[int?, a?[c?]]))
+    tuple[int?, a?[c?]]))
 
 [case testMultipleVarDef2]
 (xx, z, i) = 1 # type: (a[c], Any, int)
@@ -560,7 +560,7 @@ MypyFile:1(
       NameExpr(z)
       NameExpr(i))
     IntExpr(1)
-    Tuple[a?[c?], Any?, int?]))
+    tuple[a?[c?], Any?, int?]))
 
 [case testMultipleVarDef3]
 (xx, (z, i)) = 1 # type: (a[c], (Any, int))
@@ -573,7 +573,7 @@ MypyFile:1(
         NameExpr(z)
         NameExpr(i)))
     IntExpr(1)
-    Tuple[a?[c?], Tuple[Any?, int?]]))
+    tuple[a?[c?], tuple[Any?, int?]]))
 
 [case testAnnotateAssignmentViaSelf]
 class A:
@@ -617,7 +617,7 @@ MypyFile:1(
     TupleExpr:2(
       IntExpr(1)
       IntExpr(2))
-    Tuple[foo?, bar?]))
+    tuple[foo?, bar?]))
 
 [case testWhitespaceAndCommentAnnotation]
 x = 1#type:int
@@ -932,33 +932,32 @@ MypyFile:1(
 [case testNotAsBinaryOp]
 x not y
 [out]
-main:1: error: invalid syntax
+main:1: error: Invalid syntax
 [out version==3.10.0]
-main:1: error: invalid syntax. Perhaps you forgot a comma?
+main:1: error: Invalid syntax. Perhaps you forgot a comma?
 
 [case testNotIs]
-x not is y # E: invalid syntax
+x not is y # E: Invalid syntax
 [out]
 
 [case testBinaryNegAsBinaryOp]
 1 ~ 2
 [out]
-main:1: error: invalid syntax
+main:1: error: Invalid syntax
 [out version==3.10.0]
-main:1: error: invalid syntax. Perhaps you forgot a comma?
+main:1: error: Invalid syntax. Perhaps you forgot a comma?
 
-[case testSliceInList39]
-# flags: --python-version 3.9
+[case testSliceInList]
 x = [1, 2][1:2]
 [out]
 MypyFile:1(
-  AssignmentStmt:2(
+  AssignmentStmt:1(
     NameExpr(x)
-    IndexExpr:2(
-      ListExpr:2(
+    IndexExpr:1(
+      ListExpr:1(
         IntExpr(1)
         IntExpr(2))
-      SliceExpr:2(
+      SliceExpr:1(
         IntExpr(1)
         IntExpr(2)))))
 
@@ -3211,7 +3210,7 @@ MypyFile:1(
 [case testParseExtendedSlicing4]
 m[*index, :]
 [out]
-main:1: error: invalid syntax
+main:1: error: Invalid syntax
 [out version>=3.11]
 MypyFile:1(
   ExpressionStmt:1(
