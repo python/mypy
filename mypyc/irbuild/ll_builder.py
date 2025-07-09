@@ -93,8 +93,7 @@ from mypyc.ir.rtypes import (
     dict_rprimitive,
     float_rprimitive,
     int_rprimitive,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
@@ -381,16 +380,12 @@ class LowLevelIRBuilder:
             ):
                 # Equivalent types
                 return src
-            elif (is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)) and is_tagged(
-                target_type
-            ):
+            elif is_bool_or_bit_rprimitive(src_type) and is_tagged(target_type):
                 shifted = self.int_op(
                     bool_rprimitive, src, Integer(1, bool_rprimitive), IntOp.LEFT_SHIFT
                 )
                 return self.add(Extend(shifted, target_type, signed=False))
-            elif (
-                is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
-            ) and is_fixed_width_rtype(target_type):
+            elif is_bool_or_bit_rprimitive(src_type) and is_fixed_width_rtype(target_type):
                 return self.add(Extend(src, target_type, signed=False))
             elif isinstance(src, Integer) and is_float_rprimitive(target_type):
                 if is_tagged(src_type):
@@ -1341,7 +1336,11 @@ class LowLevelIRBuilder:
             return self.compare_strings(lreg, rreg, op, line)
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ("==", "!="):
             return self.compare_bytes(lreg, rreg, op, line)
-        if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in BOOL_BINARY_OPS:
+        if (
+            is_bool_or_bit_rprimitive(ltype)
+            and is_bool_or_bit_rprimitive(rtype)
+            and op in BOOL_BINARY_OPS
+        ):
             if op in ComparisonOp.signed_ops:
                 return self.bool_comparison_op(lreg, rreg, op, line)
             else:
@@ -1355,7 +1354,7 @@ class LowLevelIRBuilder:
                     op_id = int_op_to_id[op]
                 else:
                     op_id = IntOp.DIV
-                if is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype):
+                if is_bool_or_bit_rprimitive(rtype):
                     rreg = self.coerce(rreg, ltype, line)
                     rtype = ltype
                 if is_fixed_width_rtype(rtype) or is_tagged(rtype):
@@ -1367,7 +1366,7 @@ class LowLevelIRBuilder:
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(rtype):
                     rreg = self.coerce_int_to_fixed_width(rreg, ltype, line)
-                elif is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype):
+                elif is_bool_or_bit_rprimitive(rtype):
                     rreg = self.coerce(rreg, ltype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if is_fixed_width_rtype(rreg.type):
@@ -1387,13 +1386,13 @@ class LowLevelIRBuilder:
                     )
                 if is_tagged(ltype):
                     return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
-                if is_bool_rprimitive(ltype) or is_bit_rprimitive(ltype):
+                if is_bool_or_bit_rprimitive(ltype):
                     lreg = self.coerce(lreg, rtype, line)
                     return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(ltype):
                     lreg = self.coerce_int_to_fixed_width(lreg, rtype, line)
-                elif is_bool_rprimitive(ltype) or is_bit_rprimitive(ltype):
+                elif is_bool_or_bit_rprimitive(ltype):
                     lreg = self.coerce(lreg, rtype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if isinstance(lreg, Integer):
@@ -1544,7 +1543,7 @@ class LowLevelIRBuilder:
             compare = self.binary_op(lhs_item, rhs_item, op, line)
             # Cast to bool if necessary since most types uses comparison returning a object type
             # See generic_ops.py for more information
-            if not (is_bool_rprimitive(compare.type) or is_bit_rprimitive(compare.type)):
+            if not is_bool_or_bit_rprimitive(compare.type):
                 compare = self.primitive_op(bool_op, [compare], line)
             if i < len(lhs.type.types) - 1:
                 branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL)
@@ -1563,7 +1562,7 @@ class LowLevelIRBuilder:
 
     def translate_instance_contains(self, inst: Value, item: Value, op: str, line: int) -> Value:
         res = self.gen_method_call(inst, "__contains__", [item], None, line)
-        if not is_bool_rprimitive(res.type):
+        if not is_bool_or_bit_rprimitive(res.type):
             res = self.primitive_op(bool_op, [res], line)
         if op == "not in":
             res = self.bool_bitwise_op(res, Integer(1, rtype=bool_rprimitive), "^", line)
@@ -1590,7 +1589,7 @@ class LowLevelIRBuilder:
 
     def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
         typ = value.type
-        if is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+        if is_bool_or_bit_rprimitive(typ):
             if expr_op == "not":
                 return self.unary_not(value, line)
             if expr_op == "+":
@@ -1748,7 +1747,7 @@ class LowLevelIRBuilder:
 
         The result type can be bit_rprimitive or bool_rprimitive.
         """
-        if is_bool_rprimitive(value.type) or is_bit_rprimitive(value.type):
+        if is_bool_or_bit_rprimitive(value.type):
             result = value
         elif is_runtime_subtype(value.type, int_rprimitive):
             zero = Integer(0, short_int_rprimitive)
