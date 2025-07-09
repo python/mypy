@@ -2104,7 +2104,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
             if True:  # NEW CODE
                 # compute the inner constraints
-                inner_constraints = infer_constraints_for_callable(
+                _inner_constraints = infer_constraints_for_callable(
                     callee_type,
                     pass1_args,
                     arg_kinds,
@@ -2113,18 +2113,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     context=self.argument_infer_context(),
                 )
                 # HACK: convert "Literal?" constraints to their non-literal versions.
-                inner_constraints = [
-                    Constraint(
-                        c.original_type_var,
-                        c.op,
-                        (
-                            c.target.copy_modified(last_known_value=None)
-                            if isinstance(c.target, Instance)
-                            else c.target
-                        ),
+                inner_constraints: list[Constraint] = []
+                for constraint in _inner_constraints:
+                    target = get_proper_type(constraint.target)
+                    inner_constraints.append(
+                        Constraint(
+                            constraint.original_type_var,
+                            constraint.op,
+                            (
+                                target.copy_modified(last_known_value=None)
+                                if isinstance(target, Instance)
+                                else target
+                            ),
+                        )
                     )
-                    for c in inner_constraints
-                ]
 
                 # compute the outer solution
                 outer_constraints = self.infer_constraints_from_context(callee_type, context)
