@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -38,7 +38,7 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import PROPSET_PREFIX, get_id_from_name
+from mypyc.common import PROPSET_PREFIX, SELF_NAME, get_id_from_name
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -51,7 +51,15 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
+from mypyc.ir.rtypes import (
+    RInstance,
+    RType,
+    dict_rprimitive,
+    none_rprimitive,
+    object_pointer_rprimitive,
+    object_rprimitive,
+    tuple_rprimitive,
+)
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
@@ -62,6 +70,8 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
+
+GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 
 
 def build_type_map(
@@ -115,7 +125,7 @@ def build_type_map(
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
-    # is conditionally defined.
+    # is conditionally defined. This doesn't include nested functions!
     for module in modules:
         for func in get_module_func_defs(module):
             prepare_func_def(module.fullname, None, func, mapper, options)
@@ -179,6 +189,8 @@ def prepare_func_def(
     mapper: Mapper,
     options: CompilerOptions,
 ) -> FuncDecl:
+    create_generator_class_if_needed(module_name, class_name, fdef, mapper)
+
     kind = (
         FUNC_STATICMETHOD
         if fdef.is_static
@@ -188,6 +200,40 @@ def prepare_func_def(
     decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
     mapper.func_to_decl[fdef] = decl
     return decl
+
+
+def create_generator_class_if_needed(
+    module_name: str, class_name: str | None, fdef: FuncDef, mapper: Mapper, name_suffix: str = ""
+) -> None:
+    """If function is a generator/async function, declare a generator class.
+
+    Each generator and async function gets a dedicated class that implements the
+    generator protocol with generated methods.
+    """
+    if fdef.is_coroutine or fdef.is_generator:
+        name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen" + name_suffix
+        cir = ClassIR(name, module_name, is_generated=True, is_final_class=True)
+        cir.reuse_freed_instance = True
+        mapper.fdef_to_generator[fdef] = cir
+
+        helper_sig = FuncSignature(
+            (
+                RuntimeArg(SELF_NAME, object_rprimitive),
+                RuntimeArg("type", object_rprimitive),
+                RuntimeArg("value", object_rprimitive),
+                RuntimeArg("traceback", object_rprimitive),
+                RuntimeArg("arg", object_rprimitive),
+                # If non-NULL, used to store return value instead of raising StopIteration(retv)
+                RuntimeArg("stop_iter_ptr", object_pointer_rprimitive),
+            ),
+            object_rprimitive,
+        )
+
+        # The implementation of most generator functionality is behind this magic method.
+        helper_fn_decl = FuncDecl(
+            GENERATOR_HELPER_NAME, name, module_name, helper_sig, internal=True
+        )
+        cir.method_decls[helper_fn_decl.name] = helper_fn_decl
 
 
 def prepare_method_def(

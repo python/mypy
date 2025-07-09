@@ -2,6 +2,7 @@
 
 [case testRunAsyncBasics]
 import asyncio
+from typing import Callable, Awaitable
 
 from testutil import assertRaises
 
@@ -71,6 +72,63 @@ def test_exception() -> None:
         asyncio.run(exc4())
     assert asyncio.run(exc5()) == 3
     assert asyncio.run(exc6()) == 3
+
+async def indirect_call(x: int, c: Callable[[int], Awaitable[int]]) -> int:
+    return await c(x)
+
+async def indirect_call_2(a: Awaitable[None]) -> None:
+    await a
+
+async def indirect_call_3(a: Awaitable[float]) -> float:
+    return (await a) + 1.0
+
+async def inc(x: int) -> int:
+    await asyncio.sleep(0)
+    return x + 1
+
+async def ident(x: float, err: bool = False) -> float:
+    await asyncio.sleep(0.0)
+    if err:
+        raise MyError()
+    return x + float("0.0")
+
+def test_indirect_call() -> None:
+    assert asyncio.run(indirect_call(3, inc)) == 4
+
+    with assertRaises(MyError):
+        asyncio.run(indirect_call_2(exc1()))
+
+    assert asyncio.run(indirect_call_3(ident(2.0))) == 3.0
+    assert asyncio.run(indirect_call_3(ident(-113.0))) == -112.0
+    assert asyncio.run(indirect_call_3(ident(-114.0))) == -113.0
+
+    with assertRaises(MyError):
+        asyncio.run(indirect_call_3(ident(1.0, True)))
+    with assertRaises(MyError):
+        asyncio.run(indirect_call_3(ident(-113.0, True)))
+
+class C:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    async def add(self, x: int, err: bool = False) -> int:
+        await asyncio.sleep(0)
+        if err:
+            raise MyError()
+        return x + self.n
+
+async def method_call(x: int) -> int:
+    c = C(5)
+    return await c.add(x)
+
+async def method_call_exception() -> int:
+    c = C(5)
+    return await c.add(3, err=True)
+
+def test_async_method_call() -> None:
+    assert asyncio.run(method_call(3)) == 8
+    with assertRaises(MyError):
+        asyncio.run(method_call_exception())
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
@@ -563,8 +621,10 @@ def test_bool() -> None:
 def run(x: object) -> object: ...
 
 [case testRunAsyncNestedFunctions]
+from __future__ import annotations
+
 import asyncio
-from typing import cast, Iterator
+from typing import cast, Iterator, overload, Awaitable, Any, TypeVar
 
 from testutil import assertRaises
 
@@ -641,6 +701,37 @@ def test_async_def_contains_two_nested_functions() -> None:
         (5 + 3 + 1), (7 + 4 + 10 + 1)
     )
 
+async def async_def_contains_overloaded_async_def(n: int) -> int:
+    @overload
+    async def f(x: int) -> int: ...
+
+    @overload
+    async def f(x: str) -> str: ...
+
+    async def f(x: int | str) -> Any:
+        return x
+
+    return (await f(n)) + 1
+
+
+def test_async_def_contains_overloaded_async_def() -> None:
+    assert asyncio.run(async_def_contains_overloaded_async_def(5)) == 6
+
+T = TypeVar("T")
+
+def deco(f: T) -> T:
+    return f
+
+async def async_def_contains_decorated_async_def(n: int) -> int:
+    @deco
+    async def f(x: int) -> int:
+        return x + 2
+
+    return (await f(n)) + 1
+
+
+def test_async_def_contains_decorated_async_def() -> None:
+    assert asyncio.run(async_def_contains_decorated_async_def(7)) == 10
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 

@@ -466,7 +466,7 @@ assert not list_in_mixed(object)
 assert list_in_mixed(type)
 
 [case testListBuiltFromGenerator]
-def test() -> None:
+def test_from_gen() -> None:
     source_a = ["a", "b", "c"]
     a = list(x + "f2" for x in source_a)
     assert a == ["af2", "bf2", "cf2"]
@@ -485,12 +485,6 @@ def test() -> None:
     source_str = "abcd"
     f = list("str:" + x for x in source_str)
     assert f == ["str:a", "str:b", "str:c", "str:d"]
-
-[case testNextBug]
-from typing import List, Optional
-
-def test(x: List[int]) -> None:
-    res = next((i for i in x), None)
 
 [case testListGetItemWithBorrow]
 from typing import List
@@ -537,3 +531,35 @@ def test_sorted() -> None:
     assert sorted((2, 1, 3)) == res
     assert sorted({2, 1, 3}) == res
     assert sorted({2: "", 1: "", 3: ""}) == res
+
+[case testIsInstance]
+from copysubclass import subc
+def test_built_in() -> None:
+    assert isinstance([], list)
+    assert isinstance([1,2,3], list)
+    assert isinstance(['a','b'], list)
+    assert isinstance(subc(), list)
+    assert isinstance(subc([1,2,3]), list)
+    assert isinstance(subc(['a','b']), list)
+
+    assert not isinstance({}, list)
+    assert not isinstance((), list)
+    assert not isinstance((1,2,3), list)
+    assert not isinstance(('a','b'), list)
+    assert not isinstance(1, list)
+    assert not isinstance('a', list)
+
+def test_user_defined() -> None:
+    from userdefinedlist import list
+
+    assert isinstance(list(), list)
+    assert not isinstance([list()], list)
+
+[file copysubclass.py]
+from typing import Any
+class subc(list[Any]):
+    pass
+
+[file userdefinedlist.py]
+class list:
+    pass

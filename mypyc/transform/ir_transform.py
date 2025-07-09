@@ -357,7 +357,7 @@ class PatchVisitor(OpVisitor[None]):
     def visit_load_address(self, op: LoadAddress) -> None:
         if isinstance(op.src, LoadStatic):
             new = self.fix_op(op.src)
-            assert isinstance(new, LoadStatic)
+            assert isinstance(new, LoadStatic), new
             op.src = new
 
     def visit_keep_alive(self, op: KeepAlive) -> None:

@@ -49,11 +49,13 @@ from mypy.nodes import (
 )
 from mypyc.common import TEMP_ATTR_NAME
 from mypyc.ir.ops import (
+    ERR_NEVER,
     NAMESPACE_MODULE,
     NO_TRACEBACK_LINE_NO,
     Assign,
     BasicBlock,
     Branch,
+    Call,
     InitStatic,
     Integer,
     LoadAddress,
@@ -89,6 +91,7 @@ from mypyc.irbuild.nonlocalcontrol import (
     FinallyNonlocalControl,
     TryFinallyNonlocalControl,
 )
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import (
     AssignmentTarget,
     AssignmentTargetAttr,
@@ -103,6 +106,7 @@ from mypyc.primitives.exc_ops import (
     get_exc_value_op,
     keep_propagating_op,
     no_err_occurred_op,
+    propagate_if_error_op,
     raise_exception_op,
     reraise_exception_op,
     restore_exc_info_op,
@@ -913,7 +917,7 @@ def transform_with(
             args = [none, none, none]
 
         if is_native:
-            assert isinstance(mgr_v.type, RInstance)
+            assert isinstance(mgr_v.type, RInstance), mgr_v.type
             exit_val = builder.gen_method_call(
                 builder.read(mgr),
                 f"__{al}exit__",
@@ -1063,25 +1067,63 @@ def emit_yield_from_or_await(
     to_yield_reg = Register(object_rprimitive)
     received_reg = Register(object_rprimitive)
 
-    get_op = coro_op if is_await else iter_op
-    if isinstance(get_op, PrimitiveDescription):
-        iter_val = builder.primitive_op(get_op, [val], line)
+    helper_method = GENERATOR_HELPER_NAME
+    if (
+        isinstance(val, (Call, MethodCall))
+        and isinstance(val.type, RInstance)
+        and val.type.class_ir.has_method(helper_method)
+    ):
+        # This is a generated native generator class, and we can use a fast path.
+        # This allows two optimizations:
+        # 1) No need to call CPy_GetCoro() or iter() since for native generators
+        #    it just returns the generator object (implemented here).
+        # 2) Instead of calling next(), call generator helper method directly,
+        #    since next() just calls __next__ which calls the helper method.
+        iter_val: Value = val
     else:
-        iter_val = builder.call_c(get_op, [val], line)
+        get_op = coro_op if is_await else iter_op
+        if isinstance(get_op, PrimitiveDescription):
+            iter_val = builder.primitive_op(get_op, [val], line)
+        else:
+            iter_val = builder.call_c(get_op, [val], line)
 
     iter_reg = builder.maybe_spill_assignable(iter_val)
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
-    _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+
+    if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
+        # Second fast path optimization: call helper directly (see also comment above).
+        #
+        # Calling a generated generator, so avoid raising StopIteration by passing
+        # an extra PyObject ** argument to helper where the stop iteration value is stored.
+        fast_path = True
+        obj = builder.read(iter_reg)
+        nn = builder.none_object()
+        stop_iter_val = Register(object_rprimitive)
+        err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
+        builder.assign(stop_iter_val, err, line)
+        ptr = builder.add(LoadAddress(object_pointer_rprimitive, stop_iter_val))
+        m = MethodCall(obj, helper_method, [nn, nn, nn, nn, ptr], line)
+        # Generators have custom error handling, so disable normal error handling.
+        m.error_kind = ERR_NEVER
+        _y_init = builder.add(m)
+    else:
+        fast_path = False
+        _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
-    # Try extracting a return value from a StopIteration and return it.
-    # If it wasn't, this reraises the exception.
     builder.activate_block(stop_block)
-    builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+    if fast_path:
+        builder.primitive_op(propagate_if_error_op, [stop_iter_val], line)
+        builder.assign(result, stop_iter_val, line)
+    else:
+        # Try extracting a return value from a StopIteration and return it.
+        # If it wasn't, this reraises the exception.
+        builder.assign(result, builder.call_c(check_stop_op, [], line), line)
     # Clear the spilled iterator/coroutine so that it will be freed.
     # Otherwise, the freeing of the spilled register would likely be delayed.
-    err = builder.add(LoadErrorValue(object_rprimitive))
+    err = builder.add(LoadErrorValue(iter_reg.type))
     builder.assign(iter_reg, err, line)
     builder.goto(done_block)
 

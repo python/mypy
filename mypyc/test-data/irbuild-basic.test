@@ -3556,3 +3556,18 @@ L3:
     s = arg
     r3 = CPyObject_Size(s)
     return r3
+
+[case testUndefinedFunction]
+def f():
+    non_existent_function()
+
+[out]
+def f():
+    r0 :: bool
+    r1, r2, r3 :: object
+L0:
+    r0 = raise NameError('name "non_existent_function" is not defined')
+    r1 = box(None, 1)
+    r2 = PyObject_Vectorcall(r1, 0, 0, 0)
+    r3 = box(None, 1)
+    return r3
