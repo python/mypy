@@ -16,9 +16,11 @@ from mypyc.ir.ops import (
     Integer,
     Register,
     Return,
+    SetMem,
     Unreachable,
     Value,
 )
+from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.primitives.exc_ops import restore_exc_info_op, set_stop_iteration_value
 
@@ -108,9 +110,26 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # StopIteration instead of using RaiseStandardError because
         # the obvious thing doesn't work if the value is a tuple
         # (???).
+
+        true, false = BasicBlock(), BasicBlock()
+        stop_iter_reg = builder.fn_info.generator_class.stop_iter_value_reg
+        assert stop_iter_reg is not None
+
+        builder.add(Branch(stop_iter_reg, true, false, Branch.IS_ERROR))
+
+        builder.activate_block(true)
+        # The default/slow path is to raise a StopIteration exception with
+        # return value.
         builder.call_c(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.builder.pop_error_handler()
+
+        builder.activate_block(false)
+        # The fast path is to store return value via caller-provided pointer
+        # instead of raising an exception. This can only be used when the
+        # caller is a native function.
+        builder.add(SetMem(object_rprimitive, stop_iter_reg, value))
+        builder.add(Return(Integer(0, object_rprimitive)))
 
 
 class CleanupNonlocalControl(NonlocalControl):
