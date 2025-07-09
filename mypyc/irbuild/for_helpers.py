@@ -646,9 +646,8 @@ class ForNativeGenerator(ForGenerator):
         return True
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
-        # Define targets to contain the expression, along with the iterator that will be used
-        # for the for-loop. If we are inside of a generator function, spill these into the
-        # environment class.
+        # Define target to contains the generator expression. It's also the iterator.
+        # If we are inside a generator function, spill these into the environment class.
         builder = self.builder
         self.iter_target = builder.maybe_spill(expr_reg)
         self.target_type = target_type
@@ -661,8 +660,10 @@ class ForNativeGenerator(ForGenerator):
         builder.assign(self.return_value, err, line)
 
         # Call generated generator helper method, passing a PyObject ** as the final
-        # argument that will be used to store the return value in this register. This
-        # is faster than raising StopIteration.
+        # argument that will be used to store the return value in the return value
+        # register. We ignore the return value but the presence of a return value
+        # indicates that the generator has finished. This is faster than raising
+        # and catching StopIteration, which is the non-native way of doing this.
         ptr = builder.add(LoadAddress(object_pointer_rprimitive, self.return_value))
         nn = builder.none_object()
         helper_call = MethodCall(
@@ -675,7 +676,7 @@ class ForNativeGenerator(ForGenerator):
         builder.add(Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR))
 
     def begin_body(self) -> None:
-        # Assign the value obtained from __next__ to the
+        # Assign the value obtained from the generator helper method to the
         # lvalue so that it can be referenced by code in the body of the loop.
         builder = self.builder
         line = self.line
@@ -690,7 +691,7 @@ class ForNativeGenerator(ForGenerator):
 
     def gen_cleanup(self) -> None:
         # If return value is NULL (it wasn't assigned to by the generator helper method),
-        # an exception was raised.
+        # an exception was raised that we need to propagate.
         self.builder.primitive_op(propagate_if_error_op, [self.return_value], self.line)
 
 
