@@ -1149,7 +1149,7 @@ def verify_var(
             proper_type = mypy.types.get_proper_type(stub.type)
             if (
                 isinstance(proper_type, mypy.types.Instance)
-                and proper_type.type.fullname == "builtins.ellipsis"
+                and proper_type.type.fullname in mypy.types.ELLIPSIS_TYPE_NAMES
             ):
                 should_error = False
 

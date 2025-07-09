@@ -29,6 +29,7 @@ class Enum(metaclass=EnumMeta):
 
 class IntEnum(int, Enum):
     value: int
+    _value_: int
     def __new__(cls: Type[_T], value: Union[int, _T]) -> _T: ...
 
 def unique(enumeration: _T) -> _T: pass
@@ -36,6 +37,8 @@ def unique(enumeration: _T) -> _T: pass
 # In reality Flag and IntFlag are 3.6 only
 
 class Flag(Enum):
+    value: int
+    _value_: int
     def __or__(self: _T, other: Union[int, _T]) -> _T: pass
 
 
@@ -49,6 +52,8 @@ class auto(IntFlag):
 
 # It is python-3.11+ only:
 class StrEnum(str, Enum):
+    _value_: str
+    value: str
     def __new__(cls: Type[_T], value: str | _T) -> _T: ...
 
 # It is python-3.11+ only:

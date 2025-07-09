@@ -17,10 +17,12 @@ from collections.abc import Iterable, Sequence
 from typing import TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.nodes import TypeInfo
+from mypy.checker import TypeChecker
+from mypy.nodes import TypeInfo, Var
 from mypy.subtypes import is_equivalent
 from mypy.typeops import fixup_partial_type, make_simplified_union
 from mypy.types import (
+    ELLIPSIS_TYPE_NAMES,
     CallableType,
     Instance,
     LiteralType,
@@ -79,6 +81,19 @@ def _infer_value_type_with_auto_fallback(
     if proper_type is None:
         return None
     proper_type = get_proper_type(fixup_partial_type(proper_type))
+    # Enums in stubs may have ... instead of actual values. If `_value_` is annotated
+    # (manually or inherited from IntEnum, for example), it is a more reasonable guess
+    # than literal ellipsis type.
+    if (
+        _is_defined_in_stub(ctx)
+        and isinstance(proper_type, Instance)
+        and proper_type.type.fullname in ELLIPSIS_TYPE_NAMES
+        and isinstance(ctx.type, Instance)
+    ):
+        value_type = ctx.type.type.get("_value_")
+        if value_type is not None and isinstance(var := value_type.node, Var):
+            return var.type
+        return proper_type
     if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
         if is_named_instance(proper_type, "enum.member") and proper_type.args:
             return proper_type.args[0]
@@ -104,6 +119,11 @@ def _infer_value_type_with_auto_fallback(
             return int_type
         return get_proper_type(node_type.ret_type)
     return ctx.default_attr_type
+
+
+def _is_defined_in_stub(ctx: mypy.plugin.AttributeContext) -> bool:
+    assert isinstance(ctx.api, TypeChecker)
+    return isinstance(ctx.type, Instance) and ctx.api.modules[ctx.type.type.module_name].is_stub
 
 
 def _implements_new(info: TypeInfo) -> bool:
