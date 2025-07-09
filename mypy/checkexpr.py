@@ -233,6 +233,8 @@ OVERLAPPING_BYTES_ALLOWLIST: Final = {
     "builtins.memoryview",
 }
 
+POISON_KEY: Final = (-1,)
+
 
 class TooManyUnions(Exception):
     """Indicates that we need to stop splitting unions in an attempt
@@ -1954,8 +1956,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # We can only use this hack locally while checking a single nested overloaded
         # call. This saves a lot of rechecking, but is not generally safe. Cache is
         # pruned upon leaving the outermost overload.
-        can_cache = self.overload_stack_depth > 0 and not any(
-            isinstance(t, TempNode) for t in args
+        can_cache = (
+            self.overload_stack_depth > 0
+            and POISON_KEY not in self._args_cache
+            and not any(isinstance(t, TempNode) for t in args)
         )
         key = tuple(map(id, args))
         if can_cache and key in self._args_cache:
@@ -5426,6 +5430,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_lambda_expr(self, e: LambdaExpr) -> Type:
         """Type check lambda expression."""
+        if self.overload_stack_depth > 0:
+            # Poison cache when we encounter lambdas - it isn't safe to cache their types.
+            self._args_cache[POISON_KEY] = []
         self.chk.check_default_args(e, body_is_trivial=False)
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
