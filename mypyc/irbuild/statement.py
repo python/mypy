@@ -785,7 +785,7 @@ def transform_with(
             args = [none, none, none]
 
         if is_native:
-            assert isinstance(mgr_v.type, RInstance)
+            assert isinstance(mgr_v.type, RInstance), mgr_v.type
             exit_val = builder.gen_method_call(
                 builder.read(mgr),
                 f"__{al}exit__",

@@ -432,7 +432,7 @@ class LowLevelIRBuilder:
 
     def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
         assert is_fixed_width_rtype(target_type), target_type
-        assert isinstance(target_type, RPrimitive)
+        assert isinstance(target_type, RPrimitive), target_type
 
         res = Register(target_type)
 
@@ -538,9 +538,10 @@ class LowLevelIRBuilder:
                 line,
             )
 
-        assert is_fixed_width_rtype(src.type)
-        assert isinstance(src.type, RPrimitive)
         src_type = src.type
+
+        assert is_fixed_width_rtype(src_type), src_type
+        assert isinstance(src_type, RPrimitive), src_type
 
         res = Register(int_rprimitive)
 
@@ -1513,7 +1514,7 @@ class LowLevelIRBuilder:
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int = -1) -> Value:
         """Compare two tuples item by item"""
         # type cast to pass mypy check
-        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
+        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple), (lhs.type, rhs.type)
         equal = True if op == "==" else False
         result = Register(bool_rprimitive)
         # tuples of different lengths

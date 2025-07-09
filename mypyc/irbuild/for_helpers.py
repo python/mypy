@@ -902,7 +902,7 @@ class ForDictionaryItems(ForDictionaryCommon):
         value = builder.add(TupleGet(self.next_tuple, 3, line))
 
         # Coerce just in case e.g. key is itself a tuple to be unpacked.
-        assert isinstance(self.target_type, RTuple)
+        assert isinstance(self.target_type, RTuple), self.target_type
         key = builder.coerce(key, self.target_type.types[0], line)
         value = builder.coerce(value, self.target_type.types[1], line)
 

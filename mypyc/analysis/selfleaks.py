@@ -92,7 +92,7 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         fn = op.fn
         if fn.class_name and fn.name == "__init__":
             self_type = op.fn.sig.args[0].type
-            assert isinstance(self_type, RInstance)
+            assert isinstance(self_type, RInstance), self_type
             cl = self_type.class_ir
             if not cl.init_self_leak:
                 return CLEAN

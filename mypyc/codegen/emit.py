@@ -742,7 +742,7 @@ class Emitter:
             self.emit_traceback(error.source_path, error.module_name, error.traceback_entry)
             self.emit_line("goto %s;" % error.label)
         else:
-            assert isinstance(error, ReturnHandler)
+            assert isinstance(error, ReturnHandler), error
             self.emit_line("return %s;" % error.value)
 
     def emit_union_cast(
@@ -871,7 +871,7 @@ class Emitter:
         elif isinstance(error, GotoHandler):
             failure = "goto %s;" % error.label
         else:
-            assert isinstance(error, ReturnHandler)
+            assert isinstance(error, ReturnHandler), error
             failure = "return %s;" % error.value
         if raise_exception:
             raise_exc = f'CPy_TypeError("{self.pretty_name(typ)}", {src}); '

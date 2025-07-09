@@ -7273,7 +7273,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(node, TypeAlias):
             assert isinstance(node.target, Instance)  # type: ignore[misc]
             node = node.target.type
-        assert isinstance(node, TypeInfo)
+        assert isinstance(node, TypeInfo), node
         any_type = AnyType(TypeOfAny.from_omitted_generics)
         return Instance(node, [any_type] * len(node.defn.type_vars))
 
@@ -7292,7 +7292,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # Assume that the name refers to a class.
         sym = self.lookup_qualified(fullname)
         node = sym.node
-        assert isinstance(node, TypeInfo)
+        assert isinstance(node, TypeInfo), node
         return node
 
     def type_type(self) -> Instance:
