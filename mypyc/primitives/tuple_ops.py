@@ -15,7 +15,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     tuple_rprimitive,
 )
-from mypyc.primitives.registry import custom_op, function_op, load_address_op, method_op
+from mypyc.primitives.registry import binary_op, custom_op, function_op, load_address_op, method_op
 
 # Get the 'builtins.tuple' type object.
 load_address_op(name="builtins.tuple", type=object_rprimitive, src="PyTuple_Type")
@@ -71,6 +71,33 @@ function_op(
     arg_types=[object_rprimitive],
     return_type=tuple_rprimitive,
     c_function_name="PySequence_Tuple",
+    error_kind=ERR_MAGIC,
+)
+
+# tuple + tuple
+binary_op(
+    name="+",
+    arg_types=[tuple_rprimitive, tuple_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="PySequence_Concat",
+    error_kind=ERR_MAGIC,
+)
+
+# tuple * int
+binary_op(
+    name="*",
+    arg_types=[tuple_rprimitive, int_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="CPySequence_Multiply",
+    error_kind=ERR_MAGIC,
+)
+
+# int * tuple
+binary_op(
+    name="*",
+    arg_types=[int_rprimitive, tuple_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="CPySequence_RMultiply",
     error_kind=ERR_MAGIC,
 )
 

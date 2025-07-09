@@ -8,6 +8,7 @@ import mypy.checker
 import mypy.plugin
 import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
+from mypy.erasetype import erase_typevars
 from mypy.nodes import (
     ARG_POS,
     ARG_STAR2,
@@ -276,7 +277,7 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     for i, actuals in enumerate(formal_to_actual):
         if len(bound.arg_types) == len(fn_type.arg_types):
             arg_type = bound.arg_types[i]
-            if not mypy.checker.is_valid_inferred_type(arg_type):
+            if not mypy.checker.is_valid_inferred_type(arg_type, ctx.api.options):
                 arg_type = fn_type.arg_types[i]  # bit of a hack
         else:
             # TODO: I assume that bound and fn_type have the same arguments. It appears this isn't
@@ -301,7 +302,7 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
             partial_names.append(fn_type.arg_names[i])
 
     ret_type = bound.ret_type
-    if not mypy.checker.is_valid_inferred_type(ret_type):
+    if not mypy.checker.is_valid_inferred_type(ret_type, ctx.api.options):
         ret_type = fn_type.ret_type  # same kind of hack as above
 
     partially_applied = fn_type.copy_modified(
@@ -312,7 +313,11 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
         special_sig="partial",
     )
 
-    ret = ctx.api.named_generic_type(PARTIAL, [ret_type])
+    # Do not leak typevars from generic functions - they cannot be usable.
+    # Keep them in the wrapped callable, but avoid `partial[SomeStrayTypeVar]`
+    erased_ret_type = erase_typevars(ret_type, [tv.id for tv in fn_type.variables])
+
+    ret = ctx.api.named_generic_type(PARTIAL, [erased_ret_type])
     ret = ret.copy_with_extra_attr("__mypy_partial", partially_applied)
     if partially_applied.param_spec():
         assert ret.extra_attrs is not None  # copy_with_extra_attr above ensures this

@@ -31,3 +31,19 @@ def f(si: arr.array[int]):
 from typing import assert_type, Callable
 def myfunc(arg: int) -> None: pass
 assert_type(myfunc, Callable[[int], None])  # E: Expression is of type "Callable[[Arg(int, 'arg')], None]", not "Callable[[int], None]"
+
+[case testAssertTypeOverload]
+from typing import assert_type, overload
+
+class Foo:
+    @overload
+    def __new__(cls, x: int) -> Foo: ...
+    @overload
+    def __new__(cls, x: str) -> Foo: ...
+    def __new__(cls, x: "int | str") -> Foo:
+        return cls(0)
+
+assert_type(Foo, type[Foo])
+A = Foo
+assert_type(A, type[Foo])
+[builtins fixtures/tuple.pyi]

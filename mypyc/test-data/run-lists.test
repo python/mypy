@@ -51,6 +51,81 @@ print(2, a)
 1 [-1, 5]
 2 [340282366920938463463374607431768211461, -170141183460469231731687303715884105736]
 
+[case testListClear]
+from typing import List, Any
+from copysubclass import subc
+
+def test_list_clear() -> None:
+    l1 = [1, 2, 3, -4, 5]
+    l1.clear()
+    assert l1 == []
+    l1.clear()
+    assert l1 == []
+    l2: List[Any] = []
+    l2.clear()
+    assert l2 == []
+    l3 = [1, 2, 3, "abcdef"]
+    l3.clear()
+    assert l3 == []
+    # subclass testing
+    l4: subc = subc([1, 2, 3])
+    l4.clear()
+    assert l4 == []
+
+[file copysubclass.py]
+from typing import Any
+class subc(list[Any]):
+    pass
+
+[case testListCopy]
+from typing import List
+from copysubclass import subc
+
+def test_list_copy() -> None:
+    l1 = [1, 2, 3, -4, 5]
+    l2 = l1.copy()
+    assert l1.copy() == l1
+    assert l1.copy() == l2
+    assert l1 == l2
+    assert l1.copy() == l2.copy()
+    l1 = l2.copy()
+    assert l1 == l2
+    assert l1.copy() == l2
+    assert l1 == [1, 2, 3, -4, 5]
+    l2 = [1, 2, -3]
+    l1 = []
+    assert l1.copy() == []
+    assert l2.copy() != l1
+    assert l2 == l2.copy()
+    l1 = l2
+    assert l1.copy().copy() == l2.copy().copy().copy()
+    assert l1.copy() == l2.copy()
+    l1 == [1, 2, -3].copy()
+    assert l1 == l2
+    l2 = [1, 2, 3].copy()
+    assert l2 != l1
+    l1 = [1, 2, 3]
+    assert l1.copy() == l2.copy()
+    l3 = [1, 2 , 3, "abcdef"]
+    assert l3 == l3.copy()
+    l4 = ["abc", 5, 10]
+    l4 = l3.copy()
+    assert l4 == l3
+    #subclass testing
+    l5: subc = subc([1, 2, 3])
+    l6 = l5.copy()
+    assert l6 == l5
+    l6 = [1, 2, "3", 4, 5]
+    l5 = subc([1,2,"3",4,5])
+    assert l5.copy() == l6.copy()
+    l6 = l5.copy()
+    assert l5 == l6
+
+[file copysubclass.py]
+from typing import Any
+class subc(list[Any]):
+    pass
+
 [case testSieve]
 from typing import List
 
@@ -218,6 +293,9 @@ print(g())
 7
 
 [case testListOps]
+from typing import Any, cast
+from testutil import assertRaises
+
 def test_slicing() -> None:
     # Use dummy adds to avoid constant folding
     zero = int()
@@ -239,6 +317,34 @@ def test_slicing() -> None:
     assert s[1:long_int] == ["o", "o", "b", "a", "r"]
     assert s[long_int:] == []
     assert s[-long_int:-1] == ["f", "o", "o", "b", "a"]
+
+def in_place_add(l2: Any) -> list[Any]:
+    l1 = [1, 2]
+    l1 += l2
+    return l1
+
+def test_add() -> None:
+    res = [1, 2, 3, 4]
+    assert [1, 2] + [3, 4] == res
+    with assertRaises(TypeError, 'can only concatenate list (not "tuple") to list'):
+        assert [1, 2] + cast(Any, (3, 4)) == res
+    l1 = [1, 2]
+    id_l1 = id(l1)
+    l1 += [3, 4]
+    assert l1 == res
+    assert id_l1 == id(l1)
+    assert in_place_add([3, 4]) == res
+    assert in_place_add((3, 4)) == res
+    assert in_place_add({3, 4}) == res
+    assert in_place_add({3: "", 4: ""}) == res
+    assert in_place_add(range(3, 5)) == res
+
+def test_multiply() -> None:
+    l1 = [1]
+    assert l1 * 3 == [1, 1, 1]
+    assert 3 * l1 == [1, 1, 1]
+    l1 *= 3
+    assert l1 == [1, 1, 1]
 
 [case testOperatorInExpression]
 
@@ -409,3 +515,25 @@ def test_index_with_literal() -> None:
     assert d is d2
     d = a[-2].d
     assert d is d1
+
+[case testSorted]
+from typing import List
+
+def test_list_sort() -> None:
+    l1 = [2, 1, 3]
+    id_l1 = id(l1)
+    l1.sort()
+    assert l1 == [1, 2, 3]
+    assert id_l1 == id(l1)
+
+def test_sorted() -> None:
+    res = [1, 2, 3]
+    l1 = [2, 1, 3]
+    id_l1 = id(l1)
+    s_l1 = sorted(l1)
+    assert s_l1 == res
+    assert id_l1 != id(s_l1)
+    assert l1 == [2, 1, 3]
+    assert sorted((2, 1, 3)) == res
+    assert sorted({2, 1, 3}) == res
+    assert sorted({2: "", 1: "", 3: ""}) == res

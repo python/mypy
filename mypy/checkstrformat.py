@@ -14,11 +14,15 @@ from __future__ import annotations
 
 import re
 from re import Match, Pattern
-from typing import TYPE_CHECKING, Callable, Final, Union, cast
+from typing import Callable, Final, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
+from mypy import message_registry
+from mypy.checker_shared import TypeCheckerSharedApi
 from mypy.errors import Errors
+from mypy.maptype import map_instance_to_supertype
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -41,6 +45,9 @@ from mypy.nodes import (
     TempNode,
     TupleExpr,
 )
+from mypy.parse import parse
+from mypy.subtypes import is_subtype
+from mypy.typeops import custom_special_method
 from mypy.types import (
     AnyType,
     Instance,
@@ -56,18 +63,6 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
 )
-
-if TYPE_CHECKING:
-    # break import cycle only needed for mypy
-    import mypy.checker
-    import mypy.checkexpr
-
-from mypy import message_registry
-from mypy.maptype import map_instance_to_supertype
-from mypy.messages import MessageBuilder
-from mypy.parse import parse
-from mypy.subtypes import is_subtype
-from mypy.typeops import custom_special_method
 
 FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr]
 Checkers: _TypeAlias = tuple[Callable[[Expression], None], Callable[[Type], bool]]
@@ -299,21 +294,13 @@ class StringFormatterChecker:
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: mypy.checker.TypeChecker
+    chk: TypeCheckerSharedApi
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
-    # Some services are provided by a ExpressionChecker instance.
-    exprchk: mypy.checkexpr.ExpressionChecker
 
-    def __init__(
-        self,
-        exprchk: mypy.checkexpr.ExpressionChecker,
-        chk: mypy.checker.TypeChecker,
-        msg: MessageBuilder,
-    ) -> None:
+    def __init__(self, chk: TypeCheckerSharedApi, msg: MessageBuilder) -> None:
         """Construct an expression type checker."""
         self.chk = chk
-        self.exprchk = exprchk
         self.msg = msg
 
     def check_str_format_call(self, call: CallExpr, format_value: str) -> None:
@@ -618,7 +605,7 @@ class StringFormatterChecker:
         # TODO: fix column to point to actual start of the format specifier _within_ string.
         temp_ast.line = ctx.line
         temp_ast.column = ctx.column
-        self.exprchk.accept(temp_ast)
+        self.chk.expr_checker.accept(temp_ast)
         return temp_ast
 
     def validate_and_transform_accessors(
@@ -685,7 +672,7 @@ class StringFormatterChecker:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements.
         """
-        self.exprchk.accept(expr)
+        self.chk.expr_checker.accept(expr)
         specifiers = parse_conversion_specifiers(expr.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
         if has_mapping_keys is None:

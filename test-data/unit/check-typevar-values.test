@@ -20,7 +20,7 @@ if int():
     i = f(1)
     s = f('')
     o = f(1) \
-      # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[object]") \
+      # E: Incompatible types in assignment (expression has type "list[int]", variable has type "list[object]") \
       # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
@@ -592,11 +592,10 @@ class C:
     def f(self, x: T) -> T:
         L = List[S]
         y: L[C.T] = [x]
-        C.T  # E: Type variable "C.T" cannot be used as an expression
-        A = C.T  # E: Type variable "C.T" cannot be used as an expression
+        reveal_type(C.T)  # N: Revealed type is "typing.TypeVar"
         return y[0]
-
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeVarWithAnyTypeBound]
 # flags: --follow-imports=skip

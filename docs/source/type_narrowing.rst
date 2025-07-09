@@ -8,6 +8,15 @@ techniques which are supported by mypy.
 
 Type narrowing is when you convince a type checker that a broader type is actually more specific, for instance, that an object of type ``Shape`` is actually of the narrower type ``Square``.
 
+The following type narrowing techniques are available:
+
+- :ref:`type-narrowing-expressions`
+- :ref:`casts`
+- :ref:`type-guards`
+- :ref:`typeis`
+
+
+.. _type-narrowing-expressions:
 
 Type narrowing expressions
 --------------------------
@@ -356,40 +365,6 @@ What happens here?
 
   The same will work with ``isinstance(x := a, float)`` as well.
 
-Limitations
------------
-
-Mypy's analysis is limited to individual symbols and it will not track
-relationships between symbols. For example, in the following code
-it's easy to deduce that if :code:`a` is None then :code:`b` must not be,
-therefore :code:`a or b` will always be an instance of :code:`C`,
-but Mypy will not be able to tell that:
-
-.. code-block:: python
-
-    class C:
-        pass
-
-    def f(a: C | None, b: C | None) -> C:
-        if a is not None or b is not None:
-            return a or b  # Incompatible return value type (got "C | None", expected "C")
-        return C()
-
-Tracking these sort of cross-variable conditions in a type checker would add significant complexity
-and performance overhead.
-
-You can use an ``assert`` to convince the type checker, override it with a :ref:`cast <casts>`
-or rewrite the function to be slightly more verbose:
-
-.. code-block:: python
-
-    def f(a: C | None, b: C | None) -> C:
-        if a is not None:
-            return a
-        elif b is not None:
-            return b
-        return C()
-
 
 .. _typeis:
 
@@ -555,3 +530,38 @@ You can use the assignment expression operator ``:=`` with ``TypeIs`` to create 
             reveal_type(x)  # Revealed type is 'float'
             # x is narrowed to float in this block
             print(x + 1.0)
+
+
+Limitations
+-----------
+
+Mypy's analysis is limited to individual symbols and it will not track
+relationships between symbols. For example, in the following code
+it's easy to deduce that if :code:`a` is None then :code:`b` must not be,
+therefore :code:`a or b` will always be an instance of :code:`C`,
+but Mypy will not be able to tell that:
+
+.. code-block:: python
+
+    class C:
+        pass
+
+    def f(a: C | None, b: C | None) -> C:
+        if a is not None or b is not None:
+            return a or b  # Incompatible return value type (got "C | None", expected "C")
+        return C()
+
+Tracking these sort of cross-variable conditions in a type checker would add significant complexity
+and performance overhead.
+
+You can use an ``assert`` to convince the type checker, override it with a :ref:`cast <casts>`
+or rewrite the function to be slightly more verbose:
+
+.. code-block:: python
+
+    def f(a: C | None, b: C | None) -> C:
+        if a is not None:
+            return a
+        elif b is not None:
+            return b
+        return C()
