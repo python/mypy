@@ -175,7 +175,12 @@ from mypyc.primitives.registry import (
     unary_ops,
 )
 from mypyc.primitives.set_ops import new_set_op
-from mypyc.primitives.str_ops import str_check_if_true, str_ssize_t_size_op, unicode_compare
+from mypyc.primitives.str_ops import (
+    str_check_if_true,
+    str_eq,
+    str_ssize_t_size_op,
+    unicode_compare,
+)
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op, new_tuple_with_length_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
@@ -1471,6 +1476,11 @@ class LowLevelIRBuilder:
 
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
+        if op == "==":
+            return self.primitive_op(str_eq, [lhs, rhs], line)
+        elif op == "!=":
+            eq = self.primitive_op(str_eq, [lhs, rhs], line)
+            return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
         compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
         error_constant = Integer(-1, c_int_rprimitive, line)
         compare_error_check = self.add(
