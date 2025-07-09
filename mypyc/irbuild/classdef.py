@@ -64,6 +64,7 @@ from mypyc.irbuild.function import (
     handle_non_ext_method,
     load_type,
 )
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import (
@@ -135,6 +136,14 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         cls_builder = NonExtClassBuilder(builder, cdef)
 
     for stmt in cdef.defs.body:
+        if (
+            isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef))
+            and stmt.name == GENERATOR_HELPER_NAME
+        ):
+            builder.error(
+                f'Method name "{stmt.name}" is reserved for mypyc internal use', stmt.line
+            )
+
         if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
             if isinstance(cls_builder, NonExtClassBuilder):
                 # properties with both getters and setters in non_extension
