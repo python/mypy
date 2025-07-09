@@ -77,11 +77,13 @@ class Constraint:
     """
 
     type_var: TypeVarId
+    original_type_var: TypeVarLikeType
     op = 0  # SUBTYPE_OF or SUPERTYPE_OF
     target: Type
 
     def __init__(self, type_var: TypeVarLikeType, op: int, target: Type) -> None:
         self.type_var = type_var.id
+        self.original_type_var = type_var
         self.op = op
         # TODO: should we add "assert not isinstance(target, UnpackType)"?
         # UnpackType is a synthetic type, and is never valid as a constraint target.
