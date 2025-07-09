@@ -969,7 +969,10 @@ print(z)
 [case testCheckVersion]
 import sys
 
-if sys.version_info[:2] == (3, 13):
+if sys.version_info[:2] == (3, 14):
+    def version() -> int:
+        return 14
+elif sys.version_info[:2] == (3, 13):
     def version() -> int:
         return 13
 elif sys.version_info[:2] == (3, 12):
@@ -984,15 +987,6 @@ elif sys.version_info[:2] == (3, 10):
 elif sys.version_info[:2] == (3, 9):
     def version() -> int:
         return 9
-elif sys.version_info[:2] == (3, 8):
-    def version() -> int:
-        return 8
-elif sys.version_info[:2] == (3, 7):
-    def version() -> int:
-        return 7
-elif sys.version_info[:2] == (3, 6):
-    def version() -> int:
-        return 6
 else:
     raise Exception("we don't support this version yet!")
 

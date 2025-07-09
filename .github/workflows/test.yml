@@ -47,12 +47,11 @@ jobs:
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
-        - name: Test suite with py311-ubuntu, mypyc-compiled
+        - name: Test suite with py311-ubuntu
           python: '3.11'
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
-          test_mypyc: true
         - name: Test suite with py312-ubuntu, mypyc-compiled
           python: '3.12'
           os: ubuntu-24.04-arm
@@ -66,13 +65,13 @@ jobs:
           tox_extra_args: "-n 4"
           test_mypyc: true
 
-        # - name: Test suite with py314-dev-ubuntu
-        #   python: '3.14-dev'
-        #   os: ubuntu-24.04-arm
-        #   toxenv: py
-        #   tox_extra_args: "-n 4"
-        #   allow_failure: true
-        #   test_mypyc: true
+        - name: Test suite with py314-dev-ubuntu
+          python: '3.14-dev'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4"
+          # allow_failure: true
+          test_mypyc: true
 
         - name: mypyc runtime tests with py39-macos
           python: '3.9.21'
@@ -115,6 +114,8 @@ jobs:
       FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
       PY_COLORS: 1
+      # Python -- Disable argparse help colors (3.14+)
+      PYTHON_COLORS: 0
       # Mypy (see https://github.com/python/mypy/issues/7771)
       TERM: xterm-color
       MYPY_FORCE_COLOR: 1
@@ -167,7 +168,7 @@ jobs:
         echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
         echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
         echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
-        pip install setuptools==75.1.0 tox==4.21.2
+        pip install setuptools==75.1.0 tox==4.26.0
 
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
@@ -230,7 +231,7 @@ jobs:
           default: 3.11.1
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
       - name: Install tox
-        run: pip install setuptools==75.1.0 tox==4.21.2
+        run: pip install setuptools==75.1.0 tox==4.26.0
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test

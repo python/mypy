@@ -352,6 +352,53 @@ the parameters are positional-only. Example (using the legacy syntax for generic
    copy_a = copy_b  # OK
    copy_b = copy_a  # Also OK
 
+Binding of types in protocol attributes
+***************************************
+
+All protocol attributes annotations are treated as externally visible types
+of those attributes. This means that for example callables are not bound,
+and descriptors are not invoked:
+
+.. code-block:: python
+
+   from typing import Callable, Protocol, overload
+
+   class Integer:
+       @overload
+       def __get__(self, instance: None, owner: object) -> Integer: ...
+       @overload
+       def __get__(self, instance: object, owner: object) -> int: ...
+       # <some implementation>
+
+   class Example(Protocol):
+       foo: Callable[[object], int]
+       bar: Integer
+
+   ex: Example
+   reveal_type(ex.foo)  # Revealed type is Callable[[object], int]
+   reveal_type(ex.bar)  # Revealed type is Integer
+
+In other words, protocol attribute types are handled as they would appear in a
+``self`` attribute annotation in a regular class. If you want some protocol
+attributes to be handled as though they were defined at class level, you should
+declare them explicitly using ``ClassVar[...]``. Continuing previous example:
+
+.. code-block:: python
+
+   from typing import ClassVar
+
+   class OtherExample(Protocol):
+       # This style is *not recommended*, but may be needed to reuse
+       # some complex callable types. Otherwise use regular methods.
+       foo: ClassVar[Callable[[object], int]]
+       # This may be needed to mimic descriptor access on Type[...] types,
+       # otherwise use a plain "bar: int" style.
+       bar: ClassVar[Integer]
+
+   ex2: OtherExample
+   reveal_type(ex2.foo)  # Revealed type is Callable[[], int]
+   reveal_type(ex2.bar)  # Revealed type is int
+
 .. _predefined_protocols_reference:
 
 Predefined protocol reference

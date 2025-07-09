@@ -21,6 +21,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    CString,
     DecRef,
     Extend,
     Float,
@@ -220,19 +221,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = %s(%s)", op, op.function_name, args_str)
 
     def visit_primitive_op(self, op: PrimitiveOp) -> str:
-        args = []
-        arg_index = 0
-        type_arg_index = 0
-        for arg_type in zip(op.desc.arg_types):
-            if arg_type:
-                args.append(self.format("%r", op.args[arg_index]))
-                arg_index += 1
-            else:
-                assert op.type_args
-                args.append(self.format("%r", op.type_args[type_arg_index]))
-                type_arg_index += 1
-
-        args_str = ", ".join(args)
+        args_str = ", ".join(self.format("%r", arg) for arg in op.args)
         if op.is_void:
             return self.format("%s %s", op.desc.name, args_str)
         else:
@@ -339,6 +328,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                         result.append(str(arg.value))
                     elif isinstance(arg, Float):
                         result.append(repr(arg.value))
+                    elif isinstance(arg, CString):
+                        result.append(f"CString({arg.value!r})")
                     else:
                         result.append(self.names[arg])
                 elif typespec == "d":

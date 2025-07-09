@@ -95,6 +95,11 @@ class FuncInfo:
         assert self._curr_env_reg is not None
         return self._curr_env_reg
 
+    def can_merge_generator_and_env_classes(self) -> bool:
+        # In simple cases we can place the environment into the generator class,
+        # instead of having two separate classes.
+        return self.is_generator and not self.is_nested and not self.contains_nested
+
 
 class ImplicitClass:
     """Contains information regarding implicitly generated classes.
@@ -161,6 +166,11 @@ class GeneratorClass(ImplicitClass):
 
         # Holds the arg passed to send
         self.send_arg_reg: Value | None = None
+
+        # Holds the PyObject ** pointer through which return value can be passed
+        # instead of raising StopIteration(ret_value) (only if not NULL). This
+        # is used for faster native-to-native calls.
+        self.stop_iter_value_reg: Value | None = None
 
         # The switch block is used to decide which instruction to go using the value held in the
         # next-label register.

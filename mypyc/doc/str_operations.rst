@@ -12,6 +12,8 @@ Construction
 * String literal
 * ``str(x: int)``
 * ``str(x: object)``
+* ``repr(x: int)``
+* ``repr(x: object)``
 
 Operators
 ---------
@@ -37,6 +39,8 @@ Methods
 * ``s1.find(s2: str, start: int)``
 * ``s1.find(s2: str, start: int, end: int)``
 * ``s.join(x: Iterable)``
+* ``s.lstrip()``
+* ``s.lstrip(chars: str)``
 * ``s.partition(sep: str)``
 * ``s.removeprefix(prefix: str)``
 * ``s.removesuffix(suffix: str)``
@@ -49,6 +53,8 @@ Methods
 * ``s.rsplit()``
 * ``s.rsplit(sep: str)``
 * ``s.rsplit(sep: str, maxsplit: int)``
+* ``s.rstrip()``
+* ``s.rstrip(chars: str)``
 * ``s.split()``
 * ``s.split(sep: str)``
 * ``s.split(sep: str, maxsplit: int)``
@@ -56,6 +62,8 @@ Methods
 * ``s.splitlines(keepends: bool)``
 * ``s1.startswith(s2: str)``
 * ``s1.startswith(t: tuple[str, ...])``
+* ``s.strip()``
+* ``s.strip(chars: str)``
 
 .. note::
 

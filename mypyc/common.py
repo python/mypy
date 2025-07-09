@@ -88,6 +88,10 @@ RUNTIME_C_FILES: Final = [
 # some details in the PEP are out of date.
 HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)
 
+# Are we running on a free-threaded build (GIL disabled)? This implies that
+# we are on Python 3.13 or later.
+IS_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
 
 JsonDict = dict[str, Any]
 
