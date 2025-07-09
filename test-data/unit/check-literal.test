@@ -1206,6 +1206,13 @@ reveal_type(a)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]
 [builtins fixtures/dict.pyi]
 [out]
 
+[case testLiteralMappingContext]
+from typing import Mapping, Literal
+
+x: Mapping[str, Literal["sum", "mean", "max", "min"]] = {"x": "sum"}
+
+[builtins fixtures/dict.pyi]
+
 [case testLiteralInferredInOverloadContextBasic]
 from typing import Literal, overload
 
