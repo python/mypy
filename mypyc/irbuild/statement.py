@@ -90,6 +90,7 @@ from mypyc.irbuild.nonlocalcontrol import (
     FinallyNonlocalControl,
     TryFinallyNonlocalControl,
 )
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import (
     AssignmentTarget,
     AssignmentTargetAttr,
@@ -933,7 +934,7 @@ def emit_yield_from_or_await(
     to_yield_reg = Register(object_rprimitive)
     received_reg = Register(object_rprimitive)
 
-    helper_method = "__mypyc_generator_helper__"
+    helper_method = GENERATOR_HELPER_NAME
     if (
         isinstance(val, (Call, MethodCall))
         and isinstance(val.type, RInstance)
