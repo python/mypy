@@ -489,11 +489,11 @@ def test_from_gen() -> None:
 [case testNext]
 from typing import List
 
-def get_next(x: List[int]) -> int | None:
-    return next((i for i in x), None)
+def get_next(x: List[int]) -> int:
+    return next((i for i in x), -1)
 
 def test_next() -> None:
-    assert get_next([]) is None
+    assert get_next([]) == -1
     assert get_next([1]) == 1
     assert get_next([3,2,1]) == 3
 
