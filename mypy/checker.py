@@ -7889,6 +7889,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
 
+    def is_defined_in_stub(self, typ: Instance, /) -> bool:
+        return self.modules[typ.type.module_name].is_stub
+
     def check_deprecated(self, node: Node | None, context: Context) -> None:
         """Warn if deprecated and not directly imported with a `from` statement."""
         if isinstance(node, Decorator):
