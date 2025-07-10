@@ -251,6 +251,7 @@ def infer_constraints_for_callable(
                     )
                     c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
                     constraints.extend(c)
+
     if (
         param_spec
         and not any(c.type_var == param_spec.id for c in constraints)
@@ -270,6 +271,8 @@ def infer_constraints_for_callable(
                 ),
             )
         )
+
+    constraints = [c for i, c in enumerate(constraints) if c not in constraints[:i]]
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
