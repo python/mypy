@@ -272,7 +272,7 @@ def infer_constraints_for_callable(
             )
         )
 
-    constraints = [c for i, c in enumerate(constraints) if c not in constraints[:i]]
+    constraints = list(dict.fromkeys(constraints))
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
