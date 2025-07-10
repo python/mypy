@@ -42,8 +42,7 @@ from mypyc.ir.rtypes import (
     cstring_rprimitive,
     float_rprimitive,
     int_rprimitive,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
@@ -1089,11 +1088,7 @@ class Box(RegisterOp):
         self.src = src
         self.type = object_rprimitive
         # When we box None and bool values, we produce a borrowed result
-        if (
-            is_none_rprimitive(self.src.type)
-            or is_bool_rprimitive(self.src.type)
-            or is_bit_rprimitive(self.src.type)
-        ):
+        if is_none_rprimitive(self.src.type) or is_bool_or_bit_rprimitive(self.src.type):
             self.is_borrowed = True
 
     def sources(self) -> list[Value]:

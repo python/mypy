@@ -726,6 +726,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 #define RIGHTSTRIP 1
 #define BOTHSTRIP  2
 
+char CPyStr_Equal(PyObject *str1, PyObject *str2);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);

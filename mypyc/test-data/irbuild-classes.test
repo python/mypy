@@ -1383,3 +1383,28 @@ class M(type):  # E: Inheriting from most builtin types is unimplemented \
 @mypyc_attr(native_class=True)
 class A(metaclass=M):  # E: Class is marked as native_class=True but it can't be a native class. Classes with a metaclass other than ABCMeta, TypingMeta or GenericMeta can't be native classes.
     pass
+
+[case testReservedName]
+from typing import Any, overload
+
+def decorator(cls):
+    return cls
+
+class TestMethod:
+    def __mypyc_generator_helper__(self) -> None:  # E: Method name "__mypyc_generator_helper__" is reserved for mypyc internal use
+        pass
+
+class TestDecorator:
+    @decorator  # E: Method name "__mypyc_generator_helper__" is reserved for mypyc internal use
+    def __mypyc_generator_helper__(self) -> None:
+        pass
+
+class TestOverload:
+    @overload # E: Method name "__mypyc_generator_helper__" is reserved for mypyc internal use
+    def __mypyc_generator_helper__(self, x: int) -> int: ...
+
+    @overload
+    def __mypyc_generator_helper__(self, x: str) -> str: ...
+
+    def __mypyc_generator_helper__(self, x: Any) -> Any:
+        return x

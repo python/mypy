@@ -582,6 +582,10 @@ def is_bit_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == "bit"
 
 
+def is_bool_or_bit_rprimitive(rtype: RType) -> bool:
+    return is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype)
+
+
 def is_object_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.object"
 

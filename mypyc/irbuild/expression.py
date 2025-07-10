@@ -359,7 +359,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
     ):
         # Call a method via the *class*
-        assert isinstance(callee.expr.node, TypeInfo)
+        assert isinstance(callee.expr.node, TypeInfo), callee.expr.node
         ir = builder.mapper.type_to_ir[callee.expr.node]
         return call_classmethod(builder, ir, expr, callee)
     elif builder.is_module_member_expr(callee):
@@ -722,7 +722,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             mypy_file = builder.graph["builtins"].tree
             assert mypy_file is not None
             info = mypy_file.names["bool"].node
-            assert isinstance(info, TypeInfo)
+            assert isinstance(info, TypeInfo), info
             bool_type = Instance(info, [])
             exprs = []
             for item in items:
