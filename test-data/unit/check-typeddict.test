@@ -1164,22 +1164,21 @@ fc(b) # E: Argument 1 to "fc" has incompatible type "B"; expected "C"
 from typing import TypedDict, TypeVar
 A = TypedDict('A', {'x': int})
 B = TypedDict('B', {'x': int}, total=False)
+B2 = TypedDict('B2', {'x': int}, total=False)
 C = TypedDict('C', {'x': int, 'y': str}, total=False)
+C2 = TypedDict('C2', {'x': int, 'y': str}, total=False)
 T = TypeVar('T')
 def j(x: T, y: T) -> T: return x
 a: A
 b: B
+b2: B2
 c: C
-reveal_type(j(a, b)) \
-    # N: Revealed type is "TypedDict({})"
-reveal_type(j(b, b)) \
-    # N: Revealed type is "TypedDict({'x'?: builtins.int})"
-reveal_type(j(c, c)) \
-    # N: Revealed type is "TypedDict({'x'?: builtins.int, 'y'?: builtins.str})"
-reveal_type(j(b, c)) \
-    # N: Revealed type is "TypedDict({'x'?: builtins.int})"
-reveal_type(j(c, b)) \
-    # N: Revealed type is "TypedDict({'x'?: builtins.int})"
+c2: C2
+reveal_type(j(a, b)) # N: Revealed type is "TypedDict({})"
+reveal_type(j(b, b2)) # N: Revealed type is "TypedDict({'x'?: builtins.int})"
+reveal_type(j(c, c2)) # N: Revealed type is "TypedDict({'x'?: builtins.int, 'y'?: builtins.str})"
+reveal_type(j(b, c)) # N: Revealed type is "TypedDict({'x'?: builtins.int})"
+reveal_type(j(c, b)) # N: Revealed type is "TypedDict({'x'?: builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
