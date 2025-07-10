@@ -277,6 +277,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_defined_in_stub(self, typ: Instance, /) -> bool:
+        raise NotImplementedError
+
 
 class CheckerScope:
     # We keep two stacks combined, to maintain the relative order

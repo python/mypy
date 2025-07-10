@@ -17,7 +17,7 @@ from collections.abc import Iterable, Sequence
 from typing import TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.checker import TypeChecker
+from mypy.checker_shared import TypeCheckerSharedApi
 from mypy.nodes import TypeInfo, Var
 from mypy.subtypes import is_equivalent
 from mypy.typeops import fixup_partial_type, make_simplified_union
@@ -122,8 +122,8 @@ def _infer_value_type_with_auto_fallback(
 
 
 def _is_defined_in_stub(ctx: mypy.plugin.AttributeContext) -> bool:
-    assert isinstance(ctx.api, TypeChecker)
-    return isinstance(ctx.type, Instance) and ctx.api.modules[ctx.type.type.module_name].is_stub
+    assert isinstance(ctx.api, TypeCheckerSharedApi)
+    return isinstance(ctx.type, Instance) and ctx.api.is_defined_in_stub(ctx.type)
 
 
 def _implements_new(info: TypeInfo) -> bool:
