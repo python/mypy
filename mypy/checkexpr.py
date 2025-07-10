@@ -5064,10 +5064,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         Limitations:
          - no active type context
          - no star expressions
-         - the joined type of all entries must be an Instance or Tuple type
+         - not after deferral
+         - either exactly one distinct type inside,
+           or the joined type of all entries must be an Instance or Tuple type
         """
         ctx = self.type_context[-1]
         if ctx:
+            return None
+        if self.chk.current_node_deferred:
+            # Guarantees that all items will be Any, we'll reject it anyway.
             return None
         rt = self.resolved_type.get(e, None)
         if rt is not None:
@@ -5078,11 +5083,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # fallback to slow path
                 self.resolved_type[e] = NoneType()
                 return None
-            values.append(self.accept(item))
 
-        values = [v for i, v in enumerate(values) if v not in values[:i]]
-        if len(values) == 1:
-            # If only one non-duplicate item remains, there's no need running whole
+            typ = self.accept(item)
+            if typ not in values:
+                values.append(typ)
+
+        if len(values) == 1 and not self.chk.current_node_deferred:
+            # If only one non-duplicate item remains, there's no need to run the whole
             # inference cycle over it. This helps in pathological cases where items
             # are complex overloads.
             # https://github.com/python/mypy/issues/14718
