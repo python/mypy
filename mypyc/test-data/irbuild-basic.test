@@ -1895,18 +1895,16 @@ def f():
     r0, r1 :: list
     r2, r3, r4 :: object
     r5 :: ptr
-    r6 :: short_int
-    r7 :: native_int
-    r8 :: short_int
-    r9 :: bit
-    r10 :: object
-    r11, x :: int
-    r12, r13 :: bit
-    r14 :: int
-    r15 :: object
-    r16 :: i32
-    r17 :: bit
-    r18 :: short_int
+    r6, r7 :: native_int
+    r8 :: bit
+    r9 :: object
+    r10, x :: int
+    r11, r12 :: bit
+    r13 :: int
+    r14 :: object
+    r15 :: i32
+    r16 :: bit
+    r17 :: native_int
 L0:
     r0 = PyList_New(0)
     r1 = PyList_New(3)
@@ -1921,30 +1919,29 @@ L0:
     r6 = 0
 L1:
     r7 = var_object_size r1
-    r8 = r7 << 1
-    r9 = int_lt r6, r8
-    if r9 goto L2 else goto L8 :: bool
+    r8 = r6 < r7 :: signed
+    if r8 goto L2 else goto L8 :: bool
 L2:
-    r10 = list_get_item_unsafe r1, r6
-    r11 = unbox(int, r10)
-    x = r11
-    r12 = int_ne x, 4
-    if r12 goto L4 else goto L3 :: bool
+    r9 = list_get_item_unsafe r1, r6
+    r10 = unbox(int, r9)
+    x = r10
+    r11 = int_ne x, 4
+    if r11 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r13 = int_ne x, 6
-    if r13 goto L6 else goto L5 :: bool
+    r12 = int_ne x, 6
+    if r12 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r14 = CPyTagged_Multiply(x, x)
-    r15 = box(int, r14)
-    r16 = PyList_Append(r0, r15)
-    r17 = r16 >= 0 :: signed
+    r13 = CPyTagged_Multiply(x, x)
+    r14 = box(int, r13)
+    r15 = PyList_Append(r0, r14)
+    r16 = r15 >= 0 :: signed
 L7:
-    r18 = r6 + 2
-    r6 = r18
+    r17 = r6 + 1
+    r6 = r17
     goto L1
 L8:
     return r0
@@ -1959,18 +1956,16 @@ def f():
     r1 :: list
     r2, r3, r4 :: object
     r5 :: ptr
-    r6 :: short_int
-    r7 :: native_int
-    r8 :: short_int
-    r9 :: bit
-    r10 :: object
-    r11, x :: int
-    r12, r13 :: bit
-    r14 :: int
-    r15, r16 :: object
-    r17 :: i32
-    r18 :: bit
-    r19 :: short_int
+    r6, r7 :: native_int
+    r8 :: bit
+    r9 :: object
+    r10, x :: int
+    r11, r12 :: bit
+    r13 :: int
+    r14, r15 :: object
+    r16 :: i32
+    r17 :: bit
+    r18 :: native_int
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
@@ -1985,31 +1980,30 @@ L0:
     r6 = 0
 L1:
     r7 = var_object_size r1
-    r8 = r7 << 1
-    r9 = int_lt r6, r8
-    if r9 goto L2 else goto L8 :: bool
+    r8 = r6 < r7 :: signed
+    if r8 goto L2 else goto L8 :: bool
 L2:
-    r10 = list_get_item_unsafe r1, r6
-    r11 = unbox(int, r10)
-    x = r11
-    r12 = int_ne x, 4
-    if r12 goto L4 else goto L3 :: bool
+    r9 = list_get_item_unsafe r1, r6
+    r10 = unbox(int, r9)
+    x = r10
+    r11 = int_ne x, 4
+    if r11 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r13 = int_ne x, 6
-    if r13 goto L6 else goto L5 :: bool
+    r12 = int_ne x, 6
+    if r12 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r14 = CPyTagged_Multiply(x, x)
-    r15 = box(int, x)
-    r16 = box(int, r14)
-    r17 = CPyDict_SetItem(r0, r15, r16)
-    r18 = r17 >= 0 :: signed
+    r13 = CPyTagged_Multiply(x, x)
+    r14 = box(int, x)
+    r15 = box(int, r13)
+    r16 = CPyDict_SetItem(r0, r14, r15)
+    r17 = r16 >= 0 :: signed
 L7:
-    r19 = r6 + 2
-    r6 = r19
+    r18 = r6 + 1
+    r6 = r18
     goto L1
 L8:
     return r0
@@ -2023,74 +2017,66 @@ def f(l: List[Tuple[int, int, int]]) -> List[int]:
 [out]
 def f(l):
     l :: list
-    r0 :: short_int
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: bit
-    r4 :: object
-    r5 :: tuple[int, int, int]
-    r6, x, r7, y, r8, z :: int
-    r9 :: short_int
-    r10 :: native_int
-    r11 :: list
-    r12 :: short_int
-    r13 :: native_int
-    r14 :: short_int
-    r15 :: bit
-    r16 :: object
-    r17 :: tuple[int, int, int]
-    r18, x_2, r19, y_2, r20, z_2, r21, r22 :: int
-    r23 :: object
-    r24 :: bit
-    r25 :: short_int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4 :: tuple[int, int, int]
+    r5, x, r6, y, r7, z :: int
+    r8, r9 :: native_int
+    r10 :: list
+    r11, r12 :: native_int
+    r13 :: bit
+    r14 :: object
+    r15 :: tuple[int, int, int]
+    r16, x_2, r17, y_2, r18, z_2, r19, r20 :: int
+    r21 :: object
+    r22 :: native_int
 L0:
     r0 = 0
 L1:
     r1 = var_object_size l
-    r2 = r1 << 1
-    r3 = int_lt r0, r2
-    if r3 goto L2 else goto L4 :: bool
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r4 = list_get_item_unsafe l, r0
-    r5 = unbox(tuple[int, int, int], r4)
-    r6 = r5[0]
-    x = r6
-    r7 = r5[1]
-    y = r7
-    r8 = r5[2]
-    z = r8
+    r3 = list_get_item_unsafe l, r0
+    r4 = unbox(tuple[int, int, int], r3)
+    r5 = r4[0]
+    x = r5
+    r6 = r4[1]
+    y = r6
+    r7 = r4[2]
+    z = r7
 L3:
-    r9 = r0 + 2
-    r0 = r9
+    r8 = r0 + 1
+    r0 = r8
     goto L1
 L4:
-    r10 = var_object_size l
-    r11 = PyList_New(r10)
-    r12 = 0
+    r9 = var_object_size l
+    r10 = PyList_New(r9)
+    r11 = 0
 L5:
-    r13 = var_object_size l
-    r14 = r13 << 1
-    r15 = int_lt r12, r14
-    if r15 goto L6 else goto L8 :: bool
+    r12 = var_object_size l
+    r13 = r11 < r12 :: signed
+    if r13 goto L6 else goto L8 :: bool
 L6:
-    r16 = list_get_item_unsafe l, r12
-    r17 = unbox(tuple[int, int, int], r16)
-    r18 = r17[0]
-    x_2 = r18
-    r19 = r17[1]
-    y_2 = r19
-    r20 = r17[2]
-    z_2 = r20
-    r21 = CPyTagged_Add(x_2, y_2)
-    r22 = CPyTagged_Add(r21, z_2)
-    r23 = box(int, r22)
-    r24 = CPyList_SetItemUnsafe(r11, r12, r23)
+    r14 = list_get_item_unsafe l, r11
+    r15 = unbox(tuple[int, int, int], r14)
+    r16 = r15[0]
+    x_2 = r16
+    r17 = r15[1]
+    y_2 = r17
+    r18 = r15[2]
+    z_2 = r18
+    r19 = CPyTagged_Add(x_2, y_2)
+    r20 = CPyTagged_Add(r19, z_2)
+    r21 = box(int, r20)
+    CPyList_SetItemUnsafe(r10, r11, r21)
 L7:
-    r25 = r12 + 2
-    r12 = r25
+    r22 = r11 + 1
+    r11 = r22
     goto L5
 L8:
-    return r11
+    return r10
 
 [case testProperty]
 class PropertyHolder:
