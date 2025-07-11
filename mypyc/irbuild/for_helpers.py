@@ -44,6 +44,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     bool_rprimitive,
+    c_pyssize_t_rprimitive,
     int_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
@@ -75,6 +76,7 @@ from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, n
 from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
+from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 GenFunc = Callable[[], None]
 
@@ -586,7 +588,9 @@ class ForGenerator:
 
     def load_len(self, expr: Value | AssignmentTarget) -> Value:
         """A helper to get collection length, used by several subclasses."""
-        return self.builder.builder.builtin_len(self.builder.read(expr, self.line), self.line)
+        return self.builder.builder.builtin_len(
+            self.builder.read(expr, self.line), self.line, use_pyssize_t=True
+        )
 
 
 class ForIterable(ForGenerator):
@@ -766,6 +770,8 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # so we just check manually.
     if is_list_rprimitive(target.type):
         return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+    elif is_tuple_rprimitive(target.type):
+        return builder.call_c(tuple_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, "__getitem__", [index], None, line)
 
@@ -784,11 +790,9 @@ class ForSequence(ForGenerator):
         # environment class.
         self.expr_target = builder.maybe_spill(expr_reg)
         if not reverse:
-            index_reg: Value = Integer(0)
+            index_reg: Value = Integer(0, c_pyssize_t_rprimitive)
         else:
-            index_reg = builder.binary_op(
-                self.load_len(self.expr_target), Integer(1), "-", self.line
-            )
+            index_reg = builder.builder.int_sub(self.load_len(self.expr_target), 1)
         self.index_target = builder.maybe_spill_assignable(index_reg)
         self.target_type = target_type
 
@@ -838,13 +842,7 @@ class ForSequence(ForGenerator):
         builder = self.builder
         line = self.line
         step = 1 if not self.reverse else -1
-        add = builder.int_op(
-            short_int_rprimitive,
-            builder.read(self.index_target, line),
-            Integer(step),
-            IntOp.ADD,
-            line,
-        )
+        add = builder.builder.int_add(builder.read(self.index_target, line), step)
         builder.assign(self.index_target, add, line)
 
 
