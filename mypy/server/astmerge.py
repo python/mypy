@@ -351,6 +351,9 @@ class NodeReplaceVisitor(TraverserVisitor):
                 # in external types (e.g. named tuples), so we need to update it manually.
                 skip_slots = ("special_alias",)
                 replace_object_state(new.special_alias, node.special_alias)
+            if isinstance(node, OverloadedFuncDef) and isinstance(new, OverloadedFuncDef):
+                # Non-settable property that can raise AssertionError's during patching
+                skip_slots = ("setter",)
             replace_object_state(new, node, skip_slots=skip_slots)
             return cast(SN, new)
         return node
