@@ -125,6 +125,7 @@ async def g() -> None:
 [typing fixtures/typing-async.pyi]
 [out]
 <m.f> -> m.g
+<types.CoroutineType> -> <m.g>, m.g
 
 [case testStarExpr]
 from typing import Iterator
