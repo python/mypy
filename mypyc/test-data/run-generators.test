@@ -617,15 +617,21 @@ else:
 from typing import Iterator
 
 class Foo:
-    flag: bool
+    flag = False
 
 class C:
-    foo: Foo
+    foo = Foo()
 
     def genf(self) -> Iterator[None]:
         self.foo.flag = True
         yield
         self.foo.flag = False
+
+def test_near_yield() -> None:
+    c = C()
+    for x in c.genf():
+        pass
+    assert c.foo.flag == False
 
 [case testGeneratorEarlyReturnWithBorrows]
 from typing import Iterator
@@ -638,6 +644,12 @@ class Foo:
             self.bar.bar += 1
             return
         yield 0
+
+def test_early_return() -> None:
+    foo = Foo()
+    for x in foo.f():
+        pass
+    assert foo.bar.bar == 1
 
 [case testBorrowingInGeneratorInTupleAssignment]
 from typing import Iterator

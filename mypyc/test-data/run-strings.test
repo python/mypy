@@ -363,7 +363,6 @@ def test_str_min_max() -> None:
     assert max(x, z) == 'aaa'
 
 [case testStringFormattingCStyle]
-[typing fixtures/typing-full.pyi]
 from typing import Tuple
 
 var = 'mypyc'
@@ -408,6 +407,7 @@ def test_basics() -> None:
     inf_num = float('inf')
     assert '%s, %s' % (nan_num, inf_num) == 'nan, inf'
     assert '%f, %f' % (nan_num, inf_num) == 'nan, inf'
+[typing fixtures/typing-full.pyi]
 
 [case testFStrings]
 import decimal
