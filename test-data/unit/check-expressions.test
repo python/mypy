@@ -313,6 +313,7 @@ from typing import TypeVar, Generic, Iterable, Iterator, Union
 
 T = TypeVar("T")
 S = TypeVar("S")
+IntOrStr = TypeVar("IntOrStr", bound=Union[int, str])
 
 class Vec(Generic[T]):
     def __init__(self, iterable: Iterable[T], /) -> None: ...
@@ -320,10 +321,13 @@ class Vec(Generic[T]):
     def __add__(self, value: "Vec[S]", /) -> "Vec[Union[S, T]]": return Vec([])
 
 def fmt(arg: Iterable[Union[int, str]]) -> None: ...
+def first(arg: Iterable[IntOrStr]) -> IntOrStr: ...
 
-l1: Vec[int] = Vec([1])
-l2: Vec[int] = Vec([1])
-fmt(l1 + l2)
+def test_fmt(l1: Vec[int], l2: Vec[int], /) -> None:
+    fmt(l1 + l2)
+
+def test_first(l1: Vec[int], l2: Vec[int], /) -> None:
+    first(l1 + l2)
 [builtins fixtures/list.pyi]
 
 [case testBooleanAndOr]
