@@ -59,14 +59,6 @@ PyObject *CPyList_Copy(PyObject *list) {
     return PyObject_CallMethodNoArgs(list, name);
 }
 
-
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
-    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-    PyObject *result = PyList_GET_ITEM(list, n);
-    Py_INCREF(result);
-    return result;
-}
-
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
     Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
     Py_ssize_t size = PyList_GET_SIZE(list);
