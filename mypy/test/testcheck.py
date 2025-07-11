@@ -45,6 +45,8 @@ if sys.version_info < (3, 12):
     typecheck_files.remove("check-python312.test")
 if sys.version_info < (3, 13):
     typecheck_files.remove("check-python313.test")
+if sys.version_info < (3, 14):
+    typecheck_files.remove("check-python314.test")
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform not in ("darwin", "win32"):

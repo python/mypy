@@ -27,6 +27,8 @@ class ParserSuite(DataSuite):
         files.remove("parse-python312.test")
     if sys.version_info < (3, 13):
         files.remove("parse-python313.test")
+    if sys.version_info < (3, 14):
+        files.remove("parse-python314.test")
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -46,6 +48,8 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
         options.python_version = (3, 12)
     elif testcase.file.endswith("python313.test"):
         options.python_version = (3, 13)
+    elif testcase.file.endswith("python314.test"):
+        options.python_version = (3, 14)
     else:
         options.python_version = defaults.PYTHON3_VERSION
 
