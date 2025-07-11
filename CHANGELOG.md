@@ -2,6 +2,16 @@
 
 ## Next Release
 
+## Mypy 1.17 (Unreleased)
+
+We’ve just uploaded mypy 1.17 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features and bug fixes.
+You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
 ### Remove Support for targeting Python 3.8
 
 Mypy now requires `--python-version 3.9` or greater. Support for only Python 3.8 is
@@ -28,6 +38,119 @@ Contributed by Marc Mueller (PR [19164](https://github.com/python/mypy/pull/1916
 Mypy only supports Python 3.9+. The \--force-uppercase-builtins flag is now deprecated and a no-op. It will be removed in a future version.
 
 Contributed by Marc Mueller (PR [19176](https://github.com/python/mypy/pull/19176))
+
+### Mypyc Fixes and Improvements
+
+* Fix exception swallowing in async try/finally blocks with await (Chainfire, PR [19353](https://github.com/python/mypy/pull/19353))
+* Fix AttributeError in async try/finally with mixed return paths (Chainfire, PR [19361](https://github.com/python/mypy/pull/19361))
+* Derive .c file name from full module name if using multi_file (Jukka Lehtosalo, PR [19278](https://github.com/python/mypy/pull/19278))
+* Support overriding the group name used in output files (Jukka Lehtosalo, PR [19272](https://github.com/python/mypy/pull/19272))
+* Make generated generator helper method internal (Jukka Lehtosalo, PR [19268](https://github.com/python/mypy/pull/19268))
+* Add note about using non-native class to subclass built-in types (Jukka Lehtosalo, PR [19236](https://github.com/python/mypy/pull/19236))
+* Make some generated classes implicitly final (Jukka Lehtosalo, PR [19235](https://github.com/python/mypy/pull/19235))
+* Free coroutine after await encounters StopIteration (Jukka Lehtosalo, PR [19231](https://github.com/python/mypy/pull/19231))
+* Use non-tagged integer for generator label (Jukka Lehtosalo, PR [19218](https://github.com/python/mypy/pull/19218))
+* Merge generator and environment classes in simple cases (Jukka Lehtosalo, PR [19207](https://github.com/python/mypy/pull/19207))
+* Don't simplify module prefixes if using separate compilation (Jukka Lehtosalo, PR [19206](https://github.com/python/mypy/pull/19206))
+* Test function nesting with async functions (Jukka Lehtosalo, PR [19203](https://github.com/python/mypy/pull/19203))
+* Enable partial, unsafe support for free-threading (Jukka Lehtosalo, PR [19167](https://github.com/python/mypy/pull/19167))
+* Add comment about incref/decref and free-threaded builds (Jukka Lehtosalo, PR [19155](https://github.com/python/mypy/pull/19155))
+* Refactor extension module C generation and generated C (Jukka Lehtosalo, PR [19126](https://github.com/python/mypy/pull/19126))
+* Fix incref/decref on free-threaded builds (Jukka Lehtosalo, PR [19127](https://github.com/python/mypy/pull/19127))
+* Remove last unreachable block from mypyc code (Stanislav Terliakov, PR [19086](https://github.com/python/mypy/pull/19086))
+
+### Stubgen Improvements
+
+* stubgen: add test case for handling `Incomplete` return types (Alexey Makridenko, PR [19253](https://github.com/python/mypy/pull/19253))
+* stubgen: add import for `types` in `__exit__` method signature (Alexey Makridenko, PR [19120](https://github.com/python/mypy/pull/19120))
+* stubgenc: add support for including class and property docstrings (Chad Dombrova, PR [17964](https://github.com/python/mypy/pull/17964))
+* stubgen: Don't generate `Incomplete | None = None` argument annotation (Sebastian Rittau, PR [19097](https://github.com/python/mypy/pull/19097))
+* Support several more constructs in stubgen's AliasPrinter (Stanislav Terliakov, PR [18888](https://github.com/python/mypy/pull/18888))
+
+### Stubtest Improvements
+
+* Syntax error messages capitalization (Charulata, PR [19114](https://github.com/python/mypy/pull/19114))
+
+### Miscellaneous Fixes and Improvements
+
+* Combine the revealed types of multiple iteration steps in a more robust manner (Christoph Tyralla, PR [19324](https://github.com/python/mypy/pull/19324))
+* Improve the handling of "iteration dependent" errors and notes in finally clauses (Christoph Tyralla, PR [19270](https://github.com/python/mypy/pull/19270))
+* Lessen dmypy suggest path limitations for Windows machines (CoolCat467, PR [19337](https://github.com/python/mypy/pull/19337))
+* Type ignore comments erroneously marked as unused by dmypy (Charlie Denton, PR [15043](https://github.com/python/mypy/pull/15043))
+* Handle corner case: protocol vs classvar vs descriptor (Ivan Levkivskyi, PR [19277](https://github.com/python/mypy/pull/19277))
+* Fix `exhaustive-match` error code in title (johnthagen, PR [19276](https://github.com/python/mypy/pull/19276))
+* Fix couple inconsistencies in protocols vs TypeType (Ivan Levkivskyi, PR [19267](https://github.com/python/mypy/pull/19267))
+* Fix missing error context for unpacking assignment involving star expression (Brian Schubert, PR [19258](https://github.com/python/mypy/pull/19258))
+* Fix and simplify error de-duplication (Ivan Levkivskyi, PR [19247](https://github.com/python/mypy/pull/19247))
+* Add regression test for narrowing union of mixins (Shantanu, PR [19266](https://github.com/python/mypy/pull/19266))
+* Disallow `ClassVar` in type aliases (Brian Schubert, PR [19263](https://github.com/python/mypy/pull/19263))
+* Refactor/unify access to static attributes (Ivan Levkivskyi, PR [19254](https://github.com/python/mypy/pull/19254))
+* Clean-up and move operator access to checkmember.py (Ivan Levkivskyi, PR [19250](https://github.com/python/mypy/pull/19250))
+* Add script that prints compiled files when self compiling (Jukka Lehtosalo, PR [19260](https://github.com/python/mypy/pull/19260))
+* Fix help message url for "None and Optional handling" section (Guy Wilson, PR [19252](https://github.com/python/mypy/pull/19252))
+* Display FQN for imported base classes in errors about incompatible overrides (Mikhail Golubev, PR [19115](https://github.com/python/mypy/pull/19115))
+* Fix a minor merge conflict caused by #19118 (Christoph Tyralla, PR [19246](https://github.com/python/mypy/pull/19246))
+* Avoid false `unreachable`, `redundant-expr`, and `redundant-casts` warnings in loops more robustly and efficiently, and avoid multiple `revealed type` notes for the same line (Christoph Tyralla, PR [19118](https://github.com/python/mypy/pull/19118))
+* Fix type extraction from `isinstance` checks (Stanislav Terliakov, PR [19223](https://github.com/python/mypy/pull/19223))
+* Erase stray typevars in functools.partial generic (Stanislav Terliakov, PR [18954](https://github.com/python/mypy/pull/18954))
+* Make infer_condition_value recognize the whole truth table (Stanislav Terliakov, PR [18944](https://github.com/python/mypy/pull/18944))
+* Support type aliases, `NamedTuple` and `TypedDict` in constrained TypeVar defaults (Stanislav Terliakov, PR [18884](https://github.com/python/mypy/pull/18884))
+* Move dataclass kw_only fields to the end of the signature (Stanislav Terliakov, PR [19018](https://github.com/python/mypy/pull/19018))
+* Deprecated --force-uppercase-builtins flag (Marc Mueller, PR [19176](https://github.com/python/mypy/pull/19176))
+* Provide a better fallback value for the python_version option (Marc Mueller, PR [19162](https://github.com/python/mypy/pull/19162))
+* Avoid spurious non-overlapping eq error with metaclass with `__eq__` (Michael J. Sullivan, PR [19220](https://github.com/python/mypy/pull/19220))
+* Remove --show-speed-regression in primer (Shantanu, PR [19226](https://github.com/python/mypy/pull/19226))
+* Add flag to raise error if match statement does not match exaustively (Donal Burns, PR [19144](https://github.com/python/mypy/pull/19144))
+* Narrow type variable bounds in binder (Ivan Levkivskyi, PR [19183](https://github.com/python/mypy/pull/19183))
+* Add regression test for dataclass typeguard (Shantanu, PR [19214](https://github.com/python/mypy/pull/19214))
+* Add classifier for Python 3.14 (Marc Mueller, PR [19199](https://github.com/python/mypy/pull/19199))
+* Further cleanup after dropping Python 3.8 (Marc Mueller, PR [19197](https://github.com/python/mypy/pull/19197))
+* Fix nondeterministic type checking by making join with explicit Protocol and type promotion commute (Shantanu, PR [18402](https://github.com/python/mypy/pull/18402))
+* Infer constraints eagerly if actual is Any (Ivan Levkivskyi, PR [19190](https://github.com/python/mypy/pull/19190))
+* Include walrus assignments in conditional inference (Stanislav Terliakov, PR [19038](https://github.com/python/mypy/pull/19038))
+* Use PEP 604 syntax for TypeStrVisitor (Marc Mueller, PR [19179](https://github.com/python/mypy/pull/19179))
+* Use checkmember.py to check protocol subtyping (Ivan Levkivskyi, PR [18943](https://github.com/python/mypy/pull/18943))
+* Update test requirements (Marc Mueller, PR [19163](https://github.com/python/mypy/pull/19163))
+* Use more lower case builtins in error messages (Marc Mueller, PR [19177](https://github.com/python/mypy/pull/19177))
+* Remove force_uppercase_builtins default from test helpers (Marc Mueller, PR [19173](https://github.com/python/mypy/pull/19173))
+* Start testing Python 3.14 (Marc Mueller, PR [19164](https://github.com/python/mypy/pull/19164))
+* Fix example to use correct method of Stack (Łukasz Kwieciński, PR [19123](https://github.com/python/mypy/pull/19123))
+* Fix nondeterministic type checking caused by nonassociative of None joins (Shantanu, PR [19158](https://github.com/python/mypy/pull/19158))
+* Drop support for --python-version 3.8 (Marc Mueller, PR [19157](https://github.com/python/mypy/pull/19157))
+* Fix nondeterministic type checking caused by nonassociativity of joins (Shantanu, PR [19147](https://github.com/python/mypy/pull/19147))
+* Fix nondeterministic type checking by making join between TypeType and TypeVar commute (Shantanu, PR [19149](https://github.com/python/mypy/pull/19149))
+* Forbid `.pop` of `Readonly` `NotRequired` TypedDict items (Stanislav Terliakov, PR [19133](https://github.com/python/mypy/pull/19133))
+* Emit a friendlier warning on invalid exclude regex, instead of a stacktrace (wyattscarpenter, PR [19102](https://github.com/python/mypy/pull/19102))
+* Update dmypy/client.py:  Enable ANSI color codes for windows cmd (wyattscarpenter, PR [19088](https://github.com/python/mypy/pull/19088))
+* Extend special case for context-based typevar inference to typevar unions in return position (Stanislav Terliakov, PR [18976](https://github.com/python/mypy/pull/18976))
+
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+
+* Alexey Makridenko
+* Brian Schubert
+* Chad Dombrova
+* Chainfire
+* Charlie Denton
+* Charulata
+* Christoph Tyralla
+* CoolCat467
+* Donal Burns
+* Guy Wilson
+* Ivan Levkivskyi
+* johnthagen
+* Jukka Lehtosalo
+* Łukasz Kwieciński
+* Marc Mueller
+* Michael J. Sullivan
+* Mikhail Golubev
+* Sebastian Rittau
+* Shantanu
+* Stanislav Terliakov
+* wyattscarpenter
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
 
 ## Mypy 1.16
 
