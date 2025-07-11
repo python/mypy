@@ -2104,6 +2104,33 @@ class LowLevelIRBuilder:
     def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(FloatComparisonOp(lhs, rhs, op, line))
 
+    def int_add(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to add two native integers.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.ADD, line=-1)
+
+    def int_sub(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to subtract a native integer from another one.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.SUB, line=-1)
+
+    def int_mul(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to multiply two native integers.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.MUL, line=-1)
+
     def fixed_width_int_op(
         self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int
     ) -> Value:
