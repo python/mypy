@@ -646,7 +646,6 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
