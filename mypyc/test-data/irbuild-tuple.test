@@ -272,7 +272,7 @@ L4:
     a = r6
     return 1
 
-[case testTupleBuiltFromStr]
+[case testTupleBuiltFromStr_64bit]
 def f2(val: str) -> str:
     return val + "f2"
 
