@@ -2272,6 +2272,8 @@ class CallableType(FunctionLike):
                 and self.name == other.name
                 and self.is_type_obj() == other.is_type_obj()
                 and self.is_ellipsis_args == other.is_ellipsis_args
+                and self.type_guard == other.type_guard
+                and self.type_is == other.type_is
                 and self.fallback == other.fallback
             )
         else:

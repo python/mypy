@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 """Compare performance of mypyc-compiled mypy between one or more commits/branches.
 
 Simple usage:

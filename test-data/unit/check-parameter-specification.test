@@ -921,8 +921,8 @@ class A:
     def func(self, action: Callable[_P, _R], *args: _P.args, **kwargs: _P.kwargs) -> _R:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`6, *_P.args, **_P.kwargs) -> _R`6"
-reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`10, *_P.args, **_P.kwargs) -> _R`10"
+reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`4, *_P.args, **_P.kwargs) -> _R`4"
+reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`8, *_P.args, **_P.kwargs) -> _R`8"
 
 def f(x: int) -> int:
     ...
@@ -953,8 +953,8 @@ class A:
     def func(self, action: Job[_P, None]) -> Job[_P, None]:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
-reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`6, None]) -> __main__.Job[_P`6, None]"
+reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`3, None]) -> __main__.Job[_P`3, None]"
+reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`5, None]) -> __main__.Job[_P`5, None]"
 reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
 
 def f(x: int, y: int) -> None: ...
