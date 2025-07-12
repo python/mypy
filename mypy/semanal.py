@@ -1041,7 +1041,7 @@ class SemanticAnalyzer(
         self.pop_type_args(defn.type_args)
 
     def remove_unpack_kwargs(self, defn: FuncDef, typ: CallableType) -> CallableType:
-        if not typ.arg_kinds or typ.arg_kinds[-1] is not ArgKind.ARG_STAR2:
+        if not typ.arg_kinds or typ.arg_kinds[-1] is not ARG_STAR2:
             return typ
         last_type = typ.arg_types[-1]
         if not isinstance(last_type, UnpackType):

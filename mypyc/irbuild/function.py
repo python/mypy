@@ -17,6 +17,8 @@ from collections.abc import Sequence
 from typing import NamedTuple
 
 from mypy.nodes import (
+    ARG_OPT,
+    ARG_POS,
     ArgKind,
     ClassDef,
     Decorator,
@@ -907,7 +909,7 @@ def generate_dispatch_glue_native_function(
     decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, decl.sig.args, line)
     args = [callable_class] + arg_info.args
-    arg_kinds = [ArgKind.ARG_POS] + arg_info.arg_kinds
+    arg_kinds = [ARG_POS] + arg_info.arg_kinds
     arg_names = arg_info.arg_names
     arg_names.insert(0, "self")
     ret_val = builder.builder.call(callable_class_decl, args, arg_kinds, arg_names, line)
@@ -935,7 +937,7 @@ def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo)
     line = -1
     with builder.enter_method(fn_info.callable_class.ir, "register", object_rprimitive):
         cls_arg = builder.add_argument("cls", object_rprimitive)
-        func_arg = builder.add_argument("func", object_rprimitive, ArgKind.ARG_OPT)
+        func_arg = builder.add_argument("func", object_rprimitive, ARG_OPT)
         ret_val = builder.call_c(register_function, [builder.self(), cls_arg, func_arg], line)
         builder.add(Return(ret_val, line))
 

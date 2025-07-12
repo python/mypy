@@ -6,8 +6,18 @@ import os
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
-from enum import Enum, unique
-from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+    final,
+)
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
@@ -873,7 +883,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             "name": self._name,
             "fullname": self._fullname,
             "arg_names": self.arg_names,
-            "arg_kinds": [int(x.value) for x in self.arg_kinds],
+            "arg_kinds": [x.value for x in self.arg_kinds],
             "type": None if self.type is None else self.type.serialize(),
             "flags": get_flags(self, FUNCDEF_FLAGS),
             "abstract_status": self.abstract_status,
@@ -904,7 +914,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         set_flags(ret, data["flags"])
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
-        ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
+        ret.arg_kinds = [ArgKind.by_value(x) for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
         ret.dataclass_transform_spec = (
             DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
@@ -1963,21 +1973,35 @@ class MemberExpr(RefExpr):
         return visitor.visit_member_expr(self)
 
 
-# Kinds of arguments
-@unique
-class ArgKind(Enum):
-    # Positional argument
-    ARG_POS = 0
-    # Positional, optional argument (functions only, not calls)
-    ARG_OPT = 1
-    # *arg argument
-    ARG_STAR = 2
-    # Keyword argument x=y in call, or keyword-only function arg
-    ARG_NAMED = 3
-    # **arg argument
-    ARG_STAR2 = 4
-    # In an argument list, keyword-only and also optional
-    ARG_NAMED_OPT = 5
+@final
+class ArgKind:
+    """Kinds of arguments.
+
+    NOTE: This isn't an enum due to mypyc performance limitations.
+    """
+
+    _sealed: ClassVar[bool] = False  # Hack to ensure enum-like behavior
+
+    def __init__(self, name: str, value: int) -> None:
+        assert not ArgKind._sealed
+        self.name: Final = name
+        self.value: Final = value
+
+    @staticmethod
+    def by_value(value: int) -> ArgKind:
+        if value == ARG_POS.value:
+            return ARG_POS
+        elif value == ARG_OPT.value:
+            return ARG_OPT
+        elif value == ARG_STAR.value:
+            return ARG_STAR
+        elif value == ARG_NAMED.value:
+            return ARG_NAMED
+        elif value == ARG_STAR2.value:
+            return ARG_STAR2
+        else:
+            assert value == ARG_NAMED_OPT.value
+            return ARG_NAMED_OPT
 
     def is_positional(self, star: bool = False) -> bool:
         return self == ARG_POS or self == ARG_OPT or (star and self == ARG_STAR)
@@ -1995,12 +2019,29 @@ class ArgKind(Enum):
         return self == ARG_STAR or self == ARG_STAR2
 
 
-ARG_POS: Final = ArgKind.ARG_POS
-ARG_OPT: Final = ArgKind.ARG_OPT
-ARG_STAR: Final = ArgKind.ARG_STAR
-ARG_NAMED: Final = ArgKind.ARG_NAMED
-ARG_STAR2: Final = ArgKind.ARG_STAR2
-ARG_NAMED_OPT: Final = ArgKind.ARG_NAMED_OPT
+# Positional argument
+ARG_POS: Final = ArgKind("ARG_POS", 0)
+# Positional, optional argument (functions only, not calls)
+ARG_OPT: Final = ArgKind("ARG_OPT", 1)
+# *arg argument
+ARG_STAR: Final = ArgKind("ARG_STAR", 2)
+# Keyword argument x=y in call, or keyword-only function arg
+ARG_NAMED: Final = ArgKind("ARG_NAMED", 3)
+# **arg argument
+ARG_STAR2: Final = ArgKind("ARG_STAR2", 4)
+# In an argument list, keyword-only and also optional
+ARG_NAMED_OPT: Final = ArgKind("ARG_NAMED_OPT", 5)
+
+ArgKind._sealed = True  # Make sure no new ArgKinds can be created
+
+ALL_ARG_KINDS: Final[tuple[ArgKind, ...]] = (
+    ARG_POS,
+    ARG_OPT,
+    ARG_STAR,
+    ARG_NAMED,
+    ARG_STAR2,
+    ARG_NAMED_OPT,
+)
 
 
 class CallExpr(Expression):

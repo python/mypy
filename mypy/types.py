@@ -22,6 +22,8 @@ from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
 import mypy.nodes
 from mypy.bogus_type import Bogus
 from mypy.nodes import (
+    ARG_NAMED,
+    ARG_NAMED_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -1782,7 +1784,7 @@ class Parameters(ProperType):
         return {
             ".class": "Parameters",
             "arg_types": [t.serialize() for t in self.arg_types],
-            "arg_kinds": [int(x.value) for x in self.arg_kinds],
+            "arg_kinds": [x.value for x in self.arg_kinds],
             "arg_names": self.arg_names,
             "variables": [tv.serialize() for tv in self.variables],
             "imprecise_arg_kinds": self.imprecise_arg_kinds,
@@ -1793,7 +1795,7 @@ class Parameters(ProperType):
         assert data[".class"] == "Parameters"
         return Parameters(
             [deserialize_type(t) for t in data["arg_types"]],
-            [ArgKind(x) for x in data["arg_kinds"]],
+            [ArgKind.by_value(x) for x in data["arg_kinds"]],
             data["arg_names"],
             variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data["variables"]],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
@@ -2162,7 +2164,7 @@ class CallableType(FunctionLike):
         last_type = get_proper_type(self.arg_types[-1])
         assert isinstance(last_type, TypedDictType)
         extra_kinds = [
-            ArgKind.ARG_NAMED if name in last_type.required_keys else ArgKind.ARG_NAMED_OPT
+            ARG_NAMED if name in last_type.required_keys else ARG_NAMED_OPT
             for name in last_type.items
         ]
         new_arg_kinds = self.arg_kinds[:-1] + extra_kinds
@@ -2283,7 +2285,7 @@ class CallableType(FunctionLike):
         return {
             ".class": "CallableType",
             "arg_types": [t.serialize() for t in self.arg_types],
-            "arg_kinds": [int(x.value) for x in self.arg_kinds],
+            "arg_kinds": [x.value for x in self.arg_kinds],
             "arg_names": self.arg_names,
             "ret_type": self.ret_type.serialize(),
             "fallback": self.fallback.serialize(),
@@ -2307,7 +2309,7 @@ class CallableType(FunctionLike):
         # TODO: Set definition to the containing SymbolNode?
         return CallableType(
             [deserialize_type(t) for t in data["arg_types"]],
-            [ArgKind(x) for x in data["arg_kinds"]],
+            [ArgKind.by_value(x) for x in data["arg_kinds"]],
             data["arg_names"],
             deserialize_type(data["ret_type"]),
             Instance.deserialize(data["fallback"]),

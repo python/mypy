@@ -34,6 +34,7 @@ from mypy.message_registry import ErrorMessage
 from mypy.messages import MessageBuilder, format_type
 from mypy.nodes import (
     ARG_NAMED,
+    ARG_NAMED_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -1000,7 +1001,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return CallableType(
             list(callee.items.values()),
             [
-                ArgKind.ARG_NAMED if name in callee.required_keys else ArgKind.ARG_NAMED_OPT
+                ARG_NAMED if name in callee.required_keys else ARG_NAMED_OPT
                 for name in callee.items
             ],
             list(callee.items.keys()),
@@ -1074,7 +1075,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # TypedDict. This is a bit arbitrary, but in most cases will work better than
                 # trying to infer a union or a join.
                 [args[0] for args in kwargs.values()],
-                [ArgKind.ARG_NAMED] * len(kwargs),
+                [ARG_NAMED] * len(kwargs),
                 context,
                 list(kwargs.keys()),
                 None,

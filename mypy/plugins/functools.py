@@ -10,10 +10,13 @@ import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
 from mypy.erasetype import erase_typevars
 from mypy.nodes import (
+    ARG_NAMED,
+    ARG_NAMED_OPT,
+    ARG_OPT,
     ARG_POS,
+    ARG_STAR,
     ARG_STAR2,
     SYMBOL_FUNCBASE_TYPES,
-    ArgKind,
     Argument,
     CallExpr,
     NameExpr,
@@ -217,11 +220,7 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     # special_sig="partial" allows omission of args/kwargs typed with ParamSpec
     defaulted = fn_type.copy_modified(
         arg_kinds=[
-            (
-                ArgKind.ARG_OPT
-                if k == ArgKind.ARG_POS
-                else (ArgKind.ARG_NAMED_OPT if k == ArgKind.ARG_NAMED else k)
-            )
+            (ARG_OPT if k == ARG_POS else (ARG_NAMED_OPT if k == ARG_NAMED else k))
             for k in fn_type.arg_kinds
         ],
         ret_type=ret_type,
@@ -284,19 +283,19 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
             # true when PEP 646 things are happening. See testFunctoolsPartialTypeVarTuple
             arg_type = fn_type.arg_types[i]
 
-        if not actuals or fn_type.arg_kinds[i] in (ArgKind.ARG_STAR, ArgKind.ARG_STAR2):
+        if not actuals or fn_type.arg_kinds[i] in (ARG_STAR, ARG_STAR2):
             partial_kinds.append(fn_type.arg_kinds[i])
             partial_types.append(arg_type)
             partial_names.append(fn_type.arg_names[i])
         else:
             assert actuals
-            if any(actual_arg_kinds[j] in (ArgKind.ARG_POS, ArgKind.ARG_STAR) for j in actuals):
+            if any(actual_arg_kinds[j] in (ARG_POS, ARG_STAR) for j in actuals):
                 # Don't add params for arguments passed positionally
                 continue
             # Add defaulted params for arguments passed via keyword
             kind = actual_arg_kinds[actuals[0]]
-            if kind == ArgKind.ARG_NAMED or kind == ArgKind.ARG_STAR2:
-                kind = ArgKind.ARG_NAMED_OPT
+            if kind == ARG_NAMED or kind == ARG_STAR2:
+                kind = ARG_NAMED_OPT
             partial_kinds.append(kind)
             partial_types.append(arg_type)
             partial_names.append(fn_type.arg_names[i])
@@ -322,9 +321,9 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     if partially_applied.param_spec():
         assert ret.extra_attrs is not None  # copy_with_extra_attr above ensures this
         attrs = ret.extra_attrs.copy()
-        if ArgKind.ARG_STAR in actual_arg_kinds:
+        if ARG_STAR in actual_arg_kinds:
             attrs.immutable.add("__mypy_partial_paramspec_args_bound")
-        if ArgKind.ARG_STAR2 in actual_arg_kinds:
+        if ARG_STAR2 in actual_arg_kinds:
             attrs.immutable.add("__mypy_partial_paramspec_kwargs_bound")
         ret.extra_attrs = attrs
     return ret

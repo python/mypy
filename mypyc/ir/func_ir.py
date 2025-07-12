@@ -6,7 +6,17 @@ import inspect
 from collections.abc import Sequence
 from typing import Final
 
-from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
+from mypy.nodes import (
+    ARG_NAMED,
+    ARG_NAMED_OPT,
+    ARG_OPT,
+    ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
+    ArgKind,
+    Block,
+    FuncDef,
+)
 from mypyc.common import BITMAP_BITS, JsonDict, bitmap_name, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
     Assign,
@@ -60,7 +70,7 @@ class RuntimeArg:
         return {
             "name": self.name,
             "type": self.type.serialize(),
-            "kind": int(self.kind.value),
+            "kind": self.kind.value,
             "pos_only": self.pos_only,
         }
 
@@ -69,7 +79,7 @@ class RuntimeArg:
         return RuntimeArg(
             data["name"],
             deserialize_type(data["type"], ctx),
-            ArgKind(data["kind"]),
+            ArgKind.by_value(data["kind"]),
             data["pos_only"],
         )
 
@@ -394,12 +404,12 @@ def all_values_full(args: list[Register], blocks: list[BasicBlock]) -> list[Valu
 
 
 _ARG_KIND_TO_INSPECT: Final = {
-    ArgKind.ARG_POS: inspect.Parameter.POSITIONAL_OR_KEYWORD,
-    ArgKind.ARG_OPT: inspect.Parameter.POSITIONAL_OR_KEYWORD,
-    ArgKind.ARG_STAR: inspect.Parameter.VAR_POSITIONAL,
-    ArgKind.ARG_NAMED: inspect.Parameter.KEYWORD_ONLY,
-    ArgKind.ARG_STAR2: inspect.Parameter.VAR_KEYWORD,
-    ArgKind.ARG_NAMED_OPT: inspect.Parameter.KEYWORD_ONLY,
+    ARG_POS: inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    ARG_OPT: inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    ARG_STAR: inspect.Parameter.VAR_POSITIONAL,
+    ARG_NAMED: inspect.Parameter.KEYWORD_ONLY,
+    ARG_STAR2: inspect.Parameter.VAR_KEYWORD,
+    ARG_NAMED_OPT: inspect.Parameter.KEYWORD_ONLY,
 }
 
 # Sentinel indicating a value that cannot be represented in a text signature.
@@ -418,7 +428,7 @@ def get_text_signature(fn: FuncIR, *, bound: bool = False) -> str | None:
     # currently sees 'self' as being positional-or-keyword and '__x' as positional-only.
     pos_only_idx = -1
     for idx, arg in enumerate(sig.args):
-        if arg.pos_only and arg.kind in (ArgKind.ARG_POS, ArgKind.ARG_OPT):
+        if arg.pos_only and arg.kind in (ARG_POS, ARG_OPT):
             pos_only_idx = idx
     for idx, arg in enumerate(sig.args):
         if arg.name.startswith(("__bitmap", "__mypyc")):
