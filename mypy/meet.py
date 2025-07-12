@@ -336,20 +336,6 @@ def is_overlapping_types(
 
     left, right = get_proper_types((left, right))
 
-    def _is_overlapping_types(left: Type, right: Type) -> bool:
-        """Encode the kind of overlapping check to perform.
-
-        This function mostly exists, so we don't have to repeat keyword arguments everywhere.
-        """
-        return is_overlapping_types(
-            left,
-            right,
-            ignore_promotions=ignore_promotions,
-            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
-            overlap_for_overloads=overlap_for_overloads,
-            seen_types=seen_types.copy(),
-        )
-
     # We should never encounter this type.
     if isinstance(left, PartialType) or isinstance(right, PartialType):
         assert False, "Unexpectedly encountered partial type"
@@ -399,14 +385,16 @@ def is_overlapping_types(
         if is_none_object_overlap(left, right) or is_none_object_overlap(right, left):
             return False
 
-    def _is_subtype(left: Type, right: Type) -> bool:
-        if overlap_for_overloads:
-            return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
-        else:
-            return is_subtype(left, right, ignore_promotions=ignore_promotions)
-
-    if _is_subtype(left, right) or _is_subtype(right, left):
-        return True
+    if overlap_for_overloads:
+        if is_proper_subtype(
+            left, right, ignore_promotions=ignore_promotions
+        ) or is_proper_subtype(right, left, ignore_promotions=ignore_promotions):
+            return True
+    else:
+        if is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
+            right, left, ignore_promotions=ignore_promotions
+        ):
+            return True
 
     # See the docstring for 'get_possible_variants' for more info on what the
     # following lines are doing.
@@ -427,6 +415,20 @@ def is_overlapping_types(
     if prohibit_none_typevar_overlap:
         if is_none_typevarlike_overlap(left, right) or is_none_typevarlike_overlap(right, left):
             return False
+
+    def _is_overlapping_types(left: Type, right: Type) -> bool:
+        """Encode the kind of overlapping check to perform.
+
+        This function mostly exists, so we don't have to repeat keyword arguments everywhere.
+        """
+        return is_overlapping_types(
+            left,
+            right,
+            ignore_promotions=ignore_promotions,
+            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
+            overlap_for_overloads=overlap_for_overloads,
+            seen_types=seen_types.copy(),
+        )
 
     if (
         len(left_possible) > 1
@@ -564,8 +566,16 @@ def is_overlapping_types(
     if isinstance(left, Instance) and isinstance(right, Instance):
         # First we need to handle promotions and structural compatibility for instances
         # that came as fallbacks, so simply call is_subtype() to avoid code duplication.
-        if _is_subtype(left, right) or _is_subtype(right, left):
-            return True
+        if overlap_for_overloads:
+            if is_proper_subtype(
+                left, right, ignore_promotions=ignore_promotions
+            ) or is_proper_subtype(right, left, ignore_promotions=ignore_promotions):
+                return True
+        else:
+            if is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
+                right, left, ignore_promotions=ignore_promotions
+            ):
+                return True
 
         if right.type.fullname == "builtins.int" and left.type.fullname in MYPYC_NATIVE_INT_NAMES:
             return True
