@@ -646,14 +646,13 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
-bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value);
+void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
 bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
@@ -704,14 +703,13 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
 int CPyMapping_Check(PyObject *obj);
 
 // Check that dictionary didn't change size during iteration.
-static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
+static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
     if (!PyDict_CheckExact(dict)) {
         // Dict subclasses will be checked by Python runtime.
         return 1;
     }
-    Py_ssize_t py_size = CPyTagged_AsSsize_t(size);
     Py_ssize_t dict_size = PyDict_Size(dict);
-    if (py_size != dict_size) {
+    if (size != dict_size) {
         PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
         return 0;
     }
@@ -726,6 +724,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 #define RIGHTSTRIP 1
 #define BOTHSTRIP  2
 
+char CPyStr_Equal(PyObject *str1, PyObject *str2);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
@@ -783,7 +782,8 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
-bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *value);
+PyObject *CPySequenceTuple_GetItemUnsafe(PyObject *tuple, Py_ssize_t index);
+void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t index, PyObject *value);
 
 
 // Exception operations

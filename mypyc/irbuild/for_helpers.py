@@ -24,12 +24,15 @@ from mypy.nodes import (
     TypeAlias,
 )
 from mypyc.ir.ops import (
+    ERR_NEVER,
     BasicBlock,
     Branch,
     Integer,
     IntOp,
     LoadAddress,
+    LoadErrorValue,
     LoadMem,
+    MethodCall,
     RaiseStandardError,
     Register,
     TupleGet,
@@ -37,9 +40,11 @@ from mypyc.ir.ops import (
     Value,
 )
 from mypyc.ir.rtypes import (
+    RInstance,
     RTuple,
     RType,
     bool_rprimitive,
+    c_pyssize_t_rprimitive,
     int_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
@@ -48,10 +53,13 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tuple_rprimitive,
+    object_pointer_rprimitive,
+    object_rprimitive,
     pointer_rprimitive,
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.primitives.dict_ops import (
     dict_check_size_op,
@@ -62,12 +70,13 @@ from mypyc.primitives.dict_ops import (
     dict_next_value_op,
     dict_value_iter_op,
 )
-from mypyc.primitives.exc_ops import no_err_occurred_op
+from mypyc.primitives.exc_ops import no_err_occurred_op, propagate_if_error_op
 from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
 from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
 from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
+from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 GenFunc = Callable[[], None]
 
@@ -511,7 +520,15 @@ def make_for_loop_generator(
     # Default to a generic for loop.
     if iterable_expr_reg is None:
         iterable_expr_reg = builder.accept(expr)
-    for_obj = ForIterable(builder, index, body_block, loop_exit, line, nested)
+
+    it = iterable_expr_reg.type
+    for_obj: ForNativeGenerator | ForIterable
+    if isinstance(it, RInstance) and it.class_ir.has_method(GENERATOR_HELPER_NAME):
+        # Directly call generator object methods if iterating over a native generator.
+        for_obj = ForNativeGenerator(builder, index, body_block, loop_exit, line, nested)
+    else:
+        # Generic implementation that works of arbitrary iterables.
+        for_obj = ForIterable(builder, index, body_block, loop_exit, line, nested)
     item_type = builder._analyze_iterable_item_type(expr)
     item_rtype = builder.type_to_rtype(item_type)
     for_obj.init(iterable_expr_reg, item_rtype)
@@ -571,7 +588,9 @@ class ForGenerator:
 
     def load_len(self, expr: Value | AssignmentTarget) -> Value:
         """A helper to get collection length, used by several subclasses."""
-        return self.builder.builder.builtin_len(self.builder.read(expr, self.line), self.line)
+        return self.builder.builder.builtin_len(
+            self.builder.read(expr, self.line), self.line, use_pyssize_t=True
+        )
 
 
 class ForIterable(ForGenerator):
@@ -621,6 +640,63 @@ class ForIterable(ForGenerator):
         # True. If no_err_occurred_op returns False, then the exception will be
         # propagated using the ERR_FALSE flag.
         self.builder.call_c(no_err_occurred_op, [], self.line)
+
+
+class ForNativeGenerator(ForGenerator):
+    """Generate IR for a for loop over a native generator."""
+
+    def need_cleanup(self) -> bool:
+        # Create a new cleanup block for when the loop is finished.
+        return True
+
+    def init(self, expr_reg: Value, target_type: RType) -> None:
+        # Define target to contains the generator expression. It's also the iterator.
+        # If we are inside a generator function, spill these into the environment class.
+        builder = self.builder
+        self.iter_target = builder.maybe_spill(expr_reg)
+        self.target_type = target_type
+
+    def gen_condition(self) -> None:
+        builder = self.builder
+        line = self.line
+        self.return_value = Register(object_rprimitive)
+        err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
+        builder.assign(self.return_value, err, line)
+
+        # Call generated generator helper method, passing a PyObject ** as the final
+        # argument that will be used to store the return value in the return value
+        # register. We ignore the return value but the presence of a return value
+        # indicates that the generator has finished. This is faster than raising
+        # and catching StopIteration, which is the non-native way of doing this.
+        ptr = builder.add(LoadAddress(object_pointer_rprimitive, self.return_value))
+        nn = builder.none_object()
+        helper_call = MethodCall(
+            builder.read(self.iter_target), GENERATOR_HELPER_NAME, [nn, nn, nn, nn, ptr], line
+        )
+        # We provide custom handling for error values.
+        helper_call.error_kind = ERR_NEVER
+
+        self.next_reg = builder.add(helper_call)
+        builder.add(Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR))
+
+    def begin_body(self) -> None:
+        # Assign the value obtained from the generator helper method to the
+        # lvalue so that it can be referenced by code in the body of the loop.
+        builder = self.builder
+        line = self.line
+        # We unbox here so that iterating with tuple unpacking generates a tuple based
+        # unpack instead of an iterator based one.
+        next_reg = builder.coerce(self.next_reg, self.target_type, line)
+        builder.assign(builder.get_assignment_target(self.index), next_reg, line)
+
+    def gen_step(self) -> None:
+        # Nothing to do here, since we get the next item as part of gen_condition().
+        pass
+
+    def gen_cleanup(self) -> None:
+        # If return value is NULL (it wasn't assigned to by the generator helper method),
+        # an exception was raised that we need to propagate.
+        self.builder.primitive_op(propagate_if_error_op, [self.return_value], self.line)
 
 
 class ForAsyncIterable(ForGenerator):
@@ -694,6 +770,8 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # so we just check manually.
     if is_list_rprimitive(target.type):
         return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+    elif is_tuple_rprimitive(target.type):
+        return builder.call_c(tuple_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, "__getitem__", [index], None, line)
 
@@ -712,11 +790,9 @@ class ForSequence(ForGenerator):
         # environment class.
         self.expr_target = builder.maybe_spill(expr_reg)
         if not reverse:
-            index_reg: Value = Integer(0)
+            index_reg: Value = Integer(0, c_pyssize_t_rprimitive)
         else:
-            index_reg = builder.binary_op(
-                self.load_len(self.expr_target), Integer(1), "-", self.line
-            )
+            index_reg = builder.builder.int_sub(self.load_len(self.expr_target), 1)
         self.index_target = builder.maybe_spill_assignable(index_reg)
         self.target_type = target_type
 
@@ -766,13 +842,7 @@ class ForSequence(ForGenerator):
         builder = self.builder
         line = self.line
         step = 1 if not self.reverse else -1
-        add = builder.int_op(
-            short_int_rprimitive,
-            builder.read(self.index_target, line),
-            Integer(step),
-            IntOp.ADD,
-            line,
-        )
+        add = builder.builder.int_add(builder.read(self.index_target, line), step)
         builder.assign(self.index_target, add, line)
 
 
@@ -902,7 +972,7 @@ class ForDictionaryItems(ForDictionaryCommon):
         value = builder.add(TupleGet(self.next_tuple, 3, line))
 
         # Coerce just in case e.g. key is itself a tuple to be unpacked.
-        assert isinstance(self.target_type, RTuple)
+        assert isinstance(self.target_type, RTuple), self.target_type
         key = builder.coerce(key, self.target_type.types[0], line)
         value = builder.coerce(value, self.target_type.types[1], line)
 

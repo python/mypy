@@ -136,7 +136,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
 
 def transform_lambda_expr(builder: IRBuilder, expr: LambdaExpr) -> Value:
     typ = get_proper_type(builder.types[expr])
-    assert isinstance(typ, CallableType)
+    assert isinstance(typ, CallableType), typ
 
     runtime_args = []
     for arg, arg_type in zip(expr.arguments, typ.arg_types):
@@ -269,7 +269,7 @@ def gen_func_item(
         # add the generated main singledispatch function
         builder.functions.append(func_ir)
         # create the dispatch function
-        assert isinstance(fitem, FuncDef)
+        assert isinstance(fitem, FuncDef), fitem
         return gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
 
     return func_ir, func_reg
@@ -336,8 +336,9 @@ def gen_func_ir(
         add_get_to_callable_class(builder, fn_info)
         func_reg = instantiate_callable_class(builder, fn_info)
     else:
-        assert isinstance(fn_info.fitem, FuncDef)
-        func_decl = builder.mapper.func_to_decl[fn_info.fitem]
+        fitem = fn_info.fitem
+        assert isinstance(fitem, FuncDef), fitem
+        func_decl = builder.mapper.func_to_decl[fitem]
         if fn_info.is_decorated or is_singledispatch_main_func:
             class_name = None if cdef is None else cdef.name
             func_decl = FuncDecl(
@@ -349,13 +350,9 @@ def gen_func_ir(
                 func_decl.is_prop_getter,
                 func_decl.is_prop_setter,
             )
-            func_ir = FuncIR(
-                func_decl, args, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name
-            )
+            func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:
-            func_ir = FuncIR(
-                func_decl, args, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name
-            )
+            func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
     return (func_ir, func_reg)
 
 
@@ -483,7 +480,7 @@ def load_decorated_func(builder: IRBuilder, fdef: FuncDef, orig_func_reg: Value)
     func_reg = orig_func_reg
     for d in reversed(decorators):
         decorator = d.accept(builder.visitor)
-        assert isinstance(decorator, Value)
+        assert isinstance(decorator, Value), decorator
         func_reg = builder.py_call(decorator, [func_reg], func_reg.line)
     return func_reg
 
