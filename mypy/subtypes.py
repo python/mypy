@@ -213,8 +213,8 @@ def is_proper_subtype(
             keep_erased_types=keep_erased_types,
         )
     else:
-        assert not any(
-            {ignore_promotions, erase_instances, keep_erased_types}
+        assert (
+            not ignore_promotions and not erase_instances and not keep_erased_types
         ), "Don't pass both context and individual flags"
     if type_state.is_assumed_proper_subtype(left, right):
         return True
