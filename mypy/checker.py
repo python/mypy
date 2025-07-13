@@ -7921,21 +7921,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             warn = self.msg.note if self.options.report_deprecated_as_note else self.msg.fail
             warn(deprecated, context, code=codes.DEPRECATED)
 
-    def warn_deprecated_overload_item(
-        self, node: Node | None, context: Context, *, target: Type, selftype: Type | None = None
-    ) -> None:
-        """Warn if the overload item corresponding to the given callable is deprecated."""
-        target = get_proper_type(target)
-        if isinstance(node, OverloadedFuncDef) and isinstance(target, CallableType):
-            for item in node.items:
-                if isinstance(item, Decorator) and isinstance(
-                    candidate := item.func.type, CallableType
-                ):
-                    if selftype is not None and not node.is_static:
-                        candidate = bind_self(candidate, selftype)
-                    if candidate == target:
-                        self.warn_deprecated(item.func, context)
-
     # leafs
 
     def visit_pass_stmt(self, o: PassStmt, /) -> None:
