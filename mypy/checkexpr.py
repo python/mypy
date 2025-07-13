@@ -2709,6 +2709,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Normalize unpacked kwargs before checking the call.
         callee = callee.with_unpacked_kwargs()
         arg_types = self.infer_arg_types_in_empty_context(args)
+
+        # Expand finite sum types into unions
+        # See https://github.com/python/mypy/issues/14764#issuecomment-3054510950
+        # And https://typing.python.org/en/latest/spec/overload.html#argument-type-expansion
+        arg_types = [
+                try_expanding_sum_type_to_union(arg_type,  arg_type.type.fullname)
+                if isinstance(arg_type, Instance) else arg_type
+                for arg_type in arg_types
+                ]
+
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(
             arg_types, arg_kinds, arg_names, callee
