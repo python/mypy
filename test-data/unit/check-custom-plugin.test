@@ -579,8 +579,7 @@ plugins=<ROOT>/test-data/unit/plugins/method_sig_hook.py
 
 [case testMethodSignatureHookNamesFullyQualified]
 # flags: --config-file tmp/mypy.ini
-from mypy_extensions import TypedDict
-from typing import NamedTuple
+from typing import NamedTuple, TypedDict
 
 class FullyQualifiedTestClass:
     @classmethod
@@ -601,6 +600,7 @@ reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # N: Revealed type is "b
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
 [builtins fixtures/classmethod.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testDynamicClassPlugin]
 # flags: --config-file tmp/mypy.ini
@@ -752,7 +752,7 @@ plugins=<ROOT>/test-data/unit/plugins/common_api_incremental.py
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "builtins.str"
-tmp/a.py:4: error: "Type[Base]" has no attribute "__magic__"
+tmp/a.py:4: error: "type[Base]" has no attribute "__magic__"
 
 [case testArgKindsMethod]
 # flags: --config-file tmp/mypy.ini
@@ -967,6 +967,7 @@ class Cls(enum.Enum):
     attr = 'test'
 
 reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
+[builtins fixtures/enum.pyi]
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
@@ -1006,7 +1007,7 @@ reveal_type(Cls.attr) # N: Revealed type is "builtins.int"
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
 
 [case testClassAttrPluginPartialType]
-# flags: --config-file tmp/mypy.ini
+# flags: --config-file tmp/mypy.ini --no-local-partial-types
 
 class Cls:
     attr = None
@@ -1097,3 +1098,31 @@ reveal_type(1)  # N: Revealed type is "Literal[1]?"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/custom_errorcode.py
+
+
+[case testPyprojectPluginsTrailingComma]
+# flags: --config-file tmp/pyproject.toml
+[file pyproject.toml]
+# This test checks that trailing commas in string-based `plugins` are allowed.
+\[tool.mypy]
+plugins = """
+  <ROOT>/test-data/unit/plugins/function_sig_hook.py,
+  <ROOT>/test-data/unit/plugins/method_in_decorator.py,
+"""
+[out]
+
+
+
+[case magicMethodReverse]
+# flags: --config-file tmp/mypy.ini
+from typing import Literal
+
+op1: Literal[3] = 3
+op2: Literal[4] = 4
+c = op1 + op2
+reveal_type(c) # N: Revealed type is "Literal[7]"
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/magic_method.py
+[builtins fixtures/ops.pyi]

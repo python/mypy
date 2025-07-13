@@ -8,7 +8,9 @@ import re
 import shutil
 import sys
 import time
-from typing import IO, Any, Callable, Iterable, Iterator, Pattern
+from collections.abc import Iterable, Iterator
+from re import Pattern
+from typing import IO, Any, Callable
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -256,11 +258,12 @@ def local_sys_path_set() -> Iterator[None]:
 
 
 def testfile_pyversion(path: str) -> tuple[int, int]:
-    m = re.search(r"python3([0-9]+)\.test$", path)
-    if m:
-        return 3, int(m.group(1))
+    if m := re.search(r"python3([0-9]+)\.test$", path):
+        # For older unsupported version like python38,
+        # default to that earliest supported version.
+        return max((3, int(m.group(1))), defaults.PYTHON3_VERSION_MIN)
     else:
-        return defaults.PYTHON3_VERSION
+        return defaults.PYTHON3_VERSION_MIN
 
 
 def normalize_error_messages(messages: list[str]) -> list[str]:
@@ -351,7 +354,6 @@ def parse_options(
         options = Options()
         options.error_summary = False
         options.hide_error_codes = True
-        options.force_uppercase_builtins = True
         options.force_union_syntax = True
 
     # Allow custom python version to override testfile_pyversion.
@@ -411,8 +413,7 @@ def check_test_output_files(
     testcase: DataDrivenTestCase, step: int, strip_prefix: str = ""
 ) -> None:
     for path, expected_content in testcase.output_files:
-        if path.startswith(strip_prefix):
-            path = path[len(strip_prefix) :]
+        path = path.removeprefix(strip_prefix)
         if not os.path.exists(path):
             raise AssertionError(
                 "Expected file {} was not produced by test case{}".format(

@@ -1,5 +1,5 @@
 import sys
-from _typeshed import ReadableBuffer, StrOrBytesPath, SupportsLenAndGetItem, Unused
+from _typeshed import MaybeNone, ReadableBuffer, StrOrBytesPath, SupportsLenAndGetItem, Unused
 from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
 from sqlite3.dbapi2 import (
     PARSE_COLNAMES as PARSE_COLNAMES,
@@ -60,11 +60,13 @@ from sqlite3.dbapi2 import (
     sqlite_version as sqlite_version,
     sqlite_version_info as sqlite_version_info,
     threadsafety as threadsafety,
-    version_info as version_info,
 )
 from types import TracebackType
-from typing import Any, Literal, Protocol, SupportsIndex, TypeVar, final, overload
+from typing import Any, Literal, Protocol, SupportsIndex, TypeVar, final, overload, type_check_only
 from typing_extensions import Self, TypeAlias
+
+if sys.version_info < (3, 14):
+    from sqlite3.dbapi2 import version_info as version_info
 
 if sys.version_info >= (3, 12):
     from sqlite3.dbapi2 import (
@@ -397,13 +399,13 @@ class Connection:
         self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None, /
     ) -> Literal[False]: ...
 
-class Cursor:
+class Cursor(Iterator[Any]):
     arraysize: int
     @property
     def connection(self) -> Connection: ...
-    # May be None, but using | Any instead to avoid slightly annoying false positives.
+    # May be None, but using `| MaybeNone` (`| Any`) instead to avoid slightly annoying false positives.
     @property
-    def description(self) -> tuple[tuple[str, None, None, None, None, None, None], ...] | Any: ...
+    def description(self) -> tuple[tuple[str, None, None, None, None, None, None], ...] | MaybeNone: ...
     @property
     def lastrowid(self) -> int | None: ...
     row_factory: Callable[[Cursor, Row], object] | None
@@ -429,7 +431,7 @@ class PrepareProtocol:
     def __init__(self, *args: object, **kwargs: object) -> None: ...
 
 class Row(Sequence[Any]):
-    def __init__(self, cursor: Cursor, data: tuple[Any, ...], /) -> None: ...
+    def __new__(cls, cursor: Cursor, data: tuple[Any, ...], /) -> Self: ...
     def keys(self) -> list[str]: ...
     @overload
     def __getitem__(self, key: int | str, /) -> Any: ...
@@ -446,7 +448,9 @@ class Row(Sequence[Any]):
     def __lt__(self, value: object, /) -> bool: ...
     def __ne__(self, value: object, /) -> bool: ...
 
+# This class is not exposed. It calls itself sqlite3.Statement.
 @final
+@type_check_only
 class _Statement: ...
 
 if sys.version_info >= (3, 11):

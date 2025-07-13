@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Sequence, overload
+from collections.abc import Sequence
+from typing import overload
 
 import mypy.typeops
 from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY
+from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY, TypeInfo
 from mypy.state import state
 from mypy.subtypes import (
     SubtypeContext,
@@ -167,9 +168,20 @@ class InstanceJoiner:
         # Compute the "best" supertype of t when joined with s.
         # The definition of "best" may evolve; for now it is the one with
         # the longest MRO.  Ties are broken by using the earlier base.
-        best: ProperType | None = None
+
+        # Go over both sets of bases in case there's an explicit Protocol base. This is important
+        # to ensure commutativity of join (although in cases where both classes have relevant
+        # Protocol bases this maybe might still not be commutative)
+        base_types: dict[TypeInfo, None] = {}  # dict to deduplicate but preserve order
         for base in t.type.bases:
-            mapped = map_instance_to_supertype(t, base.type)
+            base_types[base.type] = None
+        for base in s.type.bases:
+            if base.type.is_protocol and is_subtype(t, base):
+                base_types[base.type] = None
+
+        best: ProperType | None = None
+        for base_type in base_types:
+            mapped = map_instance_to_supertype(t, base_type)
             res = self.join_instances(mapped, s)
             if best is None or is_better(res, best):
                 best = res
@@ -180,55 +192,6 @@ class InstanceJoiner:
                 if is_better(res, best):
                     best = res
         return best
-
-
-def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
-    """Return a simple least upper bound given the declared type.
-
-    This function should be only used by binder, and should not recurse.
-    For all other uses, use `join_types()`.
-    """
-    declaration = get_proper_type(declaration)
-    s = get_proper_type(s)
-    t = get_proper_type(t)
-
-    if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
-        # if types are restricted in different ways, use the more general versions
-        s = mypy.typeops.true_or_false(s)
-        t = mypy.typeops.true_or_false(t)
-
-    if isinstance(s, AnyType):
-        return s
-
-    if isinstance(s, ErasedType):
-        return t
-
-    if is_proper_subtype(s, t, ignore_promotions=True):
-        return t
-
-    if is_proper_subtype(t, s, ignore_promotions=True):
-        return s
-
-    if isinstance(declaration, UnionType):
-        return mypy.typeops.make_simplified_union([s, t])
-
-    if isinstance(s, NoneType) and not isinstance(t, NoneType):
-        s, t = t, s
-
-    if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
-        s, t = t, s
-
-    # Meets/joins require callable type normalization.
-    s, t = normalize_callables(s, t)
-
-    if isinstance(s, UnionType) and not isinstance(t, UnionType):
-        s, t = t, s
-
-    value = t.accept(TypeJoinVisitor(s))
-    if declaration is None or is_subtype(value, declaration):
-        return value
-
-    return declaration
 
 
 def trivial_join(s: Type, t: Type) -> Type:
@@ -317,7 +280,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if state.strict_optional:
             if isinstance(self.s, (NoneType, UninhabitedType)):
                 return t
-            elif isinstance(self.s, UnboundType):
+            elif isinstance(self.s, (UnboundType, AnyType)):
                 return AnyType(TypeOfAny.special_form)
             else:
                 return mypy.typeops.make_simplified_union([self.s, t])
@@ -335,7 +298,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
-            return self.s
+            if self.s.upper_bound == t.upper_bound:
+                return self.s
+            return self.s.copy_modified(upper_bound=join_types(self.s.upper_bound, t.upper_bound))
         else:
             return self.default(self.s)
 
@@ -347,6 +312,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
         if self.s == t:
             return t
+        if isinstance(self.s, Instance) and is_subtype(t.upper_bound, self.s):
+            # TODO: should we do this more generally and for all TypeVarLikeTypes?
+            return self.s
         return self.default(self.s)
 
     def visit_unpack_type(self, t: UnpackType) -> UnpackType:
@@ -354,7 +322,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         if isinstance(self.s, Parameters):
-            if len(t.arg_types) != len(self.s.arg_types):
+            if not is_similar_params(t, self.s):
+                # TODO: it would be prudent to return [*object, **object] instead of Any.
                 return self.default(self.s)
             from mypy.meet import meet_types
 
@@ -397,6 +366,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return join_types(t, self.s)
         elif isinstance(self.s, LiteralType):
             return join_types(t, self.s)
+        elif isinstance(self.s, TypeVarTupleType) and is_subtype(self.s.upper_bound, t):
+            return t
         else:
             return self.default(self.s)
 
@@ -498,7 +469,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 return items
             return None
         if s_unpack_index is not None and t_unpack_index is not None:
-            # The most complex case: both tuples have an upack item.
+            # The most complex case: both tuples have an unpack item.
             s_unpack = s.items[s_unpack_index]
             assert isinstance(s_unpack, UnpackType)
             s_unpacked = get_proper_type(s_unpack.type)
@@ -609,6 +580,10 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             assert isinstance(fallback, Instance)
             items = self.join_tuples(self.s, t)
             if items is not None:
+                if len(items) == 1 and isinstance(item := items[0], UnpackType):
+                    if isinstance(unpacked := get_proper_type(item.type), Instance):
+                        # Avoid double-wrapping tuple[*tuple[X, ...]]
+                        return unpacked
                 return TupleType(items, fallback)
             else:
                 # TODO: should this be a default fallback behaviour like for meet?
@@ -650,6 +625,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if self.s.fallback.type.is_enum and t.fallback.type.is_enum:
                 return mypy.typeops.make_simplified_union([self.s, t])
             return join_types(self.s.fallback, t.fallback)
+        elif isinstance(self.s, Instance) and self.s.last_known_value == t:
+            return t
         else:
             return join_types(self.s, t.fallback)
 
@@ -673,6 +650,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
             return object_from_instance(typ)
+        elif isinstance(typ, TypeType):
+            return self.default(typ.item)
         elif isinstance(typ, UnboundType):
             return AnyType(TypeOfAny.special_form)
         elif isinstance(typ, TupleType):
@@ -698,6 +677,10 @@ def is_better(t: Type, s: Type) -> bool:
     if isinstance(t, Instance):
         if not isinstance(s, Instance):
             return True
+        if t.type.is_protocol != s.type.is_protocol:
+            if t.type.fullname != "builtins.object" and s.type.fullname != "builtins.object":
+                # mro of protocol is not really relevant
+                return not t.type.is_protocol
         # Use len(mro) as a proxy for the better choice.
         if len(t.type.mro) > len(s.type.mro):
             return True
@@ -720,6 +703,15 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
         len(t.arg_types) == len(s.arg_types)
         and t.min_args == s.min_args
         and t.is_var_arg == s.is_var_arg
+    )
+
+
+def is_similar_params(t: Parameters, s: Parameters) -> bool:
+    # This matches the logic in is_similar_callables() above.
+    return (
+        len(t.arg_types) == len(s.arg_types)
+        and t.min_args == s.min_args
+        and (t.var_arg() is not None) == (s.var_arg() is not None)
     )
 
 

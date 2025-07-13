@@ -26,8 +26,7 @@ if sys.platform != "win32":
     if sys.platform == "darwin":
         F_FULLFSYNC: int
         F_NOCACHE: int
-        if sys.version_info >= (3, 9):
-            F_GETPATH: int
+        F_GETPATH: int
     if sys.platform == "linux":
         F_SETLKW64: int
         F_SETSIG: int
@@ -43,10 +42,9 @@ if sys.platform != "win32":
         F_SEAL_SEAL: int
         F_SEAL_SHRINK: int
         F_SEAL_WRITE: int
-        if sys.version_info >= (3, 9):
-            F_OFD_GETLK: Final[int]
-            F_OFD_SETLK: Final[int]
-            F_OFD_SETLKW: Final[int]
+        F_OFD_GETLK: Final[int]
+        F_OFD_SETLK: Final[int]
+        F_OFD_SETLKW: Final[int]
 
         if sys.version_info >= (3, 10):
             F_GETPIPE_SZ: int
@@ -70,8 +68,10 @@ if sys.platform != "win32":
         LOCK_RW: int
         LOCK_WRITE: int
 
-    # These are highly problematic, they might be present or not, depends on the specific OS.
     if sys.platform == "linux":
+        # Constants for the POSIX STREAMS interface. Present in glibc until 2.29 (released February 2019).
+        # Never implemented on BSD, and considered "obsolescent" starting in POSIX 2008.
+        # Probably still used on Solaris.
         I_ATMARK: int
         I_CANPUT: int
         I_CKBAND: int

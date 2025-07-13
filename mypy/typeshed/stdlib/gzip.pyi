@@ -1,10 +1,14 @@
-import _compression
 import sys
 import zlib
-from _typeshed import ReadableBuffer, SizedBuffer, StrOrBytesPath
-from io import FileIO
-from typing import Final, Literal, Protocol, TextIO, overload
+from _typeshed import ReadableBuffer, SizedBuffer, StrOrBytesPath, WriteableBuffer
+from io import FileIO, TextIOWrapper
+from typing import Final, Literal, Protocol, overload
 from typing_extensions import TypeAlias
+
+if sys.version_info >= (3, 14):
+    from compression._common._streams import BaseStream, DecompressReader
+else:
+    from _compression import BaseStream, DecompressReader
 
 __all__ = ["BadGzipFile", "GzipFile", "open", "compress", "decompress"]
 
@@ -57,13 +61,13 @@ def open(
 ) -> GzipFile: ...
 @overload
 def open(
-    filename: StrOrBytesPath,
+    filename: StrOrBytesPath | _ReadableFileobj | _WritableFileobj,
     mode: _OpenTextMode,
     compresslevel: int = 9,
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> TextIO: ...
+) -> TextIOWrapper: ...
 @overload
 def open(
     filename: StrOrBytesPath | _ReadableFileobj | _WritableFileobj,
@@ -72,7 +76,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> GzipFile | TextIO: ...
+) -> GzipFile | TextIOWrapper: ...
 
 class _PaddedFile:
     file: _ReadableFileobj
@@ -84,7 +88,7 @@ class _PaddedFile:
 
 class BadGzipFile(OSError): ...
 
-class GzipFile(_compression.BaseStream):
+class GzipFile(BaseStream):
     myfileobj: FileIO | None
     mode: object
     name: str
@@ -153,8 +157,17 @@ class GzipFile(_compression.BaseStream):
     def seek(self, offset: int, whence: int = 0) -> int: ...
     def readline(self, size: int | None = -1) -> bytes: ...
 
-class _GzipReader(_compression.DecompressReader):
+    if sys.version_info >= (3, 14):
+        def readinto(self, b: WriteableBuffer) -> int: ...
+        def readinto1(self, b: WriteableBuffer) -> int: ...
+
+class _GzipReader(DecompressReader):
     def __init__(self, fp: _ReadableFileobj) -> None: ...
 
-def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float | None = None) -> bytes: ...
+if sys.version_info >= (3, 14):
+    def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float = 0) -> bytes: ...
+
+else:
+    def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float | None = None) -> bytes: ...
+
 def decompress(data: ReadableBuffer) -> bytes: ...

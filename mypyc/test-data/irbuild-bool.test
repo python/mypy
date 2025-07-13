@@ -422,3 +422,54 @@ L0:
     r1 = extend r0: builtins.bool to builtins.int
     x = r1
     return x
+
+[case testBitToBoolPromotion]
+def bitand(x: float, y: float, z: float) -> bool:
+    b = (x == y) & (x == z)
+    return b
+def bitor(x: float, y: float, z: float) -> bool:
+    b = (x == y) | (x == z)
+    return b
+def bitxor(x: float, y: float, z: float) -> bool:
+    b = (x == y) ^ (x == z)
+    return b
+def invert(x: float, y: float) -> bool:
+    return not(x == y)
+[out]
+def bitand(x, y, z):
+    x, y, z :: float
+    r0, r1 :: bit
+    r2, b :: bool
+L0:
+    r0 = x == y
+    r1 = x == z
+    r2 = r0 & r1
+    b = r2
+    return b
+def bitor(x, y, z):
+    x, y, z :: float
+    r0, r1 :: bit
+    r2, b :: bool
+L0:
+    r0 = x == y
+    r1 = x == z
+    r2 = r0 | r1
+    b = r2
+    return b
+def bitxor(x, y, z):
+    x, y, z :: float
+    r0, r1 :: bit
+    r2, b :: bool
+L0:
+    r0 = x == y
+    r1 = x == z
+    r2 = r0 ^ r1
+    b = r2
+    return b
+def invert(x, y):
+    x, y :: float
+    r0, r1 :: bit
+L0:
+    r0 = x == y
+    r1 = r0 ^ 1
+    return r1

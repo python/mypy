@@ -119,6 +119,9 @@ class IRTransform(OpVisitor[Optional[Value]]):
         self.add(op)
 
     def visit_assign(self, op: Assign) -> Value | None:
+        if op.src in self.op_map and self.op_map[op.src] is None:
+            # Special case: allow removing register initialization assignments
+            return None
         return self.add(op)
 
     def visit_assign_multi(self, op: AssignMulti) -> Value | None:
@@ -354,7 +357,7 @@ class PatchVisitor(OpVisitor[None]):
     def visit_load_address(self, op: LoadAddress) -> None:
         if isinstance(op.src, LoadStatic):
             new = self.fix_op(op.src)
-            assert isinstance(new, LoadStatic)
+            assert isinstance(new, LoadStatic), new
             op.src = new
 
     def visit_keep_alive(self, op: KeepAlive) -> None:

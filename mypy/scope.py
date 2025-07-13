@@ -5,13 +5,14 @@ TODO: Use everywhere where we track targets, including in mypy.errors.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
-from typing import Iterator, Optional, Tuple
+from typing import Optional
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import FuncBase, TypeInfo
 
-SavedScope: _TypeAlias = Tuple[str, Optional[TypeInfo], Optional[FuncBase]]
+SavedScope: _TypeAlias = tuple[str, Optional[TypeInfo], Optional[FuncBase]]
 
 
 class Scope:

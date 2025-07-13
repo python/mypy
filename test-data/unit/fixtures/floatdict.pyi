@@ -1,10 +1,8 @@
-from typing import TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union
+from typing import TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Any
 
 T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
-
-Any = 0
 
 class object:
     def __init__(self) -> None: pass

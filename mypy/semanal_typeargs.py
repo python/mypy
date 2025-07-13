@@ -148,17 +148,18 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         is_error = False
         is_invalid = False
         for (i, arg), tvar in zip(enumerate(args), type_vars):
+            context = ctx if arg.line < 0 else arg
             if isinstance(tvar, TypeVarType):
                 if isinstance(arg, ParamSpecType):
                     is_invalid = True
                     self.fail(
                         INVALID_PARAM_SPEC_LOCATION.format(format_type(arg, self.options)),
-                        ctx,
+                        context,
                         code=codes.VALID_TYPE,
                     )
                     self.note(
                         INVALID_PARAM_SPEC_LOCATION_NOTE.format(arg.name),
-                        ctx,
+                        context,
                         code=codes.VALID_TYPE,
                     )
                     continue
@@ -167,7 +168,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     self.fail(
                         f"Cannot use {format_type(arg, self.options)} for regular type variable,"
                         " only for ParamSpec",
-                        ctx,
+                        context,
                         code=codes.VALID_TYPE,
                     )
                     continue
@@ -182,13 +183,15 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                             is_error = True
                             self.fail(
                                 message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(arg.name, name),
-                                ctx,
+                                context,
                                 code=codes.TYPE_VAR,
                             )
                             continue
                     else:
                         arg_values = [arg]
-                    if self.check_type_var_values(name, arg_values, tvar.name, tvar.values, ctx):
+                    if self.check_type_var_values(
+                        name, arg_values, tvar.name, tvar.values, context
+                    ):
                         is_error = True
                 # Check against upper bound. Since it's object the vast majority of the time,
                 # add fast path to avoid a potentially slow subtype check.
@@ -209,7 +212,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                             name,
                             format_type(upper_bound, self.options),
                         ),
-                        ctx,
+                        context,
                         code=codes.TYPE_VAR,
                     )
             elif isinstance(tvar, ParamSpecType):
@@ -220,7 +223,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     self.fail(
                         "Can only replace ParamSpec with a parameter types list or"
                         f" another ParamSpec, got {format_type(arg, self.options)}",
-                        ctx,
+                        context,
                         code=codes.VALID_TYPE,
                     )
         if is_invalid:

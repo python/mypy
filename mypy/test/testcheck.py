@@ -37,8 +37,6 @@ import pytest
 typecheck_files = find_test_files(pattern="check-*.test")
 
 # Tests that use Python version specific features:
-if sys.version_info < (3, 9):
-    typecheck_files.remove("check-python39.test")
 if sys.version_info < (3, 10):
     typecheck_files.remove("check-python310.test")
 if sys.version_info < (3, 11):
@@ -138,8 +136,6 @@ class TypeCheckSuite(DataSuite):
             options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
-        if "lowercase" not in testcase.file:
-            options.force_uppercase_builtins = True
         if "union-error" not in testcase.file:
             options.force_union_syntax = True
 

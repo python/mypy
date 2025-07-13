@@ -215,6 +215,35 @@ You can use :py:class:`~collections.abc.Callable` as the type for callable objec
         for x in objs:
             f(x)
 
+.. _code-metaclass:
+
+Check the validity of a class's metaclass [metaclass]
+-----------------------------------------------------
+
+Mypy checks whether the metaclass of a class is valid. The metaclass
+must be a subclass of ``type``. Further, the class hierarchy must yield
+a consistent metaclass. For more details, see the
+`Python documentation <https://docs.python.org/3.13/reference/datamodel.html#determining-the-appropriate-metaclass>`_
+
+Note that mypy's metaclass checking is limited and may produce false-positives.
+See also :ref:`limitations`.
+
+Example with an error:
+
+.. code-block:: python
+
+    class GoodMeta(type):
+        pass
+
+    class BadMeta:
+        pass
+
+    class A1(metaclass=GoodMeta):  # OK
+        pass
+
+    class A2(metaclass=BadMeta):  # Error:  Metaclasses not inheriting from "type" are not supported  [metaclass]
+        pass
+
 .. _code-var-annotated:
 
 Require annotation if variable type is unclear [var-annotated]
@@ -1240,6 +1269,22 @@ Consider this example:
 
 `PEP 705 <https://peps.python.org/pep-0705>`_ specifies
 how ``ReadOnly`` special form works for ``TypedDict`` objects.
+
+.. _code-narrowed-type-not-subtype:
+
+Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
+---------------------------------------------------------------
+
+:pep:`742` requires that when ``TypeIs`` is used, the narrowed
+type must be a subtype of the original type::
+
+    from typing_extensions import TypeIs
+
+    def f(x: int) -> TypeIs[str]:  # Error, str is not a subtype of int
+        ...
+
+    def g(x: object) -> TypeIs[str]:  # OK
+        ...
 
 .. _code-misc:
 

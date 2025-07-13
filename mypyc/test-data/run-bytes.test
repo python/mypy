@@ -111,6 +111,29 @@ def test_len() -> None:
     assert len(b) == 3
     assert len(bytes()) == 0
 
+def test_ord() -> None:
+    assert ord(b'a') == ord('a')
+    assert ord(b'a' + bytes()) == ord('a')
+    assert ord(b'\x00') == 0
+    assert ord(b'\x00' + bytes()) == 0
+    assert ord(b'\xfe') == 254
+    assert ord(b'\xfe' + bytes()) == 254
+
+    with assertRaises(TypeError):
+        ord(b'aa')
+    with assertRaises(TypeError):
+        ord(b'')
+
+def test_ord_bytesarray() -> None:
+    assert ord(bytearray(b'a')) == ord('a')
+    assert ord(bytearray(b'\x00')) == 0
+    assert ord(bytearray(b'\xfe')) == 254
+
+    with assertRaises(TypeError):
+        ord(bytearray(b'aa'))
+    with assertRaises(TypeError):
+        ord(bytearray(b''))
+
 [case testBytesSlicing]
 def test_bytes_slicing() -> None:
     b = b'abcdefg'
@@ -254,7 +277,6 @@ class bytes_subclass(bytes):
         return b'spook'
 
 [case testBytesFormatting]
-[typing fixtures/typing-full.pyi]
 from testutil import assertRaises
 
 # https://www.python.org/dev/peps/pep-0461/
@@ -291,6 +313,7 @@ def test_bytes_formatting_2() -> None:
     aa = b'\xe4\xbd\xa0\xe5\xa5\xbd%b' % b'\xe4\xbd\xa0\xe5\xa5\xbd'
     assert aa == b'\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd'
     assert aa.decode() == '你好你好'
+[typing fixtures/typing-full.pyi]
 
 
 class A:

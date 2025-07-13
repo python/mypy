@@ -93,7 +93,7 @@ Using ``Stack`` is similar to built-in container types:
    stack.push('x')
 
    stack2: Stack[str] = Stack()
-   stack2.append('x')
+   stack2.push('x')
 
 Construction of instances of generic types is type checked (Python 3.12 syntax):
 
@@ -146,7 +146,7 @@ example (Python 3.12 syntax):
    from typing import Mapping, Iterator
 
    # This is a generic subclass of Mapping
-   class MyMapp[KT, VT](Mapping[KT, VT]):
+   class MyMap[KT, VT](Mapping[KT, VT]):
        def __getitem__(self, k: KT) -> VT: ...
        def __iter__(self) -> Iterator[KT]: ...
        def __len__(self) -> int: ...
@@ -284,7 +284,7 @@ and the return type is derived from the sequence item type. Example:
 When using the legacy syntax, a single definition of a type variable
 (such as ``T`` above) can be used in multiple generic functions or
 classes. In this example we use the same type variable in two generic
-functions to declarare type parameters:
+functions to declare type parameters:
 
 .. code-block:: python
 
@@ -630,7 +630,7 @@ Let us illustrate this by few simple examples:
 
      my_circles: list[Circle] = []
      add_one(my_circles)     # This may appear safe, but...
-     my_circles[-1].rotate()  # ...this will fail, since my_circles[0] is now a Shape, not a Circle
+     my_circles[0].rotate()  # ...this will fail, since my_circles[0] is now a Shape, not a Circle
 
   Another example of invariant type is ``dict``. Most mutable containers
   are invariant.
@@ -641,7 +641,7 @@ infer the most flexible variance for each class type variable. Here
 
 .. code-block:: python
 
-   class Box[T]:  # this type is implilicitly covariant
+   class Box[T]:  # this type is implicitly covariant
        def __init__(self, content: T) -> None:
            self._content = content
 
@@ -663,12 +663,12 @@ the attribute as ``Final``, the class could still be made covariant:
 
    from typing import Final
 
-   class Box[T]:  # this type is implilicitly covariant
+   class Box[T]:  # this type is implicitly covariant
        def __init__(self, content: T) -> None:
            self.content: Final = content
 
        def get_content(self) -> T:
-           return self._content
+           return self.content
 
 When using the legacy syntax, mypy assumes that all user-defined generics
 are invariant by default. To declare a given generic class as covariant or
@@ -999,7 +999,7 @@ similarly supported via generics (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from colletions.abc import Callable
+    from collections.abc import Callable
     from typing import Any
 
     def route[F: Callable[..., Any]](url: str) -> Callable[[F], F]:

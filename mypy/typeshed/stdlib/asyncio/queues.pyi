@@ -1,9 +1,7 @@
 import sys
 from asyncio.events import AbstractEventLoop
+from types import GenericAlias
 from typing import Any, Generic, TypeVar
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 if sys.version_info >= (3, 10):
     from .mixins import _LoopBoundMixin
@@ -13,6 +11,7 @@ else:
 class QueueEmpty(Exception): ...
 class QueueFull(Exception): ...
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 13):
     __all__ = ("Queue", "PriorityQueue", "LifoQueue", "QueueFull", "QueueEmpty", "QueueShutDown")
 
@@ -47,8 +46,7 @@ class Queue(Generic[_T], _LoopBoundMixin):  # noqa: Y059
     def get_nowait(self) -> _T: ...
     async def join(self) -> None: ...
     def task_done(self) -> None: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, type: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, type: Any, /) -> GenericAlias: ...
     if sys.version_info >= (3, 13):
         def shutdown(self, immediate: bool = False) -> None: ...
 

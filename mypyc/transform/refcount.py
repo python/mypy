@@ -18,7 +18,7 @@ into a regular, owned reference that needs to freed before return.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Tuple
+from collections.abc import Iterable
 
 from mypyc.analysis.dataflow import (
     AnalysisDict,
@@ -46,13 +46,13 @@ from mypyc.ir.ops import (
     Value,
 )
 
-Decs = Tuple[Tuple[Value, bool], ...]
-Incs = Tuple[Value, ...]
+Decs = tuple[tuple[Value, bool], ...]
+Incs = tuple[Value, ...]
 
 # A cache of basic blocks that decrement and increment specific values
 # and then jump to some target block. This lets us cut down on how
 # much code we generate in some circumstances.
-BlockCache = Dict[Tuple[BasicBlock, Decs, Incs], BasicBlock]
+BlockCache = dict[tuple[BasicBlock, Decs, Incs], BasicBlock]
 
 
 def insert_ref_count_opcodes(ir: FuncIR) -> None:
@@ -127,7 +127,7 @@ def transform_block(
                 # For assignments to registers that were already live,
                 # decref the old value.
                 if dest not in pre_borrow[key] and dest in pre_live[key]:
-                    assert isinstance(op, Assign)
+                    assert isinstance(op, Assign), op
                     maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
         # Strip KeepAlive. Its only purpose is to help with this transform.

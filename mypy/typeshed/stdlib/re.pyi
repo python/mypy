@@ -2,13 +2,11 @@ import enum
 import sre_compile
 import sre_constants
 import sys
-from _typeshed import ReadableBuffer
+from _typeshed import MaybeNone, ReadableBuffer
 from collections.abc import Callable, Iterator, Mapping
-from typing import Any, AnyStr, Generic, Literal, TypeVar, final, overload
+from types import GenericAlias
+from typing import Any, AnyStr, Final, Generic, Literal, TypeVar, final, overload
 from typing_extensions import TypeAlias
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 __all__ = [
     "match",
@@ -90,19 +88,19 @@ class Match(Generic[AnyStr]):
     @overload
     def group(self, group: Literal[0] = 0, /) -> AnyStr: ...
     @overload
-    def group(self, group: str | int, /) -> AnyStr | Any: ...
+    def group(self, group: str | int, /) -> AnyStr | MaybeNone: ...
     @overload
-    def group(self, group1: str | int, group2: str | int, /, *groups: str | int) -> tuple[AnyStr | Any, ...]: ...
+    def group(self, group1: str | int, group2: str | int, /, *groups: str | int) -> tuple[AnyStr | MaybeNone, ...]: ...
     # Each item of groups()'s return tuple is either "AnyStr" or
     # "AnyStr | None", depending on the pattern.
     @overload
-    def groups(self) -> tuple[AnyStr | Any, ...]: ...
+    def groups(self) -> tuple[AnyStr | MaybeNone, ...]: ...
     @overload
     def groups(self, default: _T) -> tuple[AnyStr | _T, ...]: ...
     # Each value in groupdict()'s return dict is either "AnyStr" or
     # "AnyStr | None", depending on the pattern.
     @overload
-    def groupdict(self) -> dict[str, AnyStr | Any]: ...
+    def groupdict(self) -> dict[str, AnyStr | MaybeNone]: ...
     @overload
     def groupdict(self, default: _T) -> dict[str, AnyStr | _T]: ...
     def start(self, group: int | str = 0, /) -> int: ...
@@ -114,11 +112,10 @@ class Match(Generic[AnyStr]):
     @overload
     def __getitem__(self, key: Literal[0], /) -> AnyStr: ...
     @overload
-    def __getitem__(self, key: int | str, /) -> AnyStr | Any: ...
+    def __getitem__(self, key: int | str, /) -> AnyStr | MaybeNone: ...
     def __copy__(self) -> Match[AnyStr]: ...
     def __deepcopy__(self, memo: Any, /) -> Match[AnyStr]: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 @final
 class Pattern(Generic[AnyStr]):
@@ -151,11 +148,11 @@ class Pattern(Generic[AnyStr]):
     @overload
     def fullmatch(self, string: AnyStr, pos: int = 0, endpos: int = sys.maxsize) -> Match[AnyStr] | None: ...
     @overload
-    def split(self: Pattern[str], string: str, maxsplit: int = 0) -> list[str | Any]: ...
+    def split(self: Pattern[str], string: str, maxsplit: int = 0) -> list[str | MaybeNone]: ...
     @overload
-    def split(self: Pattern[bytes], string: ReadableBuffer, maxsplit: int = 0) -> list[bytes | Any]: ...
+    def split(self: Pattern[bytes], string: ReadableBuffer, maxsplit: int = 0) -> list[bytes | MaybeNone]: ...
     @overload
-    def split(self, string: AnyStr, maxsplit: int = 0) -> list[AnyStr | Any]: ...
+    def split(self, string: AnyStr, maxsplit: int = 0) -> list[AnyStr | MaybeNone]: ...
     # return type depends on the number of groups in the pattern
     @overload
     def findall(self: Pattern[str], string: str, pos: int = 0, endpos: int = sys.maxsize) -> list[Any]: ...
@@ -197,8 +194,7 @@ class Pattern(Generic[AnyStr]):
     def __deepcopy__(self, memo: Any, /) -> Pattern[AnyStr]: ...
     def __eq__(self, value: object, /) -> bool: ...
     def __hash__(self) -> int: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 # ----- re variables and constants -----
 
@@ -224,25 +220,27 @@ class RegexFlag(enum.IntFlag):
     if sys.version_info >= (3, 11):
         NOFLAG = 0
 
-A = RegexFlag.A
-ASCII = RegexFlag.ASCII
-DEBUG = RegexFlag.DEBUG
-I = RegexFlag.I
-IGNORECASE = RegexFlag.IGNORECASE
-L = RegexFlag.L
-LOCALE = RegexFlag.LOCALE
-M = RegexFlag.M
-MULTILINE = RegexFlag.MULTILINE
-S = RegexFlag.S
-DOTALL = RegexFlag.DOTALL
-X = RegexFlag.X
-VERBOSE = RegexFlag.VERBOSE
-U = RegexFlag.U
-UNICODE = RegexFlag.UNICODE
+A: Final = RegexFlag.A
+ASCII: Final = RegexFlag.ASCII
+DEBUG: Final = RegexFlag.DEBUG
+I: Final = RegexFlag.I
+IGNORECASE: Final = RegexFlag.IGNORECASE
+L: Final = RegexFlag.L
+LOCALE: Final = RegexFlag.LOCALE
+M: Final = RegexFlag.M
+MULTILINE: Final = RegexFlag.MULTILINE
+S: Final = RegexFlag.S
+DOTALL: Final = RegexFlag.DOTALL
+X: Final = RegexFlag.X
+VERBOSE: Final = RegexFlag.VERBOSE
+U: Final = RegexFlag.U
+UNICODE: Final = RegexFlag.UNICODE
 if sys.version_info < (3, 13):
-    T = RegexFlag.T
-    TEMPLATE = RegexFlag.TEMPLATE
+    T: Final = RegexFlag.T
+    TEMPLATE: Final = RegexFlag.TEMPLATE
 if sys.version_info >= (3, 11):
+    # pytype chokes on `NOFLAG: Final = RegexFlag.NOFLAG` with `LiteralValueError`
+    # mypy chokes on `NOFLAG: Final[Literal[RegexFlag.NOFLAG]]` with `Literal[...] is invalid`
     NOFLAG = RegexFlag.NOFLAG
 _FlagsType: TypeAlias = int | RegexFlag
 
@@ -270,11 +268,11 @@ def fullmatch(pattern: str | Pattern[str], string: str, flags: _FlagsType = 0) -
 @overload
 def fullmatch(pattern: bytes | Pattern[bytes], string: ReadableBuffer, flags: _FlagsType = 0) -> Match[bytes] | None: ...
 @overload
-def split(pattern: str | Pattern[str], string: str, maxsplit: int = 0, flags: _FlagsType = 0) -> list[str | Any]: ...
+def split(pattern: str | Pattern[str], string: str, maxsplit: int = 0, flags: _FlagsType = 0) -> list[str | MaybeNone]: ...
 @overload
 def split(
     pattern: bytes | Pattern[bytes], string: ReadableBuffer, maxsplit: int = 0, flags: _FlagsType = 0
-) -> list[bytes | Any]: ...
+) -> list[bytes | MaybeNone]: ...
 @overload
 def findall(pattern: str | Pattern[str], string: str, flags: _FlagsType = 0) -> list[Any]: ...
 @overload
