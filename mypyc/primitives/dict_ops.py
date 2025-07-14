@@ -289,7 +289,7 @@ dict_next_item_op = custom_op(
 
 # check that len(dict) == const during iteration
 dict_check_size_op = custom_op(
-    arg_types=[dict_rprimitive, int_rprimitive],
+    arg_types=[dict_rprimitive, c_pyssize_t_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="CPyDict_CheckSize",
     error_kind=ERR_FALSE,

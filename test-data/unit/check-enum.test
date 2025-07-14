@@ -618,9 +618,8 @@ reveal_type(B.a)        # N: Revealed type is "Literal[__main__.B.a]?"
 reveal_type(A.x.name)   # N: Revealed type is "Literal['x']?"
 reveal_type(B.a.name)   # N: Revealed type is "Literal['a']?"
 
-# TODO: The revealed type should be 'int' here
-reveal_type(A.x.value)  # N: Revealed type is "Any"
-reveal_type(B.a.value)  # N: Revealed type is "Any"
+reveal_type(A.x.value)  # N: Revealed type is "builtins.int"
+reveal_type(B.a.value)  # N: Revealed type is "builtins.int"
 [builtins fixtures/enum.pyi]
 
 [case testAnonymousFunctionalEnum]
@@ -755,12 +754,10 @@ class B2(IntEnum):
 class B3(IntEnum):
     x = 1
 
-# TODO: getting B1.x._value_ and B2.x._value_ to have type 'int' requires a typeshed change
-
 is_x(reveal_type(B1.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(B1.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(B1.x.value)         # N: Revealed type is "builtins.int"
-reveal_type(B1.x._value_)       # N: Revealed type is "Any"
+reveal_type(B1.x._value_)       # N: Revealed type is "builtins.int"
 is_x(reveal_type(B2.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(B2.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(B2.x.value)         # N: Revealed type is "builtins.int"
@@ -770,9 +767,6 @@ is_x(reveal_type(B3.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(B3.x.value)         # N: Revealed type is "Literal[1]?"
 reveal_type(B3.x._value_)       # N: Revealed type is "Literal[1]?"
 
-# TODO: C1.x.value and C2.x.value should also be of type 'int'
-# This requires either a typeshed change or a plugin refinement
-
 C1 = IntFlag('C1', 'x')
 class C2(IntFlag):
     x = auto()
@@ -781,8 +775,8 @@ class C3(IntFlag):
 
 is_x(reveal_type(C1.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(C1.x._name_))  # N: Revealed type is "Literal['x']"
-reveal_type(C1.x.value)         # N: Revealed type is "Any"
-reveal_type(C1.x._value_)       # N: Revealed type is "Any"
+reveal_type(C1.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(C1.x._value_)       # N: Revealed type is "builtins.int"
 is_x(reveal_type(C2.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(C2.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(C2.x.value)         # N: Revealed type is "builtins.int"
@@ -800,8 +794,8 @@ class D3(Flag):
 
 is_x(reveal_type(D1.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(D1.x._name_))  # N: Revealed type is "Literal['x']"
-reveal_type(D1.x.value)         # N: Revealed type is "Any"
-reveal_type(D1.x._value_)       # N: Revealed type is "Any"
+reveal_type(D1.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(D1.x._value_)       # N: Revealed type is "builtins.int"
 is_x(reveal_type(D2.x.name))    # N: Revealed type is "Literal['x']"
 is_x(reveal_type(D2.x._name_))  # N: Revealed type is "Literal['x']"
 reveal_type(D2.x.value)         # N: Revealed type is "builtins.int"
@@ -2538,4 +2532,106 @@ def check(thing: Things) -> None:
     if thing is Things._:
         return None
     return None  # E: Statement is unreachable
+[builtins fixtures/enum.pyi]
+
+[case testSunderValueTypeEllipsis]
+from foo.bar import (
+    Basic, FromStub, InheritedInt, InheritedStr, InheritedFlag,
+    InheritedIntFlag, Wrapper
+)
+
+reveal_type(Basic.FOO)  # N: Revealed type is "Literal[foo.bar.Basic.FOO]?"
+reveal_type(Basic.FOO.value)  # N: Revealed type is "Literal[1]?"
+reveal_type(Basic.FOO._value_)  # N: Revealed type is "builtins.int"
+
+reveal_type(FromStub.FOO)  # N: Revealed type is "Literal[foo.bar.FromStub.FOO]?"
+reveal_type(FromStub.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(FromStub.FOO._value_)  # N: Revealed type is "builtins.int"
+
+reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[foo.bar.Wrapper.Nested.FOO]?"
+reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.int"
+
+reveal_type(InheritedInt.FOO)  # N: Revealed type is "Literal[foo.bar.InheritedInt.FOO]?"
+reveal_type(InheritedInt.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(InheritedInt.FOO._value_)  # N: Revealed type is "builtins.int"
+
+reveal_type(InheritedStr.FOO)  # N: Revealed type is "Literal[foo.bar.InheritedStr.FOO]?"
+reveal_type(InheritedStr.FOO.value)  # N: Revealed type is "builtins.str"
+reveal_type(InheritedStr.FOO._value_)  # N: Revealed type is "builtins.str"
+
+reveal_type(InheritedFlag.FOO)  # N: Revealed type is "Literal[foo.bar.InheritedFlag.FOO]?"
+reveal_type(InheritedFlag.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(InheritedFlag.FOO._value_)  # N: Revealed type is "builtins.int"
+
+reveal_type(InheritedIntFlag.FOO)  # N: Revealed type is "Literal[foo.bar.InheritedIntFlag.FOO]?"
+reveal_type(InheritedIntFlag.FOO.value)  # N: Revealed type is "builtins.int"
+reveal_type(InheritedIntFlag.FOO._value_)  # N: Revealed type is "builtins.int"
+
+[file foo/__init__.pyi]
+[file foo/bar/__init__.pyi]
+from enum import Enum, IntEnum, StrEnum, Flag, IntFlag
+
+class Basic(Enum):
+    _value_: int
+    FOO = 1
+
+class FromStub(Enum):
+    _value_: int
+    FOO = ...
+
+class Wrapper:
+    class Nested(Enum):
+        _value_: int
+        FOO = ...
+
+class InheritedInt(IntEnum):
+    FOO = ...
+
+class InheritedStr(StrEnum):
+    FOO = ...
+
+class InheritedFlag(Flag):
+    FOO = ...
+
+class InheritedIntFlag(IntFlag):
+    FOO = ...
+[builtins fixtures/enum.pyi]
+
+[case testSunderValueTypeEllipsisNonStub]
+from enum import Enum, StrEnum
+
+class Basic(Enum):
+    _value_: int
+    FOO = 1
+
+reveal_type(Basic.FOO)  # N: Revealed type is "Literal[__main__.Basic.FOO]?"
+reveal_type(Basic.FOO.value)  # N: Revealed type is "Literal[1]?"
+reveal_type(Basic.FOO._value_)  # N: Revealed type is "builtins.int"
+
+# TODO: this and below should produce diagnostics, Ellipsis is not assignable to int
+# Now we do not check members against _value_ at all.
+
+class FromStub(Enum):
+    _value_: int
+    FOO = ...
+
+reveal_type(FromStub.FOO)  # N: Revealed type is "Literal[__main__.FromStub.FOO]?"
+reveal_type(FromStub.FOO.value)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(FromStub.FOO._value_)  # N: Revealed type is "builtins.int"
+
+class InheritedStr(StrEnum):
+    FOO = ...
+
+reveal_type(InheritedStr.FOO)  # N: Revealed type is "Literal[__main__.InheritedStr.FOO]?"
+reveal_type(InheritedStr.FOO.value)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(InheritedStr.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
+
+class Wrapper:
+    class Nested(StrEnum):
+        FOO = ...
+
+reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[__main__.Wrapper.Nested.FOO]?"
+reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
 [builtins fixtures/enum.pyi]

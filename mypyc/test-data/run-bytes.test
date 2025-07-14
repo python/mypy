@@ -277,7 +277,6 @@ class bytes_subclass(bytes):
         return b'spook'
 
 [case testBytesFormatting]
-[typing fixtures/typing-full.pyi]
 from testutil import assertRaises
 
 # https://www.python.org/dev/peps/pep-0461/
@@ -314,6 +313,7 @@ def test_bytes_formatting_2() -> None:
     aa = b'\xe4\xbd\xa0\xe5\xa5\xbd%b' % b'\xe4\xbd\xa0\xe5\xa5\xbd'
     assert aa == b'\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd'
     assert aa.decode() == '你好你好'
+[typing fixtures/typing-full.pyi]
 
 
 class A:

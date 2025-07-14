@@ -1236,7 +1236,7 @@ class A:
     @overload  # E: Decorators on top of @property are not supported
     @property
     def f(self) -> int: pass
-    @property  # E: Only supported top decorator is @f.setter
+    @property  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]

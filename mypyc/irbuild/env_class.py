@@ -48,6 +48,7 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
         is_generated=True,
         is_final_class=True,
     )
+    env_class.reuse_freed_instance = True
     env_class.attributes[SELF_NAME] = RInstance(env_class)
     if builder.fn_info.is_nested:
         # If the function is nested, its environment class must contain an environment

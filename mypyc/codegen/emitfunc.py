@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import (
     HAVE_IMMORTAL,
@@ -16,7 +17,14 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    all_values,
+    get_text_signature,
+)
 from mypyc.ir.ops import (
     ERR_FALSE,
     NAMESPACE_MODULE,
@@ -33,6 +41,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    CString,
     DecRef,
     Extend,
     Float,
@@ -105,6 +114,14 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
     )
 
 
+def native_function_doc_initializer(func: FuncIR) -> str:
+    text_sig = get_text_signature(func)
+    if text_sig is None:
+        return "NULL"
+    docstring = f"{text_sig}\n--\n\n"
+    return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
 def generate_native_function(
     fn: FuncIR, emitter: Emitter, source_path: str, module_name: str
 ) -> None:
@@ -143,7 +160,7 @@ def generate_native_function(
     # eliminated during code generation.
     for block in fn.blocks:
         terminator = block.terminator
-        assert isinstance(terminator, ControlOp)
+        assert isinstance(terminator, ControlOp), terminator
 
         for target in terminator.targets():
             is_next_block = target.label == block.label + 1
@@ -209,6 +226,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.label is not self.next_block:
             self.emit_line("goto %s;" % self.label(op.label))
 
+    def error_value_check(self, value: Value, compare: str) -> str:
+        typ = value.type
+        if isinstance(typ, RTuple):
+            # TODO: What about empty tuple?
+            return self.emitter.tuple_undefined_check_cond(
+                typ, self.reg(value), self.c_error_value, compare
+            )
+        else:
+            return f"{self.reg(value)} {compare} {self.c_error_value(typ)}"
+
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
         negated = op.negated
@@ -225,15 +252,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             expr_result = self.reg(op.value)
             cond = f"{neg}{expr_result}"
         elif op.op == Branch.IS_ERROR:
-            typ = op.value.type
             compare = "!=" if negated else "=="
-            if isinstance(typ, RTuple):
-                # TODO: What about empty tuple?
-                cond = self.emitter.tuple_undefined_check_cond(
-                    typ, self.reg(op.value), self.c_error_value, compare
-                )
-            else:
-                cond = f"{self.reg(op.value)} {compare} {self.c_error_value(typ)}"
+            cond = self.error_value_check(op.value, compare)
         else:
             assert False, "Invalid branch"
 
@@ -289,7 +309,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
         typ = op.dest.type
-        assert isinstance(typ, RArray)
+        assert isinstance(typ, RArray), typ
         dest = self.reg(op.dest)
         # RArray values can only be assigned to once, so we can always
         # declare them on initialization.
@@ -358,6 +378,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
     def visit_get_attr(self, op: GetAttr) -> None:
+        if op.allow_error_value:
+            self.get_attr_with_allow_error_value(op)
+            return
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
@@ -425,6 +448,28 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.op_index += 1
             elif not always_defined:
                 self.emitter.emit_line("}")
+
+    def get_attr_with_allow_error_value(self, op: GetAttr) -> None:
+        """Handle GetAttr with allow_error_value=True.
+
+        This allows NULL or other error value without raising AttributeError.
+        """
+        dest = self.reg(op)
+        obj = self.reg(op.obj)
+        rtype = op.class_type
+        cl = rtype.class_ir
+        attr_rtype, decl_cl = cl.attr_details(op.attr)
+
+        # Direct struct access without NULL check
+        attr_expr = self.get_attr_expr(obj, op, decl_cl)
+        self.emitter.emit_line(f"{dest} = {attr_expr};")
+
+        # Only emit inc_ref if not NULL
+        if attr_rtype.is_refcounted and not op.is_borrowed:
+            check = self.error_value_check(op, "!=")
+            self.emitter.emit_line(f"if ({check}) {{")
+            self.emitter.emit_inc_ref(dest, attr_rtype)
+            self.emitter.emit_line("}")
 
     def next_branch(self) -> Branch | None:
         if self.op_index + 1 < len(self.ops):
@@ -541,7 +586,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def emit_method_call(self, dest: str, op_obj: Value, name: str, op_args: list[Value]) -> None:
         obj = self.reg(op_obj)
         rtype = op_obj.type
-        assert isinstance(rtype, RInstance)
+        assert isinstance(rtype, RInstance), rtype
         class_ir = rtype.class_ir
         method = rtype.class_ir.get_method(name)
         assert method is not None
@@ -760,7 +805,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         # TODO: support tuple type
-        assert isinstance(op.src_type, RStruct)
+        assert isinstance(op.src_type, RStruct), op.src_type
         assert op.field in op.src_type.names, "Invalid field name."
         self.emit_line(
             "{} = ({})&(({} *){})->{};".format(
@@ -822,6 +867,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif r == "nan":
                 return "NAN"
             return r
+        elif isinstance(reg, CString):
+            return '"' + encode_c_string_literal(reg.value) + '"'
         else:
             return self.emitter.reg(reg)
 
@@ -883,3 +930,30 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return "(uint64_t)"
         else:
             return ""
+
+
+_translation_table: Final[dict[int, str]] = {}
+
+
+def encode_c_string_literal(b: bytes) -> str:
+    """Convert bytestring to the C string literal syntax (with necessary escaping).
+
+    For example, b'foo\n' gets converted to 'foo\\n' (note that double quotes are not added).
+    """
+    if not _translation_table:
+        # Initialize the translation table on the first call.
+        d = {
+            ord("\n"): "\\n",
+            ord("\r"): "\\r",
+            ord("\t"): "\\t",
+            ord('"'): '\\"',
+            ord("\\"): "\\\\",
+        }
+        for i in range(256):
+            if i not in d:
+                if i < 32 or i >= 127:
+                    d[i] = "\\x%.2x" % i
+                else:
+                    d[i] = chr(i)
+        _translation_table.update(str.maketrans(d))
+    return b.decode("latin1").translate(_translation_table)
