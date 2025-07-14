@@ -316,7 +316,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     elif cl.supports_weakref:
         # __weakref__ lives right after the struct
         # TODO: It should get a member in the struct instead of doing this nonsense.
-        weak_offset = base_size
         emitter.emit_lines(
             f"PyMemberDef {members_name}[] = {{",
             f'{{"__weakref__", T_OBJECT_EX, {base_size}, 0, NULL}},',
