@@ -131,7 +131,7 @@ Related PRs:
 
 ### Stubgen Improvements
 
-* Aadd import for `types` in `__exit__` method signature (Alexey Makridenko, PR [19120](https://github.com/python/mypy/pull/19120))
+* Add import for `types` in `__exit__` method signature (Alexey Makridenko, PR [19120](https://github.com/python/mypy/pull/19120))
 * Add support for including class and property docstrings (Chad Dombrova, PR [17964](https://github.com/python/mypy/pull/17964))
 * Don't generate `Incomplete | None = None` argument annotation (Sebastian Rittau, PR [19097](https://github.com/python/mypy/pull/19097))
 * Support several more constructs in stubgen's alias printer (Stanislav Terliakov, PR [18888](https://github.com/python/mypy/pull/18888))
