@@ -313,6 +313,16 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         if emitter.capi_version < (3, 12):
             fields["tp_dictoffset"] = base_size
             fields["tp_weaklistoffset"] = weak_offset
+    elif cl.supports_weakref:
+        # __weakref__ lives right after the struct
+        # TODO: It should get a member in the struct instead of doing this nonsense.
+        weak_offset = base_size
+        emitter.emit_lines(
+            f"PyMemberDef {members_name}[] = {{",
+            f'{{"__weakref__", T_OBJECT_EX, {base_size}, 0, NULL}},',
+            "{0}",
+            "};",
+        )
     else:
         fields["tp_basicsize"] = base_size
 
