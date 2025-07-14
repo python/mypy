@@ -56,7 +56,7 @@ function_op(
     extra_int_constants=[(0, int_rprimitive)],
 )
 
-# isinstance(obj, list)
+# translate isinstance(obj, list)
 isinstance_list = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],

@@ -168,6 +168,7 @@ function_op(
     error_kind=ERR_NEVER,
 )
 
+# translate isinstance(obj, float)
 isinstance_float = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],

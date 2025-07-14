@@ -281,8 +281,8 @@ def test_built_in_set() -> None:
     assert not isinstance([], set)
     assert not isinstance((1,2,3), set)
     assert not isinstance({1:'a', 2:'b'}, set)
-    assert not isinstance(1, set)
-    assert not isinstance('a', set)
+    assert not isinstance(int() + 1, set)
+    assert not isinstance(str() + 'a', set)
 
 def test_user_defined_set() -> None:
     from userdefinedset import set
@@ -303,8 +303,8 @@ def test_built_in_frozenset() -> None:
     assert not isinstance([], frozenset)
     assert not isinstance((1,2,3), frozenset)
     assert not isinstance({1:'a', 2:'b'}, frozenset)
-    assert not isinstance(1, frozenset)
-    assert not isinstance('a', frozenset)
+    assert not isinstance(int() + 1, frozenset)
+    assert not isinstance(str() + 'a', frozenset)
 
 [file copysubclass.py]
 from typing import Any

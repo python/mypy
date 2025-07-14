@@ -71,7 +71,7 @@ dict_copy = function_op(
     error_kind=ERR_MAGIC,
 )
 
-# isinstance(obj, dict)
+# translate isinstance(obj, dict)
 isinstance_dict = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],

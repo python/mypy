@@ -309,8 +309,8 @@ def test_built_in() -> None:
     assert not isinstance({}, tuple)
     assert not isinstance([1,2,3], tuple)
     assert not isinstance({'a','b'}, tuple)
-    assert not isinstance(1, tuple)
-    assert not isinstance('a', tuple)
+    assert not isinstance(int() + 1, tuple)
+    assert not isinstance(str() + 'a', tuple)
 
 def test_user_defined() -> None:
     from userdefinedtuple import tuple

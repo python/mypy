@@ -36,7 +36,7 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
-# isinstance(obj, bytes)
+# translate isinstance(obj, bytes)
 isinstance_bytes = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],
@@ -54,7 +54,7 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
-# isinstance(obj, bytearray)
+# translate isinstance(obj, bytearray)
 isinstance_bytearray = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],

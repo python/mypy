@@ -297,7 +297,7 @@ uint8_overflow = custom_op(
     error_kind=ERR_ALWAYS,
 )
 
-# isinstance(obj, int)
+# translate isinstance(obj, int)
 isinstance_int = function_op(
     name="builtints.isinstance",
     arg_types=[object_rprimitive],

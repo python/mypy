@@ -64,7 +64,7 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
-# isinstance(obj, set)
+# translate isinstance(obj, set)
 isinstance_set = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],
@@ -73,7 +73,7 @@ isinstance_set = function_op(
     error_kind=ERR_NEVER,
 )
 
-# isinstance(obj, frozenset)
+# translate isinstance(obj, frozenset)
 isinstance_frozenset = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],

@@ -84,7 +84,7 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
-# isinstance(obj, tuple)
+# translate isinstance(obj, tuple)
 isinstance_tuple = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],

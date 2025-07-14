@@ -351,8 +351,8 @@ def test_built_in() -> None:
     assert not isinstance((), dict)
     assert not isinstance((1,2,3), dict)
     assert not isinstance({'a','b'}, dict)
-    assert not isinstance(1, dict)
-    assert not isinstance('a', dict)
+    assert not isinstance(int() + 1, dict)
+    assert not isinstance(str() + 'a', dict)
 
 def test_user_defined() -> None:
     from userdefineddict import dict

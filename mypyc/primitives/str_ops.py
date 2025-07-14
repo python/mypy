@@ -48,7 +48,7 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
-# isinstance(obj, str)
+# translate isinstance(obj, str)
 isinstance_str = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],
