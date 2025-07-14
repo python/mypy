@@ -1235,12 +1235,10 @@ from contextlib import contextmanager
 def f() -> Iterator[None]:
     yield
 
-def g() -> None:
+def test_special_case() -> None:
     a = ['']
     with f():
         a.pop()
-
-g()
 
 [case testUnpackKwargsCompiled]
 from typing import TypedDict
@@ -1253,8 +1251,9 @@ class Person(TypedDict):
 def foo(**kwargs: Unpack[Person]) -> None:
     print(kwargs["name"])
 
-# This is not really supported yet, just test that we behave reasonably.
-foo(name='Jennifer', age=38)
+def test_unpack() -> None:
+    # This is not really supported yet, just test that we behave reasonably.
+    foo(name='Jennifer', age=38)
 [typing fixtures/typing-full.pyi]
 [out]
 Jennifer
@@ -1269,8 +1268,9 @@ def foo() -> None:
     print(inner.__dict__)  # type: ignore[attr-defined]
     print(inner.x)  # type: ignore[attr-defined]
 
-if sys.version_info >= (3, 12):  # type: ignore
-    foo()
+def test_nested() -> None:
+    if sys.version_info >= (3, 12):  # type: ignore
+        foo()
 [out]
 [out version>=3.12]
 {}
@@ -1285,7 +1285,8 @@ def bar() -> None:
     functools.update_wrapper(inner, bar)  # type: ignore
     print(inner.__dict__)  # type: ignore
 
-bar()
+def test_update() -> None:
+    bar()
 [typing fixtures/typing-full.pyi]
 [out]
 {'__module__': 'native', '__name__': 'bar', '__qualname__': 'bar', '__doc__': None, '__wrapped__': <built-in function bar>}

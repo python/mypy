@@ -223,7 +223,8 @@ def test_mixed_comparisons_i64() -> None:
             assert gt_mixed_i64(n, x) == (n > int(x))
 
 [case testBoolMixInt]
-y = False
-print((y or 0) and True)
+def test_mix() -> None:
+    y = False
+    print((y or 0) and True)
 [out]
 0
