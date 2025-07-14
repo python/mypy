@@ -6,14 +6,14 @@ objects, i.e. tuple_rprimitive (RPrimitive), not RTuple.
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
-    bit_rprimitive,
     c_pyssize_t_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
     tuple_rprimitive,
+    void_rtype,
 )
 from mypyc.primitives.registry import binary_op, custom_op, function_op, load_address_op, method_op
 
@@ -27,6 +27,15 @@ tuple_get_item_op = method_op(
     return_type=object_rprimitive,
     c_function_name="CPySequenceTuple_GetItem",
     error_kind=ERR_MAGIC,
+)
+
+# This is unsafe because it assumes that the index is a non-negative integer
+# that is in-bounds for the tuple.
+tuple_get_item_unsafe_op = custom_op(
+    arg_types=[tuple_rprimitive, c_pyssize_t_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPySequenceTuple_GetItemUnsafe",
+    error_kind=ERR_NEVER,
 )
 
 # Construct a boxed tuple from items: (item1, item2, ...)
@@ -48,10 +57,10 @@ new_tuple_with_length_op = custom_op(
 # PyTuple_SET_ITEM does no error checking,
 # and should only be used to fill in brand new tuples.
 new_tuple_set_item_op = custom_op(
-    arg_types=[tuple_rprimitive, int_rprimitive, object_rprimitive],
-    return_type=bit_rprimitive,
+    arg_types=[tuple_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
+    return_type=void_rtype,
     c_function_name="CPySequenceTuple_SetItemUnsafe",
-    error_kind=ERR_FALSE,
+    error_kind=ERR_NEVER,
     steals=[False, False, True],
 )
 

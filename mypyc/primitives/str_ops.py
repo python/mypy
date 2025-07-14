@@ -21,6 +21,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -69,6 +70,15 @@ binary_op(
     steals=[True, False],
 )
 
+# str1 == str2 (very common operation, so we provide our own)
+str_eq = custom_primitive_op(
+    name="str_eq",
+    c_function_name="CPyStr_Equal",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
 unicode_compare = custom_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_int_rprimitive,
@@ -82,6 +92,15 @@ method_op(
     arg_types=[str_rprimitive, int_rprimitive],
     return_type=str_rprimitive,
     c_function_name="CPyStr_GetItem",
+    error_kind=ERR_MAGIC,
+)
+
+# This is unsafe since it assumes that the index is within reasonable bounds.
+# In the future this might do no bounds checking at all.
+str_get_item_unsafe_op = custom_op(
+    arg_types=[str_rprimitive, c_pyssize_t_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_GetItemUnsafe",
     error_kind=ERR_MAGIC,
 )
 
