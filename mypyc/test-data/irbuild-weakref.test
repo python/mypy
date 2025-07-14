@@ -15,14 +15,17 @@ L0:
 import weakref
 from typing import Any, Callable
 def f(x: object, cb: Callable[[object], Any]) -> object:
-    return weakref.ref(x, cb)
+    return weakref.ref(x, cb)()
 
 [out]
 def f(x, cb):
-    x, cb, r0 :: object
+    x, cb :: object
+    r0 :: weakref.ReferenceType
+    r1 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
-    return r0
+    r1 = PyWeakref_GetRef(r0)
+    return r1
 
 [case testFromWeakrefRef]
 from typing import Any, Callable
@@ -41,11 +44,14 @@ L0:
 from typing import Any, Callable
 from weakref import ref
 def f(x: object, cb: Callable[[object], Any]) -> object:
-    return ref(x, cb)
+    return ref(x, cb)()
 
 [out]
 def f(x, cb):
-    x, cb, r0 :: object
+    x, cb :: object
+    r0 :: weakref.ReferenceType
+    r1 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
-    return r0
+    r1 = PyWeakref_GetRef(r0)
+    return r1
