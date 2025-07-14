@@ -756,6 +756,8 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
+PyObject *CPyStr_Lower(PyObject *self);
+PyObject *CPyStr_Upper(PyObject *self);
 
 
 // Bytes operations
