@@ -245,6 +245,7 @@ class CString(Value):
         self.line = line
 
 
+@final
 class Undef(Value):
     """An undefined value.
 

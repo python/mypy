@@ -816,15 +816,20 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         )
 
     def visit_set_element(self, op: SetElement) -> None:
-        # TODO: do properly
         dest = self.reg(op)
         item = self.reg(op.item)
         field = op.field
         if isinstance(op.src, Undef):
+            # First assignment to an undefined struct is trivial.
             self.emit_line(f"{dest}.{field} = {item};")
         else:
+            # In the general case create a copy of the struct with a single
+            # item modified.
+            #
+            # TODO: Can we do better if only a subset of fields are initialized?
+            # TODO: Make this less verbose in the common case
+            # TODO: Support tuples (or use RStruct for tuples)?
             src = self.reg(op.src)
-            # TODO: Support tuples (or use RStruct for tuples)
             src_type = op.src.type
             assert isinstance(src_type, RStruct), src_type
             init_items = []
