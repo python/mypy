@@ -29,6 +29,23 @@ PyObject *CPyList_Build(Py_ssize_t len, ...) {
     return res;
 }
 
+char CPyList_Clear(PyObject *list) {
+    if (PyList_CheckExact(list)) {
+        PyList_Clear(list);
+    } else {
+        _Py_IDENTIFIER(clear);
+        PyObject *name = _PyUnicode_FromId(&PyId_clear);
+        if (name == NULL) {
+            return 0;
+        }
+        PyObject *res = PyObject_CallMethodNoArgs(list, name);
+        if (res == NULL) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 PyObject *CPyList_Copy(PyObject *list) {
     if(PyList_CheckExact(list)) {
         return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
@@ -40,14 +57,6 @@ PyObject *CPyList_Copy(PyObject *list) {
         return NULL;
     }
     return PyObject_CallMethodNoArgs(list, name);
-}
-
-
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
-    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-    PyObject *result = PyList_GET_ITEM(list, n);
-    Py_INCREF(result);
-    return result;
 }
 
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
@@ -222,15 +231,8 @@ bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
 }
 
 // This function should only be used to fill in brand new lists.
-bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value) {
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        PyList_SET_ITEM(list, n, value);
-        return true;
-    } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return false;
-    }
+void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value) {
+    PyList_SET_ITEM(list, index, value);
 }
 
 PyObject *CPyList_PopLast(PyObject *obj)

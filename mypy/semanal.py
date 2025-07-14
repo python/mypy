@@ -184,7 +184,6 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
     get_member_expr_fullname,
-    get_nongen_builtins,
     implicit_module_attrs,
     is_final_node,
     type_aliases,
@@ -247,7 +246,6 @@ from mypy.typeanal import (
     find_self_type,
     fix_instance,
     has_any_from_unimported_type,
-    no_subscript_builtin_alias,
     type_constructors,
     validate_instance,
 )
@@ -268,6 +266,7 @@ from mypy.types import (
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     TYPE_CHECK_ONLY_NAMES,
+    TYPE_NAMES,
     TYPE_VAR_LIKE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     UNPACK_TYPE_NAMES,
@@ -1071,7 +1070,7 @@ class SemanticAnalyzer(
         functype = func.type
         if func.name == "__new__":
             func.is_static = True
-        if not func.is_static or func.name == "__new__":
+        if func.has_self_or_cls_argument:
             if func.name in ["__init_subclass__", "__class_getitem__"]:
                 func.is_class = True
             if not func.arguments:
@@ -1086,6 +1085,7 @@ class SemanticAnalyzer(
                         assert self.type is not None and self.type.self_type is not None
                         leading_type: Type = self.type.self_type
                     else:
+                        func.is_trivial_self = True
                         leading_type = fill_typevars(info)
                     if func.is_class or func.name == "__new__":
                         leading_type = self.class_type(leading_type)
@@ -1118,21 +1118,7 @@ class SemanticAnalyzer(
                 return self.is_expected_self_type(typ.item, is_classmethod=False)
             if isinstance(typ, UnboundType):
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
-                if (
-                    sym is not None
-                    and (
-                        sym.fullname == "typing.Type"
-                        or (
-                            sym.fullname == "builtins.type"
-                            and (
-                                self.is_stub_file
-                                or self.is_future_flag_set("annotations")
-                                or self.options.python_version >= (3, 9)
-                            )
-                        )
-                    )
-                    and typ.args
-                ):
+                if sym is not None and sym.fullname in TYPE_NAMES and typ.args:
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return False
         if isinstance(typ, TypeVarType):
@@ -1542,32 +1528,33 @@ class SemanticAnalyzer(
         assert isinstance(first_item, Decorator)
         deleted_items = []
         bare_setter_type = None
+        func_name = first_item.func.name
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
                 item.func.accept(self)
                 if item.decorators:
                     first_node = item.decorators[0]
-                    if isinstance(first_node, MemberExpr):
+                    if self._is_valid_property_decorator(first_node, func_name):
+                        # Get abstractness from the original definition.
+                        item.func.abstract_status = first_item.func.abstract_status
                         if first_node.name == "setter":
                             # The first item represents the entire property.
                             first_item.var.is_settable_property = True
-                            # Get abstractness from the original definition.
-                            item.func.abstract_status = first_item.func.abstract_status
                             setter_func_type = function_type(
                                 item.func, self.named_type("builtins.function")
                             )
                             assert isinstance(setter_func_type, CallableType)
                             bare_setter_type = setter_func_type
-                        if first_node.name == "deleter":
-                            item.func.abstract_status = first_item.func.abstract_status
+                            defn.setter_index = i + 1
                         for other_node in item.decorators[1:]:
                             other_node.accept(self)
                     else:
                         self.fail(
-                            f"Only supported top decorator is @{first_item.func.name}.setter", item
+                            f'Only supported top decorators are "@{func_name}.setter" and "@{func_name}.deleter"',
+                            first_node,
                         )
             else:
-                self.fail(f'Unexpected definition for property "{first_item.func.name}"', item)
+                self.fail(f'Unexpected definition for property "{func_name}"', item)
                 deleted_items.append(i + 1)
         for i in reversed(deleted_items):
             del items[i]
@@ -1580,6 +1567,23 @@ class SemanticAnalyzer(
                             f"function {item.fullname} is deprecated: {deprecated}"
                         )
         return bare_setter_type
+
+    def _is_valid_property_decorator(
+        self, deco: Expression, property_name: str
+    ) -> TypeGuard[MemberExpr]:
+        if not isinstance(deco, MemberExpr):
+            return False
+        if not isinstance(deco.expr, NameExpr) or deco.expr.name != property_name:
+            return False
+        if deco.name not in {"setter", "deleter"}:
+            # This intentionally excludes getter. While `@prop.getter` is valid at
+            # runtime, that would mean replacing the already processed getter type.
+            # Such usage is almost definitely a mistake (except for overrides in
+            # subclasses but we don't support them anyway) and might be a typo
+            # (only one letter away from `setter`), it's likely almost never used,
+            # so supporting it properly won't pay off.
+            return False
+        return True
 
     def add_function_to_symbol_table(self, func: FuncDef | OverloadedFuncDef) -> None:
         if self.is_class_scope():
@@ -1616,7 +1620,7 @@ class SemanticAnalyzer(
                 # The first argument of a non-static, non-class method is like 'self'
                 # (though the name could be different), having the enclosing class's
                 # instance type.
-                if is_method and (not defn.is_static or defn.name == "__new__") and defn.arguments:
+                if is_method and defn.has_self_or_cls_argument and defn.arguments:
                     if not defn.is_class:
                         defn.arguments[0].variable.is_self = True
                     else:
@@ -2379,6 +2383,14 @@ class SemanticAnalyzer(
             tvar_expr.default = tvar_expr.default.accept(
                 TypeVarDefaultTranslator(self, tvar_expr.name, context)
             )
+            # PEP-695 type variables that are redeclared in an inner scope are warned
+            # about elsewhere.
+            if not tvar_expr.is_new_style and not self.tvar_scope.allow_binding(
+                tvar_expr.fullname
+            ):
+                self.fail(
+                    message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name), context
+                )
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             if last_tvar_name_with_default is not None and not tvar_def.has_default():
                 self.msg.tvar_without_default_type(
@@ -2699,7 +2711,7 @@ class SemanticAnalyzer(
         if len(metas) == 0:
             return
         if len(metas) > 1:
-            self.fail("Multiple metaclass definitions", defn)
+            self.fail("Multiple metaclass definitions", defn, code=codes.METACLASS)
             return
         defn.metaclass = metas.pop()
 
@@ -2755,7 +2767,11 @@ class SemanticAnalyzer(
             elif isinstance(metaclass_expr, MemberExpr):
                 metaclass_name = get_member_expr_fullname(metaclass_expr)
             if metaclass_name is None:
-                self.fail(f'Dynamic metaclass not supported for "{name}"', metaclass_expr)
+                self.fail(
+                    f'Dynamic metaclass not supported for "{name}"',
+                    metaclass_expr,
+                    code=codes.METACLASS,
+                )
                 return None, False, True
             sym = self.lookup_qualified(metaclass_name, metaclass_expr)
             if sym is None:
@@ -2766,6 +2782,7 @@ class SemanticAnalyzer(
                     self.fail(
                         f'Class cannot use "{sym.node.name}" as a metaclass (has type "Any")',
                         metaclass_expr,
+                        code=codes.METACLASS,
                     )
                 return None, False, True
             if isinstance(sym.node, PlaceholderNode):
@@ -2783,11 +2800,15 @@ class SemanticAnalyzer(
                     metaclass_info = target.type
 
             if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
-                self.fail(f'Invalid metaclass "{metaclass_name}"', metaclass_expr)
+                self.fail(
+                    f'Invalid metaclass "{metaclass_name}"', metaclass_expr, code=codes.METACLASS
+                )
                 return None, False, False
             if not metaclass_info.is_metaclass():
                 self.fail(
-                    'Metaclasses not inheriting from "type" are not supported', metaclass_expr
+                    'Metaclasses not inheriting from "type" are not supported',
+                    metaclass_expr,
+                    code=codes.METACLASS,
                 )
                 return None, False, False
             inst = fill_typevars(metaclass_info)
@@ -3978,7 +3999,7 @@ class SemanticAnalyzer(
             if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
                 self.fail(
                     'Cannot assign multiple types to name "{}"'
-                    ' without an explicit "Type[...]" annotation'.format(lvalue.name),
+                    ' without an explicit "type[...]" annotation'.format(lvalue.name),
                     lvalue,
                 )
             return False
@@ -5076,14 +5097,6 @@ class SemanticAnalyzer(
                 node.is_classvar = True
             analyzed = self.anal_type(s.type)
             assert self.type is not None
-            if analyzed is not None and set(get_type_vars(analyzed)) & set(
-                self.type.defn.type_vars
-            ):
-                # This means that we have a type var defined inside of a ClassVar.
-                # This is not allowed by PEP526.
-                # See https://github.com/python/mypy/issues/11538
-
-                self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
             if (
                 analyzed is not None
                 and self.type.self_type in get_type_vars(analyzed)
@@ -5987,30 +6000,6 @@ class SemanticAnalyzer(
         expr.analyzed = TypeApplication(base, types)
         expr.analyzed.line = expr.line
         expr.analyzed.column = expr.column
-        # Types list, dict, set are not subscriptable, prohibit this if
-        # subscripted either via type alias...
-        if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
-            alias = base.node
-            target = get_proper_type(alias.target)
-            if isinstance(target, Instance):
-                name = target.type.fullname
-                if (
-                    alias.no_args
-                    and name  # this avoids bogus errors for already reported aliases
-                    in get_nongen_builtins(self.options.python_version)
-                    and not self.is_stub_file
-                    and not alias.normalized
-                ):
-                    self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
-        # ...or directly.
-        else:
-            n = self.lookup_type_node(base)
-            if (
-                n
-                and n.fullname in get_nongen_builtins(self.options.python_version)
-                and not self.is_stub_file
-            ):
-                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> list[Type] | None:
         """Analyze type arguments (index) in a type application.
@@ -6374,6 +6363,8 @@ class SemanticAnalyzer(
             if node.name not in self.globals:
                 return True
             global_node = self.globals[node.name]
+            if not self.is_textually_before_class(global_node.node):
+                return True
             return not self.is_type_like(global_node.node)
         return False
 
@@ -6400,6 +6391,13 @@ class SemanticAnalyzer(
             return line_diff > len(node.original_decorators)
         else:
             return line_diff > 0
+
+    def is_textually_before_class(self, node: SymbolNode | None) -> bool:
+        """Similar to above, but check if a node is defined before current class."""
+        assert self.type is not None
+        if node is None:
+            return False
+        return node.line < self.type.defn.line
 
     def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
         """Check whether the function belongs to the overloaded variants"""
@@ -6624,7 +6622,7 @@ class SemanticAnalyzer(
         sym = self.lookup_fully_qualified(fullname)
         assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
-        assert isinstance(node, TypeInfo)
+        assert isinstance(node, TypeInfo), node
         if args:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)

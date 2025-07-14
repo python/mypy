@@ -22,7 +22,7 @@ from mypy.nodes import (
     MypyFile,
     Node,
     RefExpr,
-    TypeAlias,
+    SymbolNode,
     TypeInfo,
     Var,
 )
@@ -63,10 +63,6 @@ class ExpressionCheckerSharedApi:
 
     @abstractmethod
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
-        raise NotImplementedError
-
-    @abstractmethod
-    def module_type(self, node: MypyFile) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
@@ -114,23 +110,25 @@ class ExpressionCheckerSharedApi:
         raise NotImplementedError
 
     @abstractmethod
-    def alias_type_in_runtime_context(
-        self, alias: TypeAlias, *, ctx: Context, alias_definition: bool = False
-    ) -> Type:
-        raise NotImplementedError
-
-    @abstractmethod
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
     ) -> tuple[Type, set[str]]:
         raise NotImplementedError
 
     @abstractmethod
-    def typeddict_callable(self, info: TypeInfo) -> CallableType:
+    def infer_literal_expr_type(self, value: LiteralValue, fallback_name: str) -> Type:
         raise NotImplementedError
 
     @abstractmethod
-    def infer_literal_expr_type(self, value: LiteralValue, fallback_name: str) -> Type:
+    def analyze_static_reference(
+        self,
+        node: SymbolNode,
+        ctx: Context,
+        is_lvalue: bool,
+        *,
+        include_modules: bool = True,
+        suppress_errors: bool = False,
+    ) -> Type:
         raise NotImplementedError
 
 
@@ -284,6 +282,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     def get_property_instance(self, method: Decorator) -> Instance | None:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_defined_in_stub(self, typ: Instance, /) -> bool:
+        raise NotImplementedError
+
 
 class CheckerScope:
     # We keep two stacks combined, to maintain the relative order
@@ -340,6 +342,10 @@ class CheckerScope:
             if isinstance(item, TypeInfo):
                 return fill_typevars(item)
         return None
+
+    def is_top_level(self) -> bool:
+        """Is current scope top-level (no classes or functions)?"""
+        return len(self.stack) == 1
 
     @contextmanager
     def push_function(self, item: FuncItem) -> Iterator[None]:
