@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
-    c_pyssize_t_rprimitive,
     bit_rprimitive,
+    c_pyssize_t_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
