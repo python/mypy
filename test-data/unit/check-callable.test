@@ -628,6 +628,7 @@ class A:
 
     g2 = f2
 
+reveal_type(A().f)  # N: Revealed type is "builtins.int"
 reveal_type(A().g)  # N: Revealed type is "builtins.int"
 reveal_type(A().g2)  # N: Revealed type is "builtins.int"
 A().g = 1  # E: Property "g" defined in "A" is read-only

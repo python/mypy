@@ -1226,13 +1226,13 @@ def analyze_class_attribute_access(
                     erase_vars.add(itype.type.self_type)
                 t = erase_typevars(t, {tv.id for tv in erase_vars})
 
-        if isinstance(node.node, Decorator) and node.node.func.is_property:
+        if (
+            isinstance(node.node, Decorator)
+            and node.node.func.is_property
+            or isinstance(node.node, OverloadedFuncDef)
+            and node.node.is_property
+        ):
             property_type = mx.chk.get_property_instance(node.node)
-            if property_type is not None:
-                return property_type
-        elif isinstance(node.node, OverloadedFuncDef) and node.node.is_property:
-            assert isinstance(node.node.items[0], Decorator)
-            property_type = mx.chk.get_property_instance(node.node.items[0])
             if property_type is not None:
                 return property_type
 

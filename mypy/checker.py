@@ -2336,18 +2336,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
         return False
 
-    def get_property_instance(self, method: Decorator) -> Instance | None:
+    def get_property_instance(self, method: Decorator | OverloadedFuncDef) -> Instance | None:
+        deco = method if isinstance(method, Decorator) else method.items[0]
         property_deco_name = next(
             (
                 name
-                for d in method.original_decorators
+                for d in deco.original_decorators
                 for name in PROPERTY_DECORATOR_NAMES
                 if refers_to_fullname(d, name)
             ),
             None,
         )
         if property_deco_name is not None:
-            return self.named_type(property_deco_name)
+            # Extra attr preserves the underlying node to support alias assignments
+            # (see testPropertyAliasInClassBody)
+            return self.named_type(property_deco_name).copy_with_extra_attr(
+                "__mypy-wrapped-property", method.type
+            )
         return None
 
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
@@ -4409,6 +4414,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         refers to the variable (lvalue). If var is None, do nothing.
         """
         if var and not self.current_node_deferred:
+            p_type = get_proper_type(type)
+            if (
+                isinstance(p_type, Instance)
+                and p_type.extra_attrs
+                and "__mypy-wrapped-property" in p_type.extra_attrs.attrs
+            ):
+                type = p_type.extra_attrs.attrs["__mypy-wrapped-property"]
             var.type = type
             var.is_inferred = True
             var.is_ready = True

@@ -384,17 +384,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if isinstance(result, PartialType):
                 result = self.chk.handle_partial_var_type(result, lvalue, node, e)
         elif isinstance(node, Decorator):
-            result = self.analyze_var_ref(node.var, e)
+            property_type = self.chk.get_property_instance(node)
+            if property_type is not None:
+                result = property_type
+            else:
+                result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, OverloadedFuncDef):
             result = node.type
             if result is None:
                 if self.chk.in_checked_function() and node.items:
                     self.chk.handle_cannot_determine_type(node.name, e)
                 result = AnyType(TypeOfAny.from_error)
-            elif isinstance(node.items[0], Decorator):
-                property_type = self.chk.get_property_instance(node.items[0])
-                if property_type is not None:
-                    result = property_type
+            elif property_type := self.chk.get_property_instance(node):
+                result = property_type
         elif isinstance(node, (FuncDef, TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
             result = self.analyze_static_reference(node, e, e.is_alias_rvalue or lvalue)
         else:
@@ -435,11 +437,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         special kinds (like TypeAlias, TypeInfo, etc.) on an instance or class object.
         # TODO: merge with analyze_ref_expr() when we are confident about performance.
         """
-        if isinstance(node, (Var, OverloadedFuncDef)):
+        if isinstance(node, (Var, Decorator, OverloadedFuncDef)):
             return node.type or AnyType(TypeOfAny.special_form)
-        elif isinstance(node, Decorator):
-            property_type = self.chk.get_property_instance(node)
-            return property_type or node.type or AnyType(TypeOfAny.special_form)
         elif isinstance(node, FuncDef):
             return function_type(node, self.named_type("builtins.function"))
         elif isinstance(node, TypeInfo):

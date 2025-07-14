@@ -3346,7 +3346,7 @@ def test(arg: P) -> None: ...
 # TODO: skip type mismatch diagnostics in this case.
 test(B)  # E: Argument 1 to "test" has incompatible type "type[B]"; expected "P" \
          # N: Following member(s) of "B" have conflicts: \
-         # N:     foo: expected "int", got "Callable[[B], int]" \
+         # N:     foo: expected "int", got "property" \
          # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "B"
 test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "C"
