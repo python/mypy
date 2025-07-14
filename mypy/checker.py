@@ -2337,7 +2337,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return False
 
     def get_property_instance(self, method: Decorator | OverloadedFuncDef) -> Instance | None:
+        if method.type is None:
+            return None
         deco = method if isinstance(method, Decorator) else method.items[0]
+        if not isinstance(deco, Decorator):
+            return None
         property_deco_name = next(
             (
                 name

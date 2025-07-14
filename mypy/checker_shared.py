@@ -21,6 +21,7 @@ from mypy.nodes import (
     LambdaExpr,
     MypyFile,
     Node,
+    OverloadedFuncDef,
     RefExpr,
     SymbolNode,
     TypeInfo,
@@ -279,7 +280,7 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def get_property_instance(self, method: Decorator) -> Instance | None:
+    def get_property_instance(self, method: Decorator | OverloadedFuncDef) -> Instance | None:
         raise NotImplementedError
 
     @abstractmethod
