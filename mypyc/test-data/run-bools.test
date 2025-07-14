@@ -228,3 +228,15 @@ def test_mix() -> None:
     print((y or 0) and True)
 [out]
 0
+
+[case testIsInstance]
+def test_built_in() -> None:
+    assert isinstance(True, bool)
+    assert isinstance(False, bool)
+
+    assert not isinstance(set(), bool)
+    assert not isinstance((), bool)
+    assert not isinstance((True, False), bool)
+    assert not isinstance({False, True}, bool)
+    assert not isinstance(1, bool)
+    assert not isinstance('False', bool)

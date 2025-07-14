@@ -9,6 +9,7 @@ from __future__ import annotations
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
+    bit_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -81,6 +82,15 @@ function_op(
     return_type=tuple_rprimitive,
     c_function_name="PySequence_Tuple",
     error_kind=ERR_MAGIC,
+)
+
+# isinstance(obj, tuple)
+isinstance_tuple = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyTuple_Check",
+    error_kind=ERR_NEVER,
 )
 
 # tuple + tuple

@@ -83,19 +83,26 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
+from mypyc.primitives.bytes_ops import isinstance_bytearray, isinstance_bytes
 from mypyc.primitives.dict_ops import (
     dict_items_op,
     dict_keys_op,
     dict_setdefault_spec_init_op,
     dict_values_op,
+    isinstance_dict,
 )
+from mypyc.primitives.float_ops import isinstance_float
+from mypyc.primitives.int_ops import isinstance_int
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
+from mypyc.primitives.misc_ops import isinstance_bool
+from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
+    isinstance_str,
     str_encode_ascii_strict,
     str_encode_latin1_strict,
     str_encode_utf8_strict,
 )
-from mypyc.primitives.tuple_ops import new_tuple_set_item_op
+from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -546,7 +553,19 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
     return retval
 
 
-isinstance_primitives: Final = {"builtins.list": isinstance_list}
+isinstance_primitives: Final = {
+    "builtins.bool": isinstance_bool,
+    "builtins.bytearray": isinstance_bytearray,
+    "builtins.bytes": isinstance_bytes,
+    "builtins.dict": isinstance_dict,
+    "builtins.float": isinstance_float,
+    "builtins.frozenset": isinstance_frozenset,
+    "builtins.int": isinstance_int,
+    "builtins.list": isinstance_list,
+    "builtins.set": isinstance_set,
+    "builtins.str": isinstance_str,
+    "builtins.tuple": isinstance_tuple,
+}
 
 
 @specialize_function("builtins.isinstance")
