@@ -94,7 +94,6 @@ class ClassIR:
         is_abstract: bool = False,
         is_ext_class: bool = True,
         is_final_class: bool = False,
-        supports_weakref: bool = False,
     ) -> None:
         self.name = name
         self.module_name = module_name
@@ -103,7 +102,6 @@ class ClassIR:
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
         self.is_final_class = is_final_class
-        self.supports_weakref = supports_weakref
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
@@ -111,6 +109,8 @@ class ClassIR:
         self.inherits_python = False
         # Do instances of this class have __dict__?
         self.has_dict = False
+        # Do instances of this class have __weakref__?
+        self.supports_weakref = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
         self.allow_interpreted_subclasses = False
         # Does this class need getseters to be generated for its attributes? (getseters are also
@@ -368,9 +368,9 @@ class ClassIR:
             "is_generated": self.is_generated,
             "is_augmented": self.is_augmented,
             "is_final_class": self.is_final_class,
-            "supports_weakref": self.supports_weakref,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
+            "supports_weakref": self.supports_weakref,
             "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
             "needs_getseters": self.needs_getseters,
             "_serializable": self._serializable,
