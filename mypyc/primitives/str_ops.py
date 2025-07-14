@@ -95,6 +95,15 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# This is unsafe since it assumes that the index is within reasonable bounds.
+# In the future this might do no bounds checking at all.
+str_get_item_unsafe_op = custom_op(
+    arg_types=[str_rprimitive, c_pyssize_t_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_GetItemUnsafe",
+    error_kind=ERR_MAGIC,
+)
+
 # str[begin:end]
 str_slice_op = custom_op(
     arg_types=[str_rprimitive, int_rprimitive, int_rprimitive],
