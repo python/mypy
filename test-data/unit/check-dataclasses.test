@@ -2679,6 +2679,6 @@ class ClassA:
 class ClassB(ClassA):
     value: InitVar[int]
 
-    def value(self) -> int:  # E: Name "value" already defined on line 9
+    def value(self) -> int:  # E: Name "value" already defined on line 10
         return 0
 [builtins fixtures/dict.pyi]
