@@ -1069,6 +1069,15 @@ match m:
     case Foo():
         pass
 
+[case testMatchClassPatternCallable]
+from typing import Callable
+
+x: object
+
+match x:
+    case Callable() as fn:
+        reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
+
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
 x = [[{0: 0}]]

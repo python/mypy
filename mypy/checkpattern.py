@@ -50,6 +50,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    callable_with_ellipsis,
     find_unpack_in_list,
     get_proper_type,
     split_with_prefix_and_suffix,
@@ -553,6 +554,15 @@ class PatternChecker(PatternVisitor[PatternType]):
             and isinstance(get_proper_type(type_info.type), AnyType)
         ):
             typ = type_info.type
+        elif (
+            isinstance(type_info, Var)
+            and type_info.type is not None
+            and type_info.fullname == "typing.Callable"
+        ):
+            # Consider as `Callable[..., Any]`
+            fallback = self.chk.named_type("builtins.function")
+            any_type = AnyType(TypeOfAny.unannotated)
+            typ = callable_with_ellipsis(any_type, any_type, fallback)
         else:
             if isinstance(type_info, Var) and type_info.type is not None:
                 name = type_info.type.str_with_options(self.options)
