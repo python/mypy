@@ -256,8 +256,9 @@ class Undef(Value):
       r1 = set_element r0, "field2", f2
       # r1 now has new struct value with two fields set
 
-    Warning: The generated code can use an arbitrary runtime values for
-    this (likely not explicitly initialized).
+    Warning: Always initialize undefined values before using them,
+    as otherwise the values are garbage. You shouldn't expect that
+    undefined values are zeroed, in particular.
     """
 
     def __init__(self, rtype: RType) -> None:
