@@ -1579,14 +1579,13 @@ class LoadMem(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, line: int = -1, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.type = type
-        # TODO: for now we enforce that the src memory address should be Py_ssize_t
-        #       later we should also support same width unsigned int
+        # TODO: Support other native integer types
         assert is_pointer_rprimitive(src.type)
         self.src = src
-        self.is_borrowed = True
+        self.is_borrowed = borrow and type.is_refcounted
 
     def sources(self) -> list[Value]:
         return [self.src]

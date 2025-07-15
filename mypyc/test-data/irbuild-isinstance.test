@@ -77,7 +77,7 @@ L0:
     x = r0
     r1 = __main__.C :: type
     r2 = get_element_ptr x ob_type :: PyObject
-    r3 = load_mem r2 :: builtins.object*
+    r3 = borrow load_mem r2 :: builtins.object*
     keep_alive x
     r4 = r3 == r1
     if r4 goto L1 else goto L2 :: bool

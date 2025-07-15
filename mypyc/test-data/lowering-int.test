@@ -365,7 +365,6 @@ L2:
     r6 = r0 * 8
     r7 = r5 + r6
     r8 = load_mem r7 :: builtins.object*
-    inc_ref r8
     r9 = unbox(int, r8)
     dec_ref r8
     if is_error(r9) goto L6 (error at f:4) else goto L3
