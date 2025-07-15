@@ -274,3 +274,58 @@ L0:
     r1 = f(r0)
     r2 = box(None, 1)
     return r2
+
+[case registerNestedFunctionError]
+from functools import singledispatch
+from typing import Any, overload
+
+def dec(x: Any) -> Any:
+    return x
+
+def f() -> None:
+    @singledispatch  # E: Nested singledispatch functions not supported
+    def singledispatch_in_func(x: Any) -> None:
+        pass
+
+@dec
+def g() -> None:
+    @singledispatch  # E: Nested singledispatch functions not supported
+    def singledispatch_in_decorated(x: Any) -> None:
+        pass
+
+@overload
+def h(x: int) -> None:
+    pass
+@overload
+def h(x: str) -> None:
+    pass
+def h(x: Any) -> None:
+    @singledispatch  # E: Nested singledispatch functions not supported
+    def singledispatch_in_overload(x: Any) -> None:
+        pass
+
+@singledispatch
+def outside(x: Any) -> None:
+    pass
+
+def i() -> None:
+    @outside.register  # E: Registering nested functions not supported
+    def register_in_func(x: int) -> None:
+        pass
+
+@dec
+def j() -> None:
+    @outside.register  # E: Registering nested functions not supported
+    def register_in_decorated(x: int) -> None:
+        pass
+
+@overload
+def k(x: int) -> None:
+    pass
+@overload
+def k(x: str) -> None:
+    pass
+def k(x: Any) -> None:
+    @outside.register  # E: Registering nested functions not supported
+    def register_in_overload(x: int) -> None:
+        pass
