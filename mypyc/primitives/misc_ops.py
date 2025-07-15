@@ -191,6 +191,15 @@ bool_op = function_op(
     truncated_type=bool_rprimitive,
 )
 
+# isinstance(obj, bool)
+isinstance_bool = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyBool_Check",
+    error_kind=ERR_NEVER,
+)
+
 # slice(start, stop, step)
 new_slice_op = function_op(
     name="builtins.slice",

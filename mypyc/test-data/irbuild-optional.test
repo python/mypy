@@ -251,28 +251,22 @@ def f(x: Union[int, A]) -> int:
 [out]
 def f(x):
     x :: union[int, __main__.A]
-    r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3 :: bool
-    r4, r5 :: int
-    r6 :: __main__.A
-    r7 :: int
+    r0 :: bit
+    r1, r2 :: int
+    r3 :: __main__.A
+    r4 :: int
 L0:
-    r0 = load_address PyLong_Type
-    r1 = PyObject_IsInstance(x, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r0 = PyLong_Check(x)
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r4 = unbox(int, x)
-    r5 = CPyTagged_Add(r4, 2)
-    return r5
+    r1 = unbox(int, x)
+    r2 = CPyTagged_Add(r1, 2)
+    return r2
 L2:
-    r6 = borrow cast(__main__.A, x)
-    r7 = r6.a
+    r3 = borrow cast(__main__.A, x)
+    r4 = r3.a
     keep_alive x
-    return r7
+    return r4
 L3:
     unreachable
 

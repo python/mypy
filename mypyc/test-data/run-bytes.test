@@ -323,3 +323,54 @@ class A:
 def test_bytes_dunder() -> None:
     assert b'%b' % A() == b'aaa'
     assert b'%s' % A() == b'aaa'
+
+[case testIsInstance]
+from copysubclass import subbytes, subbytearray
+from typing import Any
+def test_bytes() -> None:
+    b: Any = b''
+    assert isinstance(b, bytes)
+    assert isinstance(b + b'123', bytes)
+    assert isinstance(b + b'\xff', bytes)
+    assert isinstance(subbytes(), bytes)
+    assert isinstance(subbytes(b + b'123'), bytes)
+    assert isinstance(subbytes(b + b'\xff'), bytes)
+
+    assert not isinstance(set(), bytes)
+    assert not isinstance((), bytes)
+    assert not isinstance((b'1',b'2',b'3'), bytes)
+    assert not isinstance({b'a',b'b'}, bytes)
+    assert not isinstance(int() + 1, bytes)
+    assert not isinstance(str() + 'a', bytes)
+
+def test_user_defined_bytes() -> None:
+    from userdefinedbytes import bytes
+
+    assert isinstance(bytes(), bytes)
+    assert not isinstance(b'\x7f', bytes)
+
+def test_bytearray() -> None:
+    assert isinstance(bytearray(), bytearray)
+    assert isinstance(bytearray(b'123'), bytearray)
+    assert isinstance(bytearray(b'\xff'), bytearray)
+    assert isinstance(subbytearray(), bytearray)
+    assert isinstance(subbytearray(bytearray(b'123')), bytearray)
+    assert isinstance(subbytearray(bytearray(b'\xff')), bytearray)
+
+    assert not isinstance(set(), bytearray)
+    assert not isinstance((), bytearray)
+    assert not isinstance((bytearray(b'1'),bytearray(b'2'),bytearray(b'3')), bytearray)
+    assert not isinstance([bytearray(b'a'),bytearray(b'b')], bytearray)
+    assert not isinstance(int() + 1, bytearray)
+    assert not isinstance(str() + 'a', bytearray)
+
+[file copysubclass.py]
+class subbytes(bytes):
+    pass
+
+class subbytearray(bytearray):
+    pass
+
+[file userdefinedbytes.py]
+class bytes:
+    pass
