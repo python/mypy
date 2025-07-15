@@ -245,11 +245,16 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if isinstance(repl, TypeVarType) and repl.has_default():
             if (tvar_id := repl.id) in self.recursive_tvar_guard:
                 return self.recursive_tvar_guard[tvar_id] or repl
+
             self.recursive_tvar_guard[tvar_id] = None
-            repl = repl.accept(self)
-            if isinstance(repl, TypeVarType):
-                repl.default = repl.default.accept(self)
-            self.recursive_tvar_guard[tvar_id] = repl
+            expanded = repl.accept(self)
+
+            if isinstance(expanded, TypeVarType):
+                expanded.default = expanded.default.accept(self)
+            else:
+                repl = expanded
+
+            self.recursive_tvar_guard[tvar_id] = expanded
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:

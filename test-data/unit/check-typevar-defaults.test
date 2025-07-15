@@ -416,13 +416,31 @@ def func_c4(
     reveal_type(m)  # N: Revealed type is "__main__.ClassC4[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeVarDefaultsSwap]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+X = TypeVar("X", default=object)
+Y = TypeVar("Y", default=object)
+
+
+class Foo(Generic[T, Y]):
+    def test(self) -> None:
+        reveal_type( Foo[Y, T]() )  # N: Revealed type is "__main__.Foo[Y`2 = builtins.object, T`1]"
+
+
+class Bar(Generic[X, Y]):
+    def test(self) -> None:
+        reveal_type( Bar[Y, X]() )  # N: Revealed type is "__main__.Bar[Y`2 = builtins.object, Y`2 = builtins.object]"
+
+
 [case testTypeVarDefaultsClassRecursive1]
 # flags: --disallow-any-generics
 from typing import Generic, TypeVar, List
 
 T1 = TypeVar("T1", default=str)
 T2 = TypeVar("T2", default=T1)
-T3 = TypeVar("T3", default=T2)
+T3 = TypeVar("T3", default=List[T2])
 T4 = TypeVar("T4", default=List[T1])
 
 class ClassD1(Generic[T1, T2]): ...
@@ -451,17 +469,17 @@ def func_d2(
     c: ClassD2[int, float],
     d: ClassD2[int, float, str],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "__main__.ClassD2[builtins.str, builtins.str, builtins.str]"
-    reveal_type(b)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.int, builtins.int]"
-    reveal_type(c)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.float]"
+    reveal_type(a)  # N: Revealed type is "__main__.ClassD2[builtins.str, builtins.str, builtins.list[builtins.str]]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.int, builtins.list[builtins.int]]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.list[builtins.float]]"
     reveal_type(d)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.str]"
 
-    k = ClassD2()
-    reveal_type(k)  # N: Revealed type is "__main__.ClassD2[builtins.str, builtins.str, builtins.str]"
-    l = ClassD2[int]()
-    reveal_type(l)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.int, builtins.int]"
+    k = ClassD2()  # E: Need type annotation for "k"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassD2[builtins.str, builtins.str, builtins.list[Any]]"
+    l = ClassD2[int]()  # E: Need type annotation for "l"
+    reveal_type(l)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.int, builtins.list[Any]]"
     m = ClassD2[int, float]()
-    reveal_type(m)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.float]"
+    reveal_type(m)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.list[builtins.float]]"
     n = ClassD2[int, float, str]()
     reveal_type(n)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.str]"
 
