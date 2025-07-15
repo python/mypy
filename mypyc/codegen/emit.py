@@ -28,8 +28,7 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     int_rprimitive,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
@@ -615,8 +614,7 @@ class Emitter:
             or is_range_rprimitive(typ)
             or is_float_rprimitive(typ)
             or is_int_rprimitive(typ)
-            or is_bool_rprimitive(typ)
-            or is_bit_rprimitive(typ)
+            or is_bool_or_bit_rprimitive(typ)
             or is_fixed_width_rtype(typ)
         ):
             if declare_dest:
@@ -638,7 +636,7 @@ class Emitter:
             elif is_int_rprimitive(typ) or is_fixed_width_rtype(typ):
                 # TODO: Range check for fixed-width types?
                 prefix = "PyLong"
-            elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+            elif is_bool_or_bit_rprimitive(typ):
                 prefix = "PyBool"
             else:
                 assert False, f"unexpected primitive type: {typ}"
@@ -744,7 +742,7 @@ class Emitter:
             self.emit_traceback(error.source_path, error.module_name, error.traceback_entry)
             self.emit_line("goto %s;" % error.label)
         else:
-            assert isinstance(error, ReturnHandler)
+            assert isinstance(error, ReturnHandler), error
             self.emit_line("return %s;" % error.value)
 
     def emit_union_cast(
@@ -873,7 +871,7 @@ class Emitter:
         elif isinstance(error, GotoHandler):
             failure = "goto %s;" % error.label
         else:
-            assert isinstance(error, ReturnHandler)
+            assert isinstance(error, ReturnHandler), error
             failure = "return %s;" % error.value
         if raise_exception:
             raise_exc = f'CPy_TypeError("{self.pretty_name(typ)}", {src}); '
@@ -889,7 +887,7 @@ class Emitter:
             self.emit_line("else {")
             self.emit_line(failure)
             self.emit_line("}")
-        elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+        elif is_bool_or_bit_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
                 self.emit_line(f"char {dest};")
@@ -1015,7 +1013,7 @@ class Emitter:
         if is_int_rprimitive(typ) or is_short_int_rprimitive(typ):
             # Steal the existing reference if it exists.
             self.emit_line(f"{declaration}{dest} = CPyTagged_StealAsObject({src});")
-        elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+        elif is_bool_or_bit_rprimitive(typ):
             # N.B: bool is special cased to produce a borrowed value
             # after boxing, so we don't need to increment the refcount
             # when this comes directly from a Box op.
