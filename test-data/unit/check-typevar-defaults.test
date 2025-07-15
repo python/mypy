@@ -431,8 +431,22 @@ class Foo(Generic[T, Y]):
 
 class Bar(Generic[X, Y]):
     def test(self) -> None:
-        reveal_type( Bar[Y, X]() )  # N: Revealed type is "__main__.Bar[Y`2 = builtins.object, Y`2 = builtins.object]"
+        reveal_type( Bar[Y, X]() )  # N: Revealed type is "__main__.Bar[Y`2 = builtins.object, X`1 = builtins.object]"
 
+
+[case testTypeVarDefaultsSwap2]
+from typing import TypeVar, Generic
+
+X = TypeVar("X", default=object)
+Y = TypeVar("Y", default=object)
+U = TypeVar("U", default=object)
+V = TypeVar("V", default=object)
+
+class Transform(Generic[X, Y]):
+    def invert(self) -> "Transform[Y, X]": ...
+
+class Foo(Transform[U, V], Generic[U, V]):
+    def invert(self) -> "Foo[V, U]": ...
 
 [case testTypeVarDefaultsClassRecursive1]
 # flags: --disallow-any-generics
