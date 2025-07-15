@@ -35,9 +35,11 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     TupleGet,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -120,6 +122,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         ir.mro = [ir]
         self.r = add_local("r", RInstance(ir))
         self.none = add_local("none", none_rprimitive)
+
+        self.struct_type = RStruct(
+            "Foo", ["b", "x", "y"], [bool_rprimitive, int32_rprimitive, int64_rprimitive]
+        )
+        self.st = add_local("st", self.struct_type)
 
         self.context = EmitterContext(NameGenerator([["mod"]]))
 
@@ -672,6 +679,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.assert_emit(
             GetElementPtr(self.o, r, "i64"), """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->i64;"""
+        )
+
+    def test_set_element(self) -> None:
+        # Use compact syntax when setting the initial element of an undefined value
+        self.assert_emit(
+            SetElement(Undef(self.struct_type), "b", self.b), """cpy_r_r0.b = cpy_r_b;"""
+        )
+        # We propagate the unchanged values in subsequent assignments
+        self.assert_emit(
+            SetElement(self.st, "x", self.i32),
+            """cpy_r_r0 = (Foo) { cpy_r_st.b, cpy_r_i32, cpy_r_st.y };""",
         )
 
     def test_load_address(self) -> None:
