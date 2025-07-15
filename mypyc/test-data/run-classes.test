@@ -1278,9 +1278,10 @@ class Bar(Foo):
     def f(self, *args: int, **kwargs: int) -> None:
         print("stuff", args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=50)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=50)
+    z.f()
 
 [out]
 stuff (1,) {'z': 50}
@@ -1300,18 +1301,19 @@ class Foo:
 def baz_f(self: Any, *args: int, **kwargs: int) -> None:
     print("Baz", args, kwargs)
 
-# Make an "interpreted" subtype of Foo
-type2: Any = type
-Bar = type2('Bar', (Foo,), {})
-Baz = type2('Baz', (Foo,), {'f': baz_f})
+def test_override() -> None:
+    # Make an "interpreted" subtype of Foo
+    type2: Any = type
+    Bar = type2('Bar', (Foo,), {})
+    Baz = type2('Baz', (Foo,), {'f': baz_f})
 
-y: Foo = Bar()
-y.f(1, z=2)
-y.f()
+    y: Foo = Bar()
+    y.f(1, z=2)
+    y.f()
 
-z: Foo = Baz()
-z.f(1, z=2)
-z.f()
+    z: Foo = Baz()
+    z.f(1, z=2)
+    z.f()
 
 [out]
 Foo 1 2
@@ -1330,9 +1332,10 @@ class Bar(Foo):
     def f(self, x: Optional[int]=None) -> None:
         print(x)
 
-z: Foo = Bar()
-z.f(1)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1)
+    z.f()
 
 [out]
 1
@@ -1349,10 +1352,11 @@ class Bar(Foo):
     def f(self, *args: int, **kwargs: int) -> None:
         print("Bar", args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=2)
-z.f(1, 2, 3)
-# z.f(x=5)  # Not tested because we (knowingly) do the wrong thing and pass it as positional
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=2)
+    z.f(1, 2, 3)
+    # z.f(x=5)  # Not tested because we (knowingly) do the wrong thing and pass it as positional
 
 [out]
 Bar (1,) {'z': 2}
@@ -1370,10 +1374,11 @@ class Bar(Foo):
     def f(self, x: int = 10, *args: int, **kwargs: int) -> None:
         print("Bar", x, args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=2)
-z.f(1, 2, 3)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=2)
+    z.f(1, 2, 3)
+    z.f()
 
 [out]
 Bar 1 () {'z': 2}
@@ -1397,18 +1402,19 @@ class Foo:
 def baz_f(self, a: int=30, y: int=50) -> None:
     print("Baz", a, y)
 
-# Make an "interpreted" subtype of Foo
-type2: Any = type
-Baz = type2('Baz', (Foo,), {'f': baz_f})
+def test_override() -> None:
+    # Make an "interpreted" subtype of Foo
+    type2: Any = type
+    Baz = type2('Baz', (Foo,), {'f': baz_f})
 
-z: Foo = Baz()
-z.f()
-z.f(y=1)
-z.f(1, 2)
-# Not tested because we don't (and probably won't) match cpython here
-# from testutil import assertRaises
-# with assertRaises(TypeError):
-#     z.f(x=7)
+    z: Foo = Baz()
+    z.f()
+    z.f(y=1)
+    z.f(1, 2)
+    # Not tested because we don't (and probably won't) match cpython here
+    # from testutil import assertRaises
+    # with assertRaises(TypeError):
+    #     z.f(x=7)
 
 [out]
 Baz 30 50
@@ -2591,7 +2597,8 @@ class Base:
 class Derived(Base):
     pass
 
-assert Derived()() == 1
+def test_inherited() -> None:
+    assert Derived()() == 1
 
 [case testClassWithFinalAttribute]
 from typing import Final

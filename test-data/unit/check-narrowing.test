@@ -2346,7 +2346,7 @@ def f() -> bool: ...
 
 y = None
 while f():
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "Union[None, builtins.int]"
     y = 1
 reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 
@@ -2445,6 +2445,58 @@ x = 1
 while x is not None and b():
     x = f()
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowPromotionsInsideUnions1]
+
+from typing import Union
+
+x: Union[str, float, None]
+y: Union[int, str]
+x = y
+reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+z: Union[complex, str]
+z = x
+reveal_type(z)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowPromotionsInsideUnions2]
+# flags: --warn-unreachable
+
+from typing import Optional
+
+def b() -> bool: ...
+def i() -> int: ...
+x: Optional[float]
+
+while b():
+    x = None
+    while b():
+        reveal_type(x)  # N: Revealed type is "Union[None, builtins.int]"
+        if x is None or b():
+            x = i()
+            reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/bool.pyi]
+
+[case testAvoidFalseUnreachableInFinally]
+# flags: --allow-redefinition-new --local-partial-types --warn-unreachable
+def f() -> None:
+    try:
+        x = 1
+        if int():
+            x = ""
+            return
+        if int():
+            x = None
+            return
+    finally:
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+        if isinstance(x, str):
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+
+[builtins fixtures/isinstancelist.pyi]
 
 [case testNarrowingTypeVarMultiple]
 from typing import TypeVar
@@ -2593,3 +2645,22 @@ def baz(item: Base) -> None:
         reveal_type(item)  # N: Revealed type is "__main__.<subclass of "__main__.Base" and "__main__.BarMixin">"
         item.bar()
 [builtins fixtures/isinstance.pyi]
+
+[case testCustomSetterNarrowingReWidened]
+class B: ...
+class C(B): ...
+class C1(B): ...
+class D(C): ...
+
+class Test:
+    @property
+    def foo(self) -> C: ...
+    @foo.setter
+    def foo(self, val: B) -> None: ...
+
+t: Test
+t.foo = D()
+reveal_type(t.foo)  # N: Revealed type is "__main__.D"
+t.foo = C1()
+reveal_type(t.foo)  # N: Revealed type is "__main__.C"
+[builtins fixtures/property.pyi]

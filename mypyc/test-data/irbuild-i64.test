@@ -2046,27 +2046,21 @@ L2:
     return r6
 def narrow2(x):
     x :: union[__main__.C, i64]
-    r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3 :: bool
-    r4 :: i64
-    r5 :: __main__.C
-    r6 :: i64
+    r0 :: bit
+    r1 :: i64
+    r2 :: __main__.C
+    r3 :: i64
 L0:
-    r0 = load_address PyLong_Type
-    r1 = PyObject_IsInstance(x, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r0 = PyLong_Check(x)
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r4 = unbox(i64, x)
-    return r4
+    r1 = unbox(i64, x)
+    return r1
 L2:
-    r5 = borrow cast(__main__.C, x)
-    r6 = r5.a
+    r2 = borrow cast(__main__.C, x)
+    r3 = r2.a
     keep_alive x
-    return r6
+    return r3
 
 [case testI64ConvertBetweenTuples_64bit]
 from __future__ import annotations

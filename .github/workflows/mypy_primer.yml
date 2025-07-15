@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        shard-index: [0, 1, 2, 3, 4]
+        shard-index: [0, 1, 2, 3, 4, 5]
       fail-fast: false
     timeout-minutes: 60
     steps:
@@ -63,7 +63,7 @@ jobs:
             mypy_primer \
             --repo mypy_to_test \
             --new $GITHUB_SHA --old base_commit \
-            --num-shards 5 --shard-index ${{ matrix.shard-index }} \
+            --num-shards 6 --shard-index ${{ matrix.shard-index }} \
             --debug \
             --additional-flags="--debug-serialize" \
             --output concise \

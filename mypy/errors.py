@@ -4,15 +4,18 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from itertools import chain
 from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
 from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
 from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
+from mypy.nodes import Context
 from mypy.options import Options
 from mypy.scope import Scope
+from mypy.types import Type
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 from mypy.version import __version__ as mypy_version
 
@@ -164,6 +167,10 @@ class ErrorWatcher:
     out by one of the ErrorWatcher instances.
     """
 
+    # public attribute for the special treatment of `reveal_type` by
+    # `MessageBuilder.reveal_type`:
+    filter_revealed_type: bool
+
     def __init__(
         self,
         errors: Errors,
@@ -171,11 +178,13 @@ class ErrorWatcher:
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
         filter_deprecated: bool = False,
+        filter_revealed_type: bool = False,
     ) -> None:
         self.errors = errors
         self._has_new_errors = False
         self._filter = filter_errors
         self._filter_deprecated = filter_deprecated
+        self.filter_revealed_type = filter_revealed_type
         self._filtered: list[ErrorInfo] | None = [] if save_filtered_errors else None
 
     def __enter__(self) -> Self:
@@ -219,23 +228,69 @@ class ErrorWatcher:
         return self._filtered
 
 
-class LoopErrorWatcher(ErrorWatcher):
+class IterationDependentErrors:
+    """An `IterationDependentErrors` instance serves to collect the `unreachable`,
+    `redundant-expr`, and `redundant-casts` errors, as well as the revealed types,
+    handled by the individual `IterationErrorWatcher` instances sequentially applied to
+    the same code section."""
+
+    # One set of `unreachable`, `redundant-expr`, and `redundant-casts` errors per
+    # iteration step.  Meaning of the tuple items: ErrorCode, message, line, column,
+    # end_line, end_column.
+    uselessness_errors: list[set[tuple[ErrorCode, str, int, int, int, int]]]
+
+    # One set of unreachable line numbers per iteration step.  Not only the lines where
+    # the error report occurs but really all unreachable lines.
+    unreachable_lines: list[set[int]]
+
+    # One list of revealed types for each `reveal_type` statement.  Each created list
+    # can grow during the iteration.  Meaning of the tuple items: line, column,
+    # end_line, end_column:
+    revealed_types: dict[tuple[int, int, int | None, int | None], list[Type]]
+
+    def __init__(self) -> None:
+        self.uselessness_errors = []
+        self.unreachable_lines = []
+        self.revealed_types = defaultdict(list)
+
+    def yield_uselessness_error_infos(self) -> Iterator[tuple[str, Context, ErrorCode]]:
+        """Report only those `unreachable`, `redundant-expr`, and `redundant-casts`
+        errors that could not be ruled out in any iteration step."""
+
+        persistent_uselessness_errors = set()
+        for candidate in set(chain(*self.uselessness_errors)):
+            if all(
+                (candidate in errors) or (candidate[2] in lines)
+                for errors, lines in zip(self.uselessness_errors, self.unreachable_lines)
+            ):
+                persistent_uselessness_errors.add(candidate)
+        for error_info in persistent_uselessness_errors:
+            context = Context(line=error_info[2], column=error_info[3])
+            context.end_line = error_info[4]
+            context.end_column = error_info[5]
+            yield error_info[1], context, error_info[0]
+
+    def yield_revealed_type_infos(self) -> Iterator[tuple[list[Type], Context]]:
+        """Yield all types revealed in at least one iteration step."""
+
+        for note_info, types in self.revealed_types.items():
+            context = Context(line=note_info[0], column=note_info[1])
+            context.end_line = note_info[2]
+            context.end_column = note_info[3]
+            yield types, context
+
+
+class IterationErrorWatcher(ErrorWatcher):
     """Error watcher that filters and separately collects `unreachable` errors,
     `redundant-expr` and `redundant-casts` errors, and revealed types when analysing
-    loops iteratively to help avoid making too-hasty reports."""
+    code sections iteratively to help avoid making too-hasty reports."""
 
-    # Meaning of the tuple items: ErrorCode, message, line, column, end_line, end_column:
-    uselessness_errors: set[tuple[ErrorCode, str, int, int, int, int]]
-
-    # Meaning of the tuple items: function_or_member, line, column, end_line, end_column:
-    revealed_types: dict[tuple[str | None, int, int, int, int], set[str]]
-
-    # Not only the lines where the error report occurs but really all unreachable lines:
-    unreachable_lines: set[int]
+    iteration_dependent_errors: IterationDependentErrors
 
     def __init__(
         self,
         errors: Errors,
+        iteration_dependent_errors: IterationDependentErrors,
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
@@ -247,27 +302,22 @@ class LoopErrorWatcher(ErrorWatcher):
             save_filtered_errors=save_filtered_errors,
             filter_deprecated=filter_deprecated,
         )
-        self.uselessness_errors = set()
-        self.unreachable_lines = set()
-        self.revealed_types = defaultdict(set)
+        self.iteration_dependent_errors = iteration_dependent_errors
+        iteration_dependent_errors.uselessness_errors.append(set())
+        iteration_dependent_errors.unreachable_lines.append(set())
 
     def on_error(self, file: str, info: ErrorInfo) -> bool:
+        """Filter out the "iteration-dependent" errors and notes and store their
+        information to handle them after iteration is completed."""
+
+        iter_errors = self.iteration_dependent_errors
 
         if info.code in (codes.UNREACHABLE, codes.REDUNDANT_EXPR, codes.REDUNDANT_CAST):
-            self.uselessness_errors.add(
+            iter_errors.uselessness_errors[-1].add(
                 (info.code, info.message, info.line, info.column, info.end_line, info.end_column)
             )
             if info.code == codes.UNREACHABLE:
-                self.unreachable_lines.update(range(info.line, info.end_line + 1))
-            return True
-
-        if info.code == codes.MISC and info.message.startswith("Revealed type is "):
-            key = info.function_or_member, info.line, info.column, info.end_line, info.end_column
-            types = info.message.split('"')[1]
-            if types.startswith("Union["):
-                self.revealed_types[key].update(types[6:-1].split(", "))
-            else:
-                self.revealed_types[key].add(types)
+                iter_errors.unreachable_lines[-1].update(range(info.line, info.end_line + 1))
             return True
 
         return super().on_error(file, info)
@@ -534,18 +584,19 @@ class Errors:
         if info.code in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND):
             self.seen_import_error = True
 
+    def get_watchers(self) -> Iterator[ErrorWatcher]:
+        """Yield the `ErrorWatcher` stack from top to bottom."""
+        i = len(self._watchers)
+        while i > 0:
+            i -= 1
+            yield self._watchers[i]
+
     def _filter_error(self, file: str, info: ErrorInfo) -> bool:
         """
         process ErrorWatcher stack from top to bottom,
         stopping early if error needs to be filtered out
         """
-        i = len(self._watchers)
-        while i > 0:
-            i -= 1
-            w = self._watchers[i]
-            if w.on_error(file, info):
-                return True
-        return False
+        return any(w.on_error(file, info) for w in self.get_watchers())
 
     def add_error_info(self, info: ErrorInfo) -> None:
         file, lines = info.origin
@@ -786,6 +837,8 @@ class Errors:
                 code=codes.UNUSED_IGNORE,
                 blocker=False,
                 only_once=False,
+                origin=(self.file, [line]),
+                target=self.target_module,
             )
             self._add_error_info(file, info)
 
@@ -837,6 +890,8 @@ class Errors:
                 code=codes.IGNORE_WITHOUT_CODE,
                 blocker=False,
                 only_once=False,
+                origin=(self.file, [line]),
+                target=self.target_module,
             )
             self._add_error_info(file, info)
 
