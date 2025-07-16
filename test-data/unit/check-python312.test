@@ -450,6 +450,21 @@ class Contra2[T]:
 d1: Contra2[int] = Contra2[float]()
 d2: Contra2[float] = Contra2[int]()  # E: Incompatible types in assignment (expression has type "Contra2[int]", variable has type "Contra2[float]")
 
+[case testPEP695InferVariancePolymorphicMethod]
+class Cov[T]:
+    def get(self) -> T: ...
+    def new[S](self: "Cov[S]", arg: list[S]) -> "Cov[S]": ...
+
+cov_pos: Cov[object] = Cov[int]()
+cov_neg: Cov[int] = Cov[object]()  # E: Incompatible types in assignment (expression has type "Cov[object]", variable has type "Cov[int]")
+
+class Contra[T]:
+    def set(self, arg: T) -> None: ...
+    def new[S](self: "Contra[S]", arg: list[S]) -> "Contra[S]": ...
+
+contra_pos: Contra[object] = Contra[int]()  # E: Incompatible types in assignment (expression has type "Contra[int]", variable has type "Contra[object]")
+contra_neg: Contra[int] = Contra[object]()
+
 [case testPEP695InheritInvariant]
 class Invariant[T]:
     x: T

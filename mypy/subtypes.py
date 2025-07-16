@@ -2208,7 +2208,8 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
                     settable = False
 
             # TODO: handle settable properties with setter type different from getter.
-            typ = find_member(member, self_type, self_type)
+            plain_self = Instance(info.mro[0], [])  # self-type without type variables
+            typ = find_member(member, self_type, plain_self)
             if typ:
                 # It's okay for a method in a generic class with a contravariant type
                 # variable to return a generic instance of the class, if it doesn't involve
