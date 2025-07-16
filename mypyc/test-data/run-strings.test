@@ -964,3 +964,38 @@ def test_count_multi_start_end_emoji() -> None:
     assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
     assert string.count("🚀🚀🚀", 0, 12) == 2, string.count("🚀🚀🚀", 0, 12)
     assert string.count("ñññ", 0, 12) == 1, string.count("ñññ", 0, 12)
+
+[case testIsInstance]
+from copysubclass import subc
+from typing import Any
+def test_built_in() -> None:
+    s: Any = str()
+    assert isinstance(s, str)
+    assert isinstance(s + "test", str)
+    assert isinstance(s + "ñññ", str)
+    assert isinstance(subc(), str)
+    assert isinstance(subc("test"), str)
+    assert isinstance(subc("ñññ"), str)
+
+    assert not isinstance(set(), str)
+    assert not isinstance((), str)
+    assert not isinstance(('a','b'), str)
+    assert not isinstance({'a','b'}, str)
+    assert not isinstance(int() + 1, str)
+    assert not isinstance(['a','b'], str)
+
+def test_user_defined() -> None:
+    from userdefinedstr import str
+
+    s: Any = "str"
+    assert isinstance(str(), str)
+    assert not isinstance(s, str)
+
+[file copysubclass.py]
+from typing import Any
+class subc(str):
+    pass
+
+[file userdefinedstr.py]
+class str:
+    pass

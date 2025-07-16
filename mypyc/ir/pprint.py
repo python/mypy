@@ -50,12 +50,14 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -265,13 +267,18 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%r = %r %s %r", op, op.lhs, op.op_str[op.op], op.rhs)
 
     def visit_load_mem(self, op: LoadMem) -> str:
-        return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
+        return self.format(
+            "%r = %sload_mem %r :: %t*", op, self.borrow_prefix(op), op.src, op.type
+        )
 
     def visit_set_mem(self, op: SetMem) -> str:
         return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)
+
+    def visit_set_element(self, op: SetElement) -> str:
+        return self.format("%r = set_element %r, %s, %r", op, op.src, op.field, op.item)
 
     def visit_load_address(self, op: LoadAddress) -> str:
         if isinstance(op.src, Register):
@@ -330,6 +337,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                         result.append(repr(arg.value))
                     elif isinstance(arg, CString):
                         result.append(f"CString({arg.value!r})")
+                    elif isinstance(arg, Undef):
+                        result.append(f"undef {arg.type.name}")
                     else:
                         result.append(self.names[arg])
                 elif typespec == "d":
@@ -486,7 +495,7 @@ def generate_names_for_ir(args: list[Register], blocks: list[BasicBlock]) -> dic
                     continue
                 if isinstance(value, Register) and value.name:
                     name = value.name
-                elif isinstance(value, (Integer, Float)):
+                elif isinstance(value, (Integer, Float, Undef)):
                     continue
                 else:
                     name = "r%d" % temp_index

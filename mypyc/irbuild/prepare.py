@@ -616,6 +616,12 @@ class SingledispatchVisitor(TraverserVisitor):
         self.decorators_to_remove: dict[FuncDef, list[int]] = {}
 
         self.errors: Errors = errors
+        self.func_stack_depth = 0
+
+    def visit_func_def(self, o: FuncDef) -> None:
+        self.func_stack_depth += 1
+        super().visit_func_def(o)
+        self.func_stack_depth -= 1
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
@@ -627,6 +633,10 @@ class SingledispatchVisitor(TraverserVisitor):
             for i, d in enumerate(decorators_to_store):
                 impl = get_singledispatch_register_call_info(d, dec.func)
                 if impl is not None:
+                    if self.func_stack_depth > 0:
+                        self.errors.error(
+                            "Registering nested functions not supported", self.current_path, d.line
+                        )
                     self.singledispatch_impls[impl.singledispatch_func].append(
                         (impl.dispatch_type, dec.func)
                     )
@@ -643,6 +653,12 @@ class SingledispatchVisitor(TraverserVisitor):
                         )
                 else:
                     if refers_to_fullname(d, "functools.singledispatch"):
+                        if self.func_stack_depth > 0:
+                            self.errors.error(
+                                "Nested singledispatch functions not supported",
+                                self.current_path,
+                                d.line,
+                            )
                         decorators_to_remove.append(i)
                         # make sure that we still treat the function as a singledispatch function
                         # even if we don't find any registered implementations (which might happen
