@@ -2666,3 +2666,19 @@ class PersonBad(TypedDict):
 class JobBad:
     person: PersonBad = field(default_factory=PersonBad)  # E: Argument "default_factory" to "field" has incompatible type "type[PersonBad]"; expected "Callable[[], PersonBad]"
 [builtins fixtures/dict.pyi]
+
+[case testDataclassInitVarRedefinitionNoCrash]
+# https://github.com/python/mypy/issues/19443
+from dataclasses import InitVar, dataclass
+
+class ClassA:
+    def value(self) -> int:
+        return 0
+
+@dataclass
+class ClassB(ClassA):
+    value: InitVar[int]
+
+    def value(self) -> int:  # E: Name "value" already defined on line 10
+        return 0
+[builtins fixtures/dict.pyi]

@@ -2169,7 +2169,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             override_class_or_static = defn.func.is_class or defn.func.is_static
         typ, _ = self.node_type_from_base(defn.name, defn.info, defn)
-        assert typ is not None
+        if typ is None:
+            # This may only happen if we're checking `x-redefinition` member
+            # and `x` itself is for some reason gone. Normally the node should
+            # be reachable from the containing class by its name.
+            # The redefinition is never removed, use this as a sanity check to verify
+            # the reasoning above.
+            assert f"{defn.name}-redefinition" in defn.info.names
+            return False
 
         original_node = base_attr.node
         # `original_type` can be partial if (e.g.) it is originally an
