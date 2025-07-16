@@ -1078,6 +1078,13 @@ match x:
     case Callable() as fn:
         reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
 
+def int_fun(x: int) -> int: return x+1
+
+match int_fun:
+    case Callable() as fn:
+        reveal_type(fn)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+
+
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
 x = [[{0: 0}]]
