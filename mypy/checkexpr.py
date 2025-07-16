@@ -4195,11 +4195,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # We don't do the same for the base expression because it could lead to weird
             # type inference errors -- e.g. see 'testOperatorDoubleUnionSum'.
             # TODO: Can we use `type_overrides_set()` here?
-            right_variants = [
-                (item, TempNode(item, context=context))
-                for item in self._union_items_from_typevar(right_type)
-            ]
-            right_type = get_proper_type(right_type)
+            right_variants: list[tuple[Type, Expression]]
+            p_right = get_proper_type(right_type)
+            if isinstance(p_right, (UnionType, TypeVarType)):
+                right_variants = [
+                    (item, TempNode(item, context=context))
+                    for item in self._union_items_from_typevar(right_type)
+                ]
+            else:
+                # Preserve argument identity if we do not intend to modify it
+                right_variants = [(right_type, arg)]
+            right_type = p_right
 
             all_results = []
             all_inferred = []
