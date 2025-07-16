@@ -706,6 +706,32 @@ if int():
 class C:
     def __lt__(self, o: object, x: str = "") -> int: ...
 
+[case testReversibleOpOnTypeVarBound]
+from typing import TypeVar, Union
+
+class A:
+    def __lt__(self, a: A) -> bool: ...
+    def __gt__(self, a: A) -> bool: ...
+
+class B(A):
+    def __lt__(self, b: B) -> bool: ...  # type: ignore[override]
+    def __gt__(self, b: B) -> bool: ...  # type: ignore[override]
+
+_T = TypeVar("_T", bound=Union[A, B])
+
+def check(x: _T, y: _T) -> bool:
+    return x < y
+
+[case testReversibleOpOnTypeVarBoundPromotion]
+from typing import TypeVar, Union
+
+_T = TypeVar("_T", bound=Union[int, float])
+
+def check(x: _T, y: _T) -> bool:
+    return x < y
+[builtins fixtures/ops.pyi]
+
+
 [case testErrorContextAndBinaryOperators]
 import typing
 class A:

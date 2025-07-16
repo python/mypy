@@ -4155,10 +4155,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """
 
         if allow_reverse:
-            left_variants = [base_type]
+            left_variants = self._union_items_from_typevar(base_type)
             base_type = get_proper_type(base_type)
-            if isinstance(base_type, UnionType):
-                left_variants = list(flatten_nested_unions(base_type.relevant_items()))
+
             right_type = self.accept(arg)
 
             # Step 1: We first try leaving the right arguments alone and destructure
@@ -4196,13 +4195,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # We don't do the same for the base expression because it could lead to weird
             # type inference errors -- e.g. see 'testOperatorDoubleUnionSum'.
             # TODO: Can we use `type_overrides_set()` here?
-            right_variants = [(right_type, arg)]
-            right_type = get_proper_type(right_type)
-            if isinstance(right_type, UnionType):
+            right_variants: list[tuple[Type, Expression]]
+            if isinstance(right_type, ProperType) and isinstance(
+                right_type, (UnionType, TypeVarType)
+            ):
                 right_variants = [
                     (item, TempNode(item, context=context))
-                    for item in flatten_nested_unions(right_type.relevant_items())
+                    for item in self._union_items_from_typevar(right_type)
                 ]
+            else:
+                # Preserve argument identity if we do not intend to modify it
+                right_variants = [(right_type, arg)]
+            right_type = get_proper_type(right_type)
 
             all_results = []
             all_inferred = []
@@ -4251,6 +4255,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_kinds=[ARG_POS],
                 context=context,
             )
+
+    def _union_items_from_typevar(self, typ: Type) -> list[Type]:
+        variants = [typ]
+        typ = get_proper_type(typ)
+        base_type = typ
+        if unwrapped := (isinstance(typ, TypeVarType) and not typ.values):
+            typ = get_proper_type(typ.upper_bound)
+        if isinstance(typ, UnionType):
+            variants = list(flatten_nested_unions(typ.relevant_items()))
+        if unwrapped:
+            assert isinstance(base_type, TypeVarType)
+            variants = [base_type.copy_modified(upper_bound=item) for item in variants]
+        return variants
 
     def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
