@@ -4195,17 +4195,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # We don't do the same for the base expression because it could lead to weird
             # type inference errors -- e.g. see 'testOperatorDoubleUnionSum'.
             # TODO: Can we use `type_overrides_set()` here?
-            right_variants: list[tuple[Type, Expression]]
-            if isinstance(right_type, ProperType) and isinstance(
-                right_type, (UnionType, TypeVarType)
-            ):
-                right_variants = [
-                    (item, TempNode(item, context=context))
-                    for item in self._union_items_from_typevar(right_type)
-                ]
-            else:
-                # Preserve argument identity if we do not intend to modify it
-                right_variants = [(right_type, arg)]
+            right_variants = [
+                (item, TempNode(item, context=context))
+                for item in self._union_items_from_typevar(right_type)
+            ]
             right_type = get_proper_type(right_type)
 
             all_results = []
@@ -4262,9 +4255,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         base_type = typ
         if unwrapped := (isinstance(typ, TypeVarType) and not typ.values):
             typ = get_proper_type(typ.upper_bound)
-        if isinstance(typ, UnionType):
+        if is_union := isinstance(typ, UnionType):
             variants = list(flatten_nested_unions(typ.relevant_items()))
-        if unwrapped:
+        if is_union and unwrapped:
+            # If not a union, keep the original type
             assert isinstance(base_type, TypeVarType)
             variants = [base_type.copy_modified(upper_bound=item) for item in variants]
         return variants
