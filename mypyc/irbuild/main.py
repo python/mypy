@@ -71,6 +71,8 @@ def build_ir(
     singledispatch_info = find_singledispatch_register_impls(modules, errors)
 
     result: ModuleIRs = {}
+    if errors.num_errors > 0:
+        return result
 
     # Generate IR for all modules.
     class_irs = []
