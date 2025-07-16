@@ -48,8 +48,7 @@ class LogTraceEventTransform(IRTransform):
         return self.log(op, "call", op.fn.fullname)
 
     def visit_primitive_op(self, op: PrimitiveOp) -> Value:
-        self.log(op, "primitive_op", op.desc.name)
-        return self.add(op)
+        return self.log(op, "primitive_op", op.desc.name)
 
     def visit_call_c(self, op: CallC) -> Value:
         if global_name := get_load_global_name(op):
