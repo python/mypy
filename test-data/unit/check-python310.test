@@ -1077,13 +1077,33 @@ def test_object(x: object) -> None:
         case Callable() as fn:
             reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
 
-def test_intfun(x: Callable[[int], int]) -> None:
+def test_impl(x: Callable[[int], int]) -> None:
     match x:
         case Callable() as fn:
             reveal_type(fn)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 
 
 [case testMatchClassPatternCallbackProtocol]
+from typing import Any, Callable
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class FnProto(Protocol):
+    def __call__(self, x: int, /) -> object: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnProto"
+
+def test_impl(x: Callable[[int], int]) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchClassPatternAnyCallableProtocol]
 from typing import Any, Callable
 from typing_extensions import Protocol, runtime_checkable
 
@@ -1096,7 +1116,7 @@ def test_object(x: object) -> None:
         case AnyCallable() as fn:
             reveal_type(fn)  # N: Revealed type is "__main__.AnyCallable"
 
-def test_intfun(x: Callable[[int], int]) -> None:
+def test_impl(x: Callable[[int], int]) -> None:
     match x:
         case AnyCallable() as fn:
             reveal_type(fn)  # N: Revealed type is "def (builtins.int) -> builtins.int"
