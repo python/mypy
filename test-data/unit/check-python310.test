@@ -1072,18 +1072,36 @@ match m:
 [case testMatchClassPatternCallable]
 from typing import Callable
 
-x: object
+def test_object(x: object) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
 
-match x:
-    case Callable() as fn:
-        reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
+def test_intfun(x: Callable[[int], int]) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 
-def int_fun(x: int) -> int: return x+1
 
-match int_fun:
-    case Callable() as fn:
-        reveal_type(fn)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+[case testMatchClassPatternCallbackProtocol]
+from typing import Any, Callable
+from typing_extensions import Protocol, runtime_checkable
 
+@runtime_checkable
+class AnyCallable(Protocol):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.AnyCallable"
+
+def test_intfun(x: Callable[[int], int]) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+
+[builtins fixtures/dict.pyi]
 
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py

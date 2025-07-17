@@ -562,9 +562,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             # Create a `Callable[..., Any]`
             fallback = self.chk.named_type("builtins.function")
             any_type = AnyType(TypeOfAny.unannotated)
-            fn_type = callable_with_ellipsis(any_type, ret_type=any_type, fallback=fallback)
-            # if typ is itself callable, use its own type, otherwise Callable[..,, Any]
-            typ = current_type if is_subtype(current_type, fn_type) else fn_type
+            typ = callable_with_ellipsis(any_type, ret_type=any_type, fallback=fallback)
         else:
             if isinstance(type_info, Var) and type_info.type is not None:
                 name = type_info.type.str_with_options(self.options)
