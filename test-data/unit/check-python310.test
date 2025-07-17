@@ -1103,6 +1103,30 @@ def test_intfun(x: Callable[[int], int]) -> None:
 
 [builtins fixtures/dict.pyi]
 
+
+[case testMatchClassPatternProtocol]
+from typing import Any
+from typing_extensions import Protocol, runtime_checkable
+
+class Proto(Protocol):
+    def foo(self, x: int, /) -> object: ...
+
+class Impl:
+    def foo(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case Proto() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.Proto"
+
+def test_impl(x: Impl) -> None:
+    match x:
+        case Proto() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.Impl"
+
+[builtins fixtures/dict.pyi]
+
+
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
 x = [[{0: 0}]]
