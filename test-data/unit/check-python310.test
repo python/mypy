@@ -1072,15 +1072,23 @@ match m:
 [case testMatchClassPatternCallable]
 from typing import Callable
 
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
 def test_object(x: object) -> None:
     match x:
         case Callable() as fn:
             reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
 
-def test_impl(x: Callable[[int], int]) -> None:
+def test_impl(x: FnImpl) -> None:
     match x:
         case Callable() as fn:
-            reveal_type(fn)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
 
 
 [case testMatchClassPatternCallbackProtocol]
