@@ -8024,7 +8024,15 @@ def conditional_types(
             isinstance(proposed_type, CallableType)
             or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
         ) and is_subtype(current_type, proposed_type, ignore_promotions=True):
-            return default, UninhabitedType()
+            yes_type = default
+            no_type = (
+                None
+                if yes_type is None
+                else restrict_subtype_away(
+                    current_type, yes_type, consider_runtime_isinstance=consider_runtime_isinstance
+                )
+            )
+            return yes_type, no_type
         elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
             # Expression is never of any type in proposed_type_ranges
             return UninhabitedType(), default
