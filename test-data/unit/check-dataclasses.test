@@ -425,10 +425,11 @@ class Application:
     name: str = 'Unnamed'
     rating: int = field(kw_only=False)  # E: Attributes without a default cannot follow attributes with one
 
+reveal_type(Application)  # N: Revealed type is "def (name: builtins.str =, rating: builtins.int) -> __main__.Application"
 Application(name='name', rating=5)
 Application('name', 123)
 Application('name', rating=123)
-Application()  # E: Missing positional argument "name" in call to "Application"
+Application()  # E: Too few arguments for "Application"
 Application('name')  # E: Too few arguments for "Application"
 
 [builtins fixtures/dataclasses.pyi]
