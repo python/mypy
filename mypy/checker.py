@@ -8022,7 +8022,7 @@ def conditional_types(
             return default, UninhabitedType()
         elif (  # handle structural subtypes
             isinstance(proposed_type, CallableType)
-            or (isinstance(proposed_type, Instance) and proposed_type.type.runtime_protocol)
+            or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
         ) and is_subtype(current_type, proposed_type, ignore_promotions=True):
             return default, UninhabitedType()
         elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
