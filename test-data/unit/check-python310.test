@@ -1936,6 +1936,22 @@ def union(x: str | bool) -> None:
     reveal_type(x)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchNarrowDownUnionUsingClassPattern]
+
+class Foo: ...
+class Bar(Foo): ...
+
+def test_1(bar: Bar) -> None:
+    match bar:
+        case Foo() as foo:
+            reveal_type(foo)  # N: Revealed type is "__main__.Bar"
+
+def test_2(bar: Bar | str) -> None:
+    match bar:
+        case Foo() as foo:
+            reveal_type(foo)  # N: Revealed type is "__main__.Bar"
+
+
 [case testMatchAssertFalseToSilenceFalsePositives]
 class C:
     a: int | str
