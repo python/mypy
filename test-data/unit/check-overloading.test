@@ -5266,6 +5266,47 @@ tmp/lib.pyi:3: error: Name "func" already defined on line 1
 tmp/lib.pyi:3: error: Name "overload" is not defined
 main:3: note: Revealed type is "Any"
 
+[case testOverloadCheckExpandsBools]
+from typing import Literal, overload, Union
+
+@overload
+def foo(x: Literal[False]) -> None: ...
+@overload
+def foo(x: Literal[True]) -> int: ...
+
+def foo(x: bool) -> Union[None, int]: ...
+
+reveal_type(foo(True)) # N: Revealed type is "builtins.int"
+reveal_type(foo(False)) # N: Revealed type is "None"
+x: bool
+reveal_type(foo(x)) # N: Revealed type is "Union[builtins.int, None]"
+
+[case testOverloadCheckExpandsEnums]
+from typing import Literal, overload, Union
+import enum
+
+class Color(enum.Enum):
+    RED = 1
+    BLUE = 2
+    YELLOW = 3
+
+@overload
+def foo(x: Literal[Color.RED]) -> None: ...
+@overload
+def foo(x: Literal[Color.BLUE]) -> int: ...
+@overload
+def foo(x: Literal[Color.YELLOW]) -> str: ...
+
+def foo(x: Color) -> Union[None, int, str]: ...
+
+reveal_type(foo(Color.RED)) # N: Revealed type is "None"
+reveal_type(foo(Color.BLUE)) # N: Revealed type is "builtins.int"
+reveal_type(foo(Color.YELLOW)) # N: Revealed type is "builtins.str"
+
+x: Color
+reveal_type(foo(x)) # N: Revealed type is "Union[None, builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
 [case testLiteralSubtypeOverlap]
 from typing import Literal, overload
 
