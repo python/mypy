@@ -296,3 +296,12 @@ uint8_overflow = custom_op(
     c_function_name="CPyUInt8_Overflow",
     error_kind=ERR_ALWAYS,
 )
+
+# translate isinstance(obj, int)
+isinstance_int = function_op(
+    name="builtints.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyLong_Check",
+    error_kind=ERR_NEVER,
+)

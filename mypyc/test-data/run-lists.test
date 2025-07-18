@@ -486,6 +486,17 @@ def test_from_gen() -> None:
     f = list("str:" + x for x in source_str)
     assert f == ["str:a", "str:b", "str:c", "str:d"]
 
+[case testNext]
+from typing import List
+
+def get_next(x: List[int]) -> int:
+    return next((i for i in x), -1)
+
+def test_next() -> None:
+    assert get_next([]) == -1
+    assert get_next([1]) == 1
+    assert get_next([3,2,1]) == 3
+
 [case testListGetItemWithBorrow]
 from typing import List
 

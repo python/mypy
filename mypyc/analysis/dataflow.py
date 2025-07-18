@@ -45,12 +45,14 @@ from mypyc.ir.ops import (
     RegisterOp,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -272,6 +274,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
+    def visit_set_element(self, op: SetElement) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
     def visit_load_address(self, op: LoadAddress) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
@@ -444,7 +449,7 @@ class UndefinedVisitor(BaseAnalysisVisitor[Value]):
 def non_trivial_sources(op: Op) -> set[Value]:
     result = set()
     for source in op.sources():
-        if not isinstance(source, (Integer, Float)):
+        if not isinstance(source, (Integer, Float, Undef)):
             result.add(source)
     return result
 

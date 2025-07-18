@@ -109,10 +109,11 @@ def gen(b: bool) -> Generator[Any, None, None]:
         y = None
     yield y
 
-assert f(False) == ((1, None), (None, 1))
-assert f(True) == ((None, 1), (1, None))
-assert next(gen(False)) is None
-assert next(gen(True)) == 1
+def test_inferred() -> None:
+    assert f(False) == ((1, None), (None, 1))
+    assert f(True) == ((None, 1), (1, None))
+    assert next(gen(False)) is None
+    assert next(gen(True)) == 1
 
 [case testWith]
 from typing import Any
@@ -829,23 +830,23 @@ assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
 [case testSum]
-[typing fixtures/typing-full.pyi]
-from typing import Any, List
+from typing import List
 
+empty: List[int] = []
 def test_sum_of_numbers() -> None:
     assert sum(x for x in [1, 2, 3]) == 6
-    assert sum(x for x in [0.0, 1.2, 2]) == 6.2
+    assert sum(x for x in [0.0, 1.2, 2]) == 3.2
     assert sum(x for x in [1, 1j]) == 1 + 1j
 
 def test_sum_callables() -> None:
-    assert sum((lambda x: x == 0)(x) for x in []) == 0
+    assert sum((lambda x: x == 0)(x) for x in empty) == 0
     assert sum((lambda x: x == 0)(x) for x in [0]) == 1
     assert sum((lambda x: x == 0)(x) for x in [0, 0, 0]) == 3
     assert sum((lambda x: x == 0)(x) for x in [0, 1, 0]) == 2
     assert sum((lambda x: x % 2 == 0)(x) for x in range(2**10)) == 2**9
 
 def test_sum_comparisons() -> None:
-    assert sum(x == 0 for x in []) == 0
+    assert sum(x == 0 for x in empty) == 0
     assert sum(x == 0 for x in [0]) == 1
     assert sum(x == 0 for x in [0, 0, 0]) == 3
     assert sum(x == 0 for x in [0, 1, 0]) == 2
@@ -865,13 +866,14 @@ def test_sum_misc() -> None:
 def test_sum_start_given() -> None:
     a = 1
     assert sum((x == 0 for x in [0, 1]), a) == 2
-    assert sum(((lambda x: x == 0)(x) for x in []), 1) == 1
+    assert sum(((lambda x: x == 0)(x) for x in empty), 1) == 1
     assert sum(((lambda x: x == 0)(x) for x in [0]), 1) == 2
     assert sum(((lambda x: x == 0)(x) for x in [0, 0, 0]), 1) == 4
     assert sum(((lambda x: x == 0)(x) for x in [0, 1, 0]), 1) == 3
     assert sum(((lambda x: x % 2 == 0)(x) for x in range(2**10)), 1) == 2**9 + 1
     assert sum((x for x in [1, 1j]), 2j) == 1 + 3j
     assert sum((c == 'd' for c in 'abcdd'), 1) == 3
+[typing fixtures/typing-full.pyi]
 
 [case testNoneStuff]
 from typing import Optional
@@ -1090,19 +1092,20 @@ def test_complex() -> None:
 from typing import cast
 import sys
 
-A = sys.platform == 'x' and foobar
-B = sys.platform == 'x' and sys.foobar
-C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
-C = sys.platform == 'x' and cast(a, b[c])
-C = sys.platform == 'x' and (lambda x: y + x)
-C = sys.platform == 'x' and (x for y in z)
-C = sys.platform == 'x' and [x for y in z]
-C = sys.platform == 'x' and {x: x for y in z}
-C = sys.platform == 'x' and {x for y in z}
+def test_unreachable() -> None:
+    A = sys.platform == 'x' and foobar
+    B = sys.platform == 'x' and sys.foobar
+    C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
+    C = sys.platform == 'x' and cast(a, b[c])
+    C = sys.platform == 'x' and (lambda x: y + x)
+    C = sys.platform == 'x' and (x for y in z)
+    C = sys.platform == 'x' and [x for y in z]
+    C = sys.platform == 'x' and {x: x for y in z}
+    C = sys.platform == 'x' and {x for y in z}
 
-assert not A
-assert not B
-assert not C
+    assert not A
+    assert not B
+    assert not C
 
 [case testDoesntSegfaultWhenTopLevelFails]
 # make the initial import fail
@@ -1125,6 +1128,10 @@ class A:
 class B(A):
     def _(arg): pass
     def _(arg): pass
+
+def test_underscore() -> None:
+    A()
+    B()
 
 [case testGlobalRedefinition_toplevel]
 # mypy: allow-redefinition
