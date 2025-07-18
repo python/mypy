@@ -1947,7 +1947,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
 
-    def infer_arg_types_in_empty_context(self, args: list[Expression]) -> list[Type]:
+    def infer_arg_types_in_empty_context(
+        self, args: list[Expression], *, allow_cache: bool
+    ) -> list[Type]:
         """Infer argument expression types in an empty context.
 
         In short, we basically recurse on each argument without considering
@@ -1957,7 +1959,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # call. This saves a lot of rechecking, but is not generally safe. Cache is
         # pruned upon leaving the outermost overload.
         can_cache = (
-            self.overload_stack_depth > 0
+            allow_cache
             and POISON_KEY not in self._args_cache
             and not any(isinstance(t, TempNode) for t in args)
         )
@@ -2737,7 +2739,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """Checks a call to an overloaded function."""
         # Normalize unpacked kwargs before checking the call.
         callee = callee.with_unpacked_kwargs()
-        arg_types = self.infer_arg_types_in_empty_context(args)
+        arg_types = self.infer_arg_types_in_empty_context(args, allow_cache=True)
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(
             arg_types, arg_kinds, arg_names, callee
@@ -3331,7 +3333,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         )
 
     def check_any_type_call(self, args: list[Expression], callee: Type) -> tuple[Type, Type]:
-        self.infer_arg_types_in_empty_context(args)
+        self.infer_arg_types_in_empty_context(args, allow_cache=False)
         callee = get_proper_type(callee)
         if isinstance(callee, AnyType):
             return (
