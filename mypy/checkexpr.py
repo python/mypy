@@ -4377,6 +4377,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return result
 
     def visit_assignment_expr(self, e: AssignmentExpr) -> Type:
+        if self.overload_stack_depth > 0:
+            # Poison cache when we encounter assignments in overloads - they affect the binder.
+            self._args_cache[POISON_KEY] = []
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
         self.chk.check_final(e)
