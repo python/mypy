@@ -2666,3 +2666,30 @@ def identity(smth: _FT) -> _FT:
 class S(tuple[Unpack[Ts]], Generic[T, Unpack[Ts]]):
     def f(self, x: T, /) -> T: ...
 [builtins fixtures/tuple.pyi]
+
+[case testNoCrashSubclassingTupleWithTrivialUnpack]
+# https://github.com/python/mypy/issues/19105
+from typing import Unpack
+
+class A(tuple[Unpack[tuple[int]]]): ...
+class B(tuple[Unpack[tuple[()]]]): ...
+
+a: A
+reveal_type(tuple(a))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+(x,) = a
+
+b: B
+(_,) = b  # E: Need more than 0 values to unpack (1 expected)
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashSubclassingTupleWithVariadicUnpack]
+# https://github.com/python/mypy/issues/19105
+from typing import Unpack
+
+class A(tuple[Unpack[tuple[int, ...]]]): ...
+
+a: A
+tuple(a)
+(x,) = a
+(_,) = a
+[builtins fixtures/tuple.pyi]
