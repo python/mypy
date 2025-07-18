@@ -1953,7 +1953,8 @@ class A(Enum):
     x: int
     def method(self) -> int: pass
 class B(A):
-    x = 1  # E: Cannot override writable attribute "x" with a final one
+    x = 1  # E: Cannot override writable attribute "x" with a final one \
+           # E: Incompatible types in assignment (expression has type "B", base class "A" defined the type as "int")
 
 class A1(Enum):
     x: int = 1  # E: Enum members must be left unannotated \
@@ -1971,8 +1972,8 @@ class B2(A2):  # E: Cannot extend enum with existing members: "A2"
 class A3(Enum):
     x: Final[int]  # type: ignore
 class B3(A3):
-    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "A3")
-
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "A3") \
+           # E: Incompatible types in assignment (expression has type "B3", base class "A3" defined the type as "int")
 [builtins fixtures/bool.pyi]
 
 [case testEnumNotFinalWithMethodsAndUninitializedValuesStub]
@@ -1984,14 +1985,16 @@ class A(Enum):  # E: Detected enum "lib.A" in a type stub with zero members. The
                 # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
     x: int
 class B(A):
-    x = 1    # E: Cannot override writable attribute "x" with a final one
+    x = 1    # E: Cannot override writable attribute "x" with a final one \
+             # E: Incompatible types in assignment (expression has type "B", base class "A" defined the type as "int")
 
 class C(Enum):
     x = 1
 class D(C):  # E: Cannot extend enum with existing members: "C" \
              # E: Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership. If so, use `member = value` to mark an enum member, instead of `member: type` \
              # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
-    x: int   # E: Cannot assign to final name "x"
+    x: int   # E: Incompatible types in assignment (expression has type "int", base class "C" defined the type as "C") \
+             # E: Cannot assign to final name "x"
 [builtins fixtures/bool.pyi]
 
 [case testEnumNotFinalWithMethodsAndUninitializedValuesStubMember]
@@ -2417,6 +2420,49 @@ def some_a(a: A):
         reveal_type(a)  # N: Revealed type is "Literal[__main__.A.y]"
     if a is not A.y:
         reveal_type(a)  # N: Revealed type is "Literal[__main__.A.x]"
+[builtins fixtures/dict.pyi]
+
+[case testEnumAccessFromInstance]
+# flags: --python-version 3.11 --warn-unreachable
+# This was added in 3.11
+from enum import Enum, member, nonmember
+
+class A(Enum):
+    x = 1
+    y = member(2)
+    z = nonmember(3)
+
+reveal_type(A.x)  # N: Revealed type is "Literal[__main__.A.x]?"
+reveal_type(A.y)  # N: Revealed type is "Literal[__main__.A.y]?"
+reveal_type(A.z)  # N: Revealed type is "builtins.int"
+
+reveal_type(A.x.x)  # N: Revealed type is "Literal[__main__.A.x]?"
+reveal_type(A.x.x.x)  # N: Revealed type is "Literal[__main__.A.x]?"
+reveal_type(A.x.y)  # N: Revealed type is "Literal[__main__.A.y]?"
+reveal_type(A.x.y.y)  # N: Revealed type is "Literal[__main__.A.y]?"
+reveal_type(A.x.z)  # N: Revealed type is "builtins.int"
+
+reveal_type(A.y.x)  # N: Revealed type is "Literal[__main__.A.x]?"
+reveal_type(A.y.y)  # N: Revealed type is "Literal[__main__.A.y]?"
+reveal_type(A.y.z)  # N: Revealed type is "builtins.int"
+
+A.z.x  # E: "int" has no attribute "x"
+
+class B(Enum):
+    x = 1
+    value = 2
+
+reveal_type(B.x)  # N: Revealed type is "Literal[__main__.B.x]?"
+reveal_type(B.x.value)  # N: Revealed type is "Literal[2]?"
+reveal_type(B.x.x.value)  # N: Revealed type is "Literal[2]?"
+B.x.value.value  # E: "int" has no attribute "value"
+B.x.value.value.value  # E: "int" has no attribute "value"
+reveal_type(B.value)  # N: Revealed type is "Literal[__main__.B.value]?"
+reveal_type(B.value.x)  # N: Revealed type is "Literal[__main__.B.x]?"
+reveal_type(B.value.x.x)  # N: Revealed type is "Literal[__main__.B.x]?"
+reveal_type(B.value.x.value)  # N: Revealed type is "Literal[2]?"
+B.value.x.value.value  # E: "int" has no attribute "value"
+B.value.value.value  # E: "int" has no attribute "value"
 [builtins fixtures/dict.pyi]
 
 
