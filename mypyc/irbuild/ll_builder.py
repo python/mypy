@@ -286,6 +286,9 @@ class LowLevelIRBuilder:
     def keep_alive(self, values: list[Value], *, steal: bool = False) -> None:
         self.add(KeepAlive(values, steal=steal))
 
+    def load_mem(self, ptr: Value, value_type: RType, *, borrow: bool = False) -> Value:
+        return self.add(LoadMem(value_type, ptr, borrow=borrow))
+
     def push_error_handler(self, handler: BasicBlock | None) -> None:
         self.error_handlers.append(handler)
 
@@ -432,7 +435,7 @@ class LowLevelIRBuilder:
 
     def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
         assert is_fixed_width_rtype(target_type), target_type
-        assert isinstance(target_type, RPrimitive)
+        assert isinstance(target_type, RPrimitive), target_type
 
         res = Register(target_type)
 
@@ -538,9 +541,10 @@ class LowLevelIRBuilder:
                 line,
             )
 
-        assert is_fixed_width_rtype(src.type)
-        assert isinstance(src.type, RPrimitive)
         src_type = src.type
+
+        assert is_fixed_width_rtype(src_type), src_type
+        assert isinstance(src_type, RPrimitive), src_type
 
         res = Register(int_rprimitive)
 
@@ -659,7 +663,7 @@ class LowLevelIRBuilder:
 
     def get_type_of_obj(self, obj: Value, line: int) -> Value:
         ob_type_address = self.add(GetElementPtr(obj, PyObject, "ob_type", line))
-        ob_type = self.add(LoadMem(object_rprimitive, ob_type_address))
+        ob_type = self.load_mem(ob_type_address, object_rprimitive, borrow=True)
         self.add(KeepAlive([obj]))
         return ob_type
 
@@ -1513,7 +1517,7 @@ class LowLevelIRBuilder:
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int = -1) -> Value:
         """Compare two tuples item by item"""
         # type cast to pass mypy check
-        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
+        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple), (lhs.type, rhs.type)
         equal = True if op == "==" else False
         result = Register(bool_rprimitive)
         # tuples of different lengths
@@ -2103,6 +2107,33 @@ class LowLevelIRBuilder:
     def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(FloatComparisonOp(lhs, rhs, op, line))
 
+    def int_add(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to add two native integers.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.ADD, line=-1)
+
+    def int_sub(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to subtract a native integer from another one.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.SUB, line=-1)
+
+    def int_mul(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to multiply two native integers.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.MUL, line=-1)
+
     def fixed_width_int_op(
         self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int
     ) -> Value:
@@ -2233,7 +2264,7 @@ class LowLevelIRBuilder:
             size_value = self.primitive_op(var_object_size, [val], line)
         elif is_set_rprimitive(typ) or is_frozenset_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            size_value = self.load_mem(elem_address, c_pyssize_t_rprimitive)
             self.add(KeepAlive([val]))
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_ssize_t_size_op, [val], line)

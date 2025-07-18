@@ -48,6 +48,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# translate isinstance(obj, str)
+isinstance_str = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyUnicode_Check",
+    error_kind=ERR_NEVER,
+)
+
 # str1 + str2
 binary_op(
     name="+",
@@ -92,6 +101,15 @@ method_op(
     arg_types=[str_rprimitive, int_rprimitive],
     return_type=str_rprimitive,
     c_function_name="CPyStr_GetItem",
+    error_kind=ERR_MAGIC,
+)
+
+# This is unsafe since it assumes that the index is within reasonable bounds.
+# In the future this might do no bounds checking at all.
+str_get_item_unsafe_op = custom_op(
+    arg_types=[str_rprimitive, c_pyssize_t_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_GetItemUnsafe",
     error_kind=ERR_MAGIC,
 )
 

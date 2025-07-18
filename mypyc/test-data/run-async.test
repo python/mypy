@@ -1037,3 +1037,214 @@ test_async_with_mixed_return()
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
+
+[case testAsyncTryExceptFinallyAwait]
+import asyncio
+from testutil import assertRaises
+
+class TestError(Exception):
+    pass
+
+# Test 0: Simplest case - just try/finally with raise and await
+async def simple_try_finally_await() -> None:
+    try:
+        raise ValueError("simple error")
+    finally:
+        await asyncio.sleep(0)
+
+# Test 1: Raise inside try, catch in except, don't re-raise
+async def async_try_except_no_reraise() -> int:
+    try:
+        raise ValueError("test error")
+        return 1  # Never reached
+    except ValueError:
+        return 2  # Should return this
+    finally:
+        await asyncio.sleep(0)
+    return 3  # Should not reach this
+
+# Test 2: Raise inside try, catch in except, re-raise
+async def async_try_except_reraise() -> int:
+    try:
+        raise ValueError("test error")
+        return 1  # Never reached
+    except ValueError:
+        raise  # Re-raise the exception
+    finally:
+        await asyncio.sleep(0)
+    return 2  # Should not reach this
+
+# Test 3: Raise inside try, catch in except, raise different error
+async def async_try_except_raise_different() -> int:
+    try:
+        raise ValueError("original error")
+        return 1  # Never reached
+    except ValueError:
+        raise RuntimeError("different error")
+    finally:
+        await asyncio.sleep(0)
+    return 2  # Should not reach this
+
+# Test 4: Another try/except block inside finally
+async def async_try_except_inside_finally() -> int:
+    try:
+        raise ValueError("outer error")
+        return 1  # Never reached
+    finally:
+        await asyncio.sleep(0)
+        try:
+            raise RuntimeError("inner error")
+        except RuntimeError:
+            pass  # Catch inner error
+    return 2  # What happens after finally with inner exception handled?
+
+# Test 5: Another try/finally block inside finally
+async def async_try_finally_inside_finally() -> int:
+    try:
+        raise ValueError("outer error")
+        return 1  # Never reached
+    finally:
+        await asyncio.sleep(0)
+        try:
+            raise RuntimeError("inner error")
+        finally:
+            await asyncio.sleep(0)
+    return 2  # Should not reach this
+
+# Control case: No await in finally - should work correctly
+async def async_exception_no_await_in_finally() -> None:
+    """Control case: This works correctly - exception propagates"""
+    try:
+        raise TestError("This exception will propagate!")
+    finally:
+        pass  # No await here
+
+# Test function with no exception to check normal flow
+async def async_no_exception_with_await_in_finally() -> int:
+    try:
+        return 1  # Normal return
+    finally:
+        await asyncio.sleep(0)
+    return 2  # Should not reach this
+
+def test_async_try_except_finally_await() -> None:
+    # Test 0: Simplest case - just try/finally with exception
+    # Expected: ValueError propagates
+    with assertRaises(ValueError):
+        asyncio.run(simple_try_finally_await())
+
+    # Test 1: Exception caught, not re-raised
+    # Expected: return 2 (from except block)
+    result = asyncio.run(async_try_except_no_reraise())
+    assert result == 2, f"Expected 2, got {result}"
+
+    # Test 2: Exception caught and re-raised
+    # Expected: ValueError propagates
+    with assertRaises(ValueError):
+        asyncio.run(async_try_except_reraise())
+
+    # Test 3: Exception caught, different exception raised
+    # Expected: RuntimeError propagates
+    with assertRaises(RuntimeError):
+        asyncio.run(async_try_except_raise_different())
+
+    # Test 4: Try/except inside finally
+    # Expected: ValueError propagates (outer exception)
+    with assertRaises(ValueError):
+        asyncio.run(async_try_except_inside_finally())
+
+    # Test 5: Try/finally inside finally
+    # Expected: RuntimeError propagates (inner error)
+    with assertRaises(RuntimeError):
+        asyncio.run(async_try_finally_inside_finally())
+
+    # Control case: No await in finally (should work correctly)
+    with assertRaises(TestError):
+        asyncio.run(async_exception_no_await_in_finally())
+
+    # Test normal flow (no exception)
+    # Expected: return 1
+    result = asyncio.run(async_no_exception_with_await_in_finally())
+    assert result == 1, f"Expected 1, got {result}"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+def run(x: object) -> object: ...
+
+[case testAsyncContextManagerExceptionHandling]
+import asyncio
+from typing import Optional, Type
+from testutil import assertRaises
+
+# Test 1: Basic async context manager that doesn't suppress exceptions
+class AsyncContextManager:
+    async def __aenter__(self) -> 'AsyncContextManager':
+        return self
+
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                       exc_val: Optional[BaseException],
+                       exc_tb: object) -> None:
+        # This await in __aexit__ is like await in finally
+        await asyncio.sleep(0)
+        # Don't suppress the exception (return None/False)
+
+async def func_with_async_context_manager() -> str:
+    async with AsyncContextManager():
+        raise ValueError("Exception inside async with")
+        return "should not reach"  # Never reached
+    return "should not reach either"  # Never reached
+
+async def test_basic_exception() -> str:
+    try:
+        await func_with_async_context_manager()
+        return "func_a returned normally - bug!"
+    except ValueError:
+        return "caught ValueError - correct!"
+    except Exception as e:
+        return f"caught different exception: {type(e).__name__}"
+
+# Test 2: Async context manager that raises a different exception in __aexit__
+class AsyncContextManagerRaisesInExit:
+    async def __aenter__(self) -> 'AsyncContextManagerRaisesInExit':
+        return self
+
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                       exc_val: Optional[BaseException],
+                       exc_tb: object) -> None:
+        # This await in __aexit__ is like await in finally
+        await asyncio.sleep(0)
+        # Raise a different exception - this should replace the original exception
+        raise RuntimeError("Exception in __aexit__")
+
+async def func_with_raising_context_manager() -> str:
+    async with AsyncContextManagerRaisesInExit():
+        raise ValueError("Original exception")
+        return "should not reach"  # Never reached
+    return "should not reach either"  # Never reached
+
+async def test_exception_in_aexit() -> str:
+    try:
+        await func_with_raising_context_manager()
+        return "func returned normally - unexpected!"
+    except RuntimeError:
+        return "caught RuntimeError - correct!"
+    except ValueError:
+        return "caught ValueError - original exception not replaced!"
+    except Exception as e:
+        return f"caught different exception: {type(e).__name__}"
+
+def test_async_context_manager_exception_handling() -> None:
+    # Test 1: Basic exception propagation
+    result = asyncio.run(test_basic_exception())
+    # Expected: "caught ValueError - correct!"
+    assert result == "caught ValueError - correct!", f"Expected exception to propagate, got: {result}"
+
+    # Test 2: Exception raised in __aexit__ replaces original exception
+    result = asyncio.run(test_exception_in_aexit())
+    # Expected: "caught RuntimeError - correct!"
+    # (The RuntimeError from __aexit__ should replace the ValueError)
+    assert result == "caught RuntimeError - correct!", f"Expected RuntimeError from __aexit__, got: {result}"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+def run(x: object) -> object: ...
