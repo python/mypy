@@ -1,0 +1,16 @@
+-- Test cases for Python 3.14 features
+
+[case testTemplateStringBasic]
+from string.templatelib import Interpolation, Template
+
+def test_template_string_basic() -> None:
+    name = "mypy"
+    t = t"Hello {name}"
+
+    assert type(t) is Template
+    assert t.values == ('mypy',)
+    assert t.strings == ('Hello ', '')
+    assert len(t.interpolations) == 1
+    i = t.interpolations[0]
+    assert type(i) is Interpolation
+    assert (i.value, i.expression, i.conversion, i.format_spec) == ("mypy", "name", None, "")
