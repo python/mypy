@@ -1968,13 +1968,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return self._args_cache[key]
         res: list[Type] = []
 
-        for arg in args:
-            arg_type = self.accept(arg)
-            if has_erased_component(arg_type):
-                res.append(NoneType())
-            else:
-                res.append(arg_type)
-        if can_cache:
+        with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as w:
+            for arg in args:
+                arg_type = self.accept(arg)
+                if has_erased_component(arg_type):
+                    res.append(NoneType())
+                else:
+                    res.append(arg_type)
+
+        if w.has_new_errors():
+            self.msg.add_errors(w.filtered_errors())
+        elif can_cache:
+            # Do not cache if new diagnostics were emitted: they may impact parent overload
             self._args_cache[key] = res
         return res
 
