@@ -5092,20 +5092,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if typ not in values:
                 values.append(typ)
 
-        if len(values) == 1 and not self.chk.current_node_deferred:
-            # If only one non-duplicate item remains, there's no need to run the whole
-            # inference cycle over it. This helps in pathological cases where items
-            # are complex overloads.
-            # https://github.com/python/mypy/issues/14718
-            vt = values[0]
-        else:
-            vt = join.join_type_list(values)
-            if not allow_fast_container_literal(vt):
-                self.resolved_type[e] = NoneType()
-                return None
+        vt = self._first_or_join_fast_item(values)
+        if vt is None:
+            self.resolved_type[e] = NoneType()
+            return None
         ct = self.chk.named_generic_type(container_fullname, [vt])
         self.resolved_type[e] = ct
         return ct
+
+    def _first_or_join_fast_item(self, items: list[Type]) -> Type | None:
+        if len(items) == 1 and not self.chk.current_node_deferred:
+            return items[0]
+        typ = join.join_type_list(items)
+        if not allow_fast_container_literal(typ):
+            return None
+        return typ
 
     def check_lst_expr(self, e: ListExpr | SetExpr | TupleExpr, fullname: str, tag: str) -> Type:
         # fast path
@@ -5293,13 +5294,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     self.resolved_type[e] = NoneType()
                     return None
             else:
-                keys.append(self.accept(key))
-                values.append(self.accept(value))
-        kt = join.join_type_list(keys)
-        vt = join.join_type_list(values)
-        if not (allow_fast_container_literal(kt) and allow_fast_container_literal(vt)):
+                key_t = self.accept(key)
+                if key_t not in keys:
+                    keys.append(key_t)
+                value_t = self.accept(value)
+                if value_t not in values:
+                    values.append(value_t)
+
+        kt = self._first_or_join_fast_item(keys)
+        if kt is None:
             self.resolved_type[e] = NoneType()
             return None
+
+        vt = self._first_or_join_fast_item(values)
+        if vt is None:
+            self.resolved_type[e] = NoneType()
+            return None
+
         if stargs and (stargs[0] != kt or stargs[1] != vt):
             self.resolved_type[e] = NoneType()
             return None
