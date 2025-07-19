@@ -1030,6 +1030,34 @@ error:
     return NULL;
 }
 
+#ifdef MYPYC_LOG_TRACE
+
+// This is only compiled in if trace logging is enabled by user
+
+static int TraceCounter = 0;
+static const int TRACE_EVERY_NTH = 1009;  // Should be a prime number
+#define TRACE_LOG_FILE_NAME "mypyc_trace.txt"
+static FILE *TraceLogFile = NULL;
+
+// Log a tracing event on every Nth call
+void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details) {
+    if (TraceLogFile == NULL) {
+        if ((TraceLogFile = fopen(TRACE_LOG_FILE_NAME, "w")) == NULL) {
+            fprintf(stderr, "error: Could not open trace file %s\n", TRACE_LOG_FILE_NAME);
+            abort();
+        }
+    }
+    if (TraceCounter == 0) {
+        fprintf(TraceLogFile, "%s:%s:%s:%s\n", location, line, op, details);
+    }
+    TraceCounter++;
+    if (TraceCounter == TRACE_EVERY_NTH) {
+        TraceCounter = 0;
+    }
+}
+
+#endif
+
 #ifdef CPY_3_12_FEATURES
 
 // Copied from Python 3.12.3, since this struct is internal to CPython. It defines

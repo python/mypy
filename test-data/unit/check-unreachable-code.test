@@ -1587,3 +1587,19 @@ x = 0  # not unreachable
 
 f2: Callable[[], NoReturn] = lambda: foo()
 x = 0  # not unreachable
+
+[case testAttributeNoReturn]
+# flags: --warn-unreachable
+from typing import Optional, NoReturn, TypeVar
+
+def foo() -> NoReturn:
+    raise
+
+T = TypeVar("T")
+def bar(x: Optional[list[T]] = None) -> T:
+    ...
+
+reveal_type(bar().attr)  # N: Revealed type is "Never"
+1  # not unreachable
+reveal_type(foo().attr)  # N: Revealed type is "Never"
+1  # E: Statement is unreachable
