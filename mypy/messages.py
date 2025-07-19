@@ -84,6 +84,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -2664,6 +2665,8 @@ def format_type_inner(
         else:
             # TODO: better disambiguate ParamSpec name clashes.
             return typ.name_with_suffix()
+    elif isinstance(typ, TupleGetterType):
+        return f"TupleGetterType[{typ.typ}]"
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != "builtins.tuple":

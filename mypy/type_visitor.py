@@ -35,6 +35,7 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -112,6 +113,10 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_overloaded(self, t: Overloaded, /) -> T:
+        pass
+
+    @abstractmethod
+    def visit_tuplegetter_type(self, t: TupleGetterType, /) -> T:
         pass
 
     @abstractmethod
@@ -259,6 +264,9 @@ class TypeTranslator(TypeVisitor[Type]):
             ret_type=t.ret_type.accept(self),
             variables=self.translate_variables(t.variables),
         )
+
+    def visit_tuplegetter_type(self, t: TupleGetterType, /) -> Type:
+        return TupleGetterType(t.typ.accept(self))
 
     def visit_tuple_type(self, t: TupleType, /) -> Type:
         return TupleType(
@@ -412,6 +420,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_tuple_type(self, t: TupleType, /) -> T:
         return self.query_types([t.partial_fallback] + t.items)
 
+    def visit_tuplegetter_type(self, t: TupleGetterType, /) -> T:
+        return self.query_types([t.typ])
+
     def visit_typeddict_type(self, t: TypedDictType, /) -> T:
         return self.query_types(t.items.values())
 
@@ -548,6 +559,9 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
             return args or ret
         else:
             return args and ret
+
+    def visit_tuplegetter_type(self, t: TupleGetterType, /) -> bool:
+        return self.default
 
     def visit_tuple_type(self, t: TupleType, /) -> bool:
         return self.query_types([t.partial_fallback] + t.items)

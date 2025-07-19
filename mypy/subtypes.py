@@ -55,6 +55,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -758,6 +759,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
         else:
             return False
+
+    def visit_tuplegetter_type(self, left: TupleGetterType) -> bool:
+        right = self.right
+        if isinstance(right, TupleGetterType):
+            return left.typ == right.typ
+        elif isinstance(right, Instance):
+            return self.is_top_type(right)
+        return False
 
     def visit_tuple_type(self, left: TupleType) -> bool:
         right = self.right

@@ -29,6 +29,7 @@ from mypy.types import (
     Overloaded,
     Parameters,
     ParamSpecType,
+    TupleGetterType,
     TupleType,
     TypeAliasType,
     TypedDictType,
@@ -295,6 +296,9 @@ class TypeFixer(TypeVisitor[None]):
 
     def visit_partial_type(self, o: Any) -> None:
         raise RuntimeError("Shouldn't get here", o)
+
+    def visit_tuplegetter_type(self, tgt: TupleGetterType) -> None:
+        tgt.typ.accept(self)
 
     def visit_tuple_type(self, tt: TupleType) -> None:
         if tt.items:

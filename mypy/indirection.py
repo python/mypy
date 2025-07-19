@@ -128,6 +128,9 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
         self._visit_type_list(list(t.items))
         self._visit(t.fallback)
 
+    def visit_tuplegetter_type(self, t: types.TupleGetterType) -> None:
+        self._visit(t.typ)
+
     def visit_tuple_type(self, t: types.TupleType) -> None:
         self._visit_type_list(t.items)
         self._visit(t.partial_fallback)

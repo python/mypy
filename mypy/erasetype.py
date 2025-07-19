@@ -17,6 +17,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -114,6 +115,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_overloaded(self, t: Overloaded) -> ProperType:
         return t.fallback.accept(self)
+
+    def visit_tuplegetter_type(self, t: TupleGetterType) -> ProperType:
+        raise NotImplementedError
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         return t.partial_fallback.accept(self)
