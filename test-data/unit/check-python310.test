@@ -1069,6 +1069,108 @@ match m:
     case Foo():
         pass
 
+[case testMatchClassPatternCallable]
+from typing import Callable
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+
+
+[case testMatchClassPatternCallbackProtocol]
+from typing import Any, Callable
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class FnProto(Protocol):
+    def __call__(self, x: int, /) -> object: ...
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnProto"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchClassPatternAnyCallableProtocol]
+from typing import Any, Callable
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class AnyCallable(Protocol):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.AnyCallable"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+
+[builtins fixtures/dict.pyi]
+
+
+[case testMatchClassPatternProtocol]
+from typing import Any
+from typing_extensions import Protocol, runtime_checkable
+
+class Proto(Protocol):
+    def foo(self, x: int, /) -> object: ...
+
+class Impl:
+    def foo(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case Proto() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.Proto"
+
+def test_impl(x: Impl) -> None:
+    match x:
+        case Proto() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.Impl"
+
+[builtins fixtures/dict.pyi]
+
+
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
 x = [[{0: 0}]]

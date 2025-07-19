@@ -1506,11 +1506,12 @@ class C: pass
 def f(x: P1) -> int: ...
 @overload
 def f(x: P2) -> str: ...
-def f(x):
+def f(x: object) -> object:
     if isinstance(x, P1):
         return P1.attr1
     if isinstance(x, P2): # E: Only @runtime_checkable protocols can be used with instance and class checks
-        return P1.attr2
+        return P2.attr2
+    return None
 
 reveal_type(f(C1())) # N: Revealed type is "builtins.int"
 reveal_type(f(C2())) # N: Revealed type is "builtins.str"
