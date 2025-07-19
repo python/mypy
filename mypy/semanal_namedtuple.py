@@ -59,6 +59,7 @@ from mypy.types import (
     AnyType,
     CallableType,
     LiteralType,
+    TupleGetterType,
     TupleType,
     Type,
     TypeOfAny,
@@ -552,7 +553,7 @@ class NamedTupleAnalyzer:
             var._fullname = f"{info.fullname}.{var.name}"
             info.names[var.name] = SymbolTableNode(MDEF, var)
 
-        fields = [Var(item, typ) for item, typ in zip(items, types)]
+        fields = [Var(item, TupleGetterType(typ)) for item, typ in zip(items, types)]
         for var in fields:
             add_field(var, is_property=True)
         # We can't share Vars between fields and method arguments, since they

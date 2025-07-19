@@ -36,6 +36,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -1243,6 +1244,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         # reliable technique.
         item = find_matching_overload_item(overloaded, template)
         return infer_constraints(template, item, self.direction)
+
+    def visit_tuplegetter_type(self, template: TupleGetterType) -> list[Constraint]:
+        raise NotImplementedError
 
     def visit_tuple_type(self, template: TupleType) -> list[Constraint]:
         actual = self.actual

@@ -683,3 +683,52 @@ reveal_type(y) # N: Revealed type is "builtins.int"
 point.y = 6 # E: Property "y" defined in "Point" is read-only
 
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleClassAttributeAccess]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: str
+
+reveal_type(A.x)  # N: Revealed type is "TupleGetterType[builtins.str]"
+A.x + 3  # E: Unsupported left operand type for + ("TupleGetterType[builtins.str]")
+A.y  # E: "type[A]" has no attribute "y"
+
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleTupleGetterIsCompatibleWithObject]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: str = "x"
+
+a: object = A.x
+b: int = A.x  # E: Incompatible types in assignment (expression has type "TupleGetterType[builtins.str]", variable has type "int")
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleTupleGetterNested]
+from typing import NamedTuple
+
+class Inner(NamedTuple):
+    x: int
+
+class Outer(NamedTuple):
+    y: Inner
+
+reveal_type(Inner.x)  # N: Revealed type is "TupleGetterType[builtins.int]"
+reveal_type(Outer.y)  # N: Revealed type is "TupleGetterType[tuple[builtins.int, fallback=__main__.Inner]]"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleTupleGetterGeneric]
+from typing import Generic
+from typing import NamedTuple
+from typing import TypeVar
+
+T = TypeVar("T")
+
+class GenericTuple(NamedTuple, Generic[T]):
+    x: T
+
+reveal_type(GenericTuple.x)  # E: Access to generic instance variables via class is ambiguous \
+                             # N: Revealed type is "TupleGetterType[Any]"
+[builtins fixtures/tuple.pyi]

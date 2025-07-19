@@ -32,6 +32,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -558,6 +559,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             for fi, vi in zip(suffix, variadic.items[-suffix_len:]):
                 items.append(join_types(fi, vi))
         return items
+
+    def visit_tuplegetter_type(self, t: TupleGetterType) -> ProperType:
+        raise NotImplementedError
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         # When given two fixed-length tuples:

@@ -2404,6 +2404,25 @@ class Overloaded(FunctionLike):
         return Overloaded([CallableType.deserialize(t) for t in data["items"]])
 
 
+class TupleGetterType(ProperType):
+    __slots__ = ("typ",)
+
+    def __init__(self, typ: Type) -> None:
+        super().__init__(typ.line, typ.column)
+        self.typ = typ
+
+    def serialize(self) -> JsonDict:
+        return {".class": "TupleGetterType", "type": self.typ.serialize()}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> TupleGetterType:
+        assert data[".class"] == "TupleGetterType"
+        return TupleGetterType(deserialize_type(data["type"]))
+
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return visitor.visit_tuplegetter_type(self)
+
+
 class TupleType(ProperType):
     """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
 
@@ -3469,6 +3488,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         for i in t.items:
             a.append(i.accept(self))
         return f"Overload({', '.join(a)})"
+
+    def visit_tuplegetter_type(self, t: TupleGetterType, /) -> str:
+        return f"TupleGetterType[{t.typ.accept(self)}]"
 
     def visit_tuple_type(self, t: TupleType, /) -> str:
         s = self.list_str(t.items) or "()"

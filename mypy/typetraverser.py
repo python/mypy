@@ -21,6 +21,7 @@ from mypy.types import (
     PlaceholderType,
     RawExpressionType,
     SyntheticTypeVisitor,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -91,6 +92,9 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
 
         if t.type_is is not None:
             t.type_is.accept(self)
+
+    def visit_tuplegetter_type(self, t: TupleGetterType, /) -> None:
+        t.typ.accept(self)
 
     def visit_tuple_type(self, t: TupleType, /) -> None:
         self.traverse_type_list(t.items)

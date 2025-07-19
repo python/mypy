@@ -92,6 +92,7 @@ from mypy.types import (
     RequiredType,
     SyntheticTypeVisitor,
     TrivialSyntheticTypeTranslator,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -1260,6 +1261,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # So if we're ever asked to reanalyze an Overloaded type, we know it's
         # fine to just return it as-is.
         return t
+
+    def visit_tuplegetter_type(self, t: TupleGetterType) -> Type:
+        raise NotImplementedError
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
@@ -2636,6 +2640,9 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         # FIX generics
         self.process_types(t.arg_types)
         t.ret_type.accept(self)
+
+    def visit_tuplegetter_type(self, t: TupleGetterType) -> None:
+        raise NotImplementedError
 
     def visit_tuple_type(self, t: TupleType) -> None:
         self.process_types(t.items)

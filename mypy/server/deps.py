@@ -157,6 +157,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -1016,6 +1017,9 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
 
     def visit_partial_type(self, typ: PartialType) -> list[str]:
         assert False, "Should not see a partial type here"
+
+    def visit_tuplegetter_type(self, typ: TupleGetterType) -> list[str]:
+        return typ.typ.accept(self)
 
     def visit_tuple_type(self, typ: TupleType) -> list[str]:
         triggers = []
