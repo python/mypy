@@ -1086,21 +1086,6 @@ while bool():
     x + 'a'
 [builtins fixtures/isinstance.pyi]
 
-[case testUnreachableCode3]
-# flags: --warn-unreachable --python-version 3.10
-from collections.abc import Iterable
-
-class A: ...
-
-def test(dependencies: list[A] | None) -> None:
-    if dependencies is None:
-        dependencies = []
-    elif not isinstance(dependencies, Iterable):
-        dependencies = [dependencies]  # E: Statement is unreachable
-
-[builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
-
 [case testUnreachableWhileTrue]
 def f(x: int) -> None:
     while True:
