@@ -8015,24 +8015,20 @@ def conditional_types(
             # attempt to narrow anything. Instead, we broaden the expr to Any to
             # avoid false positives
             return proposed_type, default
-        elif not any(  #  handle concrete subtypes
+        elif not any(
             type_range.is_upper_bound for type_range in proposed_type_ranges
-        ) and is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
-            # Expression is always of one of the types in proposed_type_ranges
-            return default, UninhabitedType()
-        elif (  # handle structural subtypes
-            isinstance(proposed_type, CallableType)
-            or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
-        ) and is_subtype(current_type, proposed_type, ignore_promotions=True):
-            yes_type = default
-            no_type = (
-                None
-                if yes_type is None
-                else restrict_subtype_away(
-                    current_type, yes_type, consider_runtime_isinstance=consider_runtime_isinstance
+        ) and (  # concrete subtypes
+            is_proper_subtype(current_type, proposed_type, ignore_promotions=True)
+            or (  # structural subtypes
+                is_subtype(current_type, proposed_type, ignore_promotions=True)
+                and (
+                    isinstance(proposed_type, CallableType)
+                    or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
                 )
             )
-            return yes_type, no_type
+        ):
+            # Expression is always of one of the types in proposed_type_ranges
+            return default, UninhabitedType()
         elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
             # Expression is never of any type in proposed_type_ranges
             return UninhabitedType(), default
