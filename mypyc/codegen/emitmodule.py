@@ -65,6 +65,7 @@ from mypyc.options import CompilerOptions
 from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
+from mypyc.transform.log_trace import insert_event_trace_logging
 from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.spill import insert_spills
@@ -252,6 +253,9 @@ def compile_scc_to_ir(
 
             if fn in env_user_functions:
                 insert_spills(fn, env_user_functions[fn])
+
+            if compiler_options.log_trace:
+                insert_event_trace_logging(fn, compiler_options)
 
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)

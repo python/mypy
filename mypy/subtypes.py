@@ -145,6 +145,8 @@ def is_subtype(
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
+    if left == right:
+        return True
     if subtype_context is None:
         subtype_context = SubtypeContext(
             ignore_type_params=ignore_type_params,
@@ -206,6 +208,8 @@ def is_proper_subtype(
     (this is useful for runtime isinstance() checks). If keep_erased_types is True,
     do not consider ErasedType a subtype of all types (used by type inference against unions).
     """
+    if left == right:
+        return True
     if subtype_context is None:
         subtype_context = SubtypeContext(
             ignore_promotions=ignore_promotions,
@@ -213,8 +217,8 @@ def is_proper_subtype(
             keep_erased_types=keep_erased_types,
         )
     else:
-        assert not any(
-            {ignore_promotions, erase_instances, keep_erased_types}
+        assert (
+            not ignore_promotions and not erase_instances and not keep_erased_types
         ), "Don't pass both context and individual flags"
     if type_state.is_assumed_proper_subtype(left, right):
         return True

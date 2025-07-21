@@ -48,6 +48,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# translate isinstance(obj, str)
+isinstance_str = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyUnicode_Check",
+    error_kind=ERR_NEVER,
+)
+
 # str1 + str2
 binary_op(
     name="+",

@@ -70,12 +70,14 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -791,6 +793,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line(f"{dest} = *({type} *){src};")
+        if not op.is_borrowed:
+            self.emit_inc_ref(dest, op.type)
 
     def visit_set_mem(self, op: SetMem) -> None:
         dest = self.reg(op.dest)
@@ -812,6 +816,31 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 dest, op.type._ctype, op.src_type.name, src, op.field
             )
         )
+
+    def visit_set_element(self, op: SetElement) -> None:
+        dest = self.reg(op)
+        item = self.reg(op.item)
+        field = op.field
+        if isinstance(op.src, Undef):
+            # First assignment to an undefined struct is trivial.
+            self.emit_line(f"{dest}.{field} = {item};")
+        else:
+            # In the general case create a copy of the struct with a single
+            # item modified.
+            #
+            # TODO: Can we do better if only a subset of fields are initialized?
+            # TODO: Make this less verbose in the common case
+            # TODO: Support tuples (or use RStruct for tuples)?
+            src = self.reg(op.src)
+            src_type = op.src.type
+            assert isinstance(src_type, RStruct), src_type
+            init_items = []
+            for n in src_type.names:
+                if n != field:
+                    init_items.append(f"{src}.{n}")
+                else:
+                    init_items.append(item)
+            self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type

@@ -39,6 +39,7 @@ from mypyc.ir.ops import (
     RaiseStandardError,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
@@ -214,6 +215,9 @@ class IRTransform(OpVisitor[Optional[Value]]):
     def visit_get_element_ptr(self, op: GetElementPtr) -> Value | None:
         return self.add(op)
 
+    def visit_set_element(self, op: SetElement) -> Value | None:
+        return self.add(op)
+
     def visit_load_address(self, op: LoadAddress) -> Value | None:
         return self.add(op)
 
@@ -352,6 +356,9 @@ class PatchVisitor(OpVisitor[None]):
         op.src = self.fix_op(op.src)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
+        op.src = self.fix_op(op.src)
+
+    def visit_set_element(self, op: SetElement) -> None:
         op.src = self.fix_op(op.src)
 
     def visit_load_address(self, op: LoadAddress) -> None:
