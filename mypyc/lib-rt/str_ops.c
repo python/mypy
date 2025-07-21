@@ -117,6 +117,11 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     }
 }
 
+PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index) {
+    // This is unsafe since we don't check for overflow when doing <<.
+    return CPyStr_GetItem(str, index << 1);
+}
+
 // A simplification of _PyUnicode_JoinArray() from CPython 3.9.6
 PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;

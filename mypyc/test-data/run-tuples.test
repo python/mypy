@@ -294,3 +294,35 @@ def test_multiply() -> None:
     assert (1,) * 3 == res
     assert 3 * (1,) == res
     assert multiply((1,), 3) == res
+
+[case testIsInstance]
+from copysubclass import subc
+def test_built_in() -> None:
+    assert isinstance((), tuple)
+    assert isinstance((1, 2), tuple)
+    assert isinstance(('a', 'b', 'c'), tuple)
+    assert isinstance(subc(()), tuple)
+    assert isinstance(subc((1, 2)), tuple)
+    assert isinstance(subc(('a', 'b', 'c')), tuple)
+
+    assert not isinstance(set(), tuple)
+    assert not isinstance({}, tuple)
+    assert not isinstance([1,2,3], tuple)
+    assert not isinstance({'a','b'}, tuple)
+    assert not isinstance(int() + 1, tuple)
+    assert not isinstance(str() + 'a', tuple)
+
+def test_user_defined() -> None:
+    from userdefinedtuple import tuple
+
+    assert isinstance(tuple(), tuple)
+    assert not isinstance((1, tuple()), tuple)
+
+[file copysubclass.py]
+from typing import Any
+class subc(tuple[Any]):
+    pass
+
+[file userdefinedtuple.py]
+class tuple:
+    pass

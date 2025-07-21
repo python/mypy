@@ -35,6 +35,7 @@ from mypyc.ir.ops import (
     RegisterOp,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
@@ -179,6 +180,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill:
+        return CLEAN
+
+    def visit_set_element(self, op: SetElement) -> GenAndKill:
         return CLEAN
 
     def visit_load_address(self, op: LoadAddress) -> GenAndKill:

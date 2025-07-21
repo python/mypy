@@ -727,6 +727,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
 char CPyStr_Equal(PyObject *str1, PyObject *str2);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
+PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
@@ -928,6 +929,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyOb
 PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
 void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
+void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details);
 
 #ifdef __cplusplus
 }
