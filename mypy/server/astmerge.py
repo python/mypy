@@ -96,7 +96,6 @@ from mypy.types import (
     PlaceholderType,
     RawExpressionType,
     SyntheticTypeVisitor,
-    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -470,9 +469,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_partial_type(self, typ: PartialType) -> None:
         raise RuntimeError("Cannot handle partial type")
-
-    def visit_tuplegetter_type(self, typ: TupleGetterType) -> None:
-        typ.typ.accept(self)
 
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:

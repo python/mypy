@@ -24,6 +24,7 @@ class A: pass
 <m.N> -> m.f
 <a.A> -> <m.N.a>, <m.N>, m
 <a> -> m
+<collections._tuplegetter> -> <m.N.a>, <m.N>, m
 
 [case testNamedTuple2]
 from typing import NamedTuple, Any, Tuple
@@ -45,6 +46,7 @@ class B: pass
 <a.A> -> <m.N.a>, <m.N>, m
 <a.B> -> <m.N.a>, <m.N>, m
 <a> -> m
+<collections._tuplegetter> -> <m.N.a>, <m.N>, m
 
 [case testNamedTuple3]
 from typing import NamedTuple
@@ -62,6 +64,7 @@ y = M(x)
 <m.N> -> <m.M.z>, <m.M>, <m.x>, <m.y>, m
 <m.x> -> m
 <m.y> -> m
+<collections._tuplegetter> -> <m.M.z>, <m.M>, <m.N.x>, <m.N>, m
 
 [case testNamedTuple4]
 from typing import NamedTuple, Any

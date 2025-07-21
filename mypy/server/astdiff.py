@@ -88,7 +88,6 @@ from mypy.types import (
     Parameters,
     ParamSpecType,
     PartialType,
-    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -481,9 +480,6 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             tvmap[v.id] = tv
         with state.strict_optional_set(True):
             return expand_type(typ, tvmap).copy_modified(variables=tvs)
-
-    def visit_tuplegetter_type(self, typ: TupleGetterType) -> SnapshotItem:
-        return ("TupleGetterType", snapshot_type(typ.typ))
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))

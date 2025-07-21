@@ -3868,7 +3868,7 @@ from typing import Type, NamedTuple
 N = NamedTuple('N', [('x', int), ('y', int)])
 def f(a: Type[N]):
     a()
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 [out]
 main:4: error: Missing positional arguments "x", "y" in call to "N"
 
@@ -5346,7 +5346,7 @@ class M(NamedTuple):
 n: N
 m: M
 lst = [n, m]
-[builtins fixtures/isinstancelist.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
 from typing import TypedDict
@@ -5377,7 +5377,7 @@ def parse_ast(name_dict: NameDict) -> None:
     if isinstance(name_dict[''], int):
         pass
     reveal_type(name_dict['test']) # N: Revealed type is "tuple[builtins.bool, fallback=__main__.NameInfo]"
-[builtins fixtures/isinstancelist.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testCrashInForwardRefToTypedDictWithIsinstance]
@@ -5600,7 +5600,7 @@ class B(object):
         return self.a.x
 
 reveal_type(x.x) # N: Revealed type is "builtins.int"
-[builtins fixtures/property.pyi]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testCorrectIsinstanceWithForwardUnion]
@@ -5613,7 +5613,7 @@ def f(x: ForwardUnion) -> None:
   reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, fallback=__main__.TP], builtins.int]"
   if isinstance(x, TP):
     reveal_type(x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.TP]"
-[builtins fixtures/isinstance.pyi]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testCrashInvalidArgsSyntheticClassSyntax]
@@ -5626,7 +5626,7 @@ class NM(NamedTuple):
 # These two should never crash, reveals are in the next test
 TD({'x': []})
 NM(x=[])
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
 
@@ -5645,7 +5645,7 @@ reveal_type(x) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.li
 reveal_type(x1) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.list[Any]})"
 reveal_type(y) # N: Revealed type is "tuple[builtins.list[Any], fallback=__main__.NM]"
 reveal_type(y1) # N: Revealed type is "tuple[builtins.list[Any], fallback=__main__.NM]"
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
 
@@ -5659,7 +5659,7 @@ NT = NewType('NT', List[int, str]) # E: "list" expects 1 type argument, but 2 gi
 TD({'x': []})
 NM(x=[])
 NT([])
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
 
@@ -5677,7 +5677,7 @@ x: A1
 y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
 
@@ -5691,7 +5691,7 @@ x: A1
 y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
 

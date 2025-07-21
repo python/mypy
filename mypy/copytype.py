@@ -15,7 +15,6 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
-    TupleGetterType,
     TupleType,
     TypeAliasType,
     TypedDictType,
@@ -103,9 +102,6 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
         return self.copy_common(t, t.copy_modified())
-
-    def visit_tuplegetter_type(self, t: TupleGetterType) -> ProperType:
-        return self.copy_common(t, TupleGetterType(t.typ))
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         return self.copy_common(t, TupleType(t.items, t.partial_fallback, implicit=t.implicit))

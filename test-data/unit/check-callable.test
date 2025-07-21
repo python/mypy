@@ -491,7 +491,7 @@ def g(o: Thing) -> None:
         i + s  # E: Unsupported operand types for + ("str" and "int")
         o(1,2,3)
 
-[builtins fixtures/callable.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testCallableNoArgs]
 

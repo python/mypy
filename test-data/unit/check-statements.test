@@ -2165,7 +2165,7 @@ for i in lst:
     a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 N = NamedTuple('N', [('x', int)])
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testForwardRefsInForStatement]
@@ -2178,7 +2178,7 @@ for i in lst: # type: N
 
 N = NamedTuple('N', [('x', int)])
 class M(N): pass
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testForwardRefsInWithStatementImplicit]

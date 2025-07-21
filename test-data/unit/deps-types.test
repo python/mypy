@@ -812,6 +812,7 @@ class I: pass
 [out]
 <a.A> -> m
 <a> -> m
+<collections._tuplegetter> -> <m.P.x>, <m.P>, m
 <mod.I.__init__> -> a
 <mod.I.__new__> -> a
 <mod.I> -> <m.P.x>, <m.P>, m, a, mod.I

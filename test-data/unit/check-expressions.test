@@ -2159,7 +2159,7 @@ class Custom(Base):
 Base(int()) == int()  # E: Non-overlapping equality check (left operand type: "Base", right operand type: "int")
 Base(int()) == tuple()
 Custom(int()) == int()
-[builtins fixtures/bool.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testCustomEqCheckStrictEqualityMeta]
 # flags: --strict-equality
@@ -2459,7 +2459,7 @@ def f() -> int:  # E: Missing return statement
 from typing import TypeVar
 T = TypeVar("T")
 x: int
-x + T  # E: Unsupported left operand type for + ("int")
+x + T  # E: Unsupported operand types for + ("int" and "TypeVar")
 T()  # E: "TypeVar" not callable
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]

@@ -462,7 +462,7 @@ def typeddict() -> Sequence[D]:
 
 a = (a.A(), A())
 a.x  # E: "tuple[a.A, b.A]" has no attribute "x"
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testReturnAnyFromFunctionDeclaredToReturnObject]

@@ -23,7 +23,6 @@ from mypy.types import (
     PartialType,
     ProperType,
     TrivialSyntheticTypeTranslator,
-    TupleGetterType,
     TupleType,
     Type,
     TypeAliasType,
@@ -456,9 +455,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             else:
                 items.append(item.accept(self))
         return items
-
-    def visit_tuplegetter_type(self, t: TupleGetterType) -> Type:
-        return TupleGetterType(t.typ.accept(self))
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         items = self.expand_type_list_with_unpack(t.items)

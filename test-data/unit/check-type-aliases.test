@@ -244,7 +244,7 @@ A = List[B]
 class B(NamedTuple):
     x: str
 reveal_type(x[0].x) # N: Revealed type is "builtins.str"
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testJSONAliasApproximation]

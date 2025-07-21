@@ -680,7 +680,7 @@ TypeInfo<2>(
     _make<17>
     _replace<18>
     _source<19> (builtins.str<8>)
-    x<20> (TupleGetterType[target.A<0>])))
+    x<20> (collections._tuplegetter[target.A<0>]<21>)))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -704,8 +704,8 @@ TypeInfo<2>(
     _make<17>
     _replace<18>
     _source<19> (builtins.str<8>)
-    x<20> (TupleGetterType[target.A<0>])
-    y<21> (TupleGetterType[target.A<0>])))
+    x<20> (collections._tuplegetter[target.A<0>]<21>)
+    y<22> (collections._tuplegetter[target.A<0>]<21>)))
 
 [case testNamedTupleOldVersion_typeinfo]
 import target
@@ -740,7 +740,7 @@ TypeInfo<2>(
     _make<16>
     _replace<17>
     _source<18> (builtins.str<8>)
-    x<19> (TupleGetterType[target.A<0>])))
+    x<19> (collections._tuplegetter[target.A<0>]<20>)))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -763,8 +763,8 @@ TypeInfo<2>(
     _make<16>
     _replace<17>
     _source<18> (builtins.str<8>)
-    x<19> (TupleGetterType[target.A<0>])
-    y<20> (TupleGetterType[target.A<0>])))
+    x<19> (collections._tuplegetter[target.A<0>]<20>)
+    y<21> (collections._tuplegetter[target.A<0>]<20>)))
 
 [case testUnionType_types]
 import target

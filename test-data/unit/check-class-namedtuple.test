@@ -214,7 +214,7 @@ i, i = l[0]  # E: Need more than 1 value to unpack (2 expected)
 l = [A(1)]
 a = (1,)  # E: Incompatible types in assignment (expression has type "tuple[int]", \
                variable has type "A")
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleMissingClassAttribute]
 from typing import NamedTuple
@@ -259,7 +259,7 @@ class C(B): pass
 B(1).b
 C(2).b
 
-[builtins fixtures/property.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleAsDict]
 from typing import NamedTuple, Any
@@ -271,7 +271,7 @@ class X(NamedTuple):
 x: X
 reveal_type(x._asdict())  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleReplaceTyped]
 from typing import NamedTuple
@@ -301,7 +301,7 @@ reveal_type(X._field_defaults)  # N: Revealed type is "builtins.dict[builtins.st
 # but it's inferred as `Mapping[str, object]` here due to the fixture we're using
 reveal_type(X.__annotations__)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
 
-[builtins fixtures/dict-full.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleUnit]
 from typing import NamedTuple
@@ -326,7 +326,7 @@ class Y(NamedTuple):
 
 reveal_type([X(3, 'b'), Y(1, 'a')])  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.str]]"
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleJoinTuple]
 from typing import NamedTuple
@@ -338,7 +338,7 @@ class X(NamedTuple):
 reveal_type([(3, 'b'), X(1, 'a')])  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.str]]"
 reveal_type([X(1, 'a'), (3, 'b')])  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.str]]"
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWithTooManyArguments]
 from typing import NamedTuple
@@ -358,7 +358,7 @@ class X(typing.NamedTuple):
     x.x: int  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
     z: str = 'z'
     aa: int  # E: Non-default NamedTuple fields cannot follow default fields
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWithoutTypesSpecified]
 from typing import NamedTuple
@@ -377,7 +377,7 @@ class N(NamedTuple):
 
 def f(a: Type[N]):
     a()  # E: Missing positional arguments "x", "y" in call to "N"
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWithDefaults]
 from typing import List, NamedTuple, Optional
@@ -416,7 +416,7 @@ reveal_type(UserDefined())  # N: Revealed type is "tuple[__main__.Default, fallb
 reveal_type(UserDefined(Default()))  # N: Revealed type is "tuple[__main__.Default, fallback=__main__.UserDefined]"
 UserDefined(1)  # E: Argument 1 to "UserDefined" has incompatible type "int"; expected "Default"
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWithDefaultsStrictOptional]
 from typing import List, NamedTuple, Optional
@@ -434,7 +434,7 @@ class CannotBeNone(NamedTuple):
     x: int
     y: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWrongType]
 from typing import NamedTuple
@@ -448,7 +448,8 @@ class X(NamedTuple):
 from typing import NamedTuple
 
 class X(NamedTuple):
-    x: int = 1 + '1'  # E: Unsupported left operand type for + ("int")
+    x: int = 1 + '1'  # E: Incompatible types in assignment (expression has type "str", variable has type "int") \
+                      # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleInheritance]
@@ -607,7 +608,7 @@ class ReuseCallableNamed(NamedTuple):
     def z(self) -> int:  # E: Name "z" already defined on line 31
         return 0
 
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleDocString]
 from typing import NamedTuple
@@ -639,7 +640,7 @@ class HasClassMethod(NamedTuple):
         reveal_type(HasClassMethod)  # N: Revealed type is "def (x: builtins.str) -> tuple[builtins.str, fallback=__main__.HasClassMethod]"
         return cls(x=f)
 
-[builtins fixtures/classmethod.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleStaticMethod]
 from typing import NamedTuple
@@ -651,7 +652,7 @@ class HasStaticMethod(NamedTuple):
     def new(f: str) -> 'HasStaticMethod':
         return HasStaticMethod(x=f)
 
-[builtins fixtures/classmethod.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleProperty]
 from typing import NamedTuple
@@ -664,7 +665,7 @@ class HasStaticMethod(NamedTuple):
         reveal_type(self)  # N: Revealed type is "tuple[builtins.str, fallback=__main__.HasStaticMethod]"
         return 4
 
-[builtins fixtures/property.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testTypingExtensionsNamedTuple]
 from typing_extensions import NamedTuple
@@ -690,8 +691,8 @@ from typing import NamedTuple
 class A(NamedTuple):
     x: str
 
-reveal_type(A.x)  # N: Revealed type is "TupleGetterType[builtins.str]"
-A.x + 3  # E: Unsupported left operand type for + ("TupleGetterType[builtins.str]")
+reveal_type(A.x)  # N: Revealed type is "collections._tuplegetter[builtins.str]"
+A.x + 3  # E: Unsupported left operand type for + ("_tuplegetter[str]")
 A.y  # E: "type[A]" has no attribute "y"
 
 [builtins fixtures/tuple.pyi]
@@ -703,7 +704,7 @@ class A(NamedTuple):
     x: str = "x"
 
 a: object = A.x
-b: int = A.x  # E: Incompatible types in assignment (expression has type "TupleGetterType[builtins.str]", variable has type "int")
+b: int = A.x  # E: Incompatible types in assignment (expression has type "_tuplegetter[str]", variable has type "int")
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleTupleGetterNested]
@@ -715,8 +716,8 @@ class Inner(NamedTuple):
 class Outer(NamedTuple):
     y: Inner
 
-reveal_type(Inner.x)  # N: Revealed type is "TupleGetterType[builtins.int]"
-reveal_type(Outer.y)  # N: Revealed type is "TupleGetterType[tuple[builtins.int, fallback=__main__.Inner]]"
+reveal_type(Inner.x)  # N: Revealed type is "collections._tuplegetter[builtins.int]"
+reveal_type(Outer.y)  # N: Revealed type is "collections._tuplegetter[tuple[builtins.int, fallback=__main__.Inner]]"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleTupleGetterGeneric]
@@ -730,5 +731,5 @@ class GenericTuple(NamedTuple, Generic[T]):
     x: T
 
 reveal_type(GenericTuple.x)  # E: Access to generic instance variables via class is ambiguous \
-                             # N: Revealed type is "TupleGetterType[Any]"
+                             # N: Revealed type is "collections._tuplegetter[Any]"
 [builtins fixtures/tuple.pyi]

@@ -1950,7 +1950,7 @@ def f() -> None:
     A = TypedDict('A', {'x': X, 'y': int})
     B = NamedTuple('B', [('x', X)])
 
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "ntcrash" has no attribute "nope"
@@ -2574,7 +2574,7 @@ class B(NamedTuple):
 
 C(1).x
 C(1)[0]
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testSerializeRecursiveAliases1]
@@ -3715,8 +3715,8 @@ cache_fine_grained = False
 [file mypy.ini.2]
 \[mypy]
 cache_fine_grained = True
-[rechecked _typeshed, a, builtins, typing]
-[stale _typeshed, a, builtins, typing]
+[rechecked _typeshed, a, builtins, collections, typing]
+[stale _typeshed, a, builtins, collections, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalPackageNameOverload]
@@ -3767,8 +3767,8 @@ Signature: 8a477f597d28d172789f06886806bc55
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale _typeshed, a, b, builtins, typing]
-[rechecked _typeshed, a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, collections, typing]
+[rechecked _typeshed, a, b, builtins, collections, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache2]
@@ -3780,8 +3780,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the settings changed
-[stale _typeshed, a, b, builtins, typing]
-[rechecked _typeshed, a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, collections, typing]
+[rechecked _typeshed, a, b, builtins, collections, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache3]
@@ -3796,8 +3796,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale _typeshed, a, b, builtins, typing]
-[rechecked _typeshed, a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, collections, typing]
+[rechecked _typeshed, a, b, builtins, collections, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalWorkingFineGrainedCache]
@@ -4650,7 +4650,7 @@ A = NamedTuple('A', [('x', B)])
 from typing import TypedDict
 from lib import A
 B = TypedDict('B', {'x': A})
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
@@ -5772,7 +5772,7 @@ class C:
         al: Alias = Alias(c=1)
         n: N = N(NT1(c=1))
 
-[builtins fixtures/dict.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out2]
 tmp/a.py:2: error: "object" has no attribute "xyz"

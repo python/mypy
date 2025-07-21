@@ -8685,7 +8685,7 @@ m.py:4: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#varia
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
 m.py:4: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-m.py:5: note: Revealed type is "TupleGetterType[Any]"
+m.py:5: note: Revealed type is "collections._tuplegetter[Any]"
 m.py:7: note: Revealed type is "Any"
 
 [case testAliasForwardFunctionDirect]
@@ -9345,7 +9345,7 @@ def bar(self):
 def f() -> int: pass
 [file b.py.2]
 def f() -> str: pass
-[builtins fixtures/classmethod.pyi]
+[builtins fixtures/tuple.pyi]
 [out]
 ==
 
