@@ -30,7 +30,11 @@ from mypy.util import hash_digest, json_dumps
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
-from mypyc.codegen.emitfunc import generate_native_function, native_function_header
+from mypyc.codegen.emitfunc import (
+    generate_native_function,
+    native_function_doc_initializer,
+    native_function_header,
+)
 from mypyc.codegen.emitwrapper import (
     generate_legacy_wrapper_function,
     generate_wrapper_function,
@@ -61,6 +65,7 @@ from mypyc.options import CompilerOptions
 from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
+from mypyc.transform.log_trace import insert_event_trace_logging
 from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.spill import insert_spills
@@ -248,6 +253,9 @@ def compile_scc_to_ir(
 
             if fn in env_user_functions:
                 insert_spills(fn, env_user_functions[fn])
+
+            if compiler_options.log_trace:
+                insert_event_trace_logging(fn, compiler_options)
 
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
@@ -917,11 +925,14 @@ class GroupGenerator:
                 flag = "METH_FASTCALL"
             else:
                 flag = "METH_VARARGS"
+            doc = native_function_doc_initializer(fn)
             emitter.emit_line(
                 (
                     '{{"{name}", (PyCFunction){prefix}{cname}, {flag} | METH_KEYWORDS, '
-                    "NULL /* docstring */}},"
-                ).format(name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag)
+                    "{doc} /* docstring */}},"
+                ).format(
+                    name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag, doc=doc
+                )
             )
         emitter.emit_line("{NULL, NULL, 0, NULL}")
         emitter.emit_line("};")

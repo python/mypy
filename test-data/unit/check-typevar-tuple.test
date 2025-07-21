@@ -989,7 +989,7 @@ from typing_extensions import Unpack
 
 def pipeline(*xs: Unpack[Tuple[int, Unpack[Tuple[float, ...]], bool]]) -> None:
     for x in xs:
-        reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.int]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testFixedUnpackItemInInstanceArguments]

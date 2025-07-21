@@ -277,6 +277,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_defined_in_stub(self, typ: Instance, /) -> bool:
+        raise NotImplementedError
+
 
 class CheckerScope:
     # We keep two stacks combined, to maintain the relative order
@@ -333,6 +337,10 @@ class CheckerScope:
             if isinstance(item, TypeInfo):
                 return fill_typevars(item)
         return None
+
+    def is_top_level(self) -> bool:
+        """Is current scope top-level (no classes or functions)?"""
+        return len(self.stack) == 1
 
     @contextmanager
     def push_function(self, item: FuncItem) -> Iterator[None]:

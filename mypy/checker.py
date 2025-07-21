@@ -618,7 +618,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if on_enter_body is not None:
                         on_enter_body()
 
-                    with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                    with IterationErrorWatcher(self.msg.errors, iter_errors):
                         self.accept(body)
 
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
@@ -641,10 +641,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            for error_info in watcher.yield_error_infos():
-                self.msg.fail(*error_info[:2], code=error_info[2])
-            for note_info in watcher.yield_note_infos(self.options):
-                self.note(*note_info)
+            self.msg.iteration_dependent_errors(iter_errors)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
             if exit_condition:
@@ -2191,7 +2188,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             override_class_or_static = defn.func.is_class or defn.func.is_static
         typ, _ = self.node_type_from_base(defn.name, defn.info, defn)
-        assert typ is not None
+        if typ is None:
+            # This may only happen if we're checking `x-redefinition` member
+            # and `x` itself is for some reason gone. Normally the node should
+            # be reachable from the containing class by its name.
+            # The redefinition is never removed, use this as a sanity check to verify
+            # the reasoning above.
+            assert f"{defn.name}-redefinition" in defn.info.names
+            return False
 
         original_node = base_attr.node
         # `original_type` can be partial if (e.g.) it is originally an
@@ -3041,7 +3045,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if isinstance(s.expr, EllipsisExpr):
                 return True
             elif isinstance(s.expr, CallExpr):
-                with self.expr_checker.msg.filter_errors():
+                with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
                     typ = get_proper_type(
                         self.expr_checker.accept(
                             s.expr, allow_none_return=True, always_allow_any=True
@@ -3141,7 +3145,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         else:
                             self.check_getattr_method(signature, lvalue, name)
 
-                if name == "__slots__":
+                if name == "__slots__" and self.scope.active_class() is not None:
                     typ = lvalue_type or self.expr_checker.accept(rvalue)
                     self.check_slots_definition(typ, lvalue)
                 if name == "__match_args__" and inferred is not None:
@@ -3320,6 +3324,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     type_contexts.append(base_type)
         # Use most derived supertype as type context if available.
         if not type_contexts:
+            if inferred.name == "__slots__" and self.scope.active_class() is not None:
+                str_type = self.named_type("builtins.str")
+                return self.named_generic_type("typing.Iterable", [str_type])
+            if inferred.name == "__all__" and self.scope.is_top_level():
+                str_type = self.named_type("builtins.str")
+                return self.named_generic_type("typing.Sequence", [str_type])
             return None
         candidate = type_contexts[0]
         for other in type_contexts:
@@ -4969,7 +4979,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if s.finally_body:
                 # First we check finally_body is type safe on all abnormal exit paths
                 iter_errors = IterationDependentErrors()
-                with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                with IterationErrorWatcher(self.msg.errors, iter_errors):
                     self.accept(s.finally_body)
 
         if s.finally_body:
@@ -4986,13 +4996,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # that follows the try statement.)
             assert iter_errors is not None
             if not self.binder.is_unreachable():
-                with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
+                with IterationErrorWatcher(self.msg.errors, iter_errors):
                     self.accept(s.finally_body)
-
-            for error_info in watcher.yield_error_infos():
-                self.msg.fail(*error_info[:2], code=error_info[2])
-            for note_info in watcher.yield_note_infos(self.options):
-                self.msg.note(*note_info)
+            self.msg.iteration_dependent_errors(iter_errors)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.
@@ -7280,7 +7286,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(node, TypeAlias):
             assert isinstance(node.target, Instance)  # type: ignore[misc]
             node = node.target.type
-        assert isinstance(node, TypeInfo)
+        assert isinstance(node, TypeInfo), node
         any_type = AnyType(TypeOfAny.from_omitted_generics)
         return Instance(node, [any_type] * len(node.defn.type_vars))
 
@@ -7299,7 +7305,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # Assume that the name refers to a class.
         sym = self.lookup_qualified(fullname)
         node = sym.node
-        assert isinstance(node, TypeInfo)
+        assert isinstance(node, TypeInfo), node
         return node
 
     def type_type(self) -> Instance:
@@ -7889,6 +7895,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
+
+    def is_defined_in_stub(self, typ: Instance, /) -> bool:
+        return self.modules[typ.type.module_name].is_stub
 
     def check_deprecated(self, node: Node | None, context: Context) -> None:
         """Warn if deprecated and not directly imported with a `from` statement."""

@@ -27,6 +27,7 @@ from __future__ import annotations
 import itertools
 import json
 import os
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Callable, NamedTuple, TypedDict, TypeVar, cast
@@ -549,12 +550,17 @@ class SuggestionEngine:
         # TODO: Also return OverloadedFuncDef -- currently these are ignored.
         node: SymbolNode | None = None
         if ":" in key:
-            if key.count(":") > 1:
+            # A colon might be part of a drive name on Windows (like `C:/foo/bar`)
+            # and is also used as a delimiter between file path and lineno.
+            # If a colon is there for any of those reasons, it must be a file+line
+            # reference.
+            platform_key_count = 2 if sys.platform == "win32" else 1
+            if key.count(":") > platform_key_count:
                 raise SuggestionFailure(
                     "Malformed location for function: {}. Must be either"
                     " package.module.Class.method or path/to/file.py:line".format(key)
                 )
-            file, line = key.split(":")
+            file, line = key.rsplit(":", 1)
             if not line.isdigit():
                 raise SuggestionFailure(f"Line number must be a number. Got {line}")
             line_number = int(line)

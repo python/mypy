@@ -92,6 +92,64 @@ assert remove_prefix_suffix('', '') == ('', '')
 assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
 assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
 
+[case testStringEquality]
+def eq(a: str, b: str) -> bool:
+    return a == b
+def ne(a: str, b: str) -> bool:
+    return a != b
+
+def test_basic() -> None:
+    xy = "xy"
+    xy2 = str().join(["x", "y"])
+    xx = "xx"
+    yy = "yy"
+    xxx = "xxx"
+
+    assert eq("", str())
+    assert not ne("", str())
+
+    assert eq("x", "x" + str())
+    assert ne("x", "y")
+
+    assert eq(xy, xy)
+    assert eq(xy, xy2)
+    assert not eq(xy, yy)
+    assert ne(xy, xx)
+    assert not ne(xy, xy)
+    assert not ne(xy, xy2)
+
+    assert ne(xx, xxx)
+    assert ne(xxx, xx)
+    assert ne("x", "")
+    assert ne("", "x")
+
+    assert ne("XX", xx)
+    assert ne(yy, xy)
+
+def test_unicode() -> None:
+    assert eq(chr(200), chr(200) + str())
+    assert ne(chr(200), chr(201))
+
+    assert eq(chr(1234), chr(1234) + str())
+    assert ne(chr(1234), chr(1235))
+
+    assert eq("\U0001f4a9", "\U0001f4a9" + str())
+    assert eq("\U0001f4a9", "\U0001F4A9" + str())
+    assert ne("\U0001f4a9", "\U0002f4a9" + str())
+    assert ne("\U0001f4a9", "\U0001f5a9" + str())
+    assert ne("\U0001f4a9", "\U0001f4a8" + str())
+
+    assert eq("foobar\u1234", "foobar\u1234" + str())
+    assert eq("\u1234foobar", "\u1234foobar" + str())
+    assert ne("foobar\uf234", "foobar\uf235")
+    assert ne("foobar\uf234", "foobar\uf334")
+    assert ne("foobar\u1234", "Foobar\u1234" + str())
+
+    assert eq("foo\U0001f4a9", "foo\U0001f4a9" + str())
+    assert eq("\U0001f4a9foo", "\U0001f4a9foo" + str())
+    assert ne("foo\U0001f4a9", "foo\U0001f4a8" + str())
+    assert ne("\U0001f4a9foo", "\U0001f4a8foo" + str())
+
 [case testStringOps]
 from typing import List, Optional, Tuple
 from testutil import assertRaises
@@ -305,7 +363,6 @@ def test_str_min_max() -> None:
     assert max(x, z) == 'aaa'
 
 [case testStringFormattingCStyle]
-[typing fixtures/typing-full.pyi]
 from typing import Tuple
 
 var = 'mypyc'
@@ -350,6 +407,7 @@ def test_basics() -> None:
     inf_num = float('inf')
     assert '%s, %s' % (nan_num, inf_num) == 'nan, inf'
     assert '%f, %f' % (nan_num, inf_num) == 'nan, inf'
+[typing fixtures/typing-full.pyi]
 
 [case testFStrings]
 import decimal
@@ -906,3 +964,38 @@ def test_count_multi_start_end_emoji() -> None:
     assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
     assert string.count("🚀🚀🚀", 0, 12) == 2, string.count("🚀🚀🚀", 0, 12)
     assert string.count("ñññ", 0, 12) == 1, string.count("ñññ", 0, 12)
+
+[case testIsInstance]
+from copysubclass import subc
+from typing import Any
+def test_built_in() -> None:
+    s: Any = str()
+    assert isinstance(s, str)
+    assert isinstance(s + "test", str)
+    assert isinstance(s + "ñññ", str)
+    assert isinstance(subc(), str)
+    assert isinstance(subc("test"), str)
+    assert isinstance(subc("ñññ"), str)
+
+    assert not isinstance(set(), str)
+    assert not isinstance((), str)
+    assert not isinstance(('a','b'), str)
+    assert not isinstance({'a','b'}, str)
+    assert not isinstance(int() + 1, str)
+    assert not isinstance(['a','b'], str)
+
+def test_user_defined() -> None:
+    from userdefinedstr import str
+
+    s: Any = "str"
+    assert isinstance(str(), str)
+    assert not isinstance(s, str)
+
+[file copysubclass.py]
+from typing import Any
+class subc(str):
+    pass
+
+[file userdefinedstr.py]
+class str:
+    pass
