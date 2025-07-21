@@ -281,9 +281,10 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     # Process each bound separately, and calculate the lower and upper
     # bounds based on constraints. Note that we assume that the constraint
     # targets do not have constraint references.
-    if type_state.infer_unions:
+    if type_state.infer_unions and lowers:
         # This deviates from the general mypy semantics because
         # recursive types are union-heavy in 95% of cases.
+        # Retain `None` when no bottoms were provided to avoid bogus `Never` inference.
         bottom = UnionType.make_union(list(lowers))
     else:
         # The order of lowers is non-deterministic.
