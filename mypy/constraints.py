@@ -1434,6 +1434,7 @@ def find_matching_overload_item(overloaded: Overloaded, template: CallableType) 
             is_compat=mypy.subtypes.is_subtype,
             is_proper_subtype=False,
             ignore_return=True,
+            map_template_paramspec=True,
         ):
             return item
     # Fall back to the first item if we can't find a match. This is totally arbitrary --

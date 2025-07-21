@@ -1576,6 +1576,7 @@ def is_callable_compatible(
     check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate: bool = False,
+    map_template_paramspec: bool = False,
 ) -> bool:
     """Is the left compatible with the right, using the provided compatibility check?
 
@@ -1717,6 +1718,7 @@ def is_callable_compatible(
         ignore_pos_arg_names=ignore_pos_arg_names,
         allow_partial_overlap=allow_partial_overlap,
         strict_concatenate_check=strict_concatenate_check,
+        map_template_paramspec=map_template_paramspec,
     )
 
 
@@ -1753,6 +1755,7 @@ def are_parameters_compatible(
     ignore_pos_arg_names: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate_check: bool = False,
+    map_template_paramspec: bool = False,
 ) -> bool:
     """Helper function for is_callable_compatible, used for Parameter compatibility"""
     if right.is_ellipsis_args and not is_proper_subtype:
@@ -1780,6 +1783,8 @@ def are_parameters_compatible(
         # particular because we often refuse to try type inference if actual type is not
         # a subtype of erased template type.
         trivial_vararg_suffix = True
+
+    right_is_pspec = map_template_paramspec and right.param_spec() is not None
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
@@ -1817,7 +1822,7 @@ def are_parameters_compatible(
         _incompatible(left_star, right_star)
         and not trivial_vararg_suffix
         or _incompatible(left_star2, right_star2)
-    ):
+    ) and not right_is_pspec:
         return False
 
     # Phase 1b: Check non-star args: for every arg right can accept, left must
@@ -1848,7 +1853,7 @@ def are_parameters_compatible(
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
     # TODO: handle suffix in UnpackType (i.e. *args: *Tuple[Ts, X, Y]).
-    if right_star is not None and not trivial_vararg_suffix:
+    if right_star is not None and not trivial_vararg_suffix and not right_is_pspec:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
@@ -1875,7 +1880,7 @@ def are_parameters_compatible(
     # Phase 1d: Check kw args. Right has an infinite series of optional named
     #           arguments. Get all further named args of left, and make sure
     #           they're more general than the corresponding member in right.
-    if right_star2 is not None:
+    if right_star2 is not None and not right_is_pspec:
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
