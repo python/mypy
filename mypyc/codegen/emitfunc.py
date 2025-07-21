@@ -70,12 +70,14 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -160,7 +162,7 @@ def generate_native_function(
     # eliminated during code generation.
     for block in fn.blocks:
         terminator = block.terminator
-        assert isinstance(terminator, ControlOp)
+        assert isinstance(terminator, ControlOp), terminator
 
         for target in terminator.targets():
             is_next_block = target.label == block.label + 1
@@ -309,7 +311,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
         typ = op.dest.type
-        assert isinstance(typ, RArray)
+        assert isinstance(typ, RArray), typ
         dest = self.reg(op.dest)
         # RArray values can only be assigned to once, so we can always
         # declare them on initialization.
@@ -586,7 +588,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def emit_method_call(self, dest: str, op_obj: Value, name: str, op_args: list[Value]) -> None:
         obj = self.reg(op_obj)
         rtype = op_obj.type
-        assert isinstance(rtype, RInstance)
+        assert isinstance(rtype, RInstance), rtype
         class_ir = rtype.class_ir
         method = rtype.class_ir.get_method(name)
         assert method is not None
@@ -791,6 +793,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line(f"{dest} = *({type} *){src};")
+        if not op.is_borrowed:
+            self.emit_inc_ref(dest, op.type)
 
     def visit_set_mem(self, op: SetMem) -> None:
         dest = self.reg(op.dest)
@@ -805,13 +809,38 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         # TODO: support tuple type
-        assert isinstance(op.src_type, RStruct)
+        assert isinstance(op.src_type, RStruct), op.src_type
         assert op.field in op.src_type.names, "Invalid field name."
         self.emit_line(
             "{} = ({})&(({} *){})->{};".format(
                 dest, op.type._ctype, op.src_type.name, src, op.field
             )
         )
+
+    def visit_set_element(self, op: SetElement) -> None:
+        dest = self.reg(op)
+        item = self.reg(op.item)
+        field = op.field
+        if isinstance(op.src, Undef):
+            # First assignment to an undefined struct is trivial.
+            self.emit_line(f"{dest}.{field} = {item};")
+        else:
+            # In the general case create a copy of the struct with a single
+            # item modified.
+            #
+            # TODO: Can we do better if only a subset of fields are initialized?
+            # TODO: Make this less verbose in the common case
+            # TODO: Support tuples (or use RStruct for tuples)?
+            src = self.reg(op.src)
+            src_type = op.src.type
+            assert isinstance(src_type, RStruct), src_type
+            init_items = []
+            for n in src_type.names:
+                if n != field:
+                    init_items.append(f"{src}.{n}")
+                else:
+                    init_items.append(item)
+            self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type

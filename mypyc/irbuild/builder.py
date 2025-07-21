@@ -129,6 +129,7 @@ from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
 from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
 from mypyc.primitives.registry import CFunctionDescription, function_ops
+from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 # These int binary operations can borrow their operands safely, since the
 # primitives take this into consideration.
@@ -551,8 +552,8 @@ class IRBuilder:
         *,
         type_override: RType | None = None,
     ) -> None:
-        assert isinstance(lvalue, NameExpr)
-        assert isinstance(lvalue.node, Var)
+        assert isinstance(lvalue, NameExpr), lvalue
+        assert isinstance(lvalue.node, Var), lvalue.node
         if lvalue.node.final_value is None:
             if class_name is None:
                 name = lvalue.name
@@ -772,10 +773,15 @@ class IRBuilder:
         values = []
         for i in range(len(target.items)):
             item = target.items[i]
-            index = self.builder.load_int(i)
+            index: Value
             if is_list_rprimitive(rvalue.type):
+                index = Integer(i, c_pyssize_t_rprimitive)
                 item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
+            elif is_tuple_rprimitive(rvalue.type):
+                index = Integer(i, c_pyssize_t_rprimitive)
+                item_value = self.call_c(tuple_get_item_unsafe_op, [rvalue, index], line)
             else:
+                index = self.builder.load_int(i)
                 item_value = self.builder.gen_method_call(
                     rvalue, "__getitem__", [index], item.type, line
                 )
@@ -1141,12 +1147,20 @@ class IRBuilder:
         )
 
     def shortcircuit_expr(self, expr: OpExpr) -> Value:
+        def handle_right() -> Value:
+            if expr.right_unreachable:
+                self.builder.add(
+                    RaiseStandardError(
+                        RaiseStandardError.RUNTIME_ERROR,
+                        "mypyc internal error: should be unreachable",
+                        expr.right.line,
+                    )
+                )
+                return self.builder.none()
+            return self.accept(expr.right)
+
         return self.builder.shortcircuit_helper(
-            expr.op,
-            self.node_type(expr),
-            lambda: self.accept(expr.left),
-            lambda: self.accept(expr.right),
-            expr.line,
+            expr.op, self.node_type(expr), lambda: self.accept(expr.left), handle_right, expr.line
         )
 
     # Basic helpers
@@ -1263,7 +1277,7 @@ class IRBuilder:
         Args:
             is_arg: is this a function argument
         """
-        assert isinstance(symbol, SymbolNode)
+        assert isinstance(symbol, SymbolNode), symbol
         reg = Register(
             typ, remangle_redefinition_name(symbol.name), is_arg=is_arg, line=symbol.line
         )
@@ -1278,7 +1292,7 @@ class IRBuilder:
         """Like add_local, but return an assignment target instead of value."""
         self.add_local(symbol, typ, is_arg)
         target = self.symtables[-1][symbol]
-        assert isinstance(target, AssignmentTargetRegister)
+        assert isinstance(target, AssignmentTargetRegister), target
         return target
 
     def add_self_to_env(self, cls: ClassIR) -> AssignmentTargetRegister:
@@ -1438,7 +1452,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                         GetAttr(builder.fn_info.callable_class.self_reg, name, arg.line)
                     )
 
-            assert isinstance(target, AssignmentTargetRegister)
+            assert isinstance(target, AssignmentTargetRegister), target
             reg = target.register
             if not reg.type.error_overlap:
                 builder.assign_if_null(target.register, get_default, arg.initializer.line)
