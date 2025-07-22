@@ -1950,7 +1950,7 @@ def f() -> None:
     A = TypedDict('A', {'x': X, 'y': int})
     B = NamedTuple('B', [('x', X)])
 
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "ntcrash" has no attribute "nope"
@@ -2574,7 +2574,7 @@ class B(NamedTuple):
 
 C(1).x
 C(1)[0]
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testSerializeRecursiveAliases1]
@@ -4650,7 +4650,7 @@ A = NamedTuple('A', [('x', B)])
 from typing import TypedDict
 from lib import A
 B = TypedDict('B', {'x': A})
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
@@ -5772,7 +5772,7 @@ class C:
         al: Alias = Alias(c=1)
         n: N = N(NT1(c=1))
 
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out2]
 tmp/a.py:2: error: "object" has no attribute "xyz"
