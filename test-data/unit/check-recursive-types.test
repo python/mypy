@@ -162,7 +162,7 @@ reveal_type(y.x)  # N: Revealed type is "builtins.int"
 reveal_type(y[0])  # N: Revealed type is "builtins.int"
 x: A
 reveal_type(x)  # N: Revealed type is "__main__.G[tuple[builtins.int, fallback=__main__.C]]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/list.pyi]
 
 [case testRecursiveAliasViaBaseClassImported]
 # flags: --disable-error-code used-before-def
@@ -198,7 +198,7 @@ def my_eval(exp: Exp) -> int:
     return 0
 
 my_eval(A([B(1), B(2)]))
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasesSimplifiedUnion]
 from typing import Sequence, TypeVar, Union

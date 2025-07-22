@@ -352,7 +352,7 @@ def foo(a: Union[A, B, C]):
         a.y # E: Item "B" of "Union[B, C]" has no attribute "y" \
             # E: Item "C" of "Union[B, C]" has no attribute "y"
         b = a # type: Union[B, C]
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/isinstance.pyi]
 
 [case testSimplifyingUnionAndTypePromotions]
 from typing import TypeVar, Union
@@ -841,7 +841,7 @@ for nx in nt:
 t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/for.pyi]
 [out]
 
 [case testUnionUnpackingInForList]

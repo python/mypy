@@ -39,6 +39,7 @@ TEST_MODULE_NAME = "test_module"
 
 
 stubtest_typing_stub = """
+import collections
 Any = object()
 
 class _SpecialForm:
@@ -2097,7 +2098,7 @@ assert annotations
     @collect_cases
     def test_named_tuple(self) -> Iterator[Case]:
         yield Case(
-            stub="from typing import NamedTuple; import collections",
+            stub="from typing import NamedTuple",
             runtime="from typing import NamedTuple",
             error=None,
         )
@@ -2133,7 +2134,7 @@ assert annotations
     @collect_cases
     def test_named_tuple_typing_and_collections(self) -> Iterator[Case]:
         yield Case(
-            stub="from typing import NamedTuple; import collections",
+            stub="from typing import NamedTuple",
             runtime="from collections import namedtuple",
             error=None,
         )

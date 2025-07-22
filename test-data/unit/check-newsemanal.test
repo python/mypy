@@ -1707,7 +1707,7 @@ def g(x: int) -> int: ...
 def g(x: Union[C[str], int]) -> int:  # E: Type argument "str" of "C" must be a subtype of "int"
     y: C[object]  # E: Type argument "object" of "C" must be a subtype of "int"
     return 0
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNewAnalyzerTypeArgBoundCheckWithStrictOptional]
@@ -1961,7 +1961,7 @@ for nx in nt:
 t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/for.pyi]
 
 [case testNewAnalyzerFallbackUpperBoundCheckAndFallbacks]
 from typing import TypeVar, Generic, Tuple
@@ -2177,7 +2177,7 @@ def test() -> None:
     reveal_type(y[0])  # N: Revealed type is "builtins.int"
     x: A
     reveal_type(x)  # N: Revealed type is "__main__.G@7[tuple[builtins.int, fallback=__main__.C@5]]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/list.pyi]
 
 [case testNewAnalyzerDuplicateTypeVar]
 from typing import TypeVar, Generic, Any

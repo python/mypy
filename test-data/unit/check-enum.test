@@ -2452,6 +2452,7 @@ class Foo(Enum):
                                       # E: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
     Baz: Any = Callable[[Dict[str, "Missing"]], None]  # E: Enum members must be left unannotated \
                                                        # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
+                                                       # E: Type application targets a non-generic function or class \
                                                        # E: Name "Missing" is not defined
 
 reveal_type(Foo.Bar)  # N: Revealed type is "Literal[__main__.Foo.Bar]?"

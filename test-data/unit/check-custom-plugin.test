@@ -599,7 +599,7 @@ reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # N: Revealed type is "b
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testDynamicClassPlugin]

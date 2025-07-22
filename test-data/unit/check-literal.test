@@ -1861,7 +1861,7 @@ tup2[idx5]                    # E: Tuple index out of range
 reveal_type(tup2[idx2:idx4])  # N: Revealed type is "tuple[__main__.C, __main__.D]"
 reveal_type(tup2[::idx2])     # N: Revealed type is "tuple[__main__.A, __main__.C, __main__.E]"
 tup3: Tup2Class = tup2[:]     # E: Incompatible types in assignment (expression has type "tuple[A, B, C, D, E]", variable has type "Tup2Class")
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/slice.pyi]
 
 [case testLiteralIntelligentIndexingTypedDict]
 from typing import Literal, TypedDict
@@ -1934,7 +1934,7 @@ reveal_type(c.get(str_key_bad, u))   # N: Revealed type is "builtins.object"
 a[int_key_bad]                       # E: Tuple index out of range
 b[int_key_bad]                       # E: Tuple index out of range
 c[str_key_bad]                       # E: TypedDict "MyDict" has no key "missing"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
 
@@ -1964,7 +1964,7 @@ reveal_type(tup2[idx1])         # N: Revealed type is "Union[__main__.B, __main_
 reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[tuple[__main__.B, __main__.C], tuple[__main__.B, __main__.C, __main__.D], tuple[__main__.C], tuple[__main__.C, __main__.D]]"
 reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], tuple[__main__.A, __main__.C, __main__.E]]"
 tup2[idx_bad]                   # E: Tuple index out of range
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/slice.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingTypedDictUnions]

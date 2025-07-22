@@ -3442,7 +3442,7 @@ x = t and d[t]
 reveal_type(x)  # N: Revealed type is "Union[None, builtins.bytes]"
 if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testRegression11705_NoStrict]
 # flags: --no-strict-optional
@@ -3457,7 +3457,7 @@ x = t and d[t]
 reveal_type(x)  # N: Revealed type is "builtins.bytes"
 if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testSuggestPep604AnnotationForPartialNone]
 # flags: --local-partial-types --python-version 3.10

@@ -684,14 +684,14 @@ NameExpr(5) : def (a: A[C]) -> B[A[C]]
 from typing import List
 a = [] # type: List[A]
 class A: pass
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 ListExpr(2) : builtins.list[A]
 
 [case testInferGenericTypeInTypeAnyContext]
 from typing import Any
 a = [] # type: Any
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 ListExpr(2) : builtins.list[Any]
 
@@ -706,7 +706,7 @@ def f(a: A) -> B: pass
 map(
     f,
     [A()])
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 CallExpr(8) : builtins.list[B]
 NameExpr(8) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
@@ -754,7 +754,7 @@ f = lambda x: [] # type: Callable[[B], List[A]]
 class A: pass
 class B:
   a = None # type: A
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 LambdaExpr(2) : def (x: B) -> builtins.list[A]
 ListExpr(2) : builtins.list[A]
@@ -770,7 +770,7 @@ def f(a: A) -> B: pass
 l = None # type: List[A]
 map(
   lambda x: f(x), l)
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 CallExpr(9) : builtins.list[B]
 NameExpr(9) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
@@ -792,7 +792,7 @@ def f(a: A) -> B: pass
 l = None # type: List[A]
 map(
   lambda x: [f(x)], l)
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 NameExpr(10) : def (f: def (A) -> builtins.list[B], a: builtins.list[A]) -> builtins.list[B]
 LambdaExpr(11) : def (x: A) -> builtins.list[B]
@@ -811,7 +811,7 @@ l = None # type: List[A]
 map(
   [lambda x: x],
   l)
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 -- TODO We probably should not silently infer 'Any' types in statically typed
 --      context. Perhaps just fail instead?
@@ -834,7 +834,7 @@ l = None # type: List[A]
 map(
   lambda x: x.b,
   l)
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 CallExpr(9) : builtins.list[B]
 NameExpr(9) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
@@ -855,7 +855,7 @@ l = None # type: List[A]
 map(
   a=l,
   f=lambda x: x.b)
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 CallExpr(9) : builtins.list[B]
 NameExpr(9) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
@@ -877,7 +877,7 @@ a = a or []
 if int():
     a = [] or a
 class A: pass
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 ListExpr(3) : builtins.list[A]
 NameExpr(3) : builtins.list[A]
@@ -1154,7 +1154,7 @@ def m(fun: Callable[[T], V], iter: List[T]) -> None: pass
 nums = [1] # type: List[int]
 m(fun,
   nums)
-[builtins fixtures/list.pyi]
+[builtins fixtures/list-simple.pyi]
 [out]
 IntExpr(13) : Literal[1]?
 ListExpr(13) : builtins.list[builtins.int]

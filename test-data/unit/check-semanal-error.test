@@ -179,5 +179,5 @@ class C(TypedDict):
 class D:
     invalid_1: 1 + 2        # E: Invalid type comment or annotation
     invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
