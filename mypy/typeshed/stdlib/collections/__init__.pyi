@@ -32,6 +32,22 @@ _VT = TypeVar("_VT")
 _KT_co = TypeVar("_KT_co", covariant=True)
 _VT_co = TypeVar("_VT_co", covariant=True)
 
+# at runtime this class is implemented in _collections, but it considers itself to live in collections since Python 3.12
+@final
+class _tuplegetter(Generic[_T]):  # undocumented
+    def __init__(self, index: SupportsIndex, doc: str, /) -> None: ...
+    def __reduce__(self) -> tuple[type[Self], tuple[int, str]]: ...
+    if sys.version_info >= (3, 10):
+        @overload
+        def __get__(self, instance: None, owner: type[Any] | None = None, /) -> Self: ...
+        @overload
+        def __get__(self, instance: object, owner: type[Any] | None = None, /) -> _T: ...
+    else:
+        @overload
+        def __get__(self, instance: None, owner: type[Any] | None, /) -> Self: ...
+        @overload
+        def __get__(self, instance: object, owner: type[Any] | None, /) -> _T: ...
+
 # namedtuple is special-cased in the type checker; the initializer is ignored.
 def namedtuple(
     typename: str,
