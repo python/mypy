@@ -2315,6 +2315,7 @@ L2:
     r73 = CPyDict_SetItem(r71, r72, r66)
     r74 = r73 >= 0 :: signed
     return 1
+[typing fixtures/typing-full.pyi]
 
 [case testChainedConditional]
 def g(x: int) -> int:
