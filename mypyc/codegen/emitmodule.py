@@ -829,7 +829,11 @@ class GroupGenerator:
                 emitter.emit_line(f"extern PyObject *CPyInit_{name}(void);")
             emitter.emit_lines(
                 'capsule = PyCapsule_New((void *){}{}, "{}.{}{}", NULL);'.format(
-                    capsule_func_prefix, name, shared_lib_name(self.group_name), capsule_name_prefix, name
+                    capsule_func_prefix,
+                    name,
+                    shared_lib_name(self.group_name),
+                    capsule_name_prefix,
+                    name,
                 ),
                 "if (!capsule) {",
                 "goto fail;",
@@ -878,7 +882,7 @@ class GroupGenerator:
             ".m_doc = NULL,",
             ".m_size = 0,",  # -1 originally
             ".m_methods = NULL,",
-            f".m_slots = {short_name}_slots,"
+            f".m_slots = {short_name}_slots,",
             "};",
         )
 
@@ -923,7 +927,9 @@ class GroupGenerator:
             self.emit_module_def_struct(emitter, module_name, module_prefix)
             self.emit_module_init_func(emitter, module_name, module_prefix)
 
-    def emit_module_def_slots(self, emitter: Emitter, module_prefix: str, module_name: str) -> None:
+    def emit_module_def_slots(
+        self, emitter: Emitter, module_prefix: str, module_name: str
+    ) -> None:
         name = f"{module_prefix}_slots"
         exec_name = f"CPyExec_{exported_name(module_name)}"
 

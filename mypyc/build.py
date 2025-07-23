@@ -36,7 +36,7 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import RUNTIME_C_FILES, shared_lib_name, IS_FREE_THREADED
+from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
