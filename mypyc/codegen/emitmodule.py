@@ -820,14 +820,14 @@ class GroupGenerator:
         for mod in self.modules:
             name = exported_name(mod)
             emitter.emit_lines(
-                f"extern PyObject *CPyInit_{name}(void);",
-                'capsule = PyCapsule_New((void *)CPyInit_{}, "{}.init_{}", NULL);'.format(
+                f"extern int CPyExec_{name}(PyObject *);",
+                'capsule = PyCapsule_New((void *)CPyExec_{}, "{}.exec_{}", NULL);'.format(
                     name, shared_lib_name(self.group_name), name
                 ),
                 "if (!capsule) {",
                 "goto fail;",
                 "}",
-                f'res = PyObject_SetAttrString(module, "init_{name}", capsule);',
+                f'res = PyObject_SetAttrString(module, "exec_{name}", capsule);',
                 "Py_DECREF(capsule);",
                 "if (res < 0) {",
                 "goto fail;",
@@ -907,14 +907,14 @@ class GroupGenerator:
         module_prefix = emitter.names.private_name(module_name)
         self.emit_module_exec_func(emitter, module_name, module_prefix, module)
         if self.multi_phase_init:
-            self.emit_module_def_slots(emitter, module_prefix)
+            self.emit_module_def_slots(emitter, module_prefix, module_name)
         self.emit_module_methods(emitter, module_name, module_prefix, module)
         self.emit_module_def_struct(emitter, module_name, module_prefix)
         self.emit_module_init_func(emitter, module_name, module_prefix)
 
-    def emit_module_def_slots(self, emitter: Emitter, module_prefix: str) -> None:
+    def emit_module_def_slots(self, emitter: Emitter, module_prefix: str, module_name: str) -> None:
         name = f"{module_prefix}_slots"
-        exec_name = f"{module_prefix}_exec"
+        exec_name = f"CPyExec_{exported_name(module_name)}"
 
         emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
         emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
@@ -988,7 +988,7 @@ class GroupGenerator:
         library, and in this case we use an internal module initialized
         function that will be called by the shim.
         """
-        declaration = f"static int {module_prefix}_exec(PyObject *module)"
+        declaration = f"int CPyExec_{exported_name(module_name)}(PyObject *module)"
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
         emitter.emit_line("PyObject* modname = NULL;")
@@ -1056,7 +1056,7 @@ class GroupGenerator:
             emitter.emit_line("}")
             return
 
-        exec_func = f"{module_prefix}_exec"
+        exec_func = f"CPyExec_{exported_name(module_name)}"
 
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will

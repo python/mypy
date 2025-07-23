@@ -4,15 +4,15 @@ static int {modname}_exec(PyObject *module)
 {{
     PyObject *tmp;
     if (!(tmp = PyImport_ImportModule("{libname}"))) return -1;
-    PyObject *capsule = PyObject_GetAttrString(tmp, "init_{full_modname}");
+    PyObject *capsule = PyObject_GetAttrString(tmp, "exec_{full_modname}");
     Py_DECREF(tmp);
     if (capsule == NULL) return -1;
-    void *init_func = PyCapsule_GetPointer(capsule, "{libname}.init_{full_modname}");
+    void *exec_func = PyCapsule_GetPointer(capsule, "{libname}.exec_{full_modname}");
     Py_DECREF(capsule);
-    if (!init_func) {{
+    if (!exec_func) {{
         return -1;
     }}
-    if (((PyObject *(*)(void))init_func)() == NULL) return -1;
+    if (((int (*)(PyObject *))exec_func)(module) != 0) return -1;
     return 0;
 }}
 
