@@ -3708,3 +3708,62 @@ foo(*args)  # E: Argument 1 to "foo" has incompatible type "*list[object]"; expe
 kwargs: dict[str, object]
 foo(**kwargs)  # E: Argument 1 to "foo" has incompatible type "**dict[str, object]"; expected "P"
 [builtins fixtures/dict.pyi]
+
+[case testMethodDecoratorSelfChecks]
+from typing import Callable, ParamSpec, TypeVar
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+def to_number_1(fn: Callable[[], int]) -> int:
+    return 0
+
+def to_number_2(fn: Callable[[int], int]) -> int:
+    return 0
+
+def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
+    return fn
+
+class A:
+    @to_number_1
+    def fn1() -> int:
+        return 0
+
+    @to_number_1  # E: Argument 1 to "to_number_1" has incompatible type "Callable[[int], int]"; expected "Callable[[], int]"
+    def fn2(_x: int) -> int:
+        return 0
+
+    @to_number_2  # E: Argument 1 to "to_number_2" has incompatible type "Callable[[], int]"; expected "Callable[[int], int]"
+    def fn3() -> int:
+        return 0
+
+    @to_number_2
+    def fn4(_x: int) -> int:
+        return 0
+
+    @to_number_2  # E: Argument 1 to "to_number_2" has incompatible type "Callable[[str], int]"; expected "Callable[[int], int]"
+    def fn5(_x: str) -> int:
+        return 0
+
+    @to_same_callable
+    def g1() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+
+    @to_same_callable
+    def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    @to_same_callable
+    def g3(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
+
+reveal_type(A().fn1)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn2)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn3)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn4)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn5)  # N: Revealed type is "builtins.int"
+
+reveal_type(A().g1)  # E: Attribute function "g1" with type "Callable[[], None]" does not accept self argument \
+                     # N: Revealed type is "def ()"
+reveal_type(A().g2)  # E: Invalid self argument "A" to attribute function "g2" with type "Callable[[int], None]" \
+                     # N: Revealed type is "def ()"
+reveal_type(A().g3)  # E: Invalid self argument "A" to attribute function "g3" with type "Callable[[int], None]" \
+                     # N: Revealed type is "def ()"
+[builtins fixtures/tuple.pyi]
