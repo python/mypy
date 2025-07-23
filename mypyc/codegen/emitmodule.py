@@ -652,7 +652,8 @@ class GroupGenerator:
                 decls.emit_lines(*declaration.decl)
 
         if self.group_name:
-            self.generate_export_table(ext_declarations, emitter)
+            if self.compiler_options.separate:
+                self.generate_export_table(ext_declarations, emitter)
 
             self.generate_shared_lib_init(emitter)
 
@@ -809,20 +810,21 @@ class GroupGenerator:
             "",
         )
 
-        emitter.emit_lines(
-            'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
-                shared_lib_name(self.group_name)
-            ),
-            "if (!capsule) {",
-            "goto fail;",
-            "}",
-            'res = PyObject_SetAttrString(module, "exports", capsule);',
-            "Py_DECREF(capsule);",
-            "if (res < 0) {",
-            "goto fail;",
-            "}",
-            "",
-        )
+        if self.compiler_options.separate:
+            emitter.emit_lines(
+                'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
+                    shared_lib_name(self.group_name)
+                ),
+                "if (!capsule) {",
+                "goto fail;",
+                "}",
+                'res = PyObject_SetAttrString(module, "exports", capsule);',
+                "Py_DECREF(capsule);",
+                "if (res < 0) {",
+                "goto fail;",
+                "}",
+                "",
+            )
 
         for mod in self.modules:
             name = exported_name(mod)
