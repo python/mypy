@@ -2169,8 +2169,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 joint_ret_type = get_proper_type(joint_callee.ret_type)
 
                 if (  # determine which solution to take
+                    # no inner constraints
+                    not inner_constraints
+                    # no outer constraints
+                    # or not (outer_upper + outer_lower)
+                    # no outer_constraints
+                    or not joint_solution[0]
                     # joint constraints failed to produce a complete solution
-                    None in joint_solution[0]
+                    or None in joint_solution[0]
                     # If the outer solution is more concrete than the joint solution, prefer the outer solution.
                     or (
                         is_subtype(outer_ret_type, joint_ret_type)
