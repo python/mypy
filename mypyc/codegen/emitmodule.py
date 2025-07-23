@@ -784,28 +784,20 @@ class GroupGenerator:
         assert self.group_name is not None
 
         emitter.emit_line()
+
+        short_name = "g" + shared_lib_name(self.group_name).split(".")[-1]  # TODO
+
         emitter.emit_lines(
-            "PyMODINIT_FUNC PyInit_{}(void)".format(
-                shared_lib_name(self.group_name).split(".")[-1]
-            ),
+            f"static int {short_name}_exec(PyObject *module_arg)",
             "{",
-            (
-                'static PyModuleDef def = {{ PyModuleDef_HEAD_INIT, "{}", NULL, -1, NULL, NULL }};'.format(
-                    shared_lib_name(self.group_name)
-                )
-            ),
             "int res;",
             "PyObject *capsule;",
             "PyObject *tmp;",
             "static PyObject *module;",
             "if (module) {",
-            "Py_INCREF(module);",
-            "return module;",
+            "return 0;",
             "}",
-            "module = PyModule_Create(&def);",
-            "if (!module) {",
-            "goto fail;",
-            "}",
+            "module = module_arg;",
             "",
         )
 
@@ -861,7 +853,33 @@ class GroupGenerator:
                 "",
             )
 
-        emitter.emit_lines("return module;", "fail:", "Py_XDECREF(module);", "return NULL;", "}")
+        emitter.emit_lines("return 0;", "fail:", "return -1;", "}")
+
+        emitter.emit_lines(
+            f"static PyModuleDef_Slot {short_name}_slots[] = {{",
+            f"{{Py_mod_exec, {short_name}_exec}},",
+            "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},",
+            "{Py_mod_gil, Py_MOD_GIL_NOT_USED},",
+            "{0, NULL},",
+            "};",
+        )
+
+        emitter.emit_lines(
+            f"static PyModuleDef {short_name}_module_def = {{",
+            "PyModuleDef_HEAD_INIT,",
+            f'.m_name = "{shared_lib_name(self.group_name)}",',
+            ".m_doc = NULL,",
+            ".m_size = 0,",  # -1 originally
+            ".m_methods = NULL,",
+            f".m_slots = {short_name}_slots,"
+            "};",
+        )
+
+        emitter.emit_lines(
+            f"PyMODINIT_FUNC PyInit_{short_name[1:]}(void) {{",
+            f"return PyModuleDef_Init(&{short_name}_module_def);",
+            "}",
+        )
 
     def generate_globals_init(self, emitter: Emitter) -> None:
         emitter.emit_lines(
