@@ -819,15 +819,22 @@ class GroupGenerator:
 
         for mod in self.modules:
             name = exported_name(mod)
+            if self.multi_phase_init:
+                capsule_func_prefix = "CPyExec_"
+                capsule_name_prefix = "exec_"
+                emitter.emit_line(f"extern int CPyExec_{name}(PyObject *);")
+            else:
+                capsule_func_prefix = "CPyInit_"
+                capsule_name_prefix = "init_"
+                emitter.emit_line(f"extern PyObject *CPyInit_{name}(void);")
             emitter.emit_lines(
-                f"extern int CPyExec_{name}(PyObject *);",
-                'capsule = PyCapsule_New((void *)CPyExec_{}, "{}.exec_{}", NULL);'.format(
-                    name, shared_lib_name(self.group_name), name
+                'capsule = PyCapsule_New((void *){}{}, "{}.{}{}", NULL);'.format(
+                    capsule_func_prefix, name, shared_lib_name(self.group_name), capsule_name_prefix, name
                 ),
                 "if (!capsule) {",
                 "goto fail;",
                 "}",
-                f'res = PyObject_SetAttrString(module, "exec_{name}", capsule);',
+                f'res = PyObject_SetAttrString(module, "{capsule_name_prefix}{name}", capsule);',
                 "Py_DECREF(capsule);",
                 "if (res < 0) {",
                 "goto fail;",
