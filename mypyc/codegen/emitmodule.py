@@ -980,13 +980,14 @@ class GroupGenerator:
     def emit_module_exec_func(
         self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
     ) -> None:
-        """Emit the module init function.
+        """Emit the module exec function.
 
-        If we are compiling just one module, this will be the C API init
-        function. If we are compiling 2+ modules, we generate a shared
+        If we are compiling just one module, this will be the normal C API
+        exec function. If we are compiling 2+ modules, we generate a shared
         library for the modules and shims that call into the shared
-        library, and in this case we use an internal module initialized
-        function that will be called by the shim.
+        library, and in this case the shared module defines an internal
+        exec function for each module and these will be called by the shims
+        via Capsules.
         """
         declaration = f"int CPyExec_{exported_name(module_name)}(PyObject *module)"
         module_static = self.module_internal_static_name(module_name, emitter)
