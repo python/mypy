@@ -905,10 +905,10 @@ class GroupGenerator:
     def generate_module_def(self, emitter: Emitter, module_name: str, module: ModuleIR) -> None:
         """Emit the PyModuleDef struct for a module and the module init function."""
         module_prefix = emitter.names.private_name(module_name)
+        self.emit_module_methods(emitter, module_name, module_prefix, module)
         self.emit_module_exec_func(emitter, module_name, module_prefix, module)
         if self.multi_phase_init:
             self.emit_module_def_slots(emitter, module_prefix, module_name)
-        self.emit_module_methods(emitter, module_name, module_prefix, module)
         self.emit_module_def_struct(emitter, module_name, module_prefix)
         self.emit_module_init_func(emitter, module_name, module_prefix)
 
@@ -1004,6 +1004,12 @@ class GroupGenerator:
             f"if (unlikely({module_globals} == NULL))",
             "    goto fail;",
         )
+
+        if self.multi_phase_init:
+            emitter.emit_lines(
+                f"if (PyModule_AddFunctions(module, {module_prefix}module_methods) < 0)",
+                "    goto fail;",
+            )
 
         # HACK: Manually instantiate generated classes here
         type_structs: list[str] = []
