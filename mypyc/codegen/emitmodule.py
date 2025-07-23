@@ -908,14 +908,13 @@ class GroupGenerator:
         self.emit_module_methods(emitter, module_name, module_prefix, module)
         self.emit_module_exec_func(emitter, module_name, module_prefix, module)
 
-        # The slots table is only created here when using multi-phase init but
-        # not a shared library. If using a shared library, the slots tables will
-        # be included in shim modules instead.
-        if self.multi_phase_init and not self.use_shared_lib:
-            self.emit_module_def_slots(emitter, module_prefix, module_name)
-
-        self.emit_module_def_struct(emitter, module_name, module_prefix)
-        self.emit_module_init_func(emitter, module_name, module_prefix)
+        # If using multi-phase init and a shared lib, parts of module definition
+        # will happen in the shim modules, so we skip some steps here.
+        if not (self.multi_phase_init and self.use_shared_lib):
+            if self.multi_phase_init:
+                self.emit_module_def_slots(emitter, module_prefix, module_name)
+            self.emit_module_def_struct(emitter, module_name, module_prefix)
+            self.emit_module_init_func(emitter, module_name, module_prefix)
 
     def emit_module_def_slots(self, emitter: Emitter, module_prefix: str, module_name: str) -> None:
         name = f"{module_prefix}_slots"
