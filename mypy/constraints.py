@@ -1358,7 +1358,10 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             # NOTE: Non-matching keys are ignored. Compatibility is checked
             #       elsewhere so this shouldn't be unsafe.
             for item_name, template_item_type, actual_item_type in template.zip(actual):
-                res.extend(infer_constraints(template_item_type, actual_item_type, self.direction))
+                # Value type is invariant, so irrespective of the direction, we constraint
+                # both above and below.
+                res.extend(infer_constraints(template_item_type, actual_item_type, SUBTYPE_OF))
+                res.extend(infer_constraints(template_item_type, actual_item_type, SUPERTYPE_OF))
             return res
         elif isinstance(actual, AnyType):
             return self.infer_against_any(template.items.values(), actual)
