@@ -54,6 +54,9 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         "--allow-empty-bodies",
         "--test-env",  # Speeds up some checks
     ]
+
+    mypy_cmdline.append("--no-pretty")
+
     interpreter = python3_path
     mypy_cmdline.append(f"--python-version={'.'.join(map(str, PYTHON3_VERSION))}")
 
@@ -69,6 +72,9 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
                     sys.version_info.minor,
                 ):
                     return
+        if '--pretty' in additional_flags:
+            mypy_cmdline.remove('--no-pretty')        
+        
         mypy_cmdline.extend(additional_flags)
 
     # Write the program to a file.
