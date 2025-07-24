@@ -131,8 +131,13 @@ def parse_args(line: str) -> list[str]:
     """
     m = re.match("# cmd: mypy (.*)$", line)
     if not m:
-        return []  # No args; mypy will spit out an error.
-    return m.group(1).split()
+        return ['--no-pretty']  # No args; mypy will spit out an error.
+    args = m.group(1).split()
+    
+    if '--pretty' not in args:
+        args.append('--no-pretty')
+
+    return args
 
 
 def parse_cwd(line: str) -> str | None:
