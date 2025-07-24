@@ -237,10 +237,16 @@ void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value) {
 
 PyObject *CPyList_PopLast(PyObject *obj)
 {
+#ifdef Py_GIL_DISABLED
+    // The optimized version causes segfaults on a free-threaded Python 3.14b4 build,
+    // at least on macOS, so fall back to a generic implementation.
+    return PyObject_CallMethod(obj, "pop", NULL);
+#else
     // I tried a specalized version of pop_impl for just removing the
     // last element and it wasn't any faster in microbenchmarks than
     // the generic one so I ditched it.
     return list_pop_impl((PyListObject *)obj, -1);
+#endif
 }
 
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index)
