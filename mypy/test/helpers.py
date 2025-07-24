@@ -342,6 +342,8 @@ def parse_options(
 
     if flags:
         flag_list = flags.group(1).split()
+        if '--pretty' not in flag_list:
+            flag_list.append('--no-pretty')
         flag_list.append("--no-site-packages")  # the tests shouldn't need an installed Python
         targets, options = process_options(flag_list, require_targets=False)
         if targets:
@@ -350,11 +352,12 @@ def parse_options(
         if "--show-error-codes" not in flag_list:
             options.hide_error_codes = True
     else:
-        flag_list = []
         options = Options()
+        options.pretty = False
         options.error_summary = False
         options.hide_error_codes = True
         options.force_union_syntax = True
+        flag_list = ['--no-pretty']
 
     # Allow custom python version to override testfile_pyversion.
     if all(flag.split("=")[0] != "--python-version" for flag in flag_list):
