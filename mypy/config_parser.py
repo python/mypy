@@ -60,11 +60,10 @@ def parse_version(v: str | float) -> tuple[int, int]:
     return major, minor
 
 
-def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
+def try_split(v: str | Sequence[str] | Any, split_regex: str = "[,]") -> list[str] | Any:
     """Split and trim a str or sequence (eg: list) of str into a list of str.
-    Non-str elements will simply be returned untouched. This is not documented
-    by the types but there was no type error before this bugfix, so we must be
-    type-ignoring elsewhere. Feel free to fix that."""
+    Non-str elements will simply be returned untouched. Feel free to one day
+    fix the typing of the calling code, and remove this caveat and Any."""
     if isinstance(v, str):
         items = [p.strip() for p in re.split(split_regex, v)]
         if items and items[-1] == "":

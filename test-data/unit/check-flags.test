@@ -2488,4 +2488,3 @@ def f():
 [file pyproject.toml]
 \[tool.mypy]
 enable_error_code = true
-
