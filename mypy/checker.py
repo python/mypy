@@ -3018,6 +3018,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.msg.unreachable_statement(s)
                     break
             else:
+                self.expr_checker.expr_cache.clear()
                 self.accept(s)
 
     def should_report_unreachable_issues(self) -> bool:
@@ -4659,6 +4660,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     ) -> None:
         """Replace the partial type of var with a non-partial type."""
         var.type = new_type
+        self.binder.version += 1
         del partial_types[var]
         if self.options.allow_redefinition_new:
             # When using --allow-redefinition-new, binder tracks all types of

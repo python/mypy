@@ -19,7 +19,7 @@ from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
-from mypy.errors import ErrorWatcher, report_internal_error
+from mypy.errors import ErrorInfo, ErrorWatcher, report_internal_error
 from mypy.expandtype import (
     expand_type,
     expand_type_by_instance,
@@ -355,9 +355,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         type_state.infer_polymorphic = not self.chk.options.old_type_inference
 
         self._arg_infer_context_cache = None
+        self.expr_cache: dict[
+            Expression,
+            dict[Type | None, tuple[int, Type, list[ErrorInfo], dict[Expression, Type]]],
+        ] = defaultdict(dict)
+        self.in_lambda_expr = False
 
     def reset(self) -> None:
         self.resolved_type = {}
+        self.expr_cache.clear()
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -5404,6 +5410,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_lambda_expr(self, e: LambdaExpr) -> Type:
         """Type check lambda expression."""
+        old_in_lambda = self.in_lambda_expr
+        self.in_lambda_expr = True
         self.chk.check_default_args(e, body_is_trivial=False)
         inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
@@ -5424,6 +5432,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type("builtins.function")
             self.chk.return_types.pop()
+            self.in_lambda_expr = old_in_lambda
             return callable_type(e, fallback, ret_type)
         else:
             # Type context available.
@@ -5436,6 +5445,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.lookup_type(e.expr())
             self.chk.return_types.pop()
+            self.in_lambda_expr = old_in_lambda
             return replace_callable_return_type(inferred_type, ret_type)
 
     def infer_lambda_type_using_context(
@@ -5972,14 +5982,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         old_is_callee = self.is_callee
         self.is_callee = is_callee
         try:
-            if allow_none_return and isinstance(node, CallExpr):
-                typ = self.visit_call_expr(node, allow_none_return=True)
-            elif allow_none_return and isinstance(node, YieldFromExpr):
+            if allow_none_return and isinstance(node, YieldFromExpr):
                 typ = self.visit_yield_from_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, ConditionalExpr):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
+            elif isinstance(node, CallExpr) and not self.in_lambda_expr:
+                if node in self.expr_cache and type_context in self.expr_cache[node]:
+                    binder_version, typ, messages, type_map = self.expr_cache[node][type_context]
+                    if binder_version == self.chk.binder.version:
+                        self.chk.store_types(type_map)
+                        self.msg.add_errors(messages)
+                    else:
+                        typ = self.accept_maybe_cache(
+                            node, type_context=type_context, allow_none_return=allow_none_return
+                        )
+                else:
+                    typ = self.accept_maybe_cache(
+                        node, type_context=type_context, allow_none_return=allow_none_return
+                    )
+            elif isinstance(node, CallExpr):
+                typ = self.visit_call_expr(node, allow_none_return=allow_none_return)
             else:
                 typ = node.accept(self)
         except Exception as err:
@@ -6009,6 +6033,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.per_line_checking_time_ns[node.line] += time.perf_counter_ns() - t0
             self.in_expression = False
         return result
+
+    def accept_maybe_cache(
+        self, node: CallExpr, type_context: Type | None = None, allow_none_return: bool = False
+    ) -> Type:
+        binder_version = self.chk.binder.version
+        type_map: dict[Expression, Type] = {}
+        self.chk._type_maps.append(type_map)
+        with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as w:
+            typ = self.visit_call_expr(node, allow_none_return=allow_none_return)
+        messages = w.filtered_errors()
+        if binder_version == self.chk.binder.version and not self.chk.current_node_deferred:
+            self.expr_cache[node][type_context] = (binder_version, typ, messages, type_map)
+        self.chk._type_maps.pop()
+        self.chk.store_types(type_map)
+        self.msg.add_errors(messages)
+        return typ
 
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no type
