@@ -61,13 +61,19 @@ def parse_version(v: str | float) -> tuple[int, int]:
 
 
 def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
-    """Split and trim a str or list of str into a list of str"""
+    """Split and trim a str or sequence (eg: list) of str into a list of str.
+    Non-str elements will simply be returned untouched. This is not documented
+    by the types but there was no type error before this bugfix, so we must be
+    type-ignoring elsewhere. Feel free to fix that."""
     if isinstance(v, str):
         items = [p.strip() for p in re.split(split_regex, v)]
         if items and items[-1] == "":
             items.pop(-1)
         return items
-    return [p.strip() for p in v]
+    elif isinstance(v, Sequence):
+        return [p.strip() if isinstance(p, str) else p for p in v]
+    else:
+        return v
 
 
 def validate_codes(codes: list[str]) -> list[str]:
