@@ -285,21 +285,33 @@ if isinstance(b[0], Sequence):
 [case testRecursiveAliasWithRecursiveInstance]
 from typing import Sequence, Union, TypeVar
 
-class A: ...
 T = TypeVar("T")
 Nested = Sequence[Union[T, Nested[T]]]
+def join(a: T, b: T) -> T: ...
+
+class A: ...
 class B(Sequence[B]): ...
 
 a: Nested[A]
 aa: Nested[A]
 b: B
-a = b  # OK
-a = [[b]]  # OK
-b = aa  # E: Incompatible types in assignment (expression has type "Nested[A]", variable has type "B")
 
-def join(a: T, b: T) -> T: ...
-reveal_type(join(a, b))  # N: Revealed type is "typing.Sequence[Union[__main__.A, typing.Sequence[Union[__main__.A, ...]]]]"
-reveal_type(join(b, a))  # N: Revealed type is "typing.Sequence[Union[__main__.A, typing.Sequence[Union[__main__.A, ...]]]]"
+a = b  # OK
+reveal_type(a)  # N: Revealed type is "__main__.B"
+
+a = [[b]]  # OK
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[__main__.B]]"
+
+b = aa  # E: Incompatible types in assignment (expression has type "Nested[A]", variable has type "B")
+reveal_type(b)  # N: Revealed type is "__main__.B"
+
+reveal_type(join(a, b))  # N: Revealed type is "typing.Sequence[typing.Sequence[__main__.B]]"
+reveal_type(join(b, a))  # N: Revealed type is "typing.Sequence[typing.Sequence[__main__.B]]"
+
+def test(a: Nested[A], b: B) -> None:
+     reveal_type(join(a, b))  # N: Revealed type is "typing.Sequence[Union[__main__.A, typing.Sequence[Union[__main__.A, ...]]]]"
+     reveal_type(join(b, a))  # N: Revealed type is "typing.Sequence[Union[__main__.A, typing.Sequence[Union[__main__.A, ...]]]]"
+
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasWithRecursiveInstanceInference]

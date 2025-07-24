@@ -77,11 +77,13 @@ class Constraint:
     """
 
     type_var: TypeVarId
+    original_type_var: TypeVarLikeType
     op = 0  # SUBTYPE_OF or SUPERTYPE_OF
     target: Type
 
     def __init__(self, type_var: TypeVarLikeType, op: int, target: Type) -> None:
         self.type_var = type_var.id
+        self.original_type_var = type_var
         self.op = op
         # TODO: should we add "assert not isinstance(target, UnpackType)"?
         # UnpackType is a synthetic type, and is never valid as a constraint target.
@@ -1356,7 +1358,10 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             # NOTE: Non-matching keys are ignored. Compatibility is checked
             #       elsewhere so this shouldn't be unsafe.
             for item_name, template_item_type, actual_item_type in template.zip(actual):
-                res.extend(infer_constraints(template_item_type, actual_item_type, self.direction))
+                # Value type is invariant, so irrespective of the direction, we constraint
+                # both above and below.
+                res.extend(infer_constraints(template_item_type, actual_item_type, SUBTYPE_OF))
+                res.extend(infer_constraints(template_item_type, actual_item_type, SUPERTYPE_OF))
             return res
         elif isinstance(actual, AnyType):
             return self.infer_against_any(template.items.values(), actual)

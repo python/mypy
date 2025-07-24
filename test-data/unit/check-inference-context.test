@@ -1372,6 +1372,22 @@ x: Tuple[str, ...] = f(tuple)
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testTypedDictWideContext]
+from typing_extensions import TypedDict
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A: ...
+class B(A): ...
+
+class OverridesItem(TypedDict, Generic[T]):
+    tp: type[T]
+
+d1: dict[str, dict[str, type[A]]] = {"foo": {"bar": B}}
+d2: dict[str, OverridesItem[A]] = {"foo": OverridesItem(tp=B)}
+[builtins fixtures/dict.pyi]
+
 [case testUseCovariantGenericOuterContextUserDefined]
 from typing import TypeVar, Callable, Generic
 

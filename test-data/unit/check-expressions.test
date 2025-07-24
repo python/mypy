@@ -308,6 +308,28 @@ main:5: error: Unsupported operand types for ^ ("A" and "A")
 main:6: error: Unsupported operand types for << ("A" and "B")
 main:7: error: Unsupported operand types for >> ("A" and "A")
 
+[case testBinaryOperatorContext]
+from typing import TypeVar, Generic, Iterable, Iterator, Union
+
+T = TypeVar("T")
+S = TypeVar("S")
+IntOrStr = TypeVar("IntOrStr", bound=Union[int, str])
+
+class Vec(Generic[T]):
+    def __init__(self, iterable: Iterable[T], /) -> None: ...
+    def __iter__(self) -> Iterator[T]: yield from []
+    def __add__(self, value: "Vec[S]", /) -> "Vec[Union[S, T]]": return Vec([])
+
+def fmt(arg: Iterable[Union[int, str]]) -> None: ...
+def first(arg: Iterable[IntOrStr]) -> IntOrStr: ...
+
+def test_fmt(l1: Vec[int], l2: Vec[int], /) -> None:
+    fmt(l1 + l2)
+
+def test_first(l1: Vec[int], l2: Vec[int], /) -> None:
+    first(l1 + l2)
+[builtins fixtures/list.pyi]
+
 [case testBooleanAndOr]
 a: A
 b: bool
