@@ -253,7 +253,22 @@ PyObject *CPyList_Pop(PyObject *obj, CPyTagged index)
 {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+#ifdef Py_GIL_DISABLED
+        static PyObject *interned_pop_str = NULL;
+        if (!interned_pop_str) {
+            interned_pop_str = PyUnicode_InternFromString("pop");
+            if (!interned_pop_str)
+                return NULL;
+        }
+        PyObject *index_obj = PyLong_FromLong(n);  // New reference
+        if (index_obj == NULL)
+            return NULL;
+        PyObject *result = PyObject_CallMethodOneArg(obj, interned_pop_str, index_obj);
+        Py_DECREF(index_obj);
+        return result;
+#else
         return list_pop_impl((PyListObject *)obj, n);
+#endif
     } else {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
