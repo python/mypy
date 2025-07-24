@@ -8,13 +8,13 @@ $ dmypy stop
 Daemon stopped
 
 [case testDaemonBasic]
-$ dmypy start -- --follow-imports=error
+$ dmypy start -- --follow-imports=error # NO-MODIFY
 Daemon started
-$ dmypy check -- foo.py
+$ dmypy check -- foo.py # NO-MODIFY
 Success: no issues found in 1 source file
-$ dmypy recheck
+$ dmypy recheck # NO-MODIFY
 Success: no issues found in 1 source file
-$ dmypy stop
+$ dmypy stop # NO-MODIFY
 Daemon stopped
 [file foo.py]
 def f(): pass
@@ -229,17 +229,17 @@ Daemon has died
 == Return code: 2
 
 [case testDaemonRecheck]
-$ dmypy start -- --follow-imports=error --no-error-summary
+$ dmypy start -- --follow-imports=error --no-error-summary --no-pretty
 Daemon started
-$ dmypy check foo.py bar.py
-$ dmypy recheck
-$ dmypy recheck --update foo.py --remove bar.py sir_not_appearing_in_this_film.py
+$ dmypy check foo.py bar.py # NO-MODIFY
+$ dmypy recheck # NO-MODIFY
+$ dmypy recheck --update foo.py --remove bar.py sir_not_appearing_in_this_film.py # NO-MODIFY
 foo.py:1: error: Import of "bar" ignored  [misc]
 foo.py:1: note: (Using --follow-imports=error, module not passed on command line)
 == Return code: 1
-$ dmypy recheck --update bar.py
-$ dmypy recheck --update sir_not_appearing_in_this_film.py
-$ dmypy recheck --update --remove
+$ dmypy recheck --update bar.py # NO-MODIFY
+$ dmypy recheck --update sir_not_appearing_in_this_film.py # NO-MODIFY
+$ dmypy recheck --update --remove # NO-MODIFY
 $ dmypy stop
 Daemon stopped
 [file foo.py]
@@ -264,26 +264,26 @@ $ dmypy stop
 Daemon stopped
 
 [case testDaemonRunTwoFilesFullTypeshed]
-$ dmypy run x.py
+$ dmypy run x.py  # NO-MODIFY
 Daemon started
 Success: no issues found in 1 source file
-$ dmypy run y.py
+$ dmypy run y.py  # NO-MODIFY
 Success: no issues found in 1 source file
-$ dmypy run x.py
+$ dmypy run x.py  # NO-MODIFY
 Success: no issues found in 1 source file
 [file x.py]
 [file y.py]
 
 [case testDaemonCheckTwoFilesFullTypeshed]
-$ dmypy start
+$ dmypy start -- --no-pretty
 Daemon started
-$ dmypy check foo.py
+$ dmypy check foo.py # NO-MODIFY
 foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
-$ dmypy check bar.py
+$ dmypy check bar.py # NO-MODIFY
 Success: no issues found in 1 source file
-$ dmypy check foo.py
+$ dmypy check foo.py # NO-MODIFY
 foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
@@ -344,34 +344,34 @@ $ {python} -c "import sys; sys.stdout.write(open('log').read())"
 $ {python} -c "x = open('.mypy_cache/3.11/bar.meta.json').read(); y = open('asdf.json').read(); assert x == y"
 
 [case testDaemonSuggest]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --no-pretty
 Daemon started
-$ dmypy suggest foo:foo
+$ dmypy suggest foo:foo # NO-MODIFY
 Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
 == Return code: 2
-$ dmypy check foo.py bar.py
-$ dmypy suggest foo.bar
+$ dmypy check foo.py bar.py # NO-MODIFY
+$ dmypy suggest foo.bar # NO-MODIFY
 Unknown function foo.bar
 == Return code: 2
-$ dmypy suggest foo.var
+$ dmypy suggest foo.var # NO-MODIFY
 Object foo.var is not a function
 == Return code: 2
-$ dmypy suggest foo.Foo.var
+$ dmypy suggest foo.Foo.var # NO-MODIFY
 Unknown class foo.Foo
 == Return code: 2
-$ dmypy suggest foo.Bar.baz
+$ dmypy suggest foo.Bar.baz # NO-MODIFY
 Unknown method foo.Bar.baz
 == Return code: 2
-$ dmypy suggest foo.foo.baz
+$ dmypy suggest foo.foo.baz # NO-MODIFY
 Object foo.foo is not a class
 == Return code: 2
-$ dmypy suggest --callsites foo.foo
+$ dmypy suggest --callsites foo.foo # NO-MODIFY
 bar.py:3: (str)
 bar.py:4: (arg=str)
-$ dmypy suggest foo.foo
+$ dmypy suggest foo.foo # NO-MODIFY
 (str) -> int
-$ {python} -c "import shutil; shutil.copy('foo2.py', 'foo.py')"
-$ dmypy check foo.py bar.py
+$ {python} -c "import shutil; shutil.copy('foo2.py', 'foo.py')" # NO-MODIFY
+$ dmypy check foo.py bar.py # NO-MODIFY
 bar.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
 == Return code: 1
 [file foo.py]
@@ -393,26 +393,26 @@ def bar() -> None:
     foo(arg='xyz')
 
 [case testDaemonInspectCheck]
-$ dmypy start
+$ dmypy start # NO-MODIFY
 Daemon started
-$ dmypy check foo.py
+$ dmypy check foo.py # NO-MODIFY 
 Success: no issues found in 1 source file
-$ dmypy check foo.py --export-types
+$ dmypy check foo.py --export-types # NO-MODIFY
 Success: no issues found in 1 source file
-$ dmypy inspect foo.py:1:1
+$ dmypy inspect foo.py:1:1 # NO-MODIFY
 "int"
 [file foo.py]
 x = 1
 
 [case testDaemonInspectRun]
-$ dmypy run test1.py
+$ dmypy run test1.py # NO-MODIFY
 Daemon started
 Success: no issues found in 1 source file
-$ dmypy run test2.py
+$ dmypy run test2.py # NO-MODIFY
 Success: no issues found in 1 source file
-$ dmypy run test1.py --export-types
+$ dmypy run test1.py --export-types # NO-MODIFY
 Success: no issues found in 1 source file
-$ dmypy inspect test1.py:1:1
+$ dmypy inspect test1.py:1:1 # NO-MODIFY
 "int"
 [file test1.py]
 a: int
@@ -420,49 +420,49 @@ a: int
 a: str
 
 [case testDaemonGetType]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.9
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.9 --no-pretty
 Daemon started
-$ dmypy inspect foo:1:2:3:4
+$ dmypy inspect foo:1:2:3:4 # NO-MODIFY
 Command "inspect" is only valid after a "check" command (that produces no parse errors)
 == Return code: 2
-$ dmypy check foo.py --export-types
+$ dmypy check foo.py --export-types # NO-MODIFY
 foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 == Return code: 1
-$ dmypy inspect foo:1
+$ dmypy inspect foo:1 # NO-MODIFY
 Format should be file:line:column[:end_line:end_column]
 == Return code: 2
-$ dmypy inspect foo:1:2:3
+$ dmypy inspect foo:1:2:3 # NO-MODIFY
 Source file is not a Python file
 == Return code: 2
-$ dmypy inspect foo.py:1:2:a:b
+$ dmypy inspect foo.py:1:2:a:b # NO-MODIFY
 invalid literal for int() with base 10: 'a'
 == Return code: 2
-$ dmypy inspect foo.pyc:1:1:2:2
+$ dmypy inspect foo.pyc:1:1:2:2 # NO-MODIFY
 Source file is not a Python file
 == Return code: 2
-$ dmypy inspect bar/baz.py:1:1:2:2
+$ dmypy inspect bar/baz.py:1:1:2:2 # NO-MODIFY
 Unknown module: bar/baz.py
 == Return code: 1
-$ dmypy inspect foo.py:3:1:1:1
+$ dmypy inspect foo.py:3:1:1:1 # NO-MODIFY
 "end_line" must not be before "line"
 == Return code: 2
-$ dmypy inspect foo.py:3:3:3:1
+$ dmypy inspect foo.py:3:3:3:1 # NO-MODIFY
 "end_column" must be after "column"
 == Return code: 2
-$ dmypy inspect foo.py:3:10:3:17
+$ dmypy inspect foo.py:3:10:3:17 # NO-MODIFY
 "str"
-$ dmypy inspect foo.py:3:10:3:17 -vv
+$ dmypy inspect foo.py:3:10:3:17 -vv # NO-MODIFY
 "builtins.str"
-$ dmypy inspect foo.py:9:9:9:11
+$ dmypy inspect foo.py:9:9:9:11 # NO-MODIFY
 "int"
-$ dmypy inspect foo.py:11:1:11:3
+$ dmypy inspect foo.py:11:1:11:3 # NO-MODIFY
 "Callable[[Optional[int]], None]"
-$ dmypy inspect foo.py:11:1:13:1
+$ dmypy inspect foo.py:11:1:13:1 # NO-MODIFY
 "None"
-$ dmypy inspect foo.py:1:2:3:4
+$ dmypy inspect foo.py:1:2:3:4 # NO-MODIFY
 Can't find expression at span 1:2:3:4
 == Return code: 1
-$ dmypy inspect foo.py:17:5:17:5
+$ dmypy inspect foo.py:17:5:17:5 # NO-MODIFY
 No known type available for "NameExpr" (maybe unreachable or try --force-reload)
 == Return code: 1
 
@@ -486,43 +486,43 @@ def unreachable(x: int) -> None:
     x  # line 17
 
 [case testDaemonGetTypeInexact]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --no-pretty
 Daemon started
-$ dmypy check foo.py --export-types
-$ dmypy inspect foo.py:1:a
+$ dmypy check foo.py --export-types # NO-MODIFY
+$ dmypy inspect foo.py:1:a # NO-MODIFY 
 invalid literal for int() with base 10: 'a'
 == Return code: 2
-$ dmypy inspect foo.pyc:1:2
+$ dmypy inspect foo.pyc:1:2 # NO-MODIFY
 Source file is not a Python file
 == Return code: 2
-$ dmypy inspect bar/baz.py:1:2
+$ dmypy inspect bar/baz.py:1:2 # NO-MODIFY
 Unknown module: bar/baz.py
 == Return code: 1
-$ dmypy inspect foo.py:7:5 --include-span
+$ dmypy inspect foo.py:7:5 --include-span # NO-MODIFY
 7:5:7:5 -> "int"
 7:5:7:11 -> "int"
 7:1:7:12 -> "None"
-$ dmypy inspect foo.py:7:5 --include-kind
+$ dmypy inspect foo.py:7:5 --include-kind # NO-MODIFY
 NameExpr -> "int"
 OpExpr -> "int"
 CallExpr -> "None"
-$ dmypy inspect foo.py:7:5 --include-span --include-kind
+$ dmypy inspect foo.py:7:5 --include-span --include-kind # NO-MODIFY
 NameExpr:7:5:7:5 -> "int"
 OpExpr:7:5:7:11 -> "int"
 CallExpr:7:1:7:12 -> "None"
-$ dmypy inspect foo.py:7:5 -vv
+$ dmypy inspect foo.py:7:5 -vv # NO-MODIFY
 "builtins.int"
 "builtins.int"
 "None"
-$ dmypy inspect foo.py:7:5 -vv --limit=1
+$ dmypy inspect foo.py:7:5 -vv --limit=1 # NO-MODIFY
 "builtins.int"
-$ dmypy inspect foo.py:7:3
+$ dmypy inspect foo.py:7:3 # NO-MODIFY
 "Callable[[int], None]"
 "None"
-$ dmypy inspect foo.py:1:2
+$ dmypy inspect foo.py:1:2 # NO-MODIFY
 Can't find any expressions at position 1:2
 == Return code: 1
-$ dmypy inspect foo.py:11:5 --force-reload
+$ dmypy inspect foo.py:11:5 --force-reload # NO-MODIFY
 No known type available for "NameExpr" (maybe unreachable)
 No known type available for "OpExpr" (maybe unreachable)
 == Return code: 1
@@ -541,20 +541,20 @@ def unreachable(x: int, y: int) -> None:
     x and y  # line 11
 
 [case testDaemonGetAttrs]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --no-pretty
 Daemon started
-$ dmypy check foo.py bar.py --export-types
-$ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind -vv
+$ dmypy check foo.py bar.py --export-types # NO-MODIFY
+$ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind -vv # NO-MODIFY
 NameExpr:9:1:9:1 -> {"foo.C": ["a", "x", "y"], "foo.B": ["a", "b"]}
-$ dmypy inspect foo.py:11:10 --show attrs
+$ dmypy inspect foo.py:11:10 --show attrs # NO-MODIFY
 No known type available for "StrExpr" (maybe unreachable or try --force-reload)
 == Return code: 1
-$ dmypy inspect foo.py:1:1 --show attrs
+$ dmypy inspect foo.py:1:1 --show attrs # NO-MODIFY
 Can't find any expressions at position 1:1
 == Return code: 1
-$ dmypy inspect --show attrs bar.py:10:1
+$ dmypy inspect --show attrs bar.py:10:1 # NO-MODIFY
 {"A": ["z"], "B": ["z"]}
-$ dmypy inspect --show attrs bar.py:10:1 --union-attrs
+$ dmypy inspect --show attrs bar.py:10:1 --union-attrs # NO-MODIFY
 {"A": ["x", "z"], "B": ["y", "z"]}
 
 [file foo.py]
@@ -583,24 +583,24 @@ var: Union[A, B]
 var  # line 10
 
 [case testDaemonGetDefinition]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary # NO-MODIFY
 Daemon started
-$ dmypy check foo.py bar/baz.py bar/__init__.py --export-types
-$ dmypy inspect foo.py:5:1 --show definition
+$ dmypy check foo.py bar/baz.py bar/__init__.py --export-types # NO-MODIFY
+$ dmypy inspect foo.py:5:1 --show definition # NO-MODIFY
 foo.py:4:1:y
-$ dmypy inspect foo.py:2:3 --show definition --include-span --include-kind -vv
+$ dmypy inspect foo.py:2:3 --show definition --include-span --include-kind -vv # NO-MODIFY
 MemberExpr:2:1:2:7 -> bar/baz.py:3:5:Alias
-$ dmypy inspect foo.py:3:1 --show definition
+$ dmypy inspect foo.py:3:1 --show definition # NO-MODIFY
 Cannot find definition for "NameExpr" at 3:1:3:1
 == Return code: 1
-$ dmypy inspect foo.py:4:6 --show definition
+$ dmypy inspect foo.py:4:6 --show definition # NO-MODIFY
 No name or member expressions at 4:6
 == Return code: 1
-$ dmypy inspect foo.py:7:1:7:6 --show definition
+$ dmypy inspect foo.py:7:1:7:6 --show definition # NO-MODIFY
 bar/baz.py:4:5:attr
-$ dmypy inspect foo.py:10:10 --show definition --include-span
+$ dmypy inspect foo.py:10:10 --show definition --include-span # NO-MODIFY
 10:1:10:12 -> bar/baz.py:6:1:test
-$ dmypy inspect foo.py:14:6 --show definition --include-span --include-kind
+$ dmypy inspect foo.py:14:6 --show definition --include-span --include-kind # NO-MODIFY
 NameExpr:14:5:14:7 -> foo.py:13:9:arg
 MemberExpr:14:5:14:9 -> bar/baz.py:9:5:x, bar/baz.py:11:5:x
 
@@ -635,12 +635,12 @@ class B:
     x: int
 
 [case testDaemonInspectSelectCorrectFile]
-$ dmypy run test.py --export-types
+$ dmypy run test.py --export-types # NO-MODIFY
 Daemon started
 Success: no issues found in 1 source file
-$ dmypy inspect demo/test.py:1:1
+$ dmypy inspect demo/test.py:1:1 # NO-MODIFY
 "int"
-$ dmypy inspect test.py:1:1
+$ dmypy inspect test.py:1:1 # NO-MODIFY
 "str"
 [file test.py]
 b: str
@@ -650,12 +650,12 @@ a: int
 
 [case testUnusedTypeIgnorePreservedOnRerun]
 -- Regression test for https://github.com/python/mypy/issues/9655
-$ dmypy start -- --warn-unused-ignores --no-error-summary --hide-error-codes
+$ dmypy start -- --warn-unused-ignores --no-error-summary --hide-error-codes --no-pretty
 Daemon started
-$ dmypy check -- bar.py
+$ dmypy check -- bar.py # NO-MODIFY
 bar.py:2: error: Unused "type: ignore" comment
 == Return code: 1
-$ dmypy check -- bar.py
+$ dmypy check -- bar.py # NO-MODIFY
 bar.py:2: error: Unused "type: ignore" comment
 == Return code: 1
 
@@ -667,12 +667,12 @@ a = 1  # type: ignore
 
 [case testTypeIgnoreWithoutCodePreservedOnRerun]
 -- Regression test for https://github.com/python/mypy/issues/9655
-$ dmypy start -- --enable-error-code ignore-without-code --no-error-summary
+$ dmypy start -- --enable-error-code ignore-without-code --no-error-summary --no-pretty
 Daemon started
-$ dmypy check -- bar.py
+$ dmypy check -- bar.py # NO-MODIFY
 bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
 == Return code: 1
-$ dmypy check -- bar.py
+$ dmypy check -- bar.py # NO-MODIFY
 bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
 == Return code: 1
 
@@ -684,12 +684,12 @@ a = 1  # type: ignore
 
 [case testPossiblyUndefinedVarsPreservedAfterRerun]
 -- Regression test for https://github.com/python/mypy/issues/9655
-$ dmypy start -- --enable-error-code possibly-undefined --no-error-summary
+$ dmypy start -- --enable-error-code possibly-undefined --no-error-summary --no-pretty
 Daemon started
-$ dmypy check -- bar.py
+$ dmypy check -- bar.py # NO-MODIFY
 bar.py:4: error: Name "a" may be undefined  [possibly-undefined]
 == Return code: 1
-$ dmypy check -- bar.py
+$ dmypy check -- bar.py # NO-MODIFY
 bar.py:4: error: Name "a" may be undefined  [possibly-undefined]
 == Return code: 1
 
@@ -702,12 +702,12 @@ if False:
 a
 
 [case testUnusedTypeIgnorePreservedOnRerunWithIgnoredMissingImports]
-$ dmypy start -- --no-error-summary --ignore-missing-imports --warn-unused-ignores
+$ dmypy start -- --no-error-summary --ignore-missing-imports --warn-unused-ignores --no-pretty
 Daemon started
-$ dmypy check foo
+$ dmypy check foo # NO-MODIFY
 foo/main.py:3: error: Unused "type: ignore" comment  [unused-ignore]
 == Return code: 1
-$ dmypy check foo
+$ dmypy check foo # NO-MODIFY
 foo/main.py:3: error: Unused "type: ignore" comment  [unused-ignore]
 == Return code: 1
 
@@ -723,12 +723,12 @@ from foo.does_not_exist import *
 a = 1  # type: ignore
 
 [case testModuleDoesNotExistPreservedOnRerun]
-$ dmypy start -- --no-error-summary --ignore-missing-imports
+$ dmypy start -- --no-error-summary --ignore-missing-imports --no-pretty
 Daemon started
-$ dmypy check foo
+$ dmypy check foo # NO-MODIFY
 foo/main.py:1: error: Module "foo" has no attribute "does_not_exist"  [attr-defined]
 == Return code: 1
-$ dmypy check foo
+$ dmypy check foo # NO-MODIFY
 foo/main.py:1: error: Module "foo" has no attribute "does_not_exist"  [attr-defined]
 == Return code: 1
 
@@ -742,13 +742,13 @@ from unused.submodule import *
 
 [case testReturnTypeIgnoreAfterUnknownImport]
 -- Return type ignores after unknown imports and unused modules are respected on the second pass.
-$ dmypy start -- --warn-unused-ignores --no-error-summary
+$ dmypy start -- --warn-unused-ignores --no-error-summary --no-pretty
 Daemon started
-$ dmypy check -- foo.py
+$ dmypy check -- foo.py # NO-MODIFY
 foo.py:2: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
 foo.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 == Return code: 1
-$ dmypy check -- foo.py
+$ dmypy check -- foo.py # NO-MODIFY
 foo.py:2: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
 foo.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 == Return code: 1
@@ -762,13 +762,13 @@ def is_foo() -> str:
     return True  # type: ignore
 
 [case testAttrsTypeIgnoreAfterUnknownImport]
-$ dmypy start -- --warn-unused-ignores --no-error-summary
+$ dmypy start -- --warn-unused-ignores --no-error-summary --no-pretty
 Daemon started
-$ dmypy check -- foo.py
+$ dmypy check -- foo.py # NO-MODIFY
 foo.py:3: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
 foo.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 == Return code: 1
-$ dmypy check -- foo.py
+$ dmypy check -- foo.py # NO-MODIFY
 foo.py:3: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
 foo.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 == Return code: 1
@@ -786,16 +786,16 @@ class A:
         self.__attrs_init__()  # type: ignore[attr-defined]
 
 [case testDaemonImportAncestors]
-$ dmypy run test.py
+$ dmypy run -- --no-pretty --show-error-codes test.py # NO-MODIFY
 Daemon started
 test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
-$ dmypy run test.py
+$ dmypy run -- --no-pretty --show-error-codes test.py # NO-MODIFY
 test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
-$ dmypy run test.py
+$ dmypy run -- --no-pretty --show-error-codes test.py # NO-MODIFY
 test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
