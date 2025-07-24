@@ -2581,13 +2581,17 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub="+", runtime="", options=[])
         assert output == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
-            "error: Invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
+            "error: Invalid syntax  [syntax]\n"
+            "    +\n"
+            "     ^\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
         assert output == (
             "error: not checking stubs due to mypy build errors:\n{}.pyi:2: "
-            'error: Name "f" already defined on line 1  [no-redef]\n'.format(TEST_MODULE_NAME)
+            'error: Name "f" already defined on line 1  [no-redef]\n'
+            "    def f(): ...\n"
+            "    ^~~~~~~~~~~~\n".format(TEST_MODULE_NAME)
         )
 
     def test_missing_stubs(self) -> None:
@@ -2665,6 +2669,8 @@ class StubtestMiscUnit(unittest.TestCase):
         assert output == (
             "error: not checking stubs due to mypy build errors:\n"
             'test_module.pyi:1: error: Name "SOME_GLOBAL_CONST" is not defined  [name-defined]\n'
+            "    temp = SOME_GLOBAL_CONST\n"
+            "           ^~~~~~~~~~~~~~~~~\n"
         )
 
         config_file = "[mypy]\ndisable_error_code = name-defined\n"
