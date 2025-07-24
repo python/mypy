@@ -78,7 +78,7 @@ reveal_type(typx)  # N: Revealed type is "TypeForm[Any]"
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
 from typing import Type, TypeForm
 typ: Type
-typ = int | None  # E: Incompatible types in assignment (expression has type "object", variable has type "Type[Any]")
+typ = int | None  # E: Incompatible types in assignment (expression has type "object", variable has type "type[Any]")
 typx: TypeForm
 typx = int | None
 [builtins fixtures/tuple.pyi]
@@ -227,7 +227,7 @@ dict_with_typx_keys: Dict[TypeForm, int] = {
                       # E: Dict entry 1 has incompatible type "str": "int"; expected "TypeForm[Any]": "int"
 }
 dict_with_typx_keys['int | str'] += 1  # N: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
-                                       # E: Invalid index type "str" for "Dict[TypeForm[Any], int]"; expected type "TypeForm[Any]"
+                                       # E: Invalid index type "str" for "dict[TypeForm[Any], int]"; expected type "TypeForm[Any]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -313,14 +313,14 @@ INT_T: Type[int] = int
 STR_T: Type[str] = str
 OBJECT_T: Type[object] = object
 ANY_T: Type = object
-reveal_type(ANY_T)  # N: Revealed type is "Type[Any]"
+reveal_type(ANY_T)  # N: Revealed type is "type[Any]"
 typx1: TypeForm[int | str] = INT_T
 typx2: TypeForm[int | str] = STR_T
-typx3: TypeForm[int | str] = OBJECT_T  # E: Incompatible types in assignment (expression has type "Type[object]", variable has type "TypeForm[Union[int, str]]")
+typx3: TypeForm[int | str] = OBJECT_T  # E: Incompatible types in assignment (expression has type "type[object]", variable has type "TypeForm[Union[int, str]]")
 typx4: TypeForm[int | str] = ANY_T  # no error
 typx5: TypeForm[int] = INT_T
-typx6: TypeForm[int] = STR_T  # E: Incompatible types in assignment (expression has type "Type[str]", variable has type "TypeForm[int]")
-typx7: TypeForm[int] = OBJECT_T  # E: Incompatible types in assignment (expression has type "Type[object]", variable has type "TypeForm[int]")
+typx6: TypeForm[int] = STR_T  # E: Incompatible types in assignment (expression has type "type[str]", variable has type "TypeForm[int]")
+typx7: TypeForm[int] = OBJECT_T  # E: Incompatible types in assignment (expression has type "type[object]", variable has type "TypeForm[int]")
 typx8: TypeForm[int] = ANY_T  # no error
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
@@ -336,16 +336,16 @@ STR_TF: TypeForm[str] = str
 OBJECT_TF: TypeForm[object] = object
 ANY_TF: TypeForm = object
 reveal_type(ANY_TF)  # N: Revealed type is "TypeForm[Any]"
-typ1: Type[int] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Union[int, str]]", variable has type "Type[int]")
-typ2: Type[int] = INT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int]", variable has type "Type[int]")
-typ3: Type[int] = STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[str]", variable has type "Type[int]")
-typ4: Type[int] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "Type[int]")
-typ5: Type[int] = ANY_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Any]", variable has type "Type[int]")
-typ6: Type[object] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Union[int, str]]", variable has type "Type[object]")
-typ7: Type[object] = INT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int]", variable has type "Type[object]")
-typ8: Type[object] = STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[str]", variable has type "Type[object]")
-typ9: Type[object] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "Type[object]")
-typ10: Type[object] = ANY_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Any]", variable has type "Type[object]")
+typ1: Type[int] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Union[int, str]]", variable has type "type[int]")
+typ2: Type[int] = INT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int]", variable has type "type[int]")
+typ3: Type[int] = STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[str]", variable has type "type[int]")
+typ4: Type[int] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "type[int]")
+typ5: Type[int] = ANY_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Any]", variable has type "type[int]")
+typ6: Type[object] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Union[int, str]]", variable has type "type[object]")
+typ7: Type[object] = INT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int]", variable has type "type[object]")
+typ8: Type[object] = STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[str]", variable has type "type[object]")
+typ9: Type[object] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "type[object]")
+typ10: Type[object] = ANY_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Any]", variable has type "type[object]")
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -360,10 +360,10 @@ INT_T: Type[int] = int
 STR_T: Type[str] = str
 OBJECT_T: Type[object] = object
 ANY_T: Type = object
-reveal_type(ANY_T)  # N: Revealed type is "Type[Any]"
+reveal_type(ANY_T)  # N: Revealed type is "type[Any]"
 typ1: Type[int] = INT_T
-typ2: Type[int] = STR_T  # E: Incompatible types in assignment (expression has type "Type[str]", variable has type "Type[int]")
-typ3: Type[int] = OBJECT_T  # E: Incompatible types in assignment (expression has type "Type[object]", variable has type "Type[int]")
+typ2: Type[int] = STR_T  # E: Incompatible types in assignment (expression has type "type[str]", variable has type "type[int]")
+typ3: Type[int] = OBJECT_T  # E: Incompatible types in assignment (expression has type "type[object]", variable has type "type[int]")
 typ4: Type[int] = ANY_T  # no error
 typ5: Type[object] = INT_T
 typ6: Type[object] = STR_T
@@ -454,7 +454,7 @@ class B(AB):
     pass
 A_T: Type[A] = A
 B_T: Type[B] = B
-reveal_type([A_T, B_T][0])  # N: Revealed type is "Type[__main__.AB]"
+reveal_type([A_T, B_T][0])  # N: Revealed type is "type[__main__.AB]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -495,7 +495,7 @@ class C(AB):
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass  # type: ignore[empty-body]
 def g(x: Type[B], y: TypeForm[B | C]) -> None: pass
-reveal_type(f(g))  # N: Revealed type is "Type[__main__.B]"
+reveal_type(f(g))  # N: Revealed type is "type[__main__.B]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -514,7 +514,7 @@ class C(AB):
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass  # type: ignore[empty-body]
 def g(x: TypeForm[A | B], y: Type[B]) -> None: pass
-reveal_type(f(g))  # N: Revealed type is "Type[__main__.B]"
+reveal_type(f(g))  # N: Revealed type is "type[__main__.B]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -533,7 +533,7 @@ class BC(TypedDict):
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass  # type: ignore[empty-body]
 def g(x: Type[AB], y: Type[BC]) -> None: pass
-reveal_type(f(g))  # N: Revealed type is "Type[TypedDict({'b': builtins.str, 'c': builtins.str, 'a': builtins.str})]"
+reveal_type(f(g))  # N: Revealed type is "type[TypedDict({'b': builtins.str, 'c': builtins.str, 'a': builtins.str})]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -550,8 +550,7 @@ reveal_type(tf2)  # N: Revealed type is "TypeForm[Union[builtins.int, builtins.s
 tf3: TypeForm = TypeForm(int | str)
 reveal_type(tf3)  # N: Revealed type is "TypeForm[Any]"
 tf4: TypeForm = TypeForm(1)  # E: Invalid type: try using Literal[1] instead?
-tf5: TypeForm = TypeForm(int) | TypeForm(str)  # E: Invalid self argument "TypeForm[int]" to attribute function "__or__" with type "Callable[[type, object], object]" \
-                                               # E: Incompatible types in assignment (expression has type "object", variable has type "TypeForm[Any]")
+tf5: TypeForm = TypeForm(int) | TypeForm(str)  # E: Incompatible types in assignment (expression has type "object", variable has type "TypeForm[Any]")
 tf6: TypeForm = TypeForm(TypeForm(int) | TypeForm(str))  # E: TypeForm argument is not a type
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
@@ -564,7 +563,7 @@ tf6: TypeForm = TypeForm(TypeForm(int) | TypeForm(str))  # E: TypeForm argument 
 from typing import TypeForm
 typx: TypeForm[str] = str
 if isinstance(typx, type):
-    reveal_type(typx)  # N: Revealed type is "Type[builtins.str]"
+    reveal_type(typx)  # N: Revealed type is "type[builtins.str]"
 else:
     reveal_type(typx)  # N: Revealed type is "TypeForm[builtins.str]"
 [builtins fixtures/tuple.pyi]
@@ -592,8 +591,8 @@ def as_type(typx: TypeForm[T]) -> Type[T] | None:
         return typx
     else:
         return None
-reveal_type(as_type(int | str))  # N: Revealed type is "Union[Type[builtins.int], Type[builtins.str], None]"
-reveal_type(as_type(int))  # N: Revealed type is "Union[Type[builtins.int], None]"
+reveal_type(as_type(int | str))  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], None]"
+reveal_type(as_type(int))  # N: Revealed type is "Union[type[builtins.int], None]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 

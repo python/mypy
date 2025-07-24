@@ -3157,7 +3157,7 @@ class TypeType(ProperType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeType):
             return NotImplemented
-        return self.item == other.item
+        return self.item == other.item and self.is_type_form == other.is_type_form
 
     def serialize(self) -> JsonDict:
         return {
