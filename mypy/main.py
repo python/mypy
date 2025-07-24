@@ -992,14 +992,6 @@ def process_options(
         group=error_group,
     )
     add_invertible_flag(
-        "--pretty",
-        default=False,
-        help="Use visually nicer output in error messages:"
-        " Use soft word wrap, show source code snippets,"
-        " and show error location markers",
-        group=error_group,
-    )
-    add_invertible_flag(
         "--no-color-output",
         dest="color_output",
         default=True,
@@ -1025,6 +1017,18 @@ def process_options(
         type=int,
         dest="many_errors_threshold",
         help=argparse.SUPPRESS,
+    )
+    error_group.add_argument(
+        '--no-pretty',
+        action='store_false',
+        dest='pretty',
+        help='Disable pretty error messages (pretty is now the default).'
+    )
+    error_group.add_argument(
+        '--pretty',
+        action='store_true',
+        dest='pretty',
+        help=argparse.SUPPRESS
     )
 
     incremental_group = parser.add_argument_group(
