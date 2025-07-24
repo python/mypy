@@ -73,7 +73,8 @@ class Mapper:
 
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
-            if typ.type.is_newtype:
+            if typ.type.is_newtype and len(typ.type.bases) == 1:
+                # I'm pretty sure this length check always returns True but am not positive and False would break things
                 # Unwrap NewType to its base type for rprimitive mapping
                 base_typeinfo = typ.type.bases[0].type
                 return self.type_to_rtype(Instance(base_typeinfo, []))
