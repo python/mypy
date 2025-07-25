@@ -293,10 +293,8 @@ def test():
     r3 :: tuple
     r4 :: native_int
     r5 :: bit
-    r6 :: native_int
-    r7 :: bit
-    r8, x, r9 :: str
-    r10 :: native_int
+    r6, x, r7 :: str
+    r8 :: native_int
     a :: tuple
 L0:
     r0 = 'abc'
@@ -304,20 +302,18 @@ L0:
     r1 = CPyStr_Size_size_t(source)
     r2 = r1 >= 0 :: signed
     r3 = PyTuple_New(r1)
-    r4 = CPyStr_Size_size_t(source)
-    r5 = r4 >= 0 :: signed
-    r6 = 0
+    r4 = 0
 L1:
-    r7 = r6 < r4 :: signed
-    if r7 goto L2 else goto L4 :: bool
+    r5 = r4 < r1 :: signed
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r8 = CPyStr_GetItemUnsafe(source, r6)
-    x = r8
-    r9 = f2(x)
-    CPySequenceTuple_SetItemUnsafe(r3, r6, r9)
+    r6 = CPyStr_GetItemUnsafe(source, r4)
+    x = r6
+    r7 = f2(x)
+    CPySequenceTuple_SetItemUnsafe(r3, r4, r7)
 L3:
-    r10 = r6 + 1
-    r6 = r10
+    r8 = r4 + 1
+    r4 = r8
     goto L1
 L4:
     a = r3
@@ -331,7 +327,6 @@ def test() -> None:
     source = b"abc"
     a = tuple(f2(x) for x in source)
 
-[builtins fixtures/ir.pyi]
 [out]
 def f2(val):
     val, r0 :: int
@@ -342,48 +337,47 @@ def test():
     r0, source :: bytes
     r1 :: native_int
     r2 :: tuple
-    r3, r4 :: native_int
-    r5, r6, r7 :: bit
-    r8, r9, r10, r11 :: int
-    r12 :: object
-    r13, x, r14 :: int
-    r15 :: object
-    r16 :: native_int
-    a :: object
+    r3 :: native_int
+    r4, r5, r6 :: bit
+    r7, r8, r9, r10 :: int
+    r11 :: object
+    r12, x, r13 :: int
+    r14 :: object
+    r15 :: native_int
+    a :: tuple
 L0:
     r0 = b'abc'
     source = r0
     r1 = var_object_size source
     r2 = PyTuple_New(r1)
-    r3 = var_object_size source
-    r4 = 0
+    r3 = 0
 L1:
-    r5 = r4 < r3 :: signed
-    if r5 goto L2 else goto L8 :: bool
+    r4 = r3 < r1 :: signed
+    if r4 goto L2 else goto L8 :: bool
 L2:
-    r6 = r4 <= 4611686018427387903 :: signed
-    if r6 goto L3 else goto L4 :: bool
+    r5 = r3 <= 4611686018427387903 :: signed
+    if r5 goto L3 else goto L4 :: bool
 L3:
-    r7 = r4 >= -4611686018427387904 :: signed
-    if r7 goto L5 else goto L4 :: bool
+    r6 = r3 >= -4611686018427387904 :: signed
+    if r6 goto L5 else goto L4 :: bool
 L4:
-    r8 = CPyTagged_FromInt64(r4)
-    r9 = r8
+    r7 = CPyTagged_FromInt64(r3)
+    r8 = r7
     goto L6
 L5:
-    r10 = r4 << 1
-    r9 = r10
+    r9 = r3 << 1
+    r8 = r9
 L6:
-    r11 = CPyBytes_GetItem(source, r9)
-    r12 = box(int, r11)
-    r13 = unbox(int, r12)
-    x = r13
-    r14 = f2(x)
-    r15 = box(int, r14)
-    CPySequenceTuple_SetItemUnsafe(r2, r4, r15)
+    r10 = CPyBytes_GetItem(source, r8)
+    r11 = box(int, r10)
+    r12 = unbox(int, r11)
+    x = r12
+    r13 = f2(x)
+    r14 = box(int, r13)
+    CPySequenceTuple_SetItemUnsafe(r2, r3, r14)
 L7:
-    r16 = r4 + 1
-    r4 = r16
+    r15 = r3 + 1
+    r3 = r15
     goto L1
 L8:
     a = r2
@@ -407,31 +401,30 @@ def test(source):
     source :: tuple
     r0 :: native_int
     r1 :: tuple
-    r2, r3 :: native_int
-    r4 :: bit
-    r5 :: object
-    r6, x, r7 :: bool
-    r8 :: object
-    r9 :: native_int
+    r2 :: native_int
+    r3 :: bit
+    r4 :: object
+    r5, x, r6 :: bool
+    r7 :: object
+    r8 :: native_int
     a :: tuple
 L0:
     r0 = var_object_size source
     r1 = PyTuple_New(r0)
-    r2 = var_object_size source
-    r3 = 0
+    r2 = 0
 L1:
-    r4 = r3 < r2 :: signed
-    if r4 goto L2 else goto L4 :: bool
+    r3 = r2 < r0 :: signed
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r5 = CPySequenceTuple_GetItemUnsafe(source, r3)
-    r6 = unbox(bool, r5)
-    x = r6
-    r7 = f(x)
-    r8 = box(bool, r7)
-    CPySequenceTuple_SetItemUnsafe(r1, r3, r8)
+    r4 = CPySequenceTuple_GetItemUnsafe(source, r2)
+    r5 = unbox(bool, r4)
+    x = r5
+    r6 = f(x)
+    r7 = box(bool, r6)
+    CPySequenceTuple_SetItemUnsafe(r1, r2, r7)
 L3:
-    r9 = r3 + 1
-    r3 = r9
+    r8 = r2 + 1
+    r2 = r8
     goto L1
 L4:
     a = r1
