@@ -356,9 +356,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         self._arg_infer_context_cache = None
         self.expr_cache: dict[
-            Expression,
-            dict[Type | None, tuple[int, Type, list[ErrorInfo], dict[Expression, Type]]],
-        ] = defaultdict(dict)
+            tuple[Expression, Type | None],
+            tuple[int, Type, list[ErrorInfo], dict[Expression, Type]],
+        ] = {}
         self.in_lambda_expr = False
 
     def reset(self) -> None:
@@ -5982,28 +5982,24 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         old_is_callee = self.is_callee
         self.is_callee = is_callee
         try:
-            if allow_none_return and isinstance(node, YieldFromExpr):
+            if allow_none_return and isinstance(node, CallExpr):
+                typ = self.visit_call_expr(node, allow_none_return=True)
+            elif allow_none_return and isinstance(node, YieldFromExpr):
                 typ = self.visit_yield_from_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, ConditionalExpr):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
             elif isinstance(node, CallExpr) and not self.in_lambda_expr:
-                if node in self.expr_cache and type_context in self.expr_cache[node]:
-                    binder_version, typ, messages, type_map = self.expr_cache[node][type_context]
+                if (node, type_context) in self.expr_cache:
+                    binder_version, typ, messages, type_map = self.expr_cache[(node, type_context)]
                     if binder_version == self.chk.binder.version:
                         self.chk.store_types(type_map)
                         self.msg.add_errors(messages)
                     else:
-                        typ = self.accept_maybe_cache(
-                            node, type_context=type_context, allow_none_return=allow_none_return
-                        )
+                        typ = self.accept_maybe_cache(node, type_context=type_context)
                 else:
-                    typ = self.accept_maybe_cache(
-                        node, type_context=type_context, allow_none_return=allow_none_return
-                    )
-            elif isinstance(node, CallExpr):
-                typ = self.visit_call_expr(node, allow_none_return=allow_none_return)
+                    typ = self.accept_maybe_cache(node, type_context=type_context)
             else:
                 typ = node.accept(self)
         except Exception as err:
@@ -6034,17 +6030,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.in_expression = False
         return result
 
-    def accept_maybe_cache(
-        self, node: CallExpr, type_context: Type | None = None, allow_none_return: bool = False
-    ) -> Type:
+    def accept_maybe_cache(self, node: CallExpr, type_context: Type | None = None) -> Type:
         binder_version = self.chk.binder.version
         type_map: dict[Expression, Type] = {}
         self.chk._type_maps.append(type_map)
-        with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as w:
-            typ = self.visit_call_expr(node, allow_none_return=allow_none_return)
-        messages = w.filtered_errors()
+        with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as msg:
+            typ = self.visit_call_expr(node)
+        messages = msg.filtered_errors()
         if binder_version == self.chk.binder.version and not self.chk.current_node_deferred:
-            self.expr_cache[node][type_context] = (binder_version, typ, messages, type_map)
+            self.expr_cache[(node, type_context)] = (binder_version, typ, messages, type_map)
         self.chk._type_maps.pop()
         self.chk.store_types(type_map)
         self.msg.add_errors(messages)
