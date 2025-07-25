@@ -1032,8 +1032,8 @@ Warn about top level await expressions [top-level-await]
 This error code is separate from the general ``[syntax]`` errors, because in
 some environments (e.g. IPython) a top level ``await`` is allowed. In such
 environments a user may want to use ``--disable-error-code=top-level-await``,
-that allows to still have errors for other improper uses of ``await``, for
-example:
+which allows one to still have errors for other improper uses of ``await``,
+for example:
 
 .. code-block:: python
 
