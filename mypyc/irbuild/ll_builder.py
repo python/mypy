@@ -2262,8 +2262,7 @@ class LowLevelIRBuilder:
         size_value = None
         if isinstance(typ, RTuple):
             return Integer(
-                len(typ.types),
-                c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive,
+                len(typ.types), c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive
             )
         elif is_list_rprimitive(typ) or is_tuple_rprimitive(typ) or is_bytes_rprimitive(typ):
             size_value = self.primitive_op(var_object_size, [val], line)
