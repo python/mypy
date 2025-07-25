@@ -2929,8 +2929,8 @@ def mix(fs: List[Callable[[S], T]]) -> Callable[[S], List[T]]:
 def id(__x: U) -> U:
     ...
 fs = [id, id, id]
-reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`7) -> builtins.list[S`7]"
-reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`9) -> builtins.list[S`9]"
+reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`2) -> builtins.list[S`2]"
+reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`4) -> builtins.list[S`4]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCurry]
@@ -3118,11 +3118,11 @@ def dec4_bound(f: Callable[[I], List[T]]) -> Callable[[I], T]:
 reveal_type(dec1(lambda x: x))  # N: Revealed type is "def [T] (T`3) -> builtins.list[T`3]"
 reveal_type(dec2(lambda x: x))  # N: Revealed type is "def [S] (S`5) -> builtins.list[S`5]"
 reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`8) -> S`8"
-reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`12) -> S`12"
+reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`11) -> S`11"
 reveal_type(dec1(lambda x: 1))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
 reveal_type(dec5(lambda x: x))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
-reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`20) -> builtins.list[S`20]"
-reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`24]) -> T`24"
+reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`19) -> builtins.list[S`19]"
+reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`23]) -> T`23"
 dec4_bound(lambda x: x)  # E: Value of type variable "I" of "dec4_bound" cannot be "list[T]"
 [builtins fixtures/list.pyi]
 
