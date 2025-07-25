@@ -133,18 +133,18 @@ def f(xs):
     r4, x :: str
     r5 :: native_int
 L0:
-    r0 = 0
+    r0 = var_object_size xs
+    r1 = 0
 L1:
-    r1 = var_object_size xs
-    r2 = r0 < r1 :: signed
+    r2 = r1 < r0 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = CPySequenceTuple_GetItemUnsafe(xs, r0)
+    r3 = CPySequenceTuple_GetItemUnsafe(xs, r1)
     r4 = cast(str, r3)
     x = r4
 L3:
-    r5 = r0 + 1
-    r0 = r5
+    r5 = r1 + 1
+    r1 = r5
     goto L1
 L4:
     return 1
@@ -291,8 +291,10 @@ def test():
     r1 :: native_int
     r2 :: bit
     r3 :: tuple
-    r4, r5 :: native_int
-    r6, r7 :: bit
+    r4 :: native_int
+    r5 :: bit
+    r6 :: native_int
+    r7 :: bit
     r8, x, r9 :: str
     r10 :: native_int
     a :: tuple
@@ -302,20 +304,20 @@ L0:
     r1 = CPyStr_Size_size_t(source)
     r2 = r1 >= 0 :: signed
     r3 = PyTuple_New(r1)
-    r4 = 0
+    r4 = CPyStr_Size_size_t(source)
+    r5 = r4 >= 0 :: signed
+    r6 = 0
 L1:
-    r5 = CPyStr_Size_size_t(source)
-    r6 = r5 >= 0 :: signed
-    r7 = r4 < r5 :: signed
+    r7 = r6 < r4 :: signed
     if r7 goto L2 else goto L4 :: bool
 L2:
-    r8 = CPyStr_GetItemUnsafe(source, r4)
+    r8 = CPyStr_GetItemUnsafe(source, r6)
     x = r8
     r9 = f2(x)
-    CPySequenceTuple_SetItemUnsafe(r3, r4, r9)
+    CPySequenceTuple_SetItemUnsafe(r3, r6, r9)
 L3:
-    r10 = r4 + 1
-    r4 = r10
+    r10 = r6 + 1
+    r6 = r10
     goto L1
 L4:
     a = r3
@@ -349,21 +351,21 @@ def test(source):
 L0:
     r0 = var_object_size source
     r1 = PyTuple_New(r0)
-    r2 = 0
+    r2 = var_object_size source
+    r3 = 0
 L1:
-    r3 = var_object_size source
-    r4 = r2 < r3 :: signed
+    r4 = r3 < r2 :: signed
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = CPySequenceTuple_GetItemUnsafe(source, r2)
+    r5 = CPySequenceTuple_GetItemUnsafe(source, r3)
     r6 = unbox(bool, r5)
     x = r6
     r7 = f(x)
     r8 = box(bool, r7)
-    CPySequenceTuple_SetItemUnsafe(r1, r2, r8)
+    CPySequenceTuple_SetItemUnsafe(r1, r3, r8)
 L3:
-    r9 = r2 + 1
-    r2 = r9
+    r9 = r3 + 1
+    r3 = r9
     goto L1
 L4:
     a = r1
