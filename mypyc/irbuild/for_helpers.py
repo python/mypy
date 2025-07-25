@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar, Optional
+from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
@@ -786,7 +786,7 @@ class ForSequence(ForGenerator):
     Supports iterating in both forward and reverse.
     """
 
-    length_reg: Optional[Value]
+    length_reg: Value | AssignmentTarget | None
 
     def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
         builder = self.builder
