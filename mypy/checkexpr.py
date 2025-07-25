@@ -5993,7 +5993,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Deeply nested generic calls can deteriorate performance dramatically.
             # Although in most cases caching makes little difference, in worst case
             # it avoids exponential complexity.
-            # TODO: figure out why caching within lambdas is fragile.
+            # We cannot use cache inside lambdas, because they skip immediate type
+            # context, and use enclosing one, see infer_lambda_type_using_context().
+            # TODO: consider using cache for more expression kinds.
             elif isinstance(node, (CallExpr, ListExpr, TupleExpr)) and not (
                 self.in_lambda_expr or self.chk.current_node_deferred
             ):

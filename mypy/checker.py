@@ -4001,7 +4001,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 for t, lv in zip(transposed, self.flatten_lvalues(lvalues)):
                     # We can access _type_maps directly since temporary type maps are
                     # only created within expressions.
-                    t.append(self._type_maps[0].pop(lv, AnyType(TypeOfAny.special_form)))
+                    t.append(self._type_maps[-1].pop(lv, AnyType(TypeOfAny.special_form)))
         union_types = tuple(make_simplified_union(col) for col in transposed)
         for expr, items in assignments.items():
             # Bind a union of types collected in 'assignments' to every expression.
