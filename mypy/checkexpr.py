@@ -5990,6 +5990,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
+            # Deeply nested generic calls can deteriorate performance dramatically.
+            # Although in most cases caching makes little difference, in worst case
+            # it avoids exponential complexity.
+            # TODO: figure out why caching within lambdas is fragile.
             elif isinstance(node, (CallExpr, ListExpr, TupleExpr)) and not (
                 self.in_lambda_expr or self.chk.current_node_deferred
             ):
@@ -6034,6 +6038,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def accept_maybe_cache(self, node: Expression, type_context: Type | None = None) -> Type:
         binder_version = self.chk.binder.version
+        # Micro-optimization: inline local_type_map() as it is somewhat slow in mypyc.
         type_map: dict[Expression, Type] = {}
         self.chk._type_maps.append(type_map)
         with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as msg:

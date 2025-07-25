@@ -3017,8 +3017,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.msg.unreachable_statement(s)
                     break
             else:
-                self.expr_checker.expr_cache.clear()
                 self.accept(s)
+                # Clear expression cache after each statement to avoid unlimited growth.
+                self.expr_checker.expr_cache.clear()
 
     def should_report_unreachable_issues(self) -> bool:
         return (
@@ -4659,6 +4660,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     ) -> None:
         """Replace the partial type of var with a non-partial type."""
         var.type = new_type
+        # Updating a partial type should invalidate expression caches.
         self.binder.version += 1
         del partial_types[var]
         if self.options.allow_redefinition_new:

@@ -137,6 +137,9 @@ class ConditionalTypeBinder:
         # is added to the binder. This allows more precise narrowing and more
         # flexible inference of variable types (--allow-redefinition-new).
         self.bind_all = options.allow_redefinition_new
+
+        # This tracks any externally visible changes in binder to invalidate
+        # expression caches when needed.
         self.version = 0
 
     def _get_id(self) -> int:
