@@ -519,16 +519,26 @@ def do_count(s: str) -> int:
 def do_count(s):
     s, r0 :: str
     r1 :: native_int
-    r2 :: bit
-    r3 :: object
-    r4 :: int
+    r2, r3, r4 :: bit
+    r5, r6, r7 :: int
 L0:
     r0 = 'x'
     r1 = CPyStr_Count(s, r0, 0)
     r2 = r1 >= 0 :: signed
-    r3 = box(native_int, r1)
-    r4 = unbox(int, r3)
-    return r4
+    r3 = r1 <= 4611686018427387903 :: signed
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = r1 >= -4611686018427387904 :: signed
+    if r4 goto L3 else goto L2 :: bool
+L2:
+    r5 = CPyTagged_FromInt64(r1)
+    r6 = r5
+    goto L4
+L3:
+    r7 = r1 << 1
+    r6 = r7
+L4:
+    return r6
 
 [case testCountStart]
 from typing import NewType, Union
@@ -542,16 +552,26 @@ def do_count(s, start):
     start :: int
     r0 :: str
     r1 :: native_int
-    r2 :: bit
-    r3 :: object
-    r4 :: int
+    r2, r3, r4 :: bit
+    r5, r6, r7 :: int
 L0:
     r0 = 'x'
     r1 = CPyStr_Count(s, r0, start)
     r2 = r1 >= 0 :: signed
-    r3 = box(native_int, r1)
-    r4 = unbox(int, r3)
-    return r4
+    r3 = r1 <= 4611686018427387903 :: signed
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = r1 >= -4611686018427387904 :: signed
+    if r4 goto L3 else goto L2 :: bool
+L2:
+    r5 = CPyTagged_FromInt64(r1)
+    r6 = r5
+    goto L4
+L3:
+    r7 = r1 << 1
+    r6 = r7
+L4:
+    return r6
 
 [case testCountStartEnd]
 from typing import NewType, Union
@@ -565,13 +585,24 @@ def do_count(s, start, end):
     start, end :: int
     r0 :: str
     r1 :: native_int
-    r2 :: bit
-    r3 :: object
-    r4 :: int
+    r2, r3, r4 :: bit
+    r5, r6, r7 :: int
 L0:
     r0 = 'x'
     r1 = CPyStr_CountFull(s, r0, start, end)
     r2 = r1 >= 0 :: signed
-    r3 = box(native_int, r1)
-    r4 = unbox(int, r3)
-    return r4
+    r3 = r1 <= 4611686018427387903 :: signed
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = r1 >= -4611686018427387904 :: signed
+    if r4 goto L3 else goto L2 :: bool
+L2:
+    r5 = CPyTagged_FromInt64(r1)
+    r6 = r5
+    goto L4
+L3:
+    r7 = r1 << 1
+    r6 = r7
+L4:
+    return r6
+
