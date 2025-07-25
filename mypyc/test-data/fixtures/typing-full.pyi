@@ -6,6 +6,7 @@
 # Many of the definitions have special handling in the type checker, so they
 # can just be initialized to anything.
 
+import collections
 from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
@@ -175,3 +176,5 @@ class _TypedDict(Mapping[str, object]):
 
 class TypeAliasType:
     pass
+
+def final(f: T) -> T: pass
