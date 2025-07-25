@@ -82,8 +82,7 @@ def run_cmd(input: str) -> tuple[int, str]:
     is_pretty_test = "# NO-MODIFY" in input
     modified_input = input.replace('# NO-MODIFY', '').strip()
     cond1 = '--pretty' not in modified_input
-    cond2 = modified_input.startswith("dmypy run") or \
-            modified_input.startswith("dmypy check ")
+    cond2 = modified_input.startswith(("dmypy run", "dmypy check"))
     cond3 = not is_pretty_test
     if cond1 and cond2 and cond3:
         parts = modified_input.split(' ', 2)
