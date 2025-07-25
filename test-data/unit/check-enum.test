@@ -2635,3 +2635,28 @@ reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[__main__.Wrapper
 reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.ellipsis"
 reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
 [builtins fixtures/enum.pyi]
+
+[case testValueFallbackWithCachedMethod]
+from enum import Enum, auto
+from collections.abc import Hashable
+from typing import Callable, Generic, TypeVar
+
+_T = TypeVar("_T")
+
+class _lru_cache_wrapper(Generic[_T]):
+    def __call__(self, *args: Hashable, **kwargs: Hashable) -> _T: ...
+
+def cache(user_function: Callable[..., _T], /) -> _lru_cache_wrapper[_T]: ...
+
+class Color(Enum):
+    RED = auto()
+
+    @cache
+    def lowercase_name(self) -> str:
+        return self.name
+
+reveal_type(Color.RED.value)  # N: Revealed type is "builtins.int"
+
+def frobnicate(color: Color) -> None:
+    reveal_type(color.value)  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]
