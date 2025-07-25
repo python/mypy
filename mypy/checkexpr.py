@@ -5990,7 +5990,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
-            elif isinstance(node, (CallExpr, ListExpr, TupleExpr)) and not self.in_lambda_expr:
+            elif isinstance(node, (CallExpr, ListExpr, TupleExpr)) and not (
+                self.in_lambda_expr or self.chk.current_node_deferred
+            ):
                 if (node, type_context) in self.expr_cache:
                     binder_version, typ, messages, type_map = self.expr_cache[(node, type_context)]
                     if binder_version == self.chk.binder.version:

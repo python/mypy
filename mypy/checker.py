@@ -448,7 +448,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.binder = ConditionalTypeBinder(self.options)
         self._type_maps[1:] = []
         self._type_maps[0].clear()
-        self.temp_type_map = None
         self.expr_checker.reset()
         self.deferred_nodes = []
         self.partial_types = []
