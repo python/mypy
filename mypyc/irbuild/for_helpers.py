@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, Optional
 
 from mypy.nodes import (
     ARG_POS,
@@ -787,6 +787,8 @@ class ForSequence(ForGenerator):
     Supports iterating in both forward and reverse.
     """
 
+    length_reg: Optional[Value]
+
     def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
         builder = self.builder
         self.reverse = reverse
@@ -798,7 +800,6 @@ class ForSequence(ForGenerator):
             is_tuple_rprimitive(expr_reg.type)
             or is_str_rprimitive(expr_reg.type)
             or is_bytes_rprimitive(expr_reg.type)
-            or is_frozenset_rprimitive(expr_reg.type)
         ):
             self.length_reg = builder.maybe_spill(self.load_len(self.expr_target))
         else:
