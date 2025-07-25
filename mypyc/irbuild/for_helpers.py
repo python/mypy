@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, Optional,
 
 from mypy.nodes import (
     ARG_POS,
@@ -20,7 +20,6 @@ from mypy.nodes import (
     Lvalue,
     MemberExpr,
     NameExpr,
-    Optional,
     RefExpr,
     SetExpr,
     StrExpr,
@@ -1200,7 +1199,7 @@ def get_expr_length(expr: Expression) -> Optional[int]:
 
 
 def get_expr_length_value(
-    builder: IRBuilder, expr: Expression, expr_reg, line: int, use_pyssize_t: bool
+    builder: IRBuilder, expr: Expression, expr_reg: Value, line: int, use_pyssize_t: bool
 ) -> Value:
     rtype = builder.node_type(expr)
     assert is_sequence_rprimitive(rtype), rtype
