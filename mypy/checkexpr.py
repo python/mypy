@@ -5990,7 +5990,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
-            elif isinstance(node, CallExpr) and not self.in_lambda_expr:
+            elif isinstance(node, (CallExpr, ListExpr, TupleExpr)) and not self.in_lambda_expr:
                 if (node, type_context) in self.expr_cache:
                     binder_version, typ, messages, type_map = self.expr_cache[(node, type_context)]
                     if binder_version == self.chk.binder.version:
@@ -6030,12 +6030,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.in_expression = False
         return result
 
-    def accept_maybe_cache(self, node: CallExpr, type_context: Type | None = None) -> Type:
+    def accept_maybe_cache(self, node: Expression, type_context: Type | None = None) -> Type:
         binder_version = self.chk.binder.version
         type_map: dict[Expression, Type] = {}
         self.chk._type_maps.append(type_map)
         with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as msg:
-            typ = self.visit_call_expr(node)
+            typ = node.accept(self)
         messages = msg.filtered_errors()
         if binder_version == self.chk.binder.version and not self.chk.current_node_deferred:
             self.expr_cache[(node, type_context)] = (binder_version, typ, messages, type_map)
