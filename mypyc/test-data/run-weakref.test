@@ -1,0 +1,42 @@
+# Test cases for weakrefs (compile and run)
+
+[case testWeakrefRef]
+import pytest  # type: ignore [import-not-found]
+from weakref import proxy, ref
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Object:
+    """some random weakreffable object"""
+    def some_meth(self) -> int:
+        return 1
+
+def test_weakref_ref():
+    obj = Object()
+    r = ref(obj)
+    assert r() is obj
+    obj = None
+    assert r() is None, r()
+
+def test_weakref_ref_with_callback():
+    obj = Object()
+    r = ref(obj, lambda x: x)
+    assert r() is obj
+    obj = None
+    assert r() is None, r()
+
+def test_weakref_proxy():
+    obj = Object()
+    p = proxy(obj)
+    assert p.some_meth() == 1
+    obj = None
+    with pytest.raises(ReferenceError):
+        p.some_meth()
+
+def test_weakref_proxy_with_callback():
+    obj = Object()
+    p = proxy(obj, lambda x: x)
+    assert p.some_meth() == 1
+    obj = None
+    with pytest.raises(ReferenceError):
+        p.some_meth()
