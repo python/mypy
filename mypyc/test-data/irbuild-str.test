@@ -510,11 +510,11 @@ L0:
     return 1
 
 [case testCountAll]
-#from typing import NewType, Union
-#NewStr = NewType("NewStr", str)
+from typing import NewType, Union
+NewStr = NewType("NewStr", str)
 def do_count(s: str) -> int:
     return s.count("x")  # type: ignore [attr-defined]
-#[typing fixtures/typing-full.pyi]
+[builtins fixtures/string.pyi]
 [out]
 def do_count(s):
     s, r0 :: str
@@ -531,11 +531,11 @@ L0:
     return r4
 
 [case testCountStart]
-#from typing import NewType, Union
-#NewStr = NewType("NewStr", str)
+from typing import NewType, Union
+NewStr = NewType("NewStr", str)
 def do_count(s: str, start: int) -> int:
     return s.count("x", start)  # type: ignore [attr-defined]
-#[typing fixtures/typing-full.pyi]
+[builtins fixtures/string.pyi]
 [out]
 def do_count(s, start):
     s :: str
@@ -554,11 +554,11 @@ L0:
     return r4
 
 [case testCountStartEnd]
-#from typing import NewType, Union
-#NewStr = NewType("NewStr", str)
+from typing import NewType, Union
+NewStr = NewType("NewStr", str)
 def do_count(s: str, start: int, end: int) -> int:
     return s.count("x", start, end)  # type: ignore [attr-defined]
-#[typing fixtures/typing-full.pyi]
+[builtins fixtures/string.pyi]
 [out]
 def do_count(s, start, end):
     s :: str
