@@ -221,7 +221,7 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
             else:
                 borrow = False
             obj = builder.accept(arg, can_borrow=borrow)
-            return builder.builder.builtin_len(obj, expr.line)
+            return builder.builtin_len(obj, expr.line)
     return None
 
 
