@@ -2260,7 +2260,12 @@ class LowLevelIRBuilder:
         """
         typ = val.type
         size_value = None
-        if is_list_rprimitive(typ) or is_tuple_rprimitive(typ) or is_bytes_rprimitive(typ):
+        if isinstance(typ, RTuple):
+            return Integer(
+                len(typ.types),
+                c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive,
+            )
+        elif is_list_rprimitive(typ) or is_tuple_rprimitive(typ) or is_bytes_rprimitive(typ):
             size_value = self.primitive_op(var_object_size, [val], line)
         elif is_set_rprimitive(typ) or is_frozenset_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))
