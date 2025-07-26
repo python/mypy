@@ -1025,10 +1025,10 @@ def reprocess_nodes(
     # We seem to need additional passes in fine-grained incremental mode.
     checker.pass_num = 0
     checker.last_pass = 3
-    more = checker.check_second_pass(nodes)
+    more = checker.check_second_pass(nodes, allow_constructor_cache=False)
     while more:
         more = False
-        if graph[module_id].type_checker().check_second_pass():
+        if graph[module_id].type_checker().check_second_pass(allow_constructor_cache=False):
             more = True
 
     if manager.options.export_types:
