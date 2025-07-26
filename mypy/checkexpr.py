@@ -3468,7 +3468,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # It's actually a type expression X | Y.
             return self.accept(e.analyzed)
         if e.op == "and" or e.op == "or":
-            return self.check_boolean_op(e, e)
+            return self.check_boolean_op(e)
         if e.op == "*" and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
@@ -4255,20 +4255,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 context=context,
             )
 
-    def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
+    def check_boolean_op(self, e: OpExpr) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
 
         # A boolean operation can evaluate to either of the operands.
 
-        # We use the current type context to guide the type inference of of
+        # We use the current type context to guide the type inference of
         # the left operand. We also use the left operand type to guide the type
         # inference of the right operand so that expressions such as
         # '[1] or []' are inferred correctly.
         ctx = self.type_context[-1]
         left_type = self.accept(e.left, ctx)
-        expanded_left_type = try_expanding_sum_type_to_union(
-            self.accept(e.left, ctx), "builtins.bool"
-        )
+        expanded_left_type = try_expanding_sum_type_to_union(left_type, "builtins.bool")
 
         assert e.op in ("and", "or")  # Checked by visit_op_expr
 
