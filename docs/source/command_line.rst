@@ -910,10 +910,10 @@ in error messages.
 
     See :ref:`error-codes` for more information.
 
-.. option:: --pretty
+.. option:: --no-pretty
 
-    Use visually nicer output in error messages: use soft word wrap,
-    show source code snippets, and show error location markers.
+    Disable pretty error messages and use the old, plain output format.
+    Pretty-printing is enable by default.
 
 .. option:: --no-color-output
 
