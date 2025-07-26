@@ -24,11 +24,15 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 {
     // Do a send, or a next if second arg is None.
     // (This behavior is to match the PEP 380 spec for yield from.)
-    _Py_IDENTIFIER(send);
     if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
-        return _PyObject_CallMethodIdOneArg(iter, &PyId_send, val);
+        _Py_IDENTIFIER(send);
+        PyObject *name = _PyUnicode_FromId(&PyId_send); /* borrowed */
+        if (name == NULL) {
+            return NULL;
+        }
+        return PyObject_CallMethodOneArg(iter, name, val);
     }
 }
 
@@ -1025,6 +1029,34 @@ PyObject *CPy_GetANext(PyObject *aiter)
 error:
     return NULL;
 }
+
+#ifdef MYPYC_LOG_TRACE
+
+// This is only compiled in if trace logging is enabled by user
+
+static int TraceCounter = 0;
+static const int TRACE_EVERY_NTH = 1009;  // Should be a prime number
+#define TRACE_LOG_FILE_NAME "mypyc_trace.txt"
+static FILE *TraceLogFile = NULL;
+
+// Log a tracing event on every Nth call
+void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details) {
+    if (TraceLogFile == NULL) {
+        if ((TraceLogFile = fopen(TRACE_LOG_FILE_NAME, "w")) == NULL) {
+            fprintf(stderr, "error: Could not open trace file %s\n", TRACE_LOG_FILE_NAME);
+            abort();
+        }
+    }
+    if (TraceCounter == 0) {
+        fprintf(TraceLogFile, "%s:%s:%s:%s\n", location, line, op, details);
+    }
+    TraceCounter++;
+    if (TraceCounter == TRACE_EVERY_NTH) {
+        TraceCounter = 0;
+    }
+}
+
+#endif
 
 #ifdef CPY_3_12_FEATURES
 

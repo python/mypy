@@ -61,6 +61,7 @@ files = [
     "run-classes.test",
     "run-traits.test",
     "run-generators.test",
+    "run-generics.test",
     "run-multimodule.test",
     "run-bench.test",
     "run-mypy-sim.test",
@@ -68,6 +69,7 @@ files = [
     "run-dunders-special.test",
     "run-singledispatch.test",
     "run-attrs.test",
+    "run-signatures.test",
     "run-python37.test",
     "run-python38.test",
 ]
@@ -234,7 +236,7 @@ class TestRun(MypycDataSuite):
             else False
         )
 
-        groups = construct_groups(sources, separate, len(module_names) > 1)
+        groups = construct_groups(sources, separate, len(module_names) > 1, None)
 
         try:
             compiler_options = CompilerOptions(
@@ -250,7 +252,7 @@ class TestRun(MypycDataSuite):
                 alt_lib_path=".",
             )
             errors = Errors(options)
-            ir, cfiles = emitmodule.compile_modules_to_c(
+            ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
             if errors.num_errors:
@@ -344,7 +346,7 @@ class TestRun(MypycDataSuite):
                     f'hint: Use "pytest -n0 -s --mypyc-debug={debugger} -k <name-substring>" to run test in debugger'
                 )
                 print("hint: You may need to build a debug version of Python first and use it")
-                print('hint: See also "Debuggging Segfaults" in mypyc/doc/dev-intro.md')
+                print('hint: See also "Debugging Segfaults" in mypyc/doc/dev-intro.md')
             copy_output_files(mypyc_output_dir)
 
         # Verify output.

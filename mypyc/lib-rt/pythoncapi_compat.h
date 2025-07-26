@@ -34,6 +34,7 @@ extern "C" {
 #  define _Py_CAST(type, expr) ((type)(expr))
 #endif
 
+#ifndef _Py_NULL
 // Static inline functions should use _Py_NULL rather than using directly NULL
 // to prevent C++ compiler warnings. On C23 and newer and on C++11 and newer,
 // _Py_NULL is defined as nullptr.
@@ -42,6 +43,7 @@ extern "C" {
 #  define _Py_NULL nullptr
 #else
 #  define _Py_NULL NULL
+#endif
 #endif
 
 // Cast argument to PyObject* type.

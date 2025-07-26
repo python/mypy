@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
+RECURSION_LIMIT: Final = 2**14
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -76,7 +77,7 @@ def main(
     util.check_python_version("mypy")
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    sys.setrecursionlimit(2**14)
+    sys.setrecursionlimit(RECURSION_LIMIT)
     if args is None:
         args = sys.argv[1:]
 
@@ -92,6 +93,13 @@ def main(
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
+
+    if options.allow_redefinition_new and not options.local_partial_types:
+        fail(
+            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
+            stderr,
+            options,
+        )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -241,8 +249,8 @@ def show_messages(
 
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=28)
+    def __init__(self, prog: str, **kwargs: Any) -> None:
+        super().__init__(prog=prog, max_help_position=28, **kwargs)
 
     def _fill_text(self, text: str, width: int, indent: str) -> str:
         if "\n" in text:
@@ -483,6 +491,8 @@ def process_options(
         stdout=stdout,
         stderr=stderr,
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
 
     strict_flag_names: list[str] = []
     strict_flag_assignments: list[tuple[str, bool]] = []
@@ -525,8 +535,27 @@ def process_options(
     # their `dest` prefixed with `special-opts:`, which will cause them to be
     # parsed into the separate special_opts namespace object.
 
-    # Note: we have a style guide for formatting the mypy --help text. See
-    # https://github.com/python/mypy/wiki/Documentation-Conventions
+    # Our style guide for formatting the output of running `mypy --help`:
+    # Flags:
+    # 1.  The flag help text should start with a capital letter but never end with a period.
+    # 2.  Keep the flag help text brief -- ideally just a single sentence.
+    # 3.  All flags must be a part of a group, unless the flag is deprecated or suppressed.
+    # 4.  Avoid adding new flags to the "miscellaneous" groups -- instead add them to an
+    #     existing group or, if applicable, create a new group. Feel free to move existing
+    #     flags to a new group: just be sure to also update the documentation to match.
+    #
+    # Groups:
+    # 1.  The group title and description should start with a capital letter.
+    # 2.  The first sentence of a group description should be written in the bare infinitive.
+    #     Tip: try substituting the group title and description into the following sentence:
+    #     > {group_title}: these flags will {group_description}
+    #     Feel free to add subsequent sentences that add additional details.
+    # 3.  If you cannot think of a meaningful description for a new group, omit it entirely.
+    #     (E.g. see the "miscellaneous" sections).
+    # 4.  The group description should end with a period (unless the last line is a link). If you
+    #     do end the group description with a link, omit the 'http://' prefix. (Some links are too
+    #     long and will break up into multiple lines if we include that prefix, so for consistency
+    #     we omit the prefix on all links.)
 
     general_group = parser.add_argument_group(title="Optional arguments")
     general_group.add_argument(
@@ -756,7 +785,7 @@ def process_options(
         title="None and Optional handling",
         description="Adjust how values of type 'None' are handled. For more context on "
         "how mypy handles values of type 'None', see: "
-        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional",
+        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#optional-types-and-the-none-type",
     )
     add_invertible_flag(
         "--implicit-optional",
@@ -772,6 +801,7 @@ def process_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
+    # This flag is deprecated, Mypy only supports Python 3.9+
     add_invertible_flag(
         "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
     )
@@ -826,6 +856,14 @@ def process_options(
         help="Report importing or using deprecated features as notes instead of errors",
         group=lint_group,
     )
+    lint_group.add_argument(
+        "--deprecated-calls-exclude",
+        metavar="MODULE",
+        action="append",
+        default=[],
+        help="Disable deprecated warnings for functions/methods coming"
+        " from specific package, module, or class",
+    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -848,7 +886,15 @@ def process_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
-        help="Allow unconditional variable redefinition with a new type",
+        help="Allow restricted, unconditional variable redefinition with a new type",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-new",
+        default=False,
+        strict_flag=False,
+        help=argparse.SUPPRESS,  # This is still very experimental
         group=strictness_group,
     )
 
@@ -872,7 +918,7 @@ def process_options(
     add_invertible_flag(
         "--strict-bytes",
         default=False,
-        strict_flag=False,
+        strict_flag=True,
         help="Disable treating bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
@@ -1100,6 +1146,16 @@ def process_options(
                 dest=f"special-opts:{report_type}_report",
             )
 
+    # Undocumented mypyc feature: generate annotated HTML source file
+    report_group.add_argument(
+        "-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS
+    )
+    # Hidden mypyc feature: do not write any C files (keep existing ones and assume they exist).
+    # This can be useful when debugging mypyc bugs.
+    report_group.add_argument(
+        "--skip-c-gen", dest="mypyc_skip_c_generation", action="store_true", help=argparse.SUPPRESS
+    )
+
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
     other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
@@ -1244,6 +1300,15 @@ def process_options(
             "May be specified more than once, eg. --exclude a --exclude b"
         ),
     )
+    add_invertible_flag(
+        "--exclude-gitignore",
+        default=False,
+        help=(
+            "Use .gitignore file(s) to exclude files from checking "
+            "(in addition to any explicit --exclude if present)"
+        ),
+        group=code_group,
+    )
     code_group.add_argument(
         "-m",
         "--module",
@@ -1369,6 +1434,7 @@ def process_options(
         )
 
     validate_package_allow_list(options.untyped_calls_exclude)
+    validate_package_allow_list(options.deprecated_calls_exclude)
 
     options.process_error_codes(error_callback=parser.error)
     options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
@@ -1405,9 +1471,7 @@ def process_options(
         process_cache_map(parser, special_opts, options)
 
     # Process --strict-bytes
-    if options.strict_bytes:
-        options.disable_bytearray_promotion = True
-        options.disable_memoryview_promotion = True
+    options.process_strict_bytes()
 
     # An explicitly specified cache_fine_grained implies local_partial_types
     # (because otherwise the cache is not compatible with dmypy)
@@ -1430,6 +1494,9 @@ def process_options(
 
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
+
+    if options.force_uppercase_builtins:
+        print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:

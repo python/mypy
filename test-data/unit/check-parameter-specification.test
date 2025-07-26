@@ -921,8 +921,8 @@ class A:
     def func(self, action: Callable[_P, _R], *args: _P.args, **kwargs: _P.kwargs) -> _R:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`6, *_P.args, **_P.kwargs) -> _R`6"
-reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`10, *_P.args, **_P.kwargs) -> _R`10"
+reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`4, *_P.args, **_P.kwargs) -> _R`4"
+reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`8, *_P.args, **_P.kwargs) -> _R`8"
 
 def f(x: int) -> int:
     ...
@@ -953,8 +953,8 @@ class A:
     def func(self, action: Job[_P, None]) -> Job[_P, None]:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
-reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`6, None]) -> __main__.Job[_P`6, None]"
+reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`3, None]) -> __main__.Job[_P`3, None]"
+reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`5, None]) -> __main__.Job[_P`5, None]"
 reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
 
 def f(x: int, y: int) -> None: ...
@@ -1276,8 +1276,8 @@ def c3(f: Callable[P, int], *args, **kwargs) -> int: ...
 # It is ok to define,
 def c4(f: Callable[P, int], *args: int, **kwargs: str) -> int:
     # but not ok to call:
-    f(*args, **kwargs)  # E: Argument 1 has incompatible type "*Tuple[int, ...]"; expected "P.args" \
-                        # E: Argument 2 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    f(*args, **kwargs)  # E: Argument 1 has incompatible type "*tuple[int, ...]"; expected "P.args" \
+                        # E: Argument 2 has incompatible type "**dict[str, str]"; expected "P.kwargs"
     return 1
 
 def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
@@ -1306,8 +1306,8 @@ def c3(f: Callable[Concatenate[int, P], int], *args, **kwargs) -> int: ...
 # It is ok to define,
 def c4(f: Callable[Concatenate[int, P], int], *args: int, **kwargs: str) -> int:
     # but not ok to call:
-    f(1, *args, **kwargs)  # E: Argument 2 has incompatible type "*Tuple[int, ...]"; expected "P.args" \
-                           # E: Argument 3 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    f(1, *args, **kwargs)  # E: Argument 2 has incompatible type "*tuple[int, ...]"; expected "P.args" \
+                           # E: Argument 3 has incompatible type "**dict[str, str]"; expected "P.kwargs"
     return 1
 
 def f1(f: Callable[Concatenate[int, P], int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
@@ -2135,7 +2135,7 @@ def d(f: Callable[P, None], fn: Callable[Concatenate[Callable[P, None], P], None
 
 reveal_type(d(a, f1))  # N: Revealed type is "def (i: builtins.int)"
 reveal_type(d(a, f2))  # N: Revealed type is "def (i: builtins.int)"
-reveal_type(d(b, f1))  # E: Cannot infer type argument 1 of "d" \
+reveal_type(d(b, f1))  # E: Cannot infer value of type parameter "P" of "d" \
                        # N: Revealed type is "def (*Any, **Any)"
 reveal_type(d(b, f2))  # N: Revealed type is "def (builtins.int)"
 [builtins fixtures/paramspec.pyi]
@@ -2409,19 +2409,19 @@ def run2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
     func2 = partial(func, **kwargs)
     p = [""]
     func2(1, *p)  # E: Too few arguments \
-                  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
+                  # E: Argument 2 has incompatible type "*list[str]"; expected "P.args"
     func2(1, 2, *p)  # E: Too few arguments \
                      # E: Argument 2 has incompatible type "int"; expected "P.args" \
-                     # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
-    func2(1, *args, *p)  # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
-    func2(1, *p, *args)  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
+                     # E: Argument 3 has incompatible type "*list[str]"; expected "P.args"
+    func2(1, *args, *p)  # E: Argument 3 has incompatible type "*list[str]"; expected "P.args"
+    func2(1, *p, *args)  # E: Argument 2 has incompatible type "*list[str]"; expected "P.args"
     return func2(1, *args)
 
 def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
     d = {"":""}
     func2(**d)  # E: Too few arguments \
-                # E: Argument 1 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+                # E: Argument 1 has incompatible type "**dict[str, str]"; expected "P.kwargs"
     return func2(**kwargs)
 
 def run4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
@@ -2474,7 +2474,7 @@ def run(func: Callable[Concatenate[int, str, P], T], *args: P.args, **kwargs: P.
     func2(*args_prefix)  # E: Too few arguments
     func2(*args, *args_prefix)  # E: Argument 1 has incompatible type "*P.args"; expected "int" \
                                 # E: Argument 1 has incompatible type "*P.args"; expected "str" \
-                                # E: Argument 2 has incompatible type "*Tuple[int, str]"; expected "P.args"
+                                # E: Argument 2 has incompatible type "*tuple[int, str]"; expected "P.args"
     return func2(*args_prefix, *args)
 
 [builtins fixtures/paramspec.pyi]
@@ -2559,4 +2559,47 @@ class ServerErrorMiddleware(App):
 def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
 
 reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: Union[builtins.str, None] =, debug: builtins.bool =]]"
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecDuplicateArgsKwargs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, Union
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    predicate(*args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(*args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(*args, *args, **kwargs, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                                 # E: ParamSpec.kwargs should only be passed once
+    copy_args = args
+    copy_kwargs = kwargs
+    predicate(*args, *copy_args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(*copy_args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(*args, **copy_kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(*args, **kwargs, **copy_kwargs)  # E: ParamSpec.kwargs should only be passed once
+
+def run2(predicate: Callable[Concatenate[int, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    predicate(*args, *args, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                       # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(*args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once \
+                                          # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(1, *args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(1, *args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(1, *args, *args, **kwargs, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                                    # E: ParamSpec.kwargs should only be passed once
+    copy_args = args
+    copy_kwargs = kwargs
+    predicate(1, *args, *copy_args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(1, *copy_args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(1, *args, **copy_kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(1, *args, **kwargs, **copy_kwargs)  # E: ParamSpec.kwargs should only be passed once
+
+def run3(predicate: Callable[Concatenate[int, str, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    base_ok: tuple[int, str]
+    predicate(*base_ok, *args, **kwargs)
+    base_bad: tuple[Union[int, str], ...]
+    predicate(*base_bad, *args, **kwargs)  # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "int" \
+                                           # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "str" \
+                                           # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "_P.args"
 [builtins fixtures/paramspec.pyi]

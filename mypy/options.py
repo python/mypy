@@ -4,6 +4,7 @@ import pprint
 import re
 import sys
 import sysconfig
+import warnings
 from collections.abc import Mapping
 from re import Pattern
 from typing import Any, Callable, Final
@@ -22,6 +23,7 @@ class BuildType:
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
     "allow_redefinition",
+    "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
     "always_true",
@@ -136,6 +138,7 @@ class Options:
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
         self.exclude: list[str] = []
+        self.exclude_gitignore: bool = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -182,6 +185,10 @@ class Options:
         # Report importing or using deprecated features as errors instead of notes.
         self.report_deprecated_as_note = False
 
+        # Allow deprecated calls from function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.deprecated_calls_exclude: list[str] = []
+
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
@@ -213,6 +220,10 @@ class Options:
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
         self.allow_redefinition = False
+
+        # Allow flexible variable redefinition with an arbitrary type, in different
+        # blocks and and at different nesting levels
+        self.allow_redefinition_new = False
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
@@ -390,16 +401,26 @@ class Options:
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
+        # Deprecated, Mypy only supports Python 3.9+
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
 
+        # Output html file for mypyc -a
+        self.mypyc_annotation_file: str | None = None
+        # Skip writing C output files, but perform all other steps of a build (allows
+        # preserving manual tweaks to generated C file)
+        self.mypyc_skip_c_generation = False
+
     def use_lowercase_names(self) -> bool:
-        if self.python_version >= (3, 9):
-            return not self.force_uppercase_builtins
-        return False
+        warnings.warn(
+            "options.use_lowercase_names() is deprecated and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return True
 
     def use_or_syntax(self) -> bool:
         if self.python_version >= (3, 10):
@@ -449,6 +470,16 @@ class Options:
                 error_callback(f"Unknown incomplete feature: {feature}")
             if feature in COMPLETE_FEATURES:
                 warning_callback(f"Warning: {feature} is already enabled by default")
+
+    def process_strict_bytes(self) -> None:
+        # Sync `--strict-bytes` and `--disable-{bytearray,memoryview}-promotion`
+        if self.strict_bytes:
+            # backwards compatibility
+            self.disable_bytearray_promotion = True
+            self.disable_memoryview_promotion = True
+        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
+            # forwards compatibility
+            self.strict_bytes = True
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.

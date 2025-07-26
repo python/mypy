@@ -28,6 +28,14 @@ _CONFIG_VALUE_TYPES: _TypeAlias = Union[
 _INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 
+class VersionTypeError(argparse.ArgumentTypeError):
+    """Provide a fallback value if the Python version is unsupported."""
+
+    def __init__(self, *args: Any, fallback: tuple[int, int]) -> None:
+        self.fallback = fallback
+        super().__init__(*args)
+
+
 def parse_version(v: str | float) -> tuple[int, int]:
     m = re.match(r"\A(\d)\.(\d+)\Z", str(v))
     if not m:
@@ -44,7 +52,7 @@ def parse_version(v: str | float) -> tuple[int, int]:
             if isinstance(v, float):
                 msg += ". You may need to put quotes around your Python version"
 
-            raise argparse.ArgumentTypeError(msg)
+            raise VersionTypeError(msg, fallback=defaults.PYTHON3_VERSION_MIN)
     else:
         raise argparse.ArgumentTypeError(
             f"Python major version '{major}' out of range (must be 3)"
@@ -55,8 +63,10 @@ def parse_version(v: str | float) -> tuple[int, int]:
 def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
     """Split and trim a str or list of str into a list of str"""
     if isinstance(v, str):
-        return [p.strip() for p in re.split(split_regex, v)]
-
+        items = [p.strip() for p in re.split(split_regex, v)]
+        if items and items[-1] == "":
+            items.pop(-1)
+        return items
     return [p.strip() for p in v]
 
 
@@ -546,6 +556,9 @@ def parse_section(
                     continue
                 try:
                     v = ct(section.get(key))
+                except VersionTypeError as err_version:
+                    print(f"{prefix}{key}: {err_version}", file=stderr)
+                    v = err_version.fallback
                 except argparse.ArgumentTypeError as err:
                     print(f"{prefix}{key}: {err}", file=stderr)
                     continue

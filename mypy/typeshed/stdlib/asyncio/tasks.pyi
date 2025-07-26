@@ -79,6 +79,7 @@ if sys.version_info >= (3, 12):
     _FutureLike: TypeAlias = Future[_T] | Awaitable[_T]
 else:
     _FutureLike: TypeAlias = Future[_T] | Generator[Any, None, _T] | Awaitable[_T]
+
 _TaskYieldType: TypeAlias = Future[object] | None
 
 FIRST_COMPLETED = concurrent.futures.FIRST_COMPLETED
@@ -347,7 +348,8 @@ else:
         *coros_or_futures: _FutureLike[_T], loop: AbstractEventLoop | None = None, return_exceptions: bool
     ) -> Future[list[_T | BaseException]]: ...
 
-def run_coroutine_threadsafe(coro: _FutureLike[_T], loop: AbstractEventLoop) -> concurrent.futures.Future[_T]: ...
+# unlike some asyncio apis, This does strict runtime checking of actually being a coroutine, not of any future-like.
+def run_coroutine_threadsafe(coro: Coroutine[Any, Any, _T], loop: AbstractEventLoop) -> concurrent.futures.Future[_T]: ...
 
 if sys.version_info >= (3, 10):
     def shield(arg: _FutureLike[_T]) -> Future[_T]: ...
@@ -405,10 +407,8 @@ else:
 
 if sys.version_info >= (3, 12):
     _TaskCompatibleCoro: TypeAlias = Coroutine[Any, Any, _T_co]
-elif sys.version_info >= (3, 9):
-    _TaskCompatibleCoro: TypeAlias = Generator[_TaskYieldType, None, _T_co] | Coroutine[Any, Any, _T_co]
 else:
-    _TaskCompatibleCoro: TypeAlias = Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co]
+    _TaskCompatibleCoro: TypeAlias = Generator[_TaskYieldType, None, _T_co] | Coroutine[Any, Any, _T_co]
 
 def all_tasks(loop: AbstractEventLoop | None = None) -> set[Task[Any]]: ...
 
@@ -422,6 +422,25 @@ if sys.version_info >= (3, 12):
     from _asyncio import current_task as current_task
 else:
     def current_task(loop: AbstractEventLoop | None = None) -> Task[Any] | None: ...
+
+if sys.version_info >= (3, 14):
+    def eager_task_factory(
+        loop: AbstractEventLoop | None,
+        coro: _TaskCompatibleCoro[_T_co],
+        *,
+        name: str | None = None,
+        context: Context | None = None,
+        eager_start: bool = True,
+    ) -> Task[_T_co]: ...
+
+elif sys.version_info >= (3, 12):
+    def eager_task_factory(
+        loop: AbstractEventLoop | None,
+        coro: _TaskCompatibleCoro[_T_co],
+        *,
+        name: str | None = None,
+        context: Context | None = None,
+    ) -> Task[_T_co]: ...
 
 if sys.version_info >= (3, 12):
     _TaskT_co = TypeVar("_TaskT_co", bound=Task[Any], covariant=True)
@@ -451,10 +470,3 @@ if sys.version_info >= (3, 12):
     def create_eager_task_factory(
         custom_task_constructor: _CustomTaskConstructor[_TaskT_co],
     ) -> _EagerTaskFactoryType[_TaskT_co]: ...
-    def eager_task_factory(
-        loop: AbstractEventLoop | None,
-        coro: _TaskCompatibleCoro[_T_co],
-        *,
-        name: str | None = None,
-        context: Context | None = None,
-    ) -> Task[_T_co]: ...

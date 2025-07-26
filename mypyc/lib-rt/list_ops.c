@@ -29,11 +29,34 @@ PyObject *CPyList_Build(Py_ssize_t len, ...) {
     return res;
 }
 
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
-    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-    PyObject *result = PyList_GET_ITEM(list, n);
-    Py_INCREF(result);
-    return result;
+char CPyList_Clear(PyObject *list) {
+    if (PyList_CheckExact(list)) {
+        PyList_Clear(list);
+    } else {
+        _Py_IDENTIFIER(clear);
+        PyObject *name = _PyUnicode_FromId(&PyId_clear);
+        if (name == NULL) {
+            return 0;
+        }
+        PyObject *res = PyObject_CallMethodNoArgs(list, name);
+        if (res == NULL) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+PyObject *CPyList_Copy(PyObject *list) {
+    if(PyList_CheckExact(list)) {
+        return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
+    }
+    _Py_IDENTIFIER(copy);
+
+    PyObject *name = _PyUnicode_FromId(&PyId_copy);
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodNoArgs(list, name);
 }
 
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
@@ -208,15 +231,8 @@ bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
 }
 
 // This function should only be used to fill in brand new lists.
-bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value) {
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        PyList_SET_ITEM(list, n, value);
-        return true;
-    } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return false;
-    }
+void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value) {
+    PyList_SET_ITEM(list, index, value);
 }
 
 PyObject *CPyList_PopLast(PyObject *obj)
@@ -305,6 +321,18 @@ CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
     return index << 1;
 }
 
+PyObject *CPySequence_Sort(PyObject *seq) {
+    PyObject *newlist = PySequence_List(seq);
+    if (newlist == NULL)
+        return NULL;
+    int res = PyList_Sort(newlist);
+    if (res < 0) {
+        Py_DECREF(newlist);
+        return NULL;
+    }
+    return newlist;
+}
+
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
     Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
     if (size == -1 && PyErr_Occurred()) {
@@ -315,6 +343,14 @@ PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
 
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
     return CPySequence_Multiply(seq, t_size);
+}
+
+PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size) {
+    Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    return PySequence_InPlaceRepeat(seq, size);
 }
 
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {

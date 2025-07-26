@@ -129,6 +129,7 @@ from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
 from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
 from mypyc.primitives.registry import CFunctionDescription, function_ops
+from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 # These int binary operations can borrow their operands safely, since the
 # primitives take this into consideration.
@@ -551,8 +552,8 @@ class IRBuilder:
         *,
         type_override: RType | None = None,
     ) -> None:
-        assert isinstance(lvalue, NameExpr)
-        assert isinstance(lvalue.node, Var)
+        assert isinstance(lvalue, NameExpr), lvalue
+        assert isinstance(lvalue.node, Var), lvalue.node
         if lvalue.node.final_value is None:
             if class_name is None:
                 name = lvalue.name
@@ -708,6 +709,11 @@ class IRBuilder:
 
         assert False, "Unsupported lvalue: %r" % target
 
+    def read_nullable_attr(self, obj: Value, attr: str, line: int = -1) -> Value:
+        """Read an attribute that might have an error value without raising AttributeError."""
+        assert isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
+        return self.add(GetAttr(obj, attr, line, allow_error_value=True))
+
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
             self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line)))
@@ -767,10 +773,15 @@ class IRBuilder:
         values = []
         for i in range(len(target.items)):
             item = target.items[i]
-            index = self.builder.load_int(i)
+            index: Value
             if is_list_rprimitive(rvalue.type):
+                index = Integer(i, c_pyssize_t_rprimitive)
                 item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
+            elif is_tuple_rprimitive(rvalue.type):
+                index = Integer(i, c_pyssize_t_rprimitive)
+                item_value = self.call_c(tuple_get_item_unsafe_op, [rvalue, index], line)
             else:
+                index = self.builder.load_int(i)
                 item_value = self.builder.gen_method_call(
                     rvalue, "__getitem__", [index], item.type, line
                 )
@@ -958,38 +969,44 @@ class IRBuilder:
 
         This is useful for dict subclasses like SymbolTable.
         """
-        target_type = get_proper_type(self.types[expr])
-        if isinstance(target_type, UnionType):
-            types = [get_proper_type(item) for item in target_type.items]
-        else:
-            types = [target_type]
+        return self.get_dict_base_type_from_type(self.types[expr])
 
-        dict_types = []
-        for t in types:
-            if isinstance(t, TypedDictType):
-                t = t.fallback
-                dict_base = next(base for base in t.type.mro if base.fullname == "typing.Mapping")
-            else:
-                assert isinstance(t, Instance), t
-                dict_base = next(base for base in t.type.mro if base.fullname == "builtins.dict")
-            dict_types.append(map_instance_to_supertype(t, dict_base))
-        return dict_types
+    def get_dict_base_type_from_type(self, target_type: Type) -> list[Instance]:
+        target_type = get_proper_type(target_type)
+        if isinstance(target_type, UnionType):
+            return [
+                inner
+                for item in target_type.items
+                for inner in self.get_dict_base_type_from_type(item)
+            ]
+        if isinstance(target_type, TypeVarLikeType):
+            # Match behaviour of self.node_type
+            # We can only reach this point if `target_type` was a TypeVar(bound=dict[...])
+            # or a ParamSpec.
+            return self.get_dict_base_type_from_type(target_type.upper_bound)
+
+        if isinstance(target_type, TypedDictType):
+            target_type = target_type.fallback
+            dict_base = next(
+                base for base in target_type.type.mro if base.fullname == "typing.Mapping"
+            )
+        elif isinstance(target_type, Instance):
+            dict_base = next(
+                base for base in target_type.type.mro if base.fullname == "builtins.dict"
+            )
+        else:
+            assert False, f"Failed to extract dict base from {target_type}"
+        return [map_instance_to_supertype(target_type, dict_base)]
 
     def get_dict_key_type(self, expr: Expression) -> RType:
         dict_base_types = self.get_dict_base_type(expr)
-        if len(dict_base_types) == 1:
-            return self.type_to_rtype(dict_base_types[0].args[0])
-        else:
-            rtypes = [self.type_to_rtype(t.args[0]) for t in dict_base_types]
-            return RUnion.make_simplified_union(rtypes)
+        rtypes = [self.type_to_rtype(t.args[0]) for t in dict_base_types]
+        return RUnion.make_simplified_union(rtypes)
 
     def get_dict_value_type(self, expr: Expression) -> RType:
         dict_base_types = self.get_dict_base_type(expr)
-        if len(dict_base_types) == 1:
-            return self.type_to_rtype(dict_base_types[0].args[1])
-        else:
-            rtypes = [self.type_to_rtype(t.args[1]) for t in dict_base_types]
-            return RUnion.make_simplified_union(rtypes)
+        rtypes = [self.type_to_rtype(t.args[1]) for t in dict_base_types]
+        return RUnion.make_simplified_union(rtypes)
 
     def get_dict_item_type(self, expr: Expression) -> RType:
         key_type = self.get_dict_key_type(expr)
@@ -1130,12 +1147,20 @@ class IRBuilder:
         )
 
     def shortcircuit_expr(self, expr: OpExpr) -> Value:
+        def handle_right() -> Value:
+            if expr.right_unreachable:
+                self.builder.add(
+                    RaiseStandardError(
+                        RaiseStandardError.RUNTIME_ERROR,
+                        "mypyc internal error: should be unreachable",
+                        expr.right.line,
+                    )
+                )
+                return self.builder.none()
+            return self.accept(expr.right)
+
         return self.builder.shortcircuit_helper(
-            expr.op,
-            self.node_type(expr),
-            lambda: self.accept(expr.left),
-            lambda: self.accept(expr.right),
-            expr.line,
+            expr.op, self.node_type(expr), lambda: self.accept(expr.left), handle_right, expr.line
         )
 
     # Basic helpers
@@ -1163,7 +1188,7 @@ class IRBuilder:
                     return None
             return res
 
-    def enter(self, fn_info: FuncInfo | str = "") -> None:
+    def enter(self, fn_info: FuncInfo | str = "", *, ret_type: RType = none_rprimitive) -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
         self.builder = LowLevelIRBuilder(self.errors, self.options)
@@ -1173,7 +1198,7 @@ class IRBuilder:
         self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
-        self.ret_types.append(none_rprimitive)
+        self.ret_types.append(ret_type)
         if fn_info.is_generator:
             self.nonlocal_control.append(GeneratorNonlocalControl())
         else:
@@ -1213,10 +1238,9 @@ class IRBuilder:
             self_type: If not None, override default type of the implicit 'self'
                 argument (by default, derive type from class_ir)
         """
-        self.enter(fn_info)
+        self.enter(fn_info, ret_type=ret_type)
         self.function_name_stack.append(name)
         self.class_ir_stack.append(class_ir)
-        self.ret_types[-1] = ret_type
         if self_type is None:
             self_type = RInstance(class_ir)
         self.add_argument(SELF_NAME, self_type)
@@ -1253,7 +1277,7 @@ class IRBuilder:
         Args:
             is_arg: is this a function argument
         """
-        assert isinstance(symbol, SymbolNode)
+        assert isinstance(symbol, SymbolNode), symbol
         reg = Register(
             typ, remangle_redefinition_name(symbol.name), is_arg=is_arg, line=symbol.line
         )
@@ -1268,7 +1292,7 @@ class IRBuilder:
         """Like add_local, but return an assignment target instead of value."""
         self.add_local(symbol, typ, is_arg)
         target = self.symtables[-1][symbol]
-        assert isinstance(target, AssignmentTargetRegister)
+        assert isinstance(target, AssignmentTargetRegister), target
         return target
 
     def add_self_to_env(self, cls: ClassIR) -> AssignmentTargetRegister:
@@ -1295,12 +1319,19 @@ class IRBuilder:
         return self.type_to_rtype(mypy_type)
 
     def add_var_to_env_class(
-        self, var: SymbolNode, rtype: RType, base: FuncInfo | ImplicitClass, reassign: bool = False
+        self,
+        var: SymbolNode,
+        rtype: RType,
+        base: FuncInfo | ImplicitClass,
+        reassign: bool = False,
+        always_defined: bool = False,
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
         name = remangle_redefinition_name(var.name)
         self.fn_info.env_class.attributes[name] = rtype
+        if always_defined:
+            self.fn_info.env_class.attrs_with_defaults.add(name)
         attr_target = AssignmentTargetAttr(base.curr_env_reg, name)
 
         if reassign:
@@ -1421,7 +1452,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                         GetAttr(builder.fn_info.callable_class.self_reg, name, arg.line)
                     )
 
-            assert isinstance(target, AssignmentTargetRegister)
+            assert isinstance(target, AssignmentTargetRegister), target
             reg = target.register
             if not reg.type.error_overlap:
                 builder.assign_if_null(target.register, get_default, arg.initializer.line)
@@ -1492,3 +1523,30 @@ def create_type_params(
         builder.init_type_var(tv, type_param.name, line)
         tvs.append(tv)
     return tvs
+
+
+def calculate_arg_defaults(
+    builder: IRBuilder,
+    fn_info: FuncInfo,
+    func_reg: Value | None,
+    symtable: dict[SymbolNode, SymbolTarget],
+) -> None:
+    """Calculate default argument values and store them.
+
+    They are stored in statics for top level functions and in
+    the function objects for nested functions (while constants are
+    still stored computed on demand).
+    """
+    fitem = fn_info.fitem
+    for arg in fitem.arguments:
+        # Constant values don't get stored but just recomputed
+        if arg.initializer and not is_constant(arg.initializer):
+            value = builder.coerce(
+                builder.accept(arg.initializer), symtable[arg.variable].type, arg.line
+            )
+            if not fn_info.is_nested:
+                name = fitem.fullname + "." + arg.variable.name
+                builder.add(InitStatic(value, name, builder.module_name))
+            else:
+                assert func_reg is not None
+                builder.add(SetAttr(func_reg, arg.variable.name, value, arg.line))
