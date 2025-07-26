@@ -32,6 +32,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     bytes_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     float_rprimitive,
     frozenset_rprimitive,
     int16_rprimitive,
@@ -88,6 +89,8 @@ class Mapper:
             # Dict subclasses are at least somewhat common and we
             # specifically support them, so make sure that dict operations
             # get optimized on them.
+            elif typ.type.fullname == "builtins.dict":
+                return exact_dict_rprimitive
             elif any(cls.fullname == "builtins.dict" for cls in typ.type.mro):
                 return dict_rprimitive
             elif typ.type.fullname == "builtins.set":
@@ -147,7 +150,7 @@ class Mapper:
         elif isinstance(typ, Overloaded):
             return object_rprimitive
         elif isinstance(typ, TypedDictType):
-            return dict_rprimitive
+            return exact_dict_rprimitive
         elif isinstance(typ, LiteralType):
             return self.type_to_rtype(typ.fallback)
         elif isinstance(typ, (UninhabitedType, UnboundType)):
@@ -162,7 +165,7 @@ class Mapper:
         if kind == ARG_STAR:
             return tuple_rprimitive
         elif kind == ARG_STAR2:
-            return dict_rprimitive
+            return exact_dict_rprimitive
         else:
             return self.type_to_rtype(typ)
 
