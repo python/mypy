@@ -11,6 +11,7 @@ import itertools
 from collections.abc import Iterable, Sequence
 from typing import Any, Callable, TypeVar, cast
 
+from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
@@ -145,6 +146,15 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     where ... are argument types for the __init__/__new__ method (without the self
     argument). Also, the fallback type will be 'type' instead of 'function'.
     """
+    allow_cache = (
+        checker_state.type_checker is not None
+        and checker_state.type_checker.allow_constructor_cache
+    )
+
+    if info.type_object_type is not None:
+        if allow_cache:
+            return info.type_object_type
+        info.type_object_type = None
 
     # We take the type from whichever of __init__ and __new__ is first
     # in the MRO, preferring __init__ if there is a tie.
@@ -189,7 +199,10 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     is_bound=True,
                     fallback=named_type("builtins.function"),
                 )
-                return class_callable(sig, info, fallback, None, is_new=False)
+                result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
+                if allow_cache:
+                    info.type_object_type = result
+                return result
 
         # Otherwise prefer __init__ in a tie. It isn't clear that this
         # is the right thing, but __new__ caused problems with
@@ -204,7 +217,10 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
         assert isinstance(method.type, ProperType)
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
-    return type_object_type_from_function(t, info, method.info, fallback, is_new)
+    result = type_object_type_from_function(t, info, method.info, fallback, is_new)
+    if allow_cache:
+        info.type_object_type = result
+    return result
 
 
 def is_valid_constructor(n: SymbolNode | None) -> bool:
