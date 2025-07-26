@@ -59,12 +59,16 @@ L0:
     return r1
 
 [case testConversionToBool]
-from typing import List, Optional
+from typing import List, Optional, TypedDict
 
 class C: pass
 class D:
     def __bool__(self) -> bool:
         return True
+
+class E(TypedDict):
+    a: str
+    b: int
 
 def list_to_bool(l: List[str]) -> bool:
     return bool(l)
@@ -80,6 +84,10 @@ def optional_truthy_to_bool(o: Optional[C]) -> bool:
 
 def optional_maybe_falsey_to_bool(o: Optional[D]) -> bool:
     return bool(o)
+
+def typeddict_to_bool(o: E) -> bool:
+    return bool(o)
+[typing fixtures/typing-full.pyi]
 [out]
 def D.__bool__(self):
     self :: __main__.D
@@ -139,6 +147,12 @@ L2:
     r4 = 0
 L3:
     return r4
+def typeddict_to_bool(o):
+    o :: dict[confirmed]
+    r0 :: bit
+L0:
+    r0 = CPyDict_IsTrue(o)
+    return r0
 
 [case testBoolComparisons]
 def eq(x: bool, y: bool) -> bool:

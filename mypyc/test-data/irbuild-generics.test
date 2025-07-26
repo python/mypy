@@ -169,22 +169,24 @@ def execute(func, args, kwargs):
     kwargs :: dict
     r0 :: list
     r1 :: object
-    r2 :: dict
-    r3 :: i32
-    r4 :: bit
-    r5 :: tuple
-    r6 :: object
-    r7 :: int
+    r2 :: dict[confirmed]
+    r3 :: dict
+    r4 :: i32
+    r5 :: bit
+    r6 :: tuple
+    r7 :: object
+    r8 :: int
 L0:
     r0 = PyList_New(0)
     r1 = CPyList_Extend(r0, args)
     r2 = PyDict_New()
-    r3 = CPyDict_UpdateInDisplay(r2, kwargs)
-    r4 = r3 >= 0 :: signed
-    r5 = PyList_AsTuple(r0)
-    r6 = PyObject_Call(func, r5, r2)
-    r7 = unbox(int, r6)
-    return r7
+    r3 = cast(dict, r2)
+    r4 = CPyDict_UpdateInDisplay(r3, kwargs)
+    r5 = r4 >= 0 :: signed
+    r6 = PyList_AsTuple(r0)
+    r7 = PyObject_Call(func, r6, r2)
+    r8 = unbox(int, r7)
+    return r8
 def f(x):
     x :: int
 L0:
@@ -257,7 +259,7 @@ def fn_mapping(m):
     r35, x_3 :: str
     r36 :: i32
     r37, r38, r39 :: bit
-    r40 :: dict
+    r40 :: dict[confirmed]
     r41 :: short_int
     r42 :: native_int
     r43 :: object
@@ -358,7 +360,7 @@ L17:
     k = r49
     v = r50
     r51 = box(int, v)
-    r52 = CPyDict_SetItem(r40, k, r51)
+    r52 = PyDict_SetItem(r40, k, r51)
     r53 = r52 >= 0 :: signed
 L18:
     r54 = CPyDict_CheckSize(m, r42)
@@ -402,7 +404,7 @@ def fn_union(m):
     r34, x_3 :: str
     r35 :: i32
     r36, r37, r38 :: bit
-    r39 :: dict
+    r39 :: dict[confirmed]
     r40 :: short_int
     r41 :: native_int
     r42 :: object
@@ -500,7 +502,7 @@ L17:
     r49 = cast(union[int, str], r47)
     k = r48
     v = r49
-    r50 = CPyDict_SetItem(r39, k, v)
+    r50 = PyDict_SetItem(r39, k, v)
     r51 = r50 >= 0 :: signed
 L18:
     r52 = CPyDict_CheckSize(m, r41)
@@ -510,11 +512,11 @@ L19:
 L20:
     return 1
 def fn_typeddict(t):
-    t :: dict
+    t :: dict[confirmed]
     r0 :: list
     r1 :: short_int
     r2 :: native_int
-    r3 :: object
+    r3 :: dict[confirmed]
     r4 :: tuple[bool, short_int, object]
     r5 :: short_int
     r6 :: bool
@@ -525,7 +527,7 @@ def fn_typeddict(t):
     r13 :: list
     r14 :: short_int
     r15 :: native_int
-    r16 :: object
+    r16 :: dict[confirmed]
     r17 :: tuple[bool, short_int, object]
     r18 :: short_int
     r19 :: bool
@@ -535,7 +537,7 @@ def fn_typeddict(t):
     r25 :: set
     r26 :: short_int
     r27 :: native_int
-    r28 :: object
+    r28 :: dict[confirmed]
     r29 :: tuple[bool, short_int, object]
     r30 :: short_int
     r31 :: bool
@@ -543,10 +545,10 @@ def fn_typeddict(t):
     r33, x_3 :: str
     r34 :: i32
     r35, r36, r37 :: bit
-    r38 :: dict
+    r38 :: dict[confirmed]
     r39 :: short_int
     r40 :: native_int
-    r41 :: object
+    r41 :: dict[confirmed]
     r42 :: tuple[bool, short_int, object, object]
     r43 :: short_int
     r44 :: bool
@@ -559,9 +561,9 @@ L0:
     r0 = PyList_New(0)
     r1 = 0
     r2 = PyDict_Size(t)
-    r3 = CPyDict_GetKeysIter(t)
+    r3 = _CPyDict_GetIterUnsafe(t)
 L1:
-    r4 = CPyDict_NextKey(r3, r1)
+    r4 = CPyDict_NextKeyUnsafe(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -573,7 +575,7 @@ L2:
     r9 = PyList_Append(r0, x)
     r10 = r9 >= 0 :: signed
 L3:
-    r11 = CPyDict_CheckSize(t, r2)
+    r11 = CPyDict_CheckSizeUnsafe(t, r2)
     goto L1
 L4:
     r12 = CPy_NoErrOccurred()
@@ -581,9 +583,9 @@ L5:
     r13 = PyList_New(0)
     r14 = 0
     r15 = PyDict_Size(t)
-    r16 = CPyDict_GetValuesIter(t)
+    r16 = _CPyDict_GetIterUnsafe(t)
 L6:
-    r17 = CPyDict_NextValue(r16, r14)
+    r17 = CPyDict_NextValueUnsafe(r16, r14)
     r18 = r17[1]
     r14 = r18
     r19 = r17[0]
@@ -594,7 +596,7 @@ L7:
     r21 = PyList_Append(r13, x_2)
     r22 = r21 >= 0 :: signed
 L8:
-    r23 = CPyDict_CheckSize(t, r15)
+    r23 = CPyDict_CheckSizeUnsafe(t, r15)
     goto L6
 L9:
     r24 = CPy_NoErrOccurred()
@@ -602,9 +604,9 @@ L10:
     r25 = PySet_New(0)
     r26 = 0
     r27 = PyDict_Size(t)
-    r28 = CPyDict_GetKeysIter(t)
+    r28 = _CPyDict_GetIterUnsafe(t)
 L11:
-    r29 = CPyDict_NextKey(r28, r26)
+    r29 = CPyDict_NextKeyUnsafe(r28, r26)
     r30 = r29[1]
     r26 = r30
     r31 = r29[0]
@@ -616,7 +618,7 @@ L12:
     r34 = PySet_Add(r25, x_3)
     r35 = r34 >= 0 :: signed
 L13:
-    r36 = CPyDict_CheckSize(t, r27)
+    r36 = CPyDict_CheckSizeUnsafe(t, r27)
     goto L11
 L14:
     r37 = CPy_NoErrOccurred()
@@ -624,9 +626,9 @@ L15:
     r38 = PyDict_New()
     r39 = 0
     r40 = PyDict_Size(t)
-    r41 = CPyDict_GetItemsIter(t)
+    r41 = _CPyDict_GetIterUnsafe(t)
 L16:
-    r42 = CPyDict_NextItem(r41, r39)
+    r42 = CPyDict_NextItemUnsafe(r41, r39)
     r43 = r42[1]
     r39 = r43
     r44 = r42[0]
@@ -637,10 +639,10 @@ L17:
     r47 = cast(str, r45)
     k = r47
     v = r46
-    r48 = CPyDict_SetItem(r38, k, v)
+    r48 = PyDict_SetItem(r38, k, v)
     r49 = r48 >= 0 :: signed
 L18:
-    r50 = CPyDict_CheckSize(t, r40)
+    r50 = CPyDict_CheckSizeUnsafe(t, r40)
     goto L16
 L19:
     r51 = CPy_NoErrOccurred()
@@ -694,7 +696,7 @@ def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     r6, x :: object
     r7 :: native_int
     can_listcomp :: list
-    r8 :: dict
+    r8 :: dict[confirmed]
     r9 :: short_int
     r10 :: native_int
     r11 :: object
@@ -706,17 +708,18 @@ def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     v :: object
     r18 :: i32
     r19, r20, r21 :: bit
-    can_dictcomp :: dict
-    r22, can_iter, r23, can_use_keys, r24, can_use_values :: list
-    r25 :: object
-    r26 :: list
-    r27 :: object
-    r28 :: dict
-    r29 :: i32
-    r30 :: bit
-    r31 :: tuple
-    r32 :: object
-    r33 :: int
+    r22, can_dictcomp :: dict
+    r23, can_iter, r24, can_use_keys, r25, can_use_values :: list
+    r26 :: object
+    r27 :: list
+    r28 :: object
+    r29 :: dict[confirmed]
+    r30 :: dict
+    r31 :: i32
+    r32 :: bit
+    r33 :: tuple
+    r34 :: object
+    r35 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = var_object_size args
@@ -752,7 +755,7 @@ L6:
     r17 = cast(str, r15)
     k = r17
     v = r16
-    r18 = CPyDict_SetItem(r8, k, v)
+    r18 = PyDict_SetItem(r8, k, v)
     r19 = r18 >= 0 :: signed
 L7:
     r20 = CPyDict_CheckSize(kwargs, r10)
@@ -760,23 +763,25 @@ L7:
 L8:
     r21 = CPy_NoErrOccurred()
 L9:
-    can_dictcomp = r8
-    r22 = PySequence_List(kwargs)
-    can_iter = r22
-    r23 = CPyDict_Keys(kwargs)
-    can_use_keys = r23
-    r24 = CPyDict_Values(kwargs)
-    can_use_values = r24
-    r25 = r0.func
-    r26 = PyList_New(0)
-    r27 = CPyList_Extend(r26, args)
-    r28 = PyDict_New()
-    r29 = CPyDict_UpdateInDisplay(r28, kwargs)
-    r30 = r29 >= 0 :: signed
-    r31 = PyList_AsTuple(r26)
-    r32 = PyObject_Call(r25, r31, r28)
-    r33 = unbox(int, r32)
-    return r33
+    r22 = cast(dict, r8)
+    can_dictcomp = r22
+    r23 = PySequence_List(kwargs)
+    can_iter = r23
+    r24 = PyDict_Keys(kwargs)
+    can_use_keys = r24
+    r25 = PyDict_Values(kwargs)
+    can_use_values = r25
+    r26 = r0.func
+    r27 = PyList_New(0)
+    r28 = CPyList_Extend(r27, args)
+    r29 = PyDict_New()
+    r30 = cast(dict, r29)
+    r31 = CPyDict_UpdateInDisplay(r30, kwargs)
+    r32 = r31 >= 0 :: signed
+    r33 = PyList_AsTuple(r27)
+    r34 = PyObject_Call(r26, r33, r29)
+    r35 = unbox(int, r34)
+    return r35
 def deco(func):
     func :: object
     r0 :: __main__.deco_env
