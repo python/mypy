@@ -125,7 +125,7 @@ def g(b: bool) -> None:
     try:
         if b:
             x = [0]
-            x[1]
+            x[1]  #  type: ignore [index-range]
         else:
             raise Exception('hi')
     except:
@@ -371,7 +371,7 @@ def b(b1: int, b2: int) -> str:
         if b1 == 1:
             raise Exception('hi')
         elif b1 == 2:
-            [0][1]
+            [0][1]  # type: ignore [index-range]
         elif b1 == 3:
             return 'try'
     except IndexError:
