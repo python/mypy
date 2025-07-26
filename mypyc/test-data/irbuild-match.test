@@ -1089,7 +1089,7 @@ def f(x):
     x :: object
     r0 :: i32
     r1 :: bit
-    r2, rest :: dict[confirmed]
+    r2, rest :: dict[exact]
     r3 :: str
     r4 :: object
     r5 :: str
@@ -1138,7 +1138,7 @@ def f(x):
     r8 :: i32
     r9 :: bit
     r10 :: bool
-    r11, rest :: dict[confirmed]
+    r11, rest :: dict[exact]
     r12 :: i32
     r13 :: bit
     r14 :: str

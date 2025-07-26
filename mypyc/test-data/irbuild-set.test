@@ -161,11 +161,11 @@ L5:
 def test3():
     r0, r1, r2 :: str
     r3, r4, r5 :: object
-    r6, tmp_dict :: dict[confirmed]
+    r6, tmp_dict :: dict[exact]
     r7 :: set
     r8 :: short_int
     r9 :: native_int
-    r10 :: dict[confirmed]
+    r10 :: dict[exact]
     r11 :: tuple[bool, short_int, object]
     r12 :: short_int
     r13 :: bool
@@ -646,7 +646,7 @@ L0:
     return r3
 def not_precomputed_non_final_name(i):
     i :: int
-    r0 :: dict[confirmed]
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: int
@@ -766,7 +766,7 @@ L4:
 L5:
     return 1
 def not_precomputed():
-    r0 :: dict[confirmed]
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: int

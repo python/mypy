@@ -148,7 +148,7 @@ L2:
 L3:
     return r4
 def typeddict_to_bool(o):
-    o :: dict[confirmed]
+    o :: dict[exact]
     r0 :: bit
 L0:
     r0 = CPyDict_IsTrue(o)

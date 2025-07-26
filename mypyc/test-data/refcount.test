@@ -727,10 +727,10 @@ def f(d: Dict[int, int]) -> None:
         d[key]
 [out]
 def f(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0 :: short_int
     r1 :: native_int
-    r2 :: dict[confirmed]
+    r2 :: dict[exact]
     r3 :: tuple[bool, short_int, object]
     r4 :: short_int
     r5 :: bool

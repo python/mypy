@@ -4,7 +4,7 @@ def f(d: Dict[int, bool]) -> bool:
     return d[0]
 [out]
 def f(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0, r1 :: object
     r2 :: bool
 L0:
@@ -19,7 +19,7 @@ def f(d: Dict[int, bool]) -> None:
     d[0] = False
 [out]
 def f(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0, r1 :: object
     r2 :: i32
     r3 :: bit
@@ -36,7 +36,7 @@ def f() -> None:
     d = {}  # type: Dict[bool, int]
 [out]
 def f():
-    r0, d :: dict[confirmed]
+    r0, d :: dict[exact]
 L0:
     r0 = PyDict_New()
     d = r0
@@ -49,7 +49,7 @@ def f() -> None:
 
 [out]
 def f():
-    r0, d :: dict[confirmed]
+    r0, d :: dict[exact]
 L0:
     r0 = PyDict_New()
     d = r0
@@ -63,7 +63,7 @@ def f(x):
     x :: object
     r0 :: str
     r1, r2 :: object
-    r3, d :: dict[confirmed]
+    r3, d :: dict[exact]
 L0:
     r0 = ''
     r1 = object 1
@@ -81,7 +81,7 @@ def f(d: Dict[int, int]) -> bool:
         return False
 [out]
 def f(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0 :: object
     r1 :: i32
     r2 :: bit
@@ -108,7 +108,7 @@ def f(d: Dict[int, int]) -> bool:
         return False
 [out]
 def f(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0 :: object
     r1 :: i32
     r2 :: bit
@@ -133,7 +133,7 @@ def f(a: Dict[int, int], b: Dict[int, int]) -> None:
     a.update(b)
 [out]
 def f(a, b):
-    a, b :: dict[confirmed]
+    a, b :: dict[exact]
     r0 :: i32
     r1 :: bit
 L0:
@@ -149,10 +149,10 @@ def increment(d: Dict[str, int]) -> Dict[str, int]:
     return d
 [out]
 def increment(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0 :: short_int
     r1 :: native_int
-    r2 :: dict[confirmed]
+    r2 :: dict[exact]
     r3 :: tuple[bool, short_int, object]
     r4 :: short_int
     r5 :: bool
@@ -195,10 +195,10 @@ def f(x: str, y: Dict[str, int]) -> Dict[str, int]:
 [out]
 def f(x, y):
     x :: str
-    y :: dict[confirmed]
+    y :: dict[exact]
     r0 :: str
     r1 :: object
-    r2 :: dict[confirmed]
+    r2 :: dict[exact]
     r3 :: i32
     r4 :: bit
     r5 :: object
@@ -239,10 +239,10 @@ def typeddict(d: Person) -> None:
 [typing fixtures/typing-full.pyi]
 [out]
 def print_dict_methods(d1, d2):
-    d1, d2 :: dict[confirmed]
+    d1, d2 :: dict[exact]
     r0 :: short_int
     r1 :: native_int
-    r2 :: dict[confirmed]
+    r2 :: dict[exact]
     r3 :: tuple[bool, short_int, object]
     r4 :: short_int
     r5 :: bool
@@ -255,7 +255,7 @@ def print_dict_methods(d1, d2):
     r12, r13 :: bit
     r14 :: short_int
     r15 :: native_int
-    r16 :: dict[confirmed]
+    r16 :: dict[exact]
     r17 :: tuple[bool, short_int, object, object]
     r18 :: short_int
     r19 :: bool
@@ -323,10 +323,10 @@ L11:
 L12:
     return 1
 def union_of_dicts(d):
-    d, r0, new :: dict[confirmed]
+    d, r0, new :: dict[exact]
     r1 :: short_int
     r2 :: native_int
-    r3 :: dict[confirmed]
+    r3 :: dict[exact]
     r4 :: tuple[bool, short_int, object, object]
     r5 :: short_int
     r6 :: bool
@@ -379,10 +379,10 @@ L4:
 L5:
     return 1
 def typeddict(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0 :: short_int
     r1 :: native_int
-    r2 :: dict[confirmed]
+    r2 :: dict[exact]
     r3 :: tuple[bool, short_int, object, object]
     r4 :: short_int
     r5 :: bool
@@ -440,7 +440,7 @@ def f(d: Dict[int, int]) -> None:
     return d.clear()
 [out]
 def f(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0 :: bit
 L0:
     r0 = PyDict_Clear(d)
@@ -452,7 +452,7 @@ def f(d: Dict[int, int]) -> Dict[int, int]:
     return d.copy()
 [out]
 def f(d):
-    d, r0 :: dict[confirmed]
+    d, r0 :: dict[exact]
 L0:
     r0 = PyDict_Copy(d)
     return r0
@@ -481,7 +481,7 @@ def f4(d: Dict[object, object], flag: bool) -> object:
         return d.setdefault('a', {'c': 1})
 [out]
 def f(d):
-    d :: dict[confirmed]
+    d :: dict[exact]
     r0, r1 :: str
     r2 :: object
 L0:
@@ -490,7 +490,7 @@ L0:
     r2 = PyDict_SetDefault(d, r0, r1)
     return r2
 def f2(d, flag):
-    d :: dict[confirmed]
+    d :: dict[exact]
     flag :: bool
     r0 :: str
     r1 :: dict
@@ -515,7 +515,7 @@ L3:
     r7 = box(None, 1)
     return r7
 def f3(d, flag):
-    d :: dict[confirmed]
+    d :: dict[exact]
     flag :: bool
     r0 :: str
     r1 :: dict
@@ -545,14 +545,14 @@ L3:
     r8 = box(None, 1)
     return r8
 def f4(d, flag):
-    d :: dict[confirmed]
+    d :: dict[exact]
     flag :: bool
     r0 :: str
     r1 :: dict
     r2 :: object
     r3, r4 :: str
     r5 :: object
-    r6 :: dict[confirmed]
+    r6 :: dict[exact]
     r7, r8 :: object
 L0:
     if flag goto L1 else goto L2 :: bool
