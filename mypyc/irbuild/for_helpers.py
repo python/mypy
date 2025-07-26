@@ -1198,7 +1198,7 @@ def get_expr_length(expr: Expression) -> int | None:
         stars = [get_expr_length(i) for i in expr.items if isinstance(i, StarExpr)]
         if None not in stars:
             other = sum(not isinstance(i, StarExpr) for i in expr.items)
-            return other + sum(stars)
+            return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
         # star expression needs some extra logic but that can come later, this is good for now
         pass
