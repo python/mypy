@@ -280,7 +280,7 @@ intersphinx_mapping = {
     "attrs": ("https://www.attrs.org/en/stable/", None),
     "cython": ("https://cython.readthedocs.io/en/stable", None),
     "monkeytype": ("https://monkeytype.readthedocs.io/en/latest", None),
-    "setuptools": ("https://setuptools.readthedocs.io/en/latest", None),
+    "setuptools": ("https://setuptools.pypa.io/en/latest", None),
 }
 
 
