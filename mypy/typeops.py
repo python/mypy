@@ -177,7 +177,12 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     init_index = info.mro.index(init_method.node.info)
     new_index = info.mro.index(new_method.node.info)
 
-    fallback = info.metaclass_type or named_type("builtins.type")
+    if checker_state.type_checker:
+        builtins_type = checker_state.type_checker.named_type("builtins.type")
+    else:
+        builtins_type = named_type("builtins.type")
+
+    fallback = info.metaclass_type or builtins_type
     if init_index < new_index:
         method: FuncBase | Decorator = init_method.node
         is_new = False
@@ -1270,6 +1275,8 @@ def get_protocol_member(
     if member == "__call__" and class_obj:
         # Special case: class objects always have __call__ that is just the constructor.
 
+        # TODO: this is wrong, it creates callables that are not recognized as type objects.
+        # Long-term, we should probably get rid of this callback argument altogether.
         def named_type(fullname: str) -> Instance:
             return Instance(left.type.mro[-1], [])
 
