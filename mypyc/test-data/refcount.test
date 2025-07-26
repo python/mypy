@@ -727,10 +727,10 @@ def f(d: Dict[int, int]) -> None:
         d[key]
 [out]
 def f(d):
-    d :: dict
+    d :: dict[confirmed]
     r0 :: short_int
     r1 :: native_int
-    r2 :: object
+    r2 :: dict[confirmed]
     r3 :: tuple[bool, short_int, object]
     r4 :: short_int
     r5 :: bool
@@ -742,9 +742,9 @@ def f(d):
 L0:
     r0 = 0
     r1 = PyDict_Size(d)
-    r2 = CPyDict_GetKeysIter(d)
+    r2 = _CPyDict_GetIterUnsafe(d)
 L1:
-    r3 = CPyDict_NextKey(r2, r0)
+    r3 = CPyDict_NextKeyUnsafe(r2, r0)
     r4 = r3[1]
     r0 = r4
     r5 = r3[0]
@@ -756,13 +756,13 @@ L2:
     dec_ref r6
     key = r7
     r8 = box(int, key)
-    r9 = CPyDict_GetItem(d, r8)
+    r9 = CPyDict_GetItemUnsafe(d, r8)
     dec_ref r8
     r10 = unbox(int, r9)
     dec_ref r9
     dec_ref r10 :: int
 L3:
-    r11 = CPyDict_CheckSize(d, r1)
+    r11 = CPyDict_CheckSizeUnsafe(d, r1)
     goto L1
 L4:
     r12 = CPy_NoErrOccurred()

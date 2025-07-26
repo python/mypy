@@ -9,7 +9,7 @@ def f(num: int, l: list, d: dict, s: str) -> None:
 def f(num, l, d, s):
     num :: int
     l :: list
-    d :: dict
+    d :: dict[confirmed]
     s :: str
     r0, r1 :: object
     r2, b1 :: bytes

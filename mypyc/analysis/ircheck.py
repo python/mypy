@@ -70,6 +70,7 @@ from mypyc.ir.rtypes import (
     range_rprimitive,
     set_rprimitive,
     str_rprimitive,
+    true_dict_rprimitive,
     tuple_rprimitive,
 )
 
@@ -176,6 +177,7 @@ disjoint_types = {
     int_rprimitive.name,
     bytes_rprimitive.name,
     str_rprimitive.name,
+    true_dict_rprimitive.name,
     dict_rprimitive.name,
     list_rprimitive.name,
     set_rprimitive.name,
