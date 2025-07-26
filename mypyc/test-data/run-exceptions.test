@@ -125,7 +125,7 @@ def g(b: bool) -> None:
     try:
         if b:
             x = [0]
-            x[1]
+            x[1]  #  type: ignore [index-range]
         else:
             raise Exception('hi')
     except:
