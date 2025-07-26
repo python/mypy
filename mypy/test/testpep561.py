@@ -174,8 +174,8 @@ def parse_pkgs(comment: str) -> tuple[list[str], list[str]]:
 def parse_mypy_args(line: str) -> list[str]:
     m = re.match("# flags: (.*)$", line)
     if not m:
-        return ['--no-pretty']  # No args; mypy will spit out an error.
+        return ["--no-pretty"]  # No args; mypy will spit out an error.
     args = m.group(1).split()
-    args.append('--no-pretty')
+    args.append("--no-pretty")
 
     return args

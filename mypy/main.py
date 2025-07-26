@@ -1019,16 +1019,13 @@ def process_options(
         help=argparse.SUPPRESS,
     )
     error_group.add_argument(
-        '--no-pretty',
-        action='store_false',
-        dest='pretty',
-        help='Disable pretty error messages (pretty is now the default).'
+        "--no-pretty",
+        action="store_false",
+        dest="pretty",
+        help="Disable pretty error messages (pretty is now the default).",
     )
     error_group.add_argument(
-        '--pretty',
-        action='store_true',
-        dest='pretty',
-        help=argparse.SUPPRESS
+        "--pretty", action="store_true", dest="pretty", help=argparse.SUPPRESS
     )
 
     incremental_group = parser.add_argument_group(

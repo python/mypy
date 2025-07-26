@@ -395,7 +395,7 @@ def bar() -> None:
 [case testDaemonInspectCheck]
 $ dmypy start # NO-MODIFY
 Daemon started
-$ dmypy check foo.py # NO-MODIFY 
+$ dmypy check foo.py # NO-MODIFY
 Success: no issues found in 1 source file
 $ dmypy check foo.py --export-types # NO-MODIFY
 Success: no issues found in 1 source file
@@ -489,7 +489,7 @@ def unreachable(x: int) -> None:
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --no-pretty
 Daemon started
 $ dmypy check foo.py --export-types # NO-MODIFY
-$ dmypy inspect foo.py:1:a # NO-MODIFY 
+$ dmypy inspect foo.py:1:a # NO-MODIFY
 invalid literal for int() with base 10: 'a'
 == Return code: 2
 $ dmypy inspect foo.pyc:1:2 # NO-MODIFY

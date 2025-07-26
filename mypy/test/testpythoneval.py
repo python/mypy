@@ -72,9 +72,9 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
                     sys.version_info.minor,
                 ):
                     return
-        if '--pretty' in additional_flags:
-            mypy_cmdline.remove('--no-pretty')        
-        
+        if "--pretty" in additional_flags:
+            mypy_cmdline.remove("--no-pretty")
+
         mypy_cmdline.extend(additional_flags)
 
     # Write the program to a file.
