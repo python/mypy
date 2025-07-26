@@ -5,31 +5,38 @@ when possible.
 """
 
 from typing import List, Optional, Tuple
+
 from mypy.nodes import (
+    ARG_POS,
+    AssignmentStmt,
+    Block,
+    BytesExpr,
+    CallExpr,
+    ClassDef,
+    DictExpr,
     Expression,
     ExpressionStmt,
     ForStmt,
+    FuncDef,
     GeneratorExpr,
+    GlobalDecl,
     IfStmt,
     ListComprehension,
     ListExpr,
-    TupleExpr,
-    SetExpr,
-    WhileStmt,
-    DictExpr,
     MemberExpr,
-    StrExpr,
-    StarExpr,
-    BytesExpr,
-    CallExpr,
     NameExpr,
+    NonlocalDecl,
+    OverloadedFuncDef,
+    SetExpr,
+    StarExpr,
+    StrExpr,
     TryStmt,
-    Block,
-    AssignmentStmt,
+    TupleExpr,
+    WhileStmt,
+    WithStmt,
     is_IntExpr_list,
 )
-from mypy.nodes import WithStmt, FuncDef, OverloadedFuncDef, ClassDef, GlobalDecl, NonlocalDecl
-from mypy.nodes import ARG_POS
+
 
 def get_static_expr_length(expr: Expression, context: Optional[Block] = None) -> Optional[int]:
     """Try to statically determine the length of an expression.
@@ -100,7 +107,19 @@ def get_static_expr_length(expr: Expression, context: Optional[Block] = None) ->
 
         # Iterate thru all statements in the block
         for stmt in context.body:
-            if isinstance(stmt, (IfStmt, ForStmt, WhileStmt, TryStmt, WithStmt, FuncDef, OverloadedFuncDef, ClassDef)):
+            if isinstance(
+                stmt,
+                (
+                    IfStmt,
+                    ForStmt,
+                    WhileStmt,
+                    TryStmt,
+                    WithStmt,
+                    FuncDef,
+                    OverloadedFuncDef,
+                    ClassDef,
+                ),
+            ):
                 # These statements complicate things and render the whole block useless
                 return None
             elif isinstance(stmt, (GlobalDecl, NonlocalDecl)) and expr.name in stmt.names:
