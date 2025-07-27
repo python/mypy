@@ -7746,38 +7746,49 @@ class SemanticAnalyzer(
         else:
             assert_never(maybe_type_expr)
 
-        # Save SemanticAnalyzer state
-        original_errors = self.errors  # altered by fail()
-        original_num_incomplete_refs = (
-            self.num_incomplete_refs
-        )  # altered by record_incomplete_ref()
-        original_progress = self.progress  # altered by defer()
-        original_deferred = self.deferred  # altered by defer()
-        original_deferral_debug_context_len = len(
-            self.deferral_debug_context
-        )  # altered by defer()
+        with self.isolated_error_analysis():
+            try:
+                # Ignore warnings that look like:
+                # <type_comment>:1: SyntaxWarning: invalid escape sequence '\('
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=SyntaxWarning)
+                    t = self.expr_to_analyzed_type(maybe_type_expr)
+                if self.errors.is_errors():
+                    t = None
+            except TypeTranslationError:
+                # Not a type expression
+                t = None
+
+        maybe_type_expr.as_type = t
+
+    @contextmanager
+    def isolated_error_analysis(self) -> Iterator[None]:
+        """
+        Context manager for performing error analysis that should not
+        affect the main SemanticAnalyzer state.
+
+        Upon entering this context, `self.errors` will start empty.
+        Within this context, you can analyze expressions for errors.
+        Upon exiting this context, the original `self.errors` will be restored,
+        and any errors collected during the analysis will be discarded.
+        """
+        # Save state
+        original_errors = self.errors
+        original_num_incomplete_refs = self.num_incomplete_refs
+        original_progress = self.progress
+        original_deferred = self.deferred
+        original_deferral_debug_context_len = len(self.deferral_debug_context)
 
         self.errors = Errors(Options())
         try:
-            # Ignore warnings that look like:
-            # <type_comment>:1: SyntaxWarning: invalid escape sequence '\('
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", category=SyntaxWarning)
-                t = self.expr_to_analyzed_type(maybe_type_expr)
-            if self.errors.is_errors():
-                t = None
-        except TypeTranslationError:
-            # Not a type expression
-            t = None
+            yield
         finally:
-            # Restore SemanticAnalyzer state
+            # Restore state
             self.errors = original_errors
             self.num_incomplete_refs = original_num_incomplete_refs
             self.progress = original_progress
             self.deferred = original_deferred
             del self.deferral_debug_context[original_deferral_debug_context_len:]
-
-        maybe_type_expr.as_type = t
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
