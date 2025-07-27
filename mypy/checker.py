@@ -8001,8 +8001,10 @@ def conditional_types(
         If default is set it is returned instead.
     """
     if proposed_type_ranges is None:
+        # An isinstance check, but we don't understand the type
         return current_type, default
     if not proposed_type_ranges:
+        # This is the case for `if isinstance(x, ())` which always returns False.
         return UninhabitedType(), default
 
     if len(proposed_type_ranges) == 1:
