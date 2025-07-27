@@ -217,6 +217,8 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     # Construct callable type based on signature of __init__. Adjust
     # return type and insert type arguments.
     if isinstance(method, FuncBase):
+        if isinstance(method, OverloadedFuncDef) and not method.type:
+            allow_cache = False
         t = function_type(method, fallback)
     else:
         assert isinstance(method.type, ProperType)
@@ -886,8 +888,8 @@ def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
         if isinstance(func, FuncItem):
             return callable_type(func, fallback)
         else:
-            # Broken overloads can have self.type set to None.
-            # TODO: should we instead always set the type in semantic analyzer?
+            # Either a broken overload, or decorated overload type is not ready.
+            # TODO: make sure the caller defers if possible.
             assert isinstance(func, OverloadedFuncDef)
             any_type = AnyType(TypeOfAny.from_error)
             dummy = CallableType(
