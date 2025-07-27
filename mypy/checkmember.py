@@ -956,7 +956,7 @@ def expand_and_bind_callable(
 ) -> Type:
     if not mx.preserve_type_var_ids:
         functype = freshen_all_functions_type_vars(functype)
-    typ = get_proper_type(expand_self_type(var, functype, mx.original_type))
+    typ = get_proper_type(expand_self_type(var, functype, mx.self_type))
     assert isinstance(typ, FunctionLike)
     if is_trivial_self:
         typ = bind_self_fast(typ, mx.self_type)
