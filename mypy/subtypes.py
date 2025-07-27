@@ -2094,6 +2094,8 @@ def restrict_subtype_away(t: Type, s: Type, *, consider_runtime_isinstance: bool
     isinstance(). Currently, this just removes elements of a union type.
     """
     p_t = get_proper_type(t)
+    s_t = get_proper_type(s)
+
     if isinstance(p_t, UnionType):
         new_items = try_restrict_literal_union(p_t, s)
         if new_items is None:
@@ -2107,7 +2109,15 @@ def restrict_subtype_away(t: Type, s: Type, *, consider_runtime_isinstance: bool
             [item for item in new_items if not isinstance(get_proper_type(item), UninhabitedType)]
         )
     elif isinstance(p_t, TypeVarType):
-        return p_t.copy_modified(upper_bound=restrict_subtype_away(p_t.upper_bound, s))
+        if isinstance(s_t, TypeVarType):
+            upper_bound = restrict_subtype_away(p_t.upper_bound, s_t.upper_bound)
+            upper_bound = get_proper_type(upper_bound)
+            return (
+                upper_bound
+                if isinstance(upper_bound, UninhabitedType)
+                else p_t.copy_modified(upper_bound=upper_bound)
+            )
+        return p_t.copy_modified(upper_bound=restrict_subtype_away(p_t.upper_bound, s_t))
 
     if consider_runtime_isinstance:
         if covers_at_runtime(t, s):

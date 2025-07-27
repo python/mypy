@@ -8001,7 +8001,10 @@ def conditional_types(
             None means no new information can be inferred.
         If default is set it is returned instead.
     """
-    if proposed_type_ranges and len(proposed_type_ranges) == 1:
+    if not proposed_type_ranges:
+        return UninhabitedType(), default
+
+    if len(proposed_type_ranges) == 1:
         # expand e.g. bool -> Literal[True] | Literal[False]
         target = proposed_type_ranges[0].item
         target = get_proper_type(target)
@@ -8012,7 +8015,11 @@ def conditional_types(
             current_type = try_expanding_sum_type_to_union(current_type, enum_name)
 
     current_type = get_proper_type(current_type)
-    if isinstance(current_type, UnionType) and (default == current_type):
+    if (
+        isinstance(current_type, UnionType)
+        and not any(tr.is_upper_bound for tr in proposed_type_ranges)
+        and (default in (current_type, None))
+    ):
         # factorize over union types
         # if we try to narrow A|B to C, we instead narrow A to C and B to C, and
         # return the union of the results
@@ -8027,47 +8034,39 @@ def conditional_types(
         ]
         # separate list of tuples into two lists
         yes_types, no_types = zip(*result)
-        yes_type = make_simplified_union([t for t in yes_types if t is not None])
-        no_type = restrict_subtype_away(
-            current_type, yes_type, consider_runtime_isinstance=consider_runtime_isinstance
-        )
-
-        return yes_type, no_type
-
-    if proposed_type_ranges:
+        proposed_type = make_simplified_union([t for t in yes_types if t is not None])
+    else:
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
-        if isinstance(proposed_type, AnyType):
-            # We don't really know much about the proposed type, so we shouldn't
-            # attempt to narrow anything. Instead, we broaden the expr to Any to
-            # avoid false positives
-            return proposed_type, default
-        elif not any(
-            type_range.is_upper_bound for type_range in proposed_type_ranges
-        ) and is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
-            # Expression is always of one of the types in proposed_type_ranges
-            return default, UninhabitedType()
-        elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
-            # Expression is never of any type in proposed_type_ranges
-            return UninhabitedType(), default
-        else:
-            # we can only restrict when the type is precise, not bounded
-            proposed_precise_type = UnionType.make_union(
-                [
-                    type_range.item
-                    for type_range in proposed_type_ranges
-                    if not type_range.is_upper_bound
-                ]
-            )
-            remaining_type = restrict_subtype_away(
-                current_type,
-                proposed_precise_type,
-                consider_runtime_isinstance=consider_runtime_isinstance,
-            )
-            return proposed_type, remaining_type
+
+    if isinstance(proposed_type, AnyType):
+        # We don't really know much about the proposed type, so we shouldn't
+        # attempt to narrow anything. Instead, we broaden the expr to Any to
+        # avoid false positives
+        return proposed_type, default
+    elif not any(
+        type_range.is_upper_bound for type_range in proposed_type_ranges
+    ) and is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
+        # Expression is always of one of the types in proposed_type_ranges
+        return default, UninhabitedType()
+    elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+        # Expression is never of any type in proposed_type_ranges
+        return UninhabitedType(), default
     else:
-        # An isinstance check, but we don't understand the type
-        return current_type, default
+        # we can only restrict when the type is precise, not bounded
+        proposed_precise_type = UnionType.make_union(
+            [
+                type_range.item
+                for type_range in proposed_type_ranges
+                if not type_range.is_upper_bound
+            ]
+        )
+        remaining_type = restrict_subtype_away(
+            current_type,
+            proposed_precise_type,
+            consider_runtime_isinstance=consider_runtime_isinstance,
+        )
+        return proposed_type, remaining_type
 
 
 def conditional_types_to_typemaps(
