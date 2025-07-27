@@ -8022,14 +8022,16 @@ def conditional_types(
             return proposed_type, default
         elif not any(
             type_range.is_upper_bound for type_range in proposed_type_ranges
-        ) and (  # concrete subtypes
+        ) and (
+            # concrete subtypes
             is_proper_subtype(current_type, proposed_type, ignore_promotions=True)
-            or (  # structural subtypes
-                is_subtype(current_type, proposed_type, ignore_promotions=True)
-                and (
+            # structural subtypes
+            or (
+                (
                     isinstance(proposed_type, CallableType)
                     or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
                 )
+                and is_subtype(current_type, proposed_type, ignore_promotions=True)
             )
         ):
             # Expression is always of one of the types in proposed_type_ranges
