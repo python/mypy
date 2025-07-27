@@ -6358,7 +6358,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # don't try to parse it because there isn't enough information
         # available to the TypeChecker pass to resolve string annotations
         if has_str_expression(maybe_type_expr):
-            self.chk.note(
+            self.chk.fail(
                 "TypeForm containing a string annotation cannot be recognized here. "
                 "Surround with TypeForm(...) to recognize.",
                 maybe_type_expr,

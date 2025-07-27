@@ -273,7 +273,7 @@ EXHAUSTIVE_MATCH: Final = ErrorCode(
 METACLASS: Final[ErrorCode] = ErrorCode("metaclass", "Ensure that metaclass is valid", "General")
 MAYBE_UNRECOGNIZED_STR_TYPEFORM: Final[ErrorCode] = ErrorCode(
     "maybe-unrecognized-str-typeform",
-    "Warn when a string is used where a TypeForm is expected but a string annotation cannot be recognized",
+    "Error when a string is used where a TypeForm is expected but a string annotation cannot be recognized",
     "General",
 )
 

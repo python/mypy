@@ -1313,31 +1313,31 @@ by mypy in the following locations:
 
 If you try to use a string annotation in some other location
 which expects a TypeForm, the string value will always be treated as a ``str``
-even if a ``TypeForm`` would be more appropriate and this note code
+even if a ``TypeForm`` would be more appropriate and this error code
 will be generated:
 
 .. code-block:: python
 
-   # Note: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
+   # Error: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
    # Error: List item 0 has incompatible type "str"; expected "TypeForm[Any]"  [list-item]
    list_of_typx: list[TypeForm] = ['str | None', float]
 
-Fix the note by surrounding the entire type with ``TypeForm(...)``:
+Fix the error by surrounding the entire type with ``TypeForm(...)``:
 
 .. code-block:: python
 
    list_of_typx: list[TypeForm] = [TypeForm('str | None'), float]  # OK
 
 Similarly, if you try to use a string literal in a location which expects a
-TypeForm, this note code will be generated:
+TypeForm, this error code will be generated:
 
 .. code-block:: python
 
    dict_of_typx = {'str_or_none': TypeForm(str | None)}
-   # Note: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
+   # Error: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
    list_of_typx: list[TypeForm] = [dict_of_typx['str_or_none']]
 
-Fix the note by adding ``# type: ignore[maybe-unrecognized-str-typeform]``
+Fix the error by adding ``# type: ignore[maybe-unrecognized-str-typeform]``
 to the line with the string literal:
 
 .. code-block:: python

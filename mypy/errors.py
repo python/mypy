@@ -26,7 +26,6 @@ T = TypeVar("T")
 SHOW_NOTE_CODES: Final = {
     codes.ANNOTATION_UNCHECKED,
     codes.DEPRECATED,
-    codes.MAYBE_UNRECOGNIZED_STR_TYPEFORM,
 }
 
 # Do not add notes with links to error code docs to errors with these codes.
