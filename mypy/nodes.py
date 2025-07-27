@@ -3026,6 +3026,7 @@ class TypeInfo(SymbolNode):
         "dataclass_transform_spec",
         "is_type_check_only",
         "deprecated",
+        "type_object_type",
     )
 
     _fullname: str  # Fully qualified name
@@ -3182,6 +3183,10 @@ class TypeInfo(SymbolNode):
     # The type's deprecation message (in case it is deprecated)
     deprecated: str | None
 
+    # Cached value of class constructor type, i.e. the type of class object when it
+    # appears in runtime context.
+    type_object_type: mypy.types.FunctionLike | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3240,6 +3245,7 @@ class TypeInfo(SymbolNode):
         self.dataclass_transform_spec = None
         self.is_type_check_only = False
         self.deprecated = None
+        self.type_object_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
