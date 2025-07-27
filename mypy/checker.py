@@ -5577,6 +5577,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 previous_type, _, _ = self.check_lvalue(expr)
                 if previous_type is not None:
                     already_exists = True
+                    if isinstance(expr.node, Var) and expr.node.is_final:
+                        self.msg.cant_assign_to_final(expr.name, False, expr)
                     if self.check_subtype(
                         typ,
                         previous_type,
