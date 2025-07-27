@@ -7755,11 +7755,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 types.append(TypeRange(typ, is_upper_bound=False))
             else:  # we didn't see an actual type, but rather a variable with unknown value
                 return None
-        if not types:
-            # this can happen if someone has empty tuple as 2nd argument to isinstance
-            # strictly speaking, we should return UninhabitedType but for simplicity we will simply
-            # refuse to do any type inference for now
-            return None
+        # Note: types can be an empty list, for example in `isinstance(x, ())`,
+        #  which always returns False at runtime.
         return types
 
     def is_literal_enum(self, n: Expression) -> bool:
@@ -8003,6 +8000,8 @@ def conditional_types(
             None means no new information can be inferred.
         If default is set it is returned instead.
     """
+    if proposed_type_ranges is None:
+        return current_type, default
     if not proposed_type_ranges:
         return UninhabitedType(), default
 
