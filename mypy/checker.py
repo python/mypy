@@ -8022,9 +8022,7 @@ def conditional_types(
             # attempt to narrow anything. Instead, we broaden the expr to Any to
             # avoid false positives
             return proposed_type, default
-        elif not any(
-            type_range.is_upper_bound for type_range in proposed_type_ranges
-        ) and (
+        elif not any(type_range.is_upper_bound for type_range in proposed_type_ranges) and (
             # concrete subtypes
             is_proper_subtype(current_type, proposed_type, ignore_promotions=True)
             # structural subtypes
