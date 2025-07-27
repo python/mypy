@@ -397,6 +397,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.is_stub = tree.is_stub
         self.is_typeshed_stub = tree.is_typeshed_file(options)
         self.inferred_attribute_types = None
+        self.allow_constructor_cache = True
 
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -500,12 +501,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         )
 
     def check_second_pass(
-        self, todo: Sequence[DeferredNode | FineGrainedDeferredNode] | None = None
+        self,
+        todo: Sequence[DeferredNode | FineGrainedDeferredNode] | None = None,
+        *,
+        allow_constructor_cache: bool = True,
     ) -> bool:
         """Run second or following pass of type checking.
 
         This goes through deferred nodes, returning True if there were any.
         """
+        self.allow_constructor_cache = allow_constructor_cache
         self.recurse_into_functions = True
         with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
             if not todo and not self.deferred_nodes:
