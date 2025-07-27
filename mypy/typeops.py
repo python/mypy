@@ -177,12 +177,15 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     init_index = info.mro.index(init_method.node.info)
     new_index = info.mro.index(new_method.node.info)
 
-    if checker_state.type_checker:
-        builtins_type = checker_state.type_checker.named_type("builtins.type")
+    if info.metaclass_type is not None:
+        fallback = info.metaclass_type
+    elif checker_state.type_checker:
+        # Prefer direct call when it is available. It is faster, and,
+        # unfortunately, some callers provide bogus callback.
+        fallback = checker_state.type_checker.named_type("builtins.type")
     else:
-        builtins_type = named_type("builtins.type")
+        fallback = named_type("builtins.type")
 
-    fallback = info.metaclass_type or builtins_type
     if init_index < new_index:
         method: FuncBase | Decorator = init_method.node
         is_new = False
@@ -218,6 +221,8 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     # return type and insert type arguments.
     if isinstance(method, FuncBase):
         if isinstance(method, OverloadedFuncDef) and not method.type:
+            # Do not cache if the type is not ready. Same logic for decorators is
+            # achieved in early return above because is_valid_constructor() is False.
             allow_cache = False
         t = function_type(method, fallback)
     else:

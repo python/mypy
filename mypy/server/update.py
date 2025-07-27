@@ -1025,6 +1025,8 @@ def reprocess_nodes(
     # We seem to need additional passes in fine-grained incremental mode.
     checker.pass_num = 0
     checker.last_pass = 3
+    # It is tricky to reliably invalidate constructor cache in fine-grained increments.
+    # See PR 19514 description for details.
     more = checker.check_second_pass(nodes, allow_constructor_cache=False)
     while more:
         more = False
