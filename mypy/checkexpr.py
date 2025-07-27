@@ -1671,6 +1671,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 object_type,
                 original_type=callee,
             )
+        elif isinstance(callee, UninhabitedType):
+            ret = UninhabitedType()
+            ret.ambiguous = callee.ambiguous
+            return callee, ret
         else:
             return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
 
@@ -1751,14 +1755,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         return AnyType(TypeOfAny.from_error), callee
                     seen_unpack = True
 
-        formal_to_actual = map_actuals_to_formals(
-            arg_kinds,
-            arg_names,
-            callee.arg_kinds,
-            callee.arg_names,
-            lambda i: self.accept(args[i]),
-        )
-
         # This is tricky: return type may contain its own type variables, like in
         # def [S] (S) -> def [T] (T) -> tuple[S, T], so we need to update their ids
         # to avoid possible id clashes if this call itself appears in a generic
@@ -1770,26 +1766,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             callee = callee.copy_modified(ret_type=fresh_ret_type)
 
         if callee.is_generic():
+            callee = freshen_function_type_vars(callee)
+            callee = self.infer_function_type_arguments_using_context(callee, context)
+
+        formal_to_actual = map_actuals_to_formals(
+            arg_kinds,
+            arg_names,
+            callee.arg_kinds,
+            callee.arg_names,
+            lambda i: self.accept(args[i]),
+        )
+
+        if callee.is_generic():
             need_refresh = any(
                 isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
             )
-            callee = freshen_function_type_vars(callee)
-            callee = self.infer_function_type_arguments_using_context(callee, context)
-            if need_refresh:
-                # Argument kinds etc. may have changed due to
-                # ParamSpec or TypeVarTuple variables being replaced with an arbitrary
-                # number of arguments; recalculate actual-to-formal map
-                formal_to_actual = map_actuals_to_formals(
-                    arg_kinds,
-                    arg_names,
-                    callee.arg_kinds,
-                    callee.arg_names,
-                    lambda i: self.accept(args[i]),
-                )
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
             )
             if need_refresh:
+                # Argument kinds etc. may have changed due to
+                # ParamSpec or TypeVarTuple variables being replaced with an arbitrary
+                # number of arguments; recalculate actual-to-formal map
                 formal_to_actual = map_actuals_to_formals(
                     arg_kinds,
                     arg_names,
@@ -2254,6 +2252,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if isinstance(arg, (NoneType, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
         callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
+
+        if not callee_type.is_generic():
+            # Fast path, second pass can't give new information.
+            return callee_type, []
+
         if need_refresh:
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds,
@@ -3465,7 +3468,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # It's actually a type expression X | Y.
             return self.accept(e.analyzed)
         if e.op == "and" or e.op == "or":
-            return self.check_boolean_op(e, e)
+            return self.check_boolean_op(e)
         if e.op == "*" and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
@@ -4252,20 +4255,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 context=context,
             )
 
-    def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
+    def check_boolean_op(self, e: OpExpr) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
 
         # A boolean operation can evaluate to either of the operands.
 
-        # We use the current type context to guide the type inference of of
+        # We use the current type context to guide the type inference of
         # the left operand. We also use the left operand type to guide the type
         # inference of the right operand so that expressions such as
         # '[1] or []' are inferred correctly.
         ctx = self.type_context[-1]
         left_type = self.accept(e.left, ctx)
-        expanded_left_type = try_expanding_sum_type_to_union(
-            self.accept(e.left, ctx), "builtins.bool"
-        )
+        expanded_left_type = try_expanding_sum_type_to_union(left_type, "builtins.bool")
 
         assert e.op in ("and", "or")  # Checked by visit_op_expr
 

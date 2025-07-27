@@ -37,13 +37,22 @@ def heading(s: str) -> None:
     print()
 
 
-def build_mypy(target_dir: str, multi_file: bool, *, cflags: str | None = None) -> None:
+def build_mypy(
+    target_dir: str,
+    multi_file: bool,
+    *,
+    cflags: str | None = None,
+    log_trace: bool = False,
+    opt_level: str = "2",
+) -> None:
     env = os.environ.copy()
     env["CC"] = "clang"
-    env["MYPYC_OPT_LEVEL"] = "2"
+    env["MYPYC_OPT_LEVEL"] = opt_level
     env["PYTHONHASHSEED"] = "1"
     if multi_file:
         env["MYPYC_MULTI_FILE"] = "1"
+    if log_trace:
+        env["MYPYC_LOG_TRACE"] = "1"
     if cflags is not None:
         env["CFLAGS"] = cflags
     cmd = [sys.executable, "setup.py", "--use-mypyc", "build_ext", "--inplace"]
