@@ -23,3 +23,9 @@ def test_weakref_ref_with_callback():
     assert r() is obj
     obj = None
     assert r() is None, r()
+
+[file driver.py]
+from native import test_weakref_ref, test_weakref_ref_with_callback
+
+test_weakref_ref()
+test_weakref_ref_with_callback()
