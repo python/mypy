@@ -1205,6 +1205,7 @@ def test_callable(x: Callable[[object], int]) -> None:
 from typing import Any
 from typing_extensions import Protocol, runtime_checkable
 
+@runtime_checkable
 class Proto(Protocol):
     def foo(self, x: int, /) -> object: ...
 
