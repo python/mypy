@@ -25,6 +25,11 @@ labels: "crash"
 appreciated.  We also very much appreciate it if you try to narrow the
 source down to a small stand-alone example.)
 
+```python
+# Ideally, a small sample program that demonstrates the problem.
+# Or even better, a reproducible playground link https://mypy-play.net/ (use the "Gist" button)
+```
+
 **Your Environment**
 
 <!-- Include as many relevant details about the environment you experienced the bug in -->
