@@ -98,6 +98,9 @@ class BasicBlock:
         self.ops: list[Op] = []
         self.error_handler: BasicBlock | None = None
         self.referenced = False
+    
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(label={self.label}, ops={self.ops})"
 
     @property
     def terminated(self) -> bool:
