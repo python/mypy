@@ -737,6 +737,7 @@ def not_precomputed() -> None:
 def precomputed():
     r0 :: str
     _ :: object
+    r1, r2 :: str
 L0:
     r0 = 'None'
     _ = r0

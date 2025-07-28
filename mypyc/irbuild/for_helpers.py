@@ -89,6 +89,7 @@ from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 GenFunc = Callable[[], None]
 
+
 def for_loop_helper(
     builder: IRBuilder,
     index: Lvalue,
@@ -97,7 +98,7 @@ def for_loop_helper(
     else_insts: GenFunc | None,
     is_async: bool,
     line: int,
-    can_unroll: bool = True,
+    can_unroll: bool = False,
 ) -> None:
     """Generate IR for a loop.
 
