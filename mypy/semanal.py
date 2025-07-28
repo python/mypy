@@ -510,6 +510,11 @@ class SemanticAnalyzer(
         # Used to track edge case when return is still inside except* if it enters a loop
         self.return_stmt_inside_except_star_block: bool = False
 
+        # TypeForm profiling counters
+        self.type_expression_parse_count: int = 0  # Total try_parse_as_type_expression calls
+        self.type_expression_full_parse_success_count: int = 0  # Successful full parses
+        self.type_expression_full_parse_failure_count: int = 0  # Failed full parses
+
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
     @property
@@ -7694,6 +7699,8 @@ class SemanticAnalyzer(
         type context) than this function is called (i.e. eagerly for EVERY
         expression in certain syntactic positions).
         """
+        # Count every call to this method for profiling
+        self.type_expression_parse_count += 1
 
         # Bail ASAP if the Expression matches a common pattern that cannot possibly
         # be a valid type expression, because this function is called very frequently
@@ -7754,6 +7761,12 @@ class SemanticAnalyzer(
             except TypeTranslationError:
                 # Not a type expression
                 t = None
+
+        # Count full parse attempts for profiling
+        if t is not None:
+            self.type_expression_full_parse_success_count += 1
+        else:
+            self.type_expression_full_parse_failure_count += 1
 
         maybe_type_expr.as_type = t
 
