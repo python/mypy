@@ -129,41 +129,41 @@ L4:
 def test2():
     r0, tmp_tuple :: tuple[int, int, int]
     r1 :: set
-    r2 :: native_int
-    r3 :: object
-    r4 :: native_int
-    r5, r6 :: bit
-    r7 :: object
-    r8 :: bit
-    r9, r10, r12 :: int
-    r13 :: object
-    r14, x, r15 :: int
-    r16 :: object
-    r17 :: i32
-    r18 :: bit
-    r19 :: native_int
+    r2, x, r3 :: int
+    r4 :: object
+    r5 :: i32
+    r6 :: bit
+    r7, r8 :: int
+    r9 :: object
+    r10 :: i32
+    r11 :: bit
+    r12, r13 :: int
+    r14 :: object
+    r15 :: i32
+    r16 :: bit
     b :: set
 L0:
     r0 = (2, 6, 10)
     tmp_tuple = r0
     r1 = PySet_New(0)
-    r2 = box(tuple[int, int, int], tmp_tuple)
-    r3 = PyObject_GetIter(r2)
-L1:
-    r4 = PyIter_Next(r3)
-    if is_error(r4) goto L4 else goto L2
-L2:
-    r5 = unbox(int, r4)
-    x = r5
-    r6 = f(x)
-    r7 = box(int, r6)
-    r8 = PySet_Add(r1, r7)
-    r9 = r8 >= 0 :: signed
-L3:
-    goto L1
-L4:
-    r10 = CPy_NoErrOccurred()
-L5:
+    r2 = tmp_tuple[0]
+    x = r2
+    r3 = f(x)
+    r4 = box(int, r3)
+    r5 = PySet_Add(r1, r4)
+    r6 = r5 >= 0 :: signed
+    r7 = tmp_tuple[1]
+    x = r7
+    r8 = f(x)
+    r9 = box(int, r8)
+    r10 = PySet_Add(r1, r9)
+    r11 = r10 >= 0 :: signed
+    r12 = tmp_tuple[2]
+    x = r12
+    r13 = f(x)
+    r14 = box(int, r13)
+    r15 = PySet_Add(r1, r14)
+    r16 = r15 >= 0 :: signed
     b = r1
     return 1
 def test3():
@@ -735,25 +735,15 @@ def not_precomputed() -> None:
 
 [out]
 def precomputed():
-    r0 :: set
-    r1, r2 :: object
-    r3 :: str
+    r0 :: str
     _ :: object
-    r4 :: bit
 L0:
-    r0 = frozenset({'False', 'None', 'True'})
-    r1 = PyObject_GetIter(r0)
-L1:
-    r2 = PyIter_Next(r1)
-    if is_error(r2) goto L4 else goto L2
-L2:
-    r3 = cast(str, r2)
-    _ = r3
-L3:
-    goto L1
-L4:
-    r4 = CPy_NoErrOccurred()
-L5:
+    r0 = 'None'
+    _ = r0
+    r1 = 'True'
+    _ = r1
+    r2 = 'False'
+    _ = r2
     return 1
 def precomputed2():
     r0 :: set

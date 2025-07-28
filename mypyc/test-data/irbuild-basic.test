@@ -3858,15 +3858,17 @@ def f(t: Tuple[int, int]) -> int:
 [out]
 def f(t):
     t :: tuple[int, int]
-    s, x :: int
-    r0 :: int
+    s, r0, x, r1, r2, r3 :: int
+L0:
     s = 0
-    x = t.f0
-    L1:
-        s = CPyTagged_Add(s, x)
-    x = t.f1
-    L2:
-        s = CPyTagged_Add(s, x)
+    r0 = t[0]
+    x = r0
+    r1 = CPyTagged_Add(s, x)
+    s = r1
+    r2 = t[1]
+    x = r2
+    r3 = CPyTagged_Add(s, x)
+    s = r3
     return s
 
 [case testForOverStringVar]
@@ -3893,3 +3895,12 @@ def f(s):
         goto L1
     L4:
         return out
+
+[case TestForOverCompledTupleExpr]
+def f() -> None:
+    abc = (1, 2, str(3))
+    for x in abc:
+        y = x
+[out]
+def f():
+    abc :: tuple[int, int, str]

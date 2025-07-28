@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar
+from typing import Any, Callable, ClassVar, Union
 
 from mypy.nodes import (
     ARG_POS,
@@ -15,7 +15,9 @@ from mypy.nodes import (
     CallExpr,
     DictionaryComprehension,
     Expression,
+    FloatExpr,
     GeneratorExpr,
+    IntExpr,
     ListExpr,
     Lvalue,
     MemberExpr,
@@ -393,6 +395,27 @@ def is_range_ref(expr: RefExpr) -> bool:
     )
 
 
+def is_literal_expr(expr: Expression) -> bool:
+    # Add other literal types as needed
+    if isinstance(expr, (IntExpr, StrExpr, FloatExpr, BytesExpr)):
+        return True
+    if isinstance(expr, NameExpr) and expr.fullname in {"builtins.None", "builtins.True", "builtins.False"}:
+        return True
+    return False
+
+
+def is_iterable_expr_with_literal_mambers(expr: Expression) -> bool:
+    return (
+        isinstance(expr, (ListExpr, SetExpr, TupleExpr))
+        and not isinstance(expr, MemberExpr)
+        and all(
+            is_literal_expr(item)
+            or is_iterable_expr_with_literal_mambers(item)
+            for item in expr.items
+        )
+    )
+
+
 def make_for_loop_generator(
     builder: IRBuilder,
     index: Lvalue,
@@ -421,20 +444,21 @@ def make_for_loop_generator(
     rtyp = builder.node_type(expr)
 
     # Special case: tuple literal (unroll the loop)
-    if isinstance(expr, TupleExpr):
-        return ForUnrolledLiteral(builder, index, body_block, loop_exit, line, expr.items, expr, body_insts)
+    if is_iterable_expr_with_literal_mambers(expr):
+        return ForUnrolledSequenceLiteral(builder, index, body_block, loop_exit, line, expr, body_insts)
 
-    # Special case: RTuple (known-length tuple, index-based iteration)
+    # Special case: RTuple (known-length tuple, struct field iteration)
     if isinstance(rtyp, RTuple):
         expr_reg = builder.accept(expr)
-        target_type = builder.get_sequence_type(expr)
-        for_tuple = ForSequence(builder, index, body_block, loop_exit, line, nested)
-        for_tuple.init(expr_reg, target_type, reverse=False)
-        return for_tuple
+        return ForUnrolledRTuple(builder, index, body_block, loop_exit, line, rtyp, expr_reg, expr, body_insts)
 
     # Special case: string literal (unroll the loop)
     if isinstance(expr, StrExpr):
         return ForUnrolledStringLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
+
+    # Special case: string literal (unroll the loop)
+    if isinstance(expr, BytesExpr):
+        return ForUnrolledBytesLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
 
     if is_sequence_rprimitive(rtyp):
         # Special case "for x in <list>".
@@ -798,7 +822,28 @@ class ForAsyncIterable(ForGenerator):
         pass
 
 
-class ForUnrolledLiteral(ForGenerator):
+class _ForUnrolled(ForGenerator):
+    """Generate IR for a for loop over a value known at compile time by unrolling the loop.
+
+    This class emits the loop body for each element of the value literal directly,
+    avoiding any runtime iteration logic and generator handling.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        if type(self) is _ForUnrolled:
+            raise NotImplementedError("This is a base class and should not be initialized directly.")
+        super().__init__(*args, **kwargs)
+
+    def gen_condition(self) -> None:
+        # Unrolled: nothing to do here.
+        pass
+
+    def gen_step(self) -> None:
+        # Unrolled: nothing to do here.
+        pass
+
+
+class ForUnrolledSequenceLiteral(_ForUnrolled):
     """Generate IR for a for loop over a tuple literal by unrolling the loop.
 
     This class emits the loop body for each element of the tuple literal directly,
@@ -813,31 +858,25 @@ class ForUnrolledLiteral(ForGenerator):
         body_block: BasicBlock,
         loop_exit: BasicBlock,
         line: int,
-        items: list[Expression],
-        expr: Expression,
+        expr: Union[ListExpr, SetExpr, TupleExpr],
         body_insts: GenFunc,
     ) -> None:
         super().__init__(builder, index, body_block, loop_exit, line, nested=False)
-        self.items = items
         self.expr = expr
+        self.items = expr.items
         self.body_insts = body_insts
-
-    def gen_condition(self) -> None:
-        # Unrolled: nothing to do here.
-        pass
+        self.item_types = [builder.node_type(item) for item in self.items]
 
     def begin_body(self) -> None:
         builder = self.builder
-        for item in self.items:
-            builder.assign(builder.get_assignment_target(self.index), builder.accept(item), self.line)
+        for item, item_type in zip(self.items, self.item_types):
+            value = builder.accept(item)
+            value = builder.coerce(value, item_type, self.line)
+            builder.assign(builder.get_assignment_target(self.index), value, self.line)
             self.body_insts()
 
-    def gen_step(self) -> None:
-        # Unrolled: nothing to do here.
-        pass
 
-
-class ForUnrolledStringLiteral(ForGenerator):
+class ForUnrolledStringLiteral(_ForUnrolled):
     """Generate IR for a for loop over a string literal by unrolling the loop.
 
     This class emits the loop body for each character of the string literal directly,
@@ -861,10 +900,6 @@ class ForUnrolledStringLiteral(ForGenerator):
         self.expr = expr
         self.body_insts = body_insts
 
-    def gen_condition(self) -> None:
-        # Unrolled: nothing to do here.
-        pass
-
     def begin_body(self) -> None:
         builder = self.builder
         for c in self.value:
@@ -875,9 +910,74 @@ class ForUnrolledStringLiteral(ForGenerator):
             )
             self.body_insts()
 
-    def gen_step(self) -> None:
-        # Unrolled: nothing to do here.
-        pass
+
+class ForUnrolledBytesLiteral(_ForUnrolled):
+    """Generate IR for a for loop over a string literal by unrolling the loop.
+
+    This class emits the loop body for each character of the string literal directly,
+    avoiding any runtime iteration logic.
+    """
+    handles_body_insts = True
+
+    def __init__(
+        self,
+        builder: IRBuilder,
+        index: Lvalue,
+        body_block: BasicBlock,
+        loop_exit: BasicBlock,
+        line: int,
+        value: bytes,
+        expr: Expression,
+        body_insts: GenFunc,
+    ) -> None:
+        super().__init__(builder, index, body_block, loop_exit, line, nested=False)
+        self.value = value
+        self.expr = expr
+        self.body_insts = body_insts
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        for c in self.value:
+            builder.assign(
+                builder.get_assignment_target(self.index),
+                builder.accept(IntExpr(c)),
+                self.line,
+            )
+            self.body_insts()
+
+
+class ForUnrolledRTuple(_ForUnrolled):
+    """Generate IR for a for loop over an RTuple by directly accessing struct fields."""
+
+    handles_body_insts = True
+
+    def __init__(
+        self,
+        builder: IRBuilder,
+        index: Lvalue,
+        body_block: BasicBlock,
+        loop_exit: BasicBlock,
+        line: int,
+        rtuple_type: RTuple,
+        expr_reg: Value,
+        expr: Expression,
+        body_insts: GenFunc,
+    ) -> None:
+        super().__init__(builder, index, body_block, loop_exit, line, nested=False)
+        self.rtuple_type = rtuple_type
+        self.expr_reg = expr_reg
+        self.expr = expr
+        self.body_insts = body_insts
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+        for i, item_type in enumerate(self.rtuple_type.types):
+            # Directly access the struct field for each RTuple element
+            value = builder.add(TupleGet(self.expr_reg, i, line))
+            value = builder.coerce(value, item_type, line)
+            builder.assign(builder.get_assignment_target(self.index), value, line)
+            self.body_insts()
 
 
 def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> Value:
