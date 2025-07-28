@@ -15,7 +15,7 @@ labels: "crash"
 
 **Traceback**
 
-```
+```python-traceback
 (Insert traceback and other messages from mypy here -- use `--show-traceback`.)
 ```
 
