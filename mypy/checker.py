@@ -1541,6 +1541,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if not isinstance(func, CallableType):
             return False
 
+        # Do not report errors for untyped methods in classes nested in untyped funcs.
+        if not (
+            self.options.check_untyped_defs
+            or len(self.dynamic_funcs) < 2
+            or not self.dynamic_funcs[-2]
+            or not defn.is_dynamic()
+        ):
+            return bool(func.arg_types)
+
         with self.scope.push_function(defn):
             # We temporary push the definition to get the self type as
             # visible from *inside* of this function/method.

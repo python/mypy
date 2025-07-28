@@ -7911,6 +7911,30 @@ reveal_type(D().fn3)  # E: Invalid self argument "D" to attribute function "fn3"
                       # N: Revealed type is "def (self: __main__.D, _x: builtins.int) -> builtins.int"
 [builtins fixtures/tuple.pyi]
 
+[case testMethodSelfArgumentChecksInUntyped]
+def unchecked():
+    class Bad:
+        def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    class Ok:
+        def fn(): ...
+        def fn2(x): ...
+
+def checked() -> None:
+    class Bad:
+        def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    class AlsoBad:
+        def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x): ...
+
+class Ok:
+    def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    def fn2(x): ...
+[builtins fixtures/tuple.pyi]
+
 [case testTypeAfterAttributeAccessWithDisallowAnyExpr]
 # flags: --disallow-any-expr
 
