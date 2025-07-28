@@ -7912,27 +7912,62 @@ reveal_type(D().fn3)  # E: Invalid self argument "D" to attribute function "fn3"
 [builtins fixtures/tuple.pyi]
 
 [case testMethodSelfArgumentChecksInUntyped]
+from typing import Callable, ParamSpec, TypeVar
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
+    return fn
+
 def unchecked():
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
         def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
 
+        # TODO: would be nice to make this error, but now we see the func
+        # being decorated as Any, not as a callable
+        @to_same_callable
+        def gaaa() -> None: ...
+        @to_same_callable
+        def gaaa2(x: int) -> None: ...
+
     class Ok:
         def fn(): ...
         def fn2(x): ...
+
+        @to_same_callable
+        def g(): ...
+        @to_same_callable
+        def g2(x): ...
 
 def checked() -> None:
     class Bad:
         def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
         def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
 
+        @to_same_callable
+        def g() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        @to_same_callable
+        def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
     class AlsoBad:
         def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
         def fn2(x): ...
 
+        @to_same_callable
+        def g(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        @to_same_callable
+        def g2(x): ...
+
 class Ok:
     def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
     def fn2(x): ...
+
+    @to_same_callable
+    def g(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    @to_same_callable
+    def g2(x): ...
 [builtins fixtures/tuple.pyi]
 
 [case testTypeAfterAttributeAccessWithDisallowAnyExpr]
