@@ -1373,49 +1373,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         )
 
                 # Store argument types.
+                found_self = False
+                if isinstance(defn, FuncDef) and not defn.is_decorated:
+                    found_self = self.require_correct_self_argument(typ, defn)
                 for i in range(len(typ.arg_types)):
                     arg_type = typ.arg_types[i]
-                    if (
-                        isinstance(defn, FuncDef)
-                        and ref_type is not None
-                        and i == 0
-                        and defn.has_self_or_cls_argument
-                        and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]
-                    ):
-                        if defn.is_class or defn.name == "__new__":
-                            ref_type = mypy.types.TypeType.make_normalized(ref_type)
-                        if not is_same_type(arg_type, ref_type):
-                            # This level of erasure matches the one in checkmember.check_self_arg(),
-                            # better keep these two checks consistent.
-                            erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
-                            if not is_subtype(ref_type, erased, ignore_type_params=True):
-                                if (
-                                    isinstance(erased, Instance)
-                                    and erased.type.is_protocol
-                                    or isinstance(erased, TypeType)
-                                    and isinstance(erased.item, Instance)
-                                    and erased.item.type.is_protocol
-                                ):
-                                    # We allow the explicit self-type to be not a supertype of
-                                    # the current class if it is a protocol. For such cases
-                                    # the consistency check will be performed at call sites.
-                                    msg = None
-                                elif typ.arg_names[i] in {"self", "cls"}:
-                                    msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
-                                        erased.str_with_options(self.options),
-                                        ref_type.str_with_options(self.options),
-                                    )
-                                else:
-                                    msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
-                                if msg:
-                                    self.fail(msg, defn)
-                    elif isinstance(arg_type, TypeVarType):
+                    if isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
                         if (
                             arg_type.variance == COVARIANT
                             and defn.name not in ("__init__", "__new__", "__post_init__")
                             and not is_private(defn.name)  # private methods are not inherited
+                            and (i != 0 or not found_self)
                         ):
                             ctx: Context = arg_type
                             if ctx.line < 0:
@@ -1564,6 +1534,69 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def require_correct_self_argument(self, func: Type, defn: FuncDef) -> bool:
+        func = get_proper_type(func)
+        if not isinstance(func, CallableType):
+            return False
+
+        # Do not report errors for untyped methods in classes nested in untyped funcs.
+        if not (
+            self.options.check_untyped_defs
+            or len(self.dynamic_funcs) < 2
+            or not self.dynamic_funcs[-2]
+            or not defn.is_dynamic()
+        ):
+            return bool(func.arg_types)
+
+        with self.scope.push_function(defn):
+            # We temporary push the definition to get the self type as
+            # visible from *inside* of this function/method.
+            ref_type: Type | None = self.scope.active_self_type()
+            if ref_type is None:
+                return False
+
+        if not defn.has_self_or_cls_argument or (
+            func.arg_kinds and func.arg_kinds[0] in [nodes.ARG_STAR, nodes.ARG_STAR2]
+        ):
+            return False
+
+        if not func.arg_types:
+            self.fail(
+                'Method must have at least one argument. Did you forget the "self" argument?', defn
+            )
+            return False
+
+        arg_type = func.arg_types[0]
+        if defn.is_class or defn.name == "__new__":
+            ref_type = mypy.types.TypeType.make_normalized(ref_type)
+        if is_same_type(arg_type, ref_type):
+            return True
+
+        # This level of erasure matches the one in checkmember.check_self_arg(),
+        # better keep these two checks consistent.
+        erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
+        if not is_subtype(ref_type, erased, ignore_type_params=True):
+            if (
+                isinstance(erased, Instance)
+                and erased.type.is_protocol
+                or isinstance(erased, TypeType)
+                and isinstance(erased.item, Instance)
+                and erased.item.type.is_protocol
+            ):
+                # We allow the explicit self-type to be not a supertype of
+                # the current class if it is a protocol. For such cases
+                # the consistency check will be performed at call sites.
+                msg = None
+            elif func.arg_names[0] in {"self", "cls"}:
+                msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
+                    erased.str_with_options(self.options), ref_type.str_with_options(self.options)
+                )
+            else:
+                msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
+            if msg:
+                self.fail(msg, defn)
+        return True
 
     def is_var_redefined_in_outer_context(self, v: Var, after_line: int) -> bool:
         """Can the variable be assigned to at module top level or outer function?
@@ -5306,6 +5339,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
         if non_trivial_decorator:
             self.check_untyped_after_decorator(sig, e.func)
+        self.require_correct_self_argument(sig, e.func)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
