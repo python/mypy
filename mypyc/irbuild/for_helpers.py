@@ -119,11 +119,19 @@ def for_loop_helper(
     normal_loop_exit = else_block if else_insts is not None else exit_block
 
     for_gen = make_for_loop_generator(
-        builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async, body_insts=body_insts, can_unroll=can_unroll
+        builder,
+        index,
+        expr,
+        body_block,
+        normal_loop_exit,
+        line,
+        is_async=is_async,
+        body_insts=body_insts,
+        can_unroll=can_unroll,
     )
 
     is_literal_loop: bool = getattr(for_gen, "handles_body_insts", False)
-    
+
     # Only call body_insts if not handled by unrolled generator
     if is_literal_loop:
         try:
@@ -399,7 +407,11 @@ def is_literal_expr(expr: Expression) -> bool:
     # Add other literal types as needed
     if isinstance(expr, (IntExpr, StrExpr, FloatExpr, BytesExpr)):
         return True
-    if isinstance(expr, NameExpr) and expr.fullname in {"builtins.None", "builtins.True", "builtins.False"}:
+    if isinstance(expr, NameExpr) and expr.fullname in {
+        "builtins.None",
+        "builtins.True",
+        "builtins.False",
+    }:
         return True
     return False
 
@@ -409,8 +421,7 @@ def is_iterable_expr_with_literal_mambers(expr: Expression) -> bool:
         isinstance(expr, (ListExpr, SetExpr, TupleExpr))
         and not isinstance(expr, MemberExpr)
         and all(
-            is_literal_expr(item)
-            or is_iterable_expr_with_literal_mambers(item)
+            is_literal_expr(item) or is_iterable_expr_with_literal_mambers(item)
             for item in expr.items
         )
     )
@@ -445,24 +456,31 @@ def make_for_loop_generator(
 
     rtyp = builder.node_type(expr)
 
-    
     if can_unroll:
         # Special case: tuple/list/set literal (unroll the loop)
         if is_iterable_expr_with_literal_mambers(expr):
-            return ForUnrolledSequenceLiteral(builder, index, body_block, loop_exit, line, expr, body_insts)
+            return ForUnrolledSequenceLiteral(
+                builder, index, body_block, loop_exit, line, expr, body_insts
+            )
 
         # Special case: RTuple (known-length tuple, struct field iteration)
         if isinstance(rtyp, RTuple):
             expr_reg = builder.accept(expr)
-            return ForUnrolledRTuple(builder, index, body_block, loop_exit, line, rtyp, expr_reg, expr, body_insts)
+            return ForUnrolledRTuple(
+                builder, index, body_block, loop_exit, line, rtyp, expr_reg, expr, body_insts
+            )
 
         # Special case: string literal (unroll the loop)
         if isinstance(expr, StrExpr):
-            return ForUnrolledStringLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
+            return ForUnrolledStringLiteral(
+                builder, index, body_block, loop_exit, line, expr.value, expr, body_insts
+            )
 
         # Special case: string literal (unroll the loop)
         if isinstance(expr, BytesExpr):
-            return ForUnrolledBytesLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
+            return ForUnrolledBytesLiteral(
+                builder, index, body_block, loop_exit, line, expr.value, expr, body_insts
+            )
 
     if is_sequence_rprimitive(rtyp):
         # Special case "for x in <list>".
@@ -835,7 +853,9 @@ class _ForUnrolled(ForGenerator):
 
     def __init__(self, *args: Any, **kwargs: Any):
         if type(self) is _ForUnrolled:
-            raise NotImplementedError("This is a base class and should not be initialized directly.")
+            raise NotImplementedError(
+                "This is a base class and should not be initialized directly."
+            )
         super().__init__(*args, **kwargs)
 
     def gen_condition(self) -> None:
@@ -853,6 +873,7 @@ class ForUnrolledSequenceLiteral(_ForUnrolled):
     This class emits the loop body for each element of the tuple literal directly,
     avoiding any runtime iteration logic.
     """
+
     handles_body_insts = True
 
     def __init__(
@@ -886,6 +907,7 @@ class ForUnrolledStringLiteral(_ForUnrolled):
     This class emits the loop body for each character of the string literal directly,
     avoiding any runtime iteration logic.
     """
+
     handles_body_insts = True
 
     def __init__(
@@ -908,9 +930,7 @@ class ForUnrolledStringLiteral(_ForUnrolled):
         builder = self.builder
         for c in self.value:
             builder.assign(
-                builder.get_assignment_target(self.index),
-                builder.accept(StrExpr(c)),
-                self.line,
+                builder.get_assignment_target(self.index), builder.accept(StrExpr(c)), self.line
             )
             self.body_insts()
 
@@ -921,6 +941,7 @@ class ForUnrolledBytesLiteral(_ForUnrolled):
     This class emits the loop body for each character of the string literal directly,
     avoiding any runtime iteration logic.
     """
+
     handles_body_insts = True
 
     def __init__(
@@ -943,9 +964,7 @@ class ForUnrolledBytesLiteral(_ForUnrolled):
         builder = self.builder
         for c in self.value:
             builder.assign(
-                builder.get_assignment_target(self.index),
-                builder.accept(IntExpr(c)),
-                self.line,
+                builder.get_assignment_target(self.index), builder.accept(IntExpr(c)), self.line
             )
             self.body_insts()
 

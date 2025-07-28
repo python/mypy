@@ -138,8 +138,9 @@ class ControlFlowDetector(mypy.traverser.TraverserVisitor):
     - return
     - continue
     - break
-    
+
     """
+
     def __init__(self) -> None:
         super().__init__()
         self.has_control_flow = False
