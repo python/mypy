@@ -270,12 +270,12 @@ def build_using_shared_lib(
 ) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
-    This creates one shared library extension module that all of the
-    others import and then one shim extension module for each
-    module in the build, that simply calls an initialization function
+    This creates one shared library extension module that all the
+    others import, and one shim extension module for each
+    module in the build. Each shim simply calls an initialization function
     in the shared library.
 
-    The shared library (which lib_name is the name of) is a python
+    The shared library (which lib_name is the name of) is a Python
     extension module that exports the real initialization functions in
     Capsules stored in module attributes.
     """
@@ -511,7 +511,7 @@ def mypycify(
         separate: Should compiled modules be placed in separate extension modules.
                   If False, all modules are placed in a single shared library.
                   If True, every module is placed in its own library.
-                  Otherwise separate should be a list of
+                  Otherwise, separate should be a list of
                   (file name list, optional shared library name) pairs specifying
                   groups of files that should be placed in the same shared library
                   (while all other modules will be placed in its own library).
