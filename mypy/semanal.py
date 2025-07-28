@@ -7748,11 +7748,7 @@ class SemanticAnalyzer(
 
         with self.isolated_error_analysis():
             try:
-                # Ignore warnings that look like:
-                # <type_comment>:1: SyntaxWarning: invalid escape sequence '\('
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", category=SyntaxWarning)
-                    t = self.expr_to_analyzed_type(maybe_type_expr)
+                t = self.expr_to_analyzed_type(maybe_type_expr)
                 if self.errors.is_errors():
                     t = None
             except TypeTranslationError:
