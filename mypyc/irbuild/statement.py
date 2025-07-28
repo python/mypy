@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from typing import Callable
 
 import mypy.nodes
+import mypy.traverser
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -128,6 +129,29 @@ from .match import MatchVisitor
 
 GenFunc = Callable[[], None]
 ValueGenFunc = Callable[[], Value]
+
+
+class ControlFlowDetector(mypy.traverser.TraverserVisitor):
+    """
+    A Visitor class that detects whether a block contains any of the following control flow statements:
+
+    - return
+    - continue
+    - break
+    
+    """
+    def __init__(self) -> None:
+        super().__init__()
+        self.has_control_flow = False
+
+    def visit_break_stmt(self, o: BreakStmt) -> None:
+        self.has_control_flow = True
+
+    def visit_continue_stmt(self, o: ContinueStmt) -> None:
+        self.has_control_flow = True
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        self.has_control_flow = True
 
 
 def transform_block(builder: IRBuilder, block: Block) -> None:
@@ -434,6 +458,11 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
 
 def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
+    # Check for control flow statements in the loop body
+    detector = ControlFlowDetector()
+    s.body.accept(detector)
+    can_unroll = s.else_body is None and not detector.has_control_flow
+
     def body() -> None:
         builder.accept(s.body)
 
@@ -441,9 +470,25 @@ def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
         assert s.else_body is not None
         builder.accept(s.else_body)
 
-    for_loop_helper(
-        builder, s.index, s.expr, body, else_block if s.else_body else None, s.is_async, s.line
-    )
+    while True:
+        try:
+            # for whatever reason this can blow up with can_unroll=True
+            # but in those cases we can just fall back to the existing for loop logic.
+            for_loop_helper(
+                builder,
+                s.index,
+                s.expr,
+                body,
+                else_block if s.else_body else None,
+                s.is_async,
+                s.line,
+                can_unroll=can_unroll,
+            )
+            return
+        except AssertionError:
+            if not can_unroll:
+                raise
+            can_unroll = False
 
 
 def transform_break_stmt(builder: IRBuilder, node: BreakStmt) -> None:
