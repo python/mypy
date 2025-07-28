@@ -1720,7 +1720,7 @@ from typing import Iterator, Callable, List, Optional
 from a import f
 import a
 
-def dec(f: Callable[['A'], Optional[Iterator[int]]]) -> Callable[[int], int]: pass
+def dec(f: Callable[['A'], Optional[Iterator[int]]]) -> Callable[['A', int], int]: pass
 
 class A:
     @dec

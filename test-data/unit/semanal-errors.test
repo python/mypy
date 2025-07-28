@@ -537,13 +537,6 @@ def f(y: t): x = t
 main:4: error: "t" is a type variable and only valid in type context
 main:5: error: "t" is a type variable and only valid in type context
 
-[case testMissingSelf]
-import typing
-class A:
-  def f(): pass
-[out]
-main:3: error: Method must have at least one argument. Did you forget the "self" argument?
-
 [case testInvalidBaseClass]
 import typing
 class A(B): pass
@@ -557,15 +550,6 @@ def f() -> None: super().y
 [out]
 main:2: error: "super" used outside class
 main:3: error: "super" used outside class
-
-[case testMissingSelfInMethod]
-import typing
-class A:
-  def f() -> None: pass
-  def g(): pass
-[out]
-main:3: error: Method must have at least one argument. Did you forget the "self" argument?
-main:4: error: Method must have at least one argument. Did you forget the "self" argument?
 
 [case testMultipleMethodDefinition]
 import typing

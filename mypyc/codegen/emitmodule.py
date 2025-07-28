@@ -1,7 +1,7 @@
 """Generate C code for a Python C extension module from Python source code."""
 
 # FIXME: Basically nothing in this file operates on the level of a
-# single module and it should be renamed.
+#        single module and it should be renamed.
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.spill import insert_spills
 from mypyc.transform.uninit import insert_uninit_checks
 
-# All of the modules being compiled are divided into "groups". A group
+# All the modules being compiled are divided into "groups". A group
 # is a set of modules that are placed into the same shared library.
 # Two common configurations are that every module is placed in a group
 # by itself (fully separate compilation) and that every module is
@@ -164,7 +164,7 @@ class MypycPlugin(Plugin):
         if hash_digest(meta_json) != ir_data["meta_hash"]:
             return None
 
-        # Check that all of the source files are present and as
+        # Check that all the source files are present and as
         # expected. The main situation where this would come up is the
         # user deleting the build directory without deleting
         # .mypy_cache, which we should handle gracefully.
@@ -215,8 +215,8 @@ def compile_scc_to_ir(
 ) -> ModuleIRs:
     """Compile an SCC into ModuleIRs.
 
-    Any modules that this SCC depends on must have either compiled or
-    loaded from a cache into mapper.
+    Any modules that this SCC depends on must have either been compiled,
+    type checked, or loaded from a cache into mapper.
 
     Arguments:
         scc: The list of MypyFiles to compile
@@ -244,11 +244,11 @@ def compile_scc_to_ir(
 
     for module in modules.values():
         for fn in module.functions:
-            # Insert uninit checks.
+            # Insert checks for uninitialized values.
             insert_uninit_checks(fn)
             # Insert exception handling.
             insert_exception_handling(fn)
-            # Insert refcount handling.
+            # Insert reference count handling.
             insert_ref_count_opcodes(fn)
 
             if fn in env_user_functions:
@@ -369,7 +369,7 @@ def write_cache(
         cache are in sync and refer to the same version of the code.
         This is particularly important if mypyc crashes/errors/is
         stopped after mypy has written its cache but before mypyc has.
-      * The hashes of all of the source file outputs for the group
+      * The hashes of all the source file outputs for the group
         the module is in. This is so that the module will be
         recompiled if the source outputs are missing.
     """
@@ -429,7 +429,7 @@ def compile_modules_to_c(
     Each shared library module provides, for each module in its group,
     a PyCapsule containing an initialization function.
     Additionally, it provides a capsule containing an export table of
-    pointers to all of the group's functions and static variables.
+    pointers to all the group's functions and static variables.
 
     Arguments:
         result: The BuildResult from the mypy front-end
@@ -504,7 +504,7 @@ class GroupGenerator:
 
         The code for a compilation group contains an internal and an
         external .h file, and then one .c if not in multi_file mode or
-        one .c file per module if in multi_file mode.)
+        one .c file per module if in multi_file mode.
 
         Arguments:
             modules: (name, ir) pairs for each module in the group
@@ -512,8 +512,7 @@ class GroupGenerator:
             group_name: The name of the group (or None if this is single-module compilation)
             group_map: A map of modules to their group names
             names: The name generator for the compilation
-            multi_file: Whether to put each module in its own source file regardless
-                        of group structure.
+            compiler_options: Mypyc specific options, including multi_file mode
         """
         self.modules = modules
         self.source_paths = source_paths
@@ -642,7 +641,7 @@ class GroupGenerator:
             decls = ext_declarations if declaration.is_type else declarations
             if not declaration.is_type:
                 decls.emit_lines(f"extern {declaration.decl[0]}", *declaration.decl[1:])
-                # If there is a definition, emit it. Otherwise repeat the declaration
+                # If there is a definition, emit it. Otherwise, repeat the declaration
                 # (without an extern).
                 if declaration.defn:
                     emitter.emit_lines(*declaration.defn)
@@ -652,7 +651,8 @@ class GroupGenerator:
                 decls.emit_lines(*declaration.decl)
 
         if self.group_name:
-            self.generate_export_table(ext_declarations, emitter)
+            if self.compiler_options.separate:
+                self.generate_export_table(ext_declarations, emitter)
 
             self.generate_shared_lib_init(emitter)
 
@@ -770,13 +770,13 @@ class GroupGenerator:
     def generate_shared_lib_init(self, emitter: Emitter) -> None:
         """Generate the init function for a shared library.
 
-        A shared library contains all of the actual code for a
+        A shared library contains all the actual code for a
         compilation group.
 
         The init function is responsible for creating Capsules that
         wrap pointers to the initialization function of all the real
         init functions for modules in this shared library as well as
-        the export table containing all of the exported functions and
+        the export table containing all the exported functions and
         values from all the modules.
 
         These capsules are stored in attributes of the shared library.
@@ -809,20 +809,21 @@ class GroupGenerator:
             "",
         )
 
-        emitter.emit_lines(
-            'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
-                shared_lib_name(self.group_name)
-            ),
-            "if (!capsule) {",
-            "goto fail;",
-            "}",
-            'res = PyObject_SetAttrString(module, "exports", capsule);',
-            "Py_DECREF(capsule);",
-            "if (res < 0) {",
-            "goto fail;",
-            "}",
-            "",
-        )
+        if self.compiler_options.separate:
+            emitter.emit_lines(
+                'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
+                    shared_lib_name(self.group_name)
+                ),
+                "if (!capsule) {",
+                "goto fail;",
+                "}",
+                'res = PyObject_SetAttrString(module, "exports", capsule);',
+                "Py_DECREF(capsule);",
+                "if (res < 0) {",
+                "goto fail;",
+                "}",
+                "",
+            )
 
         for mod in self.modules:
             name = exported_name(mod)
