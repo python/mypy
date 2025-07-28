@@ -129,11 +129,19 @@ L4:
 def test2():
     r0, tmp_tuple :: tuple[int, int, int]
     r1 :: set
-    r2, r3, r4 :: object
-    r5, x, r6 :: int
+    r2 :: native_int
+    r3 :: object
+    r4 :: native_int
+    r5, r6 :: bit
     r7 :: object
-    r8 :: i32
-    r9, r10 :: bit
+    r8 :: bit
+    r9, r10, r12 :: int
+    r13 :: object
+    r14, x, r15 :: int
+    r16 :: object
+    r17 :: i32
+    r18 :: bit
+    r19 :: native_int
     b :: set
 L0:
     r0 = (2, 6, 10)
