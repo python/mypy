@@ -390,7 +390,7 @@ class Errors:
     # in some cases to avoid reporting huge numbers of errors.
     seen_import_error = False
 
-    _watchers: list[ErrorWatcher] = []
+    _watchers: list[ErrorWatcher]
 
     def __init__(
         self,
@@ -421,6 +421,7 @@ class Errors:
         self.scope = None
         self.target_module = None
         self.seen_import_error = False
+        self._watchers = []
 
     def reset(self) -> None:
         self.initialize()
@@ -931,7 +932,8 @@ class Errors:
         if self.file in self.ignored_files:
             # Errors ignored, so no point generating fancy messages
             return True
-        for _watcher in self._watchers:
+        if self._watchers:
+            _watcher = self._watchers[-1]
             if _watcher._filter is True and _watcher._filtered is None:
                 # Errors are filtered
                 return True
