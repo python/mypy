@@ -118,8 +118,15 @@ def for_loop_helper(
     normal_loop_exit = else_block if else_insts is not None else exit_block
 
     for_gen = make_for_loop_generator(
-        builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async
+        builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async, body_insts=body_insts
     )
+
+    is_literal_loop: bool = getattr(for_gen, "handles_body_insts", False)
+    
+    # Only call body_insts if not handled by unrolled generator
+    if is_literal_loop:
+        for_gen.begin_body()
+        return
 
     builder.push_loop_stack(step_block, exit_block)
     condition_block = BasicBlock()
@@ -395,6 +402,7 @@ def make_for_loop_generator(
     line: int,
     is_async: bool = False,
     nested: bool = False,
+    body_insts: GenFunc = None,
 ) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
 
@@ -411,6 +419,23 @@ def make_for_loop_generator(
         return async_obj
 
     rtyp = builder.node_type(expr)
+
+    # Special case: tuple literal (unroll the loop)
+    if isinstance(expr, TupleExpr):
+        return ForUnrolledLiteral(builder, index, body_block, loop_exit, line, expr.items, expr, body_insts)
+
+    # Special case: RTuple (known-length tuple, index-based iteration)
+    if isinstance(rtyp, RTuple):
+        expr_reg = builder.accept(expr)
+        target_type = builder.get_sequence_type(expr)
+        for_tuple = ForSequence(builder, index, body_block, loop_exit, line, nested)
+        for_tuple.init(expr_reg, target_type, reverse=False)
+        return for_tuple
+
+    # Special case: string literal (unroll the loop)
+    if isinstance(expr, StrExpr):
+        return ForUnrolledStringLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
+
     if is_sequence_rprimitive(rtyp):
         # Special case "for x in <list>".
         expr_reg = builder.accept(expr)
@@ -770,6 +795,88 @@ class ForAsyncIterable(ForGenerator):
 
     def gen_step(self) -> None:
         # Nothing to do here, since we get the next item as part of gen_condition().
+        pass
+
+
+class ForUnrolledLiteral(ForGenerator):
+    """Generate IR for a for loop over a tuple literal by unrolling the loop.
+
+    This class emits the loop body for each element of the tuple literal directly,
+    avoiding any runtime iteration logic.
+    """
+    handles_body_insts = True
+
+    def __init__(
+        self,
+        builder: IRBuilder,
+        index: Lvalue,
+        body_block: BasicBlock,
+        loop_exit: BasicBlock,
+        line: int,
+        items: list[Expression],
+        expr: Expression,
+        body_insts: GenFunc,
+    ) -> None:
+        super().__init__(builder, index, body_block, loop_exit, line, nested=False)
+        self.items = items
+        self.expr = expr
+        self.body_insts = body_insts
+
+    def gen_condition(self) -> None:
+        # Unrolled: nothing to do here.
+        pass
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        for item in self.items:
+            builder.assign(builder.get_assignment_target(self.index), builder.accept(item), self.line)
+            self.body_insts()
+
+    def gen_step(self) -> None:
+        # Unrolled: nothing to do here.
+        pass
+
+
+class ForUnrolledStringLiteral(ForGenerator):
+    """Generate IR for a for loop over a string literal by unrolling the loop.
+
+    This class emits the loop body for each character of the string literal directly,
+    avoiding any runtime iteration logic.
+    """
+    handles_body_insts = True
+
+    def __init__(
+        self,
+        builder: IRBuilder,
+        index: Lvalue,
+        body_block: BasicBlock,
+        loop_exit: BasicBlock,
+        line: int,
+        value: str,
+        expr: Expression,
+        body_insts: GenFunc,
+    ) -> None:
+        super().__init__(builder, index, body_block, loop_exit, line, nested=False)
+        self.value = value
+        self.expr = expr
+        self.body_insts = body_insts
+
+    def gen_condition(self) -> None:
+        # Unrolled: nothing to do here.
+        pass
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        for c in self.value:
+            builder.assign(
+                builder.get_assignment_target(self.index),
+                builder.accept(StrExpr(c)),
+                self.line,
+            )
+            self.body_insts()
+
+    def gen_step(self) -> None:
+        # Unrolled: nothing to do here.
         pass
 
 
