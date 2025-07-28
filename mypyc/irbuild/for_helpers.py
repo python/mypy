@@ -89,7 +89,6 @@ from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 GenFunc = Callable[[], None]
 
-
 def for_loop_helper(
     builder: IRBuilder,
     index: Lvalue,
@@ -98,6 +97,7 @@ def for_loop_helper(
     else_insts: GenFunc | None,
     is_async: bool,
     line: int,
+    can_unroll: bool = True,
 ) -> None:
     """Generate IR for a loop.
 
@@ -106,6 +106,7 @@ def for_loop_helper(
         expr: the expression to iterate over
         body_insts: a function that generates the body of the loop
         else_insts: a function that generates the else block instructions
+        can_unroll: whether unrolling is allowed (for semantic safety)
     """
     # Body of the loop
     body_block = BasicBlock()
@@ -120,15 +121,19 @@ def for_loop_helper(
     normal_loop_exit = else_block if else_insts is not None else exit_block
 
     for_gen = make_for_loop_generator(
-        builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async, body_insts=body_insts
+        builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async, body_insts=body_insts, can_unroll=can_unroll
     )
 
     is_literal_loop: bool = getattr(for_gen, "handles_body_insts", False)
     
     # Only call body_insts if not handled by unrolled generator
     if is_literal_loop:
-        for_gen.begin_body()
-        return
+        try:
+            for_gen.begin_body()
+            return
+        except AssertionError:
+            # For whatever reason, we can't unpack the loop in this case.
+            pass
 
     builder.push_loop_stack(step_block, exit_block)
     condition_block = BasicBlock()
@@ -426,10 +431,12 @@ def make_for_loop_generator(
     is_async: bool = False,
     nested: bool = False,
     body_insts: GenFunc = None,
+    can_unroll: bool = True,
 ) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
 
     If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".
+    can_unroll: whether unrolling is allowed (for semantic safety)
     """
 
     # Do an async loop if needed. async is always generic
@@ -443,22 +450,24 @@ def make_for_loop_generator(
 
     rtyp = builder.node_type(expr)
 
-    # Special case: tuple literal (unroll the loop)
-    if is_iterable_expr_with_literal_mambers(expr):
-        return ForUnrolledSequenceLiteral(builder, index, body_block, loop_exit, line, expr, body_insts)
+    
+    if can_unroll:
+        # Special case: tuple/list/set literal (unroll the loop)
+        if is_iterable_expr_with_literal_mambers(expr):
+            return ForUnrolledSequenceLiteral(builder, index, body_block, loop_exit, line, expr, body_insts)
 
-    # Special case: RTuple (known-length tuple, struct field iteration)
-    if isinstance(rtyp, RTuple):
-        expr_reg = builder.accept(expr)
-        return ForUnrolledRTuple(builder, index, body_block, loop_exit, line, rtyp, expr_reg, expr, body_insts)
+        # Special case: RTuple (known-length tuple, struct field iteration)
+        if isinstance(rtyp, RTuple):
+            expr_reg = builder.accept(expr)
+            return ForUnrolledRTuple(builder, index, body_block, loop_exit, line, rtyp, expr_reg, expr, body_insts)
 
-    # Special case: string literal (unroll the loop)
-    if isinstance(expr, StrExpr):
-        return ForUnrolledStringLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
+        # Special case: string literal (unroll the loop)
+        if isinstance(expr, StrExpr):
+            return ForUnrolledStringLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
 
-    # Special case: string literal (unroll the loop)
-    if isinstance(expr, BytesExpr):
-        return ForUnrolledBytesLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
+        # Special case: string literal (unroll the loop)
+        if isinstance(expr, BytesExpr):
+            return ForUnrolledBytesLiteral(builder, index, body_block, loop_exit, line, expr.value, expr, body_insts)
 
     if is_sequence_rprimitive(rtyp):
         # Special case "for x in <list>".
