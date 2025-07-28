@@ -746,9 +746,6 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     )
 
     mx.chk.check_deprecated(dunder_get, mx.context)
-    mx.chk.warn_deprecated_overload_item(
-        dunder_get, mx.context, target=inferred_dunder_get_type, selftype=descriptor_type
-    )
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
     if isinstance(inferred_dunder_get_type, AnyType):
@@ -826,9 +823,6 @@ def analyze_descriptor_assign(descriptor_type: Instance, mx: MemberContext) -> T
 
     # Search for possible deprecations:
     mx.chk.check_deprecated(dunder_set, mx.context)
-    mx.chk.warn_deprecated_overload_item(
-        dunder_set, mx.context, target=inferred_dunder_set_type, selftype=descriptor_type
-    )
 
     # In the following cases, a message already will have been recorded in check_call.
     if (not isinstance(inferred_dunder_set_type, CallableType)) or (
