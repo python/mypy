@@ -228,3 +228,29 @@ def test_mix() -> None:
     print((y or 0) and True)
 [out]
 0
+
+[case testIsInstance]
+from typing import Any
+def test_built_in() -> None:
+    true: Any = True
+    false: Any = False
+    assert isinstance(true, bool)
+    assert isinstance(false, bool)
+
+    assert not isinstance(set(), bool)
+    assert not isinstance((), bool)
+    assert not isinstance((True, False), bool)
+    assert not isinstance({False, True}, bool)
+    assert not isinstance(int() + 1, bool)
+    assert not isinstance(str() + 'False', bool)
+
+def test_user_defined() -> None:
+    from userdefinedbool import bool
+
+    b: Any = True
+    assert isinstance(bool(), bool)
+    assert not isinstance(b, bool)
+
+[file userdefinedbool.py]
+class bool:
+    pass

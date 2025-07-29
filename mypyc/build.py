@@ -270,12 +270,12 @@ def build_using_shared_lib(
 ) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
-    This creates one shared library extension module that all of the
-    others import and then one shim extension module for each
-    module in the build, that simply calls an initialization function
+    This creates one shared library extension module that all the
+    others import, and one shim extension module for each
+    module in the build. Each shim simply calls an initialization function
     in the shared library.
 
-    The shared library (which lib_name is the name of) is a python
+    The shared library (which lib_name is the name of) is a Python
     extension module that exports the real initialization functions in
     Capsules stored in module attributes.
     """
@@ -485,6 +485,7 @@ def mypycify(
     include_runtime_files: bool | None = None,
     strict_dunder_typing: bool = False,
     group_name: str | None = None,
+    log_trace: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -510,7 +511,7 @@ def mypycify(
         separate: Should compiled modules be placed in separate extension modules.
                   If False, all modules are placed in a single shared library.
                   If True, every module is placed in its own library.
-                  Otherwise separate should be a list of
+                  Otherwise, separate should be a list of
                   (file name list, optional shared library name) pairs specifying
                   groups of files that should be placed in the same shared library
                   (while all other modules will be placed in its own library).
@@ -531,6 +532,10 @@ def mypycify(
                     the hash of module names. This is used for the names of the
                     output C files and the shared library. This is only supported
                     if there is a single group. [Experimental]
+        log_trace: If True, compiled code writes a trace log of events in
+                   mypyc_trace.txt (derived from executed operations). This is
+                   useful for performance analysis, such as analyzing which
+                   primitive ops are used the most and on which lines.
     """
 
     # Figure out our configuration
@@ -543,6 +548,7 @@ def mypycify(
         include_runtime_files=include_runtime_files,
         strict_dunder_typing=strict_dunder_typing,
         group_name=group_name,
+        log_trace=log_trace,
     )
 
     # Generate all the actual important C code
@@ -583,6 +589,8 @@ def mypycify(
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",
         ]
+        if log_trace:
+            cflags.append("-DMYPYC_LOG_TRACE")
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
@@ -607,6 +615,8 @@ def mypycify(
             # that we actually get the compilation speed and memory
             # use wins that multi-file mode is intended for.
             cflags += ["/GL-", "/wd9025"]  # warning about overriding /GL
+        if log_trace:
+            cflags.append("/DMYPYC_LOG_TRACE")
 
     # If configured to (defaults to yes in multi-file mode), copy the
     # runtime library in. Otherwise it just gets #included to save on

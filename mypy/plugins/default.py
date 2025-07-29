@@ -82,6 +82,7 @@ from mypy.types import (
 
 TD_SETDEFAULT_NAMES: Final = {n + ".setdefault" for n in TPDICT_FB_NAMES}
 TD_POP_NAMES: Final = {n + ".pop" for n in TPDICT_FB_NAMES}
+TD_DELITEM_NAMES: Final = {n + ".__delitem__" for n in TPDICT_FB_NAMES}
 
 TD_UPDATE_METHOD_NAMES: Final = (
     {n + ".update" for n in TPDICT_FB_NAMES}
@@ -144,11 +145,11 @@ class DefaultPlugin(Plugin):
             return int_pos_callback
         elif fullname in ("builtins.tuple.__mul__", "builtins.tuple.__rmul__"):
             return tuple_mul_callback
-        elif fullname in {n + ".setdefault" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_SETDEFAULT_NAMES:
             return typed_dict_setdefault_callback
-        elif fullname in {n + ".pop" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_POP_NAMES:
             return typed_dict_pop_callback
-        elif fullname in {n + ".__delitem__" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_DELITEM_NAMES:
             return typed_dict_delitem_callback
         elif fullname == "_ctypes.Array.__getitem__":
             return array_getitem_callback

@@ -538,3 +538,37 @@ def test_int_bool_min_max() -> None:
     assert min(u, z) == -10
     assert max(u, y) == False
     assert max(u, z) == True
+
+[case testIsInstance]
+from copysubclass import subc
+from typing import Any
+def test_built_in() -> None:
+    i: Any = 0
+    assert isinstance(i + 0, int)
+    assert isinstance(i + 9223372036854775808, int)
+    assert isinstance(i + -9223372036854775808, int)
+    assert isinstance(subc(), int)
+    assert isinstance(subc(9223372036854775808), int)
+    assert isinstance(subc(-9223372036854775808), int)
+
+    assert not isinstance(set(), int)
+    assert not isinstance((), int)
+    assert not isinstance((1,2,3), int)
+    assert not isinstance({1,2}, int)
+    assert not isinstance(float(0) + 1.0, int)
+    assert not isinstance(str() + '1', int)
+
+def test_user_defined() -> None:
+    from userdefinedint import int
+
+    i: Any = 42
+    assert isinstance(int(), int)
+    assert not isinstance(i, int)
+
+[file copysubclass.py]
+class subc(int):
+    pass
+
+[file userdefinedint.py]
+class int:
+    pass

@@ -139,6 +139,7 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     module_refs: set[str]
     scope: CheckerScope
     checking_missing_await: bool
+    allow_constructor_cache: bool
 
     @property
     @abstractmethod
