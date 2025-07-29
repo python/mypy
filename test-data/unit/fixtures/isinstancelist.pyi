@@ -26,6 +26,7 @@ class bool(int): pass
 class str:
     def __add__(self, x: str) -> str: pass
     def __getitem__(self, x: int) -> str: pass
+class bytes: pass
 
 T = TypeVar('T')
 KT = TypeVar('KT')
@@ -52,6 +53,7 @@ class dict(Mapping[KT, VT]):
     def __setitem__(self, k: KT, v: VT) -> None: pass
     def __iter__(self) -> Iterator[KT]: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
+    def items(self) -> Iterable[Tuple[KT, VT]]: pass
 
 class set(Generic[T]):
     def __iter__(self) -> Iterator[T]: pass
