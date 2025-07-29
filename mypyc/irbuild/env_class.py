@@ -60,7 +60,7 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     return env_class
 
 
-def finalize_env_class(builder: IRBuilder) -> None:
+def finalize_env_class(builder: IRBuilder, prefix: str = "") -> None:
     """Generate, instantiate, and set up the environment of an environment class."""
     if not builder.fn_info.can_merge_generator_and_env_classes():
         instantiate_env_class(builder)
@@ -69,9 +69,9 @@ def finalize_env_class(builder: IRBuilder) -> None:
     # that were previously added to the environment with references to the function's
     # environment class.
     if builder.fn_info.is_nested:
-        add_args_to_env(builder, local=False, base=builder.fn_info.callable_class)
+        add_args_to_env(builder, local=False, base=builder.fn_info.callable_class, prefix=prefix)
     else:
-        add_args_to_env(builder, local=False, base=builder.fn_info)
+        add_args_to_env(builder, local=False, base=builder.fn_info, prefix=prefix)
 
 
 def instantiate_env_class(builder: IRBuilder) -> Value:
@@ -96,7 +96,7 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
     return curr_env_reg
 
 
-def load_env_registers(builder: IRBuilder) -> None:
+def load_env_registers(builder: IRBuilder, prefix: str = "") -> None:
     """Load the registers for the current FuncItem being visited.
 
     Adds the arguments of the FuncItem to the environment. If the
@@ -104,7 +104,7 @@ def load_env_registers(builder: IRBuilder) -> None:
     loads all of the outer environments of the FuncItem into registers
     so that they can be used when accessing free variables.
     """
-    add_args_to_env(builder, local=True)
+    add_args_to_env(builder, local=True, prefix=prefix)
 
     fn_info = builder.fn_info
     fitem = fn_info.fitem
@@ -134,8 +134,11 @@ def load_outer_env(
     assert isinstance(env.type, RInstance), f"{env} must be of type RInstance"
 
     for symbol, target in outer_env.items():
-        env.type.class_ir.attributes[symbol.name] = target.type
-        symbol_target = AssignmentTargetAttr(env, symbol.name)
+        attr_name = symbol.name
+        if isinstance(target, AssignmentTargetAttr):
+            attr_name = target.attr
+        env.type.class_ir.attributes[attr_name] = target.type
+        symbol_target = AssignmentTargetAttr(env, attr_name)
         builder.add_target(symbol, symbol_target)
 
     return env
@@ -178,6 +181,7 @@ def add_args_to_env(
     local: bool = True,
     base: FuncInfo | ImplicitClass | None = None,
     reassign: bool = True,
+    prefix: str = "",
 ) -> None:
     fn_info = builder.fn_info
     args = fn_info.fitem.arguments
@@ -193,10 +197,12 @@ def add_args_to_env(
             if is_free_variable(builder, arg.variable) or fn_info.is_generator:
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
-                builder.add_var_to_env_class(arg.variable, rtype, base, reassign=reassign)
+                builder.add_var_to_env_class(
+                    arg.variable, rtype, base, reassign=reassign, prefix=prefix
+                )
 
 
-def add_vars_to_env(builder: IRBuilder) -> None:
+def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
     """Add relevant local variables and nested functions to the environment class.
 
     Add all variables and functions that are declared/defined within current
@@ -216,7 +222,9 @@ def add_vars_to_env(builder: IRBuilder) -> None:
         for var in sorted(builder.free_variables[builder.fn_info.fitem], key=lambda x: x.name):
             if isinstance(var, Var):
                 rtype = builder.type_to_rtype(var.type)
-                builder.add_var_to_env_class(var, rtype, env_for_func, reassign=False)
+                builder.add_var_to_env_class(
+                    var, rtype, env_for_func, reassign=False, prefix=prefix
+                )
 
     if builder.fn_info.fitem in builder.encapsulating_funcs:
         for nested_fn in builder.encapsulating_funcs[builder.fn_info.fitem]:
