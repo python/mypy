@@ -423,7 +423,35 @@ import typing
 __all__ = [1, 2, 3]
 [builtins fixtures/module_all.pyi]
 [out]
-main:2: error: Type of __all__ must be "Sequence[str]", not "list[int]"
+main:2: error: List item 0 has incompatible type "int"; expected "str"
+main:2: error: List item 1 has incompatible type "int"; expected "str"
+main:2: error: List item 2 has incompatible type "int"; expected "str"
+
+[case testAllMustBeSequenceStr2]
+import typing
+__all__ = 1  # E: Type of __all__ must be "Sequence[str]", not "int"
+reveal_type(__all__)  # N: Revealed type is "builtins.int"
+[builtins fixtures/module_all.pyi]
+
+[case testAllMustBeSequenceStr3]
+import typing
+__all__ = set()  # E: Need type annotation for "__all__" (hint: "__all__: set[<type>] = ...") \
+                 # E: Type of __all__ must be "Sequence[str]", not "set[Any]"
+reveal_type(__all__)  # N: Revealed type is "builtins.set[Any]"
+[builtins fixtures/set.pyi]
+
+[case testModuleAllEmptyList]
+__all__ = []
+reveal_type(__all__)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/module_all.pyi]
+
+[case testDunderAllNotGlobal]
+class A:
+    __all__ = 1
+
+def foo() -> None:
+    __all__ = 1
+[builtins fixtures/module_all.pyi]
 
 [case testUnderscoreExportedValuesInImportAll]
 import typing
@@ -1582,8 +1610,8 @@ def f() -> types.ModuleType:
     return types
 reveal_type(f())  # N: Revealed type is "types.ModuleType"
 reveal_type(types)  # N: Revealed type is "types.ModuleType"
-
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testClassImportAccessedInMethod]
 class C:
@@ -1997,6 +2025,7 @@ from typing import TypeVar
 T = TypeVar('T')
 def whatever(x: T) -> T: pass
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testModuleAliasToQualifiedImport2]
 import mod
@@ -2012,8 +2041,8 @@ from typing import TypeVar
 T = TypeVar('T')
 def whatever(x: T) -> T: pass
 [file othermod.py]
-
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testModuleLevelGetattr]
 import has_getattr

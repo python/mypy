@@ -23,8 +23,15 @@ setup_format = """\
 from setuptools import setup
 from mypyc.build import mypycify
 
-setup(name='mypyc_output',
-      ext_modules=mypycify({}, opt_level="{}", debug_level="{}", strict_dunder_typing={}),
+setup(
+    name='mypyc_output',
+    ext_modules=mypycify(
+        {},
+        opt_level="{}",
+        debug_level="{}",
+        strict_dunder_typing={},
+        log_trace={},
+    ),
 )
 """
 
@@ -39,10 +46,17 @@ def main() -> None:
     opt_level = os.getenv("MYPYC_OPT_LEVEL", "3")
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
     strict_dunder_typing = bool(int(os.getenv("MYPYC_STRICT_DUNDER_TYPING", "0")))
+    # If enabled, compiled code writes a sampled log of executed ops (or events) to
+    # mypyc_trace.txt.
+    log_trace = bool(int(os.getenv("MYPYC_LOG_TRACE", "0")))
 
     setup_file = os.path.join(build_dir, "setup.py")
     with open(setup_file, "w") as f:
-        f.write(setup_format.format(sys.argv[1:], opt_level, debug_level, strict_dunder_typing))
+        f.write(
+            setup_format.format(
+                sys.argv[1:], opt_level, debug_level, strict_dunder_typing, log_trace
+            )
+        )
 
     # We don't use run_setup (like we do in the test suite) because it throws
     # away the error code from distutils, and we don't care about the slight

@@ -27,6 +27,7 @@ from __future__ import annotations
 import itertools
 import json
 import os
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Callable, NamedTuple, TypedDict, TypeVar, cast
@@ -227,6 +228,18 @@ def is_explicit_any(typ: AnyType) -> bool:
 def is_implicit_any(typ: Type) -> bool:
     typ = get_proper_type(typ)
     return isinstance(typ, AnyType) and not is_explicit_any(typ)
+
+
+def _arg_accepts_function(typ: ProperType) -> bool:
+    return (
+        # TypeVar / Callable
+        isinstance(typ, (TypeVarType, CallableType))
+        or
+        # Protocol with __call__
+        isinstance(typ, Instance)
+        and typ.type.is_protocol
+        and typ.type.get_method("__call__") is not None
+    )
 
 
 class SuggestionEngine:
@@ -474,7 +487,7 @@ class SuggestionEngine:
         if self.no_errors and orig_errors:
             raise SuggestionFailure("Function does not typecheck.")
 
-        is_method = bool(node.info) and not node.is_static
+        is_method = bool(node.info) and node.has_self_or_cls_argument
 
         with state.strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
@@ -537,12 +550,17 @@ class SuggestionEngine:
         # TODO: Also return OverloadedFuncDef -- currently these are ignored.
         node: SymbolNode | None = None
         if ":" in key:
-            if key.count(":") > 1:
+            # A colon might be part of a drive name on Windows (like `C:/foo/bar`)
+            # and is also used as a delimiter between file path and lineno.
+            # If a colon is there for any of those reasons, it must be a file+line
+            # reference.
+            platform_key_count = 2 if sys.platform == "win32" else 1
+            if key.count(":") > platform_key_count:
                 raise SuggestionFailure(
                     "Malformed location for function: {}. Must be either"
                     " package.module.Class.method or path/to/file.py:line".format(key)
                 )
-            file, line = key.split(":")
+            file, line = key.rsplit(":", 1)
             if not line.isdigit():
                 raise SuggestionFailure(f"Line number must be a number. Got {line}")
             line_number = int(line)
@@ -658,7 +676,7 @@ class SuggestionEngine:
             for ct in typ.items:
                 if not (
                     len(ct.arg_types) == 1
-                    and isinstance(ct.arg_types[0], TypeVarType)
+                    and _arg_accepts_function(get_proper_type(ct.arg_types[0]))
                     and ct.arg_types[0] == ct.ret_type
                 ):
                     return None
@@ -840,7 +858,7 @@ class TypeFormatter(TypeStrVisitor):
         if self.module:
             parts = obj.split(".")  # need to split the object part if it is a nested class
             tree = self.graph[self.module].tree
-            if tree and parts[0] in tree.names:
+            if tree and parts[0] in tree.names and mod not in tree.names:
                 mod = self.module
 
         if (mod, obj) == ("builtins", "tuple"):

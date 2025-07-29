@@ -351,6 +351,7 @@ def f() -> None:
     n = 1
     import typing as n  # E: Incompatible import of "n" (imported name has type Module, local name has type "int")
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testRedefineLocalWithTypeAnnotation]
 # flags: --allow-redefinition
@@ -547,6 +548,7 @@ try:
 except Exception as typing:
     pass
 [builtins fixtures/exception.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testRedefiningUnderscoreFunctionIsntAnError]
 def _(arg):

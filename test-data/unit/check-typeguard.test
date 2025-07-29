@@ -813,3 +813,20 @@ raw_target: object
 if isinstance(raw_target, type) and is_xlike(raw_target):
     reveal_type(raw_target)  # N: Revealed type is "type[__main__.X]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithDefer]
+from typing import Union
+from typing_extensions import TypeGuard
+
+class A: ...
+class B: ...
+
+def is_a(x: object) -> TypeGuard[A]:
+    return defer_not_defined()  # E: Name "defer_not_defined" is not defined
+
+def main(x: Union[A, B]) -> None:
+    if is_a(x):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+[builtins fixtures/tuple.pyi]

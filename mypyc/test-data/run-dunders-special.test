@@ -6,4 +6,5 @@ class UsesNotImplemented:
     def __eq__(self, b: object) -> bool:
         return NotImplemented
 
-assert UsesNotImplemented() != object()
+def test_not_implemented() -> None:
+    assert UsesNotImplemented() != object()

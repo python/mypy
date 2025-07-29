@@ -108,7 +108,7 @@ def tmp_twine() -> Iterator[Path]:
 def upload_dist(dist: Path, dry_run: bool = True) -> None:
     with tmp_twine() as twine:
         files = [item for item in dist.iterdir() if item_ok_for_pypi(item.name)]
-        cmd: list[Any] = [twine, "upload"]
+        cmd: list[Any] = [twine, "upload", "--skip-existing"]
         cmd += files
         if dry_run:
             print("[dry run] " + " ".join(map(str, cmd)))

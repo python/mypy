@@ -152,12 +152,14 @@ from functools import singledispatch
 def fun(arg) -> bool:
     return False
 
-try:
-    @fun.register
-    def fun_specialized(arg: None) -> bool:
-        return True
-except TypeError:
-    pass
+def test_argument() -> None:
+    try:
+        @fun.register
+        def fun_specialized(arg: None) -> bool:
+            return True
+        assert False, "expected to raise an exception"
+    except TypeError:
+        pass
 
 [case testRegisteringTheSameFunctionSeveralTimes]
 from functools import singledispatch
@@ -598,9 +600,11 @@ assert f(1) == 'default'
 def _(arg: B) -> str:
     return 'b'
 
-assert f(A()) == 'a'
-assert f(B()) == 'b'
-assert f(1) == 'default'
+# TODO: Move whole testcase to a function when mypyc#1118 is fixed.
+def test_final() -> None:
+    assert f(A()) == 'a'
+    assert f(B()) == 'b'
+    assert f(1) == 'default'
 
 
 [case testDynamicallyRegisteringFunctionFromInterpretedCode]

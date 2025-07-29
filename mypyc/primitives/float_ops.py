@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
+    bit_rprimitive,
     bool_rprimitive,
     float_rprimitive,
     int_rprimitive,
@@ -164,5 +165,14 @@ function_op(
     arg_types=[float_rprimitive],
     return_type=bool_rprimitive,
     c_function_name="CPyFloat_IsNaN",
+    error_kind=ERR_NEVER,
+)
+
+# translate isinstance(obj, float)
+isinstance_float = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyFloat_Check",
     error_kind=ERR_NEVER,
 )

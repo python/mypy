@@ -64,6 +64,22 @@ make_bloom_mask(int kind, const void* ptr, Py_ssize_t len)
 #undef BLOOM_UPDATE
 }
 
+// Adapted from CPython 3.13.1 (_PyUnicode_Equal)
+char CPyStr_Equal(PyObject *str1, PyObject *str2) {
+    if (str1 == str2) {
+        return 1;
+    }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str1);
+    if (PyUnicode_GET_LENGTH(str2) != len)
+        return 0;
+    int kind = PyUnicode_KIND(str1);
+    if (PyUnicode_KIND(str2) != kind)
+        return 0;
+    const void *data1 = PyUnicode_DATA(str1);
+    const void *data2 = PyUnicode_DATA(str2);
+    return memcmp(data1, data2, len * kind) == 0;
+}
+
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     if (PyUnicode_READY(str) != -1) {
         if (CPyTagged_CheckShort(index)) {
@@ -99,6 +115,11 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
         PyObject *index_obj = CPyTagged_AsObject(index);
         return PyObject_GetItem(str, index_obj);
     }
+}
+
+PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index) {
+    // This is unsafe since we don't check for overflow when doing <<.
+    return CPyStr_GetItem(str, index << 1);
 }
 
 // A simplification of _PyUnicode_JoinArray() from CPython 3.9.6
@@ -509,6 +530,30 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
         PyErr_BadArgument();
         return NULL;
     }
+}
+
+Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start) {
+    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
+    if (temp_start == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return -1;
+    }
+    Py_ssize_t end = PyUnicode_GET_LENGTH(unicode);
+    return PyUnicode_Count(unicode, substring, temp_start, end);
+}
+
+Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end) {
+    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
+    if (temp_start == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return -1;
+    }
+    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
+    if (temp_end == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return -1;
+    }
+    return PyUnicode_Count(unicode, substring, temp_start, temp_end);
 }
 
 

@@ -648,6 +648,143 @@ from demo.test import a
 [file demo/test.py]
 a: int
 
+[case testUnusedTypeIgnorePreservedOnRerun]
+-- Regression test for https://github.com/python/mypy/issues/9655
+$ dmypy start -- --warn-unused-ignores --no-error-summary --hide-error-codes
+Daemon started
+$ dmypy check -- bar.py
+bar.py:2: error: Unused "type: ignore" comment
+== Return code: 1
+$ dmypy check -- bar.py
+bar.py:2: error: Unused "type: ignore" comment
+== Return code: 1
+
+[file foo/__init__.py]
+[file foo/empty.py]
+[file bar.py]
+from foo.empty import *
+a = 1  # type: ignore
+
+[case testTypeIgnoreWithoutCodePreservedOnRerun]
+-- Regression test for https://github.com/python/mypy/issues/9655
+$ dmypy start -- --enable-error-code ignore-without-code --no-error-summary
+Daemon started
+$ dmypy check -- bar.py
+bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
+== Return code: 1
+$ dmypy check -- bar.py
+bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
+== Return code: 1
+
+[file foo/__init__.py]
+[file foo/empty.py]
+[file bar.py]
+from foo.empty import *
+a = 1  # type: ignore
+
+[case testPossiblyUndefinedVarsPreservedAfterRerun]
+-- Regression test for https://github.com/python/mypy/issues/9655
+$ dmypy start -- --enable-error-code possibly-undefined --no-error-summary
+Daemon started
+$ dmypy check -- bar.py
+bar.py:4: error: Name "a" may be undefined  [possibly-undefined]
+== Return code: 1
+$ dmypy check -- bar.py
+bar.py:4: error: Name "a" may be undefined  [possibly-undefined]
+== Return code: 1
+
+[file foo/__init__.py]
+[file foo/empty.py]
+[file bar.py]
+from foo.empty import *
+if False:
+    a = 1
+a
+
+[case testUnusedTypeIgnorePreservedOnRerunWithIgnoredMissingImports]
+$ dmypy start -- --no-error-summary --ignore-missing-imports --warn-unused-ignores
+Daemon started
+$ dmypy check foo
+foo/main.py:3: error: Unused "type: ignore" comment  [unused-ignore]
+== Return code: 1
+$ dmypy check foo
+foo/main.py:3: error: Unused "type: ignore" comment  [unused-ignore]
+== Return code: 1
+
+[file unused/__init__.py]
+[file unused/submodule.py]
+[file foo/empty.py]
+[file foo/__init__.py]
+from foo.main import *
+from unused.submodule import *
+[file foo/main.py]
+from foo import empty
+from foo.does_not_exist import *
+a = 1  # type: ignore
+
+[case testModuleDoesNotExistPreservedOnRerun]
+$ dmypy start -- --no-error-summary --ignore-missing-imports
+Daemon started
+$ dmypy check foo
+foo/main.py:1: error: Module "foo" has no attribute "does_not_exist"  [attr-defined]
+== Return code: 1
+$ dmypy check foo
+foo/main.py:1: error: Module "foo" has no attribute "does_not_exist"  [attr-defined]
+== Return code: 1
+
+[file unused/__init__.py]
+[file unused/submodule.py]
+[file foo/__init__.py]
+from foo.main import *
+[file foo/main.py]
+from foo import does_not_exist
+from unused.submodule import *
+
+[case testReturnTypeIgnoreAfterUnknownImport]
+-- Return type ignores after unknown imports and unused modules are respected on the second pass.
+$ dmypy start -- --warn-unused-ignores --no-error-summary
+Daemon started
+$ dmypy check -- foo.py
+foo.py:2: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
+foo.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+== Return code: 1
+$ dmypy check -- foo.py
+foo.py:2: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
+foo.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+== Return code: 1
+
+[file unused/__init__.py]
+[file unused/empty.py]
+[file foo.py]
+from unused.empty import *
+import a_module_which_does_not_exist
+def is_foo() -> str:
+    return True  # type: ignore
+
+[case testAttrsTypeIgnoreAfterUnknownImport]
+$ dmypy start -- --warn-unused-ignores --no-error-summary
+Daemon started
+$ dmypy check -- foo.py
+foo.py:3: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
+foo.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+== Return code: 1
+$ dmypy check -- foo.py
+foo.py:3: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
+foo.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+== Return code: 1
+
+[file unused/__init__.py]
+[file unused/empty.py]
+[file foo.py]
+import attr
+from unused.empty import *
+import a_module_which_does_not_exist
+
+@attr.frozen
+class A:
+    def __init__(self) -> None:
+        self.__attrs_init__()  # type: ignore[attr-defined]
+
 [case testDaemonImportAncestors]
 $ dmypy run test.py
 Daemon started

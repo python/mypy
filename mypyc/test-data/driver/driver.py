@@ -11,10 +11,12 @@ import sys
 import native
 
 failures = []
+tests_run = 0
 
 for name in dir(native):
     if name.startswith('test_'):
         test_func = getattr(native, name)
+        tests_run += 1
         try:
             test_func()
         except Exception as e:
@@ -46,3 +48,5 @@ if failures:
     print(f'<< {failures[-1][0]} >>')
     sys.stdout.flush()
     raise failures[-1][1][1]
+
+assert tests_run > 0, 'Default test driver did not find any functions prefixed "test_" to run.'

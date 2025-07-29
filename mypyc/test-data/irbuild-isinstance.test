@@ -4,16 +4,11 @@ def is_int(value: object) -> bool:
 
 [out]
 def is_int(value):
-    value, r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3 :: bool
+    value :: object
+    r0 :: bit
 L0:
-    r0 = load_address PyLong_Type
-    r1 = PyObject_IsInstance(value, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
-    return r3
+    r0 = PyLong_Check(value)
+    return r0
 
 [case testIsinstanceNotBool1]
 def is_not_bool(value: object) -> bool:
@@ -21,17 +16,12 @@ def is_not_bool(value: object) -> bool:
 
 [out]
 def is_not_bool(value):
-    value, r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3, r4 :: bool
+    value :: object
+    r0, r1 :: bit
 L0:
-    r0 = load_address PyBool_Type
-    r1 = PyObject_IsInstance(value, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
-    r4 = r3 ^ 1
-    return r4
+    r0 = PyBool_Check(value)
+    r1 = r0 ^ 1
+    return r1
 
 [case testIsinstanceIntAndNotBool]
 # This test is to ensure that 'value' doesn't get coerced to int when we are
@@ -41,32 +31,22 @@ def is_not_bool_and_is_int(value: object) -> bool:
 
 [out]
 def is_not_bool_and_is_int(value):
-    value, r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3, r4 :: bool
-    r5 :: object
-    r6 :: i32
-    r7 :: bit
-    r8, r9 :: bool
+    value :: object
+    r0 :: bit
+    r1 :: bool
+    r2, r3 :: bit
 L0:
-    r0 = load_address PyLong_Type
-    r1 = PyObject_IsInstance(value, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
-    if r3 goto L2 else goto L1 :: bool
+    r0 = PyLong_Check(value)
+    if r0 goto L2 else goto L1 :: bool
 L1:
-    r4 = r3
+    r1 = r0
     goto L3
 L2:
-    r5 = load_address PyBool_Type
-    r6 = PyObject_IsInstance(value, r5)
-    r7 = r6 >= 0 :: signed
-    r8 = truncate r6: i32 to builtins.bool
-    r9 = r8 ^ 1
-    r4 = r9
+    r2 = PyBool_Check(value)
+    r3 = r2 ^ 1
+    r1 = r3
 L3:
-    return r4
+    return r1
 
 [case testBorrowSpecialCaseWithIsinstance]
 class C:
@@ -97,7 +77,7 @@ L0:
     x = r0
     r1 = __main__.C :: type
     r2 = get_element_ptr x ob_type :: PyObject
-    r3 = load_mem r2 :: builtins.object*
+    r3 = borrow load_mem r2 :: builtins.object*
     keep_alive x
     r4 = r3 == r1
     if r4 goto L1 else goto L2 :: bool
@@ -107,3 +87,105 @@ L1:
     keep_alive x
 L2:
     return 1
+
+[case testBytes]
+from typing import Any
+
+def is_bytes(x: Any) -> bool:
+    return isinstance(x, bytes)
+
+def is_bytearray(x: Any) -> bool:
+    return isinstance(x, bytearray)
+
+[out]
+def is_bytes(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyBytes_Check(x)
+    return r0
+def is_bytearray(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyByteArray_Check(x)
+    return r0
+
+[case testDict]
+from typing import Any
+
+def is_dict(x: Any) -> bool:
+    return isinstance(x, dict)
+
+[out]
+def is_dict(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyDict_Check(x)
+    return r0
+
+[case testFloat]
+from typing import Any
+
+def is_float(x: Any) -> bool:
+    return isinstance(x, float)
+
+[out]
+def is_float(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyFloat_Check(x)
+    return r0
+
+[case testSet]
+from typing import Any
+
+def is_set(x: Any) -> bool:
+    return isinstance(x, set)
+
+def is_frozenset(x: Any) -> bool:
+    return isinstance(x, frozenset)
+
+[out]
+def is_set(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PySet_Check(x)
+    return r0
+def is_frozenset(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyFrozenSet_Check(x)
+    return r0
+
+[case testStr]
+from typing import Any
+
+def is_str(x: Any) -> bool:
+    return isinstance(x, str)
+
+[out]
+def is_str(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyUnicode_Check(x)
+    return r0
+
+[case testTuple]
+from typing import Any
+
+def is_tuple(x: Any) -> bool:
+    return isinstance(x, tuple)
+
+[out]
+def is_tuple(x):
+    x :: object
+    r0 :: bit
+L0:
+    r0 = PyTuple_Check(x)
+    return r0

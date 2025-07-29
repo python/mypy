@@ -181,6 +181,8 @@ DATACLASS_TRANSFORM_NAMES: Final = (
 # Supported @override decorator names.
 OVERRIDE_DECORATOR_NAMES: Final = ("typing.override", "typing_extensions.override")
 
+ELLIPSIS_TYPE_NAMES: Final = ("builtins.ellipsis", "types.EllipsisType")
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
@@ -614,6 +616,11 @@ class TypeVarLikeType(ProperType):
     def has_default(self) -> bool:
         t = get_proper_type(self.default)
         return not (isinstance(t, AnyType) and t.type_of_any == TypeOfAny.from_omitted_generics)
+
+    def values_or_bound(self) -> ProperType:
+        if isinstance(self, TypeVarType) and self.values:
+            return UnionType(self.values)
+        return get_proper_type(self.upper_bound)
 
 
 class TypeVarType(TypeVarLikeType):
@@ -1569,7 +1576,7 @@ class Instance(ProperType):
         return (
             self.type.is_enum
             and len(self.type.enum_members) == 1
-            or self.type.fullname in {"builtins.ellipsis", "types.EllipsisType"}
+            or self.type.fullname in ELLIPSIS_TYPE_NAMES
         )
 
 
@@ -2265,6 +2272,8 @@ class CallableType(FunctionLike):
                 and self.name == other.name
                 and self.is_type_obj() == other.is_type_obj()
                 and self.is_ellipsis_args == other.is_ellipsis_args
+                and self.type_guard == other.type_guard
+                and self.type_is == other.type_is
                 and self.fallback == other.fallback
             )
         else:

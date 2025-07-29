@@ -265,3 +265,55 @@ def test_in_set() -> None:
 
 def test_for_set() -> None:
     assert not s ^ {None, False, 1, 2.0, "3", b"4", 5j, (6,), CONST}, s
+
+[case testIsInstance]
+from copysubclass import subset, subfrozenset
+def test_built_in_set() -> None:
+    assert isinstance(set(), set)
+    assert isinstance({'one', 'two'}, set)
+    assert isinstance({'a', 1}, set)
+    assert isinstance(subset(), set)
+    assert isinstance(subset({'one', 'two'}), set)
+    assert isinstance(subset({'a', 1}), set)
+
+    assert not isinstance(frozenset(), set)
+    assert not isinstance({}, set)
+    assert not isinstance([], set)
+    assert not isinstance((1,2,3), set)
+    assert not isinstance({1:'a', 2:'b'}, set)
+    assert not isinstance(int() + 1, set)
+    assert not isinstance(str() + 'a', set)
+
+def test_user_defined_set() -> None:
+    from userdefinedset import set
+
+    assert isinstance(set(), set)
+    assert not isinstance({set()}, set)
+
+def test_built_in_frozenset() -> None:
+    assert isinstance(frozenset(), frozenset)
+    assert isinstance(frozenset({'one', 'two'}), frozenset)
+    assert isinstance(frozenset({'a', 1}), frozenset)
+    assert isinstance(subfrozenset(), frozenset)
+    assert isinstance(subfrozenset({'one', 'two'}), frozenset)
+    assert isinstance(subfrozenset({'a', 1}), frozenset)
+
+    assert not isinstance(set(), frozenset)
+    assert not isinstance({}, frozenset)
+    assert not isinstance([], frozenset)
+    assert not isinstance((1,2,3), frozenset)
+    assert not isinstance({1:'a', 2:'b'}, frozenset)
+    assert not isinstance(int() + 1, frozenset)
+    assert not isinstance(str() + 'a', frozenset)
+
+[file copysubclass.py]
+from typing import Any
+class subset(set[Any]):
+    pass
+
+class subfrozenset(frozenset[Any]):
+    pass
+
+[file userdefinedset.py]
+class set:
+    pass

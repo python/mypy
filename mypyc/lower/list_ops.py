@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from mypyc.common import PLATFORM_SIZE
-from mypyc.ir.ops import GetElementPtr, IncRef, Integer, IntOp, LoadMem, SetMem, Value
+from mypyc.ir.ops import GetElementPtr, Integer, IntOp, SetMem, Value
 from mypyc.ir.rtypes import (
     PyListObject,
     c_pyssize_t_rprimitive,
@@ -22,7 +22,7 @@ def buf_init_item(builder: LowLevelIRBuilder, args: list[Value], line: int) -> V
     base = args[0]
     index_value = args[1]
     value = args[2]
-    assert isinstance(index_value, Integer)
+    assert isinstance(index_value, Integer), index_value
     index = index_value.numeric_value()
     if index == 0:
         ptr = base
@@ -42,7 +42,7 @@ def buf_init_item(builder: LowLevelIRBuilder, args: list[Value], line: int) -> V
 @lower_primitive_op("list_items")
 def list_items(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     ob_item_ptr = builder.add(GetElementPtr(args[0], PyListObject, "ob_item", line))
-    return builder.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
+    return builder.load_mem(ob_item_ptr, pointer_rprimitive)
 
 
 def list_item_ptr(builder: LowLevelIRBuilder, obj: Value, index: Value, line: int) -> Value:
@@ -68,6 +68,4 @@ def list_item_ptr(builder: LowLevelIRBuilder, obj: Value, index: Value, line: in
 def list_get_item_unsafe(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     index = builder.coerce(args[1], c_pyssize_t_rprimitive, line)
     item_ptr = list_item_ptr(builder, args[0], index, line)
-    value = builder.add(LoadMem(object_rprimitive, item_ptr, line))
-    builder.add(IncRef(value))
-    return value
+    return builder.load_mem(item_ptr, object_rprimitive)

@@ -9,6 +9,7 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive,
     c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
+    cstring_rprimitive,
     dict_rprimitive,
     int_rprimitive,
     object_pointer_rprimitive,
@@ -191,6 +192,15 @@ bool_op = function_op(
     truncated_type=bool_rprimitive,
 )
 
+# isinstance(obj, bool)
+isinstance_bool = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyBool_Check",
+    error_kind=ERR_NEVER,
+)
+
 # slice(start, stop, step)
 new_slice_op = function_op(
     name="builtins.slice",
@@ -288,6 +298,16 @@ debug_print_op = custom_primitive_op(
     name="debug_print",
     c_function_name="CPyDebug_PrintObject",
     arg_types=[object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)
+
+# Log an event to a trace log, which is written to a file during execution.
+log_trace_event = custom_primitive_op(
+    name="log_trace_event",
+    c_function_name="CPyTrace_LogEvent",
+    # (fullname of function/location, line number, operation name, operation details)
+    arg_types=[cstring_rprimitive, cstring_rprimitive, cstring_rprimitive, cstring_rprimitive],
     return_type=void_rtype,
     error_kind=ERR_NEVER,
 )

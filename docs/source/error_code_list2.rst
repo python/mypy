@@ -616,7 +616,7 @@ Example:
 
 .. _code-exhaustive-match:
 
-Check that match statements match exhaustively [match-exhaustive]
+Check that match statements match exhaustively [exhaustive-match]
 -----------------------------------------------------------------------
 
 If enabled with :option:`--enable-error-code exhaustive-match <mypy --enable-error-code>`,

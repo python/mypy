@@ -11,6 +11,7 @@ import itertools
 from collections.abc import Iterable, Sequence
 from typing import Any, Callable, TypeVar, cast
 
+from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
@@ -125,7 +126,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
     )
 
 
-def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
+def get_self_type(func: CallableType, def_info: TypeInfo) -> Type | None:
+    default_self = fill_typevars(def_info)
     if isinstance(get_proper_type(func.ret_type), UninhabitedType):
         return func.ret_type
     elif func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
@@ -144,6 +146,15 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     where ... are argument types for the __init__/__new__ method (without the self
     argument). Also, the fallback type will be 'type' instead of 'function'.
     """
+    allow_cache = (
+        checker_state.type_checker is not None
+        and checker_state.type_checker.allow_constructor_cache
+    )
+
+    if info.type_object_type is not None:
+        if allow_cache:
+            return info.type_object_type
+        info.type_object_type = None
 
     # We take the type from whichever of __init__ and __new__ is first
     # in the MRO, preferring __init__ if there is a tie.
@@ -166,7 +177,15 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     init_index = info.mro.index(init_method.node.info)
     new_index = info.mro.index(new_method.node.info)
 
-    fallback = info.metaclass_type or named_type("builtins.type")
+    if info.metaclass_type is not None:
+        fallback = info.metaclass_type
+    elif checker_state.type_checker:
+        # Prefer direct call when it is available. It is faster, and,
+        # unfortunately, some callers provide bogus callback.
+        fallback = checker_state.type_checker.named_type("builtins.type")
+    else:
+        fallback = named_type("builtins.type")
+
     if init_index < new_index:
         method: FuncBase | Decorator = init_method.node
         is_new = False
@@ -188,7 +207,10 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     is_bound=True,
                     fallback=named_type("builtins.function"),
                 )
-                return class_callable(sig, info, fallback, None, is_new=False)
+                result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
+                if allow_cache:
+                    info.type_object_type = result
+                return result
 
         # Otherwise prefer __init__ in a tie. It isn't clear that this
         # is the right thing, but __new__ caused problems with
@@ -198,12 +220,19 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     # Construct callable type based on signature of __init__. Adjust
     # return type and insert type arguments.
     if isinstance(method, FuncBase):
+        if isinstance(method, OverloadedFuncDef) and not method.type:
+            # Do not cache if the type is not ready. Same logic for decorators is
+            # achieved in early return above because is_valid_constructor() is False.
+            allow_cache = False
         t = function_type(method, fallback)
     else:
         assert isinstance(method.type, ProperType)
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
-    return type_object_type_from_function(t, info, method.info, fallback, is_new)
+    result = type_object_type_from_function(t, info, method.info, fallback, is_new)
+    if allow_cache:
+        info.type_object_type = result
+    return result
 
 
 def is_valid_constructor(n: SymbolNode | None) -> bool:
@@ -227,9 +256,8 @@ def type_object_type_from_function(
     # self-types only in the defining class, similar to __new__ (but not exactly the same,
     # see comment in class_callable below). This is mostly useful for annotating library
     # classes such as subprocess.Popen.
-    default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
-        orig_self_types = [get_self_type(it, default_self) for it in signature.items]
+        orig_self_types = [get_self_type(it, def_info) for it in signature.items]
     else:
         orig_self_types = [None] * len(signature.items)
 
@@ -245,7 +273,7 @@ def type_object_type_from_function(
     # We need to map B's __init__ to the type (List[T]) -> None.
     signature = bind_self(
         signature,
-        original_type=default_self,
+        original_type=fill_typevars(info),
         is_classmethod=is_new,
         # Explicit instance self annotations have special handling in class_callable(),
         # we don't need to bind any type variables in them if they are generic.
@@ -472,9 +500,6 @@ def bind_self(
     else:
         variables = func.variables
 
-    original_type = get_proper_type(original_type)
-    if isinstance(original_type, CallableType) and original_type.is_type_obj():
-        original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
         arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
@@ -868,8 +893,8 @@ def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
         if isinstance(func, FuncItem):
             return callable_type(func, fallback)
         else:
-            # Broken overloads can have self.type set to None.
-            # TODO: should we instead always set the type in semantic analyzer?
+            # Either a broken overload, or decorated overload type is not ready.
+            # TODO: make sure the caller defers if possible.
             assert isinstance(func, OverloadedFuncDef)
             any_type = AnyType(TypeOfAny.from_error)
             dummy = CallableType(
@@ -890,7 +915,7 @@ def callable_type(
     fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and (not fdef.is_static or fdef.name == "__new__") and fdef.arg_names:
+    if fdef.info and fdef.has_self_or_cls_argument and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == "__new__":
             self_type = TypeType.make_normalized(self_type)
@@ -1257,6 +1282,8 @@ def get_protocol_member(
     if member == "__call__" and class_obj:
         # Special case: class objects always have __call__ that is just the constructor.
 
+        # TODO: this is wrong, it creates callables that are not recognized as type objects.
+        # Long-term, we should probably get rid of this callback argument altogether.
         def named_type(fullname: str) -> Instance:
             return Instance(left.type.mro[-1], [])
 

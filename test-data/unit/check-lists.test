@@ -94,3 +94,12 @@ def foo(x: object) -> None:
         [reveal_type(x) for x in [1, 2, 3]]  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testUnpackAssignmentWithStarExpr]
+a: A
+b: list[B]
+if int():
+    (a,) = [*b]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+class A: pass
+class B: pass

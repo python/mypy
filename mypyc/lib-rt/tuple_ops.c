@@ -46,16 +46,17 @@ PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged en
     return CPyObject_GetSlice(obj, start, end);
 }
 
+// No error checking
+PyObject *CPySequenceTuple_GetItemUnsafe(PyObject *tuple, Py_ssize_t index)
+{
+    PyObject *result = PyTuple_GET_ITEM(tuple, index);
+    Py_INCREF(result);
+    return result;
+}
+
 // PyTuple_SET_ITEM does no error checking,
 // and should only be used to fill in brand new tuples.
-bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *value)
+void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t index, PyObject *value)
 {
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        PyTuple_SET_ITEM(tuple, n, value);
-        return true;
-    } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return false;
-    }
+    PyTuple_SET_ITEM(tuple, index, value);
 }

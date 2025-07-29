@@ -17,6 +17,7 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    Float,
     FloatComparisonOp,
     FloatNeg,
     FloatOp,
@@ -42,12 +43,14 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -148,7 +151,7 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
     for block in fn.blocks:
         for op in block.ops:
             for source in op.sources():
-                if isinstance(source, Integer):
+                if isinstance(source, (Integer, Float, Undef)):
                     pass
                 elif isinstance(source, Op):
                     if source not in valid_ops:
@@ -421,6 +424,9 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
+        pass
+
+    def visit_set_element(self, op: SetElement) -> None:
         pass
 
     def visit_load_address(self, op: LoadAddress) -> None:

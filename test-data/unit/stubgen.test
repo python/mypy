@@ -4744,3 +4744,15 @@ class DCMeta(type): ...
 
 class DC(metaclass=DCMeta):
     x: str
+
+
+[case testIncompleteReturn]
+from _typeshed import Incomplete
+
+def polar(*args, **kwargs) -> Incomplete:
+    ...
+
+[out]
+from _typeshed import Incomplete
+
+def polar(*args, **kwargs) -> Incomplete: ...
