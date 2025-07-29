@@ -72,7 +72,7 @@ def try_split(v: str | Sequence[str] | Any, split_regex: str = "[,]") -> list[st
     elif isinstance(v, Sequence):
         return [p.strip() if isinstance(p, str) else p for p in v]
     else:
-        return v
+        raise argparse.ArgumentTypeError(f"Expected a list or a stringified version thereof, but got: '{v}'")
 
 
 def validate_codes(codes: list[str]) -> list[str]:
