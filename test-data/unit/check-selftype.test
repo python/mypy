@@ -2018,7 +2018,7 @@ class Ben(Object):
     }
     @classmethod
     def doit(cls) -> Foo:
-        reveal_type(cls.MY_MAP)  # N: Revealed type is "builtins.dict[builtins.str, def [Self <: __main__.Foo] (self: Self`4) -> Self`4]"
+        reveal_type(cls.MY_MAP)  # N: Revealed type is "builtins.dict[builtins.str, def [Self <: __main__.Foo] (self: Self`1) -> Self`1]"
         foo_method = cls.MY_MAP["foo"]
         return foo_method(Foo())
 [builtins fixtures/isinstancelist.pyi]

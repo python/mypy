@@ -5069,30 +5069,55 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         module-level constant definitions.
 
         Limitations:
+
          - no active type context
+         - at least one item
          - no star expressions
-         - the joined type of all entries must be an Instance or Tuple type
+         - not after deferral
+         - either exactly one distinct type inside,
+           or the joined type of all entries is an Instance or Tuple type,
         """
         ctx = self.type_context[-1]
-        if ctx:
+        if ctx or not e.items:
+            return None
+        if self.chk.current_node_deferred:
+            # Guarantees that all items will be Any, we'll reject it anyway.
             return None
         rt = self.resolved_type.get(e, None)
         if rt is not None:
             return rt if isinstance(rt, Instance) else None
         values: list[Type] = []
+        # Preserve join order while avoiding O(n) lookups at every iteration
+        values_set: set[Type] = set()
         for item in e.items:
             if isinstance(item, StarExpr):
                 # fallback to slow path
                 self.resolved_type[e] = NoneType()
                 return None
-            values.append(self.accept(item))
-        vt = join.join_type_list(values)
-        if not allow_fast_container_literal(vt):
+
+            typ = self.accept(item)
+            if typ not in values_set:
+                values.append(typ)
+                values_set.add(typ)
+
+        vt = self._first_or_join_fast_item(values)
+        if vt is None:
             self.resolved_type[e] = NoneType()
             return None
         ct = self.chk.named_generic_type(container_fullname, [vt])
         self.resolved_type[e] = ct
         return ct
+
+    def _first_or_join_fast_item(self, items: list[Type]) -> Type | None:
+        if len(items) == 1 and not self.chk.current_node_deferred:
+            return items[0]
+        typ = join.join_type_list(items)
+        if not allow_fast_container_literal(typ):
+            # TODO: This is overly strict, many other types can be joined safely here.
+            # However, our join implementation isn't bug-free, and some joins may produce
+            # undesired `Any`s or even more surprising results.
+            return None
+        return typ
 
     def check_lst_expr(self, e: ListExpr | SetExpr | TupleExpr, fullname: str, tag: str) -> Type:
         # fast path
@@ -5254,18 +5279,30 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         module-level constant definitions.
 
         Limitations:
+
          - no active type context
+         - at least one item
          - only supported star expressions are other dict instances
-         - the joined types of all keys and values must be Instance or Tuple types
+         - either exactly one distinct type (keys and values separately) inside,
+           or the joined type of all entries is an Instance or Tuple type
         """
         ctx = self.type_context[-1]
-        if ctx:
+        if ctx or not e.items:
             return None
+
+        if self.chk.current_node_deferred:
+            # Guarantees that all items will be Any, we'll reject it anyway.
+            return None
+
         rt = self.resolved_type.get(e, None)
         if rt is not None:
             return rt if isinstance(rt, Instance) else None
+
         keys: list[Type] = []
         values: list[Type] = []
+        # Preserve join order while avoiding O(n) lookups at every iteration
+        keys_set: set[Type] = set()
+        values_set: set[Type] = set()
         stargs: tuple[Type, Type] | None = None
         for key, value in e.items:
             if key is None:
@@ -5280,13 +5317,25 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     self.resolved_type[e] = NoneType()
                     return None
             else:
-                keys.append(self.accept(key))
-                values.append(self.accept(value))
-        kt = join.join_type_list(keys)
-        vt = join.join_type_list(values)
-        if not (allow_fast_container_literal(kt) and allow_fast_container_literal(vt)):
+                key_t = self.accept(key)
+                if key_t not in keys_set:
+                    keys.append(key_t)
+                    keys_set.add(key_t)
+                value_t = self.accept(value)
+                if value_t not in values_set:
+                    values.append(value_t)
+                    values_set.add(value_t)
+
+        kt = self._first_or_join_fast_item(keys)
+        if kt is None:
             self.resolved_type[e] = NoneType()
             return None
+
+        vt = self._first_or_join_fast_item(values)
+        if vt is None:
+            self.resolved_type[e] = NoneType()
+            return None
+
         if stargs and (stargs[0] != kt or stargs[1] != vt):
             self.resolved_type[e] = NoneType()
             return None
