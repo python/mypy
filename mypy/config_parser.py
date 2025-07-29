@@ -17,7 +17,7 @@ else:
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import Any, Callable, Final, TextIO, Union
-from typing_extensions import TypeAlias, Never
+from typing_extensions import Never, TypeAlias
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
@@ -63,15 +63,26 @@ def parse_version(v: str | float) -> tuple[int, int]:
 def try_split(v: str | Sequence[str] | Any, split_regex: str = "[,]") -> list[str]:
     """Split and trim a str or sequence (eg: list) of str into a list of str.
     If an element of the input is not str, a type error will be raised."""
+
     def complain(x: object, additional_info: str = "") -> Never:
-        raise argparse.ArgumentTypeError(f"Expected a list or a stringified version thereof, but got: '{x}', of type {type(x)}.{additional_info}")
+        raise argparse.ArgumentTypeError(
+            f"Expected a list or a stringified version thereof, but got: '{x}', of type {type(x)}.{additional_info}"
+        )
+
     if isinstance(v, str):
         items = [p.strip() for p in re.split(split_regex, v)]
         if items and items[-1] == "":
             items.pop(-1)
         return items
     elif isinstance(v, Sequence):
-        return [p.strip() if isinstance(p, str) else complain(p, additional_info=" (As an element of the list.)") for p in v]
+        return [
+            (
+                p.strip()
+                if isinstance(p, str)
+                else complain(p, additional_info=" (As an element of the list.)")
+            )
+            for p in v
+        ]
     else:
         complain(v)
 
