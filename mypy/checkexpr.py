@@ -5066,14 +5066,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         module-level constant definitions.
 
         Limitations:
+
          - no active type context
+         - at least one item
          - no star expressions
          - not after deferral
          - either exactly one distinct type inside,
-           or the joined type of all entries must be an Instance or Tuple type
+           or the joined type of all entries is an Instance or Tuple type,
         """
         ctx = self.type_context[-1]
-        if ctx:
+        if ctx or not e.items:
             return None
         if self.chk.current_node_deferred:
             # Guarantees that all items will be Any, we'll reject it anyway.
@@ -5082,6 +5084,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if rt is not None:
             return rt if isinstance(rt, Instance) else None
         values: list[Type] = []
+        # Preserve join order while avoiding O(n) lookups at every iteration
+        values_set: set[Type] = set()
         for item in e.items:
             if isinstance(item, StarExpr):
                 # fallback to slow path
@@ -5089,8 +5093,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return None
 
             typ = self.accept(item)
-            if typ not in values:
+            if typ not in values_set:
                 values.append(typ)
+                values_set.add(typ)
 
         vt = self._first_or_join_fast_item(values)
         if vt is None:
@@ -5268,12 +5273,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         module-level constant definitions.
 
         Limitations:
+
          - no active type context
+         - at least one item
          - only supported star expressions are other dict instances
-         - the joined types of all keys and values must be Instance or Tuple types
+         - either exactly one distinct type (keys and values separately) inside,
+           or the joined type of all entries is an Instance or Tuple type
         """
         ctx = self.type_context[-1]
-        if ctx:
+        if ctx or not e.items:
             return None
 
         if self.chk.current_node_deferred:
@@ -5286,6 +5294,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         keys: list[Type] = []
         values: list[Type] = []
+        # Preserve join order while avoiding O(n) lookups at every iteration
+        keys_set: set[Type] = set()
+        values_set: set[Type] = set()
         stargs: tuple[Type, Type] | None = None
         for key, value in e.items:
             if key is None:
@@ -5301,11 +5312,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     return None
             else:
                 key_t = self.accept(key)
-                if key_t not in keys:
+                if key_t not in keys_set:
                     keys.append(key_t)
+                    keys_set.add(key_t)
                 value_t = self.accept(value)
-                if value_t not in values:
+                if value_t not in values_set:
                     values.append(value_t)
+                    values_set.add(value_t)
 
         kt = self._first_or_join_fast_item(keys)
         if kt is None:
