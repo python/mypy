@@ -219,7 +219,7 @@ list_pop_last = method_op(
 )
 
 # list.pop(index)
-list_pop = method_op(
+method_op(
     name="pop",
     arg_types=[list_rprimitive, int_rprimitive],
     return_type=object_rprimitive,
