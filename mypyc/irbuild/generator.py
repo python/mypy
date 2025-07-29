@@ -59,6 +59,8 @@ from mypyc.primitives.exc_ops import (
     restore_exc_info_op,
 )
 
+GENERATOR_ATTRIBUTE_PREFIX = "__mypyc_generator_attribute__"
+
 
 def gen_generator_func(
     builder: IRBuilder,
@@ -68,14 +70,14 @@ def gen_generator_func(
 ) -> tuple[FuncIR, Value | None]:
     """Generate IR for generator function that returns generator object."""
     setup_generator_class(builder)
-    load_env_registers(builder)
+    load_env_registers(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
     gen_arg_defaults(builder)
     if builder.fn_info.can_merge_generator_and_env_classes():
         gen = instantiate_generator_class(builder)
         builder.fn_info._curr_env_reg = gen
-        finalize_env_class(builder)
+        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
     else:
-        finalize_env_class(builder)
+        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
         gen = instantiate_generator_class(builder)
     builder.add(Return(gen))
 
@@ -108,7 +110,7 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Val
     create_switch_for_generator_class(builder)
     add_raise_exception_blocks_to_generator_class(builder, fitem.line)
 
-    add_vars_to_env(builder)
+    add_vars_to_env(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
 
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
@@ -429,7 +431,9 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
 
     # Add arguments from the original generator function to the
     # environment of the generator class.
-    add_args_to_env(builder, local=False, base=cls, reassign=False)
+    add_args_to_env(
+        builder, local=False, base=cls, reassign=False, prefix=GENERATOR_ATTRIBUTE_PREFIX
+    )
 
     # Set the next label register for the generator class.
     cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)
