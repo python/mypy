@@ -313,6 +313,13 @@ from mypy.visitor import NodeVisitor
 T = TypeVar("T")
 
 
+# Whether to print diagnostic information for failed full parses
+# in SemanticAnalyzer.try_parse_as_type_expression().
+#
+# See also: misc/analyze_typeform_stats.py
+DEBUG_TYPE_EXPRESSION_FULL_PARSE_FAILURES: Final = False
+
+
 FUTURE_IMPORTS: Final = {
     "__future__.nested_scopes": "nested_scopes",
     "__future__.generators": "generators",
@@ -351,6 +358,13 @@ Tag: _TypeAlias = int
 # type expression and can be ignored quickly when attempting to parse a
 # string literal as a type expression.
 _MULTIPLE_WORDS_NONTYPE_RE = re.compile(r'\s*[^\s.\'"|\[]+\s+[^\s.\'"|\[]')
+
+# Matches any valid Python identifier, including identifiers with Unicode characters.
+#
+# [^\d\W] = word character that is not a digit
+# \w = word character
+# \Z = match end of string; does not allow a trailing \n, unlike $
+_IDENTIFIER_RE = re.compile(r'^[^\d\W]\w*\Z', re.UNICODE)
 
 
 class SemanticAnalyzer(
@@ -7712,13 +7726,51 @@ class SemanticAnalyzer(
             # and only lazily in contexts where a TypeForm is expected
             return
         elif isinstance(maybe_type_expr, StrExpr):
+            str_value = maybe_type_expr.value  # cache
             # Filter out string literals with common patterns that could not
             # possibly be in a type expression
-            if _MULTIPLE_WORDS_NONTYPE_RE.match(maybe_type_expr.value):
+            if _MULTIPLE_WORDS_NONTYPE_RE.match(str_value):
                 # A common pattern in string literals containing a sentence.
                 # But cannot be a type expression.
                 maybe_type_expr.as_type = None
                 return
+            # Filter out string literals which look like an identifier but
+            # cannot be a type expression, for a few common reasons
+            if _IDENTIFIER_RE.fullmatch(str_value):
+                sym = self.lookup(str_value, UnboundType(str_value), suppress_errors=True)
+                if sym is None:
+                    # Does not refer to anything in the local symbol table
+                    maybe_type_expr.as_type = None
+                    return
+                else:  # sym is not None
+                    node = sym.node  # cache
+                    if isinstance(node, PlaceholderNode) and not node.becomes_typeinfo:
+                        # Either:
+                        # 1. f'Cannot resolve name "{t.name}" (possible cyclic definition)'
+                        # 2. Reference to an unknown placeholder node.
+                        maybe_type_expr.as_type = None
+                        return
+                    unbound_tvar_or_paramspec = (
+                        isinstance(node, (TypeVarExpr, TypeVarTupleExpr, ParamSpecExpr))
+                        and self.tvar_scope.get_binding(sym) is None
+                    )
+                    if unbound_tvar_or_paramspec:
+                        # Either:
+                        # 1. unbound_tvar: 'Type variable "{}" is unbound' [codes.VALID_TYPE]
+                        # 2. unbound_paramspec: f'ParamSpec "{name}" is unbound' [codes.VALID_TYPE]
+                        maybe_type_expr.as_type = None
+                        return
+            else:  # does not look like an identifier
+                if '"' in str_value or "'" in str_value:
+                    # Only valid inside a Literal[...] type
+                    if '[' not in str_value:
+                        # Cannot be a Literal[...] type
+                        maybe_type_expr.as_type = None
+                        return
+                elif str_value == '':
+                    # Empty string is not a valid type
+                    maybe_type_expr.as_type = None
+                    return
         elif isinstance(maybe_type_expr, IndexExpr):
             if isinstance(maybe_type_expr.base, NameExpr):
                 if isinstance(maybe_type_expr.base.node, Var):
@@ -7761,6 +7813,15 @@ class SemanticAnalyzer(
             except TypeTranslationError:
                 # Not a type expression
                 t = None
+
+            if DEBUG_TYPE_EXPRESSION_FULL_PARSE_FAILURES and t is None:
+                original_flushed_files = set(self.errors.flushed_files)  # save
+                try:
+                    errors = self.errors.new_messages()  # capture
+                finally:
+                    self.errors.flushed_files = original_flushed_files  # restore
+
+                print(f'SA.try_parse_as_type_expression: Full parse failure: {maybe_type_expr}, errors={errors!r}')
 
         # Count full parse attempts for profiling
         if t is not None:
