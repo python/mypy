@@ -5110,6 +5110,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return items[0]
         typ = join.join_type_list(items)
         if not allow_fast_container_literal(typ):
+            # TODO: This is overly strict, many other types can be joined safely here.
+            # However, our join implementation isn't bug-free, and some joins may produce
+            # undesired `Any`s or even more surprising results.
             return None
         return typ
 
