@@ -31,7 +31,7 @@ with text "abc..."
 - note a space after `E:` and `flags:`
 - `# E:12` adds column number to the expected error
 - use `\` to escape the `#` character and indicate that the rest of the line is part of
-the error message (note that there is no support for using \\ to escape a backslash)
+the error message (note that there is no support for using `\\` to escape a backslash itself)
 - repeating `# E: ` several times in one line indicates multiple expected errors in one line
 - `W: ...` and `N: ...` works exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
