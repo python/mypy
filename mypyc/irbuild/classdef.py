@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import Callable, Final
-import sys
 
 from mypy.nodes import (
     EXCLUDED_ENUM_ATTRIBUTES,
@@ -29,7 +28,7 @@ from mypy.nodes import (
     is_class_var,
 )
 from mypy.types import Instance, UnboundType, get_proper_type
-from mypyc.common import PROPSET_PREFIX, IS_FREE_THREADED
+from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
@@ -82,7 +81,6 @@ from mypyc.primitives.misc_ops import (
     py_calc_meta_op,
     pytype_from_template_op,
     type_object_op,
-    set_immortal_op,
 )
 from mypyc.subtype import is_subtype
 
@@ -263,6 +261,9 @@ class NonExtClassBuilder(ClassBuilder):
         # Dynamically create the class via the type constructor
         non_ext_class = load_non_ext_class(self.builder, ir, self.non_ext, self.cdef.line)
         non_ext_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
+
+        # Try to avoid contention when using free threading.
+        self.builder.set_immortal_if_free_threaded(non_ext_class, self.cdef.line)
 
         # Save the decorated class
         self.builder.add(
@@ -451,10 +452,11 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     )
     # Create the class
     tp = builder.call_c(pytype_from_template_op, [template, tp_bases, modname], cdef.line)
-    if IS_FREE_THREADED and sys.version_info >= (3, 14):
-        # Set type object to be immortal, as otherwise reference count contention
-        # can cause a massive performance hit in the worst case.
-        builder.call_c(set_immortal_op, [tp], cdef.line)
+
+    # Set type object to be immortal if free threaded, as otherwise reference count contention
+    # can cause a big performance hit.
+    builder.set_immortal_if_free_threaded(tp, cdef.line)
+
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
