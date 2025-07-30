@@ -788,7 +788,7 @@ class GroupGenerator:
         short_name = shared_lib_name(self.group_name).split(".")[-1]
 
         emitter.emit_lines(
-            f"static int {short_name}_exec(PyObject *module)",
+            f"static int exec_{short_name}(PyObject *module)",
             "{",
             "int res;",
             "PyObject *capsule;",
@@ -863,8 +863,8 @@ class GroupGenerator:
 
         if self.multi_phase_init:
             emitter.emit_lines(
-                f"static PyModuleDef_Slot {short_name}_slots[] = {{",
-                f"{{Py_mod_exec, {short_name}_exec}},",
+                f"static PyModuleDef_Slot slots_{short_name}[] = {{",
+                f"{{Py_mod_exec, exec_{short_name}}},",
                 "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},",
                 "{Py_mod_gil, Py_MOD_GIL_NOT_USED},",
                 "{0, NULL},",
@@ -873,21 +873,21 @@ class GroupGenerator:
 
         size = 0 if self.multi_phase_init else -1
         emitter.emit_lines(
-            f"static PyModuleDef {short_name}_module_def = {{",
+            f"static PyModuleDef module_def_{short_name} = {{",
             "PyModuleDef_HEAD_INIT,",
             f'.m_name = "{shared_lib_name(self.group_name)}",',
-            ".m_doc = NULL,"
+            ".m_doc = NULL,",
             f".m_size = {size},",
             ".m_methods = NULL,",
         )
         if self.multi_phase_init:
-            emitter.emit_line(f".m_slots = {short_name}_slots,")
+            emitter.emit_line(f".m_slots = slots_{short_name},")
         emitter.emit_line("};")
 
         if self.multi_phase_init:
             emitter.emit_lines(
                 f"PyMODINIT_FUNC PyInit_{short_name}(void) {{",
-                f"return PyModuleDef_Init(&{short_name}_module_def);",
+                f"return PyModuleDef_Init(&module_def_{short_name});",
                 "}",
             )
         else:
@@ -898,11 +898,11 @@ class GroupGenerator:
                 "Py_INCREF(module);",
                 "return module;",
                 "}",
-                f"module = PyModule_Create(&{short_name}_module_def);",
+                f"module = PyModule_Create(&module_def_{short_name});",
                 "if (!module) {",
                 "return NULL;",
                 "}",
-                f"if ({short_name}_exec(module) < 0) {{",
+                f"if (exec_{short_name}(module) < 0) {{",
                 "Py_DECREF(module);",
                 "return NULL;",
                 "}",
