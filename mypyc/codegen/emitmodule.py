@@ -871,12 +871,13 @@ class GroupGenerator:
                 "};",
             )
 
+        size = 0 if self.multi_phase_init else -1
         emitter.emit_lines(
             f"static PyModuleDef {short_name}_module_def = {{",
             "PyModuleDef_HEAD_INIT,",
             f'.m_name = "{shared_lib_name(self.group_name)}",',
-            ".m_doc = NULL,",
-            ".m_size = 0,",  # -1 originally
+            ".m_doc = NULL,"
+            f".m_size = {size},",
             ".m_methods = NULL,",
         )
         if self.multi_phase_init:
@@ -899,10 +900,12 @@ class GroupGenerator:
                 "}",
                 f"module = PyModule_Create(&{short_name}_module_def);",
                 "if (!module) {",
-                "return NULL;}",
+                "return NULL;",
+                "}",
                 f"if ({short_name}_exec(module) < 0) {{",
                 "Py_DECREF(module);",
-                "return NULL;}",
+                "return NULL;",
+                "}",
                 "return module;",
                 "}",
             )
