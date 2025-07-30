@@ -788,16 +788,11 @@ class GroupGenerator:
         short_name = "g" + shared_lib_name(self.group_name).split(".")[-1]  # TODO
 
         emitter.emit_lines(
-            f"static int {short_name}_exec(PyObject *module_arg)",
+            f"static int {short_name}_exec(PyObject *module)",
             "{",
             "int res;",
             "PyObject *capsule;",
             "PyObject *tmp;",
-            "static PyObject *module;",
-            "if (module) {",
-            "return 0;",
-            "}",
-            "module = module_arg;",
             "",
         )
 
