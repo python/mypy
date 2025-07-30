@@ -931,6 +931,10 @@ PyObject *CPy_GetANext(PyObject *aiter);
 void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
 void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details);
 
+#if CPY_3_14_FEATURES
+void CPy_SetImmortal(PyObject *obj);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
