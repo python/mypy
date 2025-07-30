@@ -6009,9 +6009,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     line=node_as_type.line,
                     column=node_as_type.column,
                     is_type_form=True,
+                )  # r-value type, when interpreted as a type expression
+            elif (
+                isinstance(p_type_context, UnionType)
+                and any([
+                    isinstance(item, TypeType) and item.is_type_form
+                    for item in p_type_context.items
+                ])
+                and (node_as_type := self.try_parse_as_type_expression(node)) is not None
+            ):
+                typ1 = TypeType.make_normalized(
+                    node_as_type,
+                    line=node_as_type.line,
+                    column=node_as_type.column,
+                    is_type_form=True,
                 )
+                if is_subtype(typ1, p_type_context):
+                    typ = typ1  # r-value type, when interpreted as a type expression
+                else:
+                    typ2 = node.accept(self)
+                    typ = typ2  # r-value type, when interpreted as a value expression
             else:
-                typ = node.accept(self)
+                typ = node.accept(self)  # r-value type, when interpreted as a value expression
         except Exception as err:
             report_internal_error(
                 err, self.chk.errors.file, node.line, self.chk.errors, self.chk.options

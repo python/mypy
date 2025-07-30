@@ -278,6 +278,47 @@ typx2: TypeForm = no_such_module.NoSuchType  # E: Name "no_such_module" is not d
 [typing fixtures/typing-full.pyi]
 
 
+-- Type Expression Context: Union[TypeForm, <non-TypeForm>]
+
+[case testAcceptsTypeFormLiteralAssignedToUnionOfTypeFormAndNonStr]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+from typing import TypeForm
+typx_or_int1: TypeForm[int | None] | int = int | None  # No error; interpret as TypeForm
+typx_or_int2: TypeForm[int | None] | int = str | None  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[TypeForm[Optional[int]], int]")
+typx_or_int3: TypeForm[int | None] | int = 1
+typx_or_int4: TypeForm[int | None] | int = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[TypeForm[Optional[int]], int]")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testAcceptsTypeFormLiteralAssignedToUnionOfTypeFormAndStr]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+from typing import TypeForm
+typx_or_str1: TypeForm[int | None] | str = 'int | None'
+typx_or_str2: TypeForm[int | None] | str = 'str | None'  # No error; interpret as str
+typx_or_str3: TypeForm[int | None] | str = 'hello'
+typx_or_str4: TypeForm[int | None] | str = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[TypeForm[Optional[int]], str]")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testValueExpressionWithStringInTypeFormUnionContextEmitsConservativeWarning1]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+from typing import List, TypeForm
+list_of_typx1: List[TypeForm[int | None] | str] = ['int | None']  # E: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.
+list_of_typx2: List[TypeForm[int | None] | str] = ['str | None']  # E: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testValueExpressionWithStringInTypeFormUnionContextEmitsConservativeWarning2]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+from typing import List, TypeForm
+list_of_typx3: List[TypeForm[int | None] | int] = ['int | None']  # E: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
+                                                                  # E: List item 0 has incompatible type "str"; expected "Union[TypeForm[Optional[int]], int]"
+list_of_typx4: List[TypeForm[str | None] | int] = ['str | None']  # E: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
+                                                                  # E: List item 0 has incompatible type "str"; expected "Union[TypeForm[Optional[str]], int]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+
 -- Assignability (is_subtype)
 
 [case testTypeFormToTypeFormAssignability]
