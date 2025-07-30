@@ -2328,7 +2328,7 @@ class LowLevelIRBuilder:
     def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
         """Make an object immortal on free-threaded builds (to avoid contention)."""
         if IS_FREE_THREADED and sys.version_info >= (3, 14):
-            self.call_c(set_immortal_op, [v], line)
+            self.primitive_op(set_immortal_op, [v], line)
 
     # Internal helpers
 
