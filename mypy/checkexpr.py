@@ -6043,7 +6043,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # We cannot use cache inside lambdas, because they skip immediate type
             # context, and use enclosing one, see infer_lambda_type_using_context().
             # TODO: consider using cache for more expression kinds.
-            elif isinstance(node, (CallExpr, ListExpr, TupleExpr, OpExpr)) and not (
+            elif isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr)) and not (
                 self.in_lambda_expr or self.chk.current_node_deferred
             ):
                 if (node, type_context) in self.expr_cache:
