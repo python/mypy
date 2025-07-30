@@ -16,6 +16,7 @@ from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
     BytesExpr,
     ComplexExpr,
+    DictExpr,
     Expression,
     FloatExpr,
     IntExpr,
@@ -23,6 +24,7 @@ from mypy.nodes import (
     NameExpr,
     OpExpr,
     StrExpr,
+    TupleExpr,
     UnaryExpr,
     Var,
 )
