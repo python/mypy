@@ -178,7 +178,7 @@ def generate_c_extension_shim(
 
     if IS_FREE_THREADED:
         # We use multi-phase init in free-threaded builds to enable free threading.
-        shim_name = "module_shim_multiphase.tmpl"
+        shim_name = "module_shim_no_gil_multiphase.tmpl"
     else:
         shim_name = "module_shim.tmpl"
 
