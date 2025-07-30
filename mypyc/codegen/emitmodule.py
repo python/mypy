@@ -866,14 +866,15 @@ class GroupGenerator:
 
         emitter.emit_lines("return 0;", "fail:", "return -1;", "}")
 
-        emitter.emit_lines(
-            f"static PyModuleDef_Slot {short_name}_slots[] = {{",
-            f"{{Py_mod_exec, {short_name}_exec}},",
-            "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},",
-            "{Py_mod_gil, Py_MOD_GIL_NOT_USED},",
-            "{0, NULL},",
-            "};",
-        )
+        if self.multi_phase_init:
+            emitter.emit_lines(
+                f"static PyModuleDef_Slot {short_name}_slots[] = {{",
+                f"{{Py_mod_exec, {short_name}_exec}},",
+                "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},",
+                "{Py_mod_gil, Py_MOD_GIL_NOT_USED},",
+                "{0, NULL},",
+                "};",
+            )
 
         emitter.emit_lines(
             f"static PyModuleDef {short_name}_module_def = {{",
@@ -882,15 +883,34 @@ class GroupGenerator:
             ".m_doc = NULL,",
             ".m_size = 0,",  # -1 originally
             ".m_methods = NULL,",
-            f".m_slots = {short_name}_slots,",
-            "};",
         )
+        if self.multi_phase_init:
+            emitter.emit_line(f".m_slots = {short_name}_slots,")
+        emitter.emit_line("};")
 
-        emitter.emit_lines(
-            f"PyMODINIT_FUNC PyInit_{short_name[1:]}(void) {{",
-            f"return PyModuleDef_Init(&{short_name}_module_def);",
-            "}",
-        )
+        if self.multi_phase_init:
+            emitter.emit_lines(
+                f"PyMODINIT_FUNC PyInit_{short_name[1:]}(void) {{",
+                f"return PyModuleDef_Init(&{short_name}_module_def);",
+                "}",
+            )
+        else:
+            emitter.emit_lines(
+                f"PyMODINIT_FUNC PyInit_{short_name[1:]}(void) {{",
+                "static PyObject *module = NULL;",
+                "if (module) {",
+                "Py_INCREF(module);",
+                "return module;",
+                "}",
+                f"module = PyModule_Create(&{short_name}_module_def);",
+                "if (!module) {",
+                "return NULL;}",
+                f"if ({short_name}_exec(module) < 0) {{",
+                "Py_DECREF(module);",
+                "return NULL;}",
+                "return module;",
+                "}",
+            )
 
     def generate_globals_init(self, emitter: Emitter) -> None:
         emitter.emit_lines(
