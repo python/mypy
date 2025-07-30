@@ -785,7 +785,7 @@ class GroupGenerator:
 
         emitter.emit_line()
 
-        short_name = "g" + shared_lib_name(self.group_name).split(".")[-1]  # TODO
+        short_name = shared_lib_name(self.group_name).split(".")[-1]
 
         emitter.emit_lines(
             f"static int {short_name}_exec(PyObject *module)",
@@ -885,13 +885,13 @@ class GroupGenerator:
 
         if self.multi_phase_init:
             emitter.emit_lines(
-                f"PyMODINIT_FUNC PyInit_{short_name[1:]}(void) {{",
+                f"PyMODINIT_FUNC PyInit_{short_name}(void) {{",
                 f"return PyModuleDef_Init(&{short_name}_module_def);",
                 "}",
             )
         else:
             emitter.emit_lines(
-                f"PyMODINIT_FUNC PyInit_{short_name[1:]}(void) {{",
+                f"PyMODINIT_FUNC PyInit_{short_name}(void) {{",
                 "static PyObject *module = NULL;",
                 "if (module) {",
                 "Py_INCREF(module);",
