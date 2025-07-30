@@ -30,8 +30,8 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.util import bytes_from_str
 
 # All possible result types of constant folding
-ConstantValue = Union[int, float, complex, str, bytes]
-CONST_TYPES: Final = (int, float, complex, str, bytes)
+ConstantValue = Union[int, float, complex, str, bytes, tuple]
+CONST_TYPES: Final = (int, float, complex, str, bytes, tuple)
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
@@ -72,6 +72,10 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
+    elif isinstance(expr, TupleExpr):
+        folded = tuple(constant_fold_expr(item) for item in expr.items)
+        if None not in folded:
+            return folded
     return None
 
 
