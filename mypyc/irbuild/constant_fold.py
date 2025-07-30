@@ -10,7 +10,7 @@ to other compiled modules in the same compilation unit.
 
 from __future__ import annotations
 
-from typing import Final, Union
+from typing import Any, Final, Union
 
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
@@ -32,7 +32,7 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.util import bytes_from_str
 
 # All possible result types of constant folding
-ConstantValue = Union[int, float, complex, str, bytes, tuple, dict]
+ConstantValue = Union[int, float, complex, str, bytes, tuple[Any, ...], dict[Any, Any]]
 CONST_TYPES: Final = (int, float, complex, str, bytes, tuple, dict)
 
 
