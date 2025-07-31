@@ -509,7 +509,7 @@ L0:
     r8 = CPyStr_RStrip(s, 0)
     return 1
 
-[case testCountAll]
+[case testCountAll_64bit]
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)
 def do_count(s: str) -> int:
@@ -540,7 +540,7 @@ L3:
 L4:
     return r6
 
-[case testCountStart]
+[case testCountStart_64bit]
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)
 def do_count(s: str, start: int) -> int:
@@ -573,7 +573,7 @@ L3:
 L4:
     return r6
 
-[case testCountStartEnd]
+[case testCountStartEnd_64bit]
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)
 def do_count(s: str, start: int, end: int) -> int:
