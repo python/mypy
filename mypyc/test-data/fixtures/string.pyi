@@ -1,5 +1,6 @@
 from typing import Optional
 
+class dict: pass
 class int: pass
 class str:
     def count(
