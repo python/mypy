@@ -64,7 +64,7 @@ def _iter_fixes(
         fix_lines = []
         for lineno, source_line in enumerate(source_lines, start=1):
             reports = reports_by_line.get((file_path, lineno))
-            comment_match = re.search(r"(?P<indent>\s+)(?P<comment>#\s*[EWN]\s*:.+)$", source_line)
+            comment_match = re.search(r"(?P<indent>\s*)(?P<comment>#\s*[EWN]\s*:.+)$", source_line)
             if comment_match:
                 source_line = source_line[: comment_match.start("indent")]  # strip old comment
             if reports:
