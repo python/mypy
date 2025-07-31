@@ -20,6 +20,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypeGuardedType,
     TypeOfAny,
     TypeType,
     TypeVarType,
@@ -277,7 +278,10 @@ class ConditionalTypeBinder:
                 possible_types = []
                 for t in resulting_values:
                     assert t is not None
-                    possible_types.append(t.type)
+                    if isinstance(t.type, TypeGuardedType):
+                        possible_types.append(t.type.type_guard)
+                    else:
+                        possible_types.append(t.type)
                 if len(possible_types) == 1:
                     # This is to avoid calling get_proper_type() unless needed, as this may
                     # interfere with our (hacky) TypeGuard support.

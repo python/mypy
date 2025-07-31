@@ -3210,7 +3210,8 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
     """
     if typ is None:
         return None
-    if isinstance(typ, TypeGuardedType):  # type: ignore[misc]
+    # TODO: this is an ugly hack, remove.
+    if isinstance(typ, TypeGuardedType):
         typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
@@ -3234,9 +3235,7 @@ def get_proper_types(
     if isinstance(types, list):
         typelist = types
         # Optimize for the common case so that we don't need to allocate anything
-        if not any(
-            isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist  # type: ignore[misc]
-        ):
+        if not any(isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist):
             return cast("list[ProperType]", typelist)
         return [get_proper_type(t) for t in typelist]
     else:
