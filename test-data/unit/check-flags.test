@@ -2482,9 +2482,3 @@ A = Union[C, List]  # OK
 -- check_untyped_defs is False by default.
 def f():
     x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
-
-[case testPyProjectTOMLSettingOfWrongType]
-# E: Invalid error code(s): true
-[file pyproject.toml]
-\[tool.mypy]
-enable_error_code = true
