@@ -1,7 +1,7 @@
 from typing import Optional
 
 class int: pass
-class str: pass
+class str:
     def count(
         self,
         substr: str,
