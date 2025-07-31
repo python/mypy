@@ -11,7 +11,7 @@ that invokes it. The meaning of these codes is thus:
 
 * 1: there are some type errors
 
-* 2: a crash, bad arguments, and other non-standard conditions relating to mypy
+* 2: a crash, bad arguments or configuration, and other non-standard conditions relating to mypy
 
 There is currently `a bug <https://github.com/python/mypy/issues/19548>`_
 in which certain configuration errors will result in an exit code of 0 instead
