@@ -1,8 +1,8 @@
 ﻿-- Because this file tests both "-skip" and "-xfail" themselves its results are not very meaningful, except that they should not fail.
 -- If you ever want to stop getting s and x results for these, you will have to figure out how to test these features instead.
 
--- What does it mean to both skip and xfail a file? Well, since the two are semantically different, according to https://docs.pytest.org/en/stable/how-to/skipping.html, there may be a meaningful answer to that question. For instance, "skipping tests that depend on an external resource which is not available at the moment", "for a feature not yet implemented". Or, as another example, if a feature hasn't been completed, but the test for it is also taking an enormous amount of time, you might xfail it and also skip.
--- You won't be able to tell from the test cases below, but if skip and xfail are both applied, the text case is skipped, not xfailed (which makes sense). The order does not matter.
+-- What does it mean to both skip and xfail a test? Well, since the two are semantically different, according to https://docs.pytest.org/en/stable/how-to/skipping.html, there may be a meaningful answer to that question. For instance, "skipping tests that depend on an external resource which is not available at the moment", "for a feature not yet implemented". Or, as another example, if a feature hasn't been completed, but the test for it is also taking an enormous amount of time, you might xfail it and also skip it.
+-- You won't be able to tell from the test cases below, but if skip and xfail are both applied, the test case is skipped, not xfailed (which makes sense). The order does not matter.
 
 [case skipfail1-skip-xfail]
 x: int = 1
