@@ -515,6 +515,7 @@ NewStr = NewType("NewStr", str)
 def do_count(s: str) -> int:
     return s.count("x")  # type: ignore [attr-defined]
 [builtins fixtures/string.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 def do_count(s):
     s, r0 :: str
@@ -536,6 +537,7 @@ NewStr = NewType("NewStr", str)
 def do_count(s: str, start: int) -> int:
     return s.count("x", start)  # type: ignore [attr-defined]
 [builtins fixtures/string.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 def do_count(s, start):
     s :: str
@@ -559,6 +561,7 @@ NewStr = NewType("NewStr", str)
 def do_count(s: str, start: int, end: int) -> int:
     return s.count("x", start, end)  # type: ignore [attr-defined]
 [builtins fixtures/string.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 def do_count(s, start, end):
     s :: str
