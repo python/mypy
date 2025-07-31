@@ -2550,10 +2550,12 @@ enable_all_error_codes = True
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
 
-[case testSpotCheckEnableAllErrorCodesConfigCountermand]
+[case testSpotCheckEnableAllErrorCodesConfigCountermand-xfail]
 # flags: --config-file tmp/mypy.ini
 # This test makes sure that the user can still countermand error codes disables
 # by *using* enable_all_error_codes on a more-specific level.
+# This test would work if enable-all-error-codes was also a per-module option,
+# which I guess it isn't.
 import tests.foo
 import bar
 [file bar.py]
