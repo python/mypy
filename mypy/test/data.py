@@ -314,8 +314,6 @@ class DataDrivenTestCase(pytest.Item):
             pytest.skip()
         if self.xfail:
             self.add_marker(pytest.mark.xfail)
-        if self.skip and self.xfail:
-            print(f"The test {self.name} is marked as both skip and xfail, which is bad, because I can't do both at once.", file=sys.stderr)
         parent = self.getparent(DataSuiteCollector)
         assert parent is not None, "Should not happen"
         suite = parent.obj()
