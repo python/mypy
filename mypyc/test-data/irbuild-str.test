@@ -513,8 +513,7 @@ L0:
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)
 def do_count(s: str) -> int:
-    return s.count("x")  # type: ignore [attr-defined]
-[builtins fixtures/ir.pyi]
+    return s.count("x")
 [typing fixtures/typing-full.pyi]
 [out]
 def do_count(s):
@@ -535,8 +534,7 @@ L0:
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)
 def do_count(s: str, start: int) -> int:
-    return s.count("x", start)  # type: ignore [attr-defined]
-[builtins fixtures/ir.pyi]
+    return s.count("x", start)
 [typing fixtures/typing-full.pyi]
 [out]
 def do_count(s, start):
@@ -559,8 +557,7 @@ L0:
 from typing import NewType, Union
 NewStr = NewType("NewStr", str)
 def do_count(s: str, start: int, end: int) -> int:
-    return s.count("x", start, end)  # type: ignore [attr-defined]
-[builtins fixtures/ir.pyi]
+    return s.count("x", start, end)
 [typing fixtures/typing-full.pyi]
 [out]
 def do_count(s, start, end):
