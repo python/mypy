@@ -545,10 +545,9 @@ def expand_errors(input: list[str], output: list[str], fnam: str) -> None:
                 elif m.group(1) == "W":
                     severity = "warning"
                 col = m.group("col")
-                message = m.group(
-                    "message"
-                )  # Message may, and probably does, include leading spaces
+                message = m.group("message")  
                 message = message.replace(r"\#", "#")  # adds back escaped # character
+                # Message may, and probably does, include leading spaces
                 if col is None:
                     output.append(f"{fnam}:{i + 1}: {severity}:{message}")
                 else:
