@@ -7,7 +7,7 @@ from mypyc.primitives.registry import ERR_NEG_INT, function_op, method_op
 new_ref_op = function_op(
     name="weakref.ReferenceType",
     arg_types=[object_rprimitive],
-    return_type=object_rprimitive,
+    return_type=weakref_rprimitive,
     c_function_name="PyWeakref_NewRef",
     extra_int_constants=[(0, pointer_rprimitive)],
     error_kind=ERR_MAGIC,
