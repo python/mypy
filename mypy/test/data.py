@@ -535,7 +535,7 @@ def expand_errors(input: list[str], output: list[str], fnam: str) -> None:
         # The first in the split things isn't a comment
         for possible_err_comment in re.split(r"(?!\\)#\s*(?=[ENW]\s*:)", input[i])[1:]:
             m = re.search(
-                r"^([ENW])\s*:((?P<col>\d+):)?\s*(?P<message>.*)$", possible_err_comment.strip()
+                r"^([ENW])\s*:((?P<col>\d+):)?(?P<message>.*)$", possible_err_comment.strip()
             )
             if m:
                 if m.group(1) == "E":
@@ -545,12 +545,12 @@ def expand_errors(input: list[str], output: list[str], fnam: str) -> None:
                 elif m.group(1) == "W":
                     severity = "warning"
                 col = m.group("col")
-                message = m.group("message")
+                message = m.group("message") # Message may, and probably does, include leading spaces
                 message = message.replace(r"\#", "#")  # adds back escaped # character
                 if col is None:
-                    output.append(f"{fnam}:{i + 1}: {severity}: {message}")
+                    output.append(f"{fnam}:{i + 1}: {severity}:{message}")
                 else:
-                    output.append(f"{fnam}:{i + 1}:{col}: {severity}: {message}")
+                    output.append(f"{fnam}:{i + 1}:{col}: {severity}:{message}")
 
 
 def fix_win_path(line: str) -> str:
