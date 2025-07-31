@@ -31,17 +31,23 @@ with text "abc..."
 - note a space after `E:` and `flags:`
 - `# E:12` adds column number to the expected error
 - use `\` to escape the `#` character and indicate that the rest of the line is part of
-the error message (note that there is no support for using `\\` to escape a backslash itself)
+  the error message (note that there is no support for using `\\` to escape a backslash itself
+  in this context; also, in all other contexts, such as line-continuation, the backslash is treated
+  as it normally would be in a python source file)
 - repeating `# E: ` several times in one line indicates multiple expected errors in one line
 - `W: ...` and `N: ...` works exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
+- lines that begin with `--` are test-file-format comments, and will not appear in the texted python
+  source code
+- some test files are run in a special way by the test runner; this is typically documented in
+  test-file-format comments at the top of the test file
 - optional `[builtins fixtures/...]` tells the type checker to use
 `builtins` stubs from the indicated file (see Fixtures section below)
 - optional `[out]` is an alternative to the `# E: ` notation: it indicates that
-any text after it contains the expected type checking error messages.
-Usually, `# E: ` is preferred because it makes it easier to associate the
-errors with the code generating them at a glance, and to change the code of
-the test without having to change line numbers in `[out]`
+  any text after it contains the expected type checking error messages.
+  Usually, `# E: ` is preferred because it makes it easier to associate the
+  errors with the code generating them at a glance, and to change the code of
+  the test without having to change line numbers in `[out]`
 - an empty `[out]` section has no effect
 - to add tests for a feature that hasn't been implemented yet, append `-xfail`
   to the end of the test name

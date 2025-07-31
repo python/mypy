@@ -2684,7 +2684,7 @@ class C:
             ) -> str:
         return 0 # E: Incompatible return value type (got "int", expected "str")
 
-reveal_type(C.X) # E:  # N: Revealed type is "def () -> __main__.X"
+reveal_type(C.X)       # N: Revealed type is "def () -> __main__.X"
 reveal_type(C().str()) # N: Revealed type is "builtins.str"
 
 [case testNewAnalyzerNameNotDefinedYetInClassBody]

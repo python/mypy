@@ -3652,7 +3652,7 @@ reveal_type(X)  # N: Revealed type is "builtins.dict[builtins.str, def () -> bui
 from typing_extensions import TypeAlias
 X: TypeAlias = {"int": int, "str": str}
 x: X
-reveal_type(x)  # N:  # N: Revealed type is "TypedDict({'int': builtins.int, 'str': builtins.str})"
+reveal_type(x)  # N: Revealed type is "TypedDict({'int': builtins.int, 'str': builtins.str})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
