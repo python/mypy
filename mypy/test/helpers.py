@@ -357,7 +357,7 @@ def parse_options(
         options.error_summary = False
         options.hide_error_codes = True
         options.force_union_syntax = True
-        flag_list = ["--no-pretty"]
+        flag_list = []
 
     # Allow custom python version to override testfile_pyversion.
     if all(flag.split("=")[0] != "--python-version" for flag in flag_list):
