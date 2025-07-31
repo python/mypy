@@ -45,6 +45,7 @@ from mypy.typeops import (
     freeze_all_type_vars,
     function_type,
     get_all_type_vars,
+    is_valid_self_type_best_effort,
     make_simplified_union,
     supported_self_type,
     tuple_fallback,
@@ -745,10 +746,8 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         callable_name=callable_name,
     )
 
-    mx.chk.check_deprecated(dunder_get, mx.context)
-    mx.chk.warn_deprecated_overload_item(
-        dunder_get, mx.context, target=inferred_dunder_get_type, selftype=descriptor_type
-    )
+    # Search for possible deprecations:
+    mx.chk.warn_deprecated(dunder_get, mx.context)
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
     if isinstance(inferred_dunder_get_type, AnyType):
@@ -825,10 +824,7 @@ def analyze_descriptor_assign(descriptor_type: Instance, mx: MemberContext) -> T
     )
 
     # Search for possible deprecations:
-    mx.chk.check_deprecated(dunder_set, mx.context)
-    mx.chk.warn_deprecated_overload_item(
-        dunder_set, mx.context, target=inferred_dunder_set_type, selftype=descriptor_type
-    )
+    mx.chk.warn_deprecated(dunder_set, mx.context)
 
     # In the following cases, a message already will have been recorded in check_call.
     if (not isinstance(inferred_dunder_set_type, CallableType)) or (
@@ -1053,6 +1049,23 @@ def check_self_arg(
     new_items = []
     if is_classmethod:
         dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
+
+    if isinstance(functype, Overloaded):
+        p_dispatched_arg_type = get_proper_type(dispatched_arg_type)
+        filtered_items = []
+        for c in items:
+            if isinstance(p_dispatched_arg_type, Instance):
+                # Filter based on whether declared self type can match actual object type.
+                # For example, if self has type C[int] and method is accessed on a C[str] value,
+                # omit this item. This is best effort first pass filter obvious mismatches for
+                # performance reasons.
+                keep = is_valid_self_type_best_effort(c, p_dispatched_arg_type)
+            else:
+                keep = True
+            if keep:
+                filtered_items.append(c)
+        if len(filtered_items) != 0:
+            items = filtered_items
 
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):

@@ -421,27 +421,9 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = []
-        original_type = get_proper_type(original_type)
-        for c in method.items:
-            if isinstance(original_type, Instance):
-                # Filter based on whether declared self type can match actual object type.
-                # For example, if self has type C[int] and method is accessed on a C[str] value,
-                # omit this item. This is best effort since bind_self can be called in many
-                # contexts, and doing complete validation might trigger infinite recursion.
-                #
-                # Note that overload item filtering normally happens elsewhere. This is needed
-                # at least during constraint inference.
-                keep = is_valid_self_type_best_effort(c, original_type)
-            else:
-                keep = True
-            if keep:
-                items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
-        if len(items) == 0:
-            # If no item matches, returning all items helps avoid some spurious errors
-            items = [
-                bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-            ]
+        items = [
+            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+        ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func: CallableType = method
