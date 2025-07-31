@@ -117,7 +117,10 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
     # TODO: check infinite recursion for aliases here.
     if isinstance(narrowed, TypeGuardedType):
-        # A type guard forces the new type even if it doesn't overlap the old.
+        # A type guard forces the new type even if it doesn't overlap the old...
+        if is_proper_subtype(declared, narrowed.type_guard, ignore_promotions=True):
+            # ...unless it is a proper supertype of declared type.
+            return declared
         return narrowed.type_guard
 
     original_declared = declared
