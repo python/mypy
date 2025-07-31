@@ -5,7 +5,7 @@ x: int = 1
 x: int = "hi" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case emptyLineErrorComment-xfail]
-# E: 
+# E:
 
 [case oddErrorComments]
 x: int = "hi"#E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -47,8 +47,3 @@ x: int = "hi" # e: Incompatible types in assignment (expression has type "str", 
 x2: int = "hi" # E Incompatible types in assignment (expression has type "str", variable has type "int")
 x3: int = "hi" # e Incompatible types in assignment (expression has type "str", variable has type "int")
 x4: int = "hi" # e Incompatible types in assignment (expression has type "str", variable has type "int")
-
-
-
-
-
