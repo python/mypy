@@ -2603,3 +2603,26 @@ def run3(predicate: Callable[Concatenate[int, str, _P], None], *args: _P.args, *
                                            # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "str" \
                                            # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "_P.args"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecOverloadProtocol]
+from typing import ParamSpec, Protocol, TypeVar, overload
+
+_A_contra = TypeVar("_A_contra", bound=str, contravariant=True)
+_P = ParamSpec("_P")
+
+class Callback(Protocol[_A_contra, _P]):
+    def method(self, a: _A_contra, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+
+class Impl:
+    @overload
+    def method(self, a: int, b: str) -> None: ...
+    @overload
+    def method(self, a: str, b: int) -> None: ...
+    def method(self, a, b) -> None: ...
+
+def accepts_callback(cb: Callback[str, _P], *args: _P.args, **kwargs: _P.kwargs) -> int:
+    return 1
+
+a = accepts_callback(Impl(), 1)
+reveal_type(a)  # N: Revealed type is "builtins.int"
+[builtins fixtures/paramspec.pyi]
