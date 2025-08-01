@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Callable, TypeVar, cast
 
-from mypy import message_registry, state, subtypes
+from mypy import message_registry, state
 from mypy.checker_shared import TypeCheckerSharedApi
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import (
@@ -14,6 +14,7 @@ from mypy.expandtype import (
     freshen_all_functions_type_vars,
 )
 from mypy.maptype import map_instance_to_supertype
+from mypy.meet import is_overlapping_types
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_POS,
@@ -39,6 +40,7 @@ from mypy.nodes import (
     is_final_node,
 )
 from mypy.plugin import AttributeContext
+from mypy.subtypes import is_subtype
 from mypy.typeops import (
     bind_self,
     erase_to_bound,
@@ -1058,9 +1060,14 @@ def check_self_arg(
             return functype
         else:
             selfarg = get_proper_type(item.arg_types[0])
+            p_dispatched_arg_type = get_proper_type(dispatched_arg_type)
+            if isinstance(selfarg, Instance) and isinstance(p_dispatched_arg_type, Instance):
+                if selfarg.type is p_dispatched_arg_type.type and selfarg.args:
+                    if not is_overlapping_types(p_dispatched_arg_type, selfarg):
+                        continue
             # This matches similar special-casing in bind_self(), see more details there.
             self_callable = name == "__call__" and isinstance(selfarg, CallableType)
-            if self_callable or subtypes.is_subtype(
+            if self_callable or is_subtype(
                 dispatched_arg_type,
                 # This level of erasure matches the one in checker.check_func_def(),
                 # better keep these two checks consistent.
