@@ -69,6 +69,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
+    UninhabitedType,
     UnionType,
     get_proper_type,
 )
@@ -268,6 +269,10 @@ def _analyze_member_access(
         if not mx.suppress_errors:
             mx.msg.deleted_as_rvalue(typ, mx.context)
         return AnyType(TypeOfAny.from_error)
+    elif isinstance(typ, UninhabitedType):
+        attr_type = UninhabitedType()
+        attr_type.ambiguous = typ.ambiguous
+        return attr_type
     return report_missing_attribute(mx.original_type, typ, name, mx)
 
 
@@ -951,7 +956,7 @@ def expand_and_bind_callable(
 ) -> Type:
     if not mx.preserve_type_var_ids:
         functype = freshen_all_functions_type_vars(functype)
-    typ = get_proper_type(expand_self_type(var, functype, mx.original_type))
+    typ = get_proper_type(expand_self_type(var, functype, mx.self_type))
     assert isinstance(typ, FunctionLike)
     if is_trivial_self:
         typ = bind_self_fast(typ, mx.self_type)

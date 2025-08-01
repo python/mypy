@@ -56,7 +56,7 @@ function_op(
     extra_int_constants=[(0, int_rprimitive)],
 )
 
-# isinstance(obj, list)
+# translate isinstance(obj, list)
 isinstance_list = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],
@@ -219,7 +219,7 @@ list_pop_last = method_op(
 )
 
 # list.pop(index)
-list_pop = method_op(
+method_op(
     name="pop",
     arg_types=[list_rprimitive, int_rprimitive],
     return_type=object_rprimitive,

@@ -1072,12 +1072,7 @@ class SemanticAnalyzer(
         if func.has_self_or_cls_argument:
             if func.name in ["__init_subclass__", "__class_getitem__"]:
                 func.is_class = True
-            if not func.arguments:
-                self.fail(
-                    'Method must have at least one argument. Did you forget the "self" argument?',
-                    func,
-                )
-            elif isinstance(functype, CallableType):
+            if func.arguments and isinstance(functype, CallableType):
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
                     if has_self_type:

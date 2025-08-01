@@ -363,7 +363,7 @@ def f(x):
 L0:
     r0 = __main__.B :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -402,7 +402,7 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -412,7 +412,7 @@ L1:
 L2:
     r5 = __main__.B :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6 :: builtins.object*
+    r7 = borrow load_mem r6 :: builtins.object*
     keep_alive x
     r8 = r7 == r5
     r4 = r8
@@ -449,7 +449,7 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -459,7 +459,7 @@ L1:
 L2:
     r5 = __main__.R :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6 :: builtins.object*
+    r7 = borrow load_mem r6 :: builtins.object*
     keep_alive x
     r8 = r7 == r5
     r4 = r8
@@ -500,7 +500,7 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -510,7 +510,7 @@ L1:
 L2:
     r5 = __main__.C :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6 :: builtins.object*
+    r7 = borrow load_mem r6 :: builtins.object*
     keep_alive x
     r8 = r7 == r5
     r4 = r8

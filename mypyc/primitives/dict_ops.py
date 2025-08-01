@@ -71,6 +71,15 @@ dict_copy = function_op(
     error_kind=ERR_MAGIC,
 )
 
+# translate isinstance(obj, dict)
+isinstance_dict = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyDict_Check",
+    error_kind=ERR_NEVER,
+)
+
 # dict[key]
 dict_get_item_op = method_op(
     name="__getitem__",
