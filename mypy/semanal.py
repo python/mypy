@@ -1046,12 +1046,12 @@ class SemanticAnalyzer(
         last_type = typ.arg_types[-1]
         if not isinstance(last_type, UnpackType):
             return typ
-        last_type = get_proper_type(last_type.type)
-        if not isinstance(last_type, TypedDictType):
+        p_last_type = get_proper_type(last_type.type)
+        if not isinstance(p_last_type, TypedDictType):
             self.fail("Unpack item in ** argument must be a TypedDict", last_type)
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
-        overlap = set(typ.arg_names) & set(last_type.items)
+        overlap = set(typ.arg_names) & set(p_last_type.items)
         # It is OK for TypedDict to have a key named 'kwargs'.
         overlap.discard(typ.arg_names[-1])
         if overlap:
@@ -1060,7 +1060,7 @@ class SemanticAnalyzer(
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         # OK, everything looks right now, mark the callable type as using unpack.
-        new_arg_types = typ.arg_types[:-1] + [last_type]
+        new_arg_types = typ.arg_types[:-1] + [p_last_type]
         return typ.copy_modified(arg_types=new_arg_types, unpack_kwargs=True)
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo, has_self_type: bool) -> None:

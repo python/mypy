@@ -355,11 +355,7 @@ class TypeAliasType(Type):
             ):
                 mapping[tvar.id] = sub
 
-        new_tp = self.alias.target.accept(InstantiateAliasVisitor(mapping))
-        new_tp.accept(LocationSetter(self.line, self.column))
-        new_tp.line = self.line
-        new_tp.column = self.column
-        return new_tp
+        return self.alias.target.accept(InstantiateAliasVisitor(mapping))
 
     def _partial_expansion(self, nothing_args: bool = False) -> tuple[ProperType, bool]:
         # Private method mostly for debugging and testing.
@@ -3214,7 +3210,8 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
     """
     if typ is None:
         return None
-    if isinstance(typ, TypeGuardedType):  # type: ignore[misc]
+    # TODO: this is an ugly hack, remove.
+    if isinstance(typ, TypeGuardedType):
         typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
@@ -3238,9 +3235,7 @@ def get_proper_types(
     if isinstance(types, list):
         typelist = types
         # Optimize for the common case so that we don't need to allocate anything
-        if not any(
-            isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist  # type: ignore[misc]
-        ):
+        if not any(isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist):
             return cast("list[ProperType]", typelist)
         return [get_proper_type(t) for t in typelist]
     else:
@@ -3260,7 +3255,6 @@ from mypy.type_visitor import (
     TypeTranslator as TypeTranslator,
     TypeVisitor as TypeVisitor,
 )
-from mypy.typetraverser import TypeTraverserVisitor
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -3598,23 +3592,6 @@ def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[In
     return isinstance(t, Instance) and t.type.fullname in fullnames
 
 
-class LocationSetter(TypeTraverserVisitor):
-    # TODO: Should we update locations of other Type subclasses?
-    def __init__(self, line: int, column: int) -> None:
-        self.line = line
-        self.column = column
-
-    def visit_instance(self, typ: Instance) -> None:
-        typ.line = self.line
-        typ.column = self.column
-        super().visit_instance(typ)
-
-    def visit_type_alias_type(self, typ: TypeAliasType) -> None:
-        typ.line = self.line
-        typ.column = self.column
-        super().visit_type_alias_type(typ)
-
-
 class HasTypeVars(BoolTypeQuery):
     """Visitor for querying whether a type has a type variable component."""
 
@@ -3709,8 +3686,8 @@ def flatten_nested_unions(
 
     flat_items: list[Type] = []
     for t in typelist:
-        if handle_type_alias_type:
-            if not handle_recursive and isinstance(t, TypeAliasType) and t.is_recursive:
+        if handle_type_alias_type and isinstance(t, TypeAliasType):
+            if not handle_recursive and t.is_recursive:
                 tp: Type = t
             else:
                 tp = get_proper_type(t)
@@ -3757,7 +3734,21 @@ def flatten_nested_tuples(types: Iterable[Type]) -> list[Type]:
         if not isinstance(p_type, TupleType):
             res.append(typ)
             continue
-        res.extend(flatten_nested_tuples(p_type.items))
+        if isinstance(typ.type, TypeAliasType):
+            items = []
+            for item in p_type.items:
+                if (
+                    isinstance(item, ProperType)
+                    and isinstance(item, Instance)
+                    or isinstance(item, TypeAliasType)
+                ):
+                    if len(item.args) == 0:
+                        item = item.copy_modified()
+                        item.set_line(typ)
+                items.append(item)
+        else:
+            items = p_type.items
+        res.extend(flatten_nested_tuples(items))
     return res
 
 

@@ -116,8 +116,11 @@ def meet_types(s: Type, t: Type) -> ProperType:
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
     # TODO: check infinite recursion for aliases here.
-    if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
-        # A type guard forces the new type even if it doesn't overlap the old.
+    if isinstance(narrowed, TypeGuardedType):
+        # A type guard forces the new type even if it doesn't overlap the old...
+        if is_proper_subtype(declared, narrowed.type_guard, ignore_promotions=True):
+            # ...unless it is a proper supertype of declared type.
+            return declared
         return narrowed.type_guard
 
     original_declared = declared
@@ -308,9 +311,7 @@ def is_overlapping_types(
     positives), for example: None only overlaps with explicitly optional types, Any
     doesn't overlap with anything except object, we don't ignore positional argument names.
     """
-    if isinstance(left, TypeGuardedType) or isinstance(  # type: ignore[misc]
-        right, TypeGuardedType
-    ):
+    if isinstance(left, TypeGuardedType) or isinstance(right, TypeGuardedType):
         # A type guard forces the new type even if it doesn't overlap the old.
         return True
 
