@@ -14,7 +14,6 @@ from mypy.expandtype import (
     freshen_all_functions_type_vars,
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.meet import is_valid_self_type_best_effort
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_POS,
@@ -1049,23 +1048,6 @@ def check_self_arg(
     new_items = []
     if is_classmethod:
         dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
-
-    if isinstance(functype, Overloaded):
-        p_dispatched_arg_type = get_proper_type(dispatched_arg_type)
-        filtered_items = []
-        for c in items:
-            if isinstance(p_dispatched_arg_type, Instance):
-                # Filter based on whether declared self type can match actual object type.
-                # For example, if self has type C[int] and method is accessed on a C[str] value,
-                # omit this item. This is best-effort first pass filter obvious mismatches for
-                # performance reasons.
-                keep = is_valid_self_type_best_effort(c, p_dispatched_arg_type)
-            else:
-                keep = True
-            if keep:
-                filtered_items.append(c)
-        if len(filtered_items) != 0:
-            items = filtered_items
 
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):

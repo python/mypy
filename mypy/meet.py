@@ -5,7 +5,6 @@ from typing import Callable
 from mypy import join
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import ARG_OPT, ARG_POS
 from mypy.state import state
 from mypy.subtypes import (
     are_parameters_compatible,
@@ -737,39 +736,6 @@ def is_tuple(typ: Type) -> bool:
     return isinstance(typ, TupleType) or (
         isinstance(typ, Instance) and typ.type.fullname == "builtins.tuple"
     )
-
-
-def is_valid_self_type_best_effort(c: CallableType, self_type: Instance) -> bool:
-    """Quickly check if self_type might match the self in a callable.
-    Avoid performing any complex type operations. This is performance-critical.
-    Default to returning True if we don't know (or it would be too expensive).
-    """
-    if (
-        self_type.args
-        and c.arg_types
-        and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
-        and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
-        and arg_type.args
-        and self_type.type.fullname != "functools._SingleDispatchCallable"
-    ):
-        if self_type.type is not arg_type.type:
-            # We can't map to supertype, since it could trigger expensive checks for
-            # protocol types, so we conservatively assume this is fine.
-            return True
-
-        # Fast path: no explicit annotation on self
-        if all(
-            (
-                type(arg) is TypeVarType
-                and type(arg.upper_bound) is Instance
-                and arg.upper_bound.type.fullname == "builtins.object"
-            )
-            for arg in arg_type.args
-        ):
-            return True
-
-        return is_overlapping_types(self_type, c.arg_types[0])
-    return True
 
 
 class TypeMeetVisitor(TypeVisitor[ProperType]):
