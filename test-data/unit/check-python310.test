@@ -2839,3 +2839,13 @@ match value_type:
     case _:
         assert_never(value_type)
 [builtins fixtures/tuple.pyi]
+
+[case testAssignmentToFinalInMatchCaseNotAllowed]
+from typing import Final
+
+FOO: Final[int] = 10
+
+val: int = 8
+match val:
+    case FOO:  # E: Cannot assign to final name "FOO"
+        pass
