@@ -39,6 +39,7 @@ TEST_MODULE_NAME = "test_module"
 
 
 stubtest_typing_stub = """
+import collections
 Any = object()
 
 class _SpecialForm:
