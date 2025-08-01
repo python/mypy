@@ -1064,6 +1064,9 @@ def check_self_arg(
             if isinstance(selfarg, Instance) and isinstance(p_dispatched_arg_type, Instance):
                 if selfarg.type is p_dispatched_arg_type.type and selfarg.args:
                     if not is_overlapping_types(p_dispatched_arg_type, selfarg):
+                        # This special casing is needed since `actual <: erased(template)`
+                        # logic below doesn't always work, and a more correct approach may
+                        # be tricky.
                         continue
             # This matches similar special-casing in bind_self(), see more details there.
             self_callable = name == "__call__" and isinstance(selfarg, CallableType)
