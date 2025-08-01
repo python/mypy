@@ -45,7 +45,6 @@ from mypy.typeops import (
     freeze_all_type_vars,
     function_type,
     get_all_type_vars,
-    is_valid_self_type_best_effort,
     make_simplified_union,
     supported_self_type,
     tuple_fallback,
@@ -1049,23 +1048,6 @@ def check_self_arg(
     new_items = []
     if is_classmethod:
         dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
-
-    if isinstance(functype, Overloaded):
-        p_dispatched_arg_type = get_proper_type(dispatched_arg_type)
-        filtered_items = []
-        for c in items:
-            if isinstance(p_dispatched_arg_type, Instance):
-                # Filter based on whether declared self type can match actual object type.
-                # For example, if self has type C[int] and method is accessed on a C[str] value,
-                # omit this item. This is best effort first pass filter obvious mismatches for
-                # performance reasons.
-                keep = is_valid_self_type_best_effort(c, p_dispatched_arg_type)
-            else:
-                keep = True
-            if keep:
-                filtered_items.append(c)
-        if len(filtered_items) != 0:
-            items = filtered_items
 
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):

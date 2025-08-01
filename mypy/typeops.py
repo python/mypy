@@ -16,7 +16,6 @@ from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
-    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -490,43 +489,6 @@ def bind_self(
         is_bound=True,
     )
     return cast(F, res)
-
-
-def is_valid_self_type_best_effort(c: CallableType, self_type: Instance) -> bool:
-    """Quickly check if self_type might match the self in a callable.
-
-    Avoid performing any complex type operations. This is performance-critical.
-
-    Default to returning True if we don't know (or it would be too expensive).
-    """
-    if (
-        self_type.args
-        and c.arg_types
-        and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
-        and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
-        and arg_type.args
-        and self_type.type.fullname != "functools._SingleDispatchCallable"
-    ):
-        if self_type.type is not arg_type.type:
-            # We can't map to supertype, since it could trigger expensive checks for
-            # protocol types, so we consevatively assume this is fine.
-            return True
-
-        # Fast path: no explicit annotation on self
-        if all(
-            (
-                type(arg) is TypeVarType
-                and type(arg.upper_bound) is Instance
-                and arg.upper_bound.type.fullname == "builtins.object"
-            )
-            for arg in arg_type.args
-        ):
-            return True
-
-        from mypy.meet import is_overlapping_types
-
-        return is_overlapping_types(self_type, c.arg_types[0])
-    return True
 
 
 def erase_to_bound(t: Type) -> Type:
