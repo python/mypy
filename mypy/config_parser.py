@@ -60,7 +60,7 @@ def parse_version(v: str | float) -> tuple[int, int]:
     return major, minor
 
 
-def try_split(v: str | Sequence[str] | Any, split_regex: str = "[,]") -> list[str]:
+def try_split(v: str | Sequence[str] | object, split_regex: str = ",") -> list[str]:
     """Split and trim a str or sequence (eg: list) of str into a list of str.
     If an element of the input is not str, a type error will be raised."""
 
