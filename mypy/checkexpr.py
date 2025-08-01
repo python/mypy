@@ -5876,7 +5876,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
         self.accept(e.cond)
-        ctx = self.type_context[-1]
+        ctx: Type | None = self.type_context[-1]
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
