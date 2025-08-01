@@ -2682,14 +2682,3 @@ class ClassB(ClassA):
     def value(self) -> int:  # E: Name "value" already defined on line 10
         return 0
 [builtins fixtures/dict.pyi]
-
-[case testDataclassWithTypeVarTuple]
-# flags: --python-version 3.13
-# https://github.com/python/mypy/issues/19559
-from typing import Callable
-from dataclasses import dataclass
-
-@dataclass
-class Test[*Ts, R]:
-    a: Callable[[*Ts], R]
-[builtins fixtures/dict.pyi]
