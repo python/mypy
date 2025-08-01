@@ -311,3 +311,18 @@ log_trace_event = custom_primitive_op(
     return_type=void_rtype,
     error_kind=ERR_NEVER,
 )
+
+# Mark object as immortal -- it won't be freed via reference counting, as
+# the reference count won't be updated any longer. Immortal objects support
+# fast concurrent read-only access from multiple threads when using free
+# threading, since this eliminates contention from concurrent reference count
+# updates.
+#
+# Needs at least Python 3.14.
+set_immortal_op = custom_primitive_op(
+    name="set_immmortal",
+    c_function_name="CPy_SetImmortal",
+    arg_types=[object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)

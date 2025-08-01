@@ -424,6 +424,10 @@ class IRBuilder:
     def debug_print(self, toprint: str | Value) -> None:
         return self.builder.debug_print(toprint)
 
+    def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
+        """Make an object immortal on free-threaded builds (to avoid contention)."""
+        self.builder.set_immortal_if_free_threaded(v, line)
+
     # Helpers for IR building
 
     def add_to_non_ext_dict(
@@ -432,6 +436,10 @@ class IRBuilder:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
         self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
+
+        # It's important that accessing class dictionary items from multiple threads
+        # doesn't cause contention.
+        self.builder.set_immortal_if_free_threaded(val, line)
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None

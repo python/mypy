@@ -1,0 +1,41 @@
+#include <Python.h>
+
+static int {modname}_exec(PyObject *module)
+{{
+    PyObject *tmp;
+    if (!(tmp = PyImport_ImportModule("{libname}"))) return -1;
+    PyObject *capsule = PyObject_GetAttrString(tmp, "exec_{full_modname}");
+    Py_DECREF(tmp);
+    if (capsule == NULL) return -1;
+    void *exec_func = PyCapsule_GetPointer(capsule, "{libname}.exec_{full_modname}");
+    Py_DECREF(capsule);
+    if (!exec_func) return -1;
+    if (((int (*)(PyObject *))exec_func)(module) != 0) return -1;
+    return 0;
+}}
+
+static PyModuleDef_Slot {modname}_slots[] = {{
+    {{Py_mod_exec, {modname}_exec}},
+    {{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED}},
+    {{Py_mod_gil, Py_MOD_GIL_NOT_USED}},
+    {{0, NULL}},
+}};
+
+static struct PyModuleDef {modname}_module = {{
+    PyModuleDef_HEAD_INIT,
+    .m_name = "{modname}",
+    .m_doc = NULL,
+    .m_methods = NULL,
+    .m_size = 0,
+    .m_slots = {modname}_slots,
+}};
+
+PyMODINIT_FUNC
+PyInit_{modname}(void)
+{{
+    return PyModuleDef_Init(&{modname}_module);
+}}
+
+// distutils sometimes spuriously tells cl to export CPyInit___init__,
+// so provide that so it chills out
+PyMODINIT_FUNC PyInit___init__(void) {{ return PyInit_{modname}(); }}

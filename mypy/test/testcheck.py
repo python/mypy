@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import re
 import sys
+import tempfile
+from pathlib import Path
 
 from mypy import build
 from mypy.build import Graph
@@ -46,15 +48,16 @@ if sys.version_info < (3, 12):
 if sys.version_info < (3, 13):
     typecheck_files.remove("check-python313.test")
 
-# Special tests for platforms with case-insensitive filesystems.
-if sys.platform not in ("darwin", "win32"):
-    typecheck_files.remove("check-modules-case.test")
-
 
 class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if os.path.basename(testcase.file) == "check-modules-case.test":
+            with tempfile.NamedTemporaryFile(prefix="test", dir=".") as temp_file:
+                temp_path = Path(temp_file.name)
+                if not temp_path.with_name(temp_path.name.upper()).exists():
+                    pytest.skip("File system is not case‐insensitive")
         if lxml is None and os.path.basename(testcase.file) == "check-reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
         incremental = (

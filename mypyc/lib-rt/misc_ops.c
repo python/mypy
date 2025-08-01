@@ -1058,7 +1058,7 @@ void CPyTrace_LogEvent(const char *location, const char *line, const char *op, c
 
 #endif
 
-#ifdef CPY_3_12_FEATURES
+#if CPY_3_12_FEATURES
 
 // Copied from Python 3.12.3, since this struct is internal to CPython. It defines
 // the structure of typing.TypeAliasType objects. We need it since compute_value is
@@ -1085,6 +1085,16 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
         Py_DECREF(obj->compute_value);
     }
     obj->compute_value = compute_value;
+}
+
+#endif
+
+#if CPY_3_14_FEATURES
+
+#include "internal/pycore_object.h"
+
+void CPy_SetImmortal(PyObject *obj) {
+    _Py_SetImmortal(obj);
 }
 
 #endif

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
@@ -83,7 +82,7 @@ class TestFileSystemCache(unittest.TestCase):
             assert self.isfile_case(os.path.join(other, "other_dir.py"))
             assert not self.isfile_case(os.path.join(other, "Other_Dir.py"))
             assert not self.isfile_case(os.path.join(other, "bar.py"))
-            if sys.platform in ("win32", "darwin"):
+            if os.path.exists(os.path.join(other, "PKG/other_dir.py")):
                 # We only check case for directories under our prefix, and since
                 # this path is not under the prefix, case difference is fine.
                 assert self.isfile_case(os.path.join(other, "PKG/other_dir.py"))
