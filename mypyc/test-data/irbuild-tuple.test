@@ -319,7 +319,7 @@ L4:
     a = r3
     return 1
 
-[case testTupleBuiltFromBytes]
+[case testTupleBuiltFromBytes_64bit]
 def f2(val: int) -> int:
     return val + 2
 
