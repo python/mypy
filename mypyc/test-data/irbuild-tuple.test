@@ -331,7 +331,7 @@ def test() -> None:
     source = b"abc"
     a = tuple(f2(x) for x in source)
 
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/ir.pyi]
 [out]
 def f2(val):
     val, r0 :: int
