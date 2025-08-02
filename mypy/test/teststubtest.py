@@ -2472,6 +2472,17 @@ assert annotations
             runtime="def func2() -> None: ...",
             error="func2",
         )
+        # A type that exists at runtime is allowed to alias a type marked
+        # as '@type_check_only' in the stubs.
+        yield Case(
+            stub="""
+            @type_check_only
+            class _X1: ...
+            X2 = _X1
+            """,
+            runtime="class X2: ...",
+            error=None,
+        )
 
 
 def remove_color_code(s: str) -> str:
