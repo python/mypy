@@ -24,7 +24,6 @@ new_ref__with_callback_op = function_op(
 new_proxy_op = function_op(
     name="_weakref.proxy",
     arg_types=[object_rprimitive],
-    steals=[True],
     return_type=object_rprimitive,
     c_function_name="PyWeakref_NewProxy",
     extra_int_constants=[(0, pointer_rprimitive)],
