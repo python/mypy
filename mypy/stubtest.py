@@ -14,6 +14,7 @@ import functools
 import importlib
 import importlib.machinery
 import inspect
+import keyword
 import os
 import pkgutil
 import re
@@ -356,11 +357,7 @@ def verify_mypyfile(
         runtime_all_as_set = None
 
     # Check things in the stub
-    to_check = {
-        m
-        for m, o in stub.names.items()
-        if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
-    }
+    to_check = {m for m, o in stub.names.items() if not o.module_hidden}
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
         """Heuristics to determine whether a name originates from another module."""
@@ -418,6 +415,15 @@ def verify_mypyfile(
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
         assert stub_entry is not None
+        if (
+            is_probably_private(entry)
+            and not hasattr(runtime, entry)
+            and not isinstance(stub_entry, Missing)
+            and not _is_decoratable(stub_entry)
+        ):
+            # Skip private names that don't exist at runtime and which cannot
+            # be marked with @type_check_only.
+            continue
         try:
             runtime_entry = getattr(runtime, entry, MISSING)
         except Exception:
@@ -425,6 +431,23 @@ def verify_mypyfile(
             # from __getattr__ or similar.
             continue
         yield from verify(stub_entry, runtime_entry, object_path + [entry])
+
+
+def _is_decoratable(stub: nodes.SymbolNode) -> bool:
+    if not isinstance(stub, nodes.TypeInfo):
+        return False
+    if stub.is_newtype:
+        return False
+    if stub.typeddict_type is not None:
+        return all(
+            name.isidentifier() and not keyword.iskeyword(name)
+            for name in stub.typeddict_type.items.keys()
+        )
+    if stub.is_named_tuple:
+        return all(
+            name.isidentifier() and not keyword.iskeyword(name) for name in stub.names.keys()
+        )
+    return True
 
 
 def _verify_final(
@@ -526,7 +549,10 @@ def verify_typeinfo(
         return
 
     if isinstance(runtime, Missing):
-        yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
+        msg = "is not present at runtime"
+        if is_probably_private(stub.name):
+            msg += '. Maybe mark it as "@type_check_only"?'
+        yield Error(object_path, msg, stub, runtime, stub_desc=repr(stub))
         return
     if not isinstance(runtime, type):
         # Yes, some runtime objects can be not types, no way to tell mypy about that.
