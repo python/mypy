@@ -792,10 +792,23 @@ class ForSequence(ForGenerator):
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         self.expr_target = builder.maybe_spill(expr_reg)
+        if (
+            is_tuple_rprimitive(expr_reg.type)
+            or is_str_rprimitive(expr_reg.type)
+            or is_bytes_rprimitive(expr_reg.type)
+            or is_frozenset_rprimitive(expr_reg.type)
+        ):
+            self.length_reg = builder.maybe_spill(self.load_len(self.expr_target))
+        else:
+            self.length_reg = None
         if not reverse:
             index_reg: Value = Integer(0, c_pyssize_t_rprimitive)
         else:
-            index_reg = builder.builder.int_sub(self.load_len(self.expr_target), 1)
+            if self.length_reg is not None:
+                len_val = builder.read(self.length_reg)
+            else:
+                len_val = self.load_len(self.expr_target)
+            index_reg = builder.builder.int_sub(len_val, 1)
         self.index_target = builder.maybe_spill_assignable(index_reg)
         self.target_type = target_type
 
@@ -814,9 +827,13 @@ class ForSequence(ForGenerator):
             second_check = BasicBlock()
             builder.add_bool_branch(comparison, second_check, self.loop_exit)
             builder.activate_block(second_check)
-        # For compatibility with python semantics we recalculate the length
-        # at every iteration.
-        len_reg = self.load_len(self.expr_target)
+        if self.length_reg is None:
+            # For compatibility with python semantics we recalculate the length
+            # at every iteration.
+            len_reg = self.load_len(self.expr_target)
+        else:
+            # (unless input is immutable type).
+            len_reg = builder.read(self.length_reg, line)
         comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, "<", line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
