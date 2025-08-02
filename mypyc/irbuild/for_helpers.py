@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar, Optional
+from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
@@ -1188,7 +1188,7 @@ class ForZip(ForGenerator):
             gen.gen_cleanup()
 
 
-def get_expr_length(expr: Expression) -> Optional[int]:
+def get_expr_length(expr: Expression) -> int | None:
     if isinstance(expr, (StrExpr, BytesExpr)):
         return len(expr.value)
     elif isinstance(expr, (ListExpr, TupleExpr)):
