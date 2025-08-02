@@ -850,11 +850,13 @@ class StubtestUnit(unittest.TestCase):
             class Good:
                 @property
                 def read_only_attr(self) -> int: ...
+                read_only_attr_alias = read_only_attr
             """,
             runtime="""
             class Good:
                 @property
                 def read_only_attr(self): return 1
+                read_only_attr_alias = read_only_attr
             """,
             error=None,
         )
