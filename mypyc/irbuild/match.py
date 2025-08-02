@@ -24,7 +24,7 @@ from mypyc.primitives.dict_ops import (
     dict_copy,
     mapping_has_key,
     supports_mapping_protocol,
-    true_dict_del_item,
+    exact_dict_del_item,
 )
 from mypyc.primitives.generic_ops import generic_ssize_t_len_op
 from mypyc.primitives.list_ops import (
@@ -239,7 +239,7 @@ class MatchVisitor(TraverserVisitor):
             self.builder.assign(target, rest, pattern.rest.line)
 
             for i, key_name in enumerate(keys):
-                self.builder.call_c(true_dict_del_item, [rest, key_name], pattern.keys[i].line)
+                self.builder.call_c(exact_dict_del_item, [rest, key_name], pattern.keys[i].line)
 
             self.builder.goto(self.code_block)
 
