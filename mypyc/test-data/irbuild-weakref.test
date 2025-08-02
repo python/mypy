@@ -81,4 +81,3 @@ L0:
     r1 = cast(weakref.ReferenceType, r)
     r2 = CPyWeakref_GetRef(r1)
     return r2
-
