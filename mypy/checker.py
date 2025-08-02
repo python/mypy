@@ -3752,6 +3752,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return
 
         inst = get_proper_type(self.expr_checker.accept(lvalue.expr))
+        if isinstance(inst, TypeVarType) and inst.id.is_self():
+            # Unwrap self type
+            inst = get_proper_type(inst.upper_bound)
         if not isinstance(inst, Instance):
             return
         if inst.type.slots is None:
