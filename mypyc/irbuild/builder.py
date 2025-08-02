@@ -1333,10 +1333,11 @@ class IRBuilder:
         base: FuncInfo | ImplicitClass,
         reassign: bool = False,
         always_defined: bool = False,
+        prefix: str = "",
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
-        name = remangle_redefinition_name(var.name)
+        name = prefix + remangle_redefinition_name(var.name)
         self.fn_info.env_class.attributes[name] = rtype
         if always_defined:
             self.fn_info.env_class.attrs_with_defaults.add(name)
