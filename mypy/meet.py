@@ -294,6 +294,18 @@ def is_object(t: ProperType) -> bool:
     return isinstance(t, Instance) and t.type.fullname == "builtins.object"
 
 
+def is_none_typevarlike_overlap(t1: ProperType, t2: ProperType) -> bool:
+    return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
+
+
+def is_none_object_overlap(t1: ProperType, t2: ProperType) -> bool:
+    return (
+        isinstance(t1, NoneType)
+        and isinstance(t2, Instance)
+        and t2.type.fullname == "builtins.object"
+    )
+
+
 def is_overlapping_types(
     left: Type,
     right: Type,
@@ -383,14 +395,6 @@ def is_overlapping_types(
     ):
         return True
 
-    def is_none_object_overlap(t1: Type, t2: Type) -> bool:
-        t1, t2 = get_proper_types((t1, t2))
-        return (
-            isinstance(t1, NoneType)
-            and isinstance(t2, Instance)
-            and t2.type.fullname == "builtins.object"
-        )
-
     if overlap_for_overloads:
         if is_none_object_overlap(left, right) or is_none_object_overlap(right, left):
             return False
@@ -419,10 +423,6 @@ def is_overlapping_types(
     #
     # If both types are singleton variants (and are not TypeVarLikes), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
-
-    def is_none_typevarlike_overlap(t1: Type, t2: Type) -> bool:
-        t1, t2 = get_proper_types((t1, t2))
-        return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
 
     if prohibit_none_typevar_overlap:
         if is_none_typevarlike_overlap(left, right) or is_none_typevarlike_overlap(right, left):

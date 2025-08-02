@@ -2282,3 +2282,30 @@ class Check:
 reveal_type(Check.foo())  # N: Revealed type is "def () -> __main__.Check"
 reveal_type(Check().foo())  # N: Revealed type is "__main__.Check"
 [builtins fixtures/tuple.pyi]
+
+[case testSelfTypeUpperBoundFiler]
+from typing import Generic, TypeVar, overload, Sequence
+
+class B: ...
+class C(B): ...
+
+TB = TypeVar("TB", bound=B)
+TC = TypeVar("TC", bound=C)
+
+class G(Generic[TB]):
+    @overload
+    def test(self: G[TC]) -> list[TC]: ...
+    @overload
+    def test(self: G[TB]) -> Sequence[TB]: ...
+    def test(self):
+        ...
+
+class D1(B): ...
+class D2(C): ...
+
+gb: G[D1]
+gc: G[D2]
+
+reveal_type(gb.test())  # N: Revealed type is "typing.Sequence[__main__.D1]"
+reveal_type(gc.test())  # N: Revealed type is "builtins.list[__main__.D2]"
+[builtins fixtures/list.pyi]

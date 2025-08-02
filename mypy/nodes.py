@@ -595,12 +595,14 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         """
         if self._is_trivial_self is not None:
             return self._is_trivial_self
-        for item in self.items:
+        for i, item in enumerate(self.items):
+            # Note: bare @property is removed in visit_decorator().
+            trivial = 1 if i > 0 or not self.is_property else 0
             if isinstance(item, FuncDef):
                 if not item.is_trivial_self:
                     self._is_trivial_self = False
                     return False
-            elif item.decorators or not item.func.is_trivial_self:
+            elif len(item.decorators) > trivial or not item.func.is_trivial_self:
                 self._is_trivial_self = False
                 return False
         self._is_trivial_self = True

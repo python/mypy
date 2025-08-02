@@ -129,7 +129,6 @@ from mypy.typeanal import (
     validate_instance,
 )
 from mypy.typeops import (
-    bind_self,
     callable_type,
     custom_special_method,
     erase_to_union_or_bound,
@@ -1517,15 +1516,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             object_type=object_type,
         )
         proper_callee = get_proper_type(callee_type)
-        if isinstance(e.callee, (NameExpr, MemberExpr)):
-            node = e.callee.node
-            if node is None and member is not None and isinstance(object_type, Instance):
-                if (symbol := object_type.type.get(member)) is not None:
-                    node = symbol.node
-            self.chk.check_deprecated(node, e)
-            self.chk.warn_deprecated_overload_item(
-                node, e, target=callee_type, selftype=object_type
-            )
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
@@ -2943,6 +2933,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
                     self.chk.store_types(m)
+                    if isinstance(infer_type, ProperType) and isinstance(infer_type, CallableType):
+                        self.chk.check_deprecated(infer_type.definition, context)
                     return ret_type, infer_type
                 p_infer_type = get_proper_type(infer_type)
                 if isinstance(p_infer_type, CallableType):
@@ -2979,6 +2971,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
+            inferred_callable = inferred_types[0]
+            if isinstance(inferred_callable, ProperType) and isinstance(
+                inferred_callable, CallableType
+            ):
+                self.chk.check_deprecated(inferred_callable.definition, context)
             return return_types[0], inferred_types[0]
 
     def overload_erased_call_targets(
@@ -4103,16 +4100,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
-                if isinstance(obj, Instance) and isinstance(
-                    defn := obj.type.get_method(name), OverloadedFuncDef
-                ):
-                    for item in defn.items:
-                        if (
-                            isinstance(item, Decorator)
-                            and isinstance(typ := item.func.type, CallableType)
-                            and bind_self(typ) == result[1]
-                        ):
-                            self.chk.check_deprecated(item.func, context)
                 return result
 
         # We finish invoking above operators and no early return happens. Therefore,

@@ -165,6 +165,8 @@ class NodeFixer(NodeVisitor[None]):
             func.info = self.current_info
         if func.type is not None:
             func.type.accept(self.type_fixer)
+            if isinstance(func.type, CallableType):
+                func.type.definition = func
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         if self.current_info is not None:
