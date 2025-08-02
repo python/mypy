@@ -11,15 +11,19 @@ from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
+    BytesExpr,
     CallExpr,
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
+    ListExpr,
     Lvalue,
     MemberExpr,
     NameExpr,
+    Optional,
     RefExpr,
     SetExpr,
+    StrExpr,
     TupleExpr,
     TypeAlias,
 )
@@ -46,9 +50,9 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     c_pyssize_t_rprimitive,
     int_rprimitive,
-    is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
+    is_immutable_rprimitive,
     is_list_rprimitive,
     is_sequence_rprimitive,
     is_short_int_rprimitive,
@@ -152,6 +156,7 @@ def for_loop_helper_with_index(
     expr_reg: Value,
     body_insts: Callable[[Value], None],
     line: int,
+    length: Value,
 ) -> None:
     """Generate IR for a sequence iteration.
 
@@ -172,7 +177,7 @@ def for_loop_helper_with_index(
     exit_block = BasicBlock()
     condition_block = BasicBlock()
 
-    for_gen = ForSequence(builder, index, body_block, exit_block, line, False)
+    for_gen = ForSequence(builder, index, body_block, exit_block, line, False, length)
     for_gen.init(expr_reg, target_type, reverse=False)
 
     builder.push_loop_stack(step_block, exit_block)
@@ -227,7 +232,7 @@ def sequence_from_generator_preallocate_helper(
         rtype = builder.node_type(gen.sequences[0])
         if is_sequence_rprimitive(rtype):
             sequence = builder.accept(gen.sequences[0])
-            length = builder.builder.builtin_len(sequence, gen.line, use_pyssize_t=True)
+            length = get_expr_length_value(builder, gen.sequences[0], sequence, gen.line, use_pyssize_t=True)
             target_op = empty_op_llbuilder(length, gen.line)
 
             def set_item(item_index: Value) -> None:
@@ -235,7 +240,7 @@ def sequence_from_generator_preallocate_helper(
                 builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
 
             for_loop_helper_with_index(
-                builder, gen.indices[0], gen.sequences[0], sequence, set_item, gen.line
+                builder, gen.indices[0], gen.sequences[0], sequence, set_item, gen.line, length
             )
 
             return target_op
@@ -788,20 +793,34 @@ class ForSequence(ForGenerator):
 
     length_reg: Value | AssignmentTarget | None
 
+    def __init__(
+        self,
+        builder: IRBuilder,
+        index: Lvalue,
+        body_block: BasicBlock,
+        loop_exit: BasicBlock,
+        line: int,
+        nested: bool,
+        length: Value | None = None,
+    ) -> None:
+        super().__init__(builder, index, body_block, loop_exit, line, nested)
+        self.length = length
+        """A Value representing the length of the sequence, if known."""
+
     def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
+        assert is_sequence_rprimitive(expr_reg.type), expr_reg
         builder = self.builder
         self.reverse = reverse
         # Define target to contain the expression, along with the index that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         self.expr_target = builder.maybe_spill(expr_reg)
-        if (
-            is_tuple_rprimitive(expr_reg.type)
-            or is_str_rprimitive(expr_reg.type)
-            or is_bytes_rprimitive(expr_reg.type)
-        ):
-            self.length_reg = builder.maybe_spill(self.load_len(self.expr_target))
+        if is_immutable_rprimitive(expr_reg.type):
+            # If the expression is an immutable type, we can load the length just once.
+            self.length_reg = builder.maybe_spill(self.length or self.load_len(self.expr_target))
         else:
+            # Otherwise, even if the length is known, we must recalculate the length
+            # at every iteration for compatibility with python semantics.
             self.length_reg = None
         if not reverse:
             index_reg: Value = Integer(0, c_pyssize_t_rprimitive)
@@ -1166,3 +1185,24 @@ class ForZip(ForGenerator):
     def gen_cleanup(self) -> None:
         for gen in self.gens:
             gen.gen_cleanup()
+
+
+def get_expr_length(expr: Expression) -> Optional[int]:
+    if isinstance(expr, (StrExpr, BytesExpr)):
+        return len(expr.value)
+    elif isinstance(expr, (ListExpr, TupleExpr)):
+        if all(get_expr_length(i) is not None for i in expr.items):
+            return len(expr.items)
+    # TODO: extend this, unrolling should come with a good performance boost
+    return None
+
+
+def get_expr_length_value(builder: IRBuilder, expr: Expression, expr_reg, line: int, use_pyssize_t: bool) -> Value:
+    rtype = builder.node_type(expr)
+    assert is_sequence_rprimitive(rtype), rtype
+    length = get_expr_length(expr)
+    if length is None:
+        # We cannot compute the length at compile time, so we will fetch it.
+        return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
+    # The expression result is known at compile time, so we can use a constant.
+    return Integer(length, c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive)
