@@ -22,6 +22,7 @@ from mypy.nodes import (
     NameExpr,
     RefExpr,
     SetExpr,
+    StarExpr,
     StrExpr,
     TupleExpr,
     TypeAlias,
@@ -1194,7 +1195,7 @@ def get_expr_length(expr: Expression) -> int | None:
     elif isinstance(expr, (ListExpr, TupleExpr)):
         # if there are no star expressions, or we know the length of them,
         # we know the length of the expression
-        stars = [get_expr_length(i, context) for i in expr.items if isinstance(i, StarExpr)]
+        stars = [get_expr_length(i) for i in expr.items if isinstance(i, StarExpr)]
         if None not in stars:
             other = sum(not isinstance(i, StarExpr) for i in expr.items)
             return other + sum(stars)
