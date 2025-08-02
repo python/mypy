@@ -637,6 +637,10 @@ def is_sequence_rprimitive(rtype: RType) -> bool:
     )
 
 
+def is_weakref_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return isinstance(rtype, RPrimitive) and rtype.name == "weakref.ReferenceType"
+
+
 class TupleNameVisitor(RTypeVisitor[str]):
     """Produce a tuple name based on the concrete representations of types."""
 

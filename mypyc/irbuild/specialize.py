@@ -31,6 +31,7 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     TupleExpr,
+    Var,
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
@@ -103,6 +104,7 @@ from mypyc.primitives.str_ops import (
     str_encode_utf8_strict,
 )
 from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
+from mypyc.primitives.weakref_ops import weakref_deref_op
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -140,6 +142,15 @@ def apply_function_specialization(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
     """Invoke the Specializer callback for a function if one has been registered"""
+    if (
+        isinstance(callee, NameExpr)
+        and isinstance(callee.node, Var)
+        # NOTE: why is this not a weakref rprimitive?
+        # TODO: fix to weakref rprimitive so _apply_specialization can use the custom_op
+        and str(callee.node.type).startswith("weakref.ReferenceType")
+        and len(expr.args) == 0
+    ):
+        return builder.call_c(weakref_deref_op, [builder.accept(expr.callee)], expr.line)
     return _apply_specialization(builder, expr, callee, callee.fullname)
 
 
