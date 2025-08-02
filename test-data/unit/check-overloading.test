@@ -6637,7 +6637,6 @@ reveal_type(Snafu.snafu('123'))  # N: Revealed type is "builtins.str"
 [builtins fixtures/staticmethod.pyi]
 
 [case testOverloadedWithInternalTypeVars]
-# flags: --new-type-inference
 import m
 
 [file m.pyi]

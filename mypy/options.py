@@ -391,10 +391,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Disable new experimental type inference algorithm.
+        # Disable new type inference algorithm.
         self.old_type_inference = False
-        # Deprecated reverse version of the above, do not use.
-        self.new_type_inference = False
         # Disable expression cache (for debugging).
         self.disable_expression_cache = False
         # Export line-level, limited, fine-grained dependency information in cache data
