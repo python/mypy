@@ -7,7 +7,6 @@ from mypy_extensions import mypyc_attr
 @mypyc_attr(native_class=False)
 class Object:
     """some random weakreffable object"""
-    pass
 
 def test_weakref_ref():
     obj = Object()
@@ -15,6 +14,20 @@ def test_weakref_ref():
     assert r() is obj
     obj = None
     assert r() is None, r()
+
+[file driver.py]
+from native import test_weakref_ref
+
+test_weakref_ref()
+
+
+[case testWeakrefRefWithCallback]
+from weakref import ref
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Object:
+    """some random weakreffable object"""
 
 def test_weakref_ref_with_callback():
     obj = Object()
@@ -24,7 +37,58 @@ def test_weakref_ref_with_callback():
     assert r() is None, r()
 
 [file driver.py]
-from native import test_weakref_ref, test_weakref_ref_with_callback
+from native import test_weakref_ref_with_callback
 
-test_weakref_ref()
 test_weakref_ref_with_callback()
+
+
+[case testWeakrefProxy]
+import pytest  # type: ignore [import-not-found]
+from weakref import proxy
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Object:
+    """some random weakreffable object"""
+    def some_meth(self) -> int:
+        return 1
+
+def test_weakref_proxy():
+    obj = Object()
+    p = proxy(obj)
+    assert obj.some_meth() == 1
+    assert p.some_meth() == 1
+    obj = None
+    with pytest.raises(ReferenceError):
+        p.some_meth()
+
+[file driver.py]
+from native import test_weakref_proxy
+
+test_weakref_proxy()
+
+
+[case testWeakrefProxyWithCallback]
+import pytest  # type: ignore [import-not-found]
+from weakref import proxy
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Object:
+    """some random weakreffable object"""
+    def some_meth(self) -> int:
+        return 1
+
+def test_weakref_proxy_with_callback():
+    obj = Object()
+    p = proxy(obj, lambda x: x)
+    assert obj.some_meth() == 1
+    assert p.some_meth() == 1
+    obj = None
+    with pytest.raises(ReferenceError):
+        p.some_meth()
+
+[file driver.py]
+from native import test_weakref_proxy_with_callback
+
+test_weakref_proxy_with_callback()
