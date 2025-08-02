@@ -1090,13 +1090,14 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--old-type-inference",
-        action="store_true",
-        help="Disable new experimental type inference algorithm",
+        "--old-type-inference", action="store_true", help=argparse.SUPPRESS
     )
     # Deprecated reverse variant of the above.
     internals_group.add_argument(
         "--new-type-inference", action="store_true", help=argparse.SUPPRESS
+    )
+    internals_group.add_argument(
+        "--disable-expression-cache", action="store_true", help=argparse.SUPPRESS
     )
     parser.add_argument(
         "--enable-incomplete-feature",

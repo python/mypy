@@ -395,6 +395,8 @@ class Options:
         self.old_type_inference = False
         # Deprecated reverse version of the above, do not use.
         self.new_type_inference = False
+        # Disable expression cache (for debugging).
+        self.disable_expression_cache = False
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
