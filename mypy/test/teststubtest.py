@@ -918,6 +918,7 @@ class StubtestUnit(unittest.TestCase):
                 def read_write_attr(self) -> int: ...
                 @read_write_attr.setter
                 def read_write_attr(self, val: int) -> None: ...
+                read_write_attr_alias = read_write_attr
             """,
             runtime="""
             class Z:
@@ -925,6 +926,7 @@ class StubtestUnit(unittest.TestCase):
                 def read_write_attr(self): return self._val
                 @read_write_attr.setter
                 def read_write_attr(self, val): self._val = val
+                read_write_attr_alias = read_write_attr
             """,
             error=None,
         )
