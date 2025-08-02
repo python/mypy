@@ -52,7 +52,7 @@ MypyFile:1(
     AssignmentStmt:3(
       NameExpr(x [m])
       IntExpr(1)
-      Any)))
+      builtins.int)))
 
 [case testClassVarWithTypeVar]
 

@@ -5094,6 +5094,7 @@ class SemanticAnalyzer(
             return
         if not s.type or not self.is_classvar(s.type):
             return
+        assert isinstance(s.type, UnboundType)
         if self.is_class_scope() and isinstance(lvalue, NameExpr):
             node = lvalue.node
             if isinstance(node, Var):
@@ -5110,6 +5111,8 @@ class SemanticAnalyzer(
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
+        if not s.type.args:
+            s.type = None
 
     def is_classvar(self, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):
