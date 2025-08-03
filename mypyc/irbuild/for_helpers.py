@@ -1020,7 +1020,7 @@ class ForUnrolledRTuple(_ForUnrolled):
         for i, item_type in enumerate(self.rtuple_type.types):
             # Directly access the struct field for each RTuple element
             value = builder.add(TupleGet(self.expr_reg, i, line))
-            #value = builder.coerce(value, item_type, line)
+            # value = builder.coerce(value, item_type, line)
             builder.assign(builder.get_assignment_target(self.index), value, line)
             self.body_insts()
 
