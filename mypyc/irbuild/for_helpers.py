@@ -442,7 +442,7 @@ def make_for_loop_generator(
     line: int,
     is_async: bool = False,
     nested: bool = False,
-    body_insts: GenFunc = None,
+    body_insts: Optional[GenFunc] = None,
     can_unroll: bool = True,
 ) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
@@ -462,7 +462,7 @@ def make_for_loop_generator(
 
     rtyp = builder.node_type(expr)
 
-    if can_unroll:
+    if can_unroll and body_insts is not None:
         # Special case: tuple/list/set literal (unroll the loop)
         if is_iterable_expr_with_literal_mambers(expr):
             return ForUnrolledSequenceLiteral(
