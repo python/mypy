@@ -372,3 +372,11 @@ reveal_type(C.x)  # N: Revealed type is "builtins.int"
 reveal_type(C().x)  # N: Revealed type is "builtins.int"
 reveal_type(C.y)  # N: Revealed type is "Any"
 reveal_type(C().y)  # N: Revealed type is "Any"
+
+[case testClassVarBareAnnotationDisabled]
+# flags: --disallow-any-generics
+from typing import ClassVar
+
+class C:
+    x: ClassVar = 1
+    y: ClassVar  # E: ClassVar without type argument becomes Any

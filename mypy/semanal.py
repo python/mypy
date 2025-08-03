@@ -5112,6 +5112,10 @@ class SemanticAnalyzer(
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
         if not s.type.args:
+            if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+                if self.options.disallow_any_generics:
+                    self.fail("ClassVar without type argument becomes Any", s, code=codes.TYPE_ARG)
+                return
             s.type = None
 
     def is_classvar(self, typ: Type) -> bool:
