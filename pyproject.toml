@@ -222,6 +222,14 @@ addopts = "-nauto --strict-markers --strict-config"
 # treat xpasses as test failures so they get converted to regular tests as soon as possible
 xfail_strict = true
 
+# Force warnings as errors
+filterwarnings = [
+  "error",
+  # Some testcases may contain code that emits SyntaxWarnings, and they are not yet
+  # handled consistently in 3.14 (PEP 765)
+  "default::SyntaxWarning",
+]
+
 [tool.coverage.run]
 branch = true
 source = ["mypy"]

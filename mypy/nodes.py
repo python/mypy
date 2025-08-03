@@ -595,12 +595,14 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         """
         if self._is_trivial_self is not None:
             return self._is_trivial_self
-        for item in self.items:
+        for i, item in enumerate(self.items):
+            # Note: bare @property is removed in visit_decorator().
+            trivial = 1 if i > 0 or not self.is_property else 0
             if isinstance(item, FuncDef):
                 if not item.is_trivial_self:
                     self._is_trivial_self = False
                     return False
-            elif item.decorators or not item.func.is_trivial_self:
+            elif len(item.decorators) > trivial or not item.func.is_trivial_self:
                 self._is_trivial_self = False
                 return False
         self._is_trivial_self = True
@@ -3022,6 +3024,7 @@ class TypeInfo(SymbolNode):
         "dataclass_transform_spec",
         "is_type_check_only",
         "deprecated",
+        "type_object_type",
     )
 
     _fullname: str  # Fully qualified name
@@ -3178,6 +3181,10 @@ class TypeInfo(SymbolNode):
     # The type's deprecation message (in case it is deprecated)
     deprecated: str | None
 
+    # Cached value of class constructor type, i.e. the type of class object when it
+    # appears in runtime context.
+    type_object_type: mypy.types.FunctionLike | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3236,6 +3243,7 @@ class TypeInfo(SymbolNode):
         self.dataclass_transform_spec = None
         self.is_type_check_only = False
         self.deprecated = None
+        self.type_object_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False

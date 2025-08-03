@@ -158,6 +158,7 @@ def f(__x: int) -> None: pass
 [out2]
 tmp/a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 tmp/a.py:4: error: Unexpected keyword argument "__x" for "f"
+tmp/b.py: note: "f" defined here
 
 [case testSerializeArgumentKindsErrors]
 import a

@@ -13,6 +13,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     pointer_rprimitive,
     short_int_rprimitive,
+    void_rtype,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
@@ -55,7 +56,7 @@ function_op(
     extra_int_constants=[(0, int_rprimitive)],
 )
 
-# isinstance(obj, list)
+# translate isinstance(obj, list)
 isinstance_list = function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive],
@@ -154,7 +155,7 @@ method_op(
 # that is in-bounds for the list.
 list_get_item_unsafe_op = custom_primitive_op(
     name="list_get_item_unsafe",
-    arg_types=[list_rprimitive, short_int_rprimitive],
+    arg_types=[list_rprimitive, c_pyssize_t_rprimitive],
     return_type=object_rprimitive,
     error_kind=ERR_NEVER,
 )
@@ -183,10 +184,10 @@ method_op(
 # PyList_SET_ITEM does no error checking,
 # and should only be used to fill in brand new lists.
 new_list_set_item_op = custom_op(
-    arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
-    return_type=bit_rprimitive,
+    arg_types=[list_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
+    return_type=void_rtype,
     c_function_name="CPyList_SetItemUnsafe",
-    error_kind=ERR_FALSE,
+    error_kind=ERR_NEVER,
     steals=[False, False, True],
 )
 
@@ -218,7 +219,7 @@ list_pop_last = method_op(
 )
 
 # list.pop(index)
-list_pop = method_op(
+method_op(
     name="pop",
     arg_types=[list_rprimitive, int_rprimitive],
     return_type=object_rprimitive,

@@ -145,6 +145,7 @@ if USE_MYPYC:
     opt_level = os.getenv("MYPYC_OPT_LEVEL", "3")
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
     force_multifile = os.getenv("MYPYC_MULTI_FILE", "") == "1"
+    log_trace = bool(int(os.getenv("MYPYC_LOG_TRACE", "0")))
     ext_modules = mypycify(
         mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
         opt_level=opt_level,
@@ -152,6 +153,7 @@ if USE_MYPYC:
         # Use multi-file compilation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == "win32" or force_multifile,
+        log_trace=log_trace,
     )
 
 else:

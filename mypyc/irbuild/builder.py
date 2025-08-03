@@ -129,6 +129,7 @@ from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
 from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
 from mypyc.primitives.registry import CFunctionDescription, function_ops
+from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 # These int binary operations can borrow their operands safely, since the
 # primitives take this into consideration.
@@ -423,6 +424,10 @@ class IRBuilder:
     def debug_print(self, toprint: str | Value) -> None:
         return self.builder.debug_print(toprint)
 
+    def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
+        """Make an object immortal on free-threaded builds (to avoid contention)."""
+        self.builder.set_immortal_if_free_threaded(v, line)
+
     # Helpers for IR building
 
     def add_to_non_ext_dict(
@@ -431,6 +436,10 @@ class IRBuilder:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
         self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
+
+        # It's important that accessing class dictionary items from multiple threads
+        # doesn't cause contention.
+        self.builder.set_immortal_if_free_threaded(val, line)
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
@@ -772,10 +781,15 @@ class IRBuilder:
         values = []
         for i in range(len(target.items)):
             item = target.items[i]
-            index = self.builder.load_int(i)
+            index: Value
             if is_list_rprimitive(rvalue.type):
+                index = Integer(i, c_pyssize_t_rprimitive)
                 item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
+            elif is_tuple_rprimitive(rvalue.type):
+                index = Integer(i, c_pyssize_t_rprimitive)
+                item_value = self.call_c(tuple_get_item_unsafe_op, [rvalue, index], line)
             else:
+                index = self.builder.load_int(i)
                 item_value = self.builder.gen_method_call(
                     rvalue, "__getitem__", [index], item.type, line
                 )
