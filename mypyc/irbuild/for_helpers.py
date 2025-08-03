@@ -896,7 +896,6 @@ class ForUnrolledSequenceLiteral(_ForUnrolled):
         self.expr = expr
         self.items = expr.items
         self.body_insts = body_insts
-        self.item_types = [builder.node_type(item) for item in self.items]
         self.index_target = builder.maybe_spill_assignable(Integer(0, c_pyssize_t_rprimitive))
 
     def gen_condition(self) -> None:
@@ -917,9 +916,9 @@ class ForUnrolledSequenceLiteral(_ForUnrolled):
 
     def begin_body(self) -> None:
         builder = self.builder
-        for item, item_type in zip(self.items, self.item_types):
-            value = builder.accept(item)
-            value = builder.coerce(value, item_type, self.line)
+        for expr in self.items:
+            value = builder.accept(expr)
+            #value = builder.coerce(value, builder.node_type(expr), self.line)
             builder.assign(builder.get_assignment_target(self.index), value, self.line)
             self.body_insts()
 
