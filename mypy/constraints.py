@@ -416,7 +416,7 @@ def _infer_constraints(
                 infer_constraints_if_possible(t_item, actual, direction)
                 for t_item in template.items
             ],
-            eager=False,
+            eager=isinstance(actual, AnyType),
         )
         if result:
             return result
@@ -1066,8 +1066,8 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     inst, erase_typevars(temp), ignore_pos_arg_names=True
                 ):
                     continue
-            # This exception matches the one in subtypes.py, see PR #14121 for context.
-            if member == "__call__" and instance.type.is_metaclass():
+            # This exception matches the one in typeops.py, see PR #14121 for context.
+            if member == "__call__" and instance.type.is_metaclass(precise=True):
                 continue
             res.extend(infer_constraints(temp, inst, self.direction))
             if mypy.subtypes.IS_SETTABLE in mypy.subtypes.get_member_flags(member, protocol):
@@ -1110,7 +1110,10 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     # like U -> U, should be Callable[..., Any], but if U is a self-type, we can
                     # allow it to leak, to be later bound to self. A bunch of existing code
                     # depends on this old behaviour.
-                    and not any(tv.id.is_self() for tv in cactual.variables)
+                    and not (
+                        any(tv.id.is_self() for tv in cactual.variables)
+                        and template.is_ellipsis_args
+                    )
                 ):
                     # If the actual callable is generic, infer constraints in the opposite
                     # direction, and indicate to the solver there are extra type variables
@@ -1335,6 +1338,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     res.extend(
                         infer_constraints(template_items[i], actual_items[i], self.direction)
                     )
+            res.extend(
+                infer_constraints(
+                    template.partial_fallback, actual.partial_fallback, self.direction
+                )
+            )
             return res
         elif isinstance(actual, AnyType):
             return self.infer_against_any(template.items, actual)

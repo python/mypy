@@ -194,7 +194,7 @@ def build(
         result.errors = messages
         return result
     except CompileError as e:
-        # CompileErrors raised from an errors object carry all of the
+        # CompileErrors raised from an errors object carry all the
         # messages that have not been reported out by error streaming.
         # Patch it up to contain either none or all none of the messages,
         # depending on whether we are flushing errors.
@@ -802,11 +802,11 @@ class BuildManager:
                             res.append((pri, sub_id, imp.line))
                         else:
                             all_are_submodules = False
-                    # Add cur_id as a dependency, even if all of the
+                    # Add cur_id as a dependency, even if all the
                     # imports are submodules. Processing import from will try
                     # to look through cur_id, so we should depend on it.
-                    # As a workaround for for some bugs in cycle handling (#4498),
-                    # if all of the imports are submodules, do the import at a lower
+                    # As a workaround for some bugs in cycle handling (#4498),
+                    # if all the imports are submodules, do the import at a lower
                     # priority.
                     pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
                     res.append((pri, cur_id, imp.line))
@@ -929,7 +929,7 @@ def write_deps_cache(
 ) -> None:
     """Write cache files for fine-grained dependencies.
 
-    Serialize fine-grained dependencies map for fine grained mode.
+    Serialize fine-grained dependencies map for fine-grained mode.
 
     Dependencies on some module 'm' is stored in the dependency cache
     file m.deps.json.  This entails some spooky action at a distance:
@@ -943,7 +943,7 @@ def write_deps_cache(
     fine-grained dependencies in a global cache file:
      * We take a snapshot of current sources to later check consistency
        between the fine-grained dependency cache and module cache metadata
-     * We store the mtime of all of the dependency files to verify they
+     * We store the mtime of all the dependency files to verify they
        haven't changed
     """
     metastore = manager.metastore
@@ -1111,7 +1111,7 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
     if deps_meta is None:
         return None
     meta_snapshot = deps_meta["snapshot"]
-    # Take a snapshot of the source hashes from all of the metas we found.
+    # Take a snapshot of the source hashes from all the metas we found.
     # (Including the ones we rejected because they were out of date.)
     # We use this to verify that they match up with the proto_deps.
     current_meta_snapshot = {

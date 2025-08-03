@@ -864,7 +864,7 @@ def define_options(
         title="None and Optional handling",
         description="Adjust how values of type 'None' are handled. For more context on "
         "how mypy handles values of type 'None', see: "
-        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional.",
+        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#optional-types-and-the-none-type",
     )
     add_invertible_flag(
         "--implicit-optional",
@@ -880,6 +880,7 @@ def define_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
+    # This flag is deprecated, Mypy only supports Python 3.9+
     add_invertible_flag(
         "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
     )
@@ -996,7 +997,7 @@ def define_options(
     add_invertible_flag(
         "--strict-bytes",
         default=False,
-        strict_flag=False,
+        strict_flag=True,
         help="Disable treating bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
@@ -1174,13 +1175,14 @@ def define_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--old-type-inference",
-        action="store_true",
-        help="Disable new experimental type inference algorithm",
+        "--old-type-inference", action="store_true", help=argparse.SUPPRESS
     )
     # Deprecated reverse variant of the above.
     internals_group.add_argument(
         "--new-type-inference", action="store_true", help=argparse.SUPPRESS
+    )
+    internals_group.add_argument(
+        "--disable-expression-cache", action="store_true", help=argparse.SUPPRESS
     )
     experimental_group = parser.add_argument_group(
         title="Experimental options",
@@ -1599,6 +1601,9 @@ def process_options(
 
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
+
+    if options.force_uppercase_builtins:
+        print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:

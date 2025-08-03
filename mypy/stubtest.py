@@ -506,9 +506,13 @@ def _verify_metaclass(
 
 @verify.register(nodes.TypeInfo)
 def verify_typeinfo(
-    stub: nodes.TypeInfo, runtime: MaybeMissing[type[Any]], object_path: list[str]
+    stub: nodes.TypeInfo,
+    runtime: MaybeMissing[type[Any]],
+    object_path: list[str],
+    *,
+    is_alias_target: bool = False,
 ) -> Iterator[Error]:
-    if stub.is_type_check_only:
+    if stub.is_type_check_only and not is_alias_target:
         # This type only exists in stubs, we only check that the runtime part
         # is missing. Other checks are not required.
         if not isinstance(runtime, Missing):
@@ -1149,7 +1153,7 @@ def verify_var(
             proper_type = mypy.types.get_proper_type(stub.type)
             if (
                 isinstance(proper_type, mypy.types.Instance)
-                and proper_type.type.fullname == "builtins.ellipsis"
+                and proper_type.type.fullname in mypy.types.ELLIPSIS_TYPE_NAMES
             ):
                 should_error = False
 
@@ -1449,7 +1453,7 @@ def verify_typealias(
         # Okay, either we couldn't construct a fullname
         # or the fullname of the stub didn't match the fullname of the runtime.
         # Fallback to a full structural check of the runtime vis-a-vis the stub.
-        yield from verify(stub_origin, runtime_origin, object_path)
+        yield from verify_typeinfo(stub_origin, runtime_origin, object_path, is_alias_target=True)
         return
     if isinstance(stub_target, mypy.types.UnionType):
         # complain if runtime is not a Union or UnionType
@@ -1494,6 +1498,7 @@ IGNORED_MODULE_DUNDERS: Final = frozenset(
         "__loader__",
         "__spec__",
         "__annotations__",
+        "__annotate__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
         # Created by `warnings.warn`, does not make much sense to have in stubs:
@@ -1510,6 +1515,9 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         # Special attributes
         "__dict__",
         "__annotations__",
+        "__annotate__",
+        "__annotations_cache__",
+        "__annotate_func__",
         "__text_signature__",
         "__weakref__",
         "__hash__",
@@ -1518,6 +1526,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
         "__firstlineno__",
         "__static_attributes__",
+        "__classdictcell__",
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
@@ -1536,6 +1545,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__getinitargs__",
         "__reduce_ex__",
         "__reduce__",
+        "__slotnames__",  # Cached names of slots added by `copyreg` module.
         # ctypes weirdness
         "__ctype_be__",
         "__ctype_le__",
@@ -2056,7 +2066,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             if args.generate_allowlist:
                 generated_allowlist.add(error.object_desc)
                 continue
-            print(error.get_description(concise=args.concise))
+            safe_print(error.get_description(concise=args.concise))
             error_count += 1
 
     # Print unused allowlist entries
@@ -2094,6 +2104,19 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             )
 
     return exit_code
+
+
+def safe_print(text: str) -> None:
+    """Print a text replacing chars not representable in stdout encoding."""
+    # If `sys.stdout` encoding is not the same as out (usually UTF8) string,
+    # if may cause painful crashes. I don't want to reconfigure `sys.stdout`
+    # to do `errors = "replace"` as that sounds scary.
+    out_encoding = sys.stdout.encoding
+    if out_encoding is not None:
+        # Can be None if stdout is replaced (including our own tests). This should be
+        # safe to omit if the actual stream doesn't care about encoding.
+        text = text.encode(out_encoding, errors="replace").decode(out_encoding, errors="replace")
+    print(text)
 
 
 def parse_options(args: list[str]) -> _Arguments:

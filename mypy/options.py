@@ -4,6 +4,7 @@ import pprint
 import re
 import sys
 import sysconfig
+import warnings
 from collections.abc import Mapping
 from re import Pattern
 from typing import Any, Callable, Final
@@ -394,12 +395,15 @@ class Options:
         self.old_type_inference = False
         # Deprecated reverse version of the above, do not use.
         self.new_type_inference = False
+        # Disable expression cache (for debugging).
+        self.disable_expression_cache = False
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
+        # Deprecated, Mypy only supports Python 3.9+
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
 
@@ -413,9 +417,12 @@ class Options:
         self.mypyc_skip_c_generation = False
 
     def use_lowercase_names(self) -> bool:
-        if self.python_version >= (3, 9):
-            return not self.force_uppercase_builtins
-        return False
+        warnings.warn(
+            "options.use_lowercase_names() is deprecated and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return True
 
     def use_or_syntax(self) -> bool:
         if self.python_version >= (3, 10):
@@ -500,7 +507,6 @@ class Options:
             code = error_codes[code_str]
             new_options.enabled_error_codes.add(code)
             new_options.disabled_error_codes.discard(code)
-
         return new_options
 
     def compare_stable(self, other_snapshot: dict[str, object]) -> bool:

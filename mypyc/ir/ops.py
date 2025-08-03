@@ -3,32 +3,47 @@
 Opcodes operate on abstract values (Value) in a register machine. Each
 value has a type (RType). A value can hold various things, such as:
 
-- local variables (Register)
+- local variables or temporaries (Register)
 - intermediate values of expressions (RegisterOp subclasses)
 - condition flags (true/false)
 - literals (integer literals, True, False, etc.)
+
+NOTE: As a convention, we don't create subclasses of concrete Value/Op
+      subclasses (e.g. you shouldn't define a subclass of Integer, which
+      is a concrete class).
+
+      If you want to introduce a variant of an existing class, you'd
+      typically add an attribute (e.g. a flag) to an existing concrete
+      class to enable the new behavior. Sometimes adding a new abstract
+      base class is also an option, or just creating a new subclass
+      without any inheritance relationship (some duplication of code
+      is preferred over introducing complex implementation inheritance).
+
+      This makes it possible to use isinstance(x, <concrete Value
+      subclass>) checks without worrying about potential subclasses.
 """
 
 from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, Union
+from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, Union, final
 
 from mypy_extensions import trait
 
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
+    RStruct,
     RTuple,
     RType,
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
+    cstring_rprimitive,
     float_rprimitive,
     int_rprimitive,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
@@ -47,6 +62,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
+@final
 class BasicBlock:
     """IR basic block.
 
@@ -142,6 +158,7 @@ class Value:
         return isinstance(self.type, RVoid)
 
 
+@final
 class Register(Value):
     """A Register holds a value of a specific type, and it can be read and mutated.
 
@@ -168,6 +185,7 @@ class Register(Value):
         return f"<Register {self.name!r} at {hex(id(self))}>"
 
 
+@final
 class Integer(Value):
     """Short integer literal.
 
@@ -198,6 +216,7 @@ class Integer(Value):
         return self.value
 
 
+@final
 class Float(Value):
     """Float literal.
 
@@ -210,6 +229,40 @@ class Float(Value):
         self.value = value
         self.type = float_rprimitive
         self.line = line
+
+
+@final
+class CString(Value):
+    """C string literal (zero-terminated).
+
+    You can also include zero values in the value, but then you'll need to track
+    the length of the string separately.
+    """
+
+    def __init__(self, value: bytes, line: int = -1) -> None:
+        self.value = value
+        self.type = cstring_rprimitive
+        self.line = line
+
+
+@final
+class Undef(Value):
+    """An undefined value.
+
+    Use Undef() as the initial value followed by one or more SetElement
+    ops to initialize a struct. Pseudocode example:
+
+      r0 = set_element undef MyStruct, "field1", f1
+      r1 = set_element r0, "field2", f2
+      # r1 now has new struct value with two fields set
+
+    Warning: Always initialize undefined values before using them,
+    as otherwise the values are garbage. You shouldn't expect that
+    undefined values are zeroed, in particular.
+    """
+
+    def __init__(self, rtype: RType) -> None:
+        self.type = rtype
 
 
 class Op(Value):
@@ -257,13 +310,14 @@ class Op(Value):
 
 
 class BaseAssign(Op):
-    """Base class for ops that assign to a register."""
+    """Abstract base class for ops that assign to a register."""
 
     def __init__(self, dest: Register, line: int = -1) -> None:
         super().__init__(line)
         self.dest = dest
 
 
+@final
 class Assign(BaseAssign):
     """Assign a value to a Register (dest = src)."""
 
@@ -286,6 +340,7 @@ class Assign(BaseAssign):
         return visitor.visit_assign(self)
 
 
+@final
 class AssignMulti(BaseAssign):
     """Assign multiple values to a Register (dest = src1, src2, ...).
 
@@ -320,7 +375,7 @@ class AssignMulti(BaseAssign):
 
 
 class ControlOp(Op):
-    """Control flow operation."""
+    """Abstract base class for control flow operations."""
 
     def targets(self) -> Sequence[BasicBlock]:
         """Get all basic block targets of the control operation."""
@@ -331,6 +386,7 @@ class ControlOp(Op):
         raise AssertionError(f"Invalid set_target({self}, {i})")
 
 
+@final
 class Goto(ControlOp):
     """Unconditional jump."""
 
@@ -360,6 +416,7 @@ class Goto(ControlOp):
         return visitor.visit_goto(self)
 
 
+@final
 class Branch(ControlOp):
     """Branch based on a value.
 
@@ -426,6 +483,7 @@ class Branch(ControlOp):
         return visitor.visit_branch(self)
 
 
+@final
 class Return(ControlOp):
     """Return a value from a function."""
 
@@ -455,6 +513,7 @@ class Return(ControlOp):
         return visitor.visit_return(self)
 
 
+@final
 class Unreachable(ControlOp):
     """Mark the end of basic block as unreachable.
 
@@ -511,6 +570,7 @@ class RegisterOp(Op):
         return self.error_kind != ERR_NEVER
 
 
+@final
 class IncRef(RegisterOp):
     """Increase reference count (inc_ref src)."""
 
@@ -531,6 +591,7 @@ class IncRef(RegisterOp):
         return visitor.visit_inc_ref(self)
 
 
+@final
 class DecRef(RegisterOp):
     """Decrease reference count and free object if zero (dec_ref src).
 
@@ -559,6 +620,7 @@ class DecRef(RegisterOp):
         return visitor.visit_dec_ref(self)
 
 
+@final
 class Call(RegisterOp):
     """Native call f(arg, ...).
 
@@ -587,6 +649,7 @@ class Call(RegisterOp):
         return visitor.visit_call(self)
 
 
+@final
 class MethodCall(RegisterOp):
     """Native method call obj.method(arg, ...)"""
 
@@ -618,6 +681,7 @@ class MethodCall(RegisterOp):
         return visitor.visit_method_call(self)
 
 
+@final
 class PrimitiveDescription:
     """Description of a primitive op.
 
@@ -670,6 +734,7 @@ class PrimitiveDescription:
         return f"<PrimitiveDescription {self.name!r}: {self.arg_types}>"
 
 
+@final
 class PrimitiveOp(RegisterOp):
     """A higher-level primitive operation.
 
@@ -707,6 +772,7 @@ class PrimitiveOp(RegisterOp):
         return visitor.visit_primitive_op(self)
 
 
+@final
 class LoadErrorValue(RegisterOp):
     """Load an error value.
 
@@ -737,6 +803,7 @@ class LoadErrorValue(RegisterOp):
         return visitor.visit_load_error_value(self)
 
 
+@final
 class LoadLiteral(RegisterOp):
     """Load a Python literal object (dest = 'foo' / b'foo' / ...).
 
@@ -772,20 +839,32 @@ class LoadLiteral(RegisterOp):
         return visitor.visit_load_literal(self)
 
 
+@final
 class GetAttr(RegisterOp):
     """obj.attr (for a native object)"""
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, obj: Value, attr: str, line: int, *, borrow: bool = False) -> None:
+    def __init__(
+        self,
+        obj: Value,
+        attr: str,
+        line: int,
+        *,
+        borrow: bool = False,
+        allow_error_value: bool = False,
+    ) -> None:
         super().__init__(line)
         self.obj = obj
         self.attr = attr
+        self.allow_error_value = allow_error_value
         assert isinstance(obj.type, RInstance), "Attribute access not supported: %s" % obj.type
         self.class_type = obj.type
         attr_type = obj.type.attr_type(attr)
         self.type = attr_type
-        if attr_type.error_overlap:
+        if allow_error_value:
+            self.error_kind = ERR_NEVER
+        elif attr_type.error_overlap:
             self.error_kind = ERR_MAGIC_OVERLAPPING
         self.is_borrowed = borrow and attr_type.is_refcounted
 
@@ -799,6 +878,7 @@ class GetAttr(RegisterOp):
         return visitor.visit_get_attr(self)
 
 
+@final
 class SetAttr(RegisterOp):
     """obj.attr = src (for a native object)
 
@@ -850,6 +930,7 @@ NAMESPACE_MODULE: Final = "module"
 NAMESPACE_TYPE_VAR: Final = "typevar"
 
 
+@final
 class LoadStatic(RegisterOp):
     """Load a static name (name :: static).
 
@@ -890,6 +971,7 @@ class LoadStatic(RegisterOp):
         return visitor.visit_load_static(self)
 
 
+@final
 class InitStatic(RegisterOp):
     """static = value :: static
 
@@ -922,6 +1004,7 @@ class InitStatic(RegisterOp):
         return visitor.visit_init_static(self)
 
 
+@final
 class TupleSet(RegisterOp):
     """dest = (reg, ...) (for fixed-length tuple)"""
 
@@ -954,6 +1037,7 @@ class TupleSet(RegisterOp):
         return visitor.visit_tuple_set(self)
 
 
+@final
 class TupleGet(RegisterOp):
     """Get item of a fixed-length tuple (src[index])."""
 
@@ -978,6 +1062,7 @@ class TupleGet(RegisterOp):
         return visitor.visit_tuple_get(self)
 
 
+@final
 class Cast(RegisterOp):
     """cast(type, src)
 
@@ -1009,6 +1094,7 @@ class Cast(RegisterOp):
         return visitor.visit_cast(self)
 
 
+@final
 class Box(RegisterOp):
     """box(type, src)
 
@@ -1023,11 +1109,7 @@ class Box(RegisterOp):
         self.src = src
         self.type = object_rprimitive
         # When we box None and bool values, we produce a borrowed result
-        if (
-            is_none_rprimitive(self.src.type)
-            or is_bool_rprimitive(self.src.type)
-            or is_bit_rprimitive(self.src.type)
-        ):
+        if is_none_rprimitive(self.src.type) or is_bool_or_bit_rprimitive(self.src.type):
             self.is_borrowed = True
 
     def sources(self) -> list[Value]:
@@ -1043,6 +1125,7 @@ class Box(RegisterOp):
         return visitor.visit_box(self)
 
 
+@final
 class Unbox(RegisterOp):
     """unbox(type, src)
 
@@ -1069,6 +1152,7 @@ class Unbox(RegisterOp):
         return visitor.visit_unbox(self)
 
 
+@final
 class RaiseStandardError(RegisterOp):
     """Raise built-in exception with an optional error string.
 
@@ -1108,6 +1192,7 @@ class RaiseStandardError(RegisterOp):
 StealsDescription = Union[bool, list[bool]]
 
 
+@final
 class CallC(RegisterOp):
     """result = function(arg0, arg1, ...)
 
@@ -1162,6 +1247,7 @@ class CallC(RegisterOp):
         return visitor.visit_call_c(self)
 
 
+@final
 class Truncate(RegisterOp):
     """result = truncate src from src_type to dst_type
 
@@ -1192,6 +1278,7 @@ class Truncate(RegisterOp):
         return visitor.visit_truncate(self)
 
 
+@final
 class Extend(RegisterOp):
     """result = extend src from src_type to dst_type
 
@@ -1226,6 +1313,7 @@ class Extend(RegisterOp):
         return visitor.visit_extend(self)
 
 
+@final
 class LoadGlobal(RegisterOp):
     """Load a low-level global variable/pointer.
 
@@ -1253,6 +1341,7 @@ class LoadGlobal(RegisterOp):
         return visitor.visit_load_global(self)
 
 
+@final
 class IntOp(RegisterOp):
     """Binary arithmetic or bitwise op on integer operands (e.g., r1 = r2 + r3).
 
@@ -1317,6 +1406,7 @@ class IntOp(RegisterOp):
 int_op_to_id: Final = {op: op_id for op_id, op in IntOp.op_str.items()}
 
 
+@final
 class ComparisonOp(RegisterOp):
     """Low-level comparison op for integers and pointers.
 
@@ -1378,6 +1468,7 @@ class ComparisonOp(RegisterOp):
         return visitor.visit_comparison_op(self)
 
 
+@final
 class FloatOp(RegisterOp):
     """Binary float arithmetic op (e.g., r1 = r2 + r3).
 
@@ -1419,6 +1510,7 @@ class FloatOp(RegisterOp):
 float_op_to_id: Final = {op: op_id for op_id, op in FloatOp.op_str.items()}
 
 
+@final
 class FloatNeg(RegisterOp):
     """Float negation op (r1 = -r2)."""
 
@@ -1439,6 +1531,7 @@ class FloatNeg(RegisterOp):
         return visitor.visit_float_neg(self)
 
 
+@final
 class FloatComparisonOp(RegisterOp):
     """Low-level comparison op for floats."""
 
@@ -1475,6 +1568,7 @@ class FloatComparisonOp(RegisterOp):
 float_comparison_op_to_id: Final = {op: op_id for op_id, op in FloatComparisonOp.op_str.items()}
 
 
+@final
 class LoadMem(RegisterOp):
     """Read a memory location: result = *(type *)src.
 
@@ -1485,14 +1579,13 @@ class LoadMem(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, line: int = -1, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.type = type
-        # TODO: for now we enforce that the src memory address should be Py_ssize_t
-        #       later we should also support same width unsigned int
+        # TODO: Support other native integer types
         assert is_pointer_rprimitive(src.type)
         self.src = src
-        self.is_borrowed = True
+        self.is_borrowed = borrow and type.is_refcounted
 
     def sources(self) -> list[Value]:
         return [self.src]
@@ -1504,6 +1597,7 @@ class LoadMem(RegisterOp):
         return visitor.visit_load_mem(self)
 
 
+@final
 class SetMem(Op):
     """Write to a memory location: *(type *)dest = src
 
@@ -1535,6 +1629,7 @@ class SetMem(Op):
         return visitor.visit_set_mem(self)
 
 
+@final
 class GetElementPtr(RegisterOp):
     """Get the address of a struct element.
 
@@ -1561,6 +1656,40 @@ class GetElementPtr(RegisterOp):
         return visitor.visit_get_element_ptr(self)
 
 
+@final
+class SetElement(RegisterOp):
+    """Set the value of a struct element.
+
+    This evaluates to a new struct with the changed value.
+
+    Use together with Undef to initialize a fresh struct value
+    (see Undef for more details).
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, field: str, item: Value, line: int = -1) -> None:
+        super().__init__(line)
+        assert isinstance(src.type, RStruct), src.type
+        self.type = src.type
+        self.src = src
+        self.item = item
+        self.field = field
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
+    def stolen(self) -> list[Value]:
+        return [self.src]
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_set_element(self)
+
+
+@final
 class LoadAddress(RegisterOp):
     """Get the address of a value: result = (type)&src
 
@@ -1595,6 +1724,7 @@ class LoadAddress(RegisterOp):
         return visitor.visit_load_address(self)
 
 
+@final
 class KeepAlive(RegisterOp):
     """A no-op operation that ensures source values aren't freed.
 
@@ -1642,6 +1772,7 @@ class KeepAlive(RegisterOp):
         return visitor.visit_keep_alive(self)
 
 
+@final
 class Unborrow(RegisterOp):
     """A no-op op to create a regular reference from a borrowed one.
 
@@ -1828,6 +1959,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_get_element_ptr(self, op: GetElementPtr) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_set_element(self, op: SetElement) -> T:
         raise NotImplementedError
 
     @abstractmethod

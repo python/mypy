@@ -64,6 +64,7 @@ from mypyc.irbuild.function import (
     handle_non_ext_method,
     load_type,
 )
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import (
@@ -135,6 +136,14 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         cls_builder = NonExtClassBuilder(builder, cdef)
 
     for stmt in cdef.defs.body:
+        if (
+            isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef))
+            and stmt.name == GENERATOR_HELPER_NAME
+        ):
+            builder.error(
+                f'Method name "{stmt.name}" is reserved for mypyc internal use', stmt.line
+            )
+
         if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
             if isinstance(cls_builder, NonExtClassBuilder):
                 # properties with both getters and setters in non_extension
@@ -252,6 +261,9 @@ class NonExtClassBuilder(ClassBuilder):
         # Dynamically create the class via the type constructor
         non_ext_class = load_non_ext_class(self.builder, ir, self.non_ext, self.cdef.line)
         non_ext_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
+
+        # Try to avoid contention when using free threading.
+        self.builder.set_immortal_if_free_threaded(non_ext_class, self.cdef.line)
 
         # Save the decorated class
         self.builder.add(
@@ -415,7 +427,7 @@ class AttrsClassBuilder(DataClassBuilder):
                 type_name = stmt.rvalue.args[index]
                 if isinstance(type_name, NameExpr) and isinstance(type_name.node, TypeInfo):
                     lvalue = stmt.lvalues[0]
-                    assert isinstance(lvalue, NameExpr)
+                    assert isinstance(lvalue, NameExpr), lvalue
                     return type_name.node
         return None
 
@@ -440,6 +452,11 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     )
     # Create the class
     tp = builder.call_c(pytype_from_template_op, [template, tp_bases, modname], cdef.line)
+
+    # Set type object to be immortal if free threaded, as otherwise reference count contention
+    # can cause a big performance hit.
+    builder.set_immortal_if_free_threaded(tp, cdef.line)
+
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
@@ -564,11 +581,11 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
     if cdef.metaclass:
         declared_metaclass = builder.accept(cdef.metaclass)
     else:
-        if cdef.info.typeddict_type is not None and builder.options.capi_version >= (3, 9):
+        if cdef.info.typeddict_type is not None:
             # In Python 3.9, the metaclass for class-based TypedDict is typing._TypedDictMeta.
             # We can't easily calculate it generically, so special case it.
             return builder.get_module_attr("typing", "_TypedDictMeta", cdef.line)
-        elif cdef.info.is_named_tuple and builder.options.capi_version >= (3, 9):
+        elif cdef.info.is_named_tuple:
             # In Python 3.9, the metaclass for class-based NamedTuple is typing.NamedTupleMeta.
             # We can't easily calculate it generically, so special case it.
             return builder.get_module_attr("typing", "NamedTupleMeta", cdef.line)
@@ -756,7 +773,7 @@ def generate_attr_defaults_init(
         self_var = builder.self()
         for stmt in default_assignments:
             lvalue = stmt.lvalues[0]
-            assert isinstance(lvalue, NameExpr)
+            assert isinstance(lvalue, NameExpr), lvalue
             if not stmt.is_final_def and not is_constant(stmt.rvalue):
                 builder.warning("Unsupported default attribute value", stmt.rvalue.line)
 
@@ -862,7 +879,7 @@ def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) ->
     dec_class = type_obj
     for d in reversed(decorators):
         decorator = d.accept(builder.visitor)
-        assert isinstance(decorator, Value)
+        assert isinstance(decorator, Value), decorator
         dec_class = builder.py_call(decorator, [dec_class], dec_class.line)
     return dec_class
 
@@ -873,7 +890,7 @@ def cache_class_attrs(
     """Add class attributes to be cached to the global cache."""
     typ = builder.load_native_type_object(cdef.info.fullname)
     for lval, rtype in attrs_to_cache:
-        assert isinstance(lval, NameExpr)
+        assert isinstance(lval, NameExpr), lval
         rval = builder.py_get_attr(typ, lval.name, cdef.line)
         builder.init_final_static(lval, rval, cdef.name, type_override=rtype)
 

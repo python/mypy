@@ -165,6 +165,8 @@ class NodeFixer(NodeVisitor[None]):
             func.info = self.current_info
         if func.type is not None:
             func.type.accept(self.type_fixer)
+            if isinstance(func.type, CallableType):
+                func.type.definition = func
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         if self.current_info is not None:
@@ -271,9 +273,6 @@ class TypeFixer(TypeVisitor[None]):
             ct.ret_type.accept(self)
         for v in ct.variables:
             v.accept(self)
-        for arg in ct.bound_args:
-            if arg:
-                arg.accept(self)
         if ct.type_guard is not None:
             ct.type_guard.accept(self)
         if ct.type_is is not None:

@@ -38,7 +38,9 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
             or len(strict_part) > 2000
         ):
             raise ValueError(f"{strict_part=}, which doesn't look right (by a simple heuristic).")
-        self.strict_file.write_text(strict_part)
+        self.strict_file.write_text(
+            "For this version of mypy, the flags enabled by strict are: " + strict_part
+        )
 
     def _verify_error_codes(self) -> None:
         from mypy.errorcodes import error_codes

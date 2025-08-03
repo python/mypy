@@ -148,18 +148,6 @@ reverse_builtin_aliases: Final = {
     "builtins.frozenset": "typing.FrozenSet",
 }
 
-_nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate": ""}
-_nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
-# Drop OrderedDict from this for backward compatibility
-del _nongen_builtins["collections.OrderedDict"]
-# HACK: consequence of hackily treating LiteralString as an alias for str
-del _nongen_builtins["builtins.str"]
-
-
-def get_nongen_builtins(python_version: tuple[int, int]) -> dict[str, str]:
-    # After 3.9 with pep585 generic builtins are allowed
-    return _nongen_builtins if python_version < (3, 9) else {}
-
 
 RUNTIME_PROTOCOL_DECOS: Final = (
     "typing.runtime_checkable",
@@ -520,6 +508,8 @@ class FuncBase(Node):
         self.info = FUNC_NO_INFO
         self.is_property = False
         self.is_class = False
+        # Is this a `@staticmethod` (explicit or implicit)?
+        # Note: use has_self_or_cls_argument to check if there is `self` or `cls` argument
         self.is_static = False
         self.is_final = False
         self.is_explicit_override = False
@@ -536,6 +526,15 @@ class FuncBase(Node):
     def fullname(self) -> str:
         return self._fullname
 
+    @property
+    def has_self_or_cls_argument(self) -> bool:
+        """If used as a method, does it have an argument for method binding (`self`, `cls`)?
+
+        This is true for `__new__` even though `__new__` does not undergo method binding,
+        because we still usually assume that `cls` corresponds to the enclosing class.
+        """
+        return not self.is_static or self.name == "__new__"
+
 
 OverloadPart: _TypeAlias = Union["FuncDef", "Decorator"]
 
@@ -550,12 +549,20 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    __slots__ = ("items", "unanalyzed_items", "impl", "deprecated", "_is_trivial_self")
+    __slots__ = (
+        "items",
+        "unanalyzed_items",
+        "impl",
+        "deprecated",
+        "setter_index",
+        "_is_trivial_self",
+    )
 
     items: list[OverloadPart]
     unanalyzed_items: list[OverloadPart]
     impl: OverloadPart | None
     deprecated: str | None
+    setter_index: int | None
 
     def __init__(self, items: list[OverloadPart]) -> None:
         super().__init__()
@@ -563,6 +570,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         self.deprecated = None
+        self.setter_index = None
         self._is_trivial_self: bool | None = None
         if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
@@ -587,16 +595,29 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         """
         if self._is_trivial_self is not None:
             return self._is_trivial_self
-        for item in self.items:
+        for i, item in enumerate(self.items):
+            # Note: bare @property is removed in visit_decorator().
+            trivial = 1 if i > 0 or not self.is_property else 0
             if isinstance(item, FuncDef):
                 if not item.is_trivial_self:
                     self._is_trivial_self = False
                     return False
-            elif item.decorators or not item.func.is_trivial_self:
+            elif len(item.decorators) > trivial or not item.func.is_trivial_self:
                 self._is_trivial_self = False
                 return False
         self._is_trivial_self = True
         return True
+
+    @property
+    def setter(self) -> Decorator:
+        # Do some consistency checks first.
+        first_item = self.items[0]
+        assert isinstance(first_item, Decorator)
+        assert first_item.var.is_settable_property
+        assert self.setter_index is not None
+        item = self.items[self.setter_index]
+        assert isinstance(item, Decorator)
+        return item
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
@@ -610,6 +631,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             "impl": None if self.impl is None else self.impl.serialize(),
             "flags": get_flags(self, FUNCBASE_FLAGS),
             "deprecated": self.deprecated,
+            "setter_index": self.setter_index,
         }
 
     @classmethod
@@ -630,6 +652,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         res._fullname = data["fullname"]
         set_flags(res, data["flags"])
         res.deprecated = data["deprecated"]
+        res.setter_index = data["setter_index"]
         # NOTE: res.info will be set in the fixup phase.
         return res
 
@@ -3001,6 +3024,7 @@ class TypeInfo(SymbolNode):
         "dataclass_transform_spec",
         "is_type_check_only",
         "deprecated",
+        "type_object_type",
     )
 
     _fullname: str  # Fully qualified name
@@ -3157,6 +3181,10 @@ class TypeInfo(SymbolNode):
     # The type's deprecation message (in case it is deprecated)
     deprecated: str | None
 
+    # Cached value of class constructor type, i.e. the type of class object when it
+    # appears in runtime context.
+    type_object_type: mypy.types.FunctionLike | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3215,6 +3243,7 @@ class TypeInfo(SymbolNode):
         self.dataclass_transform_spec = None
         self.is_type_check_only = False
         self.deprecated = None
+        self.type_object_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3313,8 +3342,8 @@ class TypeInfo(SymbolNode):
                         continue  # unannotated value not a member
 
                     typ = mypy.types.get_proper_type(sym.node.type)
-                    if isinstance(
-                        typ, mypy.types.FunctionLike
+                    if (
+                        isinstance(typ, mypy.types.FunctionLike) and not typ.is_type_obj()
                     ) or (  # explicit `@member` is required
                         isinstance(typ, mypy.types.Instance)
                         and typ.type.fullname == "enum.nonmember"
@@ -3361,21 +3390,68 @@ class TypeInfo(SymbolNode):
             return declared
         if self._fullname == "builtins.type":
             return mypy.types.Instance(self, [])
-        candidates = [
-            s.declared_metaclass
-            for s in self.mro
-            if s.declared_metaclass is not None and s.declared_metaclass.type is not None
-        ]
-        for c in candidates:
-            if all(other.type in c.type.mro for other in candidates):
-                return c
+
+        winner = declared
+        for super_class in self.mro[1:]:
+            super_meta = super_class.declared_metaclass
+            if super_meta is None or super_meta.type is None:
+                continue
+            if winner is None:
+                winner = super_meta
+                continue
+            if winner.type.has_base(super_meta.type.fullname):
+                continue
+            if super_meta.type.has_base(winner.type.fullname):
+                winner = super_meta
+                continue
+            # metaclass conflict
+            winner = None
+            break
+
+        return winner
+
+    def explain_metaclass_conflict(self) -> str | None:
+        # Compare to logic in calculate_metaclass_type
+        declared = self.declared_metaclass
+        if declared is not None and not declared.type.has_base("builtins.type"):
+            return None
+        if self._fullname == "builtins.type":
+            return None
+
+        winner = declared
+        if declared is None:
+            resolution_steps = []
+        else:
+            resolution_steps = [f'"{declared.type.fullname}" (metaclass of "{self.fullname}")']
+        for super_class in self.mro[1:]:
+            super_meta = super_class.declared_metaclass
+            if super_meta is None or super_meta.type is None:
+                continue
+            if winner is None:
+                winner = super_meta
+                resolution_steps.append(
+                    f'"{winner.type.fullname}" (metaclass of "{super_class.fullname}")'
+                )
+                continue
+            if winner.type.has_base(super_meta.type.fullname):
+                continue
+            if super_meta.type.has_base(winner.type.fullname):
+                winner = super_meta
+                resolution_steps.append(
+                    f'"{winner.type.fullname}" (metaclass of "{super_class.fullname}")'
+                )
+                continue
+            # metaclass conflict
+            conflict = f'"{super_meta.type.fullname}" (metaclass of "{super_class.fullname}")'
+            return f"{' > '.join(resolution_steps)} conflicts with {conflict}"
+
         return None
 
-    def is_metaclass(self) -> bool:
+    def is_metaclass(self, *, precise: bool = False) -> bool:
         return (
             self.has_base("builtins.type")
             or self.fullname == "abc.ABCMeta"
-            or self.fallback_to_any
+            or (self.fallback_to_any and not precise)
         )
 
     def has_base(self, fullname: str) -> bool:
