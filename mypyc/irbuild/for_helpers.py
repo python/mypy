@@ -918,7 +918,7 @@ class ForUnrolledSequenceLiteral(_ForUnrolled):
         builder = self.builder
         for expr in self.items:
             value = builder.accept(expr)
-            #value = builder.coerce(value, builder.node_type(expr), self.line)
+            # value = builder.coerce(value, builder.node_type(expr), self.line)
             builder.assign(builder.get_assignment_target(self.index), value, self.line)
             self.body_insts()
 
