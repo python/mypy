@@ -921,6 +921,18 @@ def analyze_var(
         result = AnyType(TypeOfAny.special_form)
     fullname = f"{var.info.fullname}.{name}"
     hook = mx.chk.plugin.get_attribute_hook(fullname)
+
+    if var.info.is_enum and not mx.is_lvalue:
+        if name in var.info.enum_members and name not in {"name", "value"}:
+            enum_literal = LiteralType(name, fallback=itype)
+            result = itype.copy_modified(last_known_value=enum_literal)
+        elif (
+            isinstance(p_result := get_proper_type(result), Instance)
+            and p_result.type.fullname == "enum.nonmember"
+            and p_result.args
+        ):
+            # Unwrap nonmember similar to class-level access
+            result = p_result.args[0]
     if result and not (implicit or var.info.is_protocol and is_instance_var(var)):
         result = analyze_descriptor_access(result, mx)
     if hook:
