@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Any, Callable, ClassVar, Union
+from typing import Any, Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
@@ -889,7 +889,7 @@ class ForUnrolledSequenceLiteral(_ForUnrolled):
         body_block: BasicBlock,
         loop_exit: BasicBlock,
         line: int,
-        expr: Union[ListExpr, SetExpr, TupleExpr],
+        expr: ListExpr | SetExpr | TupleExpr,
         body_insts: GenFunc,
     ) -> None:
         super().__init__(builder, index, body_block, loop_exit, line, nested=False)
