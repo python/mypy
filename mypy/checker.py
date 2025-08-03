@@ -75,7 +75,6 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
-    ComplexExpr,
     Context,
     ContinueStmt,
     Decorator,
@@ -5572,19 +5571,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def _make_named_statement_for_match(self, s: MatchStmt) -> Expression:
         """Construct a fake NameExpr for inference if a match clause is complex."""
         subject = s.subject
-        expressions_to_preserve = (
+        if isinstance(subject, (NameExpr, AssignmentExpr)):
             # Already named - we should infer type of it as given
-            NameExpr,
-            AssignmentExpr,
-            # Primitive literals - their type is known, no need to name them
-            IntExpr,
-            StrExpr,
-            BytesExpr,
-            FloatExpr,
-            ComplexExpr,
-            EllipsisExpr,
-        )
-        if isinstance(subject, expressions_to_preserve):
             return subject
         elif s.subject_dummy is not None:
             return s.subject_dummy

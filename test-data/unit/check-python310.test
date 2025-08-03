@@ -2613,6 +2613,27 @@ match A().foo:
     case other:
         other  # E: Statement is unreachable
 
+[case testMatchLiteral]
+# flags: --warn-unreachable
+
+def int_literal() -> None:
+    match 12:
+        case 1 as s:
+            reveal_type(s)  # N: Revealed type is "Literal[1]"
+        case int(i):
+            reveal_type(i)  # N: Revealed type is "Literal[12]?"
+        case other:
+            other  # E: Statement is unreachable
+
+def str_literal() -> None:
+    match 'foo':
+        case 'a' as s:
+            reveal_type(s)  # N: Revealed type is "Literal['a']"
+        case str(i):
+            reveal_type(i)  # N: Revealed type is "Literal['foo']?"
+        case other:
+            other  # E: Statement is unreachable
+
 [case testMatchOperations]
 # flags: --warn-unreachable
 
