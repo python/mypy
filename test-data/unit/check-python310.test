@@ -2179,9 +2179,11 @@ def f() -> None:
     match x := returns_a_or_none():
         case A():
             reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    reveal_type(x)  # N: Revealed type is "Union[__main__.A, None]"
     match x := returns_a():
         case A():
             reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    reveal_type(x)  # N: Revealed type is "__main__.A"
     y = returns_a_or_none()
     match y:
         case A():

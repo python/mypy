@@ -5478,6 +5478,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
         named_subject = self._make_named_statement_for_match(s)
+        # In sync with similar actions elsewhere, narrow the target if
+        # we are matching an AssignmentExpr
+        unwrapped_subject = collapse_walrus(s.subject)
         with self.binder.frame_context(can_skip=False, fall_through=0):
             subject_type = get_proper_type(self.expr_checker.accept(s.subject))
 
@@ -5513,9 +5516,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # Maybe the subject type can be inferred from constraints on
                         # its attribute/item?
                         if pattern_map and named_subject in pattern_map:
-                            pattern_map[s.subject] = pattern_map[named_subject]
+                            pattern_map[unwrapped_subject] = pattern_map[named_subject]
                         if else_map and named_subject in else_map:
-                            else_map[s.subject] = else_map[named_subject]
+                            else_map[unwrapped_subject] = else_map[named_subject]
                         pattern_map = self.propagate_up_typemap_info(pattern_map)
                         else_map = self.propagate_up_typemap_info(else_map)
                         self.remove_capture_conflicts(pattern_type.captures, inferred_types)
@@ -5571,7 +5574,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def _make_named_statement_for_match(self, s: MatchStmt) -> Expression:
         """Construct a fake NameExpr for inference if a match clause is complex."""
         subject = s.subject
-        if isinstance(subject, (NameExpr, AssignmentExpr)):
+        if self.binder.can_put_directly(subject):
             # Already named - we should infer type of it as given
             return subject
         elif s.subject_dummy is not None:
