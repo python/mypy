@@ -442,7 +442,7 @@ def make_for_loop_generator(
     line: int,
     is_async: bool = False,
     nested: bool = False,
-    body_insts: Optional[GenFunc] = None,
+    body_insts: GenFunc | None = None,
     can_unroll: bool = True,
 ) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
