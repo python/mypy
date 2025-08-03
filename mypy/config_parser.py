@@ -66,7 +66,7 @@ def try_split(v: str | Sequence[str] | object, split_regex: str = ",") -> list[s
 
     def complain(x: object, additional_info: str = "") -> Never:
         raise argparse.ArgumentTypeError(
-            f"Expected a list or a stringified version thereof, but got: '{x}', of type {type(x)}.{additional_info}"
+            f"Expected a list or a stringified version thereof, but got: '{x}', of type {type(x).__name__}.{additional_info}"
         )
 
     if isinstance(v, str):
