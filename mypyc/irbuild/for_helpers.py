@@ -897,6 +897,21 @@ class ForUnrolledSequenceLiteral(_ForUnrolled):
         self.items = expr.items
         self.body_insts = body_insts
         self.item_types = [builder.node_type(item) for item in self.items]
+        self.index_target = builder.maybe_spill_assignable(Integer(0, c_pyssize_t_rprimitive))
+
+    def gen_condition(self) -> None:
+        # For unrolled loops, immediately jump to the body if there are items,
+        # otherwise jump to the loop exit.
+        # NOTE: this method is not used when the loop is fully unrolled, but is when the loop is a component of another loop, ie a ForZip
+        builder = self.builder
+        comparison = builder.binary_op(builder.read(self.index_target, self.line), Integer(len(self.items)), "<", self.line)
+        builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
+    
+    def gen_step(self) -> None:
+        # NOTE: this method is not used when the loop is fully unrolled, but is when the loop is a component of another loop, ie a ForZip
+        builder = self.builder
+        add = builder.builder.int_add(builder.read(self.index_target, self.line), 1)
+        builder.assign(self.index_target, add, self.line)
 
     def begin_body(self) -> None:
         builder = self.builder
