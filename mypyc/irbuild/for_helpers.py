@@ -466,7 +466,7 @@ def make_for_loop_generator(
         # Special case: tuple/list/set literal (unroll the loop)
         if is_iterable_expr_with_literal_mambers(expr):
             return ForUnrolledSequenceLiteral(
-                builder, index, body_block, loop_exit, line, expr, body_insts
+                builder, index, body_block, loop_exit, line, expr, body_insts  # type: ignore [arg-type]
             )
 
         # Special case: RTuple (known-length tuple, struct field iteration)
@@ -482,10 +482,10 @@ def make_for_loop_generator(
                 builder, index, body_block, loop_exit, line, expr.value, expr, body_insts
             )
 
-        # Special case: string literal (unroll the loop)
+        # Special case: bytes literal (unroll the loop)
         if isinstance(expr, BytesExpr):
             return ForUnrolledBytesLiteral(
-                builder, index, body_block, loop_exit, line, expr.value, expr, body_insts
+                builder, index, body_block, loop_exit, line, expr.value.encode(), expr, body_insts
             )
 
     if is_sequence_rprimitive(rtyp):
