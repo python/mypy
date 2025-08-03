@@ -6156,9 +6156,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if isinstance(node, CallExpr) and len(node.args) != 0:
             expr = collapse_walrus(node.args[0])
-            print("[TypeGuard Debug] --- find_isinstance_check_helper ---")
-            print(f"[TypeGuard Debug] {node=}")
-            print(f"[TypeGuard Debug] {node.callee=}")
             if refers_to_fullname(node.callee, "builtins.isinstance"):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
