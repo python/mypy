@@ -731,7 +731,6 @@ assert a(x=x)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-
 # https://github.com/python/mypy/issues/19575
 [case testNoCrashOnDunderCallTypeGuardTemporaryObject]
 from typing_extensions import TypeGuard
@@ -742,6 +741,8 @@ class E:
 x = object()
 if E()(x):
     reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testNoCrashOnDunderCallTypeIsTemporaryObject]
 from typing_extensions import TypeIs
 class E:
