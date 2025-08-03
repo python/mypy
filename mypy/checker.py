@@ -6188,10 +6188,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # For temporaries (e.g., E()(x)), we extract type_is/type_guard from the __call__ method.
                 # For named callables (e.g., is_int(x)), we extract type_is/type_guard directly from the RefExpr.
                 type_is, type_guard = None, None
-                called_type = get_proper_type(self.lookup_type(node.callee))
+                try:
+                    called_type = get_proper_type(self.lookup_type(node.callee))
+                except KeyError:
+                    called_type = None
                 # TODO: there are some more cases in check_call() to handle.
                 # If the callee is an instance, try to extract TypeGuard/TypeIs from its __call__ method.
-                if isinstance(called_type, Instance):
+                if called_type and isinstance(called_type, Instance):
                     call = find_member("__call__", called_type, called_type, is_operator=True)
                     if call is not None:
                         called_type = get_proper_type(call)
