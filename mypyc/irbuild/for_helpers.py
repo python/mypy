@@ -904,9 +904,11 @@ class ForUnrolledSequenceLiteral(_ForUnrolled):
         # otherwise jump to the loop exit.
         # NOTE: this method is not used when the loop is fully unrolled, but is when the loop is a component of another loop, ie a ForZip
         builder = self.builder
-        comparison = builder.binary_op(builder.read(self.index_target, self.line), Integer(len(self.items)), "<", self.line)
+        comparison = builder.binary_op(
+            builder.read(self.index_target, self.line), Integer(len(self.items)), "<", self.line
+        )
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
-    
+
     def gen_step(self) -> None:
         # NOTE: this method is not used when the loop is fully unrolled, but is when the loop is a component of another loop, ie a ForZip
         builder = self.builder
