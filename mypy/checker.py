@@ -6236,11 +6236,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                     consider_runtime_isinstance=False,
                                 ),
                             )
-            elif isinstance(node.callee, CallExpr):
+            elif isinstance(node.callee, CallExpr) and len(node.args) != 0:
                 # Handle case where callee is a call expression like E()(x)
                 # where E() returns an object with __call__ method that has TypeGuard
-                if len(node.args) == 0:
-                    return {}, {}
                 callee_type = get_proper_type(self.lookup_type(node.callee))
                 if isinstance(callee_type, Instance):
                     call_member = find_member(
@@ -6255,33 +6253,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             # Handle keyword arguments similar to RefExpr case
                             expr = collapse_walrus(node.args[0])  # Default to first positional arg
                             if node.arg_kinds[0] != nodes.ARG_POS:
-                                # the first argument might be used as a kwarg
-                                if isinstance(call_type, (CallableType, Overloaded)):
-                                    if isinstance(call_type, Overloaded):
-                                        # Use first overload for argument name lookup
-                                        first_callable = call_type.items[0]
+                                if call_type.arg_names:
+                                    name = call_type.arg_names[0]
+                                    if name in node.arg_names:
+                                        idx = node.arg_names.index(name)
+                                        # we want the idx-th variable to be narrowed
+                                        expr = collapse_walrus(node.args[idx])
                                     else:
-                                        first_callable = call_type
-
-                                    if first_callable.arg_names:
-                                        name = first_callable.arg_names[0]
-                                        if name in node.arg_names:
-                                            idx = node.arg_names.index(name)
-                                            # we want the idx-th variable to be narrowed
-                                            expr = collapse_walrus(node.args[idx])
-                                        else:
-                                            kind = (
-                                                "guard"
-                                                if call_type.type_guard is not None
-                                                else "narrower"
-                                            )
-                                            self.fail(
-                                                message_registry.TYPE_GUARD_POS_ARG_REQUIRED.format(
-                                                    kind
-                                                ),
-                                                node,
-                                            )
-                                            return {}, {}
+                                        kind = (
+                                            "guard"
+                                            if call_type.type_guard is not None
+                                            else "narrower"
+                                        )
+                                        self.fail(
+                                            message_registry.TYPE_GUARD_POS_ARG_REQUIRED.format(
+                                                kind
+                                            ),
+                                            node,
+                                        )
+                                        return {}, {}
 
                             if literal(expr) == LITERAL_TYPE:
                                 # Apply the same TypeGuard narrowing logic
