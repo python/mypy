@@ -138,6 +138,10 @@ class ConditionalTypeBinder:
         # flexible inference of variable types (--allow-redefinition-new).
         self.bind_all = options.allow_redefinition_new
 
+        # This tracks any externally visible changes in binder to invalidate
+        # expression caches when needed.
+        self.version = 0
+
     def _get_id(self) -> int:
         self.next_id += 1
         return self.next_id
@@ -158,6 +162,7 @@ class ConditionalTypeBinder:
         return f
 
     def _put(self, key: Key, type: Type, from_assignment: bool, index: int = -1) -> None:
+        self.version += 1
         self.frames[index].types[key] = CurrentType(type, from_assignment)
 
     def _get(self, key: Key, index: int = -1) -> CurrentType | None:
@@ -185,6 +190,7 @@ class ConditionalTypeBinder:
         self._put(key, typ, from_assignment)
 
     def unreachable(self) -> None:
+        self.version += 1
         self.frames[-1].unreachable = True
 
     def suppress_unreachable_warnings(self) -> None:

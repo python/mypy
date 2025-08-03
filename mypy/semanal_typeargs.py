@@ -102,6 +102,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             # If there was already an error for the alias itself, there is no point in checking
             # the expansion, most likely it will result in the same kind of error.
             get_proper_type(t).accept(self)
+            if t.alias is not None:
+                t.alias.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         t.items = flatten_nested_tuples(t.items)
@@ -254,6 +256,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def check_type_var_values(
         self, name: str, actuals: list[Type], arg_name: str, valids: list[Type], context: Context
     ) -> bool:
+        if self.in_type_alias_expr:
+            # See testValidTypeAliasValues - we do not enforce typevar compatibility
+            # at the definition site. We check instantiation validity later.
+            return False
         is_error = False
         for actual in get_proper_types(actuals):
             # We skip UnboundType here, since they may appear in defn.bases,

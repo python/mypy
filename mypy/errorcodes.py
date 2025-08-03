@@ -37,6 +37,10 @@ class ErrorCode:
     def __str__(self) -> str:
         return f"<ErrorCode {self.code}>"
 
+    def __repr__(self) -> str:
+        """This doesn't fulfill the goals of repr but it's better than the default view."""
+        return f"<ErrorCode {self.category}: {self.code}>"
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ErrorCode):
             return False
@@ -270,6 +274,7 @@ EXHAUSTIVE_MATCH: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+METACLASS: Final[ErrorCode] = ErrorCode("metaclass", "Ensure that metaclass is valid", "General")
 
 # Syntax errors are often blocking.
 SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")

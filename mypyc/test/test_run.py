@@ -69,6 +69,8 @@ files = [
     "run-dunders-special.test",
     "run-singledispatch.test",
     "run-attrs.test",
+    "run-signatures.test",
+    "run-weakref.test",
     "run-python37.test",
     "run-python38.test",
 ]

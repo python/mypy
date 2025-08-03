@@ -4646,3 +4646,17 @@ reveal_type(t.bar)  # N: Revealed type is "def () -> builtins.int"
 tt: Type[P] = C
 reveal_type(tt.foo)  # N: Revealed type is "def (builtins.object) -> builtins.int"
 reveal_type(tt.bar)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+
+[case testProtocolDecoratedSelfBound]
+from abc import abstractmethod
+from typing import Protocol, Self
+
+class Proto(Protocol):
+    @abstractmethod
+    def foo(self, x: Self) -> None: ...
+
+class Impl:
+    def foo(self, x: Self) -> None:
+        pass
+
+x: Proto = Impl()
