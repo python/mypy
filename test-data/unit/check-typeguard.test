@@ -742,6 +742,15 @@ class E:
 x = object()
 if E()(x):
     reveal_type(x)  # N: Revealed type is "builtins.int"
+[case testNoCrashOnDunderCallTypeIsTemporaryObject]
+from typing_extensions import TypeIs
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeIs[int]:
+        return True
+x = object()
+if E()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardRestrictAwaySingleInvariant]
