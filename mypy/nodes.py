@@ -823,6 +823,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "dataclass_transform_spec",
         "docstring",
         "deprecated",
+        "original_first_arg",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -855,6 +856,12 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
+        # This is needed because for positional-only arguments the name is set to None,
+        # but we sometimes still want to show it in error messages.
+        if arguments:
+            self.original_first_arg: str | None = arguments[0].variable.name
+        else:
+            self.original_first_arg = None
 
     @property
     def name(self) -> str:
@@ -886,6 +893,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                 else self.dataclass_transform_spec.serialize()
             ),
             "deprecated": self.deprecated,
+            "original_first_arg": self.original_first_arg,
         }
 
     @classmethod
@@ -906,6 +914,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         set_flags(ret, data["flags"])
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
+        ret.original_first_arg = data.get("original_first_arg")
         ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
         ret.dataclass_transform_spec = (
