@@ -2306,8 +2306,8 @@ class B:
 
     @classmethod
     def other_meth(cls) -> Self:
-        reveal_type(cls.meth)  # N: Revealed type is "def [Self <: __main__.B] (self: Self`6) -> Self`6"
-        reveal_type(B.meth)  # N: Revealed type is "def [Self <: __main__.B] (self: Self`7) -> Self`7"
+        reveal_type(cls.meth)  # N: Revealed type is "def [Self <: __main__.B] (self: Self`5) -> Self`5"
+        reveal_type(B.meth)  # N: Revealed type is "def [Self <: __main__.B] (self: Self`6) -> Self`6"
         return cls().meth()
 
 class C:
