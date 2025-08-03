@@ -6801,3 +6801,26 @@ class D(Generic[T]):
 a: D[str]  # E: Type argument "str" of "D" must be a subtype of "C"
 reveal_type(a.f(1))  # N: Revealed type is "builtins.int"
 reveal_type(a.f("x"))  # N: Revealed type is "builtins.str"
+
+[case testMultiAssignFromUnionInOverloadCached]
+from typing import Iterable, overload, Union, Optional
+
+@overload
+def always_bytes(str_or_bytes: None) -> None: ...
+@overload
+def always_bytes(str_or_bytes: Union[str, bytes]) -> bytes: ...
+def always_bytes(str_or_bytes: Union[None, str, bytes]) -> Optional[bytes]:
+    pass
+
+class Headers:
+    def __init__(self, iter: Iterable[tuple[bytes, bytes]]) -> None: ...
+
+headers: Union[Headers, dict[Union[str, bytes], Union[str, bytes]], Iterable[tuple[bytes, bytes]]]
+
+if isinstance(headers, dict):
+    headers = Headers(
+        (always_bytes(k), always_bytes(v)) for k, v in headers.items()
+    )
+
+reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iterable[tuple[builtins.bytes, builtins.bytes]]]"
+[builtins fixtures/isinstancelist.pyi]
