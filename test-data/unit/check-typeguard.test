@@ -731,6 +731,19 @@ assert a(x=x)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+
+# https://github.com/python/mypy/issues/19575
+[case testNoCrashOnDunderCallTypeGuardTemporaryObject]
+from typing_extensions import TypeGuard
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeGuard[int]:
+        return True
+x = object()
+if E()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeGuardRestrictAwaySingleInvariant]
 from typing import List
 from typing_extensions import TypeGuard
