@@ -235,5 +235,5 @@ enable_error_code = true
 [file a.py]
 x: int = 1
 [out]
-pyproject.toml: [mypy]: enable_error_code: Expected a list or a stringified version thereof, but got: 'True', of type <class 'bool'>.
+pyproject.toml: [mypy]: enable_error_code: Expected a list or a stringified version thereof, but got: 'True', of type bool.
 == Return code: 0
