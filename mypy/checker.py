@@ -6236,7 +6236,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                     consider_runtime_isinstance=False,
                                 ),
                             )
-
         elif isinstance(node, ComparisonExpr):
             return self.comparison_type_narrowing_helper(node)
         elif isinstance(node, AssignmentExpr):
