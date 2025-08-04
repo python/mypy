@@ -278,7 +278,7 @@ true_dict_setdefault_op = method_op(
     arg_types=[true_dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyDict_SetDefault",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEVER,
 )
 
 # dictorsubclass.setdefault(key, default)
@@ -397,7 +397,7 @@ method_op(
     arg_types=[true_dict_rprimitive],
     return_type=true_dict_rprimitive,
     c_function_name="PyDict_Copy",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEVER,
 )
 
 # dictsubclass.copy()
@@ -414,7 +414,7 @@ true_dict_copy_op = custom_op(
     arg_types=[true_dict_rprimitive],
     return_type=true_dict_rprimitive,
     c_function_name="PyDict_Copy",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEVER,
 )
 
 # list(dict.keys())
@@ -422,7 +422,7 @@ true_dict_keys_op = custom_op(
     arg_types=[true_dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name="PyDict_Keys",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEVER,
 )
 
 # list(dictorsubclass.keys())
@@ -438,7 +438,7 @@ true_dict_values_op = custom_op(
     arg_types=[true_dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name="PyDict_Values",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEVER,
 )
 
 # list(dictorsubclass.values())
@@ -454,7 +454,7 @@ true_dict_items_op = custom_op(
     arg_types=[true_dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name="PyDict_Items",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEVER,
 )
 
 # list(dictorsubclass.items())
