@@ -93,6 +93,7 @@ from mypyc.ir.rtypes import (
     bitmap_rprimitive,
     bytes_rprimitive,
     c_pyssize_t_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     is_float_rprimitive,
     is_list_rprimitive,
@@ -103,7 +104,6 @@ from mypyc.ir.rtypes import (
     none_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    exact_dict_rprimitive,
 )
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder

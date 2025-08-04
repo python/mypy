@@ -10,11 +10,11 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    exact_dict_rprimitive,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,

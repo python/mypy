@@ -64,6 +64,7 @@ from mypyc.ir.rtypes import (
     RUnion,
     bytes_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     is_float_rprimitive,
     is_object_rprimitive,
@@ -71,7 +72,6 @@ from mypyc.ir.rtypes import (
     range_rprimitive,
     set_rprimitive,
     str_rprimitive,
-    exact_dict_rprimitive,
     tuple_rprimitive,
 )
 
