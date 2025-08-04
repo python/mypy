@@ -412,7 +412,7 @@ true_dict_keys_op = custom_op(
 dict_keys_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PyDict_Keys",
+    c_function_name="CPyDict_Keys",
     error_kind=ERR_MAGIC,
 )
 
@@ -428,7 +428,7 @@ true_dict_values_op = custom_op(
 dict_values_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PyDict_Values",
+    c_function_name="CPyDict_Values",
     error_kind=ERR_MAGIC,
 )
 
@@ -444,7 +444,7 @@ true_dict_items_op = custom_op(
 dict_items_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PyDict_Items",
+    c_function_name="CPyDict_Items",
     error_kind=ERR_MAGIC,
 )
 
