@@ -726,7 +726,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     assert isinstance(item, Decorator)
                     item_type = self.extract_callable_type(item.var.type, item)
                     if item_type is not None:
-                        item_type.definition = item
+                        item_type.definition = item.func
                         item_types.append(item_type)
                 if item_types:
                     defn.type = Overloaded(item_types)
