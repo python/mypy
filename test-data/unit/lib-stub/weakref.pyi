@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 from typing_extensions import Self
 
 _T = TypeVar("_T")
@@ -7,6 +7,6 @@ _T = TypeVar("_T")
 class ReferenceType(Generic[_T]):  # "weakref"
     __callback__: Callable[[Self], Any]
     def __new__(cls, o: _T, callback: Callable[[Self], Any] | None = ..., /) -> Self: ...
-    def __call__(self) -> _T: ...
+    def __call__(self) -> Optional[_T]: ...
 
 ref = ReferenceType
