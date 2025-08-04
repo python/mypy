@@ -138,9 +138,9 @@ from mypyc.primitives.dict_ops import (
     dict_new_op,
     dict_ssize_t_size_op,
     dict_update_in_display_op,
-    true_dict_copy_op,
-    true_dict_ssize_t_size_op,
-    true_dict_update_in_display_op,
+    exact_dict_copy_op,
+    exact_dict_ssize_t_size_op,
+    exact_dict_update_in_display_op,
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.float_ops import copysign_op, int_to_float_op
@@ -861,7 +861,7 @@ class LowLevelIRBuilder:
 
                     star2_result = self._create_dict(star2_keys, star2_values, line)
                 if is_exact_dict_rprimitive(value.type):
-                    op = true_dict_update_in_display_op
+                    op = exact_dict_update_in_display_op
                 else:
                     op = dict_update_in_display_op
                 self.call_c(op, [star2_result, value], line=line)
@@ -1828,12 +1828,12 @@ class LowLevelIRBuilder:
                 if result is None:
                     if len(key_value_pairs) == 1 and is_exact_dict_rprimitive(value.type):
                         # fast path for cases like `my_func(**dict(zip(iterable, other)))` and similar
-                        return self.call_c(true_dict_copy_op, [value], line=line)
+                        return self.call_c(exact_dict_copy_op, [value], line=line)
 
                     result = self._create_dict(keys, values, line)
 
                 if is_exact_dict_rprimitive(value.type):
-                    op = true_dict_update_in_display_op
+                    op = exact_dict_update_in_display_op
                 else:
                     op = dict_update_in_display_op
 
@@ -2449,7 +2449,7 @@ class LowLevelIRBuilder:
             size_value = self.load_mem(elem_address, c_pyssize_t_rprimitive)
             self.add(KeepAlive([val]))
         elif is_exact_dict_rprimitive(typ):
-            size_value = self.call_c(true_dict_ssize_t_size_op, [val], line)
+            size_value = self.call_c(exact_dict_ssize_t_size_op, [val], line)
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_ssize_t_size_op, [val], line)
         elif is_str_rprimitive(typ):

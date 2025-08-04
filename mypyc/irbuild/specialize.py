@@ -94,9 +94,9 @@ from mypyc.primitives.dict_ops import (
     dict_setdefault_spec_init_op,
     dict_values_op,
     isinstance_dict,
-    true_dict_items_op,
-    true_dict_keys_op,
-    true_dict_values_op,
+    exact_dict_items_op,
+    exact_dict_keys_op,
+    exact_dict_values_op,
 )
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.int_ops import isinstance_int
@@ -260,17 +260,17 @@ def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) 
     # generic logic.
     if attr == "keys":
         if is_exact_dict_rprimitive(rtype):
-            op = true_dict_keys_op
+            op = exact_dict_keys_op
         else:
             op = dict_keys_op
     elif attr == "values":
         if is_exact_dict_rprimitive(rtype):
-            op = true_dict_values_op
+            op = exact_dict_values_op
         else:
             op = dict_values_op
     else:
         if is_exact_dict_rprimitive(rtype):
-            op = true_dict_items_op
+            op = exact_dict_items_op
         else:
             op = dict_items_op
 

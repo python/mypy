@@ -76,11 +76,11 @@ from mypyc.primitives.dict_ops import (
     dict_next_key_op,
     dict_next_value_op,
     dict_value_iter_op,
-    true_dict_check_size_op,
-    true_dict_iter_fast_path_op,
-    true_dict_next_item_op,
-    true_dict_next_key_op,
-    true_dict_next_value_op,
+    exact_dict_check_size_op,
+    exact_dict_iter_fast_path_op,
+    exact_dict_next_item_op,
+    exact_dict_next_key_op,
+    exact_dict_next_value_op,
 )
 from mypyc.primitives.exc_ops import no_err_occurred_op, propagate_if_error_op
 from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
@@ -1043,25 +1043,25 @@ class ForDictionaryItems(ForDictionaryCommon):
 class ForExactDictionaryKeys(ForDictionaryKeys):
     """Generate optimized IR for a for loop over dictionary items without type checks."""
 
-    dict_next_op = true_dict_next_key_op
-    dict_iter_op = true_dict_iter_fast_path_op
-    dict_size_op = true_dict_check_size_op
+    dict_next_op = exact_dict_next_key_op
+    dict_iter_op = exact_dict_iter_fast_path_op
+    dict_size_op = exact_dict_check_size_op
 
 
 class ForExactDictionaryValues(ForDictionaryValues):
     """Generate optimized IR for a for loop over dictionary items without type checks."""
 
-    dict_next_op = true_dict_next_value_op
-    dict_iter_op = true_dict_iter_fast_path_op
-    dict_size_op = true_dict_check_size_op
+    dict_next_op = exact_dict_next_value_op
+    dict_iter_op = exact_dict_iter_fast_path_op
+    dict_size_op = exact_dict_check_size_op
 
 
 class ForExactDictionaryItems(ForDictionaryItems):
     """Generate optimized IR for a for loop over dictionary items without type checks."""
 
-    dict_next_op = true_dict_next_item_op
-    dict_iter_op = true_dict_iter_fast_path_op
-    dict_size_op = true_dict_check_size_op
+    dict_next_op = exact_dict_next_item_op
+    dict_iter_op = exact_dict_iter_fast_path_op
+    dict_size_op = exact_dict_check_size_op
 
 
 class ForRange(ForGenerator):

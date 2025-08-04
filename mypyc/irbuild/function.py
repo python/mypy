@@ -78,6 +78,7 @@ from mypyc.irbuild.generator import gen_generator_func, gen_generator_func_body
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.primitives.dict_ops import (
     dict_new_op,
+    exact_dict_get_method_with_none,
     exact_dict_set_item_op,
 )
 from mypyc.primitives.generic_ops import py_setattr_op
@@ -817,7 +818,7 @@ def generate_singledispatch_dispatch_function(
     )
     call_find_impl, use_cache, call_func = BasicBlock(), BasicBlock(), BasicBlock()
     get_result = builder.primitive_op(
-        true_dict_get_method_with_none, [dispatch_cache, arg_type], line
+        exact_dict_get_method_with_none, [dispatch_cache, arg_type], line
     )
     is_not_none = builder.translate_is_op(get_result, builder.none_object(), "is not", line)
     impl_to_use = Register(object_rprimitive)
