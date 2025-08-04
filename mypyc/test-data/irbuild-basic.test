@@ -966,10 +966,10 @@ def f(o, p, n, b, t, s, a, l, d):
     s :: tuple[int, int]
     a :: __main__.A
     l :: list
-    d :: dict
+    d :: dict[confirmed]
     r0 :: object
     l2 :: list
-    d2 :: dict
+    d2 :: dict[confirmed]
 L0:
     o = o
     p = p
@@ -1758,38 +1758,33 @@ L0:
 def h():
     r0, r1 :: str
     r2, r3 :: object
-    r4 :: dict[confirmed]
-    r5 :: dict
-    r6 :: dict[confirmed]
-    r7 :: str
-    r8 :: object
-    r9 :: dict[confirmed]
-    r10 :: dict
-    r11 :: i32
-    r12 :: bit
+    r4, r5 :: dict[confirmed]
+    r6 :: str
+    r7 :: object
+    r8 :: dict[confirmed]
+    r9 :: i32
+    r10 :: bit
+    r11 :: object
+    r12 :: tuple
     r13 :: object
-    r14 :: tuple
-    r15 :: object
-    r16 :: tuple[int, int, int]
+    r14 :: tuple[int, int, int]
 L0:
     r0 = 'b'
     r1 = 'c'
     r2 = object 2
     r3 = object 3
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
-    r5 = cast(dict, r4)
-    r6 = __main__.globals :: static
-    r7 = 'f'
-    r8 = CPyDict_GetItemUnsafe(r6, r7)
-    r9 = PyDict_New()
-    r10 = cast(dict, r9)
-    r11 = CPyDict_UpdateInDisplay(r10, r5)
-    r12 = r11 >= 0 :: signed
-    r13 = object 1
-    r14 = PyTuple_Pack(1, r13)
-    r15 = PyObject_Call(r8, r14, r9)
-    r16 = unbox(tuple[int, int, int], r15)
-    return r16
+    r5 = __main__.globals :: static
+    r6 = 'f'
+    r7 = CPyDict_GetItemUnsafe(r5, r6)
+    r8 = PyDict_New()
+    r9 = PyDict_Update(r8, r4)
+    r10 = r9 >= 0 :: signed
+    r11 = object 1
+    r12 = PyTuple_Pack(1, r11)
+    r13 = PyObject_Call(r7, r12, r8)
+    r14 = unbox(tuple[int, int, int], r13)
+    return r14
 
 [case testFunctionCallWithDefaultArgs]
 def f(x: int, y: int = 3, z: str = "test") -> None:
@@ -1950,7 +1945,6 @@ def f():
     r16 :: i32
     r17 :: bit
     r18 :: native_int
-    r19 :: dict
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
@@ -1991,8 +1985,7 @@ L7:
     r6 = r18
     goto L1
 L8:
-    r19 = cast(dict, r0)
-    return r19
+    return r0
 
 [case testLoopsMultipleAssign]
 from typing import List, Tuple
@@ -3257,7 +3250,7 @@ L0:
     r1 = PySequence_List(r0)
     return r1
 def h(x):
-    x :: dict
+    x :: dict[confirmed]
     r0 :: list
 L0:
     r0 = PySequence_List(x)
