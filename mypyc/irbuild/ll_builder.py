@@ -141,7 +141,7 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op,
     true_dict_copy_op,
     true_dict_ssize_t_size_op,
-    true_dict_update_op,
+    true_dict_update_in_display_op,
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.float_ops import copysign_op, int_to_float_op
@@ -862,7 +862,7 @@ class LowLevelIRBuilder:
 
                     star2_result = self._create_dict(star2_keys, star2_values, line)
                 if is_true_dict_rprimitive(value.type):
-                    op = true_dict_update_op
+                    op = true_dict_update_in_display_op
                 else:
                     op = dict_update_in_display_op
                 self.call_c(op, [star2_result, value], line=line)
@@ -1834,7 +1834,7 @@ class LowLevelIRBuilder:
                     result = self._create_dict(keys, values, line)
 
                 if is_true_dict_rprimitive(value.type):
-                    op = true_dict_update_op
+                    op = true_dict_update_in_display_op
                 else:
                     op = dict_update_in_display_op
 

@@ -200,6 +200,15 @@ dict_update_op = method_op(
     priority=2,
 )
 
+# Operation used for **value in with exact dictionary `value`.
+# This is mostly like dict.update(obj), but has customized error handling.
+true_dict_update_in_display_op = custom_op(
+    arg_types=[true_dict_rprimitive, true_dict_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyDict_Update",
+    error_kind=ERR_NEG_INT,
+)
+
 # Operation used for **value in dict displays.
 # This is mostly like dict.update(obj), but has customized error handling.
 dict_update_in_display_op = custom_op(
