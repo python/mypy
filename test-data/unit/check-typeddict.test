@@ -4289,3 +4289,17 @@ inputs: Sequence[Component] = [{
 }]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAssignableToWiderContext]
+from typing import TypedDict, Union
+
+class TD(TypedDict):
+    x: int
+
+x: Union[TD, dict[str, str]] = {"x": "foo"}
+
+def accepts_td(d: Union[TD, dict[str, str]]) -> None: ...
+
+accepts_td({"x": "foo"})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
