@@ -453,9 +453,9 @@ if object():
 if object():
     raise MyErrorWithDefault
 if object():
-    raise MyBaseError  # E: Too few arguments for "MyBaseError"
+    raise MyBaseError  # E: Missing positional argument "required" in call to "MyBaseError"
 if object():
-    raise MyError  # E: Too few arguments for "MyError"
+    raise MyError  # E: Missing positional arguments "required1", "required2" in call to "MyError"
 if object():
     raise MyKwError  # E: Missing named argument "kwonly" for "MyKwError"
 [builtins fixtures/exception.pyi]
