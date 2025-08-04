@@ -14,7 +14,7 @@ L0:
     return 0
 def f_obj.__init__(__mypyc_self__):
     __mypyc_self__ :: __main__.f_obj
-    r0, r1 :: dict[confirmed]
+    r0, r1 :: dict[exact]
     r2 :: str
     r3 :: i32
     r4 :: bit
@@ -31,13 +31,13 @@ def f_obj.__call__(__mypyc_self__, arg):
     arg :: object
     r0 :: ptr
     r1 :: object
-    r2 :: dict[confirmed]
+    r2 :: dict[exact]
     r3, r4 :: object
     r5 :: bit
     r6, r7 :: object
     r8 :: str
     r9 :: object
-    r10 :: dict[confirmed]
+    r10 :: dict[exact]
     r11 :: object[2]
     r12 :: object_ptr
     r13 :: object
@@ -124,7 +124,7 @@ L0:
     return r0
 def f(arg):
     arg :: object
-    r0 :: dict[confirmed]
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: bool
@@ -155,7 +155,7 @@ L0:
     return 1
 def f_obj.__init__(__mypyc_self__):
     __mypyc_self__ :: __main__.f_obj
-    r0, r1 :: dict[confirmed]
+    r0, r1 :: dict[exact]
     r2 :: str
     r3 :: i32
     r4 :: bit
@@ -172,13 +172,13 @@ def f_obj.__call__(__mypyc_self__, x):
     x :: object
     r0 :: ptr
     r1 :: object
-    r2 :: dict[confirmed]
+    r2 :: dict[exact]
     r3, r4 :: object
     r5 :: bit
     r6, r7 :: object
     r8 :: str
     r9 :: object
-    r10 :: dict[confirmed]
+    r10 :: dict[exact]
     r11 :: object[2]
     r12 :: object_ptr
     r13 :: object
@@ -255,7 +255,7 @@ L0:
     return r0
 def f(x):
     x :: object
-    r0 :: dict[confirmed]
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: None

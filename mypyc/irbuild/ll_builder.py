@@ -111,7 +111,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tagged,
-    is_true_dict_rprimitive,
+    is_exact_dict_rprimitive,
     is_tuple_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
@@ -122,7 +122,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
-    true_dict_rprimitive,
+    exact_dict_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.options import CompilerOptions
@@ -799,7 +799,7 @@ class LowLevelIRBuilder:
             elif kind == ARG_STAR2:
                 if star2_result is None:
                     star2_result = self._create_dict(star2_keys, star2_values, line)
-                if is_true_dict_rprimitive(value.type):
+                if is_exact_dict_rprimitive(value.type):
                     op = true_dict_update_in_display_op
                 else:
                     op = dict_update_in_display_op
@@ -1667,13 +1667,13 @@ class LowLevelIRBuilder:
             else:
                 # **value
                 if result is None:
-                    if len(key_value_pairs) == 1 and is_true_dict_rprimitive(value.type):
+                    if len(key_value_pairs) == 1 and is_exact_dict_rprimitive(value.type):
                         # fast path for cases like `my_func(**dict(zip(iterable, other)))` and similar
                         return self.call_c(true_dict_copy_op, [value], line=line)
 
                     result = self._create_dict(keys, values, line)
 
-                if is_true_dict_rprimitive(value.type):
+                if is_exact_dict_rprimitive(value.type):
                     op = true_dict_update_in_display_op
                 else:
                     op = dict_update_in_display_op
@@ -1782,7 +1782,7 @@ class LowLevelIRBuilder:
             result = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
         elif is_same_type(value.type, str_rprimitive):
             result = self.call_c(str_check_if_true, [value], value.line)
-        elif is_same_type(value.type, true_dict_rprimitive):
+        elif is_same_type(value.type, exact_dict_rprimitive):
             result = self.call_c(dict_is_true_op, [value], line=value.line)
         elif is_same_type(value.type, list_rprimitive) or is_same_type(
             value.type, dict_rprimitive
@@ -2289,7 +2289,7 @@ class LowLevelIRBuilder:
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))
             size_value = self.load_mem(elem_address, c_pyssize_t_rprimitive)
             self.add(KeepAlive([val]))
-        elif is_true_dict_rprimitive(typ):
+        elif is_exact_dict_rprimitive(typ):
             size_value = self.call_c(true_dict_ssize_t_size_op, [val], line)
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_ssize_t_size_op, [val], line)
