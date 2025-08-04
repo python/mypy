@@ -2681,3 +2681,50 @@ reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[__main__.Wrapper
 reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.ellipsis"
 reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
 [builtins fixtures/enum.pyi]
+
+[case testEnumItemsEqualityToLiterals]
+# flags: --python-version=3.11 --strict-equality
+from enum import Enum, StrEnum, IntEnum
+
+class A(str, Enum):
+    a = "b"
+    b = "a"
+
+A.a == "a"
+A.a == "b"
+
+A.a == A.a
+A.a == A.b  # E: Non-overlapping equality check (left operand type: "Literal[A.a]", right operand type: "Literal[A.b]")
+
+class B(StrEnum):
+    a = "b"
+    b = "a"
+
+B.a == "a"
+B.a == "b"
+
+B.a == B.a
+B.a == B.b  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[B.b]")
+
+B.a == A.a  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[A.a]")
+
+class C(IntEnum):
+    a = 0
+
+C.a == "a"  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal['a']")
+C.a == "b"  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal['b']")
+
+C.a == C.a
+C.a == C.b
+
+class D(int, Enum):
+    a = 0
+
+D.a == "a"  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal['a']")
+D.a == "b"  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal['b']")
+
+D.a == D.a
+D.a == D.b
+
+D.a == C.a  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal[C.a]")
+[builtins fixtures/dict.pyi]

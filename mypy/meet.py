@@ -547,9 +547,12 @@ def is_overlapping_types(
         right = right.fallback
 
     if isinstance(left, LiteralType) and isinstance(right, LiteralType):
-        if left.value == right.value:
+        if left.value == right.value or (left.fallback.type.is_enum ^ right.fallback.type.is_enum):
             # If values are the same, we still need to check if fallbacks are overlapping,
             # this is done below.
+            # Enums are more interesting:
+            # * if both sides are enums, they should have same values
+            # * if exactly one of them is a enum, fallback compatibibility is enough
             left = left.fallback
             right = right.fallback
         else:
