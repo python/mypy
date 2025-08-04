@@ -9,6 +9,10 @@ Test cases can provide a custom driver.py that overrides this file.
 
 import sys
 import native
+import asyncio
+import inspect
+
+evloop = asyncio.new_event_loop()
 
 failures = []
 tests_run = 0
@@ -18,7 +22,10 @@ for name in dir(native):
         test_func = getattr(native, name)
         tests_run += 1
         try:
-            test_func()
+            if inspect.iscoroutinefunction(test_func):
+                evloop.run_until_complete(test_func)
+            else:
+                test_func()
         except Exception as e:
             failures.append((name, sys.exc_info()))
 
