@@ -199,7 +199,7 @@ function_op(
 )
 
 # bool(dict) custom_op
-dict_is_true_op = function_op(
+dict_is_true_op = custom_op(
     arg_types=[true_dict_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="CPyDict_IsTrue",
