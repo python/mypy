@@ -1201,7 +1201,7 @@ def get_expr_length(expr: Expression) -> int | None:
             return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
         # star expression needs some extra logic but that can come later, this is good for now
-        pass
+        return get_expr_length(expr.expr)
     # TODO: extend this, unrolling should come with a good performance boost
     return None
 
