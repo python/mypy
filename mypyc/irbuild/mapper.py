@@ -91,11 +91,12 @@ class Mapper:
                 return bytes_rprimitive
             elif typ.type.fullname == "builtins.list":
                 return list_rprimitive
+            # TODO: figure out why this breaks tests, fix, and uncomment
+            # elif typ.type.fullname == "builtins.dict":
+            #     return exact_dict_rprimitive
             # Dict subclasses are at least somewhat common and we
             # specifically support them, so make sure that dict operations
             # get optimized on them.
-            elif typ.type.fullname == "builtins.dict":
-                return exact_dict_rprimitive
             elif any(cls.fullname == "builtins.dict" for cls in typ.type.mro):
                 return dict_rprimitive
             elif typ.type.fullname == "builtins.set":
