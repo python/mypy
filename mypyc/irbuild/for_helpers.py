@@ -1211,7 +1211,7 @@ def get_expr_length(expr: Expression) -> int | None:
         and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
-    # TODO: extend this, unrolling should come with a good performance boost
+    # TODO: extend this, passing length of listcomp and genexp should have worthwhile performance boost
     return None
 
 
