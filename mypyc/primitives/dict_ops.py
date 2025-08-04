@@ -470,7 +470,7 @@ true_dict_iter_fast_path_op = custom_op(
     arg_types=[true_dict_rprimitive],
     return_type=true_dict_rprimitive,
     c_function_name="_CPyDict_GetIterUnsafe",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEVER,
 )
 
 # PyDict_Next() fast iteration for subclass
