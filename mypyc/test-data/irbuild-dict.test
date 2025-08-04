@@ -36,10 +36,12 @@ def f() -> None:
     d = {}  # type: Dict[bool, int]
 [out]
 def f():
-    r0, d :: dict[exact]
+    r0 :: dict[exact]
+    r1, d :: dict
 L0:
     r0 = PyDict_New()
-    d = r0
+    r1 = cast(dict, r0)
+    d = r1
     return 1
 
 [case testNewEmptyDictViaFunc]
@@ -49,10 +51,12 @@ def f() -> None:
 
 [out]
 def f():
-    r0, d :: dict[exact]
+    r0 :: dict[exact]
+    r1, d :: dict
 L0:
     r0 = PyDict_New()
-    d = r0
+    r1 = cast(dict, r0)
+    d = r1
     return 1
 
 [case testNewDictWithValues]
@@ -63,13 +67,15 @@ def f(x):
     x :: object
     r0 :: str
     r1, r2 :: object
-    r3, d :: dict[exact]
+    r3 :: dict[exact]
+    r4, d :: dict
 L0:
     r0 = ''
     r1 = object 1
     r2 = object 2
     r3 = CPyDict_Build(2, r1, r2, r0, x)
-    d = r3
+    r4 = cast(dict, r3)
+    d = r4
     return 1
 
 [case testInDict]
@@ -81,7 +87,7 @@ def f(d: Dict[int, int]) -> bool:
         return False
 [out]
 def f(d):
-    d :: dict[exact]
+    d :: dict
     r0 :: object
     r1 :: i32
     r2 :: bit
@@ -108,7 +114,7 @@ def f(d: Dict[int, int]) -> bool:
         return False
 [out]
 def f(d):
-    d :: dict[exact]
+    d :: dict
     r0 :: object
     r1 :: i32
     r2 :: bit
@@ -133,11 +139,11 @@ def f(a: Dict[int, int], b: Dict[int, int]) -> None:
     a.update(b)
 [out]
 def f(a, b):
-    a, b :: dict[exact]
+    a, b :: dict
     r0 :: i32
     r1 :: bit
 L0:
-    r0 = PyDict_Update(a, b)
+    r0 = CPyDict_Update(a, b)
     r1 = r0 >= 0 :: signed
     return 1
 
@@ -149,10 +155,10 @@ def increment(d: Dict[str, int]) -> Dict[str, int]:
     return d
 [out]
 def increment(d):
-    d :: dict[exact]
+    d :: dict
     r0 :: short_int
     r1 :: native_int
-    r2 :: dict[exact]
+    r2 :: object
     r3 :: tuple[bool, short_int, object]
     r4 :: short_int
     r5 :: bool
@@ -164,9 +170,9 @@ def increment(d):
 L0:
     r0 = 0
     r1 = PyDict_Size(d)
-    r2 = _CPyDict_GetIterUnsafe(d)
+    r2 = CPyDict_GetKeysIter(d)
 L1:
-    r3 = CPyDict_NextKeyUnsafe(r2, r0)
+    r3 = CPyDict_NextKey(r2, r0)
     r4 = r3[1]
     r0 = r4
     r5 = r3[0]
@@ -175,13 +181,13 @@ L2:
     r6 = r3[2]
     r7 = cast(str, r6)
     k = r7
-    r8 = CPyDict_GetItemUnsafe(d, k)
+    r8 = CPyDict_GetItem(d, k)
     r9 = object 1
     r10 = PyNumber_InPlaceAdd(r8, r9)
-    r11 = PyDict_SetItem(d, k, r10)
+    r11 = CPyDict_SetItem(d, k, r10)
     r12 = r11 >= 0 :: signed
 L3:
-    r13 = CPyDict_CheckSizeUnsafe(d, r1)
+    r13 = CPyDict_CheckSize(d, r1)
     goto L1
 L4:
     r14 = CPy_NoErrOccurred()
@@ -195,25 +201,29 @@ def f(x: str, y: Dict[str, int]) -> Dict[str, int]:
 [out]
 def f(x, y):
     x :: str
-    y :: dict[exact]
+    y :: dict
     r0 :: str
     r1 :: object
     r2 :: dict[exact]
-    r3 :: i32
-    r4 :: bit
-    r5 :: object
-    r6 :: i32
-    r7 :: bit
+    r3 :: dict
+    r4 :: i32
+    r5 :: bit
+    r6 :: object
+    r7 :: i32
+    r8 :: bit
+    r9 :: dict
 L0:
     r0 = 'z'
     r1 = object 2
     r2 = CPyDict_Build(1, x, r1)
-    r3 = PyDict_Update(r2, y)
-    r4 = r3 >= 0 :: signed
-    r5 = object 3
-    r6 = PyDict_SetItem(r2, r0, r5)
-    r7 = r6 >= 0 :: signed
-    return r2
+    r3 = cast(dict, r2)
+    r4 = CPyDict_UpdateInDisplay(r3, y)
+    r5 = r4 >= 0 :: signed
+    r6 = object 3
+    r7 = PyDict_SetItem(r2, r0, r6)
+    r8 = r7 >= 0 :: signed
+    r9 = cast(dict, r2)
+    return r9
 
 [case testDictIterationMethods]
 from typing import Dict, TypedDict, Union
@@ -239,10 +249,10 @@ def typeddict(d: Person) -> None:
 [typing fixtures/typing-full.pyi]
 [out]
 def print_dict_methods(d1, d2):
-    d1, d2 :: dict[exact]
+    d1, d2 :: dict
     r0 :: short_int
     r1 :: native_int
-    r2 :: dict[exact]
+    r2 :: object
     r3 :: tuple[bool, short_int, object]
     r4 :: short_int
     r5 :: bool
@@ -255,7 +265,7 @@ def print_dict_methods(d1, d2):
     r12, r13 :: bit
     r14 :: short_int
     r15 :: native_int
-    r16 :: dict[exact]
+    r16 :: object
     r17 :: tuple[bool, short_int, object, object]
     r18 :: short_int
     r19 :: bool
@@ -267,9 +277,9 @@ def print_dict_methods(d1, d2):
 L0:
     r0 = 0
     r1 = PyDict_Size(d1)
-    r2 = _CPyDict_GetIterUnsafe(d1)
+    r2 = CPyDict_GetValuesIter(d1)
 L1:
-    r3 = CPyDict_NextValueUnsafe(r2, r0)
+    r3 = CPyDict_NextValue(r2, r0)
     r4 = r3[1]
     r0 = r4
     r5 = r3[0]
@@ -287,16 +297,16 @@ L3:
     return 1
 L4:
 L5:
-    r12 = CPyDict_CheckSizeUnsafe(d1, r1)
+    r12 = CPyDict_CheckSize(d1, r1)
     goto L1
 L6:
     r13 = CPy_NoErrOccurred()
 L7:
     r14 = 0
     r15 = PyDict_Size(d2)
-    r16 = _CPyDict_GetIterUnsafe(d2)
+    r16 = CPyDict_GetItemsIter(d2)
 L8:
-    r17 = CPyDict_NextItemUnsafe(r16, r14)
+    r17 = CPyDict_NextItem(r16, r14)
     r18 = r17[1]
     r14 = r18
     r19 = r17[0]
@@ -309,73 +319,76 @@ L9:
     k = r22
     v = r23
     r24 = box(int, k)
-    r25 = CPyDict_GetItemUnsafe(d2, r24)
+    r25 = CPyDict_GetItem(d2, r24)
     r26 = box(int, v)
     r27 = PyNumber_InPlaceAdd(r25, r26)
     r28 = box(int, k)
-    r29 = PyDict_SetItem(d2, r28, r27)
+    r29 = CPyDict_SetItem(d2, r28, r27)
     r30 = r29 >= 0 :: signed
 L10:
-    r31 = CPyDict_CheckSizeUnsafe(d2, r15)
+    r31 = CPyDict_CheckSize(d2, r15)
     goto L8
 L11:
     r32 = CPy_NoErrOccurred()
 L12:
     return 1
 def union_of_dicts(d):
-    d, r0, new :: dict[exact]
-    r1 :: short_int
-    r2 :: native_int
-    r3 :: dict[exact]
-    r4 :: tuple[bool, short_int, object, object]
-    r5 :: short_int
-    r6 :: bool
-    r7, r8 :: object
-    r9 :: str
-    r10 :: union[int, str]
+    d :: dict
+    r0 :: dict[exact]
+    r1, new :: dict
+    r2 :: short_int
+    r3 :: native_int
+    r4 :: object
+    r5 :: tuple[bool, short_int, object, object]
+    r6 :: short_int
+    r7 :: bool
+    r8, r9 :: object
+    r10 :: str
+    r11 :: union[int, str]
     k :: str
     v :: union[int, str]
-    r11 :: object
-    r12 :: object[1]
-    r13 :: object_ptr
-    r14 :: object
-    r15 :: int
-    r16 :: object
-    r17 :: i32
-    r18, r19, r20 :: bit
+    r12 :: object
+    r13 :: object[1]
+    r14 :: object_ptr
+    r15 :: object
+    r16 :: int
+    r17 :: object
+    r18 :: i32
+    r19, r20, r21 :: bit
 L0:
     r0 = PyDict_New()
-    new = r0
-    r1 = 0
-    r2 = PyDict_Size(d)
-    r3 = _CPyDict_GetIterUnsafe(d)
+    r1 = cast(dict, r0)
+    new = r1
+    r2 = 0
+    r3 = PyDict_Size(d)
+    r4 = CPyDict_GetItemsIter(d)
 L1:
-    r4 = CPyDict_NextItemUnsafe(r3, r1)
-    r5 = r4[1]
-    r1 = r5
-    r6 = r4[0]
-    if r6 goto L2 else goto L4 :: bool
+    r5 = CPyDict_NextItem(r4, r2)
+    r6 = r5[1]
+    r2 = r6
+    r7 = r5[0]
+    if r7 goto L2 else goto L4 :: bool
 L2:
-    r7 = r4[2]
-    r8 = r4[3]
-    r9 = cast(str, r7)
-    r10 = cast(union[int, str], r8)
-    k = r9
-    v = r10
-    r11 = load_address PyLong_Type
-    r12 = [v]
-    r13 = load_address r12
-    r14 = PyObject_Vectorcall(r11, r13, 1, 0)
+    r8 = r5[2]
+    r9 = r5[3]
+    r10 = cast(str, r8)
+    r11 = cast(union[int, str], r9)
+    k = r10
+    v = r11
+    r12 = load_address PyLong_Type
+    r13 = [v]
+    r14 = load_address r13
+    r15 = PyObject_Vectorcall(r12, r14, 1, 0)
     keep_alive v
-    r15 = unbox(int, r14)
-    r16 = box(int, r15)
-    r17 = PyDict_SetItem(new, k, r16)
-    r18 = r17 >= 0 :: signed
+    r16 = unbox(int, r15)
+    r17 = box(int, r16)
+    r18 = CPyDict_SetItem(new, k, r17)
+    r19 = r18 >= 0 :: signed
 L3:
-    r19 = CPyDict_CheckSizeUnsafe(d, r2)
+    r20 = CPyDict_CheckSize(d, r3)
     goto L1
 L4:
-    r20 = CPy_NoErrOccurred()
+    r21 = CPy_NoErrOccurred()
 L5:
     return 1
 def typeddict(d):
@@ -440,10 +453,10 @@ def f(d: Dict[int, int]) -> None:
     return d.clear()
 [out]
 def f(d):
-    d :: dict[exact]
+    d :: dict
     r0 :: bit
 L0:
-    r0 = PyDict_Clear(d)
+    r0 = CPyDict_Clear(d)
     return 1
 
 [case testDictCopy]

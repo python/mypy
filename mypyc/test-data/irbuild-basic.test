@@ -3257,7 +3257,7 @@ L0:
     r1 = PySequence_List(r0)
     return r1
 def h(x):
-    x :: dict[exact]
+    x :: dict
     r0 :: list
 L0:
     r0 = PySequence_List(x)
