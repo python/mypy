@@ -232,7 +232,9 @@ def sequence_from_generator_preallocate_helper(
         rtype = builder.node_type(gen.sequences[0])
         if is_sequence_rprimitive(rtype):
             sequence = builder.accept(gen.sequences[0])
-            length = get_expr_length_value(builder, gen.sequences[0], sequence, gen.line, use_pyssize_t=True)
+            length = get_expr_length_value(
+                builder, gen.sequences[0], sequence, gen.line, use_pyssize_t=True
+            )
             target_op = empty_op_llbuilder(length, gen.line)
 
             def set_item(item_index: Value) -> None:
@@ -1197,7 +1199,9 @@ def get_expr_length(expr: Expression) -> Optional[int]:
     return None
 
 
-def get_expr_length_value(builder: IRBuilder, expr: Expression, expr_reg, line: int, use_pyssize_t: bool) -> Value:
+def get_expr_length_value(
+    builder: IRBuilder, expr: Expression, expr_reg, line: int, use_pyssize_t: bool
+) -> Value:
     rtype = builder.node_type(expr)
     assert is_sequence_rprimitive(rtype), rtype
     length = get_expr_length(expr)
