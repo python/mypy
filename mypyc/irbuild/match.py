@@ -22,9 +22,9 @@ from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.primitives.dict_ops import (
     dict_copy,
+    exact_dict_del_item,
     mapping_has_key,
     supports_mapping_protocol,
-    exact_dict_del_item,
 )
 from mypyc.primitives.generic_ops import generic_ssize_t_len_op
 from mypyc.primitives.list_ops import (

@@ -93,10 +93,10 @@ from mypyc.primitives.dict_ops import (
     dict_keys_op,
     dict_setdefault_spec_init_op,
     dict_values_op,
-    isinstance_dict,
     exact_dict_items_op,
     exact_dict_keys_op,
     exact_dict_values_op,
+    isinstance_dict,
 )
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.int_ops import isinstance_int
