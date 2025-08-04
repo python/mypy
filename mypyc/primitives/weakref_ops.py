@@ -1,6 +1,6 @@
 from mypyc.ir.ops import ERR_MAGIC
 from mypyc.ir.rtypes import object_rprimitive, pointer_rprimitive, weakref_rprimitive
-from mypyc.primitives.registry import ERR_NEG_INT, function_op, method_op
+from mypyc.primitives.registry import custom_op, function_op
 
 # Weakref operations
 
@@ -21,10 +21,10 @@ new_ref__with_callback_op = function_op(
     error_kind=ERR_MAGIC,
 )
 
-deref_op = method_op(
-    name="__call__",
+# TODO: generate specialized versions of this that return the properr rtype
+weakref_deref_op = custom_op(
     arg_types=[weakref_rprimitive],
     return_type=object_rprimitive,
-    c_function_name="PyWeakref_GetRef",
-    error_kind=ERR_NEG_INT,
+    c_function_name="CPyWeakref_GetRef",
+    error_kind=ERR_MAGIC,
 )

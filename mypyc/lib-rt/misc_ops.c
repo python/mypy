@@ -1098,3 +1098,18 @@ void CPy_SetImmortal(PyObject *obj) {
 }
 
 #endif
+
+
+PyObject *CPyWeakref_GetRef(PyObject *ref)
+{
+    PyObject *obj = NULL;
+    int success = PyWeakref_GetRef(ref, &obj);
+    if (success == -1) {
+        return NULL;
+    } else if (obj == NULL) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        return obj;
+    }
+}

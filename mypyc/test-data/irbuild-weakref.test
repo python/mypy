@@ -2,62 +2,83 @@
 import weakref
 from typing import Any, Callable
 def f(x: object) -> object:
-    return weakref.ref(x)()
+    ref = weakref.ref(x)
+    return ref()
 
 [out]
 def f(x):
     x :: object
     r0 :: weakref.ReferenceType
-    r1 :: object
+    ref :: object
+    r1 :: weakref.ReferenceType
+    r2 :: object
 L0:
     r0 = PyWeakref_NewRef(x, 0)
-    r1 = PyWeakref_GetRef(r0)
-    return r1
+    ref = r0
+    r1 = cast(weakref.ReferenceType, ref)
+    r2 = CPyWeakref_GetRef(r1)
+    return r2
 
 [case testWeakrefRefCallback]
 import weakref
 from typing import Any, Callable
 def f(x: object, cb: Callable[[object], Any]) -> object:
-    return weakref.ref(x, cb)()
+    ref = weakref.ref(x, cb)
+    return ref()
 
 [out]
 def f(x, cb):
     x, cb :: object
     r0 :: weakref.ReferenceType
-    r1 :: object
+    ref :: object
+    r1 :: weakref.ReferenceType
+    r2 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
-    r1 = PyWeakref_GetRef(r0)
-    return r1
+    ref = r0
+    r1 = cast(weakref.ReferenceType, ref)
+    r2 = CPyWeakref_GetRef(r1)
+    return r2
 
 [case testFromWeakrefRef]
 from typing import Any, Callable
 from weakref import ref
 def f(x: object) -> object:
-    return ref(x)()
+    r = ref(x)
+    return r()
 
 [out]
 def f(x):
     x :: object
     r0 :: weakref.ReferenceType
-    r1 :: object
+    r :: object
+    r1 :: weakref.ReferenceType
+    r2 :: object
 L0:
     r0 = PyWeakref_NewRef(x, 0)
-    r1 = PyWeakref_GetRef(r0)
-    return r1
+    r = r0
+    r1 = cast(weakref.ReferenceType, r)
+    r2 = CPyWeakref_GetRef(r1)
+    return r2
 
 [case testFromWeakrefRefCallback]
 from typing import Any, Callable
 from weakref import ref
 def f(x: object, cb: Callable[[object], Any]) -> object:
-    return ref(x, cb)()
+    r = ref(x, cb)
+    return r()
 
 [out]
 def f(x, cb):
     x, cb :: object
     r0 :: weakref.ReferenceType
-    r1 :: object
+    r :: object
+    r1 :: weakref.ReferenceType
+    r2 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
-    r1 = PyWeakref_GetRef(r0)
-    return r1
+    r = r0
+    r1 = cast(weakref.ReferenceType, r)
+    r2 = CPyWeakref_GetRef(r1)
+    return r2
+
