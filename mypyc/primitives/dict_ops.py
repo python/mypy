@@ -392,7 +392,7 @@ method_op(
 )
 
 # dict.copy()
-true_dict_copy_op = method_op(
+method_op(
     name="copy",
     arg_types=[true_dict_rprimitive],
     return_type=true_dict_rprimitive,
@@ -406,6 +406,15 @@ method_op(
     arg_types=[dict_rprimitive],
     return_type=dict_rprimitive,
     c_function_name="CPyDict_Copy",
+    error_kind=ERR_MAGIC,
+)
+
+# dict.copy() custom_op
+true_dict_copy_op = method_op(
+    name="copy",
+    arg_types=[true_dict_rprimitive],
+    return_type=true_dict_rprimitive,
+    c_function_name="PyDict_Copy",
     error_kind=ERR_MAGIC,
 )
 
