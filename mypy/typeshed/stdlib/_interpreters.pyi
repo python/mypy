@@ -1,7 +1,9 @@
 import types
 from collections.abc import Callable
-from typing import Any, Final, Literal, SupportsIndex
+from typing import Any, Final, Literal, SupportsIndex, TypeVar
 from typing_extensions import TypeAlias
+
+_R = TypeVar("_R")
 
 _Configs: TypeAlias = Literal["default", "isolated", "legacy", "empty", ""]
 _SharedDict: TypeAlias = dict[str, Any]  # many objects can be shared
@@ -21,7 +23,7 @@ def get_current() -> tuple[int, int]: ...
 def get_main() -> tuple[int, int]: ...
 def is_running(id: SupportsIndex, *, restrict: bool = False) -> bool: ...
 def get_config(id: SupportsIndex, *, restrict: bool = False) -> types.SimpleNamespace: ...
-def whence(id: SupportsIndex) -> int: ...
+def whence(id: SupportsIndex) -> _Whence: ...
 def exec(
     id: SupportsIndex,
     code: str | types.CodeType | Callable[[], object],
@@ -31,12 +33,12 @@ def exec(
 ) -> None | types.SimpleNamespace: ...
 def call(
     id: SupportsIndex,
-    callable: Callable[..., object],
+    callable: Callable[..., _R],
     args: tuple[object, ...] | None = None,
     kwargs: dict[str, object] | None = None,
     *,
     restrict: bool = False,
-) -> object: ...
+) -> tuple[_R, types.SimpleNamespace]: ...
 def run_string(
     id: SupportsIndex,
     script: str | types.CodeType | Callable[[], object],
@@ -53,6 +55,7 @@ def decref(id: SupportsIndex, *, restrict: bool = False) -> None: ...
 def is_shareable(obj: object) -> bool: ...
 def capture_exception(exc: BaseException | None = None) -> types.SimpleNamespace: ...
 
+_Whence: TypeAlias = Literal[0, 1, 2, 3, 4, 5]
 WHENCE_UNKNOWN: Final = 0
 WHENCE_RUNTIME: Final = 1
 WHENCE_LEGACY_CAPI: Final = 2
