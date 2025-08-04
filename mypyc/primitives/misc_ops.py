@@ -189,7 +189,7 @@ function_op(
     arg_types=[true_dict_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="CPyDict_IsTrue",
-    error_kind=ERR_FALSE,
+    error_kind=ERR_NEVER,
 )
 
 # bool(dict) custom_op
@@ -197,7 +197,7 @@ dict_is_true_op = custom_op(
     arg_types=[true_dict_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="CPyDict_IsTrue",
-    error_kind=ERR_FALSE,
+    error_kind=ERR_NEVER,
 )
 
 # bool(obj) with unboxed result
