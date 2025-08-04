@@ -410,8 +410,7 @@ method_op(
 )
 
 # dict.copy() custom_op
-true_dict_copy_op = method_op(
-    name="copy",
+true_dict_copy_op = custom_op(
     arg_types=[true_dict_rprimitive],
     return_type=true_dict_rprimitive,
     c_function_name="PyDict_Copy",
