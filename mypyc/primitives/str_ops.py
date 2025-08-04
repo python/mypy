@@ -318,7 +318,7 @@ method_op(
 # str.count(substring, start)
 method_op(
     name="count",
-    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
+    arg_types=[str_rprimitive, str_rprimitive, c_pyssize_t_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name="CPyStr_Count",
     error_kind=ERR_NEG_INT,
@@ -327,7 +327,7 @@ method_op(
 # str.count(substring, start, end)
 method_op(
     name="count",
-    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive, int_rprimitive],
+    arg_types=[str_rprimitive, str_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name="CPyStr_CountFull",
     error_kind=ERR_NEG_INT,
