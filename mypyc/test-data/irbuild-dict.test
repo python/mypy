@@ -465,9 +465,9 @@ def f(d: Dict[int, int]) -> Dict[int, int]:
     return d.copy()
 [out]
 def f(d):
-    d, r0 :: dict[exact]
+    d, r0 :: dict
 L0:
-    r0 = PyDict_Copy(d)
+    r0 = CPyDict_Copy(d)
     return r0
 
 [case testDictSetdefault]
