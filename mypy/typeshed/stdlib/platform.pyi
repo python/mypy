@@ -1,6 +1,6 @@
 import sys
 from typing import NamedTuple, type_check_only
-from typing_extensions import Self
+from typing_extensions import Self, deprecated
 
 def libc_ver(executable: str | None = None, lib: str = "", version: str = "", chunksize: int = 16384) -> tuple[str, str]: ...
 def win32_ver(release: str = "", version: str = "", csd: str = "", ptype: str = "") -> tuple[str, str, str, str]: ...
@@ -9,9 +9,24 @@ def win32_is_iot() -> bool: ...
 def mac_ver(
     release: str = "", versioninfo: tuple[str, str, str] = ("", "", ""), machine: str = ""
 ) -> tuple[str, tuple[str, str, str], str]: ...
-def java_ver(
-    release: str = "", vendor: str = "", vminfo: tuple[str, str, str] = ("", "", ""), osinfo: tuple[str, str, str] = ("", "", "")
-) -> tuple[str, str, tuple[str, str, str], tuple[str, str, str]]: ...
+
+if sys.version_info >= (3, 13):
+    @deprecated("Deprecated since Python 3.13; will be removed in Python 3.15.")
+    def java_ver(
+        release: str = "",
+        vendor: str = "",
+        vminfo: tuple[str, str, str] = ("", "", ""),
+        osinfo: tuple[str, str, str] = ("", "", ""),
+    ) -> tuple[str, str, tuple[str, str, str], tuple[str, str, str]]: ...
+
+else:
+    def java_ver(
+        release: str = "",
+        vendor: str = "",
+        vminfo: tuple[str, str, str] = ("", "", ""),
+        osinfo: tuple[str, str, str] = ("", "", ""),
+    ) -> tuple[str, str, tuple[str, str, str], tuple[str, str, str]]: ...
+
 def system_alias(system: str, release: str, version: str) -> tuple[str, str, str]: ...
 def architecture(executable: str = sys.executable, bits: str = "", linkage: str = "") -> tuple[str, str]: ...
 

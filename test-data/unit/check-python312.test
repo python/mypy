@@ -2084,3 +2084,14 @@ reveal_type(A1().x)  # N: Revealed type is "builtins.int"
 reveal_type(A2().x)  # N: Revealed type is "builtins.int"
 reveal_type(A3().x)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/tuple.pyi]
+
+[case testDataclassWithTypeVarTuple]
+# flags: --python-version 3.13
+# https://github.com/python/mypy/issues/19559
+from typing import Callable
+from dataclasses import dataclass
+
+@dataclass
+class Test[*Ts, R]:
+    a: Callable[[*Ts], R]
+[builtins fixtures/dict.pyi]

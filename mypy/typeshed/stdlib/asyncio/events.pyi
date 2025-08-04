@@ -12,7 +12,7 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import Executor
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Literal, Protocol, TypeVar, overload
+from typing import IO, Any, Literal, Protocol, TypeVar, overload, type_check_only
 from typing_extensions import Self, TypeAlias, TypeVarTuple, Unpack, deprecated
 
 from . import _AwaitableLike, _CoroutineLike
@@ -28,14 +28,11 @@ if sys.version_info < (3, 14):
 # Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 14):
     __all__ = (
-        "_AbstractEventLoopPolicy",
         "AbstractEventLoop",
         "AbstractServer",
         "Handle",
         "TimerHandle",
-        "_get_event_loop_policy",
         "get_event_loop_policy",
-        "_set_event_loop_policy",
         "set_event_loop_policy",
         "get_event_loop",
         "set_event_loop",
@@ -71,6 +68,7 @@ _ExceptionHandler: TypeAlias = Callable[[AbstractEventLoop, _Context], object]
 _ProtocolFactory: TypeAlias = Callable[[], BaseProtocol]
 _SSLContext: TypeAlias = bool | None | ssl.SSLContext
 
+@type_check_only
 class _TaskFactory(Protocol):
     def __call__(self, loop: AbstractEventLoop, factory: _CoroutineLike[_T], /) -> Future[_T]: ...
 
@@ -602,6 +600,9 @@ class AbstractEventLoop:
     @abstractmethod
     async def shutdown_default_executor(self) -> None: ...
 
+# This class does not exist at runtime, but stubtest complains if it's marked as
+# @type_check_only because it has an alias that does exist at runtime. See mypy#19568.
+# @type_check_only
 class _AbstractEventLoopPolicy:
     @abstractmethod
     def get_event_loop(self) -> AbstractEventLoop: ...

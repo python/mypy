@@ -2,13 +2,14 @@ import sys
 from collections.abc import Callable
 from decimal import Decimal
 from numbers import Rational, Real
-from typing import Any, Literal, Protocol, SupportsIndex, overload
+from typing import Any, Literal, Protocol, SupportsIndex, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 _ComparableNum: TypeAlias = int | float | Decimal | Real
 
 __all__ = ["Fraction"]
 
+@type_check_only
 class _ConvertibleToIntegerRatio(Protocol):
     def as_integer_ratio(self) -> tuple[int | Rational, int | Rational]: ...
 
