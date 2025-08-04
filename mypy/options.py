@@ -398,6 +398,9 @@ class Options:
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
+        # Treat special methods as being implicitly positional-only.
+        # Set to False when running stubtest.
+        self.pos_only_special_methods = True
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
