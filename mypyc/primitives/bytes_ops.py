@@ -14,6 +14,7 @@ from mypyc.ir.rtypes import (
     list_rprimitive,
     object_rprimitive,
     str_rprimitive,
+    true_dict_rprimitive,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
@@ -30,7 +31,7 @@ load_address_op(name="builtins.bytes", type=object_rprimitive, src="PyBytes_Type
 # bytes(obj)
 function_op(
     name="builtins.bytes",
-    arg_types=[RUnion([list_rprimitive, dict_rprimitive, str_rprimitive])],
+    arg_types=[RUnion([list_rprimitive, dict_rprimitive, true_dict_rprimitive, str_rprimitive])],
     return_type=bytes_rprimitive,
     c_function_name="PyBytes_FromObject",
     error_kind=ERR_MAGIC,
