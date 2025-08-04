@@ -1,0 +1,30 @@
+# Test cases for weakrefs (compile and run)
+
+[case testWeakrefRef]
+from weakref import ref
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Object:
+    """some random weakreffable object"""
+    pass
+
+def test_weakref_ref():
+    obj = Object()
+    r = ref(obj)
+    assert r() is obj
+    obj = None
+    assert r() is None, r()
+
+def test_weakref_ref_with_callback():
+    obj = Object()
+    r = ref(obj, lambda x: x)
+    assert r() is obj
+    obj = None
+    assert r() is None, r()
+
+[file driver.py]
+from native import test_weakref_ref, test_weakref_ref_with_callback
+
+test_weakref_ref()
+test_weakref_ref_with_callback()

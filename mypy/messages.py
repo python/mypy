@@ -1003,7 +1003,7 @@ class MessageBuilder:
         if self.prefer_simple_messages():
             return
         # https://github.com/python/mypy/issues/11309
-        first_arg = callee.def_extras.get("first_arg")
+        first_arg = get_first_arg(callee)
         if first_arg and first_arg not in {"self", "cls", "mcs"}:
             self.note(
                 "Looks like the first special argument in a method "
@@ -3007,7 +3007,7 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             s = definition_arg_names[0] + s
         s = f"{tp.definition.name}({s})"
     elif tp.name:
-        first_arg = tp.def_extras.get("first_arg")
+        first_arg = get_first_arg(tp)
         if first_arg:
             if s:
                 s = ", " + s
@@ -3048,6 +3048,12 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
                 tvars.append(repr(tvar))
         s = f"[{', '.join(tvars)}] {s}"
     return f"def {s}"
+
+
+def get_first_arg(tp: CallableType) -> str | None:
+    if not isinstance(tp.definition, FuncDef) or not tp.definition.info or tp.definition.is_static:
+        return None
+    return tp.definition.original_first_arg
 
 
 def variance_string(variance: int) -> str:
