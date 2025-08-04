@@ -15,6 +15,7 @@ from mypyc.ir.rtypes import (
     list_rprimitive,
     object_rprimitive,
     true_dict_rprimitive,
+    void_rtype,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
@@ -377,7 +378,7 @@ method_op(
 method_op(
     name="clear",
     arg_types=[true_dict_rprimitive],
-    return_type=bit_rprimitive,
+    return_type=void_rtype,
     c_function_name="PyDict_Clear",
     error_kind=ERR_NEVER,
 )
