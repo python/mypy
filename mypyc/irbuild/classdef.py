@@ -262,6 +262,9 @@ class NonExtClassBuilder(ClassBuilder):
         non_ext_class = load_non_ext_class(self.builder, ir, self.non_ext, self.cdef.line)
         non_ext_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
 
+        # Try to avoid contention when using free threading.
+        self.builder.set_immortal_if_free_threaded(non_ext_class, self.cdef.line)
+
         # Save the decorated class
         self.builder.add(
             InitStatic(non_ext_class, self.cdef.name, self.builder.module_name, NAMESPACE_TYPE)
@@ -449,6 +452,11 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     )
     # Create the class
     tp = builder.call_c(pytype_from_template_op, [template, tp_bases, modname], cdef.line)
+
+    # Set type object to be immortal if free threaded, as otherwise reference count contention
+    # can cause a big performance hit.
+    builder.set_immortal_if_free_threaded(tp, cdef.line)
+
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:

@@ -136,7 +136,7 @@ from _typeshed import ReadableBuffer, Unused, WriteableBuffer
 from collections.abc import Iterable
 from enum import IntEnum, IntFlag
 from io import BufferedReader, BufferedRWPair, BufferedWriter, IOBase, RawIOBase, TextIOWrapper
-from typing import Any, Literal, Protocol, SupportsIndex, overload
+from typing import Any, Literal, Protocol, SupportsIndex, overload, type_check_only
 from typing_extensions import Self
 
 __all__ = [
@@ -1290,6 +1290,7 @@ if sys.platform != "win32" and sys.platform != "linux":
 if sys.platform == "win32":
     errorTab: dict[int, str]  # undocumented
 
+@type_check_only
 class _SendableFile(Protocol):
     def read(self, size: int, /) -> bytes: ...
     def seek(self, offset: int, /) -> object: ...
