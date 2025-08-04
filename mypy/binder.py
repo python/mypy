@@ -8,7 +8,16 @@ from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash, subkeys
-from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
+from mypy.nodes import (
+    LITERAL_NO,
+    Expression,
+    IndexExpr,
+    MemberExpr,
+    NameExpr,
+    RefExpr,
+    TypeInfo,
+    Var,
+)
 from mypy.options import Options
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.typeops import make_simplified_union
@@ -172,6 +181,15 @@ class ConditionalTypeBinder:
             if key in self.frames[i].types:
                 return self.frames[i].types[key]
         return None
+
+    @classmethod
+    def can_put_directly(cls, expr: Expression) -> bool:
+        """Will `.put()` on this expression be successful?
+
+        This is inlined in `.put()` because the logic is rather hot and must be kept
+        in sync.
+        """
+        return isinstance(expr, (IndexExpr, MemberExpr, NameExpr)) and literal(expr) > LITERAL_NO
 
     def put(self, expr: Expression, typ: Type, *, from_assignment: bool = True) -> None:
         """Directly set the narrowed type of expression (if it supports it).

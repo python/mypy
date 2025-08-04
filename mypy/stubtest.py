@@ -506,9 +506,13 @@ def _verify_metaclass(
 
 @verify.register(nodes.TypeInfo)
 def verify_typeinfo(
-    stub: nodes.TypeInfo, runtime: MaybeMissing[type[Any]], object_path: list[str]
+    stub: nodes.TypeInfo,
+    runtime: MaybeMissing[type[Any]],
+    object_path: list[str],
+    *,
+    is_alias_target: bool = False,
 ) -> Iterator[Error]:
-    if stub.is_type_check_only:
+    if stub.is_type_check_only and not is_alias_target:
         # This type only exists in stubs, we only check that the runtime part
         # is missing. Other checks are not required.
         if not isinstance(runtime, Missing):
@@ -1449,7 +1453,7 @@ def verify_typealias(
         # Okay, either we couldn't construct a fullname
         # or the fullname of the stub didn't match the fullname of the runtime.
         # Fallback to a full structural check of the runtime vis-a-vis the stub.
-        yield from verify(stub_origin, runtime_origin, object_path)
+        yield from verify_typeinfo(stub_origin, runtime_origin, object_path, is_alias_target=True)
         return
     if isinstance(stub_target, mypy.types.UnionType):
         # complain if runtime is not a Union or UnionType

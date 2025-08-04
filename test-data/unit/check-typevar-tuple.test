@@ -886,7 +886,6 @@ reveal_type(z)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicWithBadType]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, Generic
 from typing_extensions import Unpack, TypeVarTuple
 

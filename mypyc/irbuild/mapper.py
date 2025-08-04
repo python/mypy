@@ -73,6 +73,10 @@ class Mapper:
 
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
+            if typ.type.is_newtype:
+                # Unwrap NewType to its base type for rprimitive mapping
+                assert len(typ.type.bases) == 1, typ.type.bases
+                return self.type_to_rtype(typ.type.bases[0])
             if typ.type.fullname == "builtins.int":
                 return int_rprimitive
             elif typ.type.fullname == "builtins.float":

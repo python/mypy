@@ -2,17 +2,15 @@ import logging
 import sys
 import unittest.result
 from _typeshed import SupportsDunderGE, SupportsDunderGT, SupportsDunderLE, SupportsDunderLT, SupportsRSub, SupportsSub
+from builtins import _ClassInfo
 from collections.abc import Callable, Container, Iterable, Mapping, Sequence, Set as AbstractSet
 from contextlib import AbstractContextManager
 from re import Pattern
 from types import GenericAlias, TracebackType
-from typing import Any, AnyStr, Final, Generic, NoReturn, Protocol, SupportsAbs, SupportsRound, TypeVar, overload
-from typing_extensions import Never, ParamSpec, Self, TypeAlias
+from typing import Any, AnyStr, Final, Generic, NoReturn, Protocol, SupportsAbs, SupportsRound, TypeVar, overload, type_check_only
+from typing_extensions import Never, ParamSpec, Self
 from unittest._log import _AssertLogsContext, _LoggingWatcher
 from warnings import WarningMessage
-
-if sys.version_info >= (3, 10):
-    from types import UnionType
 
 _T = TypeVar("_T")
 _S = TypeVar("_S", bound=SupportsSub[Any, Any])
@@ -58,15 +56,8 @@ def skipUnless(condition: object, reason: str) -> Callable[[_FT], _FT]: ...
 class SkipTest(Exception):
     def __init__(self, reason: str) -> None: ...
 
+@type_check_only
 class _SupportsAbsAndDunderGE(SupportsDunderGE[Any], SupportsAbs[Any], Protocol): ...
-
-# Keep this alias in sync with builtins._ClassInfo
-# We can't import it from builtins or pytype crashes,
-# due to the fact that pytype uses a custom builtins stub rather than typeshed's builtins stub
-if sys.version_info >= (3, 10):
-    _ClassInfo: TypeAlias = type | UnionType | tuple[_ClassInfo, ...]
-else:
-    _ClassInfo: TypeAlias = type | tuple[_ClassInfo, ...]
 
 class TestCase:
     failureException: type[BaseException]

@@ -254,12 +254,6 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def warn_deprecated_overload_item(
-        self, node: Node | None, context: Context, *, target: Type, selftype: Type | None = None
-    ) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
     def type_is_iterable(self, type: Type) -> bool:
         raise NotImplementedError
 

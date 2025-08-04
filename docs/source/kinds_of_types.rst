@@ -41,6 +41,11 @@ operations are permitted on the value, and the operations are only checked
 at runtime. You can use ``Any`` as an "escape hatch" when you can't use
 a more precise type for some reason.
 
+This should not be confused with the
+:py:class:`object` type, which represents the set of all values.
+Unlike ``object``, ``Any`` introduces type unsafety — see
+:ref:`any-vs-object` for more.
+
 ``Any`` is compatible with every other type, and vice versa. You can freely
 assign a value of type ``Any`` to a variable with a more precise type:
 

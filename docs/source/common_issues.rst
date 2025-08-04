@@ -218,6 +218,14 @@ daemon <mypy_daemon>`, which can speed up incremental mypy runtimes by
 a factor of 10 or more. :ref:`Remote caching <remote-cache>` can
 make cold mypy runs several times faster.
 
+Furthermore: as of `mypy 1.13 <https://mypy-lang.blogspot.com/2024/10/mypy-113-released.html>`_,
+mypy allows use of the orjson library for handling the cache instead of the stdlib json, for
+improved performance. You can ensure the presence of orjson using the faster-cache extra:
+
+    python3 -m pip install -U mypy[faster-cache]
+
+Mypy may depend on orjson by default in the future.
+
 Types of empty collections
 --------------------------
 
@@ -505,11 +513,15 @@ to see the types of all local variables at once. Example:
    #     b: builtins.str
 .. note::
 
-   ``reveal_type`` and ``reveal_locals`` are only understood by mypy and
-   don't exist in Python. If you try to run your program, you'll have to
-   remove any ``reveal_type`` and ``reveal_locals`` calls before you can
-   run your code. Both are always available and you don't need to import
-   them.
+    ``reveal_type`` and ``reveal_locals`` are handled specially by mypy during
+    type checking, and don't have to be defined or imported.
+
+    However, if you want to run your code,
+    you'll have to remove any ``reveal_type`` and ``reveal_locals``
+    calls from your program or else Python will give you an error at runtime.
+
+    Alternatively, you can import ``reveal_type`` from ``typing_extensions``
+    or ``typing`` (on Python 3.11 and newer)
 
 .. _silencing-linters:
 

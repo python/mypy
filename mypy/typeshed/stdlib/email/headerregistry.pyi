@@ -13,7 +13,7 @@ from email._header_value_parser import (
 )
 from email.errors import MessageDefect
 from email.policy import Policy
-from typing import Any, ClassVar, Literal, Protocol
+from typing import Any, ClassVar, Literal, Protocol, type_check_only
 from typing_extensions import Self
 
 class BaseHeader(str):
@@ -137,6 +137,7 @@ class MessageIDHeader:
     @staticmethod
     def value_parser(value: str) -> MessageID: ...
 
+@type_check_only
 class _HeaderParser(Protocol):
     max_count: ClassVar[Literal[1] | None]
     @staticmethod
