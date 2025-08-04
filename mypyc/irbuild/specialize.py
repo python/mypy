@@ -66,10 +66,12 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_true_dict_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
     set_rprimitive,
     str_rprimitive,
+    true_dict_rprimitive,
     uint8_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
@@ -92,6 +94,9 @@ from mypyc.primitives.dict_ops import (
     dict_setdefault_spec_init_op,
     dict_values_op,
     isinstance_dict,
+    true_dict_items_op,
+    true_dict_keys_op,
+    true_dict_values_op,
 )
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.int_ops import isinstance_int
@@ -254,11 +259,22 @@ def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) 
     # so the corresponding helpers in CPy.h fallback to (inlined)
     # generic logic.
     if attr == "keys":
-        return builder.call_c(dict_keys_op, [obj], expr.line)
+        if is_true_dict_rprimitive(rtype):
+            op = true_dict_keys_op
+        else:
+            op = dict_keys_op
     elif attr == "values":
-        return builder.call_c(dict_values_op, [obj], expr.line)
+        if is_true_dict_rprimitive(rtype):
+            op = true_dict_values_op
+        else:
+            op = dict_values_op
     else:
-        return builder.call_c(dict_items_op, [obj], expr.line)
+        if is_true_dict_rprimitive(rtype):
+            op = true_dict_items_op
+        else:
+            op = dict_items_op
+
+    return builder.call_c(op, [obj], expr.line)
 
 
 @specialize_function("builtins.list")
@@ -367,6 +383,7 @@ def faster_min_max(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value
 @specialize_function("join", str_rprimitive)
 @specialize_function("extend", list_rprimitive)
 @specialize_function("update", dict_rprimitive)
+@specialize_function("update", true_dict_rprimitive)
 @specialize_function("update", set_rprimitive)
 def translate_safe_generator_call(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
@@ -608,6 +625,7 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
 
 @specialize_function("setdefault", dict_rprimitive)
+@specialize_function("setdefault", true_dict_rprimitive)
 def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for 'dict.setdefault' which would only construct
     default empty collection when needed.

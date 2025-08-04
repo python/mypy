@@ -201,19 +201,19 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[confirmed]
     r8, r9 :: object
     r10 :: str
-    r11 :: dict
+    r11 :: dict[confirmed]
     r12 :: object
     r13 :: str
-    r14 :: dict
+    r14 :: dict[confirmed]
     r15 :: str
     r16 :: object
     r17 :: object[1]
     r18 :: object_ptr
     r19 :: object
-    r20 :: dict
+    r20 :: dict[confirmed]
     r21 :: str
     r22 :: i32
     r23 :: bit
@@ -225,7 +225,7 @@ def __top_level__():
     r30 :: tuple
     r31 :: i32
     r32 :: bit
-    r33 :: dict
+    r33 :: dict[confirmed]
     r34 :: str
     r35 :: i32
     r36 :: bit
@@ -236,15 +236,15 @@ def __top_level__():
     r42 :: tuple
     r43 :: i32
     r44 :: bit
-    r45 :: dict
+    r45 :: dict[confirmed]
     r46 :: str
     r47 :: i32
     r48 :: bit
     r49, r50 :: object
-    r51 :: dict
+    r51 :: dict[confirmed]
     r52 :: str
     r53 :: object
-    r54 :: dict
+    r54 :: dict[confirmed]
     r55 :: str
     r56, r57 :: object
     r58 :: tuple
@@ -255,7 +255,7 @@ def __top_level__():
     r65 :: tuple
     r66 :: i32
     r67 :: bit
-    r68 :: dict
+    r68 :: dict[confirmed]
     r69 :: str
     r70 :: i32
     r71 :: bit
@@ -282,14 +282,14 @@ L2:
     r13 = 'T'
     r14 = __main__.globals :: static
     r15 = 'TypeVar'
-    r16 = CPyDict_GetItem(r14, r15)
+    r16 = CPyDict_GetItemUnsafe(r14, r15)
     r17 = [r13]
     r18 = load_address r17
     r19 = PyObject_Vectorcall(r16, r18, 1, 0)
     keep_alive r13
     r20 = __main__.globals :: static
     r21 = 'T'
-    r22 = CPyDict_SetItem(r20, r21, r19)
+    r22 = PyDict_SetItem(r20, r21, r19)
     r23 = r22 >= 0 :: signed
     r24 = <error> :: object
     r25 = '__main__'
@@ -322,10 +322,10 @@ L2:
     r50 = __main__.S :: type
     r51 = __main__.globals :: static
     r52 = 'Generic'
-    r53 = CPyDict_GetItem(r51, r52)
+    r53 = CPyDict_GetItemUnsafe(r51, r52)
     r54 = __main__.globals :: static
     r55 = 'T'
-    r56 = CPyDict_GetItem(r54, r55)
+    r56 = CPyDict_GetItemUnsafe(r54, r55)
     r57 = PyObject_GetItem(r53, r56)
     r58 = PyTuple_Pack(3, r49, r50, r57)
     r59 = '__main__'
@@ -1064,7 +1064,7 @@ L0:
     return 1
 def B.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.B
-    r0 :: dict
+    r0 :: dict[confirmed]
     r1 :: str
     r2 :: object
     r3 :: str
@@ -1073,7 +1073,7 @@ L0:
     __mypyc_self__.x = 20
     r0 = __main__.globals :: static
     r1 = 'LOL'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = cast(str, r2)
     __mypyc_self__.y = r3
     r4 = box(None, 1)

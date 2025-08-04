@@ -84,13 +84,13 @@ update_dict(d, object.__dict__)
 assert d == dict(object.__dict__)
 
 assert u(10) == 10
-assert get_content({1: 2}) == ([1], [2], [(1, 2)])
+assert get_content({1: 2}) == ([1], [2], [(1, 2)]), get_content({1: 2})
 od = OrderedDict([(1, 2), (3, 4)])
-assert get_content(od) == ([1, 3], [2, 4], [(1, 2), (3, 4)])
+assert get_content(od) == ([1, 3], [2, 4], [(1, 2), (3, 4)]), get_content(od)
 od.move_to_end(1)
-assert get_content(od) == ([3, 1], [4, 2], [(3, 4), (1, 2)])
-assert get_content_set({1: 2}) == ({1}, {2}, {(1, 2)})
-assert get_content_set(od) == ({1, 3}, {2, 4}, {(1, 2), (3, 4)})
+assert get_content(od) == ([3, 1], [4, 2], [(3, 4), (1, 2)]), get_content(od)
+assert get_content_set({1: 2}) == ({1}, {2}, {(1, 2)}), get_content_set({1: 2})
+assert get_content_set(od) == ({1, 3}, {2, 4}, {(1, 2), (3, 4)}), get_content_set(od)
 
 [typing fixtures/typing-full.pyi]
 

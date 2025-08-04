@@ -54,10 +54,10 @@ from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import (
     RInstance,
     RType,
-    dict_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
+    true_dict_rprimitive,
     tuple_rprimitive,
 )
 from mypyc.irbuild.mapper import Mapper
@@ -626,7 +626,7 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
                 [
                     init_sig.args[0],
                     RuntimeArg("args", tuple_rprimitive, ARG_STAR),
-                    RuntimeArg("kwargs", dict_rprimitive, ARG_STAR2),
+                    RuntimeArg("kwargs", true_dict_rprimitive, ARG_STAR2),
                 ],
                 init_sig.ret_type,
             )

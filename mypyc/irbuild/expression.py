@@ -100,7 +100,7 @@ from mypyc.irbuild.format_str_tokenizer import (
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
 from mypyc.primitives.bytes_ops import bytes_slice_op
-from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
+from mypyc.primitives.dict_ops import dict_new_op, exact_dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
@@ -186,7 +186,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             # instead load the module separately on each access.
             mod_dict = builder.call_c(get_module_dict_op, [], expr.line)
             obj = builder.primitive_op(
-                dict_get_item_op, [mod_dict, builder.load_str(expr.node.fullname)], expr.line
+                true_dict_get_item_op, [mod_dict, builder.load_str(expr.node.fullname)], expr.line
             )
             return obj
         else:

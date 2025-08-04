@@ -246,7 +246,7 @@ def fn_mapping(m):
     r35, x_3 :: str
     r36 :: i32
     r37, r38, r39 :: bit
-    r40 :: dict
+    r40 :: dict[confirmed]
     r41 :: short_int
     r42 :: native_int
     r43 :: object
@@ -391,7 +391,7 @@ def fn_union(m):
     r34, x_3 :: str
     r35 :: i32
     r36, r37, r38 :: bit
-    r39 :: dict
+    r39 :: dict[confirmed]
     r40 :: short_int
     r41 :: native_int
     r42 :: object
@@ -499,11 +499,11 @@ L19:
 L20:
     return 1
 def fn_typeddict(t):
-    t :: dict
+    t :: dict[confirmed]
     r0 :: list
     r1 :: short_int
     r2 :: native_int
-    r3 :: object
+    r3 :: dict[confirmed]
     r4 :: tuple[bool, short_int, object]
     r5 :: short_int
     r6 :: bool
@@ -514,7 +514,7 @@ def fn_typeddict(t):
     r13 :: list
     r14 :: short_int
     r15 :: native_int
-    r16 :: object
+    r16 :: dict[confirmed]
     r17 :: tuple[bool, short_int, object]
     r18 :: short_int
     r19 :: bool
@@ -524,7 +524,7 @@ def fn_typeddict(t):
     r25 :: set
     r26 :: short_int
     r27 :: native_int
-    r28 :: object
+    r28 :: dict[confirmed]
     r29 :: tuple[bool, short_int, object]
     r30 :: short_int
     r31 :: bool
@@ -532,10 +532,10 @@ def fn_typeddict(t):
     r33, x_3 :: str
     r34 :: i32
     r35, r36, r37 :: bit
-    r38 :: dict
+    r38 :: dict[confirmed]
     r39 :: short_int
     r40 :: native_int
-    r41 :: object
+    r41 :: dict[confirmed]
     r42 :: tuple[bool, short_int, object, object]
     r43 :: short_int
     r44 :: bool
@@ -548,9 +548,9 @@ L0:
     r0 = PyList_New(0)
     r1 = 0
     r2 = PyDict_Size(t)
-    r3 = CPyDict_GetKeysIter(t)
+    r3 = _CPyDict_GetIterUnsafe(t)
 L1:
-    r4 = CPyDict_NextKey(r3, r1)
+    r4 = CPyDict_NextKeyUnsafe(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -562,7 +562,7 @@ L2:
     r9 = PyList_Append(r0, x)
     r10 = r9 >= 0 :: signed
 L3:
-    r11 = CPyDict_CheckSize(t, r2)
+    r11 = CPyDict_CheckSizeUnsafe(t, r2)
     goto L1
 L4:
     r12 = CPy_NoErrOccurred()
@@ -570,9 +570,9 @@ L5:
     r13 = PyList_New(0)
     r14 = 0
     r15 = PyDict_Size(t)
-    r16 = CPyDict_GetValuesIter(t)
+    r16 = _CPyDict_GetIterUnsafe(t)
 L6:
-    r17 = CPyDict_NextValue(r16, r14)
+    r17 = CPyDict_NextValueUnsafe(r16, r14)
     r18 = r17[1]
     r14 = r18
     r19 = r17[0]
@@ -583,7 +583,7 @@ L7:
     r21 = PyList_Append(r13, x_2)
     r22 = r21 >= 0 :: signed
 L8:
-    r23 = CPyDict_CheckSize(t, r15)
+    r23 = CPyDict_CheckSizeUnsafe(t, r15)
     goto L6
 L9:
     r24 = CPy_NoErrOccurred()
@@ -591,9 +591,9 @@ L10:
     r25 = PySet_New(0)
     r26 = 0
     r27 = PyDict_Size(t)
-    r28 = CPyDict_GetKeysIter(t)
+    r28 = _CPyDict_GetIterUnsafe(t)
 L11:
-    r29 = CPyDict_NextKey(r28, r26)
+    r29 = CPyDict_NextKeyUnsafe(r28, r26)
     r30 = r29[1]
     r26 = r30
     r31 = r29[0]
@@ -605,7 +605,7 @@ L12:
     r34 = PySet_Add(r25, x_3)
     r35 = r34 >= 0 :: signed
 L13:
-    r36 = CPyDict_CheckSize(t, r27)
+    r36 = CPyDict_CheckSizeUnsafe(t, r27)
     goto L11
 L14:
     r37 = CPy_NoErrOccurred()
@@ -613,9 +613,9 @@ L15:
     r38 = PyDict_New()
     r39 = 0
     r40 = PyDict_Size(t)
-    r41 = CPyDict_GetItemsIter(t)
+    r41 = _CPyDict_GetIterUnsafe(t)
 L16:
-    r42 = CPyDict_NextItem(r41, r39)
+    r42 = CPyDict_NextItemUnsafe(r41, r39)
     r43 = r42[1]
     r39 = r43
     r44 = r42[0]
@@ -629,7 +629,7 @@ L17:
     r48 = PyDict_SetItem(r38, k, v)
     r49 = r48 >= 0 :: signed
 L18:
-    r50 = CPyDict_CheckSize(t, r40)
+    r50 = CPyDict_CheckSizeUnsafe(t, r40)
     goto L16
 L19:
     r51 = CPy_NoErrOccurred()

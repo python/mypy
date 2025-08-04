@@ -15,15 +15,7 @@
 // some indirections.
 PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     if (PyDict_CheckExact(dict)) {
-        PyObject *res = PyDict_GetItemWithError(dict, key);
-        if (!res) {
-            if (!PyErr_Occurred()) {
-                PyErr_SetObject(PyExc_KeyError, key);
-            }
-        } else {
-            Py_INCREF(res);
-        }
-        return res;
+        return CPyDict_GetItemUnsafe(dict, key);
     } else {
         return PyObject_GetItem(dict, key);
     }
@@ -169,12 +161,7 @@ int CPyDict_Update(PyObject *dict, PyObject *stuff) {
 int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff) {
     if (PyDict_CheckExact(dict)) {
         // Argh this sucks
-        _Py_IDENTIFIER(keys);
-        if (PyDict_Check(stuff) || _CPyObject_HasAttrId(stuff, &PyId_keys)) {
-            return PyDict_Update(dict, stuff);
-        } else {
-            return PyDict_MergeFromSeq2(dict, stuff, 1);
-        }
+        return CPyDict_UpdateFromAnyUnsafe(dict, stuff);
     } else {
         return CPyDict_UpdateGeneral(dict, stuff);
     }
@@ -348,9 +335,7 @@ PyObject *CPyDict_GetKeysIter(PyObject *dict) {
 
 PyObject *CPyDict_GetItemsIter(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
-        // Return dict itself to indicate we can use fast path instead.
-        Py_INCREF(dict);
-        return dict;
+        return _CPyDict_GetIterUnsafe(dict);
     }
     _Py_IDENTIFIER(items);
     PyObject *name = _PyUnicode_FromId(&PyId_items); /* borrowed */
@@ -485,7 +470,108 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
     Py_INCREF(ret.f3);
     return ret;
 }
+tuple_T3CIO CPyDict_NextKeyUnsafe(PyObject *dict_or_iter, CPyTagged offset) {
+    tuple_T3CIO ret;
+    Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
+    PyObject *dummy;
+
+    ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &ret.f2, &dummy);
+    if (ret.f0) {
+        ret.f1 = CPyTagged_FromSsize_t(py_offset);
+    } else {
+        // Set key to None, so mypyc can manage refcounts.
+        ret.f1 = 0;
+        ret.f2 = Py_None;
+    }
+    // PyDict_Next() returns borrowed references.
+    Py_INCREF(ret.f2);
+    return ret;
+}
+
+tuple_T3CIO CPyDict_NextValueUnsafe(PyObject *dict_or_iter, CPyTagged offset) {
+    tuple_T3CIO ret;
+    Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
+    PyObject *dummy;
+
+    ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &dummy, &ret.f2);
+    if (ret.f0) {
+        ret.f1 = CPyTagged_FromSsize_t(py_offset);
+    } else {
+        // Set value to None, so mypyc can manage refcounts.
+        ret.f1 = 0;
+        ret.f2 = Py_None;
+    }
+    // PyDict_Next() returns borrowed references.
+    Py_INCREF(ret.f2);
+    return ret;
+}
+
+tuple_T4CIOO CPyDict_NextItemUnsafe(PyObject *dict_or_iter, CPyTagged offset) {
+    tuple_T4CIOO ret;
+    Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
+
+    ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &ret.f2, &ret.f3);
+    if (ret.f0) {
+        ret.f1 = CPyTagged_FromSsize_t(py_offset);
+    } else {
+        // Set key and value to None, so mypyc can manage refcounts.
+        ret.f1 = 0;
+        ret.f2 = Py_None;
+        ret.f3 = Py_None;
+    }
+    // PyDict_Next() returns borrowed references.
+    Py_INCREF(ret.f2);
+    Py_INCREF(ret.f3);
+    return ret;
+}
 
 int CPyMapping_Check(PyObject *obj) {
     return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_MAPPING;
+}
+
+// =======================
+// Unsafe dict operations
+// =======================
+
+// Unsafe: assumes dict is a true dict (PyDict_CheckExact(dict) is always true)
+
+int CPyDict_UpdateFromAnyUnsafe(PyObject *dict, PyObject *stuff) {
+    // Argh this sucks
+    _Py_IDENTIFIER(keys);
+    if (PyDict_Check(stuff) || _CPyObject_HasAttrId(stuff, &PyId_keys)) {
+        return PyDict_Update(dict, stuff);
+    } else {
+        return PyDict_MergeFromSeq2(dict, stuff, 1);
+    }
+}
+
+PyObject *CPyDict_GetItemUnsafe(PyObject *dict, PyObject *key) {
+    // No type check, direct call
+    PyObject *res = PyDict_GetItemWithError(dict, key);
+    if (!res) {
+        if (!PyErr_Occurred()) {
+            PyErr_SetObject(PyExc_KeyError, key);
+        }
+    } else {
+        Py_INCREF(res);
+    }
+    return res;
+}
+
+PyObject *_CPyDict_GetIterUnsafe(PyObject *dict) {
+    // No type check, no-op to prepare for fast path. Returns dict to pass directly to fast path for further handling.
+    Py_INCREF(dict);
+    return dict;
+}
+
+PyObject *CPyDict_KeysViewUnsafe(PyObject *dict) {
+    return _CPyDictView_New(dict, &PyDictKeys_Type);
+}
+
+PyObject *CPyDict_ValuesViewUnsafe(PyObject *dict) {
+    return _CPyDictView_New(dict, &PyDictValues_Type);
+}
+
+PyObject *CPyDict_ItemsViewUnsafe(PyObject *dict) {
+    return _CPyDictView_New(dict, &PyDictItems_Type);
 }

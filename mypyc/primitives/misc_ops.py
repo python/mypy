@@ -20,6 +20,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     pointer_rprimitive,
     str_rprimitive,
+    true_dict_rprimitive,
     uint8_rprimitive,
     void_rtype,
 )
@@ -161,7 +162,7 @@ import_from_many_op = custom_op(
 # Get the sys.modules dictionary
 get_module_dict_op = custom_op(
     arg_types=[],
-    return_type=dict_rprimitive,
+    return_type=true_dict_rprimitive,
     c_function_name="PyImport_GetModuleDict",
     error_kind=ERR_NEVER,
     is_borrowed=True,
@@ -186,6 +187,15 @@ fast_isinstance_op = function_op(
     c_function_name="CPy_TypeCheck",
     error_kind=ERR_NEVER,
     priority=0,
+)
+
+# bool(dict)
+dict_is_true_op = function_op(
+    name="builtins.bool",
+    arg_types=[true_dict_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyDict_IsTrue",
+    error_kind=ERR_FALSE,
 )
 
 # bool(obj) with unboxed result

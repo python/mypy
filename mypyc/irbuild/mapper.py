@@ -45,6 +45,7 @@ from mypyc.ir.rtypes import (
     range_rprimitive,
     set_rprimitive,
     str_rprimitive,
+    true_dict_rprimitive,
     tuple_rprimitive,
     uint8_rprimitive,
 )
@@ -154,7 +155,7 @@ class Mapper:
         elif isinstance(typ, Overloaded):
             return object_rprimitive
         elif isinstance(typ, TypedDictType):
-            return dict_rprimitive
+            return true_dict_rprimitive
         elif isinstance(typ, LiteralType):
             return self.type_to_rtype(typ.fallback)
         elif isinstance(typ, (UninhabitedType, UnboundType)):
@@ -169,7 +170,7 @@ class Mapper:
         if kind == ARG_STAR:
             return tuple_rprimitive
         elif kind == ARG_STAR2:
-            return dict_rprimitive
+            return true_dict_rprimitive
         else:
             return self.type_to_rtype(typ)
 
