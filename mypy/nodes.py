@@ -818,6 +818,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
+        "has_self_attr_def",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -856,6 +857,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
+        # Keep track of functions where self attributes are defined.
+        self.has_self_attr_def = False
         # This is needed because for positional-only arguments the name is set to None,
         # but we sometimes still want to show it in error messages.
         if arguments:
