@@ -571,4 +571,3 @@ L2:
 L3:
     r8 = box(None, 1)
     return r8
-
