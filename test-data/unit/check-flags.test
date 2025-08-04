@@ -1116,6 +1116,39 @@ def f(x: Any) -> Any:  # E: Function is untyped after decorator transformation
 def h(x):  # E: Function is untyped after decorator transformation
     pass
 [builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedUnannotatedDecoratorDeferred1]
+# flags: --disallow-any-decorated
+from typing import Any
+
+def d(f):
+    return f
+
+def wrapper() -> None:
+    if c:
+        @d
+        def h(x):  # E: Function is untyped after decorator transformation
+            pass
+
+c = [1]
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyDecoratedUnannotatedDecoratorDeferred2]
+# flags: --disallow-any-decorated
+from typing import Any
+
+def d(f):
+    return f
+
+def wrapper() -> None:
+    if c:
+        @d
+        def h(x):  # E: Function is untyped after decorator transformation
+            pass
+
+c = [1]
+[builtins fixtures/list.pyi]
+
 [case testDisallowAnyDecoratedErrorIsReportedOnlyOnce]
 # flags: --disallow-any-decorated
 
