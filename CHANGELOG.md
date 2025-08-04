@@ -170,6 +170,11 @@ Related PRs:
 * Enable ANSI color codes for dmypy client in Windows (wyattscarpenter, PR [19088](https://github.com/python/mypy/pull/19088))
 * Extend special case for context-based type variable inference to unions in return position (Stanislav Terliakov, PR [18976](https://github.com/python/mypy/pull/18976))
 
+### Mypy 1.17.1
+* Retain `None` as constraints bottom if no bottoms were provided (Stanislav Terliakov, PR [19485](https://github.com/python/mypy/pull/19485))
+* Fix "ignored exception in `hasattr`" in dmypy (Stanislav Terliakov, PR [19428](https://github.com/python/mypy/pull/19428))
+* Prevent a crash when InitVar is redefined with a method in a subclass (Stanislav Terliakov, PR [19453](https://github.com/python/mypy/pull/19453))
+
 ### Acknowledgements
 
 Thanks to all mypy contributors who contributed to this release:
