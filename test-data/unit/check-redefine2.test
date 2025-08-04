@@ -1073,7 +1073,7 @@ def f() -> None:
         while int():
             x = [x]
 
-    reveal_type(x) # N: Revealed type is "Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]]]]]]]"
+    reveal_type(x) # N: Revealed type is "Union[Any, builtins.list[Any]]"
 
 [case testNewRedefinePartialNoneEmptyList]
 # flags: --allow-redefinition-new --local-partial-types
