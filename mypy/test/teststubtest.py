@@ -850,11 +850,13 @@ class StubtestUnit(unittest.TestCase):
             class Good:
                 @property
                 def read_only_attr(self) -> int: ...
+                read_only_attr_alias = read_only_attr
             """,
             runtime="""
             class Good:
                 @property
                 def read_only_attr(self): return 1
+                read_only_attr_alias = read_only_attr
             """,
             error=None,
         )
@@ -916,6 +918,7 @@ class StubtestUnit(unittest.TestCase):
                 def read_write_attr(self) -> int: ...
                 @read_write_attr.setter
                 def read_write_attr(self, val: int) -> None: ...
+                read_write_attr_alias = read_write_attr
             """,
             runtime="""
             class Z:
@@ -923,6 +926,7 @@ class StubtestUnit(unittest.TestCase):
                 def read_write_attr(self): return self._val
                 @read_write_attr.setter
                 def read_write_attr(self, val): self._val = val
+                read_write_attr_alias = read_write_attr
             """,
             error=None,
         )
@@ -2467,6 +2471,17 @@ assert annotations
             """,
             runtime="def func2() -> None: ...",
             error="func2",
+        )
+        # A type that exists at runtime is allowed to alias a type marked
+        # as '@type_check_only' in the stubs.
+        yield Case(
+            stub="""
+            @type_check_only
+            class _X1: ...
+            X2 = _X1
+            """,
+            runtime="class X2: ...",
+            error=None,
         )
 
 
