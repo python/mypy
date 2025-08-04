@@ -488,8 +488,8 @@ list_rprimitive: Final = RPrimitive(
 )
 
 # Python dict object.
-true_dict_rprimitive: Final = RPrimitive(
-    "builtins.dict[confirmed]", is_unboxed=False, is_refcounted=True
+exact_dict_rprimitive: Final = RPrimitive(
+    "builtins.dict[exact]", is_unboxed=False, is_refcounted=True
 )
 """A primitive for dicts that are confirmed to be actual instances of builtins.dict, not a subclass."""
 
@@ -617,12 +617,12 @@ def is_list_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
 def is_dict_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name in (
         "builtins.dict",
-        "builtins.dict[confirmed]",
+        "builtins.dict[exact]",
     )
 
 
-def is_true_dict_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
-    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.dict[confirmed]"
+def is_exact_dict_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.dict[exact]"
 
 
 def is_set_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:

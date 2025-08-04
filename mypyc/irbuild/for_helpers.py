@@ -58,7 +58,7 @@ from mypyc.ir.rtypes import (
     is_sequence_rprimitive,
     is_short_int_rprimitive,
     is_str_rprimitive,
-    is_true_dict_rprimitive,
+    is_exact_dict_rprimitive,
     is_tuple_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -431,7 +431,7 @@ def make_for_loop_generator(
         expr_reg = builder.accept(expr)
         target_type = builder.get_dict_key_type(expr)
         for_loop_cls = (
-            ForTrueDictionaryKeys if is_true_dict_rprimitive(rtyp) else ForDictionaryKeys
+            ForExactDictionaryKeys if is_exact_dict_rprimitive(rtyp) else ForDictionaryKeys
         )
         for_dict = for_loop_cls(builder, index, body_block, loop_exit, line, nested)
         for_dict.init(expr_reg, target_type)
@@ -515,20 +515,20 @@ def make_for_loop_generator(
             for_dict_type: type[ForGenerator] | None = None
             if expr.callee.name == "keys":
                 target_type = builder.get_dict_key_type(expr.callee.expr)
-                if is_true_dict_rprimitive(rtype):
-                    for_dict_type = ForTrueDictionaryKeys
+                if is_exact_dict_rprimitive(rtype):
+                    for_dict_type = ForExactDictionaryKeys
                 else:
                     for_dict_type = ForDictionaryKeys
             elif expr.callee.name == "values":
                 target_type = builder.get_dict_value_type(expr.callee.expr)
-                if is_true_dict_rprimitive(rtype):
-                    for_dict_type = ForTrueDictionaryValues
+                if is_exact_dict_rprimitive(rtype):
+                    for_dict_type = ForExactDictionaryValues
                 else:
                     for_dict_type = ForDictionaryValues
             else:
                 target_type = builder.get_dict_item_type(expr.callee.expr)
-                if is_true_dict_rprimitive(rtype):
-                    for_dict_type = ForTrueDictionaryItems
+                if is_exact_dict_rprimitive(rtype):
+                    for_dict_type = ForExactDictionaryItems
                 else:
                     for_dict_type = ForDictionaryItems
             for_dict_gen = for_dict_type(builder, index, body_block, loop_exit, line, nested)
@@ -1040,7 +1040,7 @@ class ForDictionaryItems(ForDictionaryCommon):
             builder.assign(target, rvalue, line)
 
 
-class ForTrueDictionaryKeys(ForDictionaryKeys):
+class ForExactDictionaryKeys(ForDictionaryKeys):
     """Generate optimized IR for a for loop over dictionary items without type checks."""
 
     dict_next_op = true_dict_next_key_op
@@ -1048,7 +1048,7 @@ class ForTrueDictionaryKeys(ForDictionaryKeys):
     dict_size_op = true_dict_check_size_op
 
 
-class ForTrueDictionaryValues(ForDictionaryValues):
+class ForExactDictionaryValues(ForDictionaryValues):
     """Generate optimized IR for a for loop over dictionary items without type checks."""
 
     dict_next_op = true_dict_next_value_op
@@ -1056,7 +1056,7 @@ class ForTrueDictionaryValues(ForDictionaryValues):
     dict_size_op = true_dict_check_size_op
 
 
-class ForTrueDictionaryItems(ForDictionaryItems):
+class ForExactDictionaryItems(ForDictionaryItems):
     """Generate optimized IR for a for loop over dictionary items without type checks."""
 
     dict_next_op = true_dict_next_item_op

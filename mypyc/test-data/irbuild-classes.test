@@ -201,19 +201,19 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict[confirmed]
+    r7 :: dict[exact]
     r8, r9 :: object
     r10 :: str
-    r11 :: dict[confirmed]
+    r11 :: dict[exact]
     r12 :: object
     r13 :: str
-    r14 :: dict[confirmed]
+    r14 :: dict[exact]
     r15 :: str
     r16 :: object
     r17 :: object[1]
     r18 :: object_ptr
     r19 :: object
-    r20 :: dict[confirmed]
+    r20 :: dict[exact]
     r21 :: str
     r22 :: i32
     r23 :: bit
@@ -225,7 +225,7 @@ def __top_level__():
     r30 :: tuple
     r31 :: i32
     r32 :: bit
-    r33 :: dict[confirmed]
+    r33 :: dict[exact]
     r34 :: str
     r35 :: i32
     r36 :: bit
@@ -236,15 +236,15 @@ def __top_level__():
     r42 :: tuple
     r43 :: i32
     r44 :: bit
-    r45 :: dict[confirmed]
+    r45 :: dict[exact]
     r46 :: str
     r47 :: i32
     r48 :: bit
     r49, r50 :: object
-    r51 :: dict[confirmed]
+    r51 :: dict[exact]
     r52 :: str
     r53 :: object
-    r54 :: dict[confirmed]
+    r54 :: dict[exact]
     r55 :: str
     r56, r57 :: object
     r58 :: tuple
@@ -255,7 +255,7 @@ def __top_level__():
     r65 :: tuple
     r66 :: i32
     r67 :: bit
-    r68 :: dict[confirmed]
+    r68 :: dict[exact]
     r69 :: str
     r70 :: i32
     r71 :: bit
@@ -1064,7 +1064,7 @@ L0:
     return 1
 def B.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.B
-    r0 :: dict[confirmed]
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: str

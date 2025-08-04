@@ -45,7 +45,7 @@ from mypyc.ir.rtypes import (
     range_rprimitive,
     set_rprimitive,
     str_rprimitive,
-    true_dict_rprimitive,
+    exact_dict_rprimitive,
     tuple_rprimitive,
     uint8_rprimitive,
 )
@@ -95,7 +95,7 @@ class Mapper:
             # specifically support them, so make sure that dict operations
             # get optimized on them.
             elif typ.type.fullname == "builtins.dict":
-                return true_dict_rprimitive
+                return exact_dict_rprimitive
             elif any(cls.fullname == "builtins.dict" for cls in typ.type.mro):
                 return dict_rprimitive
             elif typ.type.fullname == "builtins.set":
@@ -157,7 +157,7 @@ class Mapper:
         elif isinstance(typ, Overloaded):
             return object_rprimitive
         elif isinstance(typ, TypedDictType):
-            return true_dict_rprimitive
+            return exact_dict_rprimitive
         elif isinstance(typ, LiteralType):
             return self.type_to_rtype(typ.fallback)
         elif isinstance(typ, (UninhabitedType, UnboundType)):
@@ -172,7 +172,7 @@ class Mapper:
         if kind == ARG_STAR:
             return tuple_rprimitive
         elif kind == ARG_STAR2:
-            return true_dict_rprimitive
+            return exact_dict_rprimitive
         else:
             return self.type_to_rtype(typ)
 

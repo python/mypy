@@ -211,11 +211,11 @@ def fn_typeddict(t: T) -> None:
 [typing fixtures/typing-full.pyi]
 [out]
 def fn_mapping(m):
-    m :: dict[confirmed]
+    m :: dict[exact]
     r0 :: list
     r1 :: short_int
     r2 :: native_int
-    r3 :: dict[confirmed]
+    r3 :: dict[exact]
     r4 :: tuple[bool, short_int, object]
     r5 :: short_int
     r6 :: bool
@@ -226,7 +226,7 @@ def fn_mapping(m):
     r13 :: list
     r14 :: short_int
     r15 :: native_int
-    r16 :: dict[confirmed]
+    r16 :: dict[exact]
     r17 :: tuple[bool, short_int, object]
     r18 :: short_int
     r19 :: bool
@@ -238,7 +238,7 @@ def fn_mapping(m):
     r27 :: set
     r28 :: short_int
     r29 :: native_int
-    r30 :: dict[confirmed]
+    r30 :: dict[exact]
     r31 :: tuple[bool, short_int, object]
     r32 :: short_int
     r33 :: bool
@@ -246,10 +246,10 @@ def fn_mapping(m):
     r35, x_3 :: str
     r36 :: i32
     r37, r38, r39 :: bit
-    r40 :: dict[confirmed]
+    r40 :: dict[exact]
     r41 :: short_int
     r42 :: native_int
-    r43 :: dict[confirmed]
+    r43 :: dict[exact]
     r44 :: tuple[bool, short_int, object, object]
     r45 :: short_int
     r46 :: bool
@@ -357,11 +357,11 @@ L19:
 L20:
     return 1
 def fn_union(m):
-    m :: dict[confirmed]
+    m :: dict[exact]
     r0 :: list
     r1 :: short_int
     r2 :: native_int
-    r3 :: dict[confirmed]
+    r3 :: dict[exact]
     r4 :: tuple[bool, short_int, object]
     r5 :: short_int
     r6 :: bool
@@ -372,7 +372,7 @@ def fn_union(m):
     r13 :: list
     r14 :: short_int
     r15 :: native_int
-    r16 :: dict[confirmed]
+    r16 :: dict[exact]
     r17 :: tuple[bool, short_int, object]
     r18 :: short_int
     r19 :: bool
@@ -383,7 +383,7 @@ def fn_union(m):
     r26 :: set
     r27 :: short_int
     r28 :: native_int
-    r29 :: dict[confirmed]
+    r29 :: dict[exact]
     r30 :: tuple[bool, short_int, object]
     r31 :: short_int
     r32 :: bool
@@ -391,10 +391,10 @@ def fn_union(m):
     r34, x_3 :: str
     r35 :: i32
     r36, r37, r38 :: bit
-    r39 :: dict[confirmed]
+    r39 :: dict[exact]
     r40 :: short_int
     r41 :: native_int
-    r42 :: dict[confirmed]
+    r42 :: dict[exact]
     r43 :: tuple[bool, short_int, object, object]
     r44 :: short_int
     r45 :: bool
@@ -499,11 +499,11 @@ L19:
 L20:
     return 1
 def fn_typeddict(t):
-    t :: dict[confirmed]
+    t :: dict[exact]
     r0 :: list
     r1 :: short_int
     r2 :: native_int
-    r3 :: dict[confirmed]
+    r3 :: dict[exact]
     r4 :: tuple[bool, short_int, object]
     r5 :: short_int
     r6 :: bool
@@ -514,7 +514,7 @@ def fn_typeddict(t):
     r13 :: list
     r14 :: short_int
     r15 :: native_int
-    r16 :: dict[confirmed]
+    r16 :: dict[exact]
     r17 :: tuple[bool, short_int, object]
     r18 :: short_int
     r19 :: bool
@@ -524,7 +524,7 @@ def fn_typeddict(t):
     r25 :: set
     r26 :: short_int
     r27 :: native_int
-    r28 :: dict[confirmed]
+    r28 :: dict[exact]
     r29 :: tuple[bool, short_int, object]
     r30 :: short_int
     r31 :: bool
@@ -532,10 +532,10 @@ def fn_typeddict(t):
     r33, x_3 :: str
     r34 :: i32
     r35, r36, r37 :: bit
-    r38 :: dict[confirmed]
+    r38 :: dict[exact]
     r39 :: short_int
     r40 :: native_int
-    r41 :: dict[confirmed]
+    r41 :: dict[exact]
     r42 :: tuple[bool, short_int, object, object]
     r43 :: short_int
     r44 :: bool
@@ -674,7 +674,7 @@ L2:
 def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     __mypyc_self__ :: __main__.inner_deco_obj
     args :: tuple
-    kwargs :: dict[confirmed]
+    kwargs :: dict[exact]
     r0 :: __main__.deco_env
     r1 :: native_int
     r2 :: list

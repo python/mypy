@@ -103,7 +103,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    true_dict_rprimitive,
+    exact_dict_rprimitive,
 )
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -1393,7 +1393,7 @@ class IRBuilder:
         return self.primitive_op(true_dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
-        return self.add(LoadStatic(true_dict_rprimitive, "globals", self.module_name))
+        return self.add(LoadStatic(exact_dict_rprimitive, "globals", self.module_name))
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition(".")

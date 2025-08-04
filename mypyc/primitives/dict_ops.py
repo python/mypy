@@ -14,7 +14,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
-    true_dict_rprimitive,
+    exact_dict_rprimitive,
     void_rtype,
 )
 from mypyc.primitives.registry import (
@@ -33,7 +33,7 @@ load_address_op(name="builtins.dict", type=object_rprimitive, src="PyDict_Type")
 function_op(
     name="builtins.dict",
     arg_types=[],
-    return_type=true_dict_rprimitive,
+    return_type=exact_dict_rprimitive,
     c_function_name="PyDict_New",
     error_kind=ERR_MAGIC,
 )
@@ -41,7 +41,7 @@ function_op(
 # Construct an empty dictionary.
 dict_new_op = custom_op(
     arg_types=[],
-    return_type=true_dict_rprimitive,
+    return_type=exact_dict_rprimitive,
     c_function_name="PyDict_New",
     error_kind=ERR_MAGIC,
 )
@@ -51,7 +51,7 @@ dict_new_op = custom_op(
 # Variable arguments are (key1, value1, ..., keyN, valueN).
 dict_build_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
-    return_type=true_dict_rprimitive,
+    return_type=exact_dict_rprimitive,
     c_function_name="CPyDict_Build",
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
@@ -60,8 +60,8 @@ dict_build_op = custom_op(
 # Construct a dictionary from another dictionary.
 dict_copy_op = function_op(
     name="builtins.dict",
-    arg_types=[true_dict_rprimitive],
-    return_type=true_dict_rprimitive,
+    arg_types=[exact_dict_rprimitive],
+    return_type=exact_dict_rprimitive,
     c_function_name="PyDict_Copy",
     error_kind=ERR_MAGIC,
     priority=2,
@@ -80,7 +80,7 @@ function_op(
 dict_copy = function_op(
     name="builtins.dict",
     arg_types=[object_rprimitive],
-    return_type=true_dict_rprimitive,
+    return_type=exact_dict_rprimitive,
     c_function_name="CPyDict_FromAny",
     error_kind=ERR_MAGIC,
 )
@@ -97,7 +97,7 @@ isinstance_dict = function_op(
 # dict[key]
 true_dict_get_item_op = method_op(
     name="__getitem__",
-    arg_types=[true_dict_rprimitive, object_rprimitive],
+    arg_types=[exact_dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_GetItemUnsafe",
     error_kind=ERR_MAGIC,
@@ -115,7 +115,7 @@ dict_get_item_op = method_op(
 # dict[key] = value
 true_dict_set_item_op = method_op(
     name="__setitem__",
-    arg_types=[true_dict_rprimitive, object_rprimitive, object_rprimitive],
+    arg_types=[exact_dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="PyDict_SetItem",
     error_kind=ERR_NEG_INT,
@@ -142,7 +142,7 @@ exact_dict_set_item_op = custom_op(
 # key in dict
 binary_op(
     name="in",
-    arg_types=[object_rprimitive, true_dict_rprimitive],
+    arg_types=[object_rprimitive, exact_dict_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="PyDict_Contains",
     error_kind=ERR_NEG_INT,
@@ -164,7 +164,7 @@ binary_op(
 # dict1.update(dict2)
 true_dict_update_op = method_op(
     name="update",
-    arg_types=[true_dict_rprimitive, true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive, exact_dict_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="PyDict_Update",
     error_kind=ERR_NEG_INT,
@@ -174,7 +174,7 @@ true_dict_update_op = method_op(
 # dictorsubclass.update(dict)
 dict_update_from_true_dict_op = method_op(
     name="update",
-    arg_types=[dict_rprimitive, true_dict_rprimitive],
+    arg_types=[dict_rprimitive, exact_dict_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="CPyDict_Update",
     error_kind=ERR_NEG_INT,
@@ -184,7 +184,7 @@ dict_update_from_true_dict_op = method_op(
 # dict.update(dictsubclass)
 true_dict_update_from_dict_op = method_op(
     name="update",
-    arg_types=[true_dict_rprimitive, dict_rprimitive],
+    arg_types=[exact_dict_rprimitive, dict_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="PyDict_Update",
     error_kind=ERR_NEG_INT,
@@ -204,7 +204,7 @@ dict_update_op = method_op(
 # Operation used for **value in with exact dictionary `value`.
 # This is mostly like dict.update(obj), but has customized error handling.
 true_dict_update_in_display_op = custom_op(
-    arg_types=[true_dict_rprimitive, true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive, exact_dict_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="PyDict_Update",
     error_kind=ERR_NEG_INT,
@@ -222,7 +222,7 @@ dict_update_in_display_op = custom_op(
 # dict.update(obj)
 method_op(
     name="update",
-    arg_types=[true_dict_rprimitive, object_rprimitive],
+    arg_types=[exact_dict_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="CPyDict_UpdateFromAnyUnsafe",
     error_kind=ERR_NEG_INT,
@@ -240,7 +240,7 @@ method_op(
 # dict.get(key, default)
 method_op(
     name="get",
-    arg_types=[true_dict_rprimitive, object_rprimitive, object_rprimitive],
+    arg_types=[exact_dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_Get",
     error_kind=ERR_MAGIC,
@@ -258,7 +258,7 @@ method_op(
 # dict.get(key)
 true_dict_get_method_with_none = method_op(
     name="get",
-    arg_types=[true_dict_rprimitive, object_rprimitive],
+    arg_types=[exact_dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_GetWithNone",
     error_kind=ERR_MAGIC,
@@ -276,7 +276,7 @@ dict_get_method_with_none = method_op(
 # dict.setdefault(key, default)
 true_dict_setdefault_op = method_op(
     name="setdefault",
-    arg_types=[true_dict_rprimitive, object_rprimitive, object_rprimitive],
+    arg_types=[exact_dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyDict_SetDefault",
     error_kind=ERR_NEVER,
@@ -294,7 +294,7 @@ dict_setdefault_op = method_op(
 # dict.setdefault(key)
 method_op(
     name="setdefault",
-    arg_types=[true_dict_rprimitive, object_rprimitive],
+    arg_types=[exact_dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_SetDefaultWithNone",
     error_kind=ERR_MAGIC,
@@ -323,7 +323,7 @@ dict_setdefault_spec_init_op = custom_op(
 # dict.keys()
 method_op(
     name="keys",
-    arg_types=[true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_KeysViewUnsafe",
     error_kind=ERR_MAGIC,
@@ -341,7 +341,7 @@ method_op(
 # dict.values()
 method_op(
     name="values",
-    arg_types=[true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_ValuesViewUnsafe",
     error_kind=ERR_MAGIC,
@@ -359,7 +359,7 @@ method_op(
 # dict.items()
 method_op(
     name="items",
-    arg_types=[true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_ItemsViewUnsafe",
     error_kind=ERR_MAGIC,
@@ -377,7 +377,7 @@ method_op(
 # dict.clear()
 method_op(
     name="clear",
-    arg_types=[true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive],
     return_type=void_rtype,
     c_function_name="PyDict_Clear",
     error_kind=ERR_NEVER,
@@ -395,8 +395,8 @@ method_op(
 # dict.copy()
 method_op(
     name="copy",
-    arg_types=[true_dict_rprimitive],
-    return_type=true_dict_rprimitive,
+    arg_types=[exact_dict_rprimitive],
+    return_type=exact_dict_rprimitive,
     c_function_name="PyDict_Copy",
     error_kind=ERR_NEVER,
 )
@@ -412,15 +412,15 @@ method_op(
 
 # dict.copy() custom_op
 true_dict_copy_op = custom_op(
-    arg_types=[true_dict_rprimitive],
-    return_type=true_dict_rprimitive,
+    arg_types=[exact_dict_rprimitive],
+    return_type=exact_dict_rprimitive,
     c_function_name="PyDict_Copy",
     error_kind=ERR_NEVER,
 )
 
 # list(dict.keys())
 true_dict_keys_op = custom_op(
-    arg_types=[true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name="PyDict_Keys",
     error_kind=ERR_NEVER,
@@ -436,7 +436,7 @@ dict_keys_op = custom_op(
 
 # list(dict.values())
 true_dict_values_op = custom_op(
-    arg_types=[true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name="PyDict_Values",
     error_kind=ERR_NEVER,
@@ -452,7 +452,7 @@ dict_values_op = custom_op(
 
 # list(dict.items())
 true_dict_items_op = custom_op(
-    arg_types=[true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name="PyDict_Items",
     error_kind=ERR_NEVER,
@@ -468,8 +468,8 @@ dict_items_op = custom_op(
 
 # PyDict_Next() fast iteration
 true_dict_iter_fast_path_op = custom_op(
-    arg_types=[true_dict_rprimitive],
-    return_type=true_dict_rprimitive,
+    arg_types=[exact_dict_rprimitive],
+    return_type=exact_dict_rprimitive,
     c_function_name="_CPyDict_GetIterUnsafe",
     error_kind=ERR_NEVER,
 )
@@ -532,7 +532,7 @@ true_dict_next_value_op = custom_op(
 )
 
 true_dict_next_item_op = custom_op(
-    arg_types=[true_dict_rprimitive, int_rprimitive],
+    arg_types=[exact_dict_rprimitive, int_rprimitive],
     return_type=dict_next_rtuple_pair,
     c_function_name="CPyDict_NextItemUnsafe",
     error_kind=ERR_NEVER,
@@ -540,7 +540,7 @@ true_dict_next_item_op = custom_op(
 
 # check that len(dict) == const during iteration
 true_dict_check_size_op = custom_op(
-    arg_types=[true_dict_rprimitive, c_pyssize_t_rprimitive],
+    arg_types=[exact_dict_rprimitive, c_pyssize_t_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="CPyDict_CheckSizeUnsafe",
     error_kind=ERR_FALSE,
@@ -555,7 +555,7 @@ dict_check_size_op = custom_op(
 )
 
 true_dict_ssize_t_size_op = custom_op(
-    arg_types=[true_dict_rprimitive],
+    arg_types=[exact_dict_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name="PyDict_Size",
     error_kind=ERR_NEVER,
@@ -570,7 +570,7 @@ dict_ssize_t_size_op = custom_op(
 
 # Delete an item from a dict
 true_dict_del_item = custom_op(
-    arg_types=[true_dict_rprimitive, object_rprimitive],
+    arg_types=[exact_dict_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="PyDict_DelItem",
     error_kind=ERR_NEG_INT,
