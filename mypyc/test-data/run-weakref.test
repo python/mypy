@@ -58,10 +58,12 @@ def test_weakref_proxy():
     p = proxy(obj)
     assert obj.some_meth() == 1
     assert p.some_meth() == 1
+    obj.some_meth()
     obj = None
     with pytest.raises(ReferenceError):
         p.some_meth()
 
+[builtins fixtures/test-weakref.pyi]
 [file driver.py]
 from native import test_weakref_proxy
 
@@ -84,10 +86,12 @@ def test_weakref_proxy_with_callback():
     p = proxy(obj, lambda x: x)
     assert obj.some_meth() == 1
     assert p.some_meth() == 1
+    obj.some_meth()
     obj = None
     with pytest.raises(ReferenceError):
         p.some_meth()
 
+[builtins fixtures/test-weakref.pyi]
 [file driver.py]
 from native import test_weakref_proxy_with_callback
 
