@@ -773,4 +773,3 @@ def f(x):
     x :: int
 L0:
     return x
-
