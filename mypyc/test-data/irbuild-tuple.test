@@ -757,6 +757,73 @@ L4:
     a = r1
     return 1
 
+[case testTupleBuiltFromStars]
+from typing import Final
+
+abc: Final = "abc"
+
+def test() -> None:
+    a = tuple(str(x) for x in [*abc, *"def", *b"ghi", ("j", "k"), *("l", "m", "n")])
+
+[out]
+def test():
+    r0, r1 :: str
+    r2 :: bytes
+    r3, r4 :: str
+    r5 :: tuple[str, str]
+    r6, r7, r8 :: str
+    r9 :: tuple[str, str, str]
+    r10 :: list
+    r11, r12, r13, r14 :: object
+    r15 :: i32
+    r16 :: bit
+    r17, r18 :: object
+    r19 :: tuple
+    r20, r21 :: native_int
+    r22 :: bit
+    r23, x :: object
+    r24 :: str
+    r25 :: native_int
+    a :: tuple
+L0:
+    r0 = 'abc'
+    r1 = 'def'
+    r2 = b'ghi'
+    r3 = 'j'
+    r4 = 'k'
+    r5 = (r3, r4)
+    r6 = 'l'
+    r7 = 'm'
+    r8 = 'n'
+    r9 = (r6, r7, r8)
+    r10 = PyList_New(0)
+    r11 = CPyList_Extend(r10, r0)
+    r12 = CPyList_Extend(r10, r1)
+    r13 = CPyList_Extend(r10, r2)
+    r14 = box(tuple[str, str], r5)
+    r15 = PyList_Append(r10, r14)
+    r16 = r15 >= 0 :: signed
+    r17 = box(tuple[str, str, str], r9)
+    r18 = CPyList_Extend(r10, r17)
+    r19 = PyTuple_New(13)
+    r20 = 0
+L1:
+    r21 = var_object_size r10
+    r22 = r20 < r21 :: signed
+    if r22 goto L2 else goto L4 :: bool
+L2:
+    r23 = list_get_item_unsafe r10, r20
+    x = r23
+    r24 = PyObject_Str(x)
+    CPySequenceTuple_SetItemUnsafe(r19, r20, r24)
+L3:
+    r25 = r20 + 1
+    r20 = r25
+    goto L1
+L4:
+    a = r19
+    return 1
+
 [case testTupleAdd]
 from typing import Tuple
 def f(a: Tuple[int, ...], b: Tuple[int, ...]) -> None:
