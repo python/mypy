@@ -6183,23 +6183,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 attr = try_getting_str_literals(node.args[1], self.lookup_type(node.args[1]))
                 if literal(expr) == LITERAL_TYPE and attr and len(attr) == 1:
                     return self.hasattr_type_maps(expr, self.lookup_type(expr), attr[0])
-            elif isinstance(node.callee, (RefExpr, CallExpr)):
-                # We support both named callables (RefExpr) and temporaries (CallExpr).
-                # For temporaries (e.g., E()(x)), we extract type_is/type_guard from the __call__ method.
-                # For named callables (e.g., is_int(x)), we extract type_is/type_guard directly from the RefExpr.
+            else:
                 type_is, type_guard = None, None
-                try:
-                    called_type = get_proper_type(self.lookup_type(node.callee))
-                except KeyError:
-                    called_type = None
-                # TODO: there are some more cases in check_call() to handle.
-                # If the callee is an instance, try to extract TypeGuard/TypeIs from its __call__ method.
-                if called_type and isinstance(called_type, Instance):
-                    call = find_member("__call__", called_type, called_type, is_operator=True)
-                    if call is not None:
-                        called_type = get_proper_type(call)
-                        if isinstance(called_type, CallableType):
-                            type_is, type_guard = called_type.type_is, called_type.type_guard
+                called_type = self.lookup_type_or_none(node.callee)
+                if called_type is not None:
+                    called_type = get_proper_type(called_type)
+                    # TODO: there are some more cases in check_call() to handle.
+                    # If the callee is an instance, try to extract TypeGuard/TypeIs from its __call__ method.
+                    if isinstance(called_type, Instance):
+                        call = find_member("__call__", called_type, called_type, is_operator=True)
+                        if call is not None:
+                            called_type = get_proper_type(call)
+                    if isinstance(called_type, CallableType):
+                        type_is, type_guard = called_type.type_is, called_type.type_guard
+
                 # If the callee is a RefExpr, extract TypeGuard/TypeIs directly.
                 if isinstance(node.callee, RefExpr):
                     type_is, type_guard = node.callee.type_is, node.callee.type_guard
