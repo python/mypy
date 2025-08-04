@@ -211,11 +211,11 @@ def fn_typeddict(t: T) -> None:
 [typing fixtures/typing-full.pyi]
 [out]
 def fn_mapping(m):
-    m :: dict[exact]
+    m :: dict
     r0 :: list
     r1 :: short_int
     r2 :: native_int
-    r3 :: dict[exact]
+    r3 :: object
     r4 :: tuple[bool, short_int, object]
     r5 :: short_int
     r6 :: bool
@@ -226,7 +226,7 @@ def fn_mapping(m):
     r13 :: list
     r14 :: short_int
     r15 :: native_int
-    r16 :: dict[exact]
+    r16 :: object
     r17 :: tuple[bool, short_int, object]
     r18 :: short_int
     r19 :: bool
@@ -238,7 +238,7 @@ def fn_mapping(m):
     r27 :: set
     r28 :: short_int
     r29 :: native_int
-    r30 :: dict[exact]
+    r30 :: object
     r31 :: tuple[bool, short_int, object]
     r32 :: short_int
     r33 :: bool
@@ -249,7 +249,7 @@ def fn_mapping(m):
     r40 :: dict[exact]
     r41 :: short_int
     r42 :: native_int
-    r43 :: dict[exact]
+    r43 :: object
     r44 :: tuple[bool, short_int, object, object]
     r45 :: short_int
     r46 :: bool
@@ -265,9 +265,9 @@ L0:
     r0 = PyList_New(0)
     r1 = 0
     r2 = PyDict_Size(m)
-    r3 = _CPyDict_GetIterUnsafe(m)
+    r3 = CPyDict_GetKeysIter(m)
 L1:
-    r4 = CPyDict_NextKeyUnsafe(r3, r1)
+    r4 = CPyDict_NextKey(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -279,7 +279,7 @@ L2:
     r9 = PyList_Append(r0, x)
     r10 = r9 >= 0 :: signed
 L3:
-    r11 = CPyDict_CheckSizeUnsafe(m, r2)
+    r11 = CPyDict_CheckSize(m, r2)
     goto L1
 L4:
     r12 = CPy_NoErrOccurred()
@@ -287,9 +287,9 @@ L5:
     r13 = PyList_New(0)
     r14 = 0
     r15 = PyDict_Size(m)
-    r16 = _CPyDict_GetIterUnsafe(m)
+    r16 = CPyDict_GetValuesIter(m)
 L6:
-    r17 = CPyDict_NextValueUnsafe(r16, r14)
+    r17 = CPyDict_NextValue(r16, r14)
     r18 = r17[1]
     r14 = r18
     r19 = r17[0]
@@ -302,7 +302,7 @@ L7:
     r23 = PyList_Append(r13, r22)
     r24 = r23 >= 0 :: signed
 L8:
-    r25 = CPyDict_CheckSizeUnsafe(m, r15)
+    r25 = CPyDict_CheckSize(m, r15)
     goto L6
 L9:
     r26 = CPy_NoErrOccurred()
@@ -310,9 +310,9 @@ L10:
     r27 = PySet_New(0)
     r28 = 0
     r29 = PyDict_Size(m)
-    r30 = _CPyDict_GetIterUnsafe(m)
+    r30 = CPyDict_GetKeysIter(m)
 L11:
-    r31 = CPyDict_NextKeyUnsafe(r30, r28)
+    r31 = CPyDict_NextKey(r30, r28)
     r32 = r31[1]
     r28 = r32
     r33 = r31[0]
@@ -324,7 +324,7 @@ L12:
     r36 = PySet_Add(r27, x_3)
     r37 = r36 >= 0 :: signed
 L13:
-    r38 = CPyDict_CheckSizeUnsafe(m, r29)
+    r38 = CPyDict_CheckSize(m, r29)
     goto L11
 L14:
     r39 = CPy_NoErrOccurred()
@@ -332,9 +332,9 @@ L15:
     r40 = PyDict_New()
     r41 = 0
     r42 = PyDict_Size(m)
-    r43 = _CPyDict_GetIterUnsafe(m)
+    r43 = CPyDict_GetItemsIter(m)
 L16:
-    r44 = CPyDict_NextItemUnsafe(r43, r41)
+    r44 = CPyDict_NextItem(r43, r41)
     r45 = r44[1]
     r41 = r45
     r46 = r44[0]
@@ -350,18 +350,18 @@ L17:
     r52 = PyDict_SetItem(r40, k, r51)
     r53 = r52 >= 0 :: signed
 L18:
-    r54 = CPyDict_CheckSizeUnsafe(m, r42)
+    r54 = CPyDict_CheckSize(m, r42)
     goto L16
 L19:
     r55 = CPy_NoErrOccurred()
 L20:
     return 1
 def fn_union(m):
-    m :: dict[exact]
+    m :: dict
     r0 :: list
     r1 :: short_int
     r2 :: native_int
-    r3 :: dict[exact]
+    r3 :: object
     r4 :: tuple[bool, short_int, object]
     r5 :: short_int
     r6 :: bool
@@ -372,7 +372,7 @@ def fn_union(m):
     r13 :: list
     r14 :: short_int
     r15 :: native_int
-    r16 :: dict[exact]
+    r16 :: object
     r17 :: tuple[bool, short_int, object]
     r18 :: short_int
     r19 :: bool
@@ -383,7 +383,7 @@ def fn_union(m):
     r26 :: set
     r27 :: short_int
     r28 :: native_int
-    r29 :: dict[exact]
+    r29 :: object
     r30 :: tuple[bool, short_int, object]
     r31 :: short_int
     r32 :: bool
@@ -394,7 +394,7 @@ def fn_union(m):
     r39 :: dict[exact]
     r40 :: short_int
     r41 :: native_int
-    r42 :: dict[exact]
+    r42 :: object
     r43 :: tuple[bool, short_int, object, object]
     r44 :: short_int
     r45 :: bool
@@ -409,9 +409,9 @@ L0:
     r0 = PyList_New(0)
     r1 = 0
     r2 = PyDict_Size(m)
-    r3 = _CPyDict_GetIterUnsafe(m)
+    r3 = CPyDict_GetKeysIter(m)
 L1:
-    r4 = CPyDict_NextKeyUnsafe(r3, r1)
+    r4 = CPyDict_NextKey(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -423,7 +423,7 @@ L2:
     r9 = PyList_Append(r0, x)
     r10 = r9 >= 0 :: signed
 L3:
-    r11 = CPyDict_CheckSizeUnsafe(m, r2)
+    r11 = CPyDict_CheckSize(m, r2)
     goto L1
 L4:
     r12 = CPy_NoErrOccurred()
@@ -431,9 +431,9 @@ L5:
     r13 = PyList_New(0)
     r14 = 0
     r15 = PyDict_Size(m)
-    r16 = _CPyDict_GetIterUnsafe(m)
+    r16 = CPyDict_GetValuesIter(m)
 L6:
-    r17 = CPyDict_NextValueUnsafe(r16, r14)
+    r17 = CPyDict_NextValue(r16, r14)
     r18 = r17[1]
     r14 = r18
     r19 = r17[0]
@@ -445,7 +445,7 @@ L7:
     r22 = PyList_Append(r13, x_2)
     r23 = r22 >= 0 :: signed
 L8:
-    r24 = CPyDict_CheckSizeUnsafe(m, r15)
+    r24 = CPyDict_CheckSize(m, r15)
     goto L6
 L9:
     r25 = CPy_NoErrOccurred()
@@ -453,9 +453,9 @@ L10:
     r26 = PySet_New(0)
     r27 = 0
     r28 = PyDict_Size(m)
-    r29 = _CPyDict_GetIterUnsafe(m)
+    r29 = CPyDict_GetKeysIter(m)
 L11:
-    r30 = CPyDict_NextKeyUnsafe(r29, r27)
+    r30 = CPyDict_NextKey(r29, r27)
     r31 = r30[1]
     r27 = r31
     r32 = r30[0]
@@ -467,7 +467,7 @@ L12:
     r35 = PySet_Add(r26, x_3)
     r36 = r35 >= 0 :: signed
 L13:
-    r37 = CPyDict_CheckSizeUnsafe(m, r28)
+    r37 = CPyDict_CheckSize(m, r28)
     goto L11
 L14:
     r38 = CPy_NoErrOccurred()
@@ -475,9 +475,9 @@ L15:
     r39 = PyDict_New()
     r40 = 0
     r41 = PyDict_Size(m)
-    r42 = _CPyDict_GetIterUnsafe(m)
+    r42 = CPyDict_GetItemsIter(m)
 L16:
-    r43 = CPyDict_NextItemUnsafe(r42, r40)
+    r43 = CPyDict_NextItem(r42, r40)
     r44 = r43[1]
     r40 = r44
     r45 = r43[0]
@@ -492,7 +492,7 @@ L17:
     r50 = PyDict_SetItem(r39, k, v)
     r51 = r50 >= 0 :: signed
 L18:
-    r52 = CPyDict_CheckSizeUnsafe(m, r41)
+    r52 = CPyDict_CheckSize(m, r41)
     goto L16
 L19:
     r53 = CPy_NoErrOccurred()
@@ -674,7 +674,7 @@ L2:
 def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     __mypyc_self__ :: __main__.inner_deco_obj
     args :: tuple
-    kwargs :: dict[exact]
+    kwargs :: dict
     r0 :: __main__.deco_env
     r1 :: native_int
     r2 :: list
@@ -773,3 +773,4 @@ def f(x):
     x :: int
 L0:
     return x
+

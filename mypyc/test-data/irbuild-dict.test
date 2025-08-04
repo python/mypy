@@ -4,12 +4,12 @@ def f(d: Dict[int, bool]) -> bool:
     return d[0]
 [out]
 def f(d):
-    d :: dict[exact]
+    d :: dict
     r0, r1 :: object
     r2 :: bool
 L0:
     r0 = object 0
-    r1 = CPyDict_GetItemUnsafe(d, r0)
+    r1 = CPyDict_GetItem(d, r0)
     r2 = unbox(bool, r1)
     return r2
 
@@ -19,14 +19,14 @@ def f(d: Dict[int, bool]) -> None:
     d[0] = False
 [out]
 def f(d):
-    d :: dict[exact]
+    d :: dict
     r0, r1 :: object
     r2 :: i32
     r3 :: bit
 L0:
     r0 = object 0
     r1 = box(bool, 0)
-    r2 = PyDict_SetItem(d, r0, r1)
+    r2 = CPyDict_SetItem(d, r0, r1)
     r3 = r2 >= 0 :: signed
     return 1
 
@@ -481,93 +481,90 @@ def f4(d: Dict[object, object], flag: bool) -> object:
         return d.setdefault('a', {'c': 1})
 [out]
 def f(d):
-    d :: dict[exact]
+    d :: dict
     r0, r1 :: str
     r2 :: object
 L0:
     r0 = 'a'
     r1 = 'b'
-    r2 = PyDict_SetDefault(d, r0, r1)
+    r2 = CPyDict_SetDefault(d, r0, r1)
     return r2
 def f2(d, flag):
-    d :: dict[exact]
+    d :: dict
     flag :: bool
     r0 :: str
-    r1 :: dict
-    r2 :: object
-    r3, r4 :: str
-    r5 :: set
+    r1 :: object
+    r2, r3 :: str
+    r4 :: set
+    r5, r6 :: object
+L0:
+    if flag goto L1 else goto L2 :: bool
+L1:
+    r0 = 'a'
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 3)
+    return r1
+L2:
+    r2 = 'a'
+    r3 = 'b'
+    r4 = PySet_New(r3)
+    r5 = CPyDict_SetDefault(d, r2, r4)
+    return r5
+L3:
+    r6 = box(None, 1)
+    return r6
+def f3(d, flag):
+    d :: dict
+    flag :: bool
+    r0 :: str
+    r1 :: object
+    r2 :: str
+    r3 :: list
+    r4 :: object
+    r5 :: ptr
     r6, r7 :: object
 L0:
     if flag goto L1 else goto L2 :: bool
 L1:
     r0 = 'a'
-    r1 = cast(dict, d)
-    r2 = CPyDict_SetDefaultWithEmptyDatatype(r1, r0, 3)
-    return r2
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 1)
+    return r1
 L2:
-    r3 = 'a'
-    r4 = 'b'
-    r5 = PySet_New(r4)
-    r6 = PyDict_SetDefault(d, r3, r5)
+    r2 = 'a'
+    r3 = PyList_New(1)
+    r4 = object 1
+    r5 = list_items r3
+    buf_init_item r5, 0, r4
+    keep_alive r3
+    r6 = CPyDict_SetDefault(d, r2, r3)
     return r6
 L3:
     r7 = box(None, 1)
     return r7
-def f3(d, flag):
-    d :: dict[exact]
-    flag :: bool
-    r0 :: str
-    r1 :: dict
-    r2 :: object
-    r3 :: str
-    r4 :: list
-    r5 :: object
-    r6 :: ptr
-    r7, r8 :: object
-L0:
-    if flag goto L1 else goto L2 :: bool
-L1:
-    r0 = 'a'
-    r1 = cast(dict, d)
-    r2 = CPyDict_SetDefaultWithEmptyDatatype(r1, r0, 1)
-    return r2
-L2:
-    r3 = 'a'
-    r4 = PyList_New(1)
-    r5 = object 1
-    r6 = list_items r4
-    buf_init_item r6, 0, r5
-    keep_alive r4
-    r7 = PyDict_SetDefault(d, r3, r4)
-    return r7
-L3:
-    r8 = box(None, 1)
-    return r8
 def f4(d, flag):
-    d :: dict[exact]
+    d :: dict
     flag :: bool
     r0 :: str
-    r1 :: dict
-    r2 :: object
-    r3, r4 :: str
-    r5 :: object
-    r6 :: dict[exact]
+    r1 :: object
+    r2, r3 :: str
+    r4 :: object
+    r5 :: dict[exact]
+    r6 :: dict
     r7, r8 :: object
 L0:
     if flag goto L1 else goto L2 :: bool
 L1:
     r0 = 'a'
-    r1 = cast(dict, d)
-    r2 = CPyDict_SetDefaultWithEmptyDatatype(r1, r0, 2)
-    return r2
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 2)
+    return r1
 L2:
-    r3 = 'a'
-    r4 = 'c'
-    r5 = object 1
-    r6 = CPyDict_Build(1, r4, r5)
-    r7 = PyDict_SetDefault(d, r3, r6)
+    r2 = 'a'
+    r3 = 'c'
+    r4 = object 1
+    r5 = CPyDict_Build(1, r3, r4)
+    r6 = cast(dict, r5)
+    r7 = CPyDict_SetDefault(d, r2, r6)
     return r7
 L3:
     r8 = box(None, 1)
     return r8
+
