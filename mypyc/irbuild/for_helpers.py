@@ -1192,8 +1192,15 @@ def get_expr_length(expr: Expression) -> int | None:
     if isinstance(expr, (StrExpr, BytesExpr)):
         return len(expr.value)
     elif isinstance(expr, (ListExpr, TupleExpr)):
-        if all(get_expr_length(i) is not None for i in expr.items):
-            return len(expr.items)
+        # if there are no star expressions, or we know the length of them,
+        # we know the length of the expression
+        stars = [get_expr_length(i, context) for i in expr.items if isinstance(i, StarExpr)]
+        if None not in stars:
+            other = sum(not isinstance(i, StarExpr) for i in expr.items)
+            return other + sum(stars)
+    elif isinstance(expr, StarExpr):
+        # star expression needs some extra logic but that can come later, this is good for now
+        pass
     # TODO: extend this, unrolling should come with a good performance boost
     return None
 
