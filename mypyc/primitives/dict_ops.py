@@ -379,7 +379,7 @@ method_op(
     arg_types=[true_dict_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="PyDict_Clear",
-    error_kind=ERR_FALSE,
+    error_kind=ERR_NEVER,
 )
 
 # dictsubclass.clear()
