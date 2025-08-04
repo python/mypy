@@ -323,6 +323,72 @@ L4:
     a = r3
     return 1
 
+[case testTupleBuiltFromBytes]
+def f2(val: int) -> int:
+    return val + 2
+
+def test() -> None:
+    source = b"abc"
+    a = tuple(f2(x) for x in source)
+
+[builtins fixtures/tuple.pyi]
+[out]
+def f2(val):
+    val, r0 :: int
+L0:
+    r0 = CPyTagged_Add(val, 4)
+    return r0
+def test():
+    r0, source :: bytes
+    r1 :: native_int
+    r2 :: tuple
+    r3, r4 :: native_int
+    r5, r6, r7 :: bit
+    r8, r9, r10, r11 :: int
+    r12 :: object
+    r13, x, r14 :: int
+    r15 :: object
+    r16 :: native_int
+    a :: object
+L0:
+    r0 = b'abc'
+    source = r0
+    r1 = var_object_size source
+    r2 = PyTuple_New(r1)
+    r3 = var_object_size source
+    r4 = 0
+L1:
+    r5 = r4 < r3 :: signed
+    if r5 goto L2 else goto L8 :: bool
+L2:
+    r6 = r4 <= 4611686018427387903 :: signed
+    if r6 goto L3 else goto L4 :: bool
+L3:
+    r7 = r4 >= -4611686018427387904 :: signed
+    if r7 goto L5 else goto L4 :: bool
+L4:
+    r8 = CPyTagged_FromInt64(r4)
+    r9 = r8
+    goto L6
+L5:
+    r10 = r4 << 1
+    r9 = r10
+L6:
+    r11 = CPyBytes_GetItem(source, r9)
+    r12 = box(int, r11)
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = f2(x)
+    r15 = box(int, r14)
+    CPySequenceTuple_SetItemUnsafe(r2, r4, r15)
+L7:
+    r16 = r4 + 1
+    r4 = r16
+    goto L1
+L8:
+    a = r2
+    return 1
+
 [case testTupleBuiltFromVariableLengthTuple]
 from typing import Tuple
 

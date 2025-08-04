@@ -207,9 +207,9 @@ def sequence_from_generator_preallocate_helper(
     there is no condition list in the generator and only one original sequence with
     one index is allowed.
 
-    e.g.  (1) tuple(f(x) for x in a_list/a_tuple)
-          (2) list(f(x) for x in a_list/a_tuple)
-          (3) [f(x) for x in a_list/a_tuple]
+    e.g.  (1) tuple(f(x) for x in a_list/a_tuple/a_str/a_bytes)
+          (2) list(f(x) for x in a_list/a_tuple/a_str/a_bytes)
+          (3) [f(x) for x in a_list/a_tuple/a_str/a_bytes]
     RTuple as an original sequence is not supported yet.
 
     Args:
@@ -226,7 +226,7 @@ def sequence_from_generator_preallocate_helper(
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
         rtype = builder.node_type(gen.sequences[0])
-        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype) or is_str_rprimitive(rtype):
+        if is_sequence_rprimitive(rtype):
             sequence = builder.accept(gen.sequences[0])
             length = builder.builder.builtin_len(sequence, gen.line, use_pyssize_t=True)
             target_op = empty_op_llbuilder(length, gen.line)

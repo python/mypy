@@ -628,7 +628,10 @@ def is_range_rprimitive(rtype: RType) -> bool:
 
 def is_sequence_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and (
-        is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype) or is_str_rprimitive(rtype)
+        is_list_rprimitive(rtype)
+        or is_tuple_rprimitive(rtype)
+        or is_str_rprimitive(rtype)
+        or is_bytes_rprimitive(rtype)
     )
 
 
