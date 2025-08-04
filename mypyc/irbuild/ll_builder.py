@@ -861,7 +861,7 @@ class LowLevelIRBuilder:
                         )
 
                     star2_result = self._create_dict(star2_keys, star2_values, line)
-                if is_true_dict_rprimitive(value):
+                if is_true_dict_rprimitive(value.type):
                     op = true_dict_update_op
                 else:
                     op = dict_update_in_display_op
@@ -1827,13 +1827,13 @@ class LowLevelIRBuilder:
             else:
                 # **value
                 if result is None:
-                    if len(key_value_pairs) == 1 and is_true_dict_rprimitive(value):
+                    if len(key_value_pairs) == 1 and is_true_dict_rprimitive(value.type):
                         # fast path for cases like `my_func(**dict(zip(iterable, other)))` and similar
                         return self.call_c(true_dict_copy_op, [value], line=line)
 
                     result = self._create_dict(keys, values, line)
 
-                if is_true_dict_rprimitive(value):
+                if is_true_dict_rprimitive(value.type):
                     op = true_dict_update_op
                 else:
                     op = dict_update_in_display_op
