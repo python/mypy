@@ -50,11 +50,11 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
+    exact_dict_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
     is_optional_type,
     object_rprimitive,
-    exact_dict_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder, create_type_params
 from mypyc.irbuild.function import (

@@ -11,12 +11,12 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     cstring_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
     str_rprimitive,
-    exact_dict_rprimitive,
     void_rtype,
 )
 from mypyc.primitives.registry import (

@@ -54,10 +54,10 @@ from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import (
     RInstance,
     RType,
+    exact_dict_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
-    exact_dict_rprimitive,
     tuple_rprimitive,
 )
 from mypyc.irbuild.mapper import Mapper

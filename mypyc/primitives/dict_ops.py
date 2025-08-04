@@ -11,10 +11,10 @@ from mypyc.ir.rtypes import (
     dict_next_rtuple_pair,
     dict_next_rtuple_single,
     dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
-    exact_dict_rprimitive,
     void_rtype,
 )
 from mypyc.primitives.registry import (

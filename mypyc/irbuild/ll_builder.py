@@ -93,11 +93,13 @@ from mypyc.ir.rtypes import (
     c_size_t_rprimitive,
     check_native_int_range,
     dict_rprimitive,
+    exact_dict_rprimitive,
     float_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
+    is_exact_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
     is_frozenset_rprimitive,
@@ -111,7 +113,6 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tagged,
-    is_exact_dict_rprimitive,
     is_tuple_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
@@ -122,7 +123,6 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
-    exact_dict_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.options import CompilerOptions

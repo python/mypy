@@ -32,6 +32,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     bytes_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     float_rprimitive,
     frozenset_rprimitive,
     int16_rprimitive,
@@ -44,7 +45,6 @@ from mypyc.ir.rtypes import (
     range_rprimitive,
     set_rprimitive,
     str_rprimitive,
-    exact_dict_rprimitive,
     tuple_rprimitive,
     uint8_rprimitive,
 )

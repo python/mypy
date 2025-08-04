@@ -56,9 +56,9 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     bool_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
-    exact_dict_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.callable_class import (
