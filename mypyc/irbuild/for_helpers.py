@@ -26,6 +26,7 @@ from mypy.nodes import (
     StrExpr,
     TupleExpr,
     TypeAlias,
+    Var,
 )
 from mypyc.ir.ops import (
     ERR_NEVER,
@@ -1202,6 +1203,14 @@ def get_expr_length(expr: Expression) -> int | None:
     elif isinstance(expr, StarExpr):
         # star expression needs some extra logic but that can come later, this is good for now
         return get_expr_length(expr.expr)
+    elif (
+        isinstance(expr, RefExpr)
+        and isinstance(expr.node, Var)
+        and expr.node.is_final
+        and isinstance(expr.node.final_value, str)
+        and expr.node.has_explicit_value
+    ):
+        return len(expr.node.final_value)
     # TODO: extend this, unrolling should come with a good performance boost
     return None
 
