@@ -1,7 +1,6 @@
 # Test cases for weakrefs (compile and run)
 
 [case testWeakrefRef]
-import pytest  # type: ignore [import-not-found]
 from weakref import ref
 from mypy_extensions import mypyc_attr
 
