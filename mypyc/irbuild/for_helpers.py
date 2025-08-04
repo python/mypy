@@ -49,7 +49,6 @@ from mypyc.ir.rtypes import (
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
-    is_frozenset_rprimitive,
     is_list_rprimitive,
     is_sequence_rprimitive,
     is_short_int_rprimitive,
