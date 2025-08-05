@@ -2234,7 +2234,7 @@ class FindAttributeAssign(TraverserVisitor):
         pass
 
     def visit_member_expr(self, e: MemberExpr) -> None:
-        if self.lvalue:
+        if self.lvalue and isinstance(e.expr, NameExpr):
             self.found = True
 
 
