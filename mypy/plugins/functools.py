@@ -41,6 +41,7 @@ functools_total_ordering_makers: Final = {"functools.total_ordering"}
 _ORDERING_METHODS: Final = {"__lt__", "__le__", "__gt__", "__ge__"}
 
 PARTIAL: Final = "functools.partial"
+LRU_CACHE: Final = "functools.lru_cache"
 
 
 class _MethodInfo(NamedTuple):
@@ -393,3 +394,135 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
         ctx.api.expr_checker.msg.too_few_arguments(partial_type, ctx.context, actual_arg_names)
 
     return result
+
+
+def functools_lru_cache_callback(ctx: mypy.plugin.FunctionContext) -> Type:
+    """Infer a more precise return type for functools.lru_cache decorator"""
+    if not isinstance(ctx.api, mypy.checker.TypeChecker):  # use internals
+        return ctx.default_return_type
+
+    # Only handle the very specific case: @lru_cache (without parentheses)
+    # where a single function is passed directly as the only argument
+    if (
+        len(ctx.arg_types) == 1
+        and len(ctx.arg_types[0]) == 1
+        and len(ctx.args) == 1
+        and len(ctx.args[0]) == 1
+    ):
+
+        first_arg_type = ctx.arg_types[0][0]
+
+        # Explicitly reject literal types, instances, and None
+        from mypy.types import Instance, LiteralType, NoneType
+
+        proper_first_arg_type = get_proper_type(first_arg_type)
+        if isinstance(proper_first_arg_type, (LiteralType, Instance, NoneType)):
+            return ctx.default_return_type
+
+        # Try to extract callable type
+        fn_type = ctx.api.extract_callable_type(first_arg_type, ctx=ctx.default_return_type)
+        if fn_type is not None:
+            # This is the @lru_cache case (function passed directly)
+            return fn_type
+
+    # For all other cases (parameterized, multiple args, etc.), don't interfere
+    return ctx.default_return_type
+
+
+def lru_cache_wrapper_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
+    """Handle calls to functools._lru_cache_wrapper objects to provide parameter validation"""
+    if not isinstance(ctx.api, mypy.checker.TypeChecker):
+        return ctx.default_return_type
+
+    # Safety check: ensure we have the required context
+    if not ctx.context or not ctx.args or not ctx.arg_types:
+        return ctx.default_return_type
+
+    # Try to find the original function signature using AST/symbol table analysis
+    original_signature = _find_original_function_signature(ctx)
+
+    if original_signature is not None:
+        # Validate the call against the original function signature
+        actual_args = []
+        actual_arg_kinds = []
+        actual_arg_names = []
+        seen_args = set()
+
+        for i, param in enumerate(ctx.args):
+            for j, a in enumerate(param):
+                if a in seen_args:
+                    continue
+                seen_args.add(a)
+                actual_args.append(a)
+                actual_arg_kinds.append(ctx.arg_kinds[i][j])
+                actual_arg_names.append(ctx.arg_names[i][j])
+
+        # Check the call against the original signature
+        try:
+            result, _ = ctx.api.expr_checker.check_call(
+                callee=original_signature,
+                args=actual_args,
+                arg_kinds=actual_arg_kinds,
+                arg_names=actual_arg_names,
+                context=ctx.context,
+            )
+            return result
+        except Exception:
+            # If check_call fails, fall back gracefully
+            pass
+
+    return ctx.default_return_type
+
+
+def _find_original_function_signature(ctx: mypy.plugin.MethodContext) -> CallableType | None:
+    """
+    Attempt to find the original function signature from the call context.
+
+    Returns the CallableType of the original function if found, None otherwise.
+    This function safely traverses the AST structure to locate the original
+    function signature that was decorated with @lru_cache.
+    """
+    from mypy.nodes import CallExpr, Decorator, NameExpr
+
+    try:
+        # Ensure we have the required context structure
+        if not isinstance(ctx.context, CallExpr):
+            return None
+
+        callee = ctx.context.callee
+        if not isinstance(callee, NameExpr) or not callee.name:
+            return None
+
+        func_name = callee.name
+
+        # Safely access the API globals
+        if not hasattr(ctx.api, "globals") or not isinstance(ctx.api.globals, dict):
+            return None
+
+        if func_name not in ctx.api.globals:
+            return None
+
+        symbol = ctx.api.globals[func_name]
+
+        # Validate symbol structure before accessing node
+        if not hasattr(symbol, "node") or symbol.node is None:
+            return None
+
+        # Check if this is a decorator node containing our function
+        if isinstance(symbol.node, Decorator):
+            decorator_node = symbol.node
+
+            # Safely access the decorated function
+            if not hasattr(decorator_node, "func") or decorator_node.func is None:
+                return None
+
+            func_def = decorator_node.func
+
+            # Verify we have a callable type
+            if hasattr(func_def, "type") and isinstance(func_def.type, CallableType):
+                return func_def.type
+
+        return None
+    except (AttributeError, TypeError, KeyError):
+        # If anything goes wrong in AST traversal, fail gracefully
+        return None
