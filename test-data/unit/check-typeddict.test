@@ -4289,3 +4289,21 @@ inputs: Sequence[Component] = [{
 }]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAssignableToWiderContext]
+from typing import TypedDict, Union
+
+class TD(TypedDict):
+    x: int
+
+x: Union[TD, dict[str, str]] = {"x": "foo"}
+y: Union[TD, dict[str, int]] = {"x": "foo"}  # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
+
+def ok(d: Union[TD, dict[str, str]]) -> None: ...
+ok({"x": "foo"})
+
+def bad(d: Union[TD, dict[str, int]]) -> None: ...
+bad({"x": "foo"})  # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

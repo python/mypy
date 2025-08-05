@@ -395,10 +395,10 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Disable new experimental type inference algorithm.
+        # Disable new type inference algorithm.
         self.old_type_inference = False
-        # Deprecated reverse version of the above, do not use.
-        self.new_type_inference = False
+        # Disable expression cache (for debugging).
+        self.disable_expression_cache = False
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
@@ -509,7 +509,6 @@ class Options:
             code = error_codes[code_str]
             new_options.enabled_error_codes.add(code)
             new_options.disabled_error_codes.discard(code)
-
         return new_options
 
     def compare_stable(self, other_snapshot: dict[str, object]) -> bool:

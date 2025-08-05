@@ -600,12 +600,14 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         """
         if self._is_trivial_self is not None:
             return self._is_trivial_self
-        for item in self.items:
+        for i, item in enumerate(self.items):
+            # Note: bare @property is removed in visit_decorator().
+            trivial = 1 if i > 0 or not self.is_property else 0
             if isinstance(item, FuncDef):
                 if not item.is_trivial_self:
                     self._is_trivial_self = False
                     return False
-            elif item.decorators or not item.func.is_trivial_self:
+            elif len(item.decorators) > trivial or not item.func.is_trivial_self:
                 self._is_trivial_self = False
                 return False
         self._is_trivial_self = True
@@ -821,11 +823,13 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
+        "has_self_attr_def",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
         "docstring",
         "deprecated",
+        "original_first_arg",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -858,6 +862,14 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
+        # Keep track of functions where self attributes are defined.
+        self.has_self_attr_def = False
+        # This is needed because for positional-only arguments the name is set to None,
+        # but we sometimes still want to show it in error messages.
+        if arguments:
+            self.original_first_arg: str | None = arguments[0].variable.name
+        else:
+            self.original_first_arg = None
 
     @property
     def name(self) -> str:
@@ -889,6 +901,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                 else self.dataclass_transform_spec.serialize()
             ),
             "deprecated": self.deprecated,
+            "original_first_arg": self.original_first_arg,
         }
 
     @classmethod
@@ -909,7 +922,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         set_flags(ret, data["flags"])
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
-        ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
+        ret.original_first_arg = data.get("original_first_arg")
+        ret.arg_kinds = [ARG_KINDS[x] for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
         ret.dataclass_transform_spec = (
             DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
@@ -2012,6 +2026,8 @@ ARG_NAMED: Final = ArgKind.ARG_NAMED
 ARG_STAR2: Final = ArgKind.ARG_STAR2
 ARG_NAMED_OPT: Final = ArgKind.ARG_NAMED_OPT
 
+ARG_KINDS: Final = (ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT)
+
 
 class CallExpr(Expression):
     """Call expression.
@@ -3067,6 +3083,7 @@ class TypeInfo(SymbolNode):
         "dataclass_transform_spec",
         "is_type_check_only",
         "deprecated",
+        "type_object_type",
     )
 
     _fullname: str  # Fully qualified name
@@ -3223,6 +3240,10 @@ class TypeInfo(SymbolNode):
     # The type's deprecation message (in case it is deprecated)
     deprecated: str | None
 
+    # Cached value of class constructor type, i.e. the type of class object when it
+    # appears in runtime context.
+    type_object_type: mypy.types.FunctionLike | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3281,6 +3302,7 @@ class TypeInfo(SymbolNode):
         self.dataclass_transform_spec = None
         self.is_type_check_only = False
         self.deprecated = None
+        self.type_object_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3516,6 +3538,8 @@ class TypeInfo(SymbolNode):
             self.special_alias = alias
         else:
             self.special_alias.target = alias.target
+            # Invalidate recursive status cache in case it was previously set.
+            self.special_alias._is_recursive = None
 
     def update_typeddict_type(self, typ: mypy.types.TypedDictType) -> None:
         """Update typeddict_type and special_alias as needed."""
@@ -3525,6 +3549,8 @@ class TypeInfo(SymbolNode):
             self.special_alias = alias
         else:
             self.special_alias.target = alias.target
+            # Invalidate recursive status cache in case it was previously set.
+            self.special_alias._is_recursive = None
 
     def __str__(self) -> str:
         """Return a string representation of the type.
