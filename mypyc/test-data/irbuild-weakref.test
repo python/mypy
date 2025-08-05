@@ -8,16 +8,13 @@ def f(x: object) -> object:
 [out]
 def f(x):
     x :: object
-    r0 :: weakref.ReferenceType
-    ref :: object
-    r1 :: weakref.ReferenceType
-    r2 :: object
+    r0, ref :: weakref.ReferenceType
+    r1 :: object
 L0:
     r0 = PyWeakref_NewRef(x, 0)
     ref = r0
-    r1 = cast(weakref.ReferenceType, ref)
-    r2 = CPyWeakref_GetRef(r1)
-    return r2
+    r1 = CPyWeakref_GetRef(ref)
+    return r1
 
 [case testWeakrefRefCallback]
 import weakref
@@ -29,16 +26,13 @@ def f(x: object, cb: Callable[[object], Any]) -> object:
 [out]
 def f(x, cb):
     x, cb :: object
-    r0 :: weakref.ReferenceType
-    ref :: object
-    r1 :: weakref.ReferenceType
-    r2 :: object
+    r0, ref :: weakref.ReferenceType
+    r1 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
     ref = r0
-    r1 = cast(weakref.ReferenceType, ref)
-    r2 = CPyWeakref_GetRef(r1)
-    return r2
+    r1 = CPyWeakref_GetRef(ref)
+    return r1
 
 [case testFromWeakrefRef]
 from typing import Any, Callable
@@ -50,16 +44,13 @@ def f(x: object) -> object:
 [out]
 def f(x):
     x :: object
-    r0 :: weakref.ReferenceType
-    r :: object
-    r1 :: weakref.ReferenceType
-    r2 :: object
+    r0, r :: weakref.ReferenceType
+    r1 :: object
 L0:
     r0 = PyWeakref_NewRef(x, 0)
     r = r0
-    r1 = cast(weakref.ReferenceType, r)
-    r2 = CPyWeakref_GetRef(r1)
-    return r2
+    r1 = CPyWeakref_GetRef(r)
+    return r1
 
 [case testFromWeakrefRefCallback]
 from typing import Any, Callable
@@ -71,13 +62,11 @@ def f(x: object, cb: Callable[[object], Any]) -> object:
 [out]
 def f(x, cb):
     x, cb :: object
-    r0 :: weakref.ReferenceType
-    r :: object
-    r1 :: weakref.ReferenceType
-    r2 :: object
+    r0, r :: weakref.ReferenceType
+    r1 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
     r = r0
-    r1 = cast(weakref.ReferenceType, r)
-    r2 = CPyWeakref_GetRef(r1)
-    return r2
+    r1 = CPyWeakref_GetRef(r)
+    return r1
+
