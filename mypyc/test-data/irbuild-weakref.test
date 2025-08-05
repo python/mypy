@@ -69,4 +69,3 @@ L0:
     r = r0
     r1 = CPyWeakref_GetRef(r)
     return r1
-
