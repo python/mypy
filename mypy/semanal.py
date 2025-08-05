@@ -51,7 +51,6 @@ Some important properties:
 from __future__ import annotations
 
 import re
-import warnings
 from collections.abc import Collection, Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any, Callable, Final, TypeVar, cast
@@ -364,7 +363,7 @@ _MULTIPLE_WORDS_NONTYPE_RE = re.compile(r'\s*[^\s.\'"|\[]+\s+[^\s.\'"|\[]')
 # [^\d\W] = word character that is not a digit
 # \w = word character
 # \Z = match end of string; does not allow a trailing \n, unlike $
-_IDENTIFIER_RE = re.compile(r'^[^\d\W]\w*\Z', re.UNICODE)
+_IDENTIFIER_RE = re.compile(r"^[^\d\W]\w*\Z", re.UNICODE)
 
 
 class SemanticAnalyzer(
@@ -7770,11 +7769,11 @@ class SemanticAnalyzer(
             else:  # does not look like an identifier
                 if '"' in str_value or "'" in str_value:
                     # Only valid inside a Literal[...] type
-                    if '[' not in str_value:
+                    if "[" not in str_value:
                         # Cannot be a Literal[...] type
                         maybe_type_expr.as_type = None
                         return
-                elif str_value == '':
+                elif str_value == "":
                     # Empty string is not a valid type
                     maybe_type_expr.as_type = None
                     return
@@ -7828,7 +7827,9 @@ class SemanticAnalyzer(
                 finally:
                     self.errors.flushed_files = original_flushed_files  # restore
 
-                print(f'SA.try_parse_as_type_expression: Full parse failure: {maybe_type_expr}, errors={errors!r}')
+                print(
+                    f"SA.try_parse_as_type_expression: Full parse failure: {maybe_type_expr}, errors={errors!r}"
+                )
 
         # Count full parse attempts for profiling
         if t is not None:

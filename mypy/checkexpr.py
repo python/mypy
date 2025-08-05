@@ -6083,10 +6083,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 )  # r-value type, when interpreted as a type expression
             elif (
                 isinstance(p_type_context, UnionType)
-                and any([
-                    isinstance(item, TypeType) and item.is_type_form
-                    for item in p_type_context.items
-                ])
+                and any(
+                    [
+                        isinstance(item, TypeType) and item.is_type_form
+                        for item in p_type_context.items
+                    ]
+                )
                 and (node_as_type := self.try_parse_as_type_expression(node)) is not None
             ):
                 typ1 = TypeType.make_normalized(

@@ -37,9 +37,9 @@ def analyze_stats(output: str) -> None:
     """Parse mypy stats output and calculate TypeForm parsing efficiency."""
 
     # Extract the three counters
-    total_match = re.search(r'type_expression_parse_count:\s*(\d+)', output)
-    success_match = re.search(r'type_expression_full_parse_success_count:\s*(\d+)', output)
-    failure_match = re.search(r'type_expression_full_parse_failure_count:\s*(\d+)', output)
+    total_match = re.search(r"type_expression_parse_count:\s*(\d+)", output)
+    success_match = re.search(r"type_expression_full_parse_success_count:\s*(\d+)", output)
+    failure_match = re.search(r"type_expression_full_parse_failure_count:\s*(\d+)", output)
 
     if not (total_match and success_match and failure_match):
         print("Error: Could not find all required counters in output")
@@ -51,8 +51,8 @@ def analyze_stats(output: str) -> None:
 
     full_parses = successes + failures
 
-    print(f"TypeForm Expression Parsing Statistics:")
-    print(f"="*50)
+    print("TypeForm Expression Parsing Statistics:")
+    print("=" * 50)
     print(f"Total calls to SA.try_parse_as_type_expression: {total:,}")
     print(f"Quick rejections (no full parse): {total - full_parses:,}")
     print(f"Full parses attempted: {full_parses:,}")
@@ -60,14 +60,16 @@ def analyze_stats(output: str) -> None:
     print(f"  - Failed: {failures:,}")
     if total > 0:
         print()
-        print(f"Efficiency Metrics:")
+        print("Efficiency Metrics:")
         print(f"  - Quick rejection rate: {((total - full_parses) / total * 100):.1f}%")
         print(f"  - Full parse rate: {(full_parses / total * 100):.1f}%")
         print(f"  - Full parse success rate: {(successes / full_parses * 100):.1f}%")
         print(f"  - Overall success rate: {(successes / total * 100):.1f}%")
         print()
-        print(f"Performance Implications:")
-        print(f"  - Expensive failed full parses: {failures:,} ({(failures / total * 100):.1f}% of all calls)")
+        print("Performance Implications:")
+        print(
+            f"  - Expensive failed full parses: {failures:,} ({(failures / total * 100):.1f}% of all calls)"
+        )
 
 
 if __name__ == "__main__":
@@ -80,7 +82,9 @@ if __name__ == "__main__":
     else:
         print("Usage: python3 analyze_typeform_stats.py [mypy_output_with_stats]")
         print("Examples:")
-        print("  python3 -m mypy --dump-build-stats file.py 2>&1 | python3 analyze_typeform_stats.py")
+        print(
+            "  python3 -m mypy --dump-build-stats file.py 2>&1 | python3 analyze_typeform_stats.py"
+        )
         print("  python3 analyze_typeform_stats.py 'output_string'")
         sys.exit(1)
 
