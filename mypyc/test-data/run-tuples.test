@@ -94,6 +94,7 @@ assert f(NT(3, 2)) == 3
 class Sub(NT):
     pass
 assert f(Sub(3, 2)) == 3
+[typing fixtures/typing-full.pyi]
 
 -- Ref: https://github.com/mypyc/mypyc/issues/924
 [case testNamedTupleClassSyntax]
@@ -152,6 +153,7 @@ assert Record.__annotations__ == {
     'ordering': type,
     'extra_int_constants': list,
 }, Record.__annotations__
+[typing fixtures/typing-full.pyi]
 
 [case testTupleOps]
 from typing import Tuple, Final, List, Any, Optional, cast
