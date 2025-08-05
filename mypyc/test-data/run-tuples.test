@@ -143,8 +143,8 @@ if sys.version_info >= (3, 14):
         # on Windows.
         msg = 'Missing "test" module.'
         if sys.platform == "win32":
-            msg += (' Please install a version of Python with the test module'
-                   ' by running pymanager install --force PythonTest\\<version>')
+            msg += (' Please install a version of Python with the test module.'
+                   ' If you are using pymanager, try running pymanager install --force PythonTest\\<version>')
         raise ImportError(msg) from e
 
 if not HAVE_TEST:
