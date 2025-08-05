@@ -277,7 +277,7 @@ def call_nested_recursive(x: int) -> Iterator:
         if x > 0:
             yield from recursive(x - 1)
         yield x
-    
+
     yield from recursive(x)
 
 def test_call_nested_generator_in_function() -> None:
