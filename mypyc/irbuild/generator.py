@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Callable
 
 from mypy.nodes import ARG_OPT, FuncDef, Var
-from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME
+from mypyc.common import ENV_ATTR_NAME, GENERATOR_ATTRIBUTE_PREFIX, NEXT_LABEL_ATTR_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import (
@@ -58,8 +58,6 @@ from mypyc.primitives.exc_ops import (
     reraise_exception_op,
     restore_exc_info_op,
 )
-
-GENERATOR_ATTRIBUTE_PREFIX = "__mypyc_generator_attribute__"
 
 
 def gen_generator_func(

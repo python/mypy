@@ -871,3 +871,30 @@ def test_undefined_int_in_environment() -> None:
 
     with assertRaises(AttributeError):  # TODO: Should be UnboundLocalError
       list(gen2(False))
+
+[case testVariableWithSameNameAsHelperMethod]
+from testutil import assertRaises
+from typing import Iterator
+
+def gen_send() -> Iterator[int]:
+    send = 1
+    yield send + 1
+
+def gen_throw() -> Iterator[int]:
+    throw = 42
+    yield throw * 2
+
+def undefined() -> Iterator[int]:
+    if int():
+        send = 1
+    yield send + 1
+
+def test_same_names() -> None:
+    assert list(gen_send()) == [2]
+    assert list(gen_throw()) == [84]
+
+    with assertRaises(AttributeError, "attribute 'send' of 'undefined_gen' undefined"):
+        # TODO: Should be UnboundLocalError, this test verifies that the attribute name
+        # matches the variable name in the input code, since internally it's generated
+        # with a prefix.
+        list(undefined())

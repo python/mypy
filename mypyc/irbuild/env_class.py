@@ -235,7 +235,7 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                 # will generate different callable classes, so the callable
                 # class that gets instantiated must be generic.
                 builder.add_var_to_env_class(
-                    nested_fn, object_rprimitive, env_for_func, reassign=False
+                    nested_fn, object_rprimitive, env_for_func, reassign=False, prefix=prefix
                 )
 
 
