@@ -213,10 +213,10 @@ class StrConv(NodeVisitor[str]):
     def visit_decorator(self, o: mypy.nodes.Decorator) -> str:
         return self.dump([o.var, o.decorators, o.func], o)
 
-    def visit_type_alias(self, o: mypy.nodes.TypeAlias, /) -> T:
+    def visit_type_alias(self, o: mypy.nodes.TypeAlias, /) -> str:
         return self.dump([o.name, o.target, o.alias_tvars, o.no_args], o)
 
-    def visit_placeholder_node(self, o: mypy.nodes.PlaceholderNode, /) -> T:
+    def visit_placeholder_node(self, o: mypy.nodes.PlaceholderNode, /) -> str:
         return self.dump([o.fullname], o)
 
     # Statements
