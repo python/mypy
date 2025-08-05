@@ -18,7 +18,13 @@ non-locals is via an instance of an environment class. Example:
 from __future__ import annotations
 
 from mypy.nodes import Argument, FuncDef, SymbolNode, Var
-from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME, bitmap_name
+from mypyc.common import (
+    BITMAP_BITS,
+    ENV_ATTR_NAME,
+    GENERATOR_ATTRIBUTE_PREFIX,
+    SELF_NAME,
+    bitmap_name,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
 from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
@@ -113,7 +119,7 @@ def load_env_registers(builder: IRBuilder, prefix: str = "") -> None:
         # If this is a FuncDef, then make sure to load the FuncDef into its own environment
         # class so that the function can be called recursively.
         if isinstance(fitem, FuncDef) and fn_info.add_nested_funcs_to_env:
-            setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
+            setup_func_for_recursive_call(builder, fitem, fn_info.callable_class, prefix=prefix)
 
 
 def load_outer_env(
@@ -234,12 +240,16 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                 # the same name and signature across conditional blocks
                 # will generate different callable classes, so the callable
                 # class that gets instantiated must be generic.
+                if nested_fn.is_generator:
+                    prefix = GENERATOR_ATTRIBUTE_PREFIX
                 builder.add_var_to_env_class(
                     nested_fn, object_rprimitive, env_for_func, reassign=False, prefix=prefix
                 )
 
 
-def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: ImplicitClass) -> None:
+def setup_func_for_recursive_call(
+    builder: IRBuilder, fdef: FuncDef, base: ImplicitClass, prefix: str = ""
+) -> None:
     """Enable calling a nested function (with a callable class) recursively.
 
     Adds the instance of the callable class representing the given
@@ -249,7 +259,8 @@ def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: Impli
     """
     # First, set the attribute of the environment class so that GetAttr can be called on it.
     prev_env = builder.fn_infos[-2].env_class
-    prev_env.attributes[fdef.name] = builder.type_to_rtype(fdef.type)
+    attr_name = prefix + fdef.name
+    prev_env.attributes[attr_name] = builder.type_to_rtype(fdef.type)
 
     if isinstance(base, GeneratorClass):
         # If we are dealing with a generator class, then we need to first get the register
@@ -261,7 +272,7 @@ def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: Impli
 
     # Obtain the instance of the callable class representing the FuncDef, and add it to the
     # current environment.
-    val = builder.add(GetAttr(prev_env_reg, fdef.name, -1))
+    val = builder.add(GetAttr(prev_env_reg, attr_name, -1))
     target = builder.add_local_reg(fdef, object_rprimitive)
     builder.assign(target, val, -1)
 

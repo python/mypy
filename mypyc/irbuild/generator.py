@@ -104,7 +104,9 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Val
         and top_level
         and top_level.add_nested_funcs_to_env
     ):
-        setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
+        setup_func_for_recursive_call(
+            builder, fitem, builder.fn_info.generator_class, prefix=GENERATOR_ATTRIBUTE_PREFIX
+        )
     create_switch_for_generator_class(builder)
     add_raise_exception_blocks_to_generator_class(builder, fitem.line)
 

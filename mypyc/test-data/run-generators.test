@@ -272,8 +272,17 @@ def call_nested_decorated(x: int) -> list[int]:
         a.append(x)
     return a
 
+def call_nested_recursive(x: int) -> Iterator:
+    def recursive(x: int) -> Iterator:
+        if x > 0:
+            yield from recursive(x - 1)
+        yield x
+    
+    yield from recursive(x)
+
 def test_call_nested_generator_in_function() -> None:
     assert call_nested_decorated(5) == [5, 15]
+    assert list(call_nested_recursive(5)) == [0, 1, 2, 3, 4, 5]
 
 [case testYieldThrow]
 from typing import Generator, Iterable, Any, Union
