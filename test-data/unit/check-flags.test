@@ -1119,7 +1119,6 @@ def h(x):  # E: Function is untyped after decorator transformation
 
 [case testDisallowAnyDecoratedUnannotatedDecoratorDeferred1]
 # flags: --disallow-any-decorated
-from typing import Any
 
 def d(f):
     return f
@@ -1135,10 +1134,11 @@ c = [1]
 
 [case testDisallowAnyDecoratedUnannotatedDecoratorDeferred2]
 # flags: --disallow-any-decorated
-from typing import Any
 
 def d(f):
     return f
+
+c = 1  # no deferral - check that the previous testcase is valid
 
 def wrapper() -> None:
     if c:
@@ -1146,7 +1146,6 @@ def wrapper() -> None:
         def h(x):  # E: Function is untyped after decorator transformation
             pass
 
-c = [1]
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyDecoratedErrorIsReportedOnlyOnce]
