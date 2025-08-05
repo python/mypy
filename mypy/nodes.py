@@ -918,7 +918,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
         ret.original_first_arg = data.get("original_first_arg")
-        ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
+        ret.arg_kinds = [ARG_KINDS[x] for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
         ret.dataclass_transform_spec = (
             DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
@@ -2015,6 +2015,8 @@ ARG_STAR: Final = ArgKind.ARG_STAR
 ARG_NAMED: Final = ArgKind.ARG_NAMED
 ARG_STAR2: Final = ArgKind.ARG_STAR2
 ARG_NAMED_OPT: Final = ArgKind.ARG_NAMED_OPT
+
+ARG_KINDS: Final = (ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT)
 
 
 class CallExpr(Expression):
@@ -3491,6 +3493,8 @@ class TypeInfo(SymbolNode):
             self.special_alias = alias
         else:
             self.special_alias.target = alias.target
+            # Invalidate recursive status cache in case it was previously set.
+            self.special_alias._is_recursive = None
 
     def update_typeddict_type(self, typ: mypy.types.TypedDictType) -> None:
         """Update typeddict_type and special_alias as needed."""
@@ -3500,6 +3504,8 @@ class TypeInfo(SymbolNode):
             self.special_alias = alias
         else:
             self.special_alias.target = alias.target
+            # Invalidate recursive status cache in case it was previously set.
+            self.special_alias._is_recursive = None
 
     def __str__(self) -> str:
         """Return a string representation of the type.
