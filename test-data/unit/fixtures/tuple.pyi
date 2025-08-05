@@ -13,8 +13,6 @@ class object:
 class type:
     def __init__(self, *a: object) -> None: pass
     def __call__(self, *a: object) -> object: pass
-    # Real implementation returns UnionType
-    def __or__(self, value: object, /) -> object: pass
 class tuple(Sequence[_Tco], Generic[_Tco]):
     def __new__(cls: Type[_T], iterable: Iterable[_Tco] = ...) -> _T: ...
     def __iter__(self) -> Iterator[_Tco]: pass

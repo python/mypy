@@ -19,9 +19,7 @@ class object:
     def __init__(self) -> None: pass
     def __eq__(self, other: object) -> bool: pass
 
-class type:
-    # Real implementation returns UnionType
-    def __or__(self, value: object, /) -> object: pass
+class type: pass
 
 class dict(Mapping[KT, VT]):
     @overload
