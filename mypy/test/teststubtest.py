@@ -1601,6 +1601,16 @@ assert annotations
             runtime="class D:\n  def __class_getitem__(cls, type): ...",
             error=None,
         )
+        yield Case(
+            stub="class E:\n  def __getitem__(self, item: object) -> object: ...",
+            runtime="class E:\n  def __getitem__(self, item: object, /) -> object: ...",
+            error="E.__getitem__",
+        )
+        yield Case(
+            stub="class F:\n  def __getitem__(self, item: object, /) -> object: ...",
+            runtime="class F:\n  def __getitem__(self, item: object) -> object: ...",
+            error=None,
+        )
 
     @collect_cases
     def test_not_subclassable(self) -> Iterator[Case]:
