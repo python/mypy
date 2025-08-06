@@ -6050,26 +6050,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
-            # Deeply nested generic calls can deteriorate performance dramatically.
-            # Although in most cases caching makes little difference, in worst case
-            # it avoids exponential complexity.
-            # We cannot use cache inside lambdas, because they skip immediate type
-            # context, and use enclosing one, see infer_lambda_type_using_context().
-            # TODO: consider using cache for more expression kinds.
-            elif (
-                isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr))
-                and not (self.in_lambda_expr or self.chk.current_node_deferred)
-                and not self.chk.options.disable_expression_cache
-            ):
-                if (node, type_context) in self.expr_cache:
-                    binder_version, typ, messages, type_map = self.expr_cache[(node, type_context)]
-                    if binder_version == self.chk.binder.version:
-                        self.chk.store_types(type_map)
-                        self.msg.add_errors(messages)
-                    else:
-                        typ = self.accept_maybe_cache(node, type_context=type_context)
-                else:
-                    typ = self.accept_maybe_cache(node, type_context=type_context)
+
             elif (
                 isinstance(p_type_context, TypeType)
                 and p_type_context.is_type_form
@@ -6102,6 +6083,26 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 else:
                     typ2 = node.accept(self)
                     typ = typ2  # r-value type, when interpreted as a value expression
+            # Deeply nested generic calls can deteriorate performance dramatically.
+            # Although in most cases caching makes little difference, in worst case
+            # it avoids exponential complexity.
+            # We cannot use cache inside lambdas, because they skip immediate type
+            # context, and use enclosing one, see infer_lambda_type_using_context().
+            # TODO: consider using cache for more expression kinds.
+            elif (
+                isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr))
+                and not (self.in_lambda_expr or self.chk.current_node_deferred)
+                and not self.chk.options.disable_expression_cache
+            ):
+                if (node, type_context) in self.expr_cache:
+                    binder_version, typ, messages, type_map = self.expr_cache[(node, type_context)]
+                    if binder_version == self.chk.binder.version:
+                        self.chk.store_types(type_map)
+                        self.msg.add_errors(messages)
+                    else:
+                        typ = self.accept_maybe_cache(node, type_context=type_context)
+                else:
+                    typ = self.accept_maybe_cache(node, type_context=type_context)
             else:
                 typ = node.accept(self)  # r-value type, when interpreted as a value expression
         except Exception as err:
