@@ -1559,6 +1559,16 @@ match m6:
 
 [builtins fixtures/tuple.pyi]
 
+[case testMatchTupleFields]
+x: tuple[int, str] | None
+match x:
+    case (a, b):
+        reveal_type(a)  # N: Revealed type is "int"
+        reveal_type(b)  # N: Revealed type is "str"
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testMatchEnumSingleChoice]
 from enum import Enum
 from typing import NoReturn
