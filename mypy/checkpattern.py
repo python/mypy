@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Final, NamedTuple
+from itertools import zip_longest
+from typing import Final, Literal, NamedTuple
 
 from mypy import message_registry
 from mypy.checker_shared import TypeCheckerSharedApi, TypeRange
@@ -245,34 +246,79 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # get inner types of original type
         #
-        unpack_index = None
-        if isinstance(current_type, TupleType):
-            inner_types = current_type.items
-            unpack_index = find_unpack_in_list(inner_types)
-            if unpack_index is None:
-                size_diff = len(inner_types) - required_patterns
-                if size_diff < 0:
-                    return self.early_non_match()
-                elif size_diff > 0 and star_position is None:
-                    return self.early_non_match()
+        # 1. Go through all possible types and filter to only those which are sequences that could match that number of items
+        # 2. If there are multiple tuples left with unpacks, then use the fallback logic where we union all items types
+        # 3. Otherwise, take the product of the item types so that each index can have a unique type
+
+        #  state of matching
+        state: (
+            # Start in the state where we not encountered an unpack.
+            # a list of all the possible types that could match the sequence. If it's a tuple, then store one for each index
+            tuple[Literal["NO_UNPACK"], list[list[Type]]] |
+            # If we encounter a single tuple with an unpack, store the type, the unpack index, and the index in the union type
+            tuple[Literal["UNPACK"], TupleType, int, int] |
+            # If we have encountered a tuple with an unpack plus any other types, then store a list of them. For any tuples
+            # without unpacks, store them as a list of their items.
+            tuple[Literal["MULTI_UNPACK"], list[list[Type]]]
+         ) = ("NO_UNPACK", [])
+        for i, t in enumerate(current_type.items) if isinstance(current_type, UnionType) else ((0, current_type),):
+            t = get_proper_type(t)
+            n_patterns = len(o.patterns)
+            if isinstance(t, TupleType):
+                t_items = t.items
+                unpack_index = find_unpack_in_list(t_items)
+                if unpack_index is None:
+                    size_diff = len(t_items) - required_patterns
+                    if size_diff < 0:
+                        continue
+                    elif size_diff > 0 and star_position is None:
+                        continue
+                    inner_t = list(t_items)
+                else:
+                    normalized_inner_types = []
+                    for it in t_items:
+                        # Unfortunately, it is not possible to "split" the TypeVarTuple
+                        # into individual items, so we just use its upper bound for the whole
+                        # analysis instead.
+                        if isinstance(it, UnpackType) and isinstance(it.type, TypeVarTupleType):
+                            it = UnpackType(it.type.upper_bound)
+                        normalized_inner_types.append(it)
+                    t_items = normalized_inner_types
+                    t = t.copy_modified(items=normalized_inner_types)
+                    if len(t_items) - 1 > required_patterns and star_position is None:
+                        continue
+                    if state[0] == "NO_UNPACK" and not state[1]:
+                        state = ("UNPACK", t, unpack_index, i)
+                        continue
+                    inner_t = [self.chk.iterable_item_type(tuple_fallback(t), o)] * n_patterns
+            elif isinstance(t, AnyType):
+                inner_t = [AnyType(TypeOfAny.from_another_any, t)] * n_patterns
+            elif self.chk.type_is_iterable(t) and isinstance(t, Instance):
+                inner_t = [self.chk.iterable_item_type(t, o)] * n_patterns
             else:
-                normalized_inner_types = []
-                for it in inner_types:
-                    # Unfortunately, it is not possible to "split" the TypeVarTuple
-                    # into individual items, so we just use its upper bound for the whole
-                    # analysis instead.
-                    if isinstance(it, UnpackType) and isinstance(it.type, TypeVarTupleType):
-                        it = UnpackType(it.type.upper_bound)
-                    normalized_inner_types.append(it)
-                inner_types = normalized_inner_types
-                current_type = current_type.copy_modified(items=normalized_inner_types)
-                if len(inner_types) - 1 > required_patterns and star_position is None:
-                    return self.early_non_match()
+                continue
+            # if we previously encountered an unpack, then change the state.
+            if state[0] == "UNPACK":
+                # if we already unpacked something, change this
+                state = ("MULTI_UNPACK", [[self.chk.iterable_item_type(tuple_fallback(state[1]), o)] * n_patterns])
+            assert state[0] != "UNPACK" # for type checker
+            state[1].append(inner_t)
+
+        if state[0] == "UNPACK":
+            _, update_tuple_type, unpack_index, union_index = state
+            inner_types = update_tuple_type.items
+            if isinstance(current_type, UnionType):
+                union_items = list(current_type.items)
+                union_items[union_index] = update_tuple_type
+                current_type = current_type.copy_modified(items=union_items)
+            else:
+                assert unpack_index == 0, "Unpack index should be 0 for non-union types"
+                current_type = update_tuple_type
         else:
-            inner_type = self.get_sequence_type(current_type, o)
-            if inner_type is None:
-                inner_type = self.chk.named_type("builtins.object")
-            inner_types = [inner_type] * len(o.patterns)
+            unpack_index = None
+            if not state[1]:
+                return self.early_non_match()
+            inner_types = [make_simplified_union(x) for x in zip_longest(*state[1], fillvalue=UninhabitedType())]
 
         #
         # match inner patterns
@@ -350,25 +396,6 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 new_type = self.narrow_sequence_child(current_type, new_inner_type, o)
         return PatternType(new_type, rest_type, captures)
-
-    def get_sequence_type(self, t: Type, context: Context) -> Type | None:
-        t = get_proper_type(t)
-        if isinstance(t, AnyType):
-            return AnyType(TypeOfAny.from_another_any, t)
-        if isinstance(t, UnionType):
-            items = [self.get_sequence_type(item, context) for item in t.items]
-            not_none_items = [item for item in items if item is not None]
-            if not_none_items:
-                return make_simplified_union(not_none_items)
-            else:
-                return None
-
-        if self.chk.type_is_iterable(t) and isinstance(t, (Instance, TupleType)):
-            if isinstance(t, TupleType):
-                t = tuple_fallback(t)
-            return self.chk.iterable_item_type(t, context)
-        else:
-            return None
 
     def contract_starred_pattern_types(
         self, types: list[Type], star_pos: int | None, num_patterns: int

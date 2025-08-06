@@ -2918,6 +2918,15 @@ class UnionType(ProperType):
         self.original_str_expr: str | None = None
         self.original_str_fallback: str | None = None
 
+    def copy_modified(self, *, items: Sequence[Type]) -> UnionType:
+        return UnionType(
+            items,
+            line=self.line,
+            column=self.column,
+            is_evaluated=self.is_evaluated,
+            uses_pep604_syntax=self.uses_pep604_syntax,
+        )
+
     def can_be_true_default(self) -> bool:
         return any(item.can_be_true for item in self.items)
 
