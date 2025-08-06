@@ -255,14 +255,20 @@ class PatternChecker(PatternVisitor[PatternType]):
         state: (
             # Start in the state where we not encountered an unpack.
             # a list of all the possible types that could match the sequence. If it's a tuple, then store one for each index
-            tuple[Literal["NO_UNPACK"], list[list[Type]]] |
+            tuple[Literal["NO_UNPACK"], list[list[Type]]]
+            |
             # If we encounter a single tuple with an unpack, store the type, the unpack index, and the index in the union type
-            tuple[Literal["UNPACK"], TupleType, int, int] |
+            tuple[Literal["UNPACK"], TupleType, int, int]
+            |
             # If we have encountered a tuple with an unpack plus any other types, then store a list of them. For any tuples
             # without unpacks, store them as a list of their items.
             tuple[Literal["MULTI_UNPACK"], list[list[Type]]]
-         ) = ("NO_UNPACK", [])
-        for i, t in enumerate(current_type.items) if isinstance(current_type, UnionType) else ((0, current_type),):
+        ) = ("NO_UNPACK", [])
+        for i, t in (
+            enumerate(current_type.items)
+            if isinstance(current_type, UnionType)
+            else ((0, current_type),)
+        ):
             t = get_proper_type(t)
             n_patterns = len(o.patterns)
             if isinstance(t, TupleType):
@@ -301,8 +307,11 @@ class PatternChecker(PatternVisitor[PatternType]):
             # if we previously encountered an unpack, then change the state.
             if state[0] == "UNPACK":
                 # if we already unpacked something, change this
-                state = ("MULTI_UNPACK", [[self.chk.iterable_item_type(tuple_fallback(state[1]), o)] * n_patterns])
-            assert state[0] != "UNPACK" # for type checker
+                state = (
+                    "MULTI_UNPACK",
+                    [[self.chk.iterable_item_type(tuple_fallback(state[1]), o)] * n_patterns],
+                )
+            assert state[0] != "UNPACK"  # for type checker
             state[1].append(inner_t)
         if state[0] == "UNPACK":
             _, update_tuple_type, unpack_index, union_index = state
@@ -318,7 +327,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             unpack_index = None
             if not state[1]:
                 return self.early_non_match()
-            inner_types = [make_simplified_union(x) for x in zip_longest(*state[1], fillvalue=UninhabitedType())]
+            inner_types = [
+                make_simplified_union(x)
+                for x in zip_longest(*state[1], fillvalue=UninhabitedType())
+            ]
 
         #
         # match inner patterns
