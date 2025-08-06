@@ -6066,8 +6066,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 isinstance(p_type_context, UnionType)
                 and any(
                     [
-                        isinstance(p_item := get_proper_type(item), TypeType) and
-                            p_item.is_type_form
+                        isinstance(p_item := get_proper_type(item), TypeType)
+                        and p_item.is_type_form
                         for item in p_type_context.items
                     ]
                 )
