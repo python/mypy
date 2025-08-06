@@ -142,15 +142,7 @@ def apply_function_specialization(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
     """Invoke the Specializer callback for a function if one has been registered"""
-    if (
-        isinstance(callee, NameExpr)
-        # and isinstance(callee.node, Var)
-        # NOTE: why is this not a weakref rprimitive?
-        # TODO: fix to weakref rprimitive so _apply_specialization can use the custom_op
-        and is_weakref_rprimitive(builder.node_type(callee))
-        # and str(callee.node.type).startswith("weakref.ReferenceType")
-        and len(expr.args) == 0
-    ):
+    if is_weakref_rprimitive(builder.node_type(callee)) and len(expr.args) == 0:
         return builder.call_c(weakref_deref_op, [builder.accept(expr.callee)], expr.line)
     return _apply_specialization(builder, expr, callee, callee.fullname)
 
