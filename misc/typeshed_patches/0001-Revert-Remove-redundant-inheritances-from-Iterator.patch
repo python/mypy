@@ -1,4 +1,4 @@
-From 363d69b366695fea117631d30c348e36b9a5a99d Mon Sep 17 00:00:00 2001
+From c217544146d36899d50e828d627652a0d8f63bb7 Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 21 Dec 2024 22:36:38 +0100
 Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
@@ -15,7 +15,7 @@ Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
  7 files changed, 34 insertions(+), 34 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/_asyncio.pyi b/mypy/typeshed/stdlib/_asyncio.pyi
-index 4544680cc..19a2d12d8 100644
+index ed56f33af..5253e967e 100644
 --- a/mypy/typeshed/stdlib/_asyncio.pyi
 +++ b/mypy/typeshed/stdlib/_asyncio.pyi
 @@ -1,6 +1,6 @@
@@ -36,10 +36,10 @@ index 4544680cc..19a2d12d8 100644
      @property
      def _exception(self) -> BaseException | None: ...
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index ea77a730f..900c4c93f 100644
+index 0575be3c8..d9be595fe 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
-@@ -1170,7 +1170,7 @@ class frozenset(AbstractSet[_T_co]):
+@@ -1186,7 +1186,7 @@ class frozenset(AbstractSet[_T_co]):
      def __hash__(self) -> int: ...
      def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
  
@@ -48,7 +48,7 @@ index ea77a730f..900c4c93f 100644
      def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> tuple[int, _T]: ...
-@@ -1366,7 +1366,7 @@ else:
+@@ -1380,7 +1380,7 @@ else:
  
  exit: _sitebuiltins.Quitter
  
@@ -57,7 +57,7 @@ index ea77a730f..900c4c93f 100644
      @overload
      def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
      @overload
-@@ -1431,7 +1431,7 @@ license: _sitebuiltins._Printer
+@@ -1444,7 +1444,7 @@ license: _sitebuiltins._Printer
  
  def locals() -> dict[str, Any]: ...
  
@@ -66,7 +66,7 @@ index ea77a730f..900c4c93f 100644
      # 3.14 adds `strict` argument.
      if sys.version_info >= (3, 14):
          @overload
-@@ -1734,7 +1734,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
+@@ -1750,7 +1750,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
  
  quit: _sitebuiltins.Quitter
  
@@ -75,7 +75,7 @@ index ea77a730f..900c4c93f 100644
      @overload
      def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
      @overload
-@@ -1795,7 +1795,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
+@@ -1814,7 +1814,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
  @overload
  def vars(object: Any = ..., /) -> dict[str, Any]: ...
  
@@ -107,7 +107,7 @@ index 2c8e7109c..4ed0ab1d8 100644
      restkey: _T | None
      restval: str | Any | None
 diff --git a/mypy/typeshed/stdlib/fileinput.pyi b/mypy/typeshed/stdlib/fileinput.pyi
-index 948b39ea1..1d5f9cf00 100644
+index 910d63814..eb942bc55 100644
 --- a/mypy/typeshed/stdlib/fileinput.pyi
 +++ b/mypy/typeshed/stdlib/fileinput.pyi
 @@ -1,8 +1,8 @@
@@ -116,12 +116,12 @@ index 948b39ea1..1d5f9cf00 100644
 -from collections.abc import Callable, Iterable
 +from collections.abc import Callable, Iterable, Iterator
  from types import GenericAlias, TracebackType
--from typing import IO, Any, AnyStr, Generic, Literal, Protocol, overload
-+from typing import IO, Any, AnyStr, Literal, Protocol, overload
+-from typing import IO, Any, AnyStr, Generic, Literal, Protocol, overload, type_check_only
++from typing import IO, Any, AnyStr, Literal, Protocol, overload, type_check_only
  from typing_extensions import Self, TypeAlias
  
  __all__ = [
-@@ -104,7 +104,7 @@ def fileno() -> int: ...
+@@ -105,7 +105,7 @@ def fileno() -> int: ...
  def isfirstline() -> bool: ...
  def isstdin() -> bool: ...
  
@@ -307,10 +307,10 @@ index b79f9e773..f276372d0 100644
      def __iter__(self) -> Self: ...
      def next(self, timeout: float | None = None) -> _T: ...
 diff --git a/mypy/typeshed/stdlib/sqlite3/__init__.pyi b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
-index 5d3c2330b..ab783dbde 100644
+index bcfea3a13..5a659deac 100644
 --- a/mypy/typeshed/stdlib/sqlite3/__init__.pyi
 +++ b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
-@@ -399,7 +399,7 @@ class Connection:
+@@ -405,7 +405,7 @@ class Connection:
          self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None, /
      ) -> Literal[False]: ...
  
@@ -320,5 +320,5 @@ index 5d3c2330b..ab783dbde 100644
      @property
      def connection(self) -> Connection: ...
 -- 
-2.49.0
+2.50.1
 

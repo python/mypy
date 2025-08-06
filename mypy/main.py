@@ -1086,10 +1086,6 @@ def define_options(
     internals_group.add_argument(
         "--old-type-inference", action="store_true", help=argparse.SUPPRESS
     )
-    # Deprecated reverse variant of the above.
-    internals_group.add_argument(
-        "--new-type-inference", action="store_true", help=argparse.SUPPRESS
-    )
     internals_group.add_argument(
         "--disable-expression-cache", action="store_true", help=argparse.SUPPRESS
     )
@@ -1506,12 +1502,6 @@ def process_options(
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
         options.cache_fine_grained = True
-
-    if options.new_type_inference:
-        print(
-            "Warning: --new-type-inference flag is deprecated;"
-            " new type inference algorithm is already enabled by default"
-        )
 
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
