@@ -147,7 +147,7 @@ def apply_function_specialization(
         # and isinstance(callee.node, Var)
         # NOTE: why is this not a weakref rprimitive?
         # TODO: fix to weakref rprimitive so _apply_specialization can use the custom_op
-        and is_weakref_rprimitive(builder.node_type(callee.node))
+        and is_weakref_rprimitive(builder.node_type(callee))
         # and str(callee.node.type).startswith("weakref.ReferenceType")
         and len(expr.args) == 0
     ):
