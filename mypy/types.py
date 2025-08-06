@@ -2010,7 +2010,9 @@ class Parameters(ProperType):
     def read(cls, data: BytesIO) -> Parameters:
         return Parameters(
             read_type_list(data),
-            [ArgKind(ak) for ak in read_int_list(data)],
+            # This is a micro-optimization until mypyc gets dedicated enum support. Otherwise,
+            # we would spend ~20% of types deserialization time in Enum.__call__().
+            [ARG_KINDS[ak] for ak in read_int_list(data)],
             read_str_opt_list(data),
             variables=cast(list[TypeVarLikeType], read_type_list(data)),
             imprecise_arg_kinds=read_bool(data),
@@ -2539,7 +2541,7 @@ class CallableType(FunctionLike):
         fallback = Instance.read(data)
         return CallableType(
             read_type_list(data),
-            [ArgKind(ak) for ak in read_int_list(data)],
+            [ARG_KINDS[ak] for ak in read_int_list(data)],
             read_str_opt_list(data),
             read_type(data),
             fallback,

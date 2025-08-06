@@ -1054,7 +1054,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         read_flags(data, ret, FUNCDEF_FLAGS)
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = read_str_opt_list(data)
-        ret.arg_kinds = [ArgKind(ak) for ak in read_int_list(data)]
+        ret.arg_kinds = [ARG_KINDS[ak] for ak in read_int_list(data)]
         ret.abstract_status = read_int(data)
         if read_int(data) == OPT_YES:
             ret.dataclass_transform_spec = DataclassTransformSpec.read(data)
