@@ -6,12 +6,15 @@ import os
 import re
 import sys
 import tempfile
+from io import BytesIO
 from pathlib import Path
 
 from mypy import build
 from mypy.build import Graph
 from mypy.errors import CompileError
+from mypy.fixup import fixup_module
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
+from mypy.nodes import MypyFile
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
@@ -253,6 +256,20 @@ class TypeCheckSuite(DataSuite):
         assert os.path.isfile(cachedir_tag)
         with open(cachedir_tag) as f:
             assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
+
+        # Also validate new cache format works correctly
+        for id in graph:
+            tree = graph[id].tree
+            if not tree:
+                continue
+            data = BytesIO()
+            tree.write(data)
+            new_data = BytesIO()
+            data.seek(0)
+            new_tree = MypyFile.read(data)
+            fixup_module(new_tree, manager.modules, False)
+            new_tree.write(new_data)
+            assert data.getvalue() == new_data.getvalue()
 
     def find_error_message_paths(self, a: list[str]) -> set[str]:
         hits = set()

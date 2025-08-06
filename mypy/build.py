@@ -26,6 +26,7 @@ import sys
 import time
 import types
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
+from io import BytesIO
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1139,6 +1140,17 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
     return module_deps_metas
 
 
+def _load_ff_file(file: str, manager: BuildManager, log_error: str) -> bytes | None:
+    t0 = time.time()
+    try:
+        data = manager.metastore.read(file)
+    except OSError:
+        manager.log(log_error + file)
+        return None
+    manager.add_stats(metastore_read_time=time.time() - t0)
+    return data
+
+
 def _load_json_file(
     file: str, manager: BuildManager, log_success: str, log_error: str
 ) -> dict[str, Any] | None:
@@ -1259,7 +1271,11 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
     deps_json = None
     if options.cache_fine_grained:
         deps_json = prefix + ".deps.json"
-    return (prefix + ".meta.json", prefix + ".data.json", deps_json)
+    if options.fixed_format_cache:
+        data_suffix = ".data.ff"
+    else:
+        data_suffix = ".data.json"
+    return (prefix + ".meta.json", prefix + data_suffix, deps_json)
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | None:
@@ -1559,8 +1575,13 @@ def write_cache(
         tree.path = path
 
     # Serialize data and analyze interface
-    data = tree.serialize()
-    data_bytes = json_dumps(data, manager.options.debug_cache)
+    if manager.options.fixed_format_cache:
+        data_io = BytesIO()
+        tree.write(data_io)
+        data_bytes = data_io.getvalue()
+    else:
+        data = tree.serialize()
+        data_bytes = json_dumps(data, manager.options.debug_cache)
     interface_hash = hash_digest(data_bytes)
 
     plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
@@ -2085,15 +2106,23 @@ class State:
             self.meta is not None
         ), "Internal error: this method must be called only for cached modules"
 
-        data = _load_json_file(
-            self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
-        )
+        data: bytes | dict[str, Any] | None
+        if self.options.fixed_format_cache:
+            data = _load_ff_file(self.meta.data_json, self.manager, "Could not load tree: ")
+        else:
+            data = _load_json_file(
+                self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
+            )
         if data is None:
             return
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
-        self.tree = MypyFile.deserialize(data)
+        if isinstance(data, bytes):
+            data_io = BytesIO(data)
+            self.tree = MypyFile.read(data_io)
+        else:
+            self.tree = MypyFile.deserialize(data)
         t1 = time.time()
         self.manager.add_stats(deserialize_time=t1 - t0)
         if not temporary:
@@ -2481,7 +2510,11 @@ class State:
         ):
             if self.options.debug_serialize:
                 try:
-                    self.tree.serialize()
+                    if self.manager.options.fixed_format_cache:
+                        data = BytesIO()
+                        self.tree.write(data)
+                    else:
+                        self.tree.serialize()
                 except Exception:
                     print(f"Error serializing {self.id}", file=self.manager.stdout)
                     raise  # Propagate to display traceback
@@ -3410,6 +3443,7 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
     for id in modules:
         graph[id].fix_cross_refs()
     t2 = time.time()
+    # touch 22 again
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
 

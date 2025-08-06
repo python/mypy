@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
+from io import BytesIO
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -21,6 +22,26 @@ from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
+from mypy.cache import (
+    OPT_NO,
+    OPT_YES,
+    read_bool,
+    read_int,
+    read_int_list,
+    read_literal,
+    read_str,
+    read_str_list,
+    read_str_opt,
+    read_str_opt_list,
+    write_bool,
+    write_int,
+    write_int_list,
+    write_literal,
+    write_str,
+    write_str_list,
+    write_str_opt,
+    write_str_opt_list,
+)
 from mypy.nodes import ARG_KINDS, ARG_POS, ARG_STAR, ARG_STAR2, INVARIANT, ArgKind, SymbolNode
 from mypy.options import Options
 from mypy.state import state
@@ -284,6 +305,13 @@ class Type(mypy.nodes.Context):
     def deserialize(cls, data: JsonDict) -> Type:
         raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
 
+    def write(self, data: BytesIO) -> None:
+        raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
+
+    @classmethod
+    def read(cls, data: BytesIO) -> Type:
+        raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
+
     def is_singleton_type(self) -> bool:
         return False
 
@@ -399,6 +427,11 @@ class TypeAliasType(Type):
             return self.alias.target.can_be_false
         return super().can_be_false_default()
 
+    def copy_modified(self, *, args: list[Type] | None = None) -> TypeAliasType:
+        return TypeAliasType(
+            self.alias, args if args is not None else self.args.copy(), self.line, self.column
+        )
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_alias_type(self)
 
@@ -432,10 +465,17 @@ class TypeAliasType(Type):
         alias.type_ref = data["type_ref"]
         return alias
 
-    def copy_modified(self, *, args: list[Type] | None = None) -> TypeAliasType:
-        return TypeAliasType(
-            self.alias, args if args is not None else self.args.copy(), self.line, self.column
-        )
+    def write(self, data: BytesIO) -> None:
+        write_int(data, TYPE_ALIAS_TYPE)
+        write_type_list(data, self.args)
+        assert self.alias is not None
+        write_str(data, self.alias.fullname)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> TypeAliasType:
+        alias = TypeAliasType(None, read_type_list(data))
+        alias.type_ref = read_str(data)
+        return alias
 
 
 class TypeGuardedType(Type):
@@ -704,6 +744,29 @@ class TypeVarType(TypeVarLikeType):
             variance=data["variance"],
         )
 
+    def write(self, data: BytesIO) -> None:
+        write_int(data, TYPE_VAR_TYPE)
+        write_str(data, self.name)
+        write_str(data, self.fullname)
+        write_int(data, self.id.raw_id)
+        write_str(data, self.id.namespace)
+        write_type_list(data, self.values)
+        self.upper_bound.write(data)
+        self.default.write(data)
+        write_int(data, self.variance)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> TypeVarType:
+        return TypeVarType(
+            read_str(data),
+            read_str(data),
+            TypeVarId(read_int(data), namespace=read_str(data)),
+            read_type_list(data),
+            read_type(data),
+            read_type(data),
+            read_int(data),
+        )
+
 
 class ParamSpecFlavor:
     # Simple ParamSpec reference such as "P"
@@ -833,6 +896,31 @@ class ParamSpecType(TypeVarLikeType):
             prefix=Parameters.deserialize(data["prefix"]),
         )
 
+    def write(self, data: BytesIO) -> None:
+        write_int(data, PARAM_SPEC_TYPE)
+        self.prefix.write(data)
+        write_str(data, self.name)
+        write_str(data, self.fullname)
+        write_int(data, self.id.raw_id)
+        write_str(data, self.id.namespace)
+        write_int(data, self.flavor)
+        self.upper_bound.write(data)
+        self.default.write(data)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> ParamSpecType:
+        assert read_int(data) == PARAMETERS
+        prefix = Parameters.read(data)
+        return ParamSpecType(
+            read_str(data),
+            read_str(data),
+            TypeVarId(read_int(data), namespace=read_str(data)),
+            read_int(data),
+            read_type(data),
+            read_type(data),
+            prefix=prefix,
+        )
+
 
 class TypeVarTupleType(TypeVarLikeType):
     """Type that refers to a TypeVarTuple.
@@ -886,6 +974,31 @@ class TypeVarTupleType(TypeVarLikeType):
             Instance.deserialize(data["tuple_fallback"]),
             deserialize_type(data["default"]),
             min_len=data["min_len"],
+        )
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, TYPE_VAR_TUPLE_TYPE)
+        self.tuple_fallback.write(data)
+        write_str(data, self.name)
+        write_str(data, self.fullname)
+        write_int(data, self.id.raw_id)
+        write_str(data, self.id.namespace)
+        self.upper_bound.write(data)
+        self.default.write(data)
+        write_int(data, self.min_len)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> TypeVarTupleType:
+        assert read_int(data) == INSTANCE
+        fallback = Instance.read(data)
+        return TypeVarTupleType(
+            read_str(data),
+            read_str(data),
+            TypeVarId(read_int(data), namespace=read_str(data)),
+            read_type(data),
+            fallback,
+            read_type(data),
+            min_len=read_int(data),
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -1019,6 +1132,22 @@ class UnboundType(ProperType):
             original_str_fallback=data["expr_fallback"],
         )
 
+    def write(self, data: BytesIO) -> None:
+        write_int(data, UNBOUND_TYPE)
+        write_str(data, self.name)
+        write_type_list(data, self.args)
+        write_str_opt(data, self.original_str_expr)
+        write_str_opt(data, self.original_str_fallback)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> UnboundType:
+        return UnboundType(
+            read_str(data),
+            read_type_list(data),
+            original_str_expr=read_str_opt(data),
+            original_str_fallback=read_str_opt(data),
+        )
+
 
 class CallableArgument(ProperType):
     """Represents a Arg(type, 'name') inside a Callable's type list.
@@ -1112,6 +1241,14 @@ class UnpackType(ProperType):
 
     def serialize(self) -> JsonDict:
         return {".class": "UnpackType", "type": self.type.serialize()}
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, UNPACK_TYPE)
+        self.type.write(data)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> UnpackType:
+        return UnpackType(read_type(data))
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> UnpackType:
@@ -1214,6 +1351,21 @@ class AnyType(ProperType):
             data["missing_import_name"],
         )
 
+    def write(self, data: BytesIO) -> None:
+        write_int(data, ANY_TYPE)
+        write_type_opt(data, self.source_any)
+        write_int(data, self.type_of_any)
+        write_str_opt(data, self.missing_import_name)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> AnyType:
+        if read_int(data) == OPT_YES:
+            assert read_int(data) == ANY_TYPE
+            source_any = AnyType.read(data)
+        else:
+            source_any = None
+        return AnyType(read_int(data), source_any, read_str_opt(data))
+
 
 class UninhabitedType(ProperType):
     """This type has no members.
@@ -1260,6 +1412,13 @@ class UninhabitedType(ProperType):
         assert data[".class"] == "UninhabitedType"
         return UninhabitedType()
 
+    def write(self, data: BytesIO) -> None:
+        write_int(data, UNINHABITED_TYPE)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> UninhabitedType:
+        return UninhabitedType()
+
 
 class NoneType(ProperType):
     """The type of 'None'.
@@ -1290,6 +1449,13 @@ class NoneType(ProperType):
     @classmethod
     def deserialize(cls, data: JsonDict) -> NoneType:
         assert data[".class"] == "NoneType"
+        return NoneType()
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, NONE_TYPE)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> NoneType:
         return NoneType()
 
     def is_singleton_type(self) -> bool:
@@ -1339,6 +1505,14 @@ class DeletedType(ProperType):
         assert data[".class"] == "DeletedType"
         return DeletedType(data["source"])
 
+    def write(self, data: BytesIO) -> None:
+        write_int(data, DELETED_TYPE)
+        write_str_opt(data, self.source)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> DeletedType:
+        return DeletedType(read_str_opt(data))
+
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
 NOT_READY: Final = mypy.nodes.FakeInfo("De-serialization failure: TypeInfo not fixed")
@@ -1381,7 +1555,7 @@ class ExtraAttrs:
         return {
             ".class": "ExtraAttrs",
             "attrs": {k: v.serialize() for k, v in self.attrs.items()},
-            "immutable": list(self.immutable),
+            "immutable": sorted(self.immutable),
             "mod_name": self.mod_name,
         }
 
@@ -1393,6 +1567,15 @@ class ExtraAttrs:
             set(data["immutable"]),
             data["mod_name"],
         )
+
+    def write(self, data: BytesIO) -> None:
+        write_type_map(data, self.attrs)
+        write_str_list(data, sorted(self.immutable))
+        write_str_opt(data, self.mod_name)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> ExtraAttrs:
+        return ExtraAttrs(read_type_map(data), set(read_str_list(data)), read_str_opt(data))
 
 
 class Instance(ProperType):
@@ -1528,6 +1711,29 @@ class Instance(ProperType):
             inst.last_known_value = LiteralType.deserialize(data["last_known_value"])
         if data.get("extra_attrs") is not None:
             inst.extra_attrs = ExtraAttrs.deserialize(data["extra_attrs"])
+        return inst
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, INSTANCE)
+        write_str(data, self.type.fullname)
+        write_type_list(data, self.args)
+        write_type_opt(data, self.last_known_value)
+        if self.extra_attrs is None:
+            write_int(data, OPT_NO)
+        else:
+            write_int(data, OPT_YES)
+            self.extra_attrs.write(data)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> Instance:
+        type_ref = read_str(data)
+        inst = Instance(NOT_READY, read_type_list(data))
+        inst.type_ref = type_ref
+        if read_int(data) == OPT_YES:
+            assert read_int(data) == LITERAL_TYPE
+            inst.last_known_value = LiteralType.read(data)
+        if read_int(data) == OPT_YES:
+            inst.extra_attrs = ExtraAttrs.read(data)
         return inst
 
     def copy_modified(
@@ -1790,6 +1996,24 @@ class Parameters(ProperType):
             data["arg_names"],
             variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data["variables"]],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
+        )
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, PARAMETERS)
+        write_type_list(data, self.arg_types)
+        write_int_list(data, [int(x.value) for x in self.arg_kinds])
+        write_str_opt_list(data, self.arg_names)
+        write_type_list(data, self.variables)
+        write_bool(data, self.imprecise_arg_kinds)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> Parameters:
+        return Parameters(
+            read_type_list(data),
+            [ArgKind(ak) for ak in read_int_list(data)],
+            read_str_opt_list(data),
+            variables=cast(list[TypeVarLikeType], read_type_list(data)),
+            imprecise_arg_kinds=read_bool(data),
         )
 
     def __hash__(self) -> int:
@@ -2291,6 +2515,46 @@ class CallableType(FunctionLike):
             unpack_kwargs=data["unpack_kwargs"],
         )
 
+    def write(self, data: BytesIO) -> None:
+        write_int(data, CALLABLE_TYPE)
+        self.fallback.write(data)
+        write_type_list(data, self.arg_types)
+        write_int_list(data, [int(x.value) for x in self.arg_kinds])
+        write_str_opt_list(data, self.arg_names)
+        self.ret_type.write(data)
+        write_str_opt(data, self.name)
+        write_type_list(data, self.variables)
+        write_bool(data, self.is_ellipsis_args)
+        write_bool(data, self.implicit)
+        write_bool(data, self.is_bound)
+        write_type_opt(data, self.type_guard)
+        write_type_opt(data, self.type_is)
+        write_bool(data, self.from_concatenate)
+        write_bool(data, self.imprecise_arg_kinds)
+        write_bool(data, self.unpack_kwargs)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> CallableType:
+        assert read_int(data) == INSTANCE
+        fallback = Instance.read(data)
+        return CallableType(
+            read_type_list(data),
+            [ArgKind(ak) for ak in read_int_list(data)],
+            read_str_opt_list(data),
+            read_type(data),
+            fallback,
+            name=read_str_opt(data),
+            variables=cast(list[TypeVarLikeType], read_type_list(data)),
+            is_ellipsis_args=read_bool(data),
+            implicit=read_bool(data),
+            is_bound=read_bool(data),
+            type_guard=read_type_opt(data),
+            type_is=read_type_opt(data),
+            from_concatenate=read_bool(data),
+            imprecise_arg_kinds=read_bool(data),
+            unpack_kwargs=read_bool(data),
+        )
+
 
 # This is a little safety net to prevent reckless special-casing of callables
 # that can potentially break Unpack[...] with **kwargs.
@@ -2365,6 +2629,19 @@ class Overloaded(FunctionLike):
     def deserialize(cls, data: JsonDict) -> Overloaded:
         assert data[".class"] == "Overloaded"
         return Overloaded([CallableType.deserialize(t) for t in data["items"]])
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, OVERLOADED)
+        write_type_list(data, self.items)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> Overloaded:
+        items = []
+        num_overloads = read_int(data)
+        for _ in range(num_overloads):
+            assert read_int(data) == CALLABLE_TYPE
+            items.append(CallableType.read(data))
+        return Overloaded(items)
 
 
 class TupleType(ProperType):
@@ -2461,6 +2738,18 @@ class TupleType(ProperType):
             Instance.deserialize(data["partial_fallback"]),
             implicit=data["implicit"],
         )
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, TUPLE_TYPE)
+        self.partial_fallback.write(data)
+        write_type_list(data, self.items)
+        write_bool(data, self.implicit)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> TupleType:
+        assert read_int(data) == INSTANCE
+        fallback = Instance.read(data)
+        return TupleType(read_type_list(data), fallback, implicit=read_bool(data))
 
     def copy_modified(
         self, *, fallback: Instance | None = None, items: list[Type] | None = None
@@ -2630,6 +2919,21 @@ class TypedDictType(ProperType):
             set(data["required_keys"]),
             set(data["readonly_keys"]),
             Instance.deserialize(data["fallback"]),
+        )
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, TYPED_DICT_TYPE)
+        self.fallback.write(data)
+        write_type_map(data, self.items)
+        write_str_list(data, sorted(self.required_keys))
+        write_str_list(data, sorted(self.readonly_keys))
+
+    @classmethod
+    def read(cls, data: BytesIO) -> TypedDictType:
+        assert read_int(data) == INSTANCE
+        fallback = Instance.read(data)
+        return TypedDictType(
+            read_type_map(data), set(read_str_list(data)), set(read_str_list(data)), fallback
         )
 
     @property
@@ -2880,6 +3184,18 @@ class LiteralType(ProperType):
         assert data[".class"] == "LiteralType"
         return LiteralType(value=data["value"], fallback=Instance.deserialize(data["fallback"]))
 
+    def write(self, data: BytesIO) -> None:
+        write_int(data, LITERAL_TYPE)
+        self.fallback.write(data)
+        write_literal(data, self.value)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> LiteralType:
+        assert read_int(data) == INSTANCE
+        fallback = Instance.read(data)
+        marker = read_int(data)
+        return LiteralType(read_literal(data, marker), fallback)
+
     def is_singleton_type(self) -> bool:
         return self.is_enum_literal() or isinstance(self.value, bool)
 
@@ -2980,6 +3296,15 @@ class UnionType(ProperType):
             [deserialize_type(t) for t in data["items"]],
             uses_pep604_syntax=data["uses_pep604_syntax"],
         )
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, UNION_TYPE)
+        write_type_list(data, self.items)
+        write_bool(data, self.uses_pep604_syntax)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> UnionType:
+        return UnionType(read_type_list(data), uses_pep604_syntax=read_bool(data))
 
 
 class PartialType(ProperType):
@@ -3116,6 +3441,14 @@ class TypeType(ProperType):
     def deserialize(cls, data: JsonDict) -> Type:
         assert data[".class"] == "TypeType"
         return TypeType.make_normalized(deserialize_type(data["item"]))
+
+    def write(self, data: BytesIO) -> None:
+        write_int(data, TYPE_TYPE)
+        self.item.write(data)
+
+    @classmethod
+    def read(cls, data: BytesIO) -> Type:
+        return TypeType.make_normalized(read_type(data))
 
 
 class PlaceholderType(ProperType):
@@ -3775,6 +4108,110 @@ def type_vars_as_args(type_vars: Sequence[TypeVarLikeType]) -> tuple[Type, ...]:
         else:
             args.append(tv)
     return tuple(args)
+
+
+TYPE_ALIAS_TYPE: Final = 1
+TYPE_VAR_TYPE: Final = 2
+PARAM_SPEC_TYPE: Final = 3
+TYPE_VAR_TUPLE_TYPE: Final = 4
+UNBOUND_TYPE: Final = 5
+UNPACK_TYPE: Final = 6
+ANY_TYPE: Final = 7
+UNINHABITED_TYPE: Final = 8
+NONE_TYPE: Final = 9
+DELETED_TYPE: Final = 10
+INSTANCE: Final = 11
+CALLABLE_TYPE: Final = 12
+OVERLOADED: Final = 13
+TUPLE_TYPE: Final = 14
+TYPED_DICT_TYPE: Final = 15
+LITERAL_TYPE: Final = 16
+UNION_TYPE: Final = 17
+TYPE_TYPE: Final = 18
+PARAMETERS: Final = 19
+
+
+def read_type(data: BytesIO) -> Type:
+    marker = read_int(data)
+    # The branches here are ordered manually by type "popularity".
+    if marker == INSTANCE:
+        return Instance.read(data)
+    if marker == ANY_TYPE:
+        return AnyType.read(data)
+    if marker == TYPE_VAR_TYPE:
+        return TypeVarType.read(data)
+    if marker == CALLABLE_TYPE:
+        return CallableType.read(data)
+    if marker == NONE_TYPE:
+        return NoneType.read(data)
+    if marker == UNION_TYPE:
+        return UnionType.read(data)
+    if marker == LITERAL_TYPE:
+        return LiteralType.read(data)
+    if marker == TYPE_ALIAS_TYPE:
+        return TypeAliasType.read(data)
+    if marker == TUPLE_TYPE:
+        return TupleType.read(data)
+    if marker == TYPED_DICT_TYPE:
+        return TypedDictType.read(data)
+    if marker == TYPE_TYPE:
+        return TypeType.read(data)
+    if marker == OVERLOADED:
+        return Overloaded.read(data)
+    if marker == PARAM_SPEC_TYPE:
+        return ParamSpecType.read(data)
+    if marker == TYPE_VAR_TUPLE_TYPE:
+        return TypeVarTupleType.read(data)
+    if marker == UNPACK_TYPE:
+        return UnpackType.read(data)
+    if marker == PARAMETERS:
+        return Parameters.read(data)
+    if marker == UNINHABITED_TYPE:
+        return UninhabitedType.read(data)
+    if marker == UNBOUND_TYPE:
+        return UnboundType.read(data)
+    if marker == DELETED_TYPE:
+        return DeletedType.read(data)
+    assert False, f"Unknown type marker {marker}"
+
+
+def read_type_opt(data: BytesIO) -> Type | None:
+    marker = read_int(data)
+    if marker == OPT_YES:
+        return read_type(data)
+    assert marker == OPT_NO
+    return None
+
+
+def write_type_opt(data: BytesIO, value: Type | None) -> None:
+    if value is not None:
+        write_int(data, OPT_YES)
+        value.write(data)
+    else:
+        write_int(data, OPT_NO)
+
+
+def read_type_list(data: BytesIO) -> list[Type]:
+    size = read_int(data)
+    return [read_type(data) for _ in range(size)]
+
+
+def write_type_list(data: BytesIO, value: Sequence[Type]) -> None:
+    write_int(data, len(value))
+    for item in value:
+        item.write(data)
+
+
+def read_type_map(data: BytesIO) -> dict[str, Type]:
+    size = read_int(data)
+    return {read_str(data): read_type(data) for _ in range(size)}
+
+
+def write_type_map(data: BytesIO, value: dict[str, Type]) -> None:
+    write_int(data, len(value))
+    for key in sorted(value):
+        write_str(data, key)
+        value[key].write(data)
 
 
 # This cyclic import is unfortunate, but to avoid it we would need to move away all uses
