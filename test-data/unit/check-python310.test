@@ -1559,12 +1559,30 @@ match m6:
 
 [builtins fixtures/tuple.pyi]
 
-[case testMatchTupleFields]
-x: tuple[int, str] | None
-match x:
-    case (a, b):
-        reveal_type(a)  # N: Revealed type is "int"
-        reveal_type(b)  # N: Revealed type is "str"
+[case testMatchTupleUnions]
+m1: tuple[int, str] | None
+match m1:
+    case (a1, b1):
+        reveal_type(a1)  # N: Revealed type is "int"
+        reveal_type(b1)  # N: Revealed type is "str"
+
+m2: tuple[int, str] | tuple[float, str]
+match m2:
+    case (a2, b2):
+        reveal_type(a2)  # N: Revealed type is "Union[int, float]"
+        reveal_type(b2)  # N: Revealed type is "str"
+
+m3: tuple[int] | tuple[float, str]
+match m3:
+    case (a3, b3):
+        reveal_type(a3)  # N: Revealed type is "float"
+        reveal_type(b3)  # N: Revealed type is "str"
+
+m4: tuple[int] | list[str]
+match m4:
+    case (a4, b4):
+        reveal_type(a4)  # N: Revealed type is "float"
+        reveal_type(b4)  # N: Revealed type is "str"
 
 [builtins fixtures/tuple.pyi]
 
