@@ -247,8 +247,9 @@ class PatternChecker(PatternVisitor[PatternType]):
         # get inner types of original type
         #
         # 1. Go through all possible types and filter to only those which are sequences that could match that number of items
-        # 2. If there are multiple tuples left with unpacks, then use the fallback logic where we union all items types
-        # 3. Otherwise, take the product of the item types so that each index can have a unique type
+        # 2. If there is exactly one tuple left with an unpack, then use that type and the unpack index
+        # 3. Otherwise, take the product of the item types so that each index can have a unique type. For tuples with unpack
+        #    fallback to merging all of their types for each index since we can't handle multiple unpacked items at once yet.
 
         #  state of matching
         state: (
@@ -303,7 +304,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                 state = ("MULTI_UNPACK", [[self.chk.iterable_item_type(tuple_fallback(state[1]), o)] * n_patterns])
             assert state[0] != "UNPACK" # for type checker
             state[1].append(inner_t)
-
         if state[0] == "UNPACK":
             _, update_tuple_type, unpack_index, union_index = state
             inner_types = update_tuple_type.items

@@ -1602,11 +1602,11 @@ match m6:
         reveal_type(b6)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
 
 # but do still seperate types from non unpacked types
-m7: tuple[int, Unpack[tuple[float, ...]]] | tuple[str, bool]
+m7: tuple[int, Unpack[tuple[float, ...]]] | tuple[str, str]
 match m7:
     case (a7, b7, *rest7):
         reveal_type(a7)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
-        reveal_type(b7)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.bool]"
+        reveal_type(b7)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
         reveal_type(rest7)  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.float]]"
 
 # verify that if we are unpacking, it will get the type of the sequence if the tuple is too short
