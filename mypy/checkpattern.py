@@ -252,6 +252,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         #    fallback to merging all of their types for each index since we can't handle multiple unpacked items at once yet.
 
         #  state of matching
+        # whether one of the possible types is not handled, in which case we want to return an object
+        unknown_value = False
         state: (
             # Start in the state where we not encountered an unpack.
             # a list of all the possible types that could match the sequence. If it's a tuple, then store one for each index
@@ -303,6 +305,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             elif self.chk.type_is_iterable(t) and isinstance(t, Instance):
                 inner_t = [self.chk.iterable_item_type(t, o)] * n_patterns
             else:
+                unknown_value = True
                 continue
             # if we previously encountered an unpack, then change the state.
             if state[0] == "UNPACK":
@@ -321,16 +324,19 @@ class PatternChecker(PatternVisitor[PatternType]):
                 union_items[union_index] = update_tuple_type
                 current_type = current_type.copy_modified(items=union_items)
             else:
-                assert unpack_index == 0, "Unpack index should be 0 for non-union types"
+                assert union_index == 0, "Unpack index should be 0 for non-union types"
                 current_type = update_tuple_type
         else:
             unpack_index = None
-            if not state[1]:
+            if state[1]:
+                inner_types = [
+                    make_simplified_union(x)
+                    for x in zip_longest(*state[1], fillvalue=UninhabitedType())
+                ]
+            elif unknown_value:
+                inner_types = [self.chk.named_type("builtins.object")] * n_patterns
+            else:
                 return self.early_non_match()
-            inner_types = [
-                make_simplified_union(x)
-                for x in zip_longest(*state[1], fillvalue=UninhabitedType())
-            ]
 
         #
         # match inner patterns
