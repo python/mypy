@@ -66,6 +66,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_list_rprimitive,
     is_uint8_rprimitive,
+    is_weakref_rprimitive,
     list_rprimitive,
     set_rprimitive,
     str_rprimitive,
