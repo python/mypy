@@ -65,6 +65,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_list_rprimitive,
     is_uint8_rprimitive,
+    is_weakref_rprimitive,
     list_rprimitive,
     set_rprimitive,
     str_rprimitive,
@@ -103,6 +104,7 @@ from mypyc.primitives.str_ops import (
     str_encode_utf8_strict,
 )
 from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
+from mypyc.primitives.weakref_ops import weakref_deref_op
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -140,6 +142,8 @@ def apply_function_specialization(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
     """Invoke the Specializer callback for a function if one has been registered"""
+    if is_weakref_rprimitive(builder.node_type(callee)) and len(expr.args) == 0:
+        return builder.call_c(weakref_deref_op, [builder.accept(expr.callee)], expr.line)
     return _apply_specialization(builder, expr, callee, callee.fullname)
 
 

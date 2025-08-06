@@ -512,6 +512,11 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 # Python range object.
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
+# Python weak reference object
+weakref_rprimitive: Final = RPrimitive(
+    "weakref.ReferenceType", is_unboxed=False, is_refcounted=True
+)
+
 
 def is_tagged(rtype: RType) -> bool:
     return rtype is int_rprimitive or rtype is short_int_rprimitive
@@ -630,6 +635,10 @@ def is_sequence_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and (
         is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype) or is_str_rprimitive(rtype)
     )
+
+
+def is_weakref_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return isinstance(rtype, RPrimitive) and rtype.name == "weakref.ReferenceType"
 
 
 class TupleNameVisitor(RTypeVisitor[str]):
