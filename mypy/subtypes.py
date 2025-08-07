@@ -629,8 +629,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         return True
                     if isinstance(item, Instance):
                         return is_named_instance(item, "builtins.object")
-        if isinstance(right, LiteralType) and left.last_known_value is not None:
-            return self._is_subtype(left.last_known_value, right)
+        # if isinstance(right, LiteralType) and left.last_known_value is not None:
+        # return self._is_subtype(left.last_known_value, right)
+        if isinstance(right, LiteralType):
+            if self.proper_subtype:
+                # Instance types like Literal["sum"]? is *assignable* to Literal["sum"],
+                # but is not a proper subtype of it. (Literal["sum"]? is a gradual type,
+                # that is a proper subtype of str, and is assignable to Literal["sum"],
+                # but not a proper subtype of it.)
+                return False
+            if left.last_known_value is not None:
+                return self._is_subtype(left.last_known_value, right)
         if isinstance(right, FunctionLike):
             # Special case: Instance can be a subtype of Callable / Overloaded.
             call = find_member("__call__", left, left, is_operator=True)

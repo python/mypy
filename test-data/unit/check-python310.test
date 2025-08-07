@@ -1354,7 +1354,7 @@ m: str
 
 match m:
     case a if a := "test":
-        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(a)  # N: Revealed type is "Literal['test']?"
 
 [case testMatchNarrowingPatternGuard]
 m: object
@@ -2686,7 +2686,7 @@ match m[k]:
 
 match 0:
     case 0 as i:
-        reveal_type(i)  # N: Revealed type is "Literal[0]?"
+        reveal_type(i)  # N: Revealed type is "Literal[0]"
     case int(i):
         i  # E: Statement is unreachable
     case other:
