@@ -2136,6 +2136,11 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
     item = get_proper_type(item)
     supertype = get_proper_type(supertype)
 
+    # Use last known value for Instance types, if available.
+    # This ensures that e.g. Literal["max"]? is covered by Literal["max"].
+    if isinstance(item, Instance) and item.last_known_value is not None:
+        item = item.last_known_value
+
     # Since runtime type checks will ignore type arguments, erase the types.
     if not (isinstance(supertype, FunctionLike) and supertype.is_type_obj()):
         supertype = erase_type(supertype)
