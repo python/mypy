@@ -602,7 +602,7 @@ def make_simplified_union(
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
     # Step 5: Combine Literals and Instances with LKVs, e.g. Literal[1]?, Literal[1] -> Literal[1]?
-    proper_items: list[ProperType] = list(map(get_proper_type, simplified_set))
+    proper_items: list[ProperType] = [get_proper_type(t) for t in simplified_set]
     last_known_values: list[LiteralType | None] = [
         p_t.last_known_value if isinstance(p_t, Instance) else None for p_t in proper_items
     ]
