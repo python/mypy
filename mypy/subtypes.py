@@ -295,9 +295,9 @@ def is_enum_value_pair(a: Type, b: Type) -> bool:
         return False
     if b.fallback.type.is_enum:
         a, b = b, a
-    if b.fallback.type.is_enum:
+    if b.fallback.type.is_enum or not a.fallback.type.is_enum:
         return False
-    # At this point we have a pair (non-enum literal, enum literal).
+    # At this point we have a pair (enum literal, non-enum literal).
     # Check that the non-enum fallback is compatible
     if not is_subtype(a.fallback, b.fallback):
         return False
