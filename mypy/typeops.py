@@ -571,6 +571,8 @@ def make_simplified_union(
     * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
     * [Any, Any] -> Any
     * [int, Union[bytes, str]] -> Union[int, bytes, str]
+    * [Literal[1]?, Literal[1]] -> Literal[1]?
+    * Literal["max"]?, Literal["max", "sum"] -> Literal["max"]? | Literal["sum"]
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
@@ -599,13 +601,32 @@ def make_simplified_union(
     ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    result = get_proper_type(UnionType.make_union(simplified_set, line, column))
+    # Step 5: Combine Literals and Instances with LKVs, e.g. Literal[1]?, Literal[1] -> Literal[1]?
+    new_items = []
+    for item in simplified_set:
+        if isinstance(item, LiteralType):
+            # scan if there is an Instance with a last_known_value that matches
+            for other in simplified_set:
+                if (
+                    isinstance(other, Instance)
+                    and other.last_known_value is not None
+                    and item == other.last_known_value
+                ):
+                    # do not include item
+                    break
+            else:
+                new_items.append(item)
+        else:
+            # If the item is not a LiteralType, we can use it directly.
+            new_items.append(item)
+
+    result = get_proper_type(UnionType.make_union(new_items, line, column))
 
     nitems = len(items)
     if nitems > 1 and (
         nitems > 2 or not (type(items[0]) is NoneType or type(items[1]) is NoneType)
     ):
-        # Step 5: At last, we erase any (inconsistent) extra attributes on instances.
+        # Step 6: At last, we erase any (inconsistent) extra attributes on instances.
 
         # Initialize with None instead of an empty set as a micro-optimization. The set
         # is needed very rarely, so we try to avoid constructing it.
