@@ -271,9 +271,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                     elif size_diff > 0 and star_position is None:
                         continue
                     elif not size_diff and star_position is not None:
-                        t_items.append(
-                            UninhabitedType()
-                        )  # add additional item for star if its empty
+                        t_items.append(UninhabitedType())
                     tuple_types.append(t_items)
                 else:
                     normalized_inner_types = []
