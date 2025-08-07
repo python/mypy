@@ -81,6 +81,11 @@ def meet_types(s: Type, t: Type) -> ProperType:
     t = get_proper_type(t)
 
     if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
+        # special casing for dealing with last known values
+        lkv = meet_last_known_values(t.last_known_value, s.last_known_value)
+        t = t.copy_modified(last_known_value=lkv)
+        s = s.copy_modified(last_known_value=lkv)
+
         # Code in checker.py should merge any extra_items where possible, so we
         # should have only compatible extra_items here. We check this before
         # the below subtype check, so that extra_attrs will not get erased.
@@ -111,6 +116,30 @@ def meet_types(s: Type, t: Type) -> ProperType:
     s, t = join.normalize_callables(s, t)
 
     return t.accept(TypeMeetVisitor(s))
+
+
+def meet_last_known_values(
+    left: LiteralType | None, right: LiteralType | None
+) -> LiteralType | None:
+    """Return the meet of two last_known_values."""
+    if left is None:
+        return right
+    if right is None:
+        return left
+
+    lkv_meet = meet_types(left, right)
+
+    if isinstance(lkv_meet, UninhabitedType):
+        return None
+    if isinstance(lkv_meet, LiteralType):
+        return lkv_meet
+
+    msg = (
+        f"Unexpected result: "
+        f"meet of last_known_values {left=!s} and {right=!s} "
+        f"resulted in {lkv_meet!s}"
+    )
+    raise ValueError(msg)
 
 
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
@@ -1114,8 +1143,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType) and self.s == t:
             return t
-        elif isinstance(self.s, Instance) and is_subtype(t.fallback, self.s):
-            return t
+        elif isinstance(self.s, Instance):
+            # if is_subtype(t.fallback, self.s):
+            #     return t
+            if self.s.last_known_value is not None:
+                # meet(Literal["max"]?, Literal["max"]) -> Literal["max"]
+                # meet(Literal["sum"]?, Literal["max"]) -> Never
+                return meet_types(self.s.last_known_value, t)
+            return self.default(self.s)
         else:
             return self.default(self.s)
 
