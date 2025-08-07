@@ -2587,9 +2587,7 @@ class TypedDictType(ProperType):
     @property
     def key_type(self) -> Type:
         """Return a Union of Literal types for all keys."""
-        return UnionType.make_union(
-            [LiteralType(key, self.fallback) for key in self.items.keys()]
-        )
+        return UnionType.make_union([LiteralType(key, self.fallback) for key in self.items.keys()])
 
     @property
     def value_type(self) -> Type:
