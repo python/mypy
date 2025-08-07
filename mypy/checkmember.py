@@ -1360,7 +1360,29 @@ def analyze_enum_class_attribute_access(
 def analyze_typeddict_access(
     name: str, typ: TypedDictType, mx: MemberContext, override_info: TypeInfo | None
 ) -> Type:
-    if name == "__setitem__":
+    if name == "keys":
+        # Return KeysView[union of Literal key types]
+        keys_view_info = mx.chk.named_type("typing.KeysView").type
+        return CallableType(
+            arg_types=[],
+            arg_kinds=[],
+            arg_names=[],
+            ret_type=Instance(keys_view_info, [typ.key_type]),
+            fallback=mx.chk.named_type("builtins.function"),
+            name=name,
+        )
+    elif name == "values":
+        # Return ValuesView[union of value types]
+        values_view_info = mx.chk.named_type("typing.ValuesView").type
+        return CallableType(
+            arg_types=[],
+            arg_kinds=[],
+            arg_names=[],
+            ret_type=Instance(values_view_info, [typ.value_type]),
+            fallback=mx.chk.named_type("builtins.function"),
+            name=name,
+        )
+    elif name == "__setitem__":
         if isinstance(mx.context, IndexExpr):
             # Since we can get this during `a['key'] = ...`
             # it is safe to assume that the context is `IndexExpr`.

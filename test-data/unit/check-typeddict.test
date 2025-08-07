@@ -5,8 +5,8 @@ from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x=42, y=1337)
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})"
-# Use values() to check fallback value type.
-reveal_type(p.values()) # N: Revealed type is "typing.Iterable[builtins.object]"
+reveal_type(p.values()) # N: Revealed type is "typing.ValuesView[builtins.int]"
+reveal_type(p.keys())   # N: Revealed type is "typing.KeysView[Union[Literal['x'], Literal['y']]]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [targets __main__]
@@ -16,8 +16,8 @@ from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})"
-# Use values() to check fallback value type.
-reveal_type(p.values()) # N: Revealed type is "typing.Iterable[builtins.object]"
+reveal_type(p.values()) # N: Revealed type is "typing.ValuesView[builtins.int]"
+reveal_type(p.keys())   # N: Revealed type is "typing.KeysView[Union[Literal['x'], Literal['y']]]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -26,8 +26,8 @@ from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point({'x': 42, 'y': 1337})
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})"
-# Use values() to check fallback value type.
-reveal_type(p.values()) # N: Revealed type is "typing.Iterable[builtins.object]"
+reveal_type(p.values()) # N: Revealed type is "typing.ValuesView[builtins.int]"
+reveal_type(p.keys())   # N: Revealed type is "typing.KeysView[Union[Literal['x'], Literal['y']]]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -36,7 +36,8 @@ from typing import TypedDict, TypeVar, Union
 EmptyDict = TypedDict('EmptyDict', {})
 p = EmptyDict()
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.EmptyDict', {})"
-reveal_type(p.values()) # N: Revealed type is "typing.Iterable[builtins.object]"
+reveal_type(p.values()) # N: Revealed type is "typing.ValuesView[Never]"
+reveal_type(p.keys())   # N: Revealed type is "typing.KeysView[Never]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -534,8 +535,8 @@ Point3D = TypedDict('Point3D', {'x': int, 'y': int, 'z': int})
 p1 = TaggedPoint(type='2d', x=0, y=0)
 p2 = Point3D(x=1, y=1, z=1)
 joined_points = [p1, p2][0]
-reveal_type(p1.values())   # N: Revealed type is "typing.Iterable[builtins.object]"
-reveal_type(p2.values())   # N: Revealed type is "typing.Iterable[builtins.object]"
+reveal_type(p1.values())   # N: Revealed type is "typing.ValuesView[Union[builtins.str, builtins.int]]"
+reveal_type(p2.values())   # N: Revealed type is "typing.ValuesView[builtins.int]"
 reveal_type(joined_points)  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

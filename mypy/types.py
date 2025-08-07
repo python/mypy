@@ -2584,6 +2584,18 @@ class TypedDictType(ProperType):
         self.extra_items_from = []
         self.to_be_mutated = False
 
+    @property
+    def key_type(self) -> Type:
+        """Return a Union of Literal types for all keys."""
+        return UnionType.make_union(
+            [LiteralType(key, self.fallback) for key in self.items.keys()]
+        )
+
+    @property
+    def value_type(self) -> Type:
+        """Return a Union of all value types (deduplicated)."""
+        return UnionType.make_union(list({get_proper_type(typ) for typ in self.items.values()}))
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)
 
