@@ -832,8 +832,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # At this point we should have set the impl already, and all remaining
         # items are decorators
 
-        if self.msg.errors.file in self.msg.errors.ignored_files or (
-            self.is_typeshed_stub and self.options.test_env
+        if (
+            self.options.ignore_errors
+            or self.msg.errors.file in self.msg.errors.ignored_files
+            or (self.is_typeshed_stub and self.options.test_env)
         ):
             # This is a little hacky, however, the quadratic check here is really expensive, this
             # method has no side effects, so we should skip it if we aren't going to report
@@ -1444,7 +1446,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # TODO: Find a way of working around this limitation
                     if _is_empty_generator_function(item) or len(expanded) >= 2:
                         self.binder.suppress_unreachable_warnings()
-                    self.accept(item.body)
+                    # When checking a third-party library, we can skip function body,
+                    # if during semantic analysis we found that there are no attributes
+                    # defined via self here.
+                    if (
+                        not (
+                            self.options.ignore_errors
+                            or self.msg.errors.file in self.msg.errors.ignored_files
+                        )
+                        or self.options.preserve_asts
+                        or not isinstance(defn, FuncDef)
+                        or defn.has_self_attr_def
+                    ):
+                        self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
                 if new_frame is not None:
                     self.binder.pop_frame(True, 0)
@@ -2127,6 +2141,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         Return a list of base classes which contain an attribute with the method name.
         """
+        if self.options.ignore_errors or self.msg.errors.file in self.msg.errors.ignored_files:
+            # Method override checks may be expensive, so skip them in third-party libraries.
+            return None
         # Check against definitions in base classes.
         check_override_compatibility = (
             defn.name not in ("__init__", "__new__", "__init_subclass__", "__post_init__")

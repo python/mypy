@@ -818,6 +818,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
+        "has_self_attr_def",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -856,6 +857,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
+        # Keep track of functions where self attributes are defined.
+        self.has_self_attr_def = False
         # This is needed because for positional-only arguments the name is set to None,
         # but we sometimes still want to show it in error messages.
         if arguments:
@@ -915,7 +918,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
         ret.original_first_arg = data.get("original_first_arg")
-        ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
+        ret.arg_kinds = [ARG_KINDS[x] for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
         ret.dataclass_transform_spec = (
             DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
@@ -2012,6 +2015,8 @@ ARG_STAR: Final = ArgKind.ARG_STAR
 ARG_NAMED: Final = ArgKind.ARG_NAMED
 ARG_STAR2: Final = ArgKind.ARG_STAR2
 ARG_NAMED_OPT: Final = ArgKind.ARG_NAMED_OPT
+
+ARG_KINDS: Final = (ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT)
 
 
 class CallExpr(Expression):
@@ -3488,6 +3493,8 @@ class TypeInfo(SymbolNode):
             self.special_alias = alias
         else:
             self.special_alias.target = alias.target
+            # Invalidate recursive status cache in case it was previously set.
+            self.special_alias._is_recursive = None
 
     def update_typeddict_type(self, typ: mypy.types.TypedDictType) -> None:
         """Update typeddict_type and special_alias as needed."""
@@ -3497,6 +3504,8 @@ class TypeInfo(SymbolNode):
             self.special_alias = alias
         else:
             self.special_alias.target = alias.target
+            # Invalidate recursive status cache in case it was previously set.
+            self.special_alias._is_recursive = None
 
     def __str__(self) -> str:
         """Return a string representation of the type.
