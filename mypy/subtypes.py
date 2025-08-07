@@ -287,7 +287,10 @@ def is_same_type(
     )
 
 
-def is_enum_value_pair(a: ProperType, b: ProperType) -> bool:
+def is_enum_value_pair(a: Type, b: Type) -> bool:
+    a = get_proper_type(a)
+    b = get_proper_type(b)
+
     if not isinstance(a, LiteralType) or not isinstance(b, LiteralType):
         return False
     if b.fallback.type.is_enum:
@@ -300,18 +303,16 @@ def is_enum_value_pair(a: ProperType, b: ProperType) -> bool:
         return False
     assert isinstance(a.value, str)
     enum_value = a.fallback.type.get(a.value)
-    return (
-        enum_value is not None
-        and enum_value.type is not None
-        and isinstance(enum_value.type, Instance)
-        and (
-            enum_value.type.last_known_value == b
-            # TODO: this is too lax and should only be applied for enums defined in stubs,
-            # but checking that strictly requires access to the checker. This function
-            # is needed in `is_overlapping_types` and operates on a lower level,
-            # so doing this properly would be more difficult.
-            or enum_value.type.type.fullname in ELLIPSIS_TYPE_NAMES
-        )
+    if enum_value is None or enum_value.type is None:
+        return False
+    proper_value = get_proper_type(enum_value.type)
+    return isinstance(proper_value, Instance) and (
+        proper_value.last_known_value == b
+        # TODO: this is too lax and should only be applied for enums defined in stubs,
+        # but checking that strictly requires access to the checker. This function
+        # is needed in `is_overlapping_types` and operates on a lower level,
+        # so doing this properly would be more difficult.
+        or proper_value.type.fullname in ELLIPSIS_TYPE_NAMES
     )
 
 
