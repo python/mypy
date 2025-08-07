@@ -1601,7 +1601,7 @@ match m6:
         reveal_type(a6)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
         reveal_type(b6)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.str]"
 
-# but do still seperate types from non unpacked types
+# but do still separate types from non unpacked types
 m7: tuple[int, Unpack[tuple[float, ...]]] | tuple[str, str]
 match m7:
     case (a7, b7, *rest7):
