@@ -94,6 +94,36 @@ def meet_types(s: Type, t: Type) -> ProperType:
                 return s
             return t
 
+        # special casing for dealing with last known values
+        if is_proper_subtype(s, t, ignore_promotions=True) and is_proper_subtype(
+            t, s, ignore_promotions=True
+        ):
+            lkv: LiteralType | None
+            if s.last_known_value is None and t.last_known_value is None:
+                # Both types have no last known value, so we return the original type.
+                lkv = None
+            elif s.last_known_value is None and t.last_known_value is not None:
+                lkv = t.last_known_value
+            elif s.last_known_value is not None and t.last_known_value is None:
+                lkv = s.last_known_value
+            elif s.last_known_value is not None and t.last_known_value is not None:
+                lkv_meet = meet_types(s.last_known_value, t.last_known_value)
+                if isinstance(lkv_meet, UninhabitedType):
+                    lkv = None
+                elif isinstance(lkv_meet, LiteralType):
+                    lkv = lkv_meet
+                else:
+                    msg = (
+                        f"Unexpected meet result for last known values: "
+                        f"{s.last_known_value=} and {t.last_known_value=} "
+                        f"resulted in {lkv_meet=}"
+                    )
+                    raise ValueError(msg)
+            else:
+                assert False
+            assert lkv is None or isinstance(lkv, LiteralType)
+            return t.copy_modified(last_known_value=lkv)
+
     if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
         if is_proper_subtype(s, t, ignore_promotions=True):
             return s
@@ -1088,8 +1118,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType) and self.s == t:
             return t
-        elif isinstance(self.s, Instance) and is_subtype(t.fallback, self.s):
-            return t
+        elif isinstance(self.s, Instance):
+            if is_subtype(t.fallback, self.s):
+                return t
+            if self.s.last_known_value is not None:
+                return meet_types(self.s.last_known_value, t)
+            return self.default(self.s)
         else:
             return self.default(self.s)
 
