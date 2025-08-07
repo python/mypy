@@ -710,7 +710,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 format_ops.append(FormatOp.STR)
                 exprs.append(item.args[0])
 
-        for i in range(len(exprs)):
+        for i in range(len(exprs) - 1):
             # TODO: instead of checking isinstance StrExpr, check with some new is_literal fn.
             # This can include IntExpr, BytesExpr, Final string RefExpr, and more future cases.
             while isinstance(exprs[i], StrExpr) and isinstance(exprs[i + 1], StrExpr):
