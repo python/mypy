@@ -2690,41 +2690,191 @@ class A(str, Enum):
     a = "b"
     b = "a"
 
-A.a == "a"
-A.a == "b"
+# Every `if` block in this test should have an error on exactly one of two lines.
+# Either it is reachable (and thus overlapping) or unreachable (and non-overlapping)
 
-A.a == A.a
-A.a == A.b  # E: Non-overlapping equality check (left operand type: "Literal[A.a]", right operand type: "Literal[A.b]")
+if A.a == "a":  # E: Non-overlapping equality check (left operand type: "Literal[A.a]", right operand type: "Literal['a']")
+    1 + 'a'
+if A.a == "b":
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+
+if A.a == 0:  # E: Non-overlapping equality check (left operand type: "Literal[A.a]", right operand type: "Literal[0]")
+    1 + 'a'
+
+if A.a == A.a:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if A.a == A.b:  # E: Non-overlapping equality check (left operand type: "Literal[A.a]", right operand type: "Literal[A.b]")
+    1 + 'a'
 
 class B(StrEnum):
     a = "b"
     b = "a"
 
-B.a == "a"
-B.a == "b"
+if B.a == "a":  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal['a']")
+    1 + 'a'
+if B.a == "b":
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
 
-B.a == B.a
-B.a == B.b  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[B.b]")
+if B.a == 0:  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[0]")
+    1 + 'a'
 
-B.a == A.a  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[A.a]")
+if B.a == B.a:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if B.a == B.b:  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[B.b]")
+    1 + 'a'
+
+if B.a == A.a:  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[A.a]")
+    1 + 'a'
 
 class C(IntEnum):
     a = 0
+    b = 1
 
-C.a == "a"  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal['a']")
-C.a == "b"  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal['b']")
+if C.a == "a":  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal['a']")
+    1 + 'a'
+if C.a == "b":  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal['b']")
+    1 + 'a'
 
-C.a == C.a
-C.a == C.b
+if C.a == 0:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if C.a == 1:  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal[1]")
+    1 + 'a'
+
+if C.a == C.a:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if C.a == C.b:  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal[C.b]")
+    1 + 'a'
 
 class D(int, Enum):
     a = 0
+    b = 1
 
-D.a == "a"  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal['a']")
-D.a == "b"  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal['b']")
+if D.a == "a":  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal['a']")
+    1 + 'a'
+if D.a == "b":  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal['b']")
+    1 + 'a'
 
-D.a == D.a
-D.a == D.b
+if D.a == 0:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if D.a == 1:  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal[1]")
+    1 + 'a'
 
-D.a == C.a  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal[C.a]")
+if D.a == D.a:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if D.a == D.b:  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal[D.b]")
+    1 + 'a'
+
+if D.a == C.a:  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal[C.a]")
+    1 + 'a'
+[builtins fixtures/dict.pyi]
+
+
+[case testEnumItemsEqualityToLiteralsInStub]
+# flags: --python-version=3.11 --strict-equality
+from mystub import A, B, C, D
+
+# Every `if` block in this test should have an error on exactly one of two lines.
+# Either it is reachable (and thus overlapping) or unreachable (and non-overlapping)
+
+if A.a == "a":
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if A.a == "b":
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+
+if A.a == 0:  # E: Non-overlapping equality check (left operand type: "Literal[A.a]", right operand type: "Literal[0]")
+    1 + 'a'
+
+if A.a == A.a:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if A.a == A.b:  # E: Non-overlapping equality check (left operand type: "Literal[A.a]", right operand type: "Literal[A.b]")
+    1 + 'a'
+
+if B.a == "a":
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if B.a == "b":
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+
+if B.a == 0:  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[0]")
+    1 + 'a'
+
+if B.a == B.a:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if B.a == B.b:  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[B.b]")
+    1 + 'a'
+
+if B.a == A.a:  # E: Non-overlapping equality check (left operand type: "Literal[B.a]", right operand type: "Literal[A.a]")
+    1 + 'a'
+
+if C.a == "a":  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal['a']")
+    1 + 'a'
+if C.a == "b":  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal['b']")
+    1 + 'a'
+
+if C.a == 0:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if C.a == 1:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+
+if C.a == C.a:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if C.a == C.b:  # E: Non-overlapping equality check (left operand type: "Literal[C.a]", right operand type: "Literal[C.b]")
+    1 + 'a'
+
+if D.a == "a":  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal['a']")
+    1 + 'a'
+if D.a == "b":  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal['b']")
+    1 + 'a'
+
+if D.a == 0:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if D.a == 1:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+
+if D.a == D.a:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+if D.a == D.b:  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal[D.b]")
+    1 + 'a'
+
+if D.a == C.a:  # E: Non-overlapping equality check (left operand type: "Literal[D.a]", right operand type: "Literal[C.a]")
+    1 + 'a'
+
+[file mystub.pyi]
+from enum import Enum, StrEnum, IntEnum
+
+class A(str, Enum):
+    a = ...
+    b = ...
+
+class B(StrEnum):
+    a = ...
+    b = ...
+
+class C(int, Enum):
+    a = ...
+    b = ...
+
+class D(IntEnum):
+    a = ...
+    b = ...
+[builtins fixtures/dict.pyi]
+
+
+[case testEnumItemsEqualityToLiteralsWithAlias-xfail]
+# flags: --python-version=3.11 --strict-equality
+# TODO: mypy does not support enum member aliases now.
+from enum import Enum, IntEnum
+
+class A(str, Enum):
+    a = "c"
+    b = a
+
+if A.a == A.b:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+
+class B(IntEnum):
+    a = 0
+    b = a
+
+if B.a == B.b:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/dict.pyi]

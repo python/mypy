@@ -37,6 +37,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.state import state
 from mypy.types import (
+    ELLIPSIS_TYPE_NAMES,
     MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
@@ -283,6 +284,34 @@ def is_same_type(
         a, b, ignore_promotions=ignore_promotions, subtype_context=subtype_context
     ) and is_proper_subtype(
         b, a, ignore_promotions=ignore_promotions, subtype_context=subtype_context
+    )
+
+
+def is_enum_value_pair(a: ProperType, b: ProperType) -> bool:
+    if not isinstance(a, LiteralType) or not isinstance(b, LiteralType):
+        return False
+    if b.fallback.type.is_enum:
+        a, b = b, a
+    if b.fallback.type.is_enum:
+        return False
+    # At this point we have a pair (non-enum literal, enum literal).
+    # Check that the non-enum fallback is compatible
+    if not is_subtype(a.fallback, b.fallback):
+        return False
+    assert isinstance(a.value, str)
+    enum_value = a.fallback.type.get(a.value)
+    return (
+        enum_value is not None
+        and enum_value.type is not None
+        and isinstance(enum_value.type, Instance)
+        and (
+            enum_value.type.last_known_value == b
+            # TODO: this is too lax and should only be applied for enums defined in stubs,
+            # but checking that strictly requires access to the checker. This function
+            # is needed in `is_overlapping_types` and operates on a lower level,
+            # so doing this properly would be more difficult.
+            or enum_value.type.type.fullname in ELLIPSIS_TYPE_NAMES
+        )
     )
 
 

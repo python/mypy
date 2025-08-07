@@ -146,6 +146,7 @@ from mypy.subtypes import (
     find_member,
     infer_class_variances,
     is_callable_compatible,
+    is_enum_value_pair,
     is_equivalent,
     is_more_precise,
     is_proper_subtype,
@@ -6783,13 +6784,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 expr_type = coerce_to_literal(expr_type)
             if not is_valid_target(get_proper_type(expr_type)):
                 continue
-            if target and not is_same_type(target, expr_type):
+            if (
+                target is not None
+                and not is_same_type(target, expr_type)
+                and not is_enum_value_pair(target, expr_type)
+            ):
                 # We have multiple disjoint target types. So the 'if' branch
                 # must be unreachable.
                 return None, {}
             target = expr_type
             possible_target_indices.append(i)
-
         # There's nothing we can currently infer if none of the operands are valid targets,
         # so we end early and infer nothing.
         if target is None:
@@ -9125,7 +9129,9 @@ def _ambiguous_enum_variants(types: list[Type]) -> set[str]:
                 # let's be conservative
                 result.add("<other>")
         elif isinstance(t, LiteralType):
-            result.update(_ambiguous_enum_variants([t.fallback]))
+            if t.fallback.type.is_enum:
+                result.update(_ambiguous_enum_variants([t.fallback]))
+            # Other literals (str, int, bool) cannot introduce any surprises
         elif isinstance(t, NoneType):
             pass
         else:
