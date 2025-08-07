@@ -1,0 +1,42 @@
+[case testDelVariableResetsType]
+def test_del_resets_type() -> None:
+    x = 42  # x: int
+    del x
+    x = "hello"  # Should not error - x can now be str
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+[case testDelVariableInBranch]
+def test_del_in_branch(cond: bool) -> None:
+    x = 42  # x: int
+    if cond:
+        del x
+        x = "hello"  # Should not error in this branch
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[case testDelVariableNotLocal]
+class C:
+    attr: int = 42
+
+def test_del_not_local() -> None:
+    c = C()
+    del c.attr  # Should use DeletedType behavior, not reset
+    # This should still be treated as deleted, not reset
+
+[case testDelVariableExplicitType]
+def test_del_explicit_type() -> None:
+    x: int = 42
+    del x
+    x = "hello"  # Should still error - explicit type annotation
+    [out]
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testDelVariableMultiple]
+def test_del_multiple() -> None:
+    x = 42
+    y = "hello"
+    del x, y
+    x = "world"  # Should not error
+    y = 123     # Should not error
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(y)  # N: Revealed type is "builtins.int"
