@@ -716,8 +716,8 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             while isinstance(exprs[i], StrExpr) and isinstance(exprs[i+1], StrExpr):
                 first = exprs[i]
                 concatenated = first.value + exprs[i+1].value
-                exprs = [exprs[:i] + [StrExpr(concatenated, first.line)] + exprs[i+2:]]
-                format_ops = format_ops[:i] + [format_ops[i+1]] + [format_ops[i+2:]
+                exprs = [*exprs[:i], StrExpr(concatenated, first.line), *exprs[i+2:]]
+                format_ops = [*format_ops[:i], format_ops[i+1], *format_ops[i+2:]]
 
         substitutions = convert_format_expr_to_str(builder, format_ops, exprs, expr.line)
         if substitutions is None:
