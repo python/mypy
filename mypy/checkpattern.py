@@ -315,8 +315,8 @@ class PatternChecker(PatternVisitor[PatternType]):
             inner_types = [make_simplified_union([*sequence_types, *x]) for x in zip(*tuple_types)]
         else:
             object_type = self.chk.named_type("builtins.object")
-            inner_type = make_simplified_union(sequence_types) if sequence_types else object_type
-            inner_types = [inner_type] * len(o.patterns)
+            unioned = make_simplified_union(sequence_types) if sequence_types else object_type
+            inner_types = [unioned] * len(o.patterns)
 
         #
         # match inner patterns
