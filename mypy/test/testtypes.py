@@ -647,6 +647,8 @@ class TypeOpsSuite(Suite):
     def test_simplified_union_with_mixed_str_literals(self) -> None:
         fx = self.fx
 
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1_inst], fx.lit_str1_inst)
+
         self.assert_simplified_union(
             [fx.lit_str1, fx.lit_str2, fx.lit_str3_inst],
             UnionType([fx.lit_str1, fx.lit_str2, fx.lit_str3_inst]),
