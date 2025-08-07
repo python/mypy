@@ -602,25 +602,15 @@ def make_simplified_union(
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
     # Step 5: Combine Literals and Instances with LKVs, e.g. Literal[1]?, Literal[1] -> Literal[1]?
-    new_items = []
-    for item in simplified_set:
-        if isinstance(item, LiteralType):
-            # scan if there is an Instance with a last_known_value that matches
-            for other in simplified_set:
-                if (
-                    isinstance(other, Instance)
-                    and other.last_known_value is not None
-                    and item == other.last_known_value
-                ):
-                    # do not include item
-                    break
-            else:
-                new_items.append(item)
-        else:
-            # If the item is not a LiteralType, we can use it directly.
-            new_items.append(item)
+    proper_items: list[ProperType] = list(map(get_proper_type, simplified_set))
+    last_known_values: list[LiteralType | None] = [
+        p_t.last_known_value if isinstance(p_t, Instance) else None for p_t in proper_items
+    ]
+    simplified_set = [
+        item for item, p_t in zip(simplified_set, proper_items) if p_t not in last_known_values
+    ]
 
-    result = get_proper_type(UnionType.make_union(new_items, line, column))
+    result = get_proper_type(UnionType.make_union(simplified_set, line, column))
 
     nitems = len(items)
     if nitems > 1 and (
