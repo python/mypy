@@ -69,6 +69,10 @@ class InstanceJoiner:
             # Simplest case: join two types with the same base type (but
             # potentially different arguments).
 
+            last_known_value = (
+                None if t.last_known_value != s.last_known_value else t.last_known_value
+            )
+
             # Combine type arguments.
             args: list[Type] = []
             # N.B: We use zip instead of indexing because the lengths might have
@@ -104,10 +108,10 @@ class InstanceJoiner:
                         new_type = join_types(ta, sa, self)
                         if len(type_var.values) != 0 and new_type not in type_var.values:
                             self.seen_instances.pop()
-                            return object_from_instance(t)
+                            return object_from_instance(t, last_known_value=last_known_value)
                         if not is_subtype(new_type, type_var.upper_bound):
                             self.seen_instances.pop()
-                            return object_from_instance(t)
+                            return object_from_instance(t, last_known_value=last_known_value)
                     # TODO: contravariant case should use meet but pass seen instances as
                     # an argument to keep track of recursive checks.
                     elif type_var.variance in (INVARIANT, CONTRAVARIANT):
@@ -117,7 +121,7 @@ class InstanceJoiner:
                             new_type = ta
                         elif not is_equivalent(ta, sa):
                             self.seen_instances.pop()
-                            return object_from_instance(t)
+                            return object_from_instance(t, last_known_value=last_known_value)
                         else:
                             # If the types are different but equivalent, then an Any is involved
                             # so using a join in the contravariant case is also OK.
@@ -141,10 +145,16 @@ class InstanceJoiner:
                     new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
-            result: ProperType = Instance(t.type, args)
+            result: ProperType = Instance(t.type, args, last_known_value=last_known_value)
         elif t.type.bases and is_proper_subtype(
             t, s, subtype_context=SubtypeContext(ignore_type_params=True)
         ):
+            result = self.join_instances_via_supertype(t, s)
+        elif s.type.bases and is_proper_subtype(
+            s, t, subtype_context=SubtypeContext(ignore_type_params=True)
+        ):
+            result = self.join_instances_via_supertype(s, t)
+        elif is_subtype(t, s, subtype_context=SubtypeContext(ignore_type_params=True)):
             result = self.join_instances_via_supertype(t, s)
         else:
             # Now t is not a subtype of s, and t != s. Now s could be a subtype
@@ -626,13 +636,16 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType):
             if t == self.s:
+                # E.g. Literal["x"], Literal["x"] -> Literal["x"]
                 return t
             if self.s.fallback.type.is_enum and t.fallback.type.is_enum:
                 return mypy.typeops.make_simplified_union([self.s, t])
             return join_types(self.s.fallback, t.fallback)
         elif isinstance(self.s, Instance) and self.s.last_known_value == t:
-            return t
+            # E.g. Literal["x"], Literal["x"]? -> Literal["x"]?
+            return self.s
         else:
+            # E.g. Literal["x"], Literal["y"]? -> str
             return join_types(self.s, t.fallback)
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
@@ -857,10 +870,12 @@ def combine_arg_names(
     return new_names
 
 
-def object_from_instance(instance: Instance) -> Instance:
+def object_from_instance(
+    instance: Instance, last_known_value: LiteralType | None = None
+) -> Instance:
     """Construct the type 'builtins.object' from an instance type."""
     # Use the fact that 'object' is always the last class in the mro.
-    res = Instance(instance.type.mro[-1], [])
+    res = Instance(instance.type.mro[-1], [], last_known_value=last_known_value)
     return res
 
 

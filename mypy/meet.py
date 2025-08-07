@@ -81,6 +81,30 @@ def meet_types(s: Type, t: Type) -> ProperType:
     t = get_proper_type(t)
 
     if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
+        # special casing for dealing with last known values
+        lkv: LiteralType | None
+
+        if s.last_known_value is None:
+            lkv = t.last_known_value
+        elif t.last_known_value is None:
+            lkv = s.last_known_value
+        else:
+            lkv_meet = meet_types(s.last_known_value, t.last_known_value)
+            if isinstance(lkv_meet, UninhabitedType):
+                lkv = None
+            elif isinstance(lkv_meet, LiteralType):
+                lkv = lkv_meet
+            else:
+                msg = (
+                    f"Unexpected result: "
+                    f"meet of {s.last_known_value=!s} and {t.last_known_value=!s} "
+                    f"resulted in {lkv_meet!s}"
+                )
+                raise ValueError(msg)
+
+        t = t.copy_modified(last_known_value=lkv)
+        s = s.copy_modified(last_known_value=lkv)
+
         # Code in checker.py should merge any extra_items where possible, so we
         # should have only compatible extra_items here. We check this before
         # the below subtype check, so that extra_attrs will not get erased.
@@ -1114,8 +1138,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_literal_type(self, t: LiteralType) -> ProperType:
         if isinstance(self.s, LiteralType) and self.s == t:
             return t
-        elif isinstance(self.s, Instance) and is_subtype(t.fallback, self.s):
-            return t
+        elif isinstance(self.s, Instance):
+            # if is_subtype(t.fallback, self.s):
+            #     return t
+            if self.s.last_known_value is not None:
+                # meet(Literal["max"]?, Literal["max"]) -> Literal["max"]
+                # meet(Literal["sum"]?, Literal["max"]) -> Never
+                return meet_types(self.s.last_known_value, t)
+            return self.default(self.s)
         else:
             return self.default(self.s)
 

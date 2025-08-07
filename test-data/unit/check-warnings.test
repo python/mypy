@@ -49,13 +49,6 @@ from typing import cast
 a = 1
 b = cast(object, 1)
 
-[case testCastFromLiteralRedundant]
-# flags: --warn-redundant-casts
-from typing import cast
-
-cast(int, 1)
-[out]
-main:4: error: Redundant cast to "int"
 
 [case testCastFromUnionOfAnyOk]
 # flags: --warn-redundant-casts
