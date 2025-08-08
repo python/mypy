@@ -2995,3 +2995,121 @@ def check(obj: A[Literal[1]]) -> None:
     reveal_type(g('', obj))  # E: Cannot infer value of type parameter "T" of "g" \
                              # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testIntEnumLiteralSubtypeOfIntLiteral]
+from typing import Literal
+from enum import IntEnum, Enum
+
+class MyIntEnum(IntEnum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+
+class MyCustomIntEnum(int, Enum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+
+class MyEnum(Enum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+
+def takes_int_literal_1(x: Literal[1]) -> None: ...
+def takes_int_literal_1_2_3(x: Literal[1, 2, 3]) -> None: ...
+
+# IntEnum literals should be accepted where int literals are expected
+takes_int_literal_1(MyIntEnum.ONE)  # OK
+takes_int_literal_1_2_3(MyIntEnum.TWO)  # OK
+
+# Custom (int, Enum) literals should also be accepted
+takes_int_literal_1(MyCustomIntEnum.ONE)  # OK
+takes_int_literal_1_2_3(MyCustomIntEnum.TWO)  # OK
+
+# Regular Enum literals should not be accepted
+takes_int_literal_1(MyEnum.ONE)  # E: Argument 1 to "takes_int_literal_1" has incompatible type "Literal[MyEnum.ONE]"; expected "Literal[1]"
+takes_int_literal_1_2_3(MyEnum.TWO)  # E: Argument 1 to "takes_int_literal_1_2_3" has incompatible type "Literal[MyEnum.TWO]"; expected "Literal[1, 2, 3]"
+
+# Test assignments
+x: Literal[1] = MyIntEnum.ONE  # OK
+y: Literal[1, 2, 3] = MyIntEnum.THREE  # OK
+x2: Literal[1] = MyCustomIntEnum.ONE  # OK
+y2: Literal[1, 2, 3] = MyCustomIntEnum.THREE  # OK
+z: Literal[1] = MyEnum.ONE  # E: Incompatible types in assignment (expression has type "Literal[MyEnum.ONE]", variable has type "Literal[1]")
+
+# Test wrong values
+takes_int_literal_1(MyIntEnum.TWO)  # E: Argument 1 to "takes_int_literal_1" has incompatible type "Literal[MyIntEnum.TWO]"; expected "Literal[1]"
+takes_int_literal_1(MyCustomIntEnum.TWO)  # E: Argument 1 to "takes_int_literal_1" has incompatible type "Literal[MyCustomIntEnum.TWO]"; expected "Literal[1]"
+w: Literal[1] = MyIntEnum.THREE  # E: Incompatible types in assignment (expression has type "Literal[MyIntEnum.THREE]", variable has type "Literal[1]")
+w2: Literal[1] = MyCustomIntEnum.THREE  # E: Incompatible types in assignment (expression has type "Literal[MyCustomIntEnum.THREE]", variable has type "Literal[1]")
+
+# Test reverse direction - literal ints should NOT be accepted where enum is expected
+def takes_int_enum(x: MyIntEnum) -> None: ...
+def takes_custom_int_enum(x: MyCustomIntEnum) -> None: ...
+
+takes_int_enum(1)  # E: Argument 1 to "takes_int_enum" has incompatible type "int"; expected "MyIntEnum"
+takes_custom_int_enum(1)  # E: Argument 1 to "takes_custom_int_enum" has incompatible type "int"; expected "MyCustomIntEnum"
+
+e1: MyIntEnum = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "MyIntEnum")
+e2: MyCustomIntEnum = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "MyCustomIntEnum")
+
+[builtins fixtures/enum.pyi]
+
+[case testStrEnumLiteralSubtypeOfStrLiteral]
+from typing import Literal
+from enum import StrEnum, Enum
+
+class MyStrEnum(StrEnum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+class MyCustomStrEnum(str, Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+class MyEnum(Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+def takes_str_literal_red(x: Literal["red"]) -> None: ...
+def takes_str_literal_colors(x: Literal["red", "green", "blue"]) -> None: ...
+
+# StrEnum literals should be accepted where str literals are expected
+takes_str_literal_red(MyStrEnum.RED)  # OK
+takes_str_literal_colors(MyStrEnum.GREEN)  # OK
+
+# Custom (str, Enum) literals should also be accepted
+takes_str_literal_red(MyCustomStrEnum.RED)  # OK
+takes_str_literal_colors(MyCustomStrEnum.GREEN)  # OK
+
+# Regular Enum literals should not be accepted
+takes_str_literal_red(MyEnum.RED)  # E: Argument 1 to "takes_str_literal_red" has incompatible type "Literal[MyEnum.RED]"; expected "Literal['red']"
+takes_str_literal_colors(MyEnum.GREEN)  # E: Argument 1 to "takes_str_literal_colors" has incompatible type "Literal[MyEnum.GREEN]"; expected "Literal['red', 'green', 'blue']"
+
+# Test assignments
+x: Literal["red"] = MyStrEnum.RED  # OK
+y: Literal["red", "green", "blue"] = MyStrEnum.BLUE  # OK
+x2: Literal["red"] = MyCustomStrEnum.RED  # OK
+y2: Literal["red", "green", "blue"] = MyCustomStrEnum.BLUE  # OK
+z: Literal["red"] = MyEnum.RED  # E: Incompatible types in assignment (expression has type "Literal[MyEnum.RED]", variable has type "Literal['red']")
+
+# Test wrong values
+takes_str_literal_red(MyStrEnum.GREEN)  # E: Argument 1 to "takes_str_literal_red" has incompatible type "Literal[MyStrEnum.GREEN]"; expected "Literal['red']"
+takes_str_literal_red(MyCustomStrEnum.GREEN)  # E: Argument 1 to "takes_str_literal_red" has incompatible type "Literal[MyCustomStrEnum.GREEN]"; expected "Literal['red']"
+w: Literal["red"] = MyStrEnum.BLUE  # E: Incompatible types in assignment (expression has type "Literal[MyStrEnum.BLUE]", variable has type "Literal['red']")
+w2: Literal["red"] = MyCustomStrEnum.BLUE  # E: Incompatible types in assignment (expression has type "Literal[MyCustomStrEnum.BLUE]", variable has type "Literal['red']")
+
+# Test reverse direction - literal strings should NOT be accepted where enum is expected
+def takes_str_enum(x: MyStrEnum) -> None: ...
+def takes_custom_str_enum(x: MyCustomStrEnum) -> None: ...
+
+takes_str_enum("red")  # E: Argument 1 to "takes_str_enum" has incompatible type "str"; expected "MyStrEnum"
+takes_custom_str_enum("red")  # E: Argument 1 to "takes_custom_str_enum" has incompatible type "str"; expected "MyCustomStrEnum"
+
+e1: MyStrEnum = "red"  # E: Incompatible types in assignment (expression has type "str", variable has type "MyStrEnum")
+e2: MyCustomStrEnum = "red"  # E: Incompatible types in assignment (expression has type "str", variable has type "MyCustomStrEnum")
+
+[builtins fixtures/enum.pyi]
