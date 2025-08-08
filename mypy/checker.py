@@ -433,7 +433,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         )
 
         self._object_type: Instance | None = None
-        self._type_type: Instance | None = None
+        self._int_type: Instance | None = None
         self._str_type: Instance | None = None
         self._function_type: Instance | None = None
 
@@ -7375,22 +7375,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         For example, named_type('builtins.object') produces the 'object' type.
         """
-        if name == "builtins.function":
-            if self._function_type is None:
-                self._function_type = self._named_type(name)
-            return self._function_type
-        if name == "builtins.object":
-            if self._object_type is None:
-                self._object_type = self._named_type(name)
-            return self._object_type
-        if name == "builtins.type":
-            if self._type_type is None:
-                self._type_type = self._named_type(name)
-            return self._type_type
         if name == "builtins.str":
             if self._str_type is None:
                 self._str_type = self._named_type(name)
             return self._str_type
+        if name == "builtins.function":
+            if self._function_type is None:
+                self._function_type = self._named_type(name)
+            return self._function_type
+        if name == "builtins.int":
+            if self._int_type is None:
+                self._int_type = self._named_type(name)
+            return self._int_type
+        if name == "builtins.object":
+            if self._object_type is None:
+                self._object_type = self._named_type(name)
+            return self._object_type
         return self._named_type(name)
 
     def _named_type(self, name: str) -> Instance:
