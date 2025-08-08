@@ -431,6 +431,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self._expr_checker = mypy.checkexpr.ExpressionChecker(
             self, self.msg, self.plugin, per_line_checking_time_ns
         )
+
+        self._object_type: Instance | None = None
+        self._type_type: Instance | None = None
+        self._str_type: Instance | None = None
+        self._function_type: Instance | None = None
+
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
         self._unique_id = 0
 
@@ -7369,6 +7375,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         For example, named_type('builtins.object') produces the 'object' type.
         """
+        if name == "builtins.function":
+            if self._function_type is None:
+                self._function_type = self._named_type(name)
+            return self._function_type
+        if name == "builtins.object":
+            if self._object_type is None:
+                self._object_type = self._named_type(name)
+            return self._object_type
+        if name == "builtins.type":
+            if self._type_type is None:
+                self._type_type = self._named_type(name)
+            return self._type_type
+        if name == "builtins.str":
+            if self._str_type is None:
+                self._str_type = self._named_type(name)
+            return self._str_type
+        return self._named_type(name)
+
+    def _named_type(self, name: str) -> Instance:
         # Assume that the name refers to a type.
         sym = self.lookup_qualified(name)
         node = sym.node
