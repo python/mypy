@@ -1970,6 +1970,7 @@ a2 = replace()
 a2 = replace(a, x='spam')
 a2 = replace(a, x=42, q=42)
 [out]
+_testDataclassReplace.py:4: note: "replace" of "A" defined here
 _testDataclassReplace.py:9: note: Revealed type is "_testDataclassReplace.A"
 _testDataclassReplace.py:10: error: Too few arguments for "replace"
 _testDataclassReplace.py:11: error: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"

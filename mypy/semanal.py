@@ -1243,6 +1243,7 @@ class SemanticAnalyzer(
             bare_setter_type = self.analyze_property_with_multi_part_definition(defn)
             typ = function_type(first_item.func, self.named_type("builtins.function"))
             assert isinstance(typ, CallableType)
+            typ.definition = first_item
             types = [typ]
         else:
             # This is a normal overload. Find the item signatures, the
@@ -1374,6 +1375,7 @@ class SemanticAnalyzer(
             if isinstance(item, Decorator):
                 callable = function_type(item.func, self.named_type("builtins.function"))
                 assert isinstance(callable, CallableType)
+                callable.definition = item
                 if not any(refers_to_fullname(dec, OVERLOAD_NAMES) for dec in item.decorators):
                     if i == len(defn.items) - 1 and not self.is_stub_file:
                         # Last item outside a stub is impl

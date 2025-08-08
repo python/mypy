@@ -1887,6 +1887,9 @@ class CallableType(FunctionLike):
         self.fallback = fallback
         assert not name or "<bound method" not in name
         self.name = name
+        # The rules for what exactly is considered a definition:
+        #   * If it is a non-decorated function, FuncDef is the definition
+        #   * If it is a decorated function, enclosing Decorator is the definition
         self.definition = definition
         self.variables = variables
         self.is_ellipsis_args = is_ellipsis_args
