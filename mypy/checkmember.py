@@ -984,7 +984,7 @@ def expand_and_bind_callable(
             # A broken overload, error should be already reported.
             return AnyType(TypeOfAny.from_error)
         expanded = expanded.items[0]
-    assert isinstance(expanded, CallableType)
+    assert isinstance(expanded, CallableType), expanded
     if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
         if expanded.variables:
             type_ctx = mx.rvalue or TempNode(AnyType(TypeOfAny.special_form), context=mx.context)
