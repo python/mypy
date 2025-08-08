@@ -647,8 +647,6 @@ class TypeOpsSuite(Suite):
     def test_simplified_union_with_mixed_str_literals(self) -> None:
         fx = self.fx
 
-        self.assert_simplified_union([fx.lit_str1, fx.lit_str1_inst], fx.lit_str1_inst)
-
         self.assert_simplified_union(
             [fx.lit_str1, fx.lit_str2, fx.lit_str3_inst],
             UnionType([fx.lit_str1, fx.lit_str2, fx.lit_str3_inst]),
@@ -656,6 +654,43 @@ class TypeOpsSuite(Suite):
         self.assert_simplified_union(
             [fx.lit_str1, fx.lit_str1, fx.lit_str1_inst], fx.lit_str1_inst
         )
+
+    def test_simplified_union_with_mixed_str_literals2(self) -> None:
+        str1 = self.fx.lit_str1
+        str2 = self.fx.lit_str2
+        str1_inst = self.fx.lit_str1_inst
+        str2_inst = self.fx.lit_str2_inst
+        str_type = self.fx.str_type
+
+        # other operand is the fallback type
+        # "x"  | str  -> str
+        # str  | "x"  -> str
+        # "x"? | str  -> str
+        # str  | "x"? -> str
+        self.assert_simplified_union([str1, str_type], str_type)
+        self.assert_simplified_union([str_type, str1], str_type)
+        self.assert_simplified_union([str1_inst, str_type], str_type)
+        self.assert_simplified_union([str_type, str1_inst], str_type)
+
+        # other operand is the same literal
+        # "x"  | "x"  -> "x"
+        # "x"  | "x"? -> "x"?
+        # "x"? | "x"  -> "x"?
+        # "x"? | "x"? -> "x"?
+        self.assert_simplified_union([str1, str1], str1)
+        self.assert_simplified_union([str1, str1_inst], str1_inst)
+        self.assert_simplified_union([str1_inst, str1], str1_inst)
+        self.assert_simplified_union([str1_inst, str1_inst], str1_inst)
+
+        # other operand is a different literal
+        # "x"  | "y"  -> "x"  | "y"
+        # "x"  | "y"? -> "x"  | "y"?
+        # "x"? | "y"  -> "x"? | "y"
+        # "x"? | "y"? -> "x"? | "y"?
+        self.assert_simplified_union([str1, str2], UnionType([str1, str2]))
+        self.assert_simplified_union([str1, str2_inst], UnionType([str1, str2_inst]))
+        self.assert_simplified_union([str1_inst, str2], UnionType([str1_inst, str2]))
+        self.assert_simplified_union([str1_inst, str2_inst], UnionType([str1_inst, str2_inst]))
 
     def assert_simplified_union(self, original: list[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
@@ -992,7 +1027,8 @@ class JoinSuite(Suite):
         self.assert_join(lit1, lit1, lit1)
         self.assert_join(lit1, a, a)
         self.assert_join(lit1, d, self.fx.o)
-        self.assert_join(lit1, lit2, a)
+        self.assert_simple_join(lit1, lit2, UnionType([lit1, lit2]))
+        self.assert_simple_join(lit2, lit1, UnionType([lit2, lit1]))
         self.assert_join(lit1, lit3, self.fx.o)
         self.assert_join(lit1, self.fx.anyt, self.fx.anyt)
         self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
@@ -1014,6 +1050,40 @@ class JoinSuite(Suite):
         self.assert_simple_join(
             UnionType([lit2, lit3]), UnionType([lit1, lit2]), UnionType([lit2, lit3, lit1])
         )
+
+    def test_mixed_literal_types(self) -> None:
+        str1 = self.fx.lit_str1
+        str2 = self.fx.lit_str2
+        str1_inst = self.fx.lit_str1_inst
+        str2_inst = self.fx.lit_str2_inst
+        str_type = self.fx.str_type
+
+        # other operand is the fallback type
+        # "x" , str  -> str
+        # str , "x"  -> str
+        # "x"?, str  -> str
+        # str , "x"? -> str
+        self.assert_join(str1, str_type, str_type)
+        self.assert_join(str1_inst, str_type, str_type)
+
+        # other operand is the same literal
+        # "x" , "x"  -> "x"
+        # "x" , "x"? -> "x"
+        # "x"?, "x"  -> "x"
+        # "x"?, "x"? -> "x"?
+        self.assert_join(str1, str1, str1)
+        self.assert_join(str1, str1_inst, str1)
+        self.assert_join(str1_inst, str1_inst, str1_inst)
+
+        # other operand is a different literal
+        # "x" , "y"  -> "x" | "y" (treat real literals like enum)
+        # "x" , "y"? -> str
+        # "x"?, "y"  -> str
+        # "x"?, "y"? -> str
+        self.assert_simple_join(str1, str2, UnionType([str1, str2]))
+        self.assert_simple_join(str2, str1, UnionType([str2, str1]))
+        self.assert_join(str1, str2_inst, str_type)
+        self.assert_join(str1_inst, str2_inst, str_type)
 
     def test_variadic_tuple_joins(self) -> None:
         # These tests really test just the "arity", to be sure it is handled correctly.
@@ -1307,6 +1377,39 @@ class MeetSuite(Suite):
 
         assert is_same_type(lit1, narrow_declared_type(lit1, a))
         assert is_same_type(lit2, narrow_declared_type(lit2, a))
+
+    def test_mixed_literal_types(self) -> None:
+        str1 = self.fx.lit_str1
+        str2 = self.fx.lit_str2
+        str1_inst = self.fx.lit_str1_inst
+        str2_inst = self.fx.lit_str2_inst
+        str_type = self.fx.str_type
+
+        # other operand is the fallback type
+        # "x" , str -> "x"
+        # str , "x" -> "x"
+        # "x"?, str  -> "x"?
+        # str , "x"? -> "x"?
+        self.assert_meet(str1, str_type, str1)
+        self.assert_meet(str1_inst, str_type, str1_inst)
+
+        # other operand is the same literal
+        # "x" , "x"  -> "x"
+        # "x" , "x"? -> "x"
+        # "x"?, "x"  -> "x"
+        # "x"?, "x"? -> "x"?
+        self.assert_meet(str1, str1, str1)
+        self.assert_meet(str1, str1_inst, str1)
+        self.assert_meet(str1_inst, str1_inst, str1_inst)
+
+        # other operand is a different literal
+        # "x" , "y"  -> Never
+        # "x" , "y"? -> Never
+        # "x"?, "y"  -> Never
+        # "x"?, "y"? -> str
+        self.assert_meet_uninhabited(str1, str2)
+        self.assert_meet_uninhabited(str1, str2_inst)
+        self.assert_meet(str1_inst, str2_inst, str_type)
 
     # FIX generic interfaces + ranges
 

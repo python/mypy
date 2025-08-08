@@ -971,6 +971,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_literal_type(self, left: LiteralType) -> bool:
         if isinstance(self.right, LiteralType):
             return left == self.right
+        elif (
+            isinstance(self.right, Instance)
+            and self.right.last_known_value is not None
+            and self.proper_subtype
+        ):
+            return self._is_subtype(left, self.right.last_known_value)
         else:
             return self._is_subtype(left.fallback, self.right)
 
