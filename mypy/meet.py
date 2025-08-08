@@ -1125,9 +1125,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, LiteralType) and self.s == t:
             return t
         elif isinstance(self.s, Instance):
-            if is_subtype(t.fallback, self.s):
-                return t
+            # if is_subtype(t.fallback, self.s):
+            #     return t
             if self.s.last_known_value is not None:
+                # meet(Literal["max"]?, Literal["max"]) -> Literal["max"]
+                # meet(Literal["sum"]?, Literal["max"]) -> Never
                 return meet_types(self.s.last_known_value, t)
             return self.default(self.s)
         else:
