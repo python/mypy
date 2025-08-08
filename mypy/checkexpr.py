@@ -4038,7 +4038,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
 
-        if op_name in operators.op_methods_that_shortcut and is_same_type(left_type, right_type):
+        if (
+            op_name in operators.op_methods_that_shortcut
+            and is_same_type(left_type, right_type)
+            and not (
+                # We consider typevars with equal IDs "same types" even if some narrowing
+                # has been applied. However, different bounds here might come from union
+                # expansion applied earlier, so we are not supposed to check them as
+                # being same types here. For plain union items `is_same_type` will
+                # return false, but not for typevars having these items as bounds.
+                # See testReversibleOpOnTypeVarProtocol.
+                isinstance(left_type, TypeVarType)
+                and isinstance(right_type, TypeVarType)
+                and not is_same_type(left_type.upper_bound, right_type.upper_bound)
+            )
+        ):
             # When we do "A() + A()", for example, Python will only call the __add__ method,
             # never the __radd__ method.
             #
