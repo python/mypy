@@ -8,7 +8,16 @@ from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash, subkeys
-from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
+from mypy.nodes import (
+    LITERAL_NO,
+    Expression,
+    IndexExpr,
+    MemberExpr,
+    NameExpr,
+    RefExpr,
+    TypeInfo,
+    Var,
+)
 from mypy.options import Options
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.typeops import make_simplified_union
@@ -138,6 +147,10 @@ class ConditionalTypeBinder:
         # flexible inference of variable types (--allow-redefinition-new).
         self.bind_all = options.allow_redefinition_new
 
+        # This tracks any externally visible changes in binder to invalidate
+        # expression caches when needed.
+        self.version = 0
+
     def _get_id(self) -> int:
         self.next_id += 1
         return self.next_id
@@ -158,6 +171,7 @@ class ConditionalTypeBinder:
         return f
 
     def _put(self, key: Key, type: Type, from_assignment: bool, index: int = -1) -> None:
+        self.version += 1
         self.frames[index].types[key] = CurrentType(type, from_assignment)
 
     def _get(self, key: Key, index: int = -1) -> CurrentType | None:
@@ -167,6 +181,15 @@ class ConditionalTypeBinder:
             if key in self.frames[i].types:
                 return self.frames[i].types[key]
         return None
+
+    @classmethod
+    def can_put_directly(cls, expr: Expression) -> bool:
+        """Will `.put()` on this expression be successful?
+
+        This is inlined in `.put()` because the logic is rather hot and must be kept
+        in sync.
+        """
+        return isinstance(expr, (IndexExpr, MemberExpr, NameExpr)) and literal(expr) > LITERAL_NO
 
     def put(self, expr: Expression, typ: Type, *, from_assignment: bool = True) -> None:
         """Directly set the narrowed type of expression (if it supports it).
@@ -185,6 +208,7 @@ class ConditionalTypeBinder:
         self._put(key, typ, from_assignment)
 
     def unreachable(self) -> None:
+        self.version += 1
         self.frames[-1].unreachable = True
 
     def suppress_unreachable_warnings(self) -> None:

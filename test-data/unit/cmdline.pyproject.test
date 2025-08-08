@@ -226,3 +226,14 @@ y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", 
 # This should not trigger any errors, because it is not included:
 z: int = 'z'
 [out]
+
+[case testPyprojectTOMLSettingOfWrongType]
+# cmd: mypy a.py
+[file pyproject.toml]
+\[tool.mypy]
+enable_error_code = true
+[file a.py]
+x: int = 1
+[out]
+pyproject.toml: [mypy]: enable_error_code: Expected a list or a stringified version thereof, but got: 'True', of type bool.
+== Return code: 0

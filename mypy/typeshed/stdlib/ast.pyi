@@ -10,7 +10,7 @@ from _ast import (
 )
 from _typeshed import ReadableBuffer, Unused
 from collections.abc import Iterable, Iterator, Sequence
-from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar as _TypeVar, overload
+from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar as _TypeVar, overload, type_check_only
 from typing_extensions import Self, Unpack, deprecated
 
 if sys.version_info >= (3, 13):
@@ -20,6 +20,7 @@ if sys.version_info >= (3, 13):
 _EndPositionT = typing_extensions.TypeVar("_EndPositionT", int, int | None, default=int | None)
 
 # Corresponds to the names in the `_attributes` class variable which is non-empty in certain AST nodes
+@type_check_only
 class _Attributes(TypedDict, Generic[_EndPositionT], total=False):
     lineno: int
     col_offset: int
@@ -1096,8 +1097,16 @@ class Constant(expr):
     kind: str | None
     if sys.version_info < (3, 14):
         # Aliases for value, for backwards compatibility
-        s: _ConstantValue
-        n: _ConstantValue
+        @deprecated("Will be removed in Python 3.14; use value instead")
+        @property
+        def n(self) -> _ConstantValue: ...
+        @n.setter
+        def n(self, value: _ConstantValue) -> None: ...
+        @deprecated("Will be removed in Python 3.14; use value instead")
+        @property
+        def s(self) -> _ConstantValue: ...
+        @s.setter
+        def s(self, value: _ConstantValue) -> None: ...
 
     def __init__(self, value: _ConstantValue, kind: str | None = None, **kwargs: Unpack[_Attributes]) -> None: ...
 
@@ -1495,11 +1504,11 @@ if sys.version_info >= (3, 10):
 
     class MatchSingleton(pattern):
         __match_args__ = ("value",)
-        value: Literal[True, False] | None
-        def __init__(self, value: Literal[True, False] | None, **kwargs: Unpack[_Attributes[int]]) -> None: ...
+        value: bool | None
+        def __init__(self, value: bool | None, **kwargs: Unpack[_Attributes[int]]) -> None: ...
 
         if sys.version_info >= (3, 14):
-            def __replace__(self, *, value: Literal[True, False] | None = ..., **kwargs: Unpack[_Attributes[int]]) -> Self: ...
+            def __replace__(self, *, value: bool | None = ..., **kwargs: Unpack[_Attributes[int]]) -> Self: ...
 
     class MatchSequence(pattern):
         __match_args__ = ("patterns",)
@@ -1690,31 +1699,35 @@ if sys.version_info >= (3, 12):
                 self, *, name: str = ..., default_value: expr | None = ..., **kwargs: Unpack[_Attributes[int]]
             ) -> Self: ...
 
-class _ABC(type):
-    def __init__(cls, *args: Unused) -> None: ...
+if sys.version_info >= (3, 14):
+    @type_check_only
+    class _ABC(type):
+        def __init__(cls, *args: Unused) -> None: ...
+
+else:
+    class _ABC(type):
+        def __init__(cls, *args: Unused) -> None: ...
 
 if sys.version_info < (3, 14):
     @deprecated("Replaced by ast.Constant; removed in Python 3.14")
     class Num(Constant, metaclass=_ABC):
-        value: int | float | complex
+        def __new__(cls, n: complex, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
     @deprecated("Replaced by ast.Constant; removed in Python 3.14")
     class Str(Constant, metaclass=_ABC):
-        value: str
-        # Aliases for value, for backwards compatibility
-        s: str
+        def __new__(cls, s: str, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
     @deprecated("Replaced by ast.Constant; removed in Python 3.14")
     class Bytes(Constant, metaclass=_ABC):
-        value: bytes
-        # Aliases for value, for backwards compatibility
-        s: bytes
+        def __new__(cls, s: bytes, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
     @deprecated("Replaced by ast.Constant; removed in Python 3.14")
-    class NameConstant(Constant, metaclass=_ABC): ...
+    class NameConstant(Constant, metaclass=_ABC):
+        def __new__(cls, value: _ConstantValue, kind: str | None, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
     @deprecated("Replaced by ast.Constant; removed in Python 3.14")
-    class Ellipsis(Constant, metaclass=_ABC): ...
+    class Ellipsis(Constant, metaclass=_ABC):
+        def __new__(cls, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
 # everything below here is defined in ast.py
 
@@ -1797,7 +1810,7 @@ if sys.version_info >= (3, 13):
         type_comments: bool = False,
         feature_version: None | int | tuple[int, int] = None,
         optimize: Literal[-1, 0, 1, 2] = -1,
-    ) -> AST: ...
+    ) -> mod: ...
 
 else:
     @overload
@@ -1868,7 +1881,7 @@ else:
         *,
         type_comments: bool = False,
         feature_version: None | int | tuple[int, int] = None,
-    ) -> AST: ...
+    ) -> mod: ...
 
 def literal_eval(node_or_string: str | AST) -> Any: ...
 
