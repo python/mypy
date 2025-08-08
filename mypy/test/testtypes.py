@@ -1068,11 +1068,11 @@ class JoinSuite(Suite):
 
         # other operand is the same literal
         # "x" , "x"  -> "x"
-        # "x" , "x"? -> "x"
-        # "x"?, "x"  -> "x"
+        # "x" , "x"? -> "x"?
+        # "x"?, "x"  -> "x"?
         # "x"?, "x"? -> "x"?
         self.assert_join(str1, str1, str1)
-        self.assert_join(str1, str1_inst, str1)
+        self.assert_join(str1, str1_inst, str1_inst)
         self.assert_join(str1_inst, str1_inst, str1_inst)
 
         # other operand is a different literal
