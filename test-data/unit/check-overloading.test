@@ -231,8 +231,20 @@ def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept al
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
-
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadImplOverlapVarArgsAndKwargs]
+from __future__ import annotations
+from typing import overload
+
+@overload
+def foo(x: int) -> None: ...
+@overload
+def foo(a: str, /) -> None: ...
+
+def foo(*args: int | str, **kw: int) -> None:
+    pass
+[builtins fixtures/tuple.pyi]
 
 [case testTypeCheckOverloadWithImplTooSpecificRetType]
 from typing import overload, Any
