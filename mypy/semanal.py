@@ -497,9 +497,9 @@ class SemanticAnalyzer(
         # Used to track edge case when return is still inside except* if it enters a loop
         self.return_stmt_inside_except_star_block: bool = False
 
-        self._object_type: Instance | None = None
         self._str_type: Instance | None = None
         self._function_type: Instance | None = None
+        self._object_type: Instance | None = None
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties

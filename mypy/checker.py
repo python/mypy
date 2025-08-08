@@ -432,10 +432,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self, self.msg, self.plugin, per_line_checking_time_ns
         )
 
-        self._object_type: Instance | None = None
-        self._int_type: Instance | None = None
         self._str_type: Instance | None = None
         self._function_type: Instance | None = None
+        self._int_type: Instance | None = None
+        self._bool_type: Instance | None = None
+        self._object_type: Instance | None = None
 
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
         self._unique_id = 0
@@ -7387,6 +7388,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if self._int_type is None:
                 self._int_type = self._named_type(name)
             return self._int_type
+        if name == "builtins.bool":
+            if self._bool_type is None:
+                self._bool_type = self._named_type(name)
+            return self._bool_type
         if name == "builtins.object":
             if self._object_type is None:
                 self._object_type = self._named_type(name)
