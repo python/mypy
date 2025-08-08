@@ -11033,6 +11033,314 @@ b.py:1: error: class a.C is deprecated: use C2 instead
 b.py:2: error: class a.D is deprecated: use D2 instead
 
 
+[case testDeprecatedAddKeepChangeAndRemoveOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.3]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.4]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int, please")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.5]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+==
+
+
+[case testDeprecatedRemoveOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+
+
+[case testDeprecatedKeepOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+
+
+[case testDeprecatedAddOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+
+
+[case testDeprecatedChangeOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int, please")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+
+
+[case testDeprecatedRemoveOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+
+
+[case testDeprecatedOverloadedFunctionAlreadyDecorated]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import Callable, overload, Union
+
+def d(t: Callable[[str], str]) -> Callable[[str], str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+@d
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import Callable, overload, Union
+from typing_extensions import deprecated
+
+def d(t: Callable[[str], str]) -> Callable[[str], str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("deprecated decorated overload")
+@d
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: deprecated decorated overload
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: deprecated decorated overload
+
+
 [case testDeprecatedChangeClassDeprecationIndirectImport]
 # flags: --enable-error-code=deprecated
 from b import C
