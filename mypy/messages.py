@@ -44,7 +44,6 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     Context,
-    Decorator,
     Expression,
     FuncDef,
     IndexExpr,
@@ -56,6 +55,7 @@ from mypy.nodes import (
     SymbolTable,
     TypeInfo,
     Var,
+    get_func_def,
     reverse_builtin_aliases,
 )
 from mypy.operators import op_methods, op_methods_to_symbols
@@ -2939,9 +2939,7 @@ def format_type_distinctly(*types: Type, options: Options, bare: bool = False) -
 
 def pretty_class_or_static_decorator(tp: CallableType) -> str | None:
     """Return @classmethod or @staticmethod, if any, for the given callable type."""
-    definition = tp.definition
-    if isinstance(definition, Decorator):
-        definition = definition.func
+    definition = get_func_def(tp)
     if definition is not None and isinstance(definition, SYMBOL_FUNCBASE_TYPES):
         if definition.is_class:
             return "@classmethod"
@@ -2995,9 +2993,7 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             slash = True
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
-    definition = tp.definition
-    if isinstance(definition, Decorator):
-        definition = definition.func
+    definition = get_func_def(tp)
     if (
         isinstance(definition, FuncDef)
         and hasattr(definition, "arguments")
@@ -3058,9 +3054,7 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
 
 
 def get_first_arg(tp: CallableType) -> str | None:
-    definition = tp.definition
-    if isinstance(definition, Decorator):
-        definition = definition.func
+    definition = get_func_def(tp)
     if not isinstance(definition, FuncDef) or not definition.info or definition.is_static:
         return None
     return definition.original_first_arg

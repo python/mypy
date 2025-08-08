@@ -9241,3 +9241,20 @@ C().prop = "no"  # E: Invalid self argument "C" to attribute function "prop" wit
 reveal_type(C().prop_t)  # N: Revealed type is "__main__.C"
 C().prop_t = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "list[C]")
 [builtins fixtures/property.pyi]
+
+[case testClassEqDecoratedAbstractNote]
+from abc import abstractmethod
+
+class C:
+    @abstractmethod
+    def __eq__(self, other: C) -> bool: ...
+[builtins fixtures/plugin_attrs.pyi]
+[out]
+main:5: error: Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"
+main:5: note: This violates the Liskov substitution principle
+main:5: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:5: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
+main:5: note:     def __eq__(self, other: object) -> bool:
+main:5: note:         if not isinstance(other, C):
+main:5: note:             return NotImplemented
+main:5: note:         return <logic to compare two C instances>
