@@ -731,6 +731,21 @@ def check(x: _T, y: _T) -> bool:
     return x < y
 [builtins fixtures/ops.pyi]
 
+[case testReversibleOpOnTypeVarProtocol]
+# https://github.com/python/mypy/issues/18203
+from typing import Protocol, TypeVar, Union
+from typing_extensions import Self
+
+class A(Protocol):
+    def __add__(self, other: Union[int, Self]) -> Self: ...
+    def __radd__(self, other: Union[int, Self]) -> Self: ...
+
+AT = TypeVar("AT", bound=Union[int, A])
+
+def f(a: AT, _b: AT) -> None:
+    a + a
+[builtins fixtures/ops.pyi]
+
 
 [case testErrorContextAndBinaryOperators]
 import typing
