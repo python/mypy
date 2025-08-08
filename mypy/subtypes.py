@@ -264,9 +264,7 @@ def is_same_type(
     a non-simplified union) but are semantically exchangeable in all contexts.
     """
     # First, use fast path for some common types. This is performance-critical.
-    if a is b:
-        return True
-    elif (
+    if (
         type(a) is Instance
         and type(b) is Instance
         and a.type == b.type
@@ -274,7 +272,7 @@ def is_same_type(
         and a.last_known_value is b.last_known_value
     ):
         return all(is_same_type(x, y) for x, y in zip(a.args, b.args))
-    elif a == b:
+    elif isinstance(a, TypeVarType) and isinstance(b, TypeVarType) and a.id == b.id:
         return True
 
     # Note that using ignore_promotions=True (default) makes types like int and int64
