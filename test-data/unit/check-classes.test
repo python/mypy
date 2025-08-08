@@ -9211,3 +9211,33 @@ class CGT(BG[T]): ...
 
 reveal_type(CGI)  # N: Revealed type is "def () -> __main__.CGI"
 reveal_type(CGT)  # N: Revealed type is "def [T] () -> __main__.CGT[T`1]"
+
+[case testSettablePropertyAlias]
+from typing import Any, TypeVar
+
+class A:
+    @property
+    def prop(self: Any) -> str: ...
+    @prop.setter
+    def prop(self, val: str) -> None: ...
+
+T = TypeVar("T")
+class AT:
+    @property
+    def prop(self: T) -> T: ...
+    @prop.setter
+    def prop(self: T, val: list[T]) -> None: ...
+
+class B:
+    prop: str
+    prop_t: str
+
+class C(B):
+    prop = A.prop
+    prop_t = AT.prop  # E: Incompatible types in assignment (expression has type "C", base class "B" defined the type as "str")
+
+reveal_type(C().prop)  # N: Revealed type is "builtins.str"
+C().prop = "no"  # E: Invalid self argument "C" to attribute function "prop" with type "Callable[[A, str], None]"
+reveal_type(C().prop_t)  # N: Revealed type is "__main__.C"
+C().prop_t = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "list[C]")
+[builtins fixtures/property.pyi]
