@@ -81,6 +81,30 @@ def meet_types(s: Type, t: Type) -> ProperType:
     t = get_proper_type(t)
 
     if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
+        # special casing for dealing with last known values
+        lkv: LiteralType | None
+
+        if s.last_known_value is None:
+            lkv = t.last_known_value
+        elif t.last_known_value is None:
+            lkv = s.last_known_value
+        else:
+            lkv_meet = meet_types(s.last_known_value, t.last_known_value)
+            if isinstance(lkv_meet, UninhabitedType):
+                lkv = None
+            elif isinstance(lkv_meet, LiteralType):
+                lkv = lkv_meet
+            else:
+                msg = (
+                    f"Unexpected result: "
+                    f"meet of {s.last_known_value=!s} and {t.last_known_value=!s} "
+                    f"resulted in {lkv_meet!s}"
+                )
+                raise ValueError(msg)
+
+        t = t.copy_modified(last_known_value=lkv)
+        s = s.copy_modified(last_known_value=lkv)
+
         # Code in checker.py should merge any extra_items where possible, so we
         # should have only compatible extra_items here. We check this before
         # the below subtype check, so that extra_attrs will not get erased.
@@ -93,36 +117,6 @@ def meet_types(s: Type, t: Type) -> ProperType:
             if s.extra_attrs:
                 return s
             return t
-
-        # special casing for dealing with last known values
-        if is_proper_subtype(s, t, ignore_promotions=True) and is_proper_subtype(
-            t, s, ignore_promotions=True
-        ):
-            lkv: LiteralType | None
-            if s.last_known_value is None and t.last_known_value is None:
-                # Both types have no last known value, so we return the original type.
-                lkv = None
-            elif s.last_known_value is None and t.last_known_value is not None:
-                lkv = t.last_known_value
-            elif s.last_known_value is not None and t.last_known_value is None:
-                lkv = s.last_known_value
-            elif s.last_known_value is not None and t.last_known_value is not None:
-                lkv_meet = meet_types(s.last_known_value, t.last_known_value)
-                if isinstance(lkv_meet, UninhabitedType):
-                    lkv = None
-                elif isinstance(lkv_meet, LiteralType):
-                    lkv = lkv_meet
-                else:
-                    msg = (
-                        f"Unexpected meet result for last known values: "
-                        f"{s.last_known_value=} and {t.last_known_value=} "
-                        f"resulted in {lkv_meet=}"
-                    )
-                    raise ValueError(msg)
-            else:
-                assert False
-            assert lkv is None or isinstance(lkv, LiteralType)
-            return t.copy_modified(last_known_value=lkv)
 
     if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
         if is_proper_subtype(s, t, ignore_promotions=True):
