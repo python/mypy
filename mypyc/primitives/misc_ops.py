@@ -9,6 +9,7 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive,
     c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
+    cstring_rprimitive,
     dict_rprimitive,
     int_rprimitive,
     object_pointer_rprimitive,
@@ -296,6 +297,31 @@ set_type_alias_compute_function_op = custom_primitive_op(
 debug_print_op = custom_primitive_op(
     name="debug_print",
     c_function_name="CPyDebug_PrintObject",
+    arg_types=[object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)
+
+# Log an event to a trace log, which is written to a file during execution.
+log_trace_event = custom_primitive_op(
+    name="log_trace_event",
+    c_function_name="CPyTrace_LogEvent",
+    # (fullname of function/location, line number, operation name, operation details)
+    arg_types=[cstring_rprimitive, cstring_rprimitive, cstring_rprimitive, cstring_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)
+
+# Mark object as immortal -- it won't be freed via reference counting, as
+# the reference count won't be updated any longer. Immortal objects support
+# fast concurrent read-only access from multiple threads when using free
+# threading, since this eliminates contention from concurrent reference count
+# updates.
+#
+# Needs at least Python 3.14.
+set_immortal_op = custom_primitive_op(
+    name="set_immmortal",
+    c_function_name="CPy_SetImmortal",
     arg_types=[object_rprimitive],
     return_type=void_rtype,
     error_kind=ERR_NEVER,

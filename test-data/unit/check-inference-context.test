@@ -693,7 +693,6 @@ f(lambda: None)
 g(lambda: None)
 
 [case testIsinstanceInInferredLambda]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, Optional
 T = TypeVar('T')
 S = TypeVar('S')

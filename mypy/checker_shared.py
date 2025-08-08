@@ -137,6 +137,7 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     module_refs: set[str]
     scope: CheckerScope
     checking_missing_await: bool
+    allow_constructor_cache: bool
 
     @property
     @abstractmethod
@@ -250,12 +251,6 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
 
     @abstractmethod
     def warn_deprecated(self, node: Node | None, context: Context) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def warn_deprecated_overload_item(
-        self, node: Node | None, context: Context, *, target: Type, selftype: Type | None = None
-    ) -> None:
         raise NotImplementedError
 
     @abstractmethod

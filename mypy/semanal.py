@@ -1046,12 +1046,12 @@ class SemanticAnalyzer(
         last_type = typ.arg_types[-1]
         if not isinstance(last_type, UnpackType):
             return typ
-        last_type = get_proper_type(last_type.type)
-        if not isinstance(last_type, TypedDictType):
+        p_last_type = get_proper_type(last_type.type)
+        if not isinstance(p_last_type, TypedDictType):
             self.fail("Unpack item in ** argument must be a TypedDict", last_type)
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
-        overlap = set(typ.arg_names) & set(last_type.items)
+        overlap = set(typ.arg_names) & set(p_last_type.items)
         # It is OK for TypedDict to have a key named 'kwargs'.
         overlap.discard(typ.arg_names[-1])
         if overlap:
@@ -1060,7 +1060,7 @@ class SemanticAnalyzer(
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         # OK, everything looks right now, mark the callable type as using unpack.
-        new_arg_types = typ.arg_types[:-1] + [last_type]
+        new_arg_types = typ.arg_types[:-1] + [p_last_type]
         return typ.copy_modified(arg_types=new_arg_types, unpack_kwargs=True)
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo, has_self_type: bool) -> None:
@@ -1072,12 +1072,7 @@ class SemanticAnalyzer(
         if func.has_self_or_cls_argument:
             if func.name in ["__init_subclass__", "__class_getitem__"]:
                 func.is_class = True
-            if not func.arguments:
-                self.fail(
-                    'Method must have at least one argument. Did you forget the "self" argument?',
-                    func,
-                )
-            elif isinstance(functype, CallableType):
+            if func.arguments and isinstance(functype, CallableType):
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
                     if has_self_type:
@@ -4575,6 +4570,9 @@ class SemanticAnalyzer(
                     lval.node = v
                     # TODO: should we also set lval.kind = MDEF?
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
+                    for func in self.scope.functions:
+                        if isinstance(func, FuncDef):
+                            func.has_self_attr_def = True
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
@@ -5099,6 +5097,7 @@ class SemanticAnalyzer(
             return
         if not s.type or not self.is_classvar(s.type):
             return
+        assert isinstance(s.type, UnboundType)
         if self.is_class_scope() and isinstance(lvalue, NameExpr):
             node = lvalue.node
             if isinstance(node, Var):
@@ -5115,6 +5114,12 @@ class SemanticAnalyzer(
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
+        if not s.type.args:
+            if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+                if self.options.disallow_any_generics:
+                    self.fail("ClassVar without type argument becomes Any", s, code=codes.TYPE_ARG)
+                return
+            s.type = None
 
     def is_classvar(self, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):
@@ -5631,6 +5636,8 @@ class SemanticAnalyzer(
                         existing.node.target = res
                         existing.node.alias_tvars = alias_tvars
                         updated = True
+                        # Invalidate recursive status cache in case it was previously set.
+                        existing.node._is_recursive = None
                 else:
                     # Otherwise just replace existing placeholder with type alias.
                     existing.node = alias_node

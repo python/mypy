@@ -76,6 +76,7 @@ _TFlags: TypeAlias = Literal[
     "nusf",
 ]
 
+@type_check_only
 class _Database(MutableMapping[_KeyType, bytes]):
     def close(self) -> None: ...
     def __getitem__(self, key: _KeyType) -> bytes: ...

@@ -15,7 +15,7 @@ from _typeshed import (
 from collections.abc import Iterable, Iterator
 from types import GenericAlias, TracebackType
 from typing import IO, Any, AnyStr, Generic, Literal, overload
-from typing_extensions import Self
+from typing_extensions import Self, deprecated
 
 __all__ = [
     "NamedTemporaryFile",
@@ -471,6 +471,7 @@ def mkstemp(
 def mkdtemp(suffix: str | None = None, prefix: str | None = None, dir: StrPath | None = None) -> str: ...
 @overload
 def mkdtemp(suffix: bytes | None = None, prefix: bytes | None = None, dir: BytesPath | None = None) -> bytes: ...
+@deprecated("Deprecated since Python 2.3. Use `mkstemp()` or `NamedTemporaryFile(delete=False)` instead.")
 def mktemp(suffix: str = "", prefix: str = "tmp", dir: StrPath | None = None) -> str: ...
 def gettempdirb() -> bytes: ...
 def gettempprefixb() -> bytes: ...
