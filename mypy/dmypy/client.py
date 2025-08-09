@@ -57,6 +57,7 @@ def init_parser() -> argparse.ArgumentParser:
     if sys.version_info >= (3, 14):
         parser.color = True  # Set as init arg in 3.14
 
+    # fmt: off
     parser.set_defaults(action=None)
     parser.add_argument("--status-file", default=DEFAULT_STATUS_FILE,
                         help="status file to retrieve daemon details")
@@ -209,6 +210,7 @@ def init_parser() -> argparse.ArgumentParser:
                    help=argparse.SUPPRESS)  # Used in server.py
 
     add_subparser("help", action=help_action)
+    # fmt: on
 
     return parser
 
