@@ -1027,8 +1027,7 @@ class JoinSuite(Suite):
         self.assert_join(lit1, lit1, lit1)
         self.assert_join(lit1, a, a)
         self.assert_join(lit1, d, self.fx.o)
-        self.assert_simple_join(lit1, lit2, UnionType([lit1, lit2]))
-        self.assert_simple_join(lit2, lit1, UnionType([lit2, lit1]))
+        self.assert_join(lit1, lit2, a)
         self.assert_join(lit1, lit3, self.fx.o)
         self.assert_join(lit1, self.fx.anyt, self.fx.anyt)
         self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
@@ -1076,12 +1075,11 @@ class JoinSuite(Suite):
         self.assert_join(str1_inst, str1_inst, str1_inst)
 
         # other operand is a different literal
-        # "x" , "y"  -> "x" | "y" (treat real literals like enum)
+        # "x" , "y"  -> str (TODO: consider using "x" | "y" (treat real literals like enum))
         # "x" , "y"? -> str
         # "x"?, "y"  -> str
         # "x"?, "y"? -> str
-        self.assert_simple_join(str1, str2, UnionType([str1, str2]))
-        self.assert_simple_join(str2, str1, UnionType([str2, str1]))
+        self.assert_join(str1, str2, str_type)
         self.assert_join(str1, str2_inst, str_type)
         self.assert_join(str1_inst, str2_inst, str_type)
 
