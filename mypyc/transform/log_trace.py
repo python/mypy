@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import (
+    Box,
     Call,
     CallC,
     CString,
@@ -20,6 +21,7 @@ from mypyc.ir.ops import (
     Op,
     PrimitiveOp,
     SetAttr,
+    Unbox,
     Value,
 )
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -80,7 +82,14 @@ class LogTraceEventTransform(IRTransform):
         return self.log(op, "get_attr", f"{op.class_type.name}.{op.attr}")
 
     def visit_set_attr(self, op: SetAttr) -> Value | None:
-        return self.log(op, "set_attr", f"{op.class_type.name}.{op.attr}")
+        name = "set_attr" if not op.is_init else "set_attr_init"
+        return self.log(op, name, f"{op.class_type.name}.{op.attr}")
+
+    def visit_box(self, op: Box) -> Value | None:
+        return self.log(op, "box", op.src.type.name)
+
+    def visit_unbox(self, op: Unbox) -> Value | None:
+        return self.log(op, "unbox", op.type.name)
 
     def log(self, op: Op, name: str, details: str) -> Value:
         if op.line >= 0:
