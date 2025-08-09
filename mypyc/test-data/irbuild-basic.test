@@ -1698,9 +1698,8 @@ def h():
     r6 :: ptr
     r7, r8 :: object
     r9 :: tuple
-    r10 :: dict
-    r11 :: object
-    r12 :: tuple[int, int, int]
+    r10 :: object
+    r11 :: tuple[int, int, int]
 L0:
     r0 = (4, 6)
     r1 = __main__.globals :: static
@@ -1714,10 +1713,9 @@ L0:
     r7 = box(tuple[int, int], r0)
     r8 = CPyList_Extend(r4, r7)
     r9 = PyList_AsTuple(r4)
-    r10 = PyDict_New()
-    r11 = PyObject_Call(r3, r9, r10)
-    r12 = unbox(tuple[int, int, int], r11)
-    return r12
+    r10 = PyObject_CallObject(r3, r9)
+    r11 = unbox(tuple[int, int, int], r10)
+    return r11
 
 [case testStar2Args]
 from typing import Tuple
