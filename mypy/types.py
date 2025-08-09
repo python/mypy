@@ -5,18 +5,7 @@ from __future__ import annotations
 import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Final,
-    NamedTuple,
-    NewType,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Final, NewType, TypeVar, Union, cast, overload
 from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.nodes
@@ -1607,11 +1596,25 @@ class FunctionLike(ProperType):
         return bool(self.items) and self.items[0].is_bound
 
 
-class FormalArgument(NamedTuple):
-    name: str | None
-    pos: int | None
-    typ: Type
-    required: bool
+class FormalArgument:
+    def __init__(self, name: str | None, pos: int | None, typ: Type, required: bool) -> None:
+        self.name = name
+        self.pos = pos
+        self.typ = typ
+        self.required = required
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FormalArgument):
+            return NotImplemented
+        return (
+            self.name == other.name
+            and self.pos == other.pos
+            and self.typ == other.typ
+            and self.required == other.required
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.pos, self.typ, self.required))
 
 
 class Parameters(ProperType):
