@@ -13,7 +13,7 @@ import sys
 import tempfile
 import unittest
 
-from mypy.dmypy_server import filter_out_missing_top_level_packages
+from mypy.dmypy.server import filter_out_missing_top_level_packages
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import SearchPaths
 from mypy.test.config import PREFIX, test_temp_dir
