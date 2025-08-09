@@ -127,6 +127,7 @@ from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.dict_ops import (
     dict_build_op,
+    dict_copy_op,
     dict_new_op,
     dict_ssize_t_size_op,
     dict_update_in_display_op,
@@ -810,6 +811,9 @@ class LowLevelIRBuilder:
                             star_result = self.primitive_op(list_tuple_op, [value], line)
                         else:
                             star_result = self.primitive_op(sequence_tuple_op, [value], line)
+                        if is_dict_rprimitive(args[1][0].type):
+                            # even faster fastpath for decorators
+                            return star_result, self.primitive_op(dict_copy_op, [args[1][0]], line)
                         continue
                         # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
                     # TODO optimize this case using the length utils - currently in review
@@ -817,6 +821,11 @@ class LowLevelIRBuilder:
                 self.primitive_op(list_extend_op, [star_result, value], line)
             elif kind == ARG_STAR2:
                 if star2_result is None:
+                    if len(args) == 1:
+                        # early exit with fastpath if the only arg is ARG_STAR2
+                        # TODO: can we maintain an empty tuple in memory and just reuse it again and again?
+                        return self.new_tuple([], line), self.primitive_op(dict_copy_op, [args[0][0]], line)
+
                     star2_result = self._create_dict(star2_keys, star2_values, line)
 
                 self.call_c(dict_update_in_display_op, [star2_result, value], line=line)
