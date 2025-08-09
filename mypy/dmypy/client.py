@@ -103,7 +103,8 @@ def init_parser() -> argparse.ArgumentParser:
                       help="Check some files (requires daemon)")
     p.add_argument("-v", "--verbose", action="store_true",
                    help="Print detailed status")
-    p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
+    p.add_argument("-q", "--quiet", action="store_true",
+                   help=argparse.SUPPRESS)  # Deprecated
     p.add_argument("--junit-xml",
                    help="Write junit.xml to the given file")
     p.add_argument("--perf-stats-file",
@@ -134,7 +135,8 @@ def init_parser() -> argparse.ArgumentParser:
                       help="Re-check the previous list of files, with optional modifications (requires daemon)")
     p.add_argument("-v", "--verbose", action="store_true",
                    help="Print detailed status")
-    p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
+    p.add_argument("-q", "--quiet", action="store_true",
+                   help=argparse.SUPPRESS)  # Deprecated
     p.add_argument("--junit-xml",
                    help="Write junit.xml to the given file")
     p.add_argument("--perf-stats-file",
@@ -203,7 +205,8 @@ def init_parser() -> argparse.ArgumentParser:
                    help="Direct daemon stdout/stderr to FILE")
     p.add_argument("flags", metavar="FLAG", nargs="*", type=str,
                    help="Regular mypy flags (precede with --)")
-    p.add_argument("--options-data", help=argparse.SUPPRESS)
+    p.add_argument("--options-data",
+                   help=argparse.SUPPRESS)  # Used in server.py
 
     add_subparser("help", action=help_action)
 
