@@ -1459,7 +1459,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 new_frame: Frame | None = None
                 for frame in old_binder.frames:
                     for key, narrowed_type in frame.types.items():
-                        key_var = extract_var_from_literal_hash(key)
+                        # get the variable from the key, considering that it might be a
+                        #  nested MemberExpr like Foo.attr1.attr2.attr3
+                        _key = key
+                        while _key[0] == "Member":
+                            _key = _key[1]
+                        key_var = extract_var_from_literal_hash(_key)
+
                         if key_var is not None and not self.is_var_redefined_in_outer_context(
                             key_var, defn.line
                         ):
