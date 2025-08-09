@@ -1148,7 +1148,7 @@ class LowLevelIRBuilder:
                 assert star_arg
                 output_arg = star_arg
             elif arg.kind == ARG_STAR2:
-                assert star2_arg
+                assert star2_arg, (star_arg_entries, sig_args)
                 output_arg = star2_arg
             elif not lst:
                 if is_fixed_width_rtype(arg.type):
