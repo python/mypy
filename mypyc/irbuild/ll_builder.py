@@ -183,7 +183,7 @@ from mypyc.primitives.str_ops import (
     str_ssize_t_size_op,
     unicode_compare,
 )
-from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op, new_tuple_with_length_op
+from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op, new_tuple_with_length_op, sequence_tuple_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
@@ -790,14 +790,22 @@ class LowLevelIRBuilder:
                 if star_result is None:
                     # fast path if star expr is a tuple:
                     # we can pass the immutable tuple straight into the function call.
-                    if is_tuple_rprimitive(value.type):
-                        if len(args) == 1:
-                            # fn(*args)
-                            return value, self._create_dict([], [], line)
-                        elif len(args) == 2 and args[1][1] == ARG_STAR2:
-                            # fn(*args, **kwargs)
+                    if len(args) == 1:
+                        # fn(*args)
+                        if is_list_rprimitive(value.type):
+                            value = self.call_c(list_tuple_op, [value], line)
+                        elif not is_tuple_rprimitive(value.type):
+                            value = self.call_c(sequence_tuple_op, [value], line)
+                        return value, self._create_dict([], [], line)
+                    elif len(args) == 2 and args[1][1] == ARG_STAR2:
+                        # fn(*args, **kwargs)
+                        if is_tuple_rprimitive(value.type):
                             star_result = value
-                            continue
+                        elif is_list_rprimitive(value.type):
+                            star_result = self.call_c(list_tuple_op, [value], line)
+                        else:
+                            star_result = self.call_c(sequence_tuple_op, [value], line)
+                        continue
                         # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
                     # TODO optimize this case using the length utils - currently in review
                     star_result = self.new_list_op(star_values, line)
