@@ -10,12 +10,13 @@ to other compiled modules in the same compilation unit.
 
 from __future__ import annotations
 
-from typing import Final, Union
+from typing import Any, Final, Union
 
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
     BytesExpr,
     ComplexExpr,
+    DictExpr,
     Expression,
     FloatExpr,
     IntExpr,
@@ -23,6 +24,7 @@ from mypy.nodes import (
     NameExpr,
     OpExpr,
     StrExpr,
+    TupleExpr,
     UnaryExpr,
     Var,
 )
@@ -30,8 +32,8 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.util import bytes_from_str
 
 # All possible result types of constant folding
-ConstantValue = Union[int, float, complex, str, bytes]
-CONST_TYPES: Final = (int, float, complex, str, bytes)
+ConstantValue = Union[int, float, complex, str, bytes, tuple[Any, ...], dict[Any, Any]]
+CONST_TYPES: Final = (int, float, complex, str, bytes, tuple, dict)
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
@@ -72,6 +74,25 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
+    elif isinstance(expr, TupleExpr):
+        folded = tuple(constant_fold_expr(builder, item_expr) for item_expr in expr.items)
+        if None not in folded:
+            return folded
+    elif isinstance(expr, DictExpr):
+        # NOTE: the builder can't simply use a dict constant like it can with other constants, since dicts are mutable.
+        # TODO: make the builder load the dict 'constant' by calling copy on a prebuilt constant template instead of building from scratch each time
+        folded = {
+            constant_fold_expr(builder, key_expr): constant_fold_expr(builder, value_expr)
+            for key_expr, value_expr in expr.items
+        }
+        if (
+            len(folded) == len(expr.items)
+            and None not in folded.keys()
+            and None not in folded.values()
+        ):
+            return folded
+
+    # TODO use a placeholder instead of None so we can include None in folded tuples/dicts
     return None
 
 
@@ -82,7 +103,7 @@ def constant_fold_binary_op_extended(
 
     mypy cannot use constant folded bytes easily so it's simpler to only support them in mypyc.
     """
-    if not isinstance(left, bytes) and not isinstance(right, bytes):
+    if not isinstance(left, (bytes, tuple, dict)) and not isinstance(right, (bytes, tuple, dict)):
         return constant_fold_binary_op(op, left, right)
 
     if op == "+" and isinstance(left, bytes) and isinstance(right, bytes):
