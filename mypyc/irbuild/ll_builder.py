@@ -834,7 +834,7 @@ class LowLevelIRBuilder:
                             star2_fastpath_op = dict_copy_op
                         else:
                             star2_fastpath_op = dict_copy
-                        return self.new_tuple([], line), self.primitive_op(star2_fastpath_op, [args[0][0]], line)
+                        return self.new_tuple([], line), self.primitive_op(star2_fastpath_op, [value], line)
 
                     star2_result = self._create_dict(star2_keys, star2_values, line)
 
