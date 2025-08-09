@@ -2940,8 +2940,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
                     self.chk.store_types(m)
-                    if isinstance(infer_type, ProperType) and isinstance(infer_type, CallableType):
-                        self.chk.warn_deprecated(infer_type.definition, context)
                     return ret_type, infer_type
                 p_infer_type = get_proper_type(infer_type)
                 if isinstance(p_infer_type, CallableType):
@@ -2978,11 +2976,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
-            inferred_callable = inferred_types[0]
-            if isinstance(inferred_callable, ProperType) and isinstance(
-                inferred_callable, CallableType
-            ):
-                self.chk.warn_deprecated(inferred_callable.definition, context)
             return return_types[0], inferred_types[0]
 
     def overload_erased_call_targets(
