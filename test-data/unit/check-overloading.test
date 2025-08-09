@@ -246,6 +246,23 @@ def foo(*args: int | str, **kw: int) -> None:
     pass
 [builtins fixtures/tuple.pyi]
 
+[case testTypeCheckOverloadImplOverlapVarArgsAndKwargsUnion]
+from __future__ import annotations
+from typing import overload
+
+class Foo: ...
+
+@overload
+def foo(x: int) -> None: ...
+@overload
+def foo(*, x: Foo) -> None: ...
+@overload
+def foo(a: str, /) -> None: ...
+
+def foo(*args: int | str, **kw: int | Foo) -> None:
+    pass
+[builtins fixtures/tuple.pyi]
+
 [case testTypeCheckOverloadWithImplTooSpecificRetType]
 from typing import overload, Any
 
