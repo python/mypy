@@ -1169,7 +1169,7 @@ arr4 = [lit1, lit2, lit3]
 arr5 = [object(), lit1]
 
 reveal_type(arr1)  # N: Revealed type is "builtins.list[Literal[1]]"
-reveal_type(arr2)  # N: Revealed type is "builtins.list[Union[Literal[1], Literal[2]]]"
+reveal_type(arr2)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(arr3)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(arr4)  # N: Revealed type is "builtins.list[builtins.object]"
 reveal_type(arr5)  # N: Revealed type is "builtins.list[builtins.object]"

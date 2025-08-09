@@ -274,10 +274,6 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_union_type(self, t: UnionType) -> ProperType:
         if is_proper_subtype(self.s, t):
             return t
-        elif isinstance(self.s, LiteralType):
-            # E.g.  join("x", "y" | "z") -> "x" | "y" | "z"
-            #   and join(1, "y" | "z") -> object
-            return mypy.typeops.make_simplified_union([join_types(self.s, x) for x in t.items])
         else:
             return mypy.typeops.make_simplified_union([self.s, t])
 
@@ -631,9 +627,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if t == self.s:
                 # E.g. Literal["x"], Literal["x"] -> Literal["x"]
                 return t
-            if (self.s.fallback.type == t.fallback.type) or (
-                self.s.fallback.type.is_enum and t.fallback.type.is_enum
-            ):
+            if self.s.fallback.type.is_enum and t.fallback.type.is_enum:
                 return mypy.typeops.make_simplified_union([self.s, t])
             return join_types(self.s.fallback, t.fallback)
         elif isinstance(self.s, Instance) and self.s.last_known_value == t:
