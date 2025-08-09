@@ -813,14 +813,16 @@ class LowLevelIRBuilder:
                             star_result = self.primitive_op(list_tuple_op, [value], line)
                         else:
                             star_result = self.primitive_op(sequence_tuple_op, [value], line)
-                        
+
                         star2_arg = args[1]
                         star2_value = star2_arg[0]
                         if is_dict_rprimitive(star2_value.type):
                             star2_fastpath_op = dict_copy_op
                         else:
                             star2_fastpath_op = dict_copy
-                        return star_result, self.primitive_op(star2_fastpath_op, [star2_value], line)
+                        return star_result, self.primitive_op(
+                            star2_fastpath_op, [star2_value], line
+                        )
                         # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
                     # TODO optimize this case using the length utils - currently in review
                     star_result = self.new_list_op(star_values, line)
@@ -834,7 +836,9 @@ class LowLevelIRBuilder:
                             star2_fastpath_op = dict_copy_op
                         else:
                             star2_fastpath_op = dict_copy
-                        return self.new_tuple([], line), self.primitive_op(star2_fastpath_op, [value], line)
+                        return self.new_tuple([], line), self.primitive_op(
+                            star2_fastpath_op, [value], line
+                        )
 
                     star2_result = self._create_dict(star2_keys, star2_values, line)
 
