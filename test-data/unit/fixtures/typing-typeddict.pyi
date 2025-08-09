@@ -79,3 +79,7 @@ class _TypedDict(Mapping[str, object]):
     def __delitem__(self, k: NoReturn) -> None: ...
 
 class _SpecialForm: pass
+
+class KeysView(Iterable[T]): pass
+
+class ValuesView(Iterable[V]): pass
