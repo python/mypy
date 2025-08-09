@@ -947,7 +947,7 @@ class LowLevelIRBuilder:
             list(zip(arg_values, arg_kinds, arg_names)), line, has_star=True, has_star2=True
         )
         assert pos_args_tuple
-        
+
         if kw_args_dict is None:
             return self.call_c(py_call_with_posargs_op, [function, pos_args_tuple], line)
 
