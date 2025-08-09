@@ -360,6 +360,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ] = {}
         self.in_lambda_expr = False
 
+        self._literal_true: Instance | None = None
+        self._literal_false: Instance | None = None
+
     def reset(self) -> None:
         self.resolved_type = {}
         self.expr_cache.clear()
@@ -3428,11 +3431,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if self.is_literal_context():
             return LiteralType(value=value, fallback=typ)
         else:
-            return typ.copy_modified(
-                last_known_value=LiteralType(
-                    value=value, fallback=typ, line=typ.line, column=typ.column
-                )
-            )
+            if value is True:
+                if self._literal_true is None:
+                    self._literal_true = typ.copy_modified(
+                        last_known_value=LiteralType(value=value, fallback=typ)
+                    )
+                return self._literal_true
+            if value is False:
+                if self._literal_false is None:
+                    self._literal_false = typ.copy_modified(
+                        last_known_value=LiteralType(value=value, fallback=typ)
+                    )
+                return self._literal_false
+            return typ.copy_modified(last_known_value=LiteralType(value=value, fallback=typ))
 
     def concat_tuples(self, left: TupleType, right: TupleType) -> TupleType:
         """Concatenate two fixed length tuples."""
