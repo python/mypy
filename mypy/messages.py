@@ -2520,19 +2520,14 @@ def quote_type_string(type_string: str) -> str:
     if (
         type_string in ["Module", "overloaded function", "<deleted>"]
         or type_string.startswith("Module ")
-        or short_tuple_or_union(type_string)
+        or type_string.startswith(("<tuple ", "<union "))
+        and type_string.endswith(" item>")
         or type_string.endswith("?")
     ):
         # Messages are easier to read if these aren't quoted.  We use a
         # regex to match strings with variable contents.
         return type_string
     return f'"{type_string}"'
-
-
-def short_tuple_or_union(typ: str) -> bool:
-    if not (typ.startswith("<tuple ") or typ.startswith("<union ")):
-        return False
-    return typ.endswith(" item>")
 
 
 def format_callable_args(
