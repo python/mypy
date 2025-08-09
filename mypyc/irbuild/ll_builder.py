@@ -914,7 +914,7 @@ class LowLevelIRBuilder:
             elif not is_tuple_rprimitive(star_result.type):
                 # if star_result is a tuple we took the fast path
                 star_result = self.primitive_op(list_tuple_op, [star_result], line)
-        if has_star2 and star2_result is None:
+        if has_star2 and star2_result is None and len(star2_keys) > 0:
             # TODO: use dict_copy_op for simple cases of **kwargs
             star2_result = self._create_dict(star2_keys, star2_values, line)
 
