@@ -3805,4 +3805,3 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     wrapper = r2
     return wrapper
-
