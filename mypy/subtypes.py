@@ -549,6 +549,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     assert isinstance(erased, Instance)
                     t = erased
                 nominal = True
+                if self.proper_subtype and right.last_known_value is not None:
+                    if left.last_known_value is None:
+                        # E.g. str is not a proper subtype of Literal["x"]?
+                        nominal = False
+                    else:
+                        # E.g. Literal[A]? <: Literal[B]? requires A <: B
+                        nominal &= self._is_subtype(left.last_known_value, right.last_known_value)
                 if right.type.has_type_var_tuple_type:
                     # For variadic instances we simply find the correct type argument mappings,
                     # all the heavy lifting is done by the tuple subtyping.
