@@ -896,10 +896,11 @@ These options may only be set in the global section (``[mypy]``).
 .. confval:: pretty
 
     :type: boolean
-    :default: False
+    :default: True
 
     Use visually nicer output in error messages: use soft word wrap,
     show source code snippets, and show error location markers.
+    Pretty printing is enabled by default, but can be disabled.
 
 .. confval:: color_output
 
