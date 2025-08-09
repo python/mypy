@@ -24,8 +24,8 @@ import pytest
 
 from mypy import build
 from mypy.config_parser import parse_config_file
-from mypy.dmypy_server import Server
-from mypy.dmypy_util import DEFAULT_STATUS_FILE
+from mypy.dmypy.server import Server
+from mypy.dmypy.util import DEFAULT_STATUS_FILE
 from mypy.errors import CompileError
 from mypy.find_sources import create_source_list
 from mypy.modulefinder import BuildSource

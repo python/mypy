@@ -7,6 +7,7 @@ rather than having to read it back from disk on each run.
 from __future__ import annotations
 
 import argparse
+from argparse import Namespace
 import base64
 import json
 import os
@@ -15,17 +16,17 @@ import sys
 import time
 import traceback
 from collections.abc import Mapping
-from typing import Any, Callable, NoReturn
+from typing import Any, Callable, NoReturn, cast
+from functools import partial
+from textwrap import dedent
 
-from mypy.dmypy_os import alive, kill
-from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
+from mypy.dmypy.dmypy_os import alive, kill
+from mypy.dmypy.util import DEFAULT_STATUS_FILE, receive, send
 from mypy.ipc import IPCClient, IPCException
 from mypy.main import RECURSION_LIMIT
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
-# Argument parser.  Subparsers are tied to action functions by the
-# @action(subparse) decorator.
 
 
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -33,175 +34,185 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
         super().__init__(prog=prog, max_help_position=30, **kwargs)
 
 
-parser = argparse.ArgumentParser(
-    prog="dmypy", description="Client for mypy daemon mode", fromfile_prefix_chars="@")
-if sys.version_info >= (3, 14):
-    parser.color = True  # Set as init arg in 3.14
-
-parser.set_defaults(action=None)
-parser.add_argument("--status-file", default=DEFAULT_STATUS_FILE,
-                    help="status file to retrieve daemon details")
-parser.add_argument("-V","--version", action="version", version="%(prog)s " + __version__,
-                    help="Show program's version number and exit")
-subparsers = parser.add_subparsers()
-
-start_parser = subparsers.add_parser("start", help="Start daemon")
-p = start_parser
-p.add_argument("--log-file", metavar="FILE", type=str,
-               help="Direct daemon stdout/stderr to FILE")
-p.add_argument("--timeout", metavar="TIMEOUT", type=int,
-               help="Server shutdown timeout (in seconds)")
-p.add_argument("flags", metavar="FLAG", nargs="*", type=str,
-               help="Regular mypy flags (precede with --)")
-
-restart_parser = subparsers.add_parser("restart",
-                                       help="Restart daemon (stop or kill followed by start)")
-p = restart_parser
-p.add_argument("--log-file", metavar="FILE", type=str,
-               help="Direct daemon stdout/stderr to FILE")
-p.add_argument("--timeout", metavar="TIMEOUT", type=int,
-               help="Server shutdown timeout (in seconds)")
-p.add_argument("flags", metavar="FLAG", nargs="*", type=str,
-               help="Regular mypy flags (precede with --)")
-
-status_parser = subparsers.add_parser("status", help="Show daemon status")
-p = status_parser
-p.add_argument("-v", "--verbose", action="store_true",
-               help="Print detailed status")
-p.add_argument("--fswatcher-dump-file",
-               help="Collect information about the current file state")
-
-stop_parser = subparsers.add_parser("stop",
-                                    help="Stop daemon (asks it politely to go away)")
-
-kill_parser = subparsers.add_parser("kill", help="Kill daemon (kills the process)")
-
-check_parser = subparsers.add_parser("check", formatter_class=AugmentedHelpFormatter,
-                                     help="Check some files (requires daemon)")
-p = check_parser
-p.add_argument("-v", "--verbose", action="store_true",
-               help="Print detailed status")
-p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
-p.add_argument("--junit-xml",
-               help="Write junit.xml to the given file")
-p.add_argument("--perf-stats-file",
-               help="write performance information to the given file")
-p.add_argument("files", metavar="FILE", nargs="+",
-               help="File (or directory) to check")
-p.add_argument("--export-types", action="store_true",
-               help="Store types of all expressions in a shared location (useful for inspections)")
-
-run_parser = subparsers.add_parser("run", formatter_class=AugmentedHelpFormatter,
-                                   help="Check some files, [re]starting daemon if necessary")
-p = run_parser
-p.add_argument("-v", "--verbose", action="store_true",
-               help="Print detailed status")
-p.add_argument("--junit-xml",
-               help="Write junit.xml to the given file")
-p.add_argument("--perf-stats-file",
-               help="write performance information to the given file")
-p.add_argument("--timeout", metavar="TIMEOUT", type=int,
-               help="Server shutdown timeout (in seconds)")
-p.add_argument("--log-file", metavar="FILE", type=str,
-               help="Direct daemon stdout/stderr to FILE")
-p.add_argument("--export-types", action="store_true",
-               help="Store types of all expressions in a shared location (useful for inspections)")
-p.add_argument("flags", metavar="ARG", nargs="*", type=str,
-               help="Regular mypy flags and files (precede with --)")
-
-recheck_parser = subparsers.add_parser("recheck", formatter_class=AugmentedHelpFormatter,
-    help="Re-check the previous list of files, with optional modifications (requires daemon)")
-p = recheck_parser
-p.add_argument("-v", "--verbose", action="store_true",
-               help="Print detailed status")
-p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
-p.add_argument("--junit-xml",
-               help="Write junit.xml to the given file")
-p.add_argument("--perf-stats-file",
-               help="write performance information to the given file")
-p.add_argument("--export-types", action="store_true",
-               help="Store types of all expressions in a shared location (useful for inspections)")
-p.add_argument("--update", metavar="FILE", nargs="*",
-               help="Files in the run to add or check again (default: all from previous run)")
-p.add_argument("--remove", metavar="FILE", nargs="*",
-               help="Files to remove from the run")
-
-suggest_parser = subparsers.add_parser("suggest",
-    help="Suggest a signature or show call sites for a specific function")
-p = suggest_parser
-p.add_argument("function", metavar="FUNCTION", type=str,
-               help="Function specified as '[package.]module.[class.]function'")
-p.add_argument("--json", action="store_true",
-               help="Produce json that pyannotate can use to apply a suggestion")
-p.add_argument("--no-errors", action="store_true",
-               help="Only produce suggestions that cause no errors")
-p.add_argument("--no-any", action="store_true",
-               help="Only produce suggestions that don't contain Any")
-p.add_argument("--flex-any", type=float,
-               help="Allow anys in types if they go above a certain score (scores are from 0-1)")
-p.add_argument("--callsites", action="store_true",
-               help="Find callsites instead of suggesting a type")
-p.add_argument("--use-fixme", metavar="NAME", type=str,
-               help="A dummy name to use instead of Any for types that can't be inferred")
-p.add_argument("--max-guesses", type=int,
-               help="Set the maximum number of types to try for a function (default 64)")
-
-inspect_parser = subparsers.add_parser("inspect",
-                                       help="Locate and statically inspect expression(s)")
-p = suggest_parser
-p.add_argument("location", metavar="LOCATION", type=str,
-               help="Location specified as path/to/file.py:line:column[:end_line:end_column]."
-                    " If position is given (i.e. only line and column), this will return all"
-                    " enclosing expressions")
-p.add_argument("--show", metavar="INSPECTION", type=str, default="type", choices=["type", "attrs", "definition"],
-               help="What kind of inspection to run")
-p.add_argument("--verbose", "-v", action="count", default=0,
-               help="Increase verbosity of the type string representation (can be repeated)")
-p.add_argument("--limit", metavar="NUM", type=int, default=0,
-               help="Return at most NUM innermost expressions (if position is given); 0 means no limit")
-p.add_argument("--include-span", action="store_true",
-               help="Prepend each inspection result with the span of corresponding expression"
-                    ' (e.g. 1:2:3:4:"int")')
-p.add_argument("--include-kind", action="store_true",
-               help="Prepend each inspection result with the kind of corresponding expression"
-                    ' (e.g. NameExpr:"int")')
-p.add_argument("--include-object-attrs", action="store_true",
-               help='Include attributes of "object" in "attrs" inspection')
-p.add_argument("--union-attrs", action="store_true",
-               help="Include attributes valid for some of possible expression types"
-                    " (by default an intersection is returned)")
-p.add_argument("--force-reload", action="store_true",
-               help="Re-parse and re-type-check file before inspection (may be slow)")
-
-hang_parser = subparsers.add_parser("hang", help="Hang for 100 seconds")
-
-daemon_parser = subparsers.add_parser("daemon", help="Run daemon in foreground")
-p = daemon_parser
-p.add_argument("--timeout", metavar="TIMEOUT", type=int,
-               help="Server shutdown timeout (in seconds)")
-p.add_argument("--log-file", metavar="FILE", type=str,
-               help="Direct daemon stdout/stderr to FILE")
-p.add_argument("flags", metavar="FLAG", nargs="*", type=str,
-               help="Regular mypy flags (precede with --)")
-p.add_argument("--options-data", help=argparse.SUPPRESS)
-
-help_parser = subparsers.add_parser("help")
-
-del p
+# Typing subparsers as Any because I'm lazy to figure out its type name :)
+def _subparser_adder(subparsers: Any, *args: Any, **kwargs: Any) -> argparse.ArgumentParser:
+    func = kwargs["action"]
+    if "formatter_class" not in kwargs:
+        kwargs["formatter_class"] = argparse.RawDescriptionHelpFormatter
+    kwargs["description"] = dedent(func.__doc__)
+    del kwargs["action"]
+    p = cast(argparse.ArgumentParser, subparsers.add_parser(*args, **kwargs))
+    p.set_defaults(action=func)
+    return p
 
 
-class BadStatus(Exception):
-    """Exception raised when there is something wrong with the status file.
+parser: argparse.ArgumentParser  # Initialized in init_parser which is called below
 
-    For example:
-    - No status file found
-    - Status file malformed
-    - Process whose pid is in the status file does not exist
-    """
+# Called after all action functions are defined
+def init_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="dmypy",
+        description="Client for mypy daemon mode",
+        fromfile_prefix_chars="@")
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
 
+    parser.set_defaults(action=None)
+    parser.add_argument("--status-file", default=DEFAULT_STATUS_FILE,
+                        help="status file to retrieve daemon details")
+    parser.add_argument("-V", "--version", action="version", version="%(prog)s " + __version__,
+                        help="Show program's version number and exit")
+
+    subparsers = parser.add_subparsers()
+    add_subparser = partial(_subparser_adder, subparsers)
+
+    p = add_subparser("start", action=start_action,
+                      help="Start daemon (exits with error if already running)")
+    p.add_argument("--log-file", metavar="FILE", type=str,
+                   help="Direct daemon stdout/stderr to FILE")
+    p.add_argument("--timeout", metavar="TIMEOUT", type=int,
+                   help="Server shutdown timeout (in seconds)")
+    p.add_argument("--ok-if-running", action="store_true",
+                   help="Don't exit with error if daemon is already running")
+    p.add_argument("flags", metavar="FLAG", nargs="*", type=str,
+                   help="Regular mypy flags (precede with --)")
+
+    p = add_subparser("restart", action=restart_action,
+                      help="Restart daemon (stop or kill followed by start)")
+    p.add_argument("--log-file", metavar="FILE", type=str,
+                   help="Direct daemon stdout/stderr to FILE")
+    p.add_argument("--timeout", metavar="TIMEOUT", type=int,
+                   help="Server shutdown timeout (in seconds)")
+    p.add_argument("flags", metavar="FLAG", nargs="*", type=str,
+                   help="Regular mypy flags (precede with --)")
+
+    p = add_subparser("status", action=status_action,
+                      help="Show daemon status")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="Print detailed status")
+    p.add_argument("--fswatcher-dump-file",
+                   help="Collect information about the current file state")
+
+    add_subparser("stop", action=stop_action,
+                  help="Stop daemon (asks it politely to go away)")
+
+    add_subparser("kill", action=kill_action,
+                  help="Kill daemon (kills the process)")
+
+    p = add_subparser("check", action=check_action, formatter_class=AugmentedHelpFormatter,
+                      help="Check some files (requires daemon)")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="Print detailed status")
+    p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
+    p.add_argument("--junit-xml",
+                   help="Write junit.xml to the given file")
+    p.add_argument("--perf-stats-file",
+                   help="write performance information to the given file")
+    p.add_argument("files", metavar="FILE", nargs="+",
+                   help="File (or directory) to check")
+    p.add_argument("--export-types", action="store_true",
+                   help="Store types of all expressions in a shared location (useful for inspections)")
+
+    p = add_subparser("run", action=run_action, formatter_class=AugmentedHelpFormatter,
+                      help="Check some files, [re]starting daemon if necessary")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="Print detailed status")
+    p.add_argument("--junit-xml",
+                   help="Write junit.xml to the given file")
+    p.add_argument("--perf-stats-file",
+                   help="write performance information to the given file")
+    p.add_argument("--timeout", metavar="TIMEOUT", type=int,
+                   help="Server shutdown timeout (in seconds)")
+    p.add_argument("--log-file", metavar="FILE", type=str,
+                   help="Direct daemon stdout/stderr to FILE")
+    p.add_argument("--export-types", action="store_true",
+                   help="Store types of all expressions in a shared location (useful for inspections)")
+    p.add_argument("flags", metavar="ARG", nargs="*", type=str,
+                   help="Regular mypy flags and files (precede with --)")
+
+    p = add_subparser("recheck", action=recheck_action, formatter_class=AugmentedHelpFormatter,
+                      help="Re-check the previous list of files, with optional modifications (requires daemon)")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="Print detailed status")
+    p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
+    p.add_argument("--junit-xml",
+                   help="Write junit.xml to the given file")
+    p.add_argument("--perf-stats-file",
+                   help="write performance information to the given file")
+    p.add_argument("--export-types", action="store_true",
+                   help="Store types of all expressions in a shared location (useful for inspections)")
+    p.add_argument("--update", metavar="FILE", nargs="*",
+                   help="Files in the run to add or check again (default: all from previous run)")
+    p.add_argument("--remove", metavar="FILE", nargs="*",
+                   help="Files to remove from the run")
+
+    p = add_subparser("suggest", action=suggest_action,
+                      help="Suggest a signature or show call sites for a specific function")
+    p.add_argument("function", metavar="FUNCTION", type=str,
+                   help="Function specified as '[package.]module.[class.]function'")
+    p.add_argument("--json", action="store_true",
+                   help="Produce json that pyannotate can use to apply a suggestion")
+    p.add_argument("--no-errors", action="store_true",
+                   help="Only produce suggestions that cause no errors")
+    p.add_argument("--no-any", action="store_true",
+                   help="Only produce suggestions that don't contain Any")
+    p.add_argument("--flex-any", type=float,
+                   help="Allow anys in types if they go above a certain score (scores are from 0-1)")
+    p.add_argument("--callsites", action="store_true",
+                   help="Find callsites instead of suggesting a type")
+    p.add_argument("--use-fixme", metavar="NAME", type=str,
+                   help="A dummy name to use instead of Any for types that can't be inferred")
+    p.add_argument("--max-guesses", type=int,
+                   help="Set the maximum number of types to try for a function (default 64)")
+
+    p = add_subparser("inspect", action=inspect_action,
+                      help="Locate and statically inspect expression(s)")
+    p.add_argument("location", metavar="LOCATION", type=str,
+                   help="Location specified as path/to/file.py:line:column[:end_line:end_column]."
+                        " If position is given (i.e. only line and column), this will return all"
+                        " enclosing expressions")
+    p.add_argument("--show", metavar="INSPECTION", type=str, default="type",
+                   choices=["type", "attrs", "definition"],
+                   help="What kind of inspection to run")
+    p.add_argument("--verbose", "-v", action="count", default=0,
+                   help="Increase verbosity of the type string representation (can be repeated)")
+    p.add_argument("--limit", metavar="NUM", type=int, default=0,
+                   help="Return at most NUM innermost expressions (if position is given); 0 means no limit")
+    p.add_argument("--include-span", action="store_true",
+                   help="Prepend each inspection result with the span of corresponding expression"
+                        ' (e.g. 1:2:3:4:"int")')
+    p.add_argument("--include-kind", action="store_true",
+                   help="Prepend each inspection result with the kind of corresponding expression"
+                        ' (e.g. NameExpr:"int")')
+    p.add_argument("--include-object-attrs", action="store_true",
+                   help='Include attributes of "object" in "attrs" inspection')
+    p.add_argument("--union-attrs", action="store_true",
+                   help="Include attributes valid for some of possible expression types"
+                        " (by default an intersection is returned)")
+    p.add_argument("--force-reload", action="store_true",
+                   help="Re-parse and re-type-check file before inspection (may be slow)")
+
+    add_subparser("hang", action=hang_action,
+                  help="Hang for 100 seconds")
+
+    p = add_subparser("daemon", action=daemon_action,
+                      help="Run daemon in foreground")
+    p.add_argument("--timeout", metavar="TIMEOUT", type=int,
+                   help="Server shutdown timeout (in seconds)")
+    p.add_argument("--log-file", metavar="FILE", type=str,
+                   help="Direct daemon stdout/stderr to FILE")
+    p.add_argument("flags", metavar="FLAG", nargs="*", type=str,
+                   help="Regular mypy flags (precede with --)")
+    p.add_argument("--options-data", help=argparse.SUPPRESS)
+
+    add_subparser("help", action=help_action)
+
+    return parser
+
+
+# The code is top-down.
 
 def main(argv: list[str]) -> None:
-    """The code is top-down."""
     check_python_version("dmypy")
 
     # set recursion limit consistent with mypy/main.py
@@ -222,36 +233,32 @@ def main(argv: list[str]) -> None:
             sys.exit(2)
 
 
+class BadStatus(Exception):
+    """Exception raised when there is something wrong with the status file.
+
+    For example:
+    - No status file found
+    - Status file malformed
+    - Process whose pid is in the status file does not exist
+    """
+
+
 def fail(msg: str) -> NoReturn:
     print(msg, file=sys.stderr)
     sys.exit(2)
 
 
-ActionFunction = Callable[[argparse.Namespace], None]
-
-
-def action(subparser: argparse.ArgumentParser) -> Callable[[ActionFunction], ActionFunction]:
-    """Decorator to tie an action function to a subparser."""
-
-    def register(func: ActionFunction) -> ActionFunction:
-        subparser.set_defaults(action=func)
-        return func
-
-    return register
-
-
 # Action functions (run in client from command line).
 
 
-@action(start_parser)
-def do_start(args: argparse.Namespace) -> None:
+def start_action(args: Namespace) -> None:
     """Start daemon (it must not already be running).
 
     This is where mypy flags are set from the command line.
 
-    Setting flags is a bit awkward; you have to use e.g.:
+    Setting mypy flags (not daemon flags) is a bit awkward; you have to use e.g.:
 
-      dmypy start -- --strict
+        dmypy start -- --strict
 
     since we don't want to duplicate mypy's huge list of flags.
     """
@@ -265,67 +272,23 @@ def do_start(args: argparse.Namespace) -> None:
     start_server(args)
 
 
-@action(restart_parser)
-def do_restart(args: argparse.Namespace) -> None:
+def restart_action(args: Namespace) -> None:
     """Restart daemon (it may or may not be running; but not hanging).
 
-    We first try to stop it politely if it's running.  This also sets
-    mypy flags from the command line (see do_start()).
+    We first try to stop it politely if it's running.
     """
     restart_server(args)
 
 
-def restart_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
-    """Restart daemon (it may or may not be running; but not hanging)."""
-    try:
-        do_stop(args)
-    except BadStatus:
-        # Bad or missing status file or dead process; good to start.
-        pass
-    start_server(args, allow_sources)
-
-
-def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
-    """Start the server from command arguments and wait for it."""
-    # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import daemonize, process_start_options
-
-    start_options = process_start_options(args.flags, allow_sources)
-    if daemonize(start_options, args.status_file, timeout=args.timeout, log_file=args.log_file):
-        sys.exit(2)
-    wait_for_server(args.status_file)
-
-
-def wait_for_server(status_file: str, timeout: float = 5.0) -> None:
-    """Wait until the server is up.
-
-    Exit if it doesn't happen within the timeout.
-    """
-    endtime = time.time() + timeout
-    while time.time() < endtime:
-        try:
-            data = read_status(status_file)
-        except BadStatus:
-            # If the file isn't there yet, retry later.
-            time.sleep(0.1)
-            continue
-        # If the file's content is bogus or the process is dead, fail.
-        check_status(data)
-        print("Daemon started")
-        return
-    fail("Timed out waiting for daemon to start")
-
-
-@action(run_parser)
-def do_run(args: argparse.Namespace) -> None:
+def run_action(args: Namespace) -> None:
     """Do a check, starting (or restarting) the daemon as necessary
 
     Restarts the daemon if the running daemon reports that it is
     required (due to a configuration change, for example).
 
-    Setting flags is a bit awkward; you have to use e.g.:
+    Setting mypy flags (not daemon flags) is a bit awkward; you have to use e.g.:
 
-      dmypy run -- --strict a.py b.py ...
+        dmypy run -- --strict a.py b.py ...
 
     since we don't want to duplicate mypy's huge list of flags.
     (The -- is only necessary if flags are specified.)
@@ -358,8 +321,7 @@ def do_run(args: argparse.Namespace) -> None:
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
 
 
-@action(status_parser)
-def do_status(args: argparse.Namespace) -> None:
+def status_action(args: Namespace) -> None:
     """Print daemon status.
 
     This verifies that it is responsive to requests.
@@ -380,8 +342,7 @@ def do_status(args: argparse.Namespace) -> None:
     print("Daemon is up and running")
 
 
-@action(stop_parser)
-def do_stop(args: argparse.Namespace) -> None:
+def stop_action(args: Namespace) -> None:
     """Stop daemon via a 'stop' request."""
     # May raise BadStatus, which will be handled by main().
     response = request(args.status_file, "stop", timeout=5)
@@ -392,8 +353,7 @@ def do_stop(args: argparse.Namespace) -> None:
         print("Daemon stopped")
 
 
-@action(kill_parser)
-def do_kill(args: argparse.Namespace) -> None:
+def kill_action(args: Namespace) -> None:
     """Kill daemon process with SIGKILL."""
     pid, _ = get_status(args.status_file)
     try:
@@ -404,8 +364,7 @@ def do_kill(args: argparse.Namespace) -> None:
         print("Daemon killed")
 
 
-@action(check_parser)
-def do_check(args: argparse.Namespace) -> None:
+def check_action(args: Namespace) -> None:
     """Ask the daemon to check a list of files."""
     t0 = time.time()
     response = request(args.status_file, "check", files=args.files, export_types=args.export_types)
@@ -414,8 +373,7 @@ def do_check(args: argparse.Namespace) -> None:
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
 
 
-@action(recheck_parser)
-def do_recheck(args: argparse.Namespace) -> None:
+def recheck_action(args: Namespace) -> None:
     """Ask the daemon to recheck the previous list of files, with optional modifications.
 
     If at least one of --remove or --update is given, the server will
@@ -445,8 +403,7 @@ def do_recheck(args: argparse.Namespace) -> None:
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
 
 
-@action(suggest_parser)
-def do_suggest(args: argparse.Namespace) -> None:
+def suggest_action(args: Namespace) -> None:
     """Ask the daemon for a suggested signature.
 
     This just prints whatever the daemon reports as output.
@@ -467,8 +424,7 @@ def do_suggest(args: argparse.Namespace) -> None:
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 
-@action(inspect_parser)
-def do_inspect(args: argparse.Namespace) -> None:
+def inspect_action(args: Namespace) -> None:
     """Ask daemon to print the type of an expression."""
     response = request(
         args.status_file,
@@ -484,6 +440,84 @@ def do_inspect(args: argparse.Namespace) -> None:
         force_reload=args.force_reload,
     )
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
+
+
+def hang_action(args: Namespace) -> None:
+    """Hang for 100 seconds."""
+    # Used as a debug hack.
+    print(request(args.status_file, "hang", timeout=1))
+
+
+def daemon_action(args: Namespace) -> None:
+    """Serve requests in the foreground."""
+    # Lazy import so this import doesn't slow down other commands.
+    from mypy.dmypy.server import Server, process_start_options
+
+    if args.log_file:
+        sys.stdout = sys.stderr = open(args.log_file, "a", buffering=1)
+        fd = sys.stdout.fileno()
+        os.dup2(fd, 2)
+        os.dup2(fd, 1)
+
+    if args.options_data:
+        from mypy.options import Options
+
+        options_dict = pickle.loads(base64.b64decode(args.options_data))
+        options_obj = Options()
+        options = options_obj.apply_changes(options_dict)
+    else:
+        options = process_start_options(args.flags, allow_sources=False)
+
+    Server(options, args.status_file, timeout=args.timeout).serve()
+
+
+def help_action(args: Namespace) -> None:
+    """Print full help (same as dmypy --help)."""
+    parser.print_help()
+
+
+parser = init_parser()
+
+
+def start_server(args: Namespace, allow_sources: bool = False) -> None:
+    """Start the server from arguments and wait for it."""
+    # Lazy import so this import doesn't slow down other commands.
+    from mypy.dmypy.server import daemonize, process_start_options
+
+    start_options = process_start_options(args.flags, allow_sources)
+    if daemonize(start_options, args.status_file, timeout=args.timeout, log_file=args.log_file):
+        sys.exit(2)
+    wait_for_server(args.status_file)
+
+
+def restart_server(args: Namespace, allow_sources: bool = False) -> None:
+    """Restart daemon (it may or may not be running; but not hanging)."""
+    try:
+        stop_action(args)
+    except BadStatus:
+        # Bad or missing status file or dead process; good to start.
+        pass
+    start_server(args, allow_sources)
+
+
+def wait_for_server(status_file: str, timeout: float = 5.0) -> None:
+    """Wait until the server is up.
+
+    Exit if it doesn't happen within the timeout.
+    """
+    endtime = time.time() + timeout
+    while time.time() < endtime:
+        try:
+            data = read_status(status_file)
+        except BadStatus:
+            # If the file isn't there yet, retry later.
+            time.sleep(0.1)
+            continue
+        # If the file's content is bogus or the process is dead, fail.
+        check_status(data)
+        print("Daemon started")
+        return
+    fail("Timed out waiting for daemon to start")
 
 
 def check_output(
@@ -542,41 +576,6 @@ def show_stats(response: Mapping[str, object]) -> None:
             continue
         print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
 
-
-@action(hang_parser)
-def do_hang(args: argparse.Namespace) -> None:
-    """Hang for 100 seconds, as a debug hack."""
-    print(request(args.status_file, "hang", timeout=1))
-
-
-@action(daemon_parser)
-def do_daemon(args: argparse.Namespace) -> None:
-    """Serve requests in the foreground."""
-    # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import Server, process_start_options
-
-    if args.log_file:
-        sys.stdout = sys.stderr = open(args.log_file, "a", buffering=1)
-        fd = sys.stdout.fileno()
-        os.dup2(fd, 2)
-        os.dup2(fd, 1)
-
-    if args.options_data:
-        from mypy.options import Options
-
-        options_dict = pickle.loads(base64.b64decode(args.options_data))
-        options_obj = Options()
-        options = options_obj.apply_changes(options_dict)
-    else:
-        options = process_start_options(args.flags, allow_sources=False)
-
-    Server(options, args.status_file, timeout=args.timeout).serve()
-
-
-@action(help_parser)
-def do_help(args: argparse.Namespace) -> None:
-    """Print full help (same as dmypy --help)."""
-    parser.print_help()
 
 
 # Client-side infrastructure.

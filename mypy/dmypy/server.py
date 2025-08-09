@@ -24,7 +24,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.dmypy_util import WriteToConn, receive, send
+from mypy.dmypy.util import WriteToConn, receive, send
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileData, FileSystemWatcher
