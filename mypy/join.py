@@ -150,6 +150,12 @@ class InstanceJoiner:
             t, s, subtype_context=SubtypeContext(ignore_type_params=True)
         ):
             result = self.join_instances_via_supertype(t, s)
+        elif s.type.bases and is_proper_subtype(
+            s, t, subtype_context=SubtypeContext(ignore_type_params=True)
+        ):
+            result = self.join_instances_via_supertype(s, t)
+        elif is_subtype(t, s, subtype_context=SubtypeContext(ignore_type_params=True)):
+            result = self.join_instances_via_supertype(t, s)
         else:
             # Now t is not a subtype of s, and t != s. Now s could be a subtype
             # of t; alternatively, we need to find a common supertype. This works
