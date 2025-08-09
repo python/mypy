@@ -15,7 +15,9 @@ from mypyc.ir.ops import (
     Call,
     CallC,
     CString,
+    DecRef,
     GetAttr,
+    IncRef,
     LoadLiteral,
     LoadStatic,
     Op,
@@ -95,6 +97,12 @@ class LogTraceEventTransform(IRTransform):
 
     def visit_unbox(self, op: Unbox) -> Value | None:
         return self.log(op, "unbox", str(op.type))
+
+    def visit_inc_ref(self, op: IncRef) -> Value | None:
+        return self.log(op, "inc_ref", str(op.src.type))
+
+    def visit_dec_ref(self, op: DecRef) -> Value | None:
+        return self.log(op, "dec_ref", str(op.src.type))
 
     def log(self, op: Op, name: str, details: str) -> Value:
         if op.line >= 0:
