@@ -166,25 +166,18 @@ execute(f, 1)
 def execute(func, args, kwargs):
     func :: object
     args :: tuple
-    kwargs :: dict
-    r0 :: list
-    r1 :: object
-    r2 :: dict
-    r3 :: i32
-    r4 :: bit
-    r5 :: tuple
-    r6 :: object
-    r7 :: int
+    kwargs, r0 :: dict
+    r1 :: i32
+    r2 :: bit
+    r3 :: object
+    r4 :: int
 L0:
-    r0 = PyList_New(0)
-    r1 = CPyList_Extend(r0, args)
-    r2 = PyDict_New()
-    r3 = CPyDict_UpdateInDisplay(r2, kwargs)
-    r4 = r3 >= 0 :: signed
-    r5 = PyList_AsTuple(r0)
-    r6 = PyObject_Call(func, r5, r2)
-    r7 = unbox(int, r6)
-    return r7
+    r0 = PyDict_New()
+    r1 = CPyDict_UpdateInDisplay(r0, kwargs)
+    r2 = r1 >= 0 :: signed
+    r3 = PyObject_Call(func, args, r0)
+    r4 = unbox(int, r3)
+    return r4
 def f(x):
     x :: int
 L0:
@@ -709,14 +702,11 @@ def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     can_dictcomp :: dict
     r22, can_iter, r23, can_use_keys, r24, can_use_values :: list
     r25 :: object
-    r26 :: list
-    r27 :: object
-    r28 :: dict
-    r29 :: i32
-    r30 :: bit
-    r31 :: tuple
-    r32 :: object
-    r33 :: int
+    r26 :: dict
+    r27 :: i32
+    r28 :: bit
+    r29 :: object
+    r30 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = var_object_size args
@@ -768,15 +758,12 @@ L9:
     r24 = CPyDict_Values(kwargs)
     can_use_values = r24
     r25 = r0.func
-    r26 = PyList_New(0)
-    r27 = CPyList_Extend(r26, args)
-    r28 = PyDict_New()
-    r29 = CPyDict_UpdateInDisplay(r28, kwargs)
-    r30 = r29 >= 0 :: signed
-    r31 = PyList_AsTuple(r26)
-    r32 = PyObject_Call(r25, r31, r28)
-    r33 = unbox(int, r32)
-    return r33
+    r26 = PyDict_New()
+    r27 = CPyDict_UpdateInDisplay(r26, kwargs)
+    r28 = r27 >= 0 :: signed
+    r29 = PyObject_Call(r25, args, r26)
+    r30 = unbox(int, r29)
+    return r30
 def deco(func):
     func :: object
     r0 :: __main__.deco_env
