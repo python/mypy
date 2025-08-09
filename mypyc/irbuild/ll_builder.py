@@ -184,7 +184,12 @@ from mypyc.primitives.str_ops import (
     str_ssize_t_size_op,
     unicode_compare,
 )
-from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op, new_tuple_with_length_op, sequence_tuple_op
+from mypyc.primitives.tuple_ops import (
+    list_tuple_op,
+    new_tuple_op,
+    new_tuple_with_length_op,
+    sequence_tuple_op,
+)
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
