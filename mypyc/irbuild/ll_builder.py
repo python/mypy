@@ -1148,8 +1148,7 @@ class LowLevelIRBuilder:
                 assert star_arg
                 output_arg = star_arg
             elif arg.kind == ARG_STAR2:
-                assert star2_arg, (star_arg_entries, sig_args)
-                output_arg = star2_arg
+                output_arg = star2_arg or self._create_dict([], [], line)
             elif not lst:
                 if is_fixed_width_rtype(arg.type):
                     output_arg = Integer(0, arg.type)
