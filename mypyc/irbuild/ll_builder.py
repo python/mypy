@@ -897,10 +897,8 @@ class LowLevelIRBuilder:
             # tuple. Otherwise create the tuple from the list.
             if star_result is None:
                 star_result = self.new_tuple(star_values, line)
-            elif is_tuple_rprimitive(star_result.type):
-                # We're just passing in the tuple
-                pass
-            else:
+            elif not is_tuple_rprimitive(star_result.type):
+                # if star_result is a tuple we took the fast path
                 star_result = self.primitive_op(list_tuple_op, [star_result], line)
         if has_star2 and star2_result is None:
             # TODO: use dict_copy_op for simple cases of **kwargs
