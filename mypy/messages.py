@@ -2517,17 +2517,22 @@ class MessageBuilder:
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
-    no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
         type_string in ["Module", "overloaded function", "<deleted>"]
         or type_string.startswith("Module ")
-        or re.match(no_quote_regex, type_string) is not None
+        or short_tuple_or_union(type_string)
         or type_string.endswith("?")
     ):
         # Messages are easier to read if these aren't quoted.  We use a
         # regex to match strings with variable contents.
         return type_string
     return f'"{type_string}"'
+
+
+def short_tuple_or_union(typ: str) -> bool:
+    if not (typ.startswith("<tuple ") or typ.startswith("<union ")):
+        return False
+    return typ.endswith(" item>")
 
 
 def format_callable_args(
