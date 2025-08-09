@@ -1674,26 +1674,22 @@ def g():
     r0 :: tuple[int, int, int]
     r1 :: dict
     r2 :: str
-    r3 :: object
-    r4 :: list
-    r5, r6 :: object
-    r7 :: tuple
-    r8 :: dict
-    r9 :: object
-    r10 :: tuple[int, int, int]
+    r3, r4 :: object
+    r5 :: tuple
+    r6 :: dict
+    r7 :: object
+    r8 :: tuple[int, int, int]
 L0:
     r0 = (2, 4, 6)
     r1 = __main__.globals :: static
     r2 = 'f'
     r3 = CPyDict_GetItem(r1, r2)
-    r4 = PyList_New(0)
-    r5 = box(tuple[int, int, int], r0)
-    r6 = CPyList_Extend(r4, r5)
-    r7 = PyList_AsTuple(r4)
-    r8 = PyDict_New()
-    r9 = PyObject_Call(r3, r7, r8)
-    r10 = unbox(tuple[int, int, int], r9)
-    return r10
+    r4 = box(tuple[int, int, int], r0)
+    r5 = PySequence_Tuple(r4)
+    r6 = PyDict_New()
+    r7 = PyObject_Call(r3, r5, r6)
+    r8 = unbox(tuple[int, int, int], r7)
+    return r8
 def h():
     r0 :: tuple[int, int]
     r1 :: dict
