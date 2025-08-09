@@ -1676,9 +1676,8 @@ def g():
     r2 :: str
     r3, r4 :: object
     r5 :: tuple
-    r6 :: dict
-    r7 :: object
-    r8 :: tuple[int, int, int]
+    r6 :: object
+    r7 :: tuple[int, int, int]
 L0:
     r0 = (2, 4, 6)
     r1 = __main__.globals :: static
@@ -1686,10 +1685,9 @@ L0:
     r3 = CPyDict_GetItem(r1, r2)
     r4 = box(tuple[int, int, int], r0)
     r5 = PySequence_Tuple(r4)
-    r6 = PyDict_New()
-    r7 = PyObject_Call(r3, r5, r6)
-    r8 = unbox(tuple[int, int, int], r7)
-    return r8
+    r6 = PyObject_CallObject(r3, r5)
+    r7 = unbox(tuple[int, int, int], r6)
+    return r7
 def h():
     r0 :: tuple[int, int]
     r1 :: dict
@@ -3568,15 +3566,12 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args):
     __mypyc_self__ :: __main__.wrapper_deco_obj
     args :: tuple
     r0 :: __main__.deco_env
-    r1 :: object
-    r2 :: dict
-    r3 :: object
+    r1, r2 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.fn
-    r2 = PyDict_New()
-    r3 = PyObject_Call(r1, args, r2)
-    return r3
+    r2 = PyObject_CallObject(r1, args)
+    return r2
 def deco(fn):
     fn :: object
     r0 :: __main__.deco_env
@@ -3619,15 +3614,13 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args):
     r0 :: __main__.deco_env
     r1 :: object
     r2 :: tuple
-    r3 :: dict
-    r4 :: object
+    r3 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PyList_AsTuple(args)
-    r3 = PyDict_New()
-    r4 = PyObject_Call(r1, r2, r3)
-    return r4
+    r3 = PyObject_CallObject(r1, r2)
+    return r3
 def deco(fn):
     fn :: object
     r0 :: __main__.deco_env
@@ -3726,15 +3719,13 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args):
     r0 :: __main__.deco_env
     r1 :: object
     r2 :: tuple
-    r3 :: dict
-    r4 :: object
+    r3 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PySequence_Tuple(args)
-    r3 = PyDict_New()
-    r4 = PyObject_Call(r1, r2, r3)
-    return r4
+    r3 = PyObject_CallObject(r1, r2)
+    return r3
 def deco(fn):
     fn :: object
     r0 :: __main__.deco_env

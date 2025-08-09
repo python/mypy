@@ -138,6 +138,7 @@ from mypyc.primitives.generic_ops import (
     generic_ssize_t_len_op,
     py_call_op,
     py_call_with_kwargs_op,
+    py_call_with_posargs_op,
     py_getattr_op,
     py_method_call_op,
     py_vectorcall_method_op,
@@ -801,7 +802,7 @@ class LowLevelIRBuilder:
                             value = self.primitive_op(list_tuple_op, [value], line)
                         elif not is_tuple_rprimitive(value.type):
                             value = self.primitive_op(sequence_tuple_op, [value], line)
-                        return value, self._create_dict([], [], line)
+                        return value, None
                     elif len(args) == 2 and args[1][1] == ARG_STAR2:
                         # fn(*args, **kwargs)
                         if is_tuple_rprimitive(value.type):
@@ -939,13 +940,16 @@ class LowLevelIRBuilder:
         if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
             return self.call_c(py_call_op, [function] + arg_values, line)
 
-        # Otherwise fallback to py_call_with_kwargs_op.
+        # Otherwise fallback to py_call_with_posargs_op or py_call_with_kwargs_op.
         assert arg_names is not None
 
         pos_args_tuple, kw_args_dict = self._construct_varargs(
             list(zip(arg_values, arg_kinds, arg_names)), line, has_star=True, has_star2=True
         )
-        assert pos_args_tuple and kw_args_dict
+        assert pos_args_tuple
+        
+        if kw_args_dict is None:
+            return self.call_c(py_call_with_posargs_op, [function, pos_args_tuple], line)
 
         return self.call_c(py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 

@@ -77,6 +77,7 @@ op_hints: Final = {
     "PyNumber_Rshift": Annotation('Generic ">>" operation.'),
     "PyNumber_Invert": Annotation('Generic "~" operation.'),
     "PyObject_Call": Annotation("Generic call operation."),
+    "PyObject_CallObject": Annotation("Generic call operation."),
     "PyObject_RichCompare": Annotation("Generic comparison operation."),
     "PyObject_GetItem": Annotation("Generic indexing operation."),
     "PyObject_SetItem": Annotation("Generic indexed assignment."),
