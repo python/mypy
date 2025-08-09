@@ -790,12 +790,15 @@ class LowLevelIRBuilder:
                 if star_result is None:
                     # fast path if star expr is a tuple:
                     # we can pass the immutable tuple straight into the function call.
-                    if is_tuple_rprimitive(value.type) and (
-                        len(args) == 1 or (len(args) == 2 and args[1][1] == ARG_STAR2)
-                    ):  # only matches fn(*args) and fn(*args, **kwargs)
+                    if is_tuple_rprimitive(value.type):
+                        if len(args) == 1:
+                            # fn(*args)
+                            return value, None
+                        elif len(args) == 2 and args[1][1] == ARG_STAR2:
+                            # fn(*args, **kwargs)
+                            star_result = value
+                            continue
                         # TODO extend this to optimize fn(*args, k=1, **kwargs) case
-                        star_result = value
-                        continue
                     else:
                         # TODO optimize this case using the length utils - currently in review
                         star_result = self.new_list_op(star_values, line)
