@@ -4380,6 +4380,13 @@ def is_final_node(node: SymbolNode | None) -> bool:
     return isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and node.is_final
 
 
+def get_func_def(typ: mypy.types.CallableType) -> SymbolNode | None:
+    definition = typ.definition
+    if isinstance(definition, Decorator):
+        definition = definition.func
+    return definition
+
+
 def local_definitions(
     names: SymbolTable, name_prefix: str, info: TypeInfo | None = None
 ) -> Iterator[Definition]:

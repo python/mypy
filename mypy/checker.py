@@ -130,6 +130,7 @@ from mypy.nodes import (
     WhileStmt,
     WithStmt,
     YieldExpr,
+    get_func_def,
     is_final_node,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
@@ -430,6 +431,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self._expr_checker = mypy.checkexpr.ExpressionChecker(
             self, self.msg, self.plugin, per_line_checking_time_ns
         )
+
+        self._str_type: Instance | None = None
+        self._function_type: Instance | None = None
+        self._int_type: Instance | None = None
+        self._bool_type: Instance | None = None
+        self._object_type: Instance | None = None
+
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
         self._unique_id = 0
 
@@ -703,6 +711,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # TODO: keep precise type for callables with tricky but valid signatures.
                     setter_type = fallback_setter_type
                 defn.items[0].var.setter_type = setter_type
+                if isinstance(defn.type, Overloaded):
+                    # Update legacy property type for decorated properties.
+                    getter_type = self.extract_callable_type(defn.items[0].var.type, defn)
+                    if getter_type is not None:
+                        getter_type.definition = defn.items[0]
+                        defn.type.items[0] = getter_type
         for i, fdef in enumerate(defn.items):
             assert isinstance(fdef, Decorator)
             if defn.is_property:
@@ -730,7 +744,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     assert isinstance(item, Decorator)
                     item_type = self.extract_callable_type(item.var.type, item)
                     if item_type is not None:
-                        item_type.definition = item.func
+                        item_type.definition = item
                         item_types.append(item_type)
                 if item_types:
                     defn.type = Overloaded(item_types)
@@ -2501,8 +2515,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 override_ids = override.type_var_ids()
                 type_name = None
-                if isinstance(override.definition, FuncDef):
-                    type_name = override.definition.info.name
+                definition = get_func_def(override)
+                if isinstance(definition, FuncDef):
+                    type_name = definition.info.name
 
                 def erase_override(t: Type) -> Type:
                     return erase_typevars(t, ids_to_erase=override_ids)
@@ -3509,6 +3524,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
 
                 base_type, base_node = self.node_type_from_base(lvalue_node.name, base, lvalue)
+                # TODO: if the r.h.s. is a descriptor, we should check setter override as well.
                 custom_setter = is_custom_settable_property(base_node)
                 if isinstance(base_type, PartialType):
                     base_type = None
@@ -4494,6 +4510,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if isinstance(p_type, Overloaded):
                         # TODO: in theory we can have a property with a deleter only.
                         var.is_settable_property = True
+                        assert isinstance(definition, Decorator), definition
+                        var.setter_type = definition.var.setter_type
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
         """Store best known type for variable if type inference failed.
@@ -5356,6 +5374,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.check_untyped_after_decorator(sig, e.func)
         self.require_correct_self_argument(sig, e.func)
         sig = set_callable_name(sig, e.func)
+        if isinstance(sig, CallableType):
+            sig.definition = e
         e.var.type = sig
         e.var.is_ready = True
         if e.func.is_property:
@@ -7356,6 +7376,29 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         For example, named_type('builtins.object') produces the 'object' type.
         """
+        if name == "builtins.str":
+            if self._str_type is None:
+                self._str_type = self._named_type(name)
+            return self._str_type
+        if name == "builtins.function":
+            if self._function_type is None:
+                self._function_type = self._named_type(name)
+            return self._function_type
+        if name == "builtins.int":
+            if self._int_type is None:
+                self._int_type = self._named_type(name)
+            return self._int_type
+        if name == "builtins.bool":
+            if self._bool_type is None:
+                self._bool_type = self._named_type(name)
+            return self._bool_type
+        if name == "builtins.object":
+            if self._object_type is None:
+                self._object_type = self._named_type(name)
+            return self._object_type
+        return self._named_type(name)
+
+    def _named_type(self, name: str) -> Instance:
         # Assume that the name refers to a type.
         sym = self.lookup_qualified(name)
         node = sym.node
@@ -8654,8 +8697,10 @@ class SetNothingToAny(TypeTranslator):
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
-def is_classmethod_node(node: Node | None) -> bool | None:
+def is_classmethod_node(node: SymbolNode | None) -> bool | None:
     """Find out if a node describes a classmethod."""
+    if isinstance(node, Decorator):
+        node = node.func
     if isinstance(node, FuncDef):
         return node.is_class
     if isinstance(node, Var):
@@ -8663,8 +8708,10 @@ def is_classmethod_node(node: Node | None) -> bool | None:
     return None
 
 
-def is_node_static(node: Node | None) -> bool | None:
+def is_node_static(node: SymbolNode | None) -> bool | None:
     """Find out if a node describes a static function method."""
+    if isinstance(node, Decorator):
+        node = node.func
     if isinstance(node, FuncDef):
         return node.is_static
     if isinstance(node, Var):

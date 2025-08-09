@@ -55,6 +55,7 @@ from mypy.nodes import (
     SymbolTable,
     TypeInfo,
     Var,
+    get_func_def,
     reverse_builtin_aliases,
 )
 from mypy.operators import op_methods, op_methods_to_symbols
@@ -2938,10 +2939,11 @@ def format_type_distinctly(*types: Type, options: Options, bare: bool = False) -
 
 def pretty_class_or_static_decorator(tp: CallableType) -> str | None:
     """Return @classmethod or @staticmethod, if any, for the given callable type."""
-    if tp.definition is not None and isinstance(tp.definition, SYMBOL_FUNCBASE_TYPES):
-        if tp.definition.is_class:
+    definition = get_func_def(tp)
+    if definition is not None and isinstance(definition, SYMBOL_FUNCBASE_TYPES):
+        if definition.is_class:
             return "@classmethod"
-        if tp.definition.is_static:
+        if definition.is_static:
             return "@staticmethod"
     return None
 
@@ -2991,12 +2993,13 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             slash = True
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
+    definition = get_func_def(tp)
     if (
-        isinstance(tp.definition, FuncDef)
-        and hasattr(tp.definition, "arguments")
+        isinstance(definition, FuncDef)
+        and hasattr(definition, "arguments")
         and not tp.from_concatenate
     ):
-        definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
+        definition_arg_names = [arg.variable.name for arg in definition.arguments]
         if (
             len(definition_arg_names) > len(tp.arg_names)
             and definition_arg_names[0]
@@ -3005,7 +3008,7 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             if s:
                 s = ", " + s
             s = definition_arg_names[0] + s
-        s = f"{tp.definition.name}({s})"
+        s = f"{definition.name}({s})"
     elif tp.name:
         first_arg = get_first_arg(tp)
         if first_arg:
@@ -3051,9 +3054,10 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
 
 
 def get_first_arg(tp: CallableType) -> str | None:
-    if not isinstance(tp.definition, FuncDef) or not tp.definition.info or tp.definition.is_static:
+    definition = get_func_def(tp)
+    if not isinstance(definition, FuncDef) or not definition.info or definition.is_static:
         return None
-    return tp.definition.original_first_arg
+    return definition.original_first_arg
 
 
 def variance_string(variance: int) -> str:
