@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 import sys
-import warnings
 from collections.abc import Sequence
 from typing import Any, Callable, Final, Literal, Optional, TypeVar, Union, cast, overload
 
@@ -227,11 +226,7 @@ def parse(
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
     try:
-        # Disable deprecation warnings about \u
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
-            ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
-
+        ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
         tree = ASTConverter(
             options=options,
             is_stub=is_stub_file,
