@@ -788,7 +788,17 @@ class LowLevelIRBuilder:
         for value, kind, name in args:
             if kind == ARG_STAR:
                 if star_result is None:
-                    star_result = self.new_list_op(star_values, line)
+                    # fast path if star expr is a tuple:
+                    # we can pass the immutable tuple straight into the function call.
+                    if is_tuple_rprimitive(value.type) and (
+                        len(args) == 1 or (len(args) == 2 and args[1][1] == ARG_STAR2)
+                    ):  # only matches fn(*args) and fn(*args, **kwargs)
+                        # TODO extend this to optimize fn(*args, k=1, **kwargs) case
+                        star_result = value
+                        continue
+                    else:
+                        # TODO optimize this case using the length utils - currently in review
+                        star_result = self.new_list_op(star_values, line)
                 self.primitive_op(list_extend_op, [star_result, value], line)
             elif kind == ARG_STAR2:
                 if star2_result is None:
@@ -885,9 +895,13 @@ class LowLevelIRBuilder:
             # tuple. Otherwise create the tuple from the list.
             if star_result is None:
                 star_result = self.new_tuple(star_values, line)
+            elif is_tuple_rprimitive(star_result.type):
+                # We're just passing in the tuple
+                pass
             else:
                 star_result = self.primitive_op(list_tuple_op, [star_result], line)
         if has_star2 and star2_result is None:
+            # TODO: use dict_copy_op for simple cases of **kwargs
             star2_result = self._create_dict(star2_keys, star2_values, line)
 
         return star_result, star2_result
