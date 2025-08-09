@@ -793,7 +793,7 @@ class LowLevelIRBuilder:
                     if is_tuple_rprimitive(value.type):
                         if len(args) == 1:
                             # fn(*args)
-                            return value, None
+                            return value, self._create_dict([], [], line)
                         elif len(args) == 2 and args[1][1] == ARG_STAR2:
                             # fn(*args, **kwargs)
                             star_result = value
