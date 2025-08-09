@@ -10,7 +10,18 @@ and in which code locations they are called.
 from __future__ import annotations
 
 from mypyc.ir.func_ir import FuncIR
-from mypyc.ir.ops import Call, CallC, CString, LoadLiteral, LoadStatic, Op, PrimitiveOp, Value
+from mypyc.ir.ops import (
+    Call,
+    CallC,
+    CString,
+    GetAttr,
+    LoadLiteral,
+    LoadStatic,
+    Op,
+    PrimitiveOp,
+    SetAttr,
+    Value,
+)
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.options import CompilerOptions
 from mypyc.primitives.misc_ops import log_trace_event
@@ -64,6 +75,12 @@ class LogTraceEventTransform(IRTransform):
             return self.log(op, "python_call_method", str(op.args[0].value))
 
         return self.log(op, "call_c", func_name)
+
+    def visit_get_attr(self, op: GetAttr) -> Value | None:
+        return self.log(op, "get_attr", f"{op.class_type.name}.{op.attr}")
+
+    def visit_set_attr(self, op: SetAttr) -> Value | None:
+        return self.log(op, "set_attr", f"{op.class_type.name}.{op.attr}")
 
     def log(self, op: Op, name: str, details: str) -> Value:
         if op.line >= 0:
