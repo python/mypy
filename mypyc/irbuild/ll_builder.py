@@ -824,7 +824,9 @@ class LowLevelIRBuilder:
                     if len(args) == 1:
                         # early exit with fastpath if the only arg is ARG_STAR2
                         # TODO: can we maintain an empty tuple in memory and just reuse it again and again?
-                        return self.new_tuple([], line), self.primitive_op(dict_copy_op, [args[0][0]], line)
+                        return self.new_tuple([], line), self.primitive_op(
+                            dict_copy_op, [args[0][0]], line
+                        )
 
                     star2_result = self._create_dict(star2_keys, star2_values, line)
 
