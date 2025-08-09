@@ -7,7 +7,6 @@ rather than having to read it back from disk on each run.
 from __future__ import annotations
 
 import argparse
-from argparse import Namespace
 import base64
 import json
 import os
@@ -15,10 +14,11 @@ import pickle
 import sys
 import time
 import traceback
+from argparse import Namespace
 from collections.abc import Mapping
-from typing import Any, Callable, NoReturn, cast
 from functools import partial
 from textwrap import dedent
+from typing import Any, NoReturn, cast
 
 from mypy.dmypy.dmypy_os import alive, kill
 from mypy.dmypy.util import DEFAULT_STATUS_FILE, receive, send
@@ -26,7 +26,6 @@ from mypy.ipc import IPCClient, IPCException
 from mypy.main import RECURSION_LIMIT
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
-
 
 
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -48,12 +47,12 @@ def _subparser_adder(subparsers: Any, *args: Any, **kwargs: Any) -> argparse.Arg
 
 parser: argparse.ArgumentParser  # Initialized in init_parser which is called below
 
+
 # Called after all action functions are defined
 def init_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="dmypy",
-        description="Client for mypy daemon mode",
-        fromfile_prefix_chars="@")
+        prog="dmypy", description="Client for mypy daemon mode", fromfile_prefix_chars="@"
+    )
     if sys.version_info >= (3, 14):
         parser.color = True  # Set as init arg in 3.14
 
@@ -216,6 +215,7 @@ def init_parser() -> argparse.ArgumentParser:
 
 
 # The code is top-down.
+
 
 def main(argv: list[str]) -> None:
     check_python_version("dmypy")
@@ -580,7 +580,6 @@ def show_stats(response: Mapping[str, object]) -> None:
             print("%-24s: %s" % (key, value))
             continue
         print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
-
 
 
 # Client-side infrastructure.
