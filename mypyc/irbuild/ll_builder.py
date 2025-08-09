@@ -798,18 +798,18 @@ class LowLevelIRBuilder:
                     if len(args) == 1:
                         # fn(*args)
                         if is_list_rprimitive(value.type):
-                            value = self.call_c(list_tuple_op, [value], line)
+                            value = self.primitive_op(list_tuple_op, [value], line)
                         elif not is_tuple_rprimitive(value.type):
-                            value = self.call_c(sequence_tuple_op, [value], line)
+                            value = self.primitive_op(sequence_tuple_op, [value], line)
                         return value, self._create_dict([], [], line)
                     elif len(args) == 2 and args[1][1] == ARG_STAR2:
                         # fn(*args, **kwargs)
                         if is_tuple_rprimitive(value.type):
                             star_result = value
                         elif is_list_rprimitive(value.type):
-                            star_result = self.call_c(list_tuple_op, [value], line)
+                            star_result = self.primitive_op(list_tuple_op, [value], line)
                         else:
-                            star_result = self.call_c(sequence_tuple_op, [value], line)
+                            star_result = self.primitive_op(sequence_tuple_op, [value], line)
                         continue
                         # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
                     # TODO optimize this case using the length utils - currently in review
