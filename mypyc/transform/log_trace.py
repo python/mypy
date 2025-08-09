@@ -24,6 +24,7 @@ from mypyc.ir.ops import (
     Unbox,
     Value,
 )
+from mypyc.ir.rtypes import none_rprimitive
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.options import CompilerOptions
 from mypyc.primitives.misc_ops import log_trace_event
@@ -86,10 +87,14 @@ class LogTraceEventTransform(IRTransform):
         return self.log(op, name, f"{op.class_type.name}.{op.attr}")
 
     def visit_box(self, op: Box) -> Value | None:
-        return self.log(op, "box", op.src.type.name)
+        if op.src.type is none_rprimitive:
+            # Boxing 'None' is a very quick operation, so we don't log it.
+            return self.add(op)
+        else:
+            return self.log(op, "box", str(op.src.type))
 
     def visit_unbox(self, op: Unbox) -> Value | None:
-        return self.log(op, "unbox", op.type.name)
+        return self.log(op, "unbox", str(op.type))
 
     def log(self, op: Op, name: str, details: str) -> Value:
         if op.line >= 0:
