@@ -798,10 +798,9 @@ class LowLevelIRBuilder:
                             # fn(*args, **kwargs)
                             star_result = value
                             continue
-                        # TODO extend this to optimize fn(*args, k=1, **kwargs) case
-                    else:
-                        # TODO optimize this case using the length utils - currently in review
-                        star_result = self.new_list_op(star_values, line)
+                        # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
+                    # TODO optimize this case using the length utils - currently in review
+                    star_result = self.new_list_op(star_values, line)
                 self.primitive_op(list_extend_op, [star_result, value], line)
             elif kind == ARG_STAR2:
                 if star2_result is None:
