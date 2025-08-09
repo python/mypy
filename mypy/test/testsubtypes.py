@@ -304,7 +304,7 @@ class SubtypingSuite(Suite):
         self.assert_subtype(str1_inst, str1)
         self.assert_subtype(str1_inst, str1_inst)
 
-        # second operand is a different literal
+        # other operand is a different literal
         # "x"  ≲ "y"  -> NO
         # "x"  ≲ "y"? -> YES
         # "x"? ≲ "y"  -> NO
@@ -315,17 +315,17 @@ class SubtypingSuite(Suite):
         self.assert_subtype(str1_inst, str2_inst)
 
         # check proper subtyping
-        # second operand is the fallback type
+        # other operand is the fallback type
         # "x"  <: str  -> YES
         # str  <: "x"  -> NO
         # "x"? <: str  -> YES
-        # str  <: "x"? -> YES
+        # str  <: "x"? -> NO
         self.assert_proper_subtype(str1, str_type)
         self.assert_not_proper_subtype(str_type, str1)
         self.assert_proper_subtype(str1_inst, str_type)
-        self.assert_proper_subtype(str_type, str1_inst)
+        self.assert_not_proper_subtype(str_type, str1_inst)
 
-        # second operand is the same literal
+        # other operand is the same literal
         # "x"  <: "x"  -> YES
         # "x"  <: "x"? -> YES
         # "x"? <: "x"  -> NO
@@ -335,15 +335,15 @@ class SubtypingSuite(Suite):
         self.assert_not_proper_subtype(str1_inst, str1)
         self.assert_proper_subtype(str1_inst, str1_inst)
 
-        # second operand is a different literal
-        # "x"  ≲ "y"  -> NO
-        # "x"  ≲ "y"? -> NO
-        # "x"? ≲ "y"  -> NO
-        # "x"? ≲ "y"? -> YES
+        # other operand is a different literal
+        # "x"  <: "y"  -> NO
+        # "x"  <: "y"? -> NO
+        # "x"? <: "y"  -> NO
+        # "x"? <: "y"? -> NO
         self.assert_not_proper_subtype(str1, str2)
         self.assert_not_proper_subtype(str1, str2_inst)
         self.assert_not_proper_subtype(str1_inst, str2)
-        self.assert_proper_subtype(str1_inst, str2_inst)
+        self.assert_not_proper_subtype(str1_inst, str2_inst)
 
     # IDEA: Maybe add these test cases (they are tested pretty well in type
     #       checker tests already):
