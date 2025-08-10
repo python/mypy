@@ -251,9 +251,7 @@ class IterationDependentErrors:
     # One dictionary of non-overlapping types per iteration step.  Meaning of the key
     # tuple items: line, column, end_line, end_column, kind:
     nonoverlapping_types: list[
-        dict[
-            tuple[int, int, int | None, int | None, str], tuple[Type, Type]
-        ],
+        dict[tuple[int, int, int | None, int | None, str], tuple[Type, Type]],
     ]
 
     def __init__(self) -> None:
@@ -279,10 +277,9 @@ class IterationDependentErrors:
             context.end_column = error_info[5]
             yield error_info[1], context, error_info[0]
 
-
-    def yield_nonoverlapping_types(self) -> Iterator[
-        tuple[tuple[list[Type], list[Type]], str, Context]
-    ]:
+    def yield_nonoverlapping_types(
+        self,
+    ) -> Iterator[tuple[tuple[list[Type], list[Type]], str, Context]]:
         """Report expressions were non-overlapping types were detected for all iterations
         were the expression was reachable."""
 
@@ -290,9 +287,7 @@ class IterationDependentErrors:
         for candidate in set(chain(*self.nonoverlapping_types)):
             if all(
                 (candidate in nonoverlap) or (candidate[0] in lines)
-                for nonoverlap, lines in zip(
-                    self.nonoverlapping_types, self.unreachable_lines
-                )
+                for nonoverlap, lines in zip(self.nonoverlapping_types, self.unreachable_lines)
             ):
                 selected.add(candidate)
 
