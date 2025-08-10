@@ -497,7 +497,7 @@ def parse_section(
     set_strict_flags: Callable[[], None],
     section: Mapping[str, Any],
     config_types: dict[str, Any],
-    stderr: TextIO = sys.stderr,
+    stderr: TextIO | None,
 ) -> tuple[dict[str, object], dict[str, str]]:
     """Parse one section of a config file.
 

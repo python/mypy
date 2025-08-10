@@ -465,8 +465,8 @@ class CapturableVersionAction(argparse.Action):
 def define_options(
     program: str = "mypy",
     header: str = HEADER,
-    stdout: TextIO = sys.stdout,
-    stderr: TextIO = sys.stderr,
+    stdout: TextIO | None,
+    stderr: TextIO | None,
     server_options: bool = False,
 ) -> tuple[CapturableArgumentParser, list[str], list[tuple[str, bool]]]:
     """Define the options in the parser (by calling a bunch of methods that express/build our desired command-line flags).
@@ -1634,9 +1634,9 @@ def maybe_write_junit_xml(
             )
 
 
-def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
+def fail(msg: str, stderr: TextIO | None, options: Options) -> NoReturn:
     """Fail with a serious error."""
-    stderr.write(f"{msg}\n")
+    print(msg, file=stderr)
     maybe_write_junit_xml(
         0.0, serious=True, all_messages=[msg], messages_by_file={None: [msg]}, options=options
     )
