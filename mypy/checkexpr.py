@@ -2746,14 +2746,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # Record if we succeeded. Next we need to see if maybe normal procedure
                 # gives a narrower type.
                 if unioned_return:
-                    returns = tuple(u[0] for u in unioned_return)
-                    inferred_types = tuple(u[1] for u in unioned_return)
+                    returns = [u[0] for u in unioned_return]
+                    inferred_types = [u[1] for u in unioned_return]
                     # Note that we use `combine_function_signatures` instead of just returning
                     # a union of inferred callables because for example a call
                     # Union[int -> int, str -> str](Union[int, str]) is invalid and
                     # we don't want to introduce internal inconsistencies.
                     unioned_result = (
-                        make_simplified_union(list(returns), context.line, context.column),
+                        make_simplified_union(returns, context.line, context.column),
                         self.combine_function_signatures(get_proper_types(inferred_types)),
                     )
 
