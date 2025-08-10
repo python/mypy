@@ -398,7 +398,7 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
 
 
 def load_plugins_from_config(
-    options: Options, errors: Errors, stdout: TextIO|None
+    options: Options, errors: Errors, stdout: TextIO | None
 ) -> tuple[list[Plugin], dict[str, str]]:
     """Load all configured plugins.
 
@@ -490,7 +490,7 @@ def load_plugins_from_config(
 
 
 def load_plugins(
-    options: Options, errors: Errors, stdout: TextIO|None, extra_plugins: Sequence[Plugin]
+    options: Options, errors: Errors, stdout: TextIO | None, extra_plugins: Sequence[Plugin]
 ) -> tuple[Plugin, dict[str, str]]:
     """Load all configured plugins.
 
