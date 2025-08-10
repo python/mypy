@@ -2712,7 +2712,7 @@ Player.MIN = <Player.MIN: 1>
 
 [case testEnumMethodCalls]
 from enum import Enum
-from typing import overload, Optional, Self, Union
+from typing import overload, Optional, Union
 
 class C:
     def foo(self, x: Test) -> bool:
@@ -2729,7 +2729,7 @@ class Test(Enum):
         return self == Test.ONE
 
     @classmethod
-    def next(cls, val: int) -> Self:
+    def next(cls, val: int) -> Test:
         return cls(val + 1)
 
     @staticmethod
