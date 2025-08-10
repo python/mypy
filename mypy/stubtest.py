@@ -2016,7 +2016,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
         def set_strict_flags() -> None:  # not needed yet
             return
 
-        parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
+        parse_config_file(options, set_strict_flags, options.config_file, sys.stderr)
 
     def error_callback(msg: str) -> typing.NoReturn:
         print(_style("error:", color="red", bold=True), msg)

@@ -1379,7 +1379,7 @@ def process_options(
             setattr(options, dest, value)
 
     # Parse config file first, so command line can override.
-    parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
+    parse_config_file(options, set_strict_flags, config_file, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
