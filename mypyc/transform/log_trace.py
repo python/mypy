@@ -16,6 +16,7 @@ from mypyc.ir.ops import (
     Box,
     Call,
     CallC,
+    Cast,
     CString,
     DecRef,
     GetAttr,
@@ -57,7 +58,7 @@ def get_load_global_name(op: CallC) -> str | None:
 
 
 # These primitives perform an implicit IncRef for the return value. Only some of the most common ones
-# are included.
+# are included, and mostly ops that could be switched to use borrowing in some contexts.
 primitives_that_inc_ref: Final = {
     "list_get_item_unsafe",
     "CPyList_GetItemShort",
@@ -120,6 +121,12 @@ class LogTraceEventTransform(IRTransform):
 
     def visit_unbox(self, op: Unbox) -> Value:
         return self.log(op, "unbox", str(op.type))
+
+    def visit_cast(self, op: Cast) -> Value | None:
+        value = self.log(op, "cast", str(op.type))
+        if not op.is_borrowed:
+            self.log_inc_ref(value)
+        return value
 
     def visit_inc_ref(self, op: IncRef) -> Value:
         return self.log(op, "inc_ref", str(op.src.type))
