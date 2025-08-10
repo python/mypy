@@ -131,10 +131,23 @@ import sys
 from typing import Optional
 from native import ClassIR, FuncIR, Record
 
+HAVE_TEST = False
 if sys.version_info >= (3, 14):
-    from test.support import EqualToForwardRef
-    type_forward_ref = EqualToForwardRef
-else:
+    try:
+        from test.support import EqualToForwardRef
+        type_forward_ref = EqualToForwardRef
+        HAVE_TEST = True
+    except ImportError as e:
+        # catch the case of a pymanager installed Python
+        # without the test module. It is excluded by default
+        # on Windows.
+        msg = 'Missing "test" module.'
+        if sys.platform == "win32":
+            msg += (' Please install a version of Python with the test module.'
+                   ' If you are using pymanager, try running pymanager install --force PythonTest\\<version>')
+        raise ImportError(msg) from e
+
+if not HAVE_TEST:
     from typing import ForwardRef
     type_forward_ref = ForwardRef
 

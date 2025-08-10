@@ -300,6 +300,21 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     Py_XDECREF(dummy_class);
 
+    // Unlike the tp_doc slots of most other object, a heap type's tp_doc
+    // must be heap allocated.
+    if (template_->tp_doc) {
+        // Silently truncate the docstring if it contains a null byte
+        Py_ssize_t size = strlen(template_->tp_doc) + 1;
+        char *tp_doc = (char *)PyMem_Malloc(size);
+        if (tp_doc == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
+
+        memcpy(tp_doc, template_->tp_doc, size);
+        t->ht_type.tp_doc = tp_doc;
+    }
+
 #if PY_MINOR_VERSION == 11
     // This is a hack. Python 3.11 doesn't include good public APIs to work with managed
     // dicts, which are the default for heap types. So we try to opt-out until Python 3.12.

@@ -9211,3 +9211,50 @@ class CGT(BG[T]): ...
 
 reveal_type(CGI)  # N: Revealed type is "def () -> __main__.CGI"
 reveal_type(CGT)  # N: Revealed type is "def [T] () -> __main__.CGT[T`1]"
+
+[case testSettablePropertyAlias]
+from typing import Any, TypeVar
+
+class A:
+    @property
+    def prop(self: Any) -> str: ...
+    @prop.setter
+    def prop(self, val: str) -> None: ...
+
+T = TypeVar("T")
+class AT:
+    @property
+    def prop(self: T) -> T: ...
+    @prop.setter
+    def prop(self: T, val: list[T]) -> None: ...
+
+class B:
+    prop: str
+    prop_t: str
+
+class C(B):
+    prop = A.prop
+    prop_t = AT.prop  # E: Incompatible types in assignment (expression has type "C", base class "B" defined the type as "str")
+
+reveal_type(C().prop)  # N: Revealed type is "builtins.str"
+C().prop = "no"  # E: Invalid self argument "C" to attribute function "prop" with type "Callable[[A, str], None]"
+reveal_type(C().prop_t)  # N: Revealed type is "__main__.C"
+C().prop_t = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "list[C]")
+[builtins fixtures/property.pyi]
+
+[case testClassEqDecoratedAbstractNote]
+from abc import abstractmethod
+
+class C:
+    @abstractmethod
+    def __eq__(self, other: C) -> bool: ...
+[builtins fixtures/plugin_attrs.pyi]
+[out]
+main:5: error: Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"
+main:5: note: This violates the Liskov substitution principle
+main:5: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:5: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
+main:5: note:     def __eq__(self, other: object) -> bool:
+main:5: note:         if not isinstance(other, C):
+main:5: note:             return NotImplemented
+main:5: note:         return <logic to compare two C instances>
