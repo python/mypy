@@ -29,7 +29,7 @@ _INI_PARSER_CALLABLE: TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 class VersionTypeError(argparse.ArgumentTypeError):
     """Provide a fallback value if the Python version is unsupported."""
 
-    def __init__(self, *args: Any, fallback: tuple[int, int]) -> None:
+    def __init__(self, *args: object, fallback: tuple[int, int]) -> None:
         self.fallback = fallback
         super().__init__(*args)
 
