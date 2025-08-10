@@ -230,9 +230,9 @@ class ErrorWatcher:
 
 class IterationDependentErrors:
     """An `IterationDependentErrors` instance serves to collect the `unreachable`,
-    `redundant-expr`, and `redundant-casts` errors, as well as the revealed types,
-    handled by the individual `IterationErrorWatcher` instances sequentially applied to
-    the same code section."""
+    `redundant-expr`, and `redundant-casts` errors, as well as the revealed types and
+    non-overlapping types, handled by the individual `IterationErrorWatcher` instances
+    sequentially applied to the same code section."""
 
     # One set of `unreachable`, `redundant-expr`, and `redundant-casts` errors per
     # iteration step.  Meaning of the tuple items: ErrorCode, message, line, column,
@@ -248,9 +248,18 @@ class IterationDependentErrors:
     # end_line, end_column:
     revealed_types: dict[tuple[int, int, int | None, int | None], list[Type]]
 
+    # One dictionary of non-overlapping types per iteration step.  Meaning of the key
+    # tuple items: line, column, end_line, end_column, kind:
+    nonoverlapping_types: list[
+        dict[
+            tuple[int, int, int | None, int | None, str], tuple[Type, Type]
+        ],
+    ]
+
     def __init__(self) -> None:
         self.uselessness_errors = []
         self.unreachable_lines = []
+        self.nonoverlapping_types = []
         self.revealed_types = defaultdict(list)
 
     def yield_uselessness_error_infos(self) -> Iterator[tuple[str, Context, ErrorCode]]:
@@ -270,6 +279,39 @@ class IterationDependentErrors:
             context.end_column = error_info[5]
             yield error_info[1], context, error_info[0]
 
+
+    def yield_nonoverlapping_types(self) -> Iterator[
+        tuple[tuple[list[Type], list[Type]], str, Context]
+    ]:
+        """Report expressions were non-overlapping types were detected for all iterations
+        were the expression was reachable."""
+
+        selected = set()
+        for candidate in set(chain(*self.nonoverlapping_types)):
+            if all(
+                (candidate in nonoverlap) or (candidate[0] in lines)
+                for nonoverlap, lines in zip(
+                    self.nonoverlapping_types, self.unreachable_lines
+                )
+            ):
+                selected.add(candidate)
+
+        persistent_nonoverlaps: dict[
+            tuple[int, int, int | None, int | None, str], tuple[list[Type], list[Type]]
+        ] = defaultdict(lambda: ([], []))
+        for nonoverlaps in self.nonoverlapping_types:
+            for candidate, (left, right) in nonoverlaps.items():
+                if candidate in selected:
+                    types = persistent_nonoverlaps[candidate]
+                    types[0].append(left)
+                    types[1].append(right)
+
+        for error_info, types in persistent_nonoverlaps.items():
+            context = Context(line=error_info[0], column=error_info[1])
+            context.end_line = error_info[2]
+            context.end_column = error_info[3]
+            yield (types[0], types[1]), error_info[4], context
+
     def yield_revealed_type_infos(self) -> Iterator[tuple[list[Type], Context]]:
         """Yield all types revealed in at least one iteration step."""
 
@@ -282,8 +324,9 @@ class IterationDependentErrors:
 
 class IterationErrorWatcher(ErrorWatcher):
     """Error watcher that filters and separately collects `unreachable` errors,
-    `redundant-expr` and `redundant-casts` errors, and revealed types when analysing
-    code sections iteratively to help avoid making too-hasty reports."""
+    `redundant-expr` and `redundant-casts` errors, and revealed types and
+    non-overlapping types when analysing code sections iteratively to help avoid
+    making too-hasty reports."""
 
     iteration_dependent_errors: IterationDependentErrors
 
@@ -304,6 +347,7 @@ class IterationErrorWatcher(ErrorWatcher):
         )
         self.iteration_dependent_errors = iteration_dependent_errors
         iteration_dependent_errors.uselessness_errors.append(set())
+        iteration_dependent_errors.nonoverlapping_types.append({})
         iteration_dependent_errors.unreachable_lines.append(set())
 
     def on_error(self, file: str, info: ErrorInfo) -> bool:
