@@ -2719,6 +2719,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         #         for example, when we have a fallback alternative that accepts an unrestricted
         #         typevar. See https://github.com/python/mypy/issues/4063 for related discussion.
         erased_targets: list[CallableType] | None = None
+        inferred_types: list[Type] | None = None
         unioned_result: tuple[Type, Type] | None = None
 
         # Determine whether we need to encourage union math. This should be generally safe,
@@ -2780,9 +2781,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             else:
                 inferred_result = None
         if unioned_result is not None:
-            for inferred_type in inferred_types:
-                if isinstance(c := get_proper_type(inferred_type), CallableType):
-                    self.chk.warn_deprecated(c.definition, context)
+            if inferred_types is not None:
+                for inferred_type in inferred_types:
+                    if isinstance(c := get_proper_type(inferred_type), CallableType):
+                        self.chk.warn_deprecated(c.definition, context)
             return unioned_result
         if inferred_result is not None:
             if isinstance(c := get_proper_type(inferred_result[1]), CallableType):
