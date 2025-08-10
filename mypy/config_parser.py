@@ -589,7 +589,7 @@ def parse_section(
     return results, report_dirs
 
 
-def convert_to_boolean(value: Any | None) -> bool:
+def convert_to_boolean(value: object) -> bool:
     """Return a boolean value translating from other types if necessary."""
     if isinstance(value, bool):
         return value
