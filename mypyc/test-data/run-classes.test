@@ -2712,7 +2712,7 @@ Player.MIN = <Player.MIN: 1>
 
 [case testEnumMethodCalls]
 from enum import Enum
-from typing import overload, Self
+from typing import overload, Optional, Self, Union
 
 class C:
     def foo(self, x: Test) -> bool:
@@ -2739,8 +2739,8 @@ class Test(Enum):
     @overload
     def enigma(self, val: int) -> bool: ...
     @overload
-    def enigma(self, val: str | None = None) -> int: ...
-    def enigma(self, val: int | str | None = None) -> int | bool:
+    def enigma(self, val: Optional[str] = None) -> int: ...
+    def enigma(self, val: Union[int, str, None] = None) -> Union[int, bool]:
         if isinstance(val, int):
             return self.is_one()
         return 22
