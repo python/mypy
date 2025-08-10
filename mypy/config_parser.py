@@ -14,7 +14,7 @@ else:
     import tomli as tomllib
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, Union
+from typing import Any, Callable, Final, TextIO, TypeVar, TypedDict, Union
 from typing_extensions import Never, TypeAlias
 
 from mypy import defaults
@@ -23,7 +23,7 @@ from mypy.options import PER_MODULE_OPTIONS, Options
 _CONFIG_VALUE_TYPES: TypeAlias = Union[
     str, bool, int, float, dict[str, str], list[str], tuple[int, int]
 ]
-_INI_PARSER_CALLABLE: TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
+_INI_PARSER_CALLABLE: TypeAlias = Callable[[str], _CONFIG_VALUE_TYPES]
 
 
 class VersionTypeError(argparse.ArgumentTypeError):
@@ -235,21 +235,22 @@ toml_config_types.update(
 
 def _parse_individual_file(
     config_file: str, stderr: TextIO | None = None
-) -> tuple[MutableMapping[str, Any], dict[str, _INI_PARSER_CALLABLE], str] | None:
+) -> tuple[MutableMapping[str, _CONFIG_VALUE_TYPES], dict[str, _INI_PARSER_CALLABLE], str] | None:
 
     if not os.path.exists(config_file):
         return None
 
-    parser: MutableMapping[str, Any]
+    parser: MutableMapping[str, Mapping[str, str]]
     try:
         if is_toml(config_file):
             with open(config_file, "rb") as f:
-                toml_data = tomllib.load(f)
+                # This type is not actually 100% comprehensive. However, load returns Any, so it doesn't complain.
+                toml_data: dict[str, dict[str, _CONFIG_VALUE_TYPES]] = tomllib.load(f)
             # Filter down to just mypy relevant toml keys
-            toml_data = toml_data.get("tool", {})
-            if "mypy" not in toml_data:
+            toml_data_tool = toml_data.get("tool", {})
+            if "mypy" not in toml_data_tool:
                 return None
-            toml_data = {"mypy": toml_data["mypy"]}
+            toml_data = {"mypy": toml_data_tool["mypy"]}
             parser = destructure_overrides(toml_data)
             config_types = toml_config_types
         else:
@@ -269,7 +270,7 @@ def _parse_individual_file(
 
 def _find_config_file(
     stderr: TextIO | None = None,
-) -> tuple[MutableMapping[str, Any], dict[str, _INI_PARSER_CALLABLE], str] | None:
+) -> tuple[MutableMapping[str, Mapping[str, str]], dict[str, _INI_PARSER_CALLABLE], str] | None:
 
     current_dir = os.path.abspath(os.getcwd())
 
@@ -396,8 +397,11 @@ def get_prefix(file_read: str, name: str) -> str:
 def is_toml(filename: str) -> bool:
     return filename.lower().endswith(".toml")
 
-
-def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
+T = TypeVar("T")
+_TypeThatDOWants = TypedDict("_TypeThatDOWants", {"mypy": dict[str , dict[str, _CONFIG_VALUE_TYPES]]})
+def destructure_overrides(
+        toml_data: _TypeThatDOWants
+    ) -> _TypeThatDOWants:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 
