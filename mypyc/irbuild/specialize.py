@@ -713,9 +713,21 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
         for i in range(len(exprs) - 1):
             # TODO: instead of checking isinstance StrExpr, check with some new is_literal fn.
             # This can include IntExpr, BytesExpr, Final string RefExpr, and more future cases.
-            while isinstance(exprs[i], StrExpr) and isinstance(exprs[i + 1], StrExpr):
+
+            # NOTE: not sure where I should put these helpers
+            def is_literal_str(expr: Expression) -> bool:
+                return isinstance(expr, StrExpr) or isinstance(expr, RefExpr) and expr.is_final
+            
+            def get_literal_str(expr: Expression) -> str | None:
+                if isinstance(expr, StrExpr):
+                    return expr.value
+                elif isinstance(expr, RefExpr) and expr.is_final:
+                    return expr.final_value
+                return None
+            
+            while is_literal_str(exprs[i]) and is_literal_str(exprs[i + 1]):
                 first = exprs[i]
-                concatenated = first.value + exprs[i + 1].value
+                concatenated = get_literal_str(first) + get_literal_str(exprs[i + 1])
                 exprs = [*exprs[:i], StrExpr(concatenated, first.line), *exprs[i + 2 :]]
                 format_ops = [*format_ops[:i], format_ops[i + 1], *format_ops[i + 2 :]]
 
