@@ -722,7 +722,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                     return str(expr.final_value)
                 return None
             
-            while is_literal_str(exprs[i]) and is_literal_str(exprs[i + 1]):
+            while len(exprs) >= i + 2 and is_literal_str(exprs[i]) and is_literal_str(exprs[i + 1]):
                 first = exprs[i]
                 concatenated = get_literal_str(first) + get_literal_str(exprs[i + 1])
                 exprs = [*exprs[:i], StrExpr(concatenated, first.line), *exprs[i + 2 :]]
