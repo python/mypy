@@ -621,5 +621,5 @@ def test(x):
 
 L0:
     r0 = 'abc1233.14'
-    r1 = CPyStrBuild(2, r0, x)
+    r1 = CPyStr_Build(2, r0, x)
     return r1
