@@ -617,7 +617,9 @@ def test(x: str) -> str:
 
 [out]
 def test(x):
-    x, r0 :: str
+    x, r0, r1 :: str
 
 L0:
-   'abc1233.14 '
+    r0 = 'abc1233.14'
+    r1 = CPyStrBuild(2, r0, x)
+    return r1
