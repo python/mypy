@@ -322,7 +322,7 @@ def parse_config_file(
 
     If filename is None, fall back to default config files.
     """
-    stderr = stderr or sys.stderr
+    stderr = stderr if stderr is not None else sys.stderr
 
     ret = (
         _parse_individual_file(filename, stderr)

@@ -876,10 +876,9 @@ class BuildManager:
     def log(self, *message: str) -> None:
         if self.verbosity() >= 1:
             if message:
-                print("LOG: ", *message, file=self.stderr)
+                print("LOG: ", *message, file=self.stderr, flush=True)
             else:
-                print(file=self.stderr)
-            self.stderr.flush()
+                print(file=self.stderr, flush=True)
 
     def log_fine_grained(self, *message: str) -> None:
         import mypy.build
@@ -889,15 +888,13 @@ class BuildManager:
         elif mypy.build.DEBUG_FINE_GRAINED:
             # Output log in a simplified format that is quick to browse.
             if message:
-                print(*message, file=self.stderr)
+                print(*message, file=self.stderr, flush=True)
             else:
-                print(file=self.stderr)
-            self.stderr.flush()
+                print(file=self.stderr, flush=True)
 
     def trace(self, *message: str) -> None:
         if self.verbosity() >= 2:
-            print("TRACE:", *message, file=self.stderr)
-            self.stderr.flush()
+            print("TRACE:", *message, file=self.stderr, flush=True)
 
     def add_stats(self, **kwds: Any) -> None:
         for key, value in kwds.items():
