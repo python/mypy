@@ -712,16 +712,8 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 exprs.append(item.args[0])
 
         for i in range(len(exprs) - 1):
-            # NOTE: not sure where I should put these helpers
-            def is_literal_str(expr: Expression) -> bool:
-                return (
-                    isinstance(expr, StrExpr)
-                    or isinstance(expr, RefExpr)
-                    and isinstance(expr.node, Var)
-                    and expr.node.final_value is not None
-                )
-
             def get_literal_str(expr: Expression) -> str | None:
+                # NOTE: not sure where I should put this helper, this file? somewhere else?
                 if isinstance(expr, StrExpr):
                     return expr.value
                 elif (
@@ -733,11 +725,11 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 return None
 
             while (
-                len(exprs) >= i + 2 and is_literal_str(exprs[i]) and is_literal_str(exprs[i + 1])
+                len(exprs) >= i + 2
+                and (first := get_literal_str(exprs[i])) is not None
+                and (second := get_literal_str(exprs[i + 1])) is not None
             ):
-                first = exprs[i]
-                concatenated = StrExpr(get_literal_str(first) + get_literal_str(exprs[i + 1]))  # type: ignore [operator]
-                exprs = [*exprs[:i], concatenated, *exprs[i + 2 :]]
+                exprs = [*exprs[:i], StrExpr(first + second), *exprs[i + 2 :]]
                 format_ops = [*format_ops[:i], FormatOp.STR, *format_ops[i + 2 :]]
 
         substitutions = convert_format_expr_to_str(builder, format_ops, exprs, expr.line)
