@@ -711,9 +711,6 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 exprs.append(item.args[0])
 
         for i in range(len(exprs) - 1):
-            # TODO: instead of checking isinstance StrExpr, check with some new is_literal fn.
-            # This can include IntExpr, BytesExpr, Final string RefExpr, and more future cases.
-
             # NOTE: not sure where I should put these helpers
             def is_literal_str(expr: Expression) -> bool:
                 return isinstance(expr, StrExpr) or isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.final_value is not None
