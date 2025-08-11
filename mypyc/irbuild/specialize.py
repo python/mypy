@@ -31,6 +31,7 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     TupleExpr,
+    Var,
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
@@ -719,12 +720,12 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 if isinstance(expr, StrExpr):
                     return expr.value
                 elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.final_value is not None:
-                    return str(expr.final_value)
+                    return str(expr.node.final_value)
                 return None
             
             while len(exprs) >= i + 2 and is_literal_str(exprs[i]) and is_literal_str(exprs[i + 1]):
                 first = exprs[i]
-                concatenated = get_literal_str(first) + get_literal_str(exprs[i + 1])
+                concatenated = get_literal_str(first) + get_literal_str(exprs[i + 1])  # type: ignore [operator]
                 exprs = [*exprs[:i], StrExpr(concatenated, first.line), *exprs[i + 2 :]]
                 format_ops = [*format_ops[:i], format_ops[i + 1], *format_ops[i + 2 :]]
 
