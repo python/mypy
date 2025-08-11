@@ -728,16 +728,14 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
 
     @classmethod
     def read(cls, data: BytesIO) -> OverloadedFuncDef:
-        res = OverloadedFuncDef(
-            [cast(OverloadPart, read_symbol(data)) for _ in range(read_int(data))]
-        )
+        res = OverloadedFuncDef([read_overload_part(data) for _ in range(read_int(data))])
         typ = mypy.types.read_type_opt(data)
         if typ is not None:
             assert isinstance(typ, mypy.types.ProperType)
             res.type = typ
         res._fullname = read_str(data)
         if read_bool(data):
-            res.impl = cast(OverloadPart, read_symbol(data))
+            res.impl = read_overload_part(data)
             # set line for empty overload items, as not set in __init__
             if len(res.items) > 0:
                 res.set_line(res.impl.line)
@@ -1042,12 +1040,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
 
     @classmethod
     def read(cls, data: BytesIO) -> FuncDef:
-        ret = FuncDef(
-            read_str(data),
-            [],
-            Block([]),
-            cast("mypy.types.FunctionLike | None", mypy.types.read_type_opt(data)),
-        )
+        name = read_str(data)
+        typ: mypy.types.FunctionLike | None = None
+        if read_bool(data):
+            typ = mypy.types.read_function_like(data)
+        ret = FuncDef(name, [], Block([]), typ)
         ret._fullname = read_str(data)
         read_flags(data, ret, FUNCDEF_FLAGS)
         # NOTE: ret.info is set in the fixup phase.
@@ -1340,14 +1337,12 @@ class Var(SymbolNode):
     @classmethod
     def read(cls, data: BytesIO) -> Var:
         name = read_str(data)
-        type = mypy.types.read_type_opt(data)
-        setter_type = mypy.types.read_type_opt(data)
-        v = Var(name, type)
-        assert (
-            setter_type is None
-            or isinstance(setter_type, mypy.types.ProperType)
-            and isinstance(setter_type, mypy.types.CallableType)
-        )
+        typ = mypy.types.read_type_opt(data)
+        v = Var(name, typ)
+        setter_type: mypy.types.CallableType | None = None
+        if read_bool(data):
+            assert read_int(data) == mypy.types.CALLABLE_TYPE
+            setter_type = mypy.types.CallableType.read(data)
         v.setter_type = setter_type
         v.is_ready = False  # Override True default set in __init__
         v._fullname = read_str(data)
@@ -1480,7 +1475,7 @@ class ClassDef(Statement):
         res = ClassDef(
             read_str(data),
             Block([]),
-            cast(list[mypy.types.TypeVarLikeType], mypy.types.read_type_list(data)),
+            [mypy.types.read_type_var_like(data) for _ in range(read_int(data))],
         )
         res.fullname = read_str(data)
         return res
@@ -4275,32 +4270,26 @@ class TypeAlias(SymbolNode):
         write_str(data, self._fullname)
         self.target.write(data)
         mypy.types.write_type_list(data, self.alias_tvars)
-        write_bool(data, self.no_args)
-        write_bool(data, self.normalized)
         write_int(data, self.line)
         write_int(data, self.column)
+        write_bool(data, self.no_args)
+        write_bool(data, self.normalized)
         write_bool(data, self.python_3_12_type_alias)
 
     @classmethod
     def read(cls, data: BytesIO) -> TypeAlias:
         fullname = read_str(data)
         target = mypy.types.read_type(data)
-        alias_tvars = mypy.types.read_type_list(data)
-        assert all(isinstance(t, mypy.types.TypeVarLikeType) for t in alias_tvars)
-        no_args = read_bool(data)
-        normalized = read_bool(data)
-        line = read_int(data)
-        column = read_int(data)
-        python_3_12_type_alias = read_bool(data)
-        return cls(
+        alias_tvars = [mypy.types.read_type_var_like(data) for _ in range(read_int(data))]
+        return TypeAlias(
             target,
             fullname,
-            line,
-            column,
-            alias_tvars=cast(list[mypy.types.TypeVarLikeType], alias_tvars),
-            no_args=no_args,
-            normalized=normalized,
-            python_3_12_type_alias=python_3_12_type_alias,
+            read_int(data),
+            read_int(data),
+            alias_tvars=alias_tvars,
+            no_args=read_bool(data),
+            normalized=read_bool(data),
+            python_3_12_type_alias=read_bool(data),
         )
 
 
@@ -4562,7 +4551,7 @@ class SymbolTableNode:
         return stnode
 
     def write(self, data: BytesIO, prefix: str, name: str) -> None:
-        write_str(data, node_kinds[self.kind])
+        write_int(data, self.kind)
         write_bool(data, self.module_hidden)
         write_bool(data, self.module_public)
         write_bool(data, self.implicit)
@@ -4592,8 +4581,7 @@ class SymbolTableNode:
 
     @classmethod
     def read(cls, data: BytesIO) -> SymbolTableNode:
-        kind = inverse_node_kinds[read_str(data)]
-        sym = SymbolTableNode(kind, None)
+        sym = SymbolTableNode(read_int(data), None)
         sym.module_hidden = read_bool(data)
         sym.module_public = read_bool(data)
         sym.implicit = read_bool(data)
@@ -4912,3 +4900,12 @@ def read_symbol(data: BytesIO) -> mypy.nodes.SymbolNode:
     if marker == TYPE_VAR_TUPLE_EXPR:
         return mypy.nodes.TypeVarTupleExpr.read(data)
     assert False, f"Unknown symbol marker {marker}"
+
+
+def read_overload_part(data: BytesIO) -> OverloadPart:
+    marker = read_int(data)
+    if marker == DECORATOR:
+        return Decorator.read(data)
+    if marker == FUNC_DEF:
+        return FuncDef.read(data)
+    assert False, f"Invalid marker for an OverloadPart {marker}"

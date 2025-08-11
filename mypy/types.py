@@ -2012,7 +2012,7 @@ class Parameters(ProperType):
             # we would spend ~20% of types deserialization time in Enum.__call__().
             [ARG_KINDS[ak] for ak in read_int_list(data)],
             read_str_opt_list(data),
-            variables=cast(list[TypeVarLikeType], read_type_list(data)),
+            variables=[read_type_var_like(data) for _ in range(read_int(data))],
             imprecise_arg_kinds=read_bool(data),
         )
 
@@ -2544,7 +2544,7 @@ class CallableType(FunctionLike):
             read_type(data),
             fallback,
             name=read_str_opt(data),
-            variables=cast(list[TypeVarLikeType], read_type_list(data)),
+            variables=[read_type_var_like(data) for _ in range(read_int(data))],
             is_ellipsis_args=read_bool(data),
             implicit=read_bool(data),
             is_bound=read_bool(data),
@@ -4173,6 +4173,26 @@ def read_type(data: BytesIO) -> Type:
     if marker == DELETED_TYPE:
         return DeletedType.read(data)
     assert False, f"Unknown type marker {marker}"
+
+
+def read_function_like(data: BytesIO) -> FunctionLike:
+    marker = read_int(data)
+    if marker == CALLABLE_TYPE:
+        return CallableType.read(data)
+    if marker == OVERLOADED:
+        return Overloaded.read(data)
+    assert False, f"Invalid type marker for FunctionLike {marker}"
+
+
+def read_type_var_like(data: BytesIO) -> TypeVarLikeType:
+    marker = read_int(data)
+    if marker == TYPE_VAR_TYPE:
+        return TypeVarType.read(data)
+    if marker == PARAM_SPEC_TYPE:
+        return ParamSpecType.read(data)
+    if marker == TYPE_VAR_TUPLE_TYPE:
+        return TypeVarTupleType.read(data)
+    assert False, f"Invalid type marker for TypeVarLikeType {marker}"
 
 
 def read_type_opt(data: BytesIO) -> Type | None:

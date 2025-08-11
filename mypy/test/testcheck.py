@@ -6,11 +6,11 @@ import os
 import re
 import sys
 import tempfile
-from mypy.cache import BytesIO
 from pathlib import Path
 
 from mypy import build
 from mypy.build import Graph
+from mypy.cache import BytesIO
 from mypy.errors import CompileError
 from mypy.fixup import fixup_module
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
