@@ -611,18 +611,19 @@ from typing import Final
 string: Final = "abc"
 integer: Final = 123
 floating: Final = 3.14
-comp: Final = 3 + 4j
+boolean: Final = True
+none: Final = None
 
 def test(x: str) -> str:
-    return f"{string}{integer}{floating}{comp}{x}{comp}{floating}{integer}{string}{x}{string}{integer}{floating}{comp}{x}"
+    return f"{string}{integer}{floating}{boolean}{none}{x}{none}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{none}{x}"
 
 [out]
 def test(x):
     x, r0, r1, r2, r3 :: str
 
 L0:
-    r0 = 'abc1233.14(3+4j)'
-    r1 = '(3+4j)3.14123abc'
-    r2 = 'abc1233.14(3+4j)'
+    r0 = 'abc1233.14TrueNone'
+    r1 = 'NoneTrue3.14123abc'
+    r2 = 'abc1233.14TrueNone'
     r3 = CPyStr_Build(6, r0, x, r1, x, r2, x)
     return r3
