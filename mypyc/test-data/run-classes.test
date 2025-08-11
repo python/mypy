@@ -2716,6 +2716,11 @@ from typing import overload, Optional, Union
 
 class C:
     def foo(self, x: Test) -> bool:
+        assert Test.ONE.is_one()
+        assert x.next(2) == Test.THREE
+        assert x.prev(2) == Test.ONE
+        assert x.enigma(22)
+        assert x.enigma("22") == 22
         return x.is_one(inverse=True)
 
 class Test(Enum):
