@@ -718,7 +718,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             def get_literal_str(expr: Expression) -> str | None:
                 if isinstance(expr, StrExpr):
                     return expr.value
-                elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_final:
+                elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.final_value is not None:
                     return str(expr.final_value)
                 return None
             
