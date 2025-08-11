@@ -592,7 +592,11 @@ class FancyFormatter:
     """
 
     def __init__(
-        self, f_out: IO[str] | None, f_err: IO[str] | None, hide_error_codes: bool, hide_success: bool = False
+        self,
+        f_out: IO[str] | None,
+        f_err: IO[str] | None,
+        hide_error_codes: bool,
+        hide_success: bool = False,
     ) -> None:
         self.hide_error_codes = hide_error_codes
         self.hide_success = hide_success
@@ -601,7 +605,11 @@ class FancyFormatter:
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
             return
-        if (f_out is None or f_err is None) or not should_force_color() and (not f_out.isatty() or not f_err.isatty()):
+        if (
+            (f_out is None or f_err is None)
+            or not should_force_color()
+            and (not f_out.isatty() or not f_err.isatty())
+        ):
             self.dummy_term = True
             return
         if sys.platform == "win32":

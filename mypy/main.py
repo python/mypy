@@ -162,7 +162,11 @@ def main(
             print(summary, file=stdout, flush=True)
         # Only notes should also output success
         elif not messages or n_notes == len(messages):
-            print(formatter.format_success(len(sources), options.color_output), file=stdout, flush=True)
+            print(
+                formatter.format_success(len(sources), options.color_output),
+                file=stdout,
+                flush=True,
+            )
 
     if options.install_types and not options.non_interactive:
         result = install_types(formatter, options, after_run=True, non_interactive=False)
@@ -253,6 +257,7 @@ def show_messages(
         if options.color_output:
             msg = formatter.colorize(msg)
         print(msg, file=f, flush=True)
+
 
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
