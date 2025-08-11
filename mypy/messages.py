@@ -1632,6 +1632,8 @@ class MessageBuilder:
         # respective types of the current iteration here so that we can report the error
         # later if it is persistent over all iteration steps:
         for watcher in self.errors.get_watchers():
+            if watcher._filter:
+                return
             if isinstance(watcher, IterationErrorWatcher):
                 watcher.iteration_dependent_errors.nonoverlapping_types[-1][
                     (ctx.line, ctx.column, ctx.end_line, ctx.end_column, kind)

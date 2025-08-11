@@ -2476,7 +2476,7 @@ while True:
 # flags: --strict-equality
 
 for y in [1.0]:
-    if y is not None or y != "None":  # E: Non-overlapping equality check (left operand type: "float", right operand type: "Literal['None']")
+    if y is not None or y != "None":
         ...
 
 [builtins fixtures/primitives.pyi]
