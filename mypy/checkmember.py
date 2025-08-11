@@ -68,6 +68,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -1400,6 +1401,67 @@ def analyze_typeddict_access(
             fallback=mx.chk.named_type("builtins.function"),
             name=name,
         )
+    elif name == "get":
+        # synthesize TypedDict.get() overloads
+        t = TypeVarType(
+            "T",
+            "T",
+            id=TypeVarId(-1),
+            values=[],
+            upper_bound=mx.chk.named_type("builtins.object"),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
+        str_type = mx.chk.named_type("builtins.str")
+        fn_type = mx.chk.named_type("builtins.function")
+        object_type = mx.chk.named_type("builtins.object")
+
+        overloads: list[CallableType] = []
+        # add two overloads per TypedDictType spec
+        for key, val in typ.items.items():
+            # first overload: def(Literal[key]) -> val
+            no_default = CallableType(
+                arg_types=[LiteralType(key, fallback=str_type)],
+                arg_kinds=[ARG_POS],
+                arg_names=[None],
+                ret_type=val,
+                fallback=fn_type,
+                name=name,
+            )
+            # second Overload: def [T] (Literal[key], default: T | Val, /) -> T | Val
+            with_default = CallableType(
+                variables=[t],
+                arg_types=[LiteralType(key, fallback=str_type), UnionType.make_union([val, t])],
+                arg_kinds=[ARG_POS, ARG_POS],
+                arg_names=[None, None],
+                ret_type=UnionType.make_union([val, t]),
+                fallback=fn_type,
+                name=name,
+            )
+            overloads.append(no_default)
+            overloads.append(with_default)
+
+        # finally, add fallback overloads when a key is used that is not in the TypedDict
+        # def (str) -> object
+        fallback_no_default = CallableType(
+            arg_types=[str_type],
+            arg_kinds=[ARG_POS],
+            arg_names=[None],
+            ret_type=object_type,
+            fallback=fn_type,
+            name=name,
+        )
+        # def (str, object) -> object
+        fallback_with_default = CallableType(
+            arg_types=[str_type, object_type],
+            arg_kinds=[ARG_POS, ARG_POS],
+            arg_names=[None, None],
+            ret_type=object_type,
+            fallback=fn_type,
+            name=name,
+        )
+        overloads.append(fallback_no_default)
+        overloads.append(fallback_with_default)
+        return Overloaded(overloads)
     return _analyze_member_access(name, typ.fallback, mx, override_info)
 
 
