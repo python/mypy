@@ -712,6 +712,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 exprs.append(item.args[0])
 
         for i in range(len(exprs) - 1):
+
             def get_literal_str(expr: Expression) -> str | None:
                 # NOTE: not sure where I should put this helper, this file? somewhere else?
                 if isinstance(expr, StrExpr):
