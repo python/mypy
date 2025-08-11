@@ -411,7 +411,7 @@ class CapturableArgumentParser(argparse.ArgumentParser):
         if message:
             if file is None:
                 file = self.stderr
-            print(message, file=file, end='')
+            print(message, file=file, end="")
 
     # ===============
     # Exiting methods
