@@ -623,5 +623,5 @@ L0:
     r0 = 'abc1233.14'
     r1 = '3.14123abc'
     r2 = 'abc1233.14'
-    r3 = CPyStr_Build(2, r0, x, r1, x, r2)
+    r3 = CPyStr_Build(6, r0, x, r1, x, r2, x)
     return r3
