@@ -77,7 +77,7 @@ def main(
     # As a common pattern around the codebase, we tend to do this instead of
     # using default arguments that are mutable objects (due to Python's
     # famously counterintuitive behavior about those): use a sentinel, then
-    # set.
+    # set. If there is no `= None` after the type, we don't manipulate it thus.
     stdout = stdout if stdout is not None else sys.stdout
     stderr = stderr if stderr is not None else sys.stderr
     # sys.stdout and sys.stderr might technically be None, but this fact isn't
@@ -192,14 +192,12 @@ def run_build(
     options: Options,
     fscache: FileSystemCache,
     t0: float,
-    stdout: TextIO | None = None,
-    stderr: TextIO | None = None,
+    stdout: TextIO | None,
+    stderr: TextIO | None,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
-    stdout = stdout if stdout is not None else sys.stdout
-    stderr = stderr if stderr is not None else sys.stderr
     messages = []
     messages_by_file = defaultdict(list)
 
