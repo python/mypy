@@ -12,7 +12,7 @@ from mypy.checkstrformat import (
 )
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
-from mypy.nodes import Context, Expression
+from mypy.nodes import Context, Expression, StrExpr
 from mypy.options import Options
 from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (
