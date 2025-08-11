@@ -714,16 +714,27 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
         for i in range(len(exprs) - 1):
             # NOTE: not sure where I should put these helpers
             def is_literal_str(expr: Expression) -> bool:
-                return isinstance(expr, StrExpr) or isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.final_value is not None
-            
+                return (
+                    isinstance(expr, StrExpr)
+                    or isinstance(expr, RefExpr)
+                    and isinstance(expr.node, Var)
+                    and expr.node.final_value is not None
+                )
+
             def get_literal_str(expr: Expression) -> str | None:
                 if isinstance(expr, StrExpr):
                     return expr.value
-                elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.final_value is not None:
+                elif (
+                    isinstance(expr, RefExpr)
+                    and isinstance(expr.node, Var)
+                    and expr.node.final_value is not None
+                ):
                     return str(expr.node.final_value)
                 return None
-            
-            while len(exprs) >= i + 2 and is_literal_str(exprs[i]) and is_literal_str(exprs[i + 1]):
+
+            while (
+                len(exprs) >= i + 2 and is_literal_str(exprs[i]) and is_literal_str(exprs[i + 1])
+            ):
                 first = exprs[i]
                 concatenated = StrExpr(get_literal_str(first) + get_literal_str(exprs[i + 1]))  # type: ignore [operator]
                 exprs = [*exprs[:i], concatenated, *exprs[i + 2 :]]
