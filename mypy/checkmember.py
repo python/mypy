@@ -1413,7 +1413,7 @@ def analyze_typeddict_access(
             id=TypeVarId(-1),
             values=[],
             upper_bound=object_type,
-            default=AnyType(TypeOfAny.unannotated),
+            default=AnyType(TypeOfAny.from_omitted_generics),
         )
         overloads: list[CallableType] = []
         for key, val in typ.items.items():
