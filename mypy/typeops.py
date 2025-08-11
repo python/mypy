@@ -521,15 +521,16 @@ def callable_corresponding_argument(
 
         # def right(a: int = ...) -> None: ...
         # def left(__a: int = ..., *, a: int = ...) -> None: ...
-        from mypy.subtypes import is_equivalent
+        from mypy.meet import meet_types
 
         if (
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
-            and is_equivalent(by_name.typ, by_pos.typ)
         ):
-            return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
+            return FormalArgument(
+                by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
+            )
     return by_name if by_name is not None else by_pos
 
 
