@@ -1016,7 +1016,7 @@ class A: pass
 D = TypedDict('D', {'x': List[int], 'y': int})
 d: D
 reveal_type(d.get('x', [])) # N: Revealed type is "builtins.list[builtins.int]"
-d.get('x', ['x']) # E: List item 0 has incompatible type "str"; expected "int"
+reveal_type(d.get('x', ['x']))  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
 a = ['']
 reveal_type(d.get('x', a)) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
 [builtins fixtures/dict.pyi]
@@ -1026,14 +1026,22 @@ reveal_type(d.get('x', a)) # N: Revealed type is "Union[builtins.list[builtins.i
 from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
-d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
+d.get() # E: All overload variants of "get" require at least one argument \
         # N: Possible overload variants: \
-        # N:     def get(self, k: str) -> object \
-        # N:     def [V] get(self, k: str, default: object) -> object
-d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
+        # N:     def get(Literal['x'], /) -> int \
+        # N:     def [T] get(Literal['x'], Union[int, T], /) -> Union[int, T] \
+        # N:     def get(Literal['y'], /) -> str \
+        # N:     def [T] get(Literal['y'], Union[str, T], /) -> Union[str, T] \
+        # N:     def get(str, /) -> object \
+        # N:     def get(str, object, /) -> object
+d.get('x', 1, 2) # E: No overload variant of "get" matches argument types "str", "int", "int" \
                  # N: Possible overload variants: \
-                 # N:     def get(self, k: str) -> object \
-                 # N:     def [V] get(self, k: str, default: Union[int, V]) -> object
+                 # N:     def get(Literal['x'], /) -> int \
+                 # N:     def [T] get(Literal['x'], Union[int, T], /) -> Union[int, T] \
+                 # N:     def get(Literal['y'], /) -> str \
+                 # N:     def [T] get(Literal['y'], Union[int, T], /) -> Union[str, T] \
+                 # N:     def get(str, /) -> object \
+                 # N:     def get(str, object, /) -> object
 x = d.get('z')
 reveal_type(x) # N: Revealed type is "builtins.object"
 s = ''
