@@ -716,13 +716,13 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
 
             # NOTE: not sure where I should put these helpers
             def is_literal_str(expr: Expression) -> bool:
-                return isinstance(expr, StrExpr) or isinstance(expr, RefExpr) and expr.is_final
+                return isinstance(expr, StrExpr) or isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.final_value is not None
             
             def get_literal_str(expr: Expression) -> str | None:
                 if isinstance(expr, StrExpr):
                     return expr.value
-                elif isinstance(expr, RefExpr) and expr.is_final:
-                    return expr.final_value
+                elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_final:
+                    return str(expr.final_value)
                 return None
             
             while is_literal_str(exprs[i]) and is_literal_str(exprs[i + 1]):
