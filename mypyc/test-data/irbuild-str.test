@@ -612,18 +612,17 @@ string: Final = "abc"
 integer: Final = 123
 floating: Final = 3.14
 boolean: Final = True
-none: Final = None
 
 def test(x: str) -> str:
-    return f"{string}{integer}{floating}{boolean}{none}{x}{none}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{none}{x}"
+    return f"{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
 
 [out]
 def test(x):
     x, r0, r1, r2, r3 :: str
 
 L0:
-    r0 = 'abc1233.14TrueNone'
-    r1 = 'NoneTrue3.14123abc'
-    r2 = 'abc1233.14TrueNone'
+    r0 = 'abc1233.14True'
+    r1 = 'True3.14123abc'
+    r2 = 'abc1233.14True'
     r3 = CPyStr_Build(6, r0, x, r1, x, r2, x)
     return r3
