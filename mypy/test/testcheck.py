@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import tempfile
-from io import BytesIO
+from mypy.cache import BytesIO
 from pathlib import Path
 
 from mypy import build
@@ -265,8 +265,7 @@ class TypeCheckSuite(DataSuite):
             data = BytesIO()
             tree.write(data)
             new_data = BytesIO()
-            data.seek(0)
-            new_tree = MypyFile.read(data)
+            new_tree = MypyFile.read(BytesIO(data.getvalue()))
             fixup_module(new_tree, manager.modules, False)
             new_tree.write(new_data)
             assert data.getvalue() == new_data.getvalue()

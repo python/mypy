@@ -26,7 +26,6 @@ import sys
 import time
 import types
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
-from io import BytesIO
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -41,6 +40,7 @@ from typing import (
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.semanal_main
+from mypy.cache import BytesIO
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -3443,7 +3443,6 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
     for id in modules:
         graph[id].fix_cross_refs()
     t2 = time.time()
-    # touch 22 again
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
 

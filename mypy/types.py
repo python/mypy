@@ -5,7 +5,6 @@ from __future__ import annotations
 import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from io import BytesIO
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -23,8 +22,7 @@ from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
 import mypy.nodes
 from mypy.bogus_type import Bogus
 from mypy.cache import (
-    OPT_NO,
-    OPT_YES,
+    BytesIO,
     read_bool,
     read_int,
     read_int_list,
@@ -1359,7 +1357,7 @@ class AnyType(ProperType):
 
     @classmethod
     def read(cls, data: BytesIO) -> AnyType:
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             assert read_int(data) == ANY_TYPE
             source_any = AnyType.read(data)
         else:
@@ -1719,9 +1717,9 @@ class Instance(ProperType):
         write_type_list(data, self.args)
         write_type_opt(data, self.last_known_value)
         if self.extra_attrs is None:
-            write_int(data, OPT_NO)
+            write_bool(data, False)
         else:
-            write_int(data, OPT_YES)
+            write_bool(data, True)
             self.extra_attrs.write(data)
 
     @classmethod
@@ -1729,10 +1727,10 @@ class Instance(ProperType):
         type_ref = read_str(data)
         inst = Instance(NOT_READY, read_type_list(data))
         inst.type_ref = type_ref
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             assert read_int(data) == LITERAL_TYPE
             inst.last_known_value = LiteralType.read(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             inst.extra_attrs = ExtraAttrs.read(data)
         return inst
 
@@ -4178,19 +4176,17 @@ def read_type(data: BytesIO) -> Type:
 
 
 def read_type_opt(data: BytesIO) -> Type | None:
-    marker = read_int(data)
-    if marker == OPT_YES:
+    if read_bool(data):
         return read_type(data)
-    assert marker == OPT_NO
     return None
 
 
 def write_type_opt(data: BytesIO, value: Type | None) -> None:
     if value is not None:
-        write_int(data, OPT_YES)
+        write_bool(data, True)
         value.write(data)
     else:
-        write_int(data, OPT_NO)
+        write_bool(data, False)
 
 
 def read_type_list(data: BytesIO) -> list[Type]:

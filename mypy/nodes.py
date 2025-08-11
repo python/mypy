@@ -8,7 +8,6 @@ from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from enum import Enum, unique
-from io import BytesIO
 from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
@@ -18,8 +17,7 @@ import mypy.strconv
 from mypy.cache import (
     LITERAL_COMPLEX,
     LITERAL_NONE,
-    OPT_NO,
-    OPT_YES,
+    BytesIO,
     read_bool,
     read_float,
     read_int,
@@ -720,9 +718,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         mypy.types.write_type_opt(data, self.type)
         write_str(data, self._fullname)
         if self.impl is None:
-            write_int(data, OPT_NO)
+            write_bool(data, False)
         else:
-            write_int(data, OPT_YES)
+            write_bool(data, True)
             self.impl.write(data)
         write_flags(data, self, FUNCBASE_FLAGS)
         write_str_opt(data, self.deprecated)
@@ -738,7 +736,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             assert isinstance(typ, mypy.types.ProperType)
             res.type = typ
         res._fullname = read_str(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             res.impl = cast(OverloadPart, read_symbol(data))
             # set line for empty overload items, as not set in __init__
             if len(res.items) > 0:
@@ -1035,9 +1033,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         write_int_list(data, [int(ak.value) for ak in self.arg_kinds])
         write_int(data, self.abstract_status)
         if self.dataclass_transform_spec is None:
-            write_int(data, OPT_NO)
+            write_bool(data, False)
         else:
-            write_int(data, OPT_YES)
+            write_bool(data, True)
             self.dataclass_transform_spec.write(data)
         write_str_opt(data, self.deprecated)
         write_str_opt(data, self.original_first_arg)
@@ -1056,7 +1054,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         ret.arg_names = read_str_opt_list(data)
         ret.arg_kinds = [ARG_KINDS[ak] for ak in read_int_list(data)]
         ret.abstract_status = read_int(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             ret.dataclass_transform_spec = DataclassTransformSpec.read(data)
         ret.deprecated = read_str_opt(data)
         ret.original_first_arg = read_str_opt(data)
@@ -3931,16 +3929,16 @@ class TypeInfo(SymbolNode):
         write_flags(data, self, TypeInfo.FLAGS)
         write_str(data, json.dumps(self.metadata))
         if self.slots is None:
-            write_int(data, OPT_NO)
+            write_bool(data, False)
         else:
-            write_int(data, OPT_YES)
+            write_bool(data, True)
             write_str_list(data, sorted(self.slots))
         write_str_list(data, self.deletable_attributes)
         mypy.types.write_type_opt(data, self.self_type)
         if self.dataclass_transform_spec is None:
-            write_int(data, OPT_NO)
+            write_bool(data, False)
         else:
-            write_int(data, OPT_YES)
+            write_bool(data, True)
             self.dataclass_transform_spec.write(data)
         write_str_opt(data, self.deprecated)
 
@@ -3974,30 +3972,32 @@ class TypeInfo(SymbolNode):
         # rechecked, it can tell that the mro has changed.
         ti._mro_refs = read_str_list(data)
         ti._promote = cast(list[mypy.types.ProperType], mypy.types.read_type_list(data))
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             assert read_int(data) == mypy.types.INSTANCE
             ti.alt_promote = mypy.types.Instance.read(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             assert read_int(data) == mypy.types.INSTANCE
             ti.declared_metaclass = mypy.types.Instance.read(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             assert read_int(data) == mypy.types.INSTANCE
             ti.metaclass_type = mypy.types.Instance.read(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             assert read_int(data) == mypy.types.TUPLE_TYPE
             ti.tuple_type = mypy.types.TupleType.read(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             assert read_int(data) == mypy.types.TYPED_DICT_TYPE
             ti.typeddict_type = mypy.types.TypedDictType.read(data)
         read_flags(data, ti, TypeInfo.FLAGS)
-        ti.metadata = json.loads(read_str(data))
-        if read_int(data) == OPT_YES:
+        metadata = read_str(data)
+        if metadata != "{}":
+            ti.metadata = json.loads(metadata)
+        if read_bool(data):
             ti.slots = set(read_str_list(data))
         ti.deletable_attributes = read_str_list(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             assert read_int(data) == mypy.types.TYPE_VAR_TYPE
             ti.self_type = mypy.types.TypeVarType.read(data)
-        if read_int(data) == OPT_YES:
+        if read_bool(data):
             ti.dataclass_transform_spec = DataclassTransformSpec.read(data)
         ti.deprecated = read_str_opt(data)
         return ti

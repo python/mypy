@@ -1,28 +1,46 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from io import BytesIO
 from typing import Final
 
-INT_SIZE: Final = 2
-LONG_INT_SIZE: Final = 10
-FLOAT_LEN: Final = 32
+
+class BytesIO:
+    def __init__(self, buffer: bytes | None = None) -> None:
+        if buffer is None:
+            self.write_buffer: bytearray | None = bytearray()
+            self.read_buffer = None
+        else:
+            self.read_buffer = buffer
+            self.write_buffer = None
+        self.pos = 0
+
+    def read(self, size: int) -> bytes:
+        assert self.read_buffer is not None
+        pos = self.pos
+        self.pos += size
+        return self.read_buffer[pos : self.pos]
+
+    def write(self, chunk: bytes) -> None:
+        assert self.write_buffer is not None
+        self.write_buffer += chunk
+
+    def getvalue(self) -> bytes:
+        assert self.write_buffer is not None
+        return bytes(self.write_buffer)
+
+
+INT_LEN: Final = 10
+FLOAT_LEN: Final = 24
 
 
 def read_int(data: BytesIO) -> int:
-    return int.from_bytes(data.read(INT_SIZE), "big", signed=True)
+    return int(data.read(INT_LEN).decode())
 
 
 def write_int(data: BytesIO, value: int) -> None:
-    data.write(value.to_bytes(INT_SIZE, "big", signed=True))
-
-
-def read_long_int(data: BytesIO) -> int:
-    return int.from_bytes(data.read(LONG_INT_SIZE), "big", signed=True)
-
-
-def write_long_int(data: BytesIO, value: int) -> None:
-    data.write(value.to_bytes(LONG_INT_SIZE, "big", signed=True))
+    str_val = str(value)
+    str_val = " " * (INT_LEN - len(str_val)) + str_val
+    data.write(str_val.encode())
 
 
 def read_str(data: BytesIO) -> str:
@@ -67,7 +85,7 @@ LITERAL_NONE: Final = 6
 
 def read_literal(data: BytesIO, marker: int) -> int | str | bool | float:
     if marker == LITERAL_INT:
-        return read_long_int(data)
+        return read_int(data)
     elif marker == LITERAL_STR:
         return read_str(data)
     elif marker == LITERAL_BOOL:
@@ -83,7 +101,7 @@ def write_literal(data: BytesIO, value: int | str | bool | float | complex | Non
         write_bool(data, value)
     elif isinstance(value, int):
         write_int(data, LITERAL_INT)
-        write_long_int(data, value)
+        write_int(data, value)
     elif isinstance(value, str):
         write_int(data, LITERAL_STR)
         write_str(data, value)
@@ -98,40 +116,32 @@ def write_literal(data: BytesIO, value: int | str | bool | float | complex | Non
         write_int(data, LITERAL_NONE)
 
 
-OPT_NO: Final = 0
-OPT_YES: Final = 1
-
-
 def read_int_opt(data: BytesIO) -> int | None:
-    marker = read_int(data)
-    if marker == OPT_YES:
+    if read_bool(data):
         return read_int(data)
-    assert marker == OPT_NO
     return None
 
 
 def write_int_opt(data: BytesIO, value: int | None) -> None:
     if value is not None:
-        write_int(data, OPT_YES)
+        write_bool(data, True)
         write_int(data, value)
     else:
-        write_int(data, OPT_NO)
+        write_bool(data, False)
 
 
 def read_str_opt(data: BytesIO) -> str | None:
-    marker = read_int(data)
-    if marker == OPT_YES:
+    if read_bool(data):
         return read_str(data)
-    assert marker == OPT_NO
     return None
 
 
 def write_str_opt(data: BytesIO, value: str | None) -> None:
     if value is not None:
-        write_int(data, OPT_YES)
+        write_bool(data, True)
         write_str(data, value)
     else:
-        write_int(data, OPT_NO)
+        write_bool(data, False)
 
 
 def read_int_list(data: BytesIO) -> list[int]:
