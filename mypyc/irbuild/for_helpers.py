@@ -22,6 +22,7 @@ from mypy.nodes import (
     SetExpr,
     TupleExpr,
     TypeAlias,
+    Var,
 )
 from mypyc.ir.ops import (
     ERR_NEVER,
@@ -1168,7 +1169,10 @@ class ForFilter(ForGenerator):
         return True
 
     def init(self, index: Lvalue, func: Expression, iterable: Expression) -> None:
-        self.filter_func = self.builder.accept(func)
+        if isinstance(func, NameExpr) and isinstance(func.node, Var) and func.node.fullname == "builtins.None":
+            self.filter_func = None
+        else:
+            self.filter_func = self.builder.accept(func)
         self.iterable = iterable
         self.index = index
 
@@ -1194,8 +1198,11 @@ class ForFilter(ForGenerator):
         builder = self.builder
         line = self.line
         item = builder.read(builder.get_assignment_target(self.index), line)
-        # TODO: implement logic to handle c calls of native functions
-        result = builder.py_call(self.filter_func, [item], line)
+        if self.filter_func is None:
+            result = item
+        else:
+            # TODO: implement logic to handle c calls of native functions
+            result = builder.py_call(self.filter_func, [item], line)
 
         # Now, filter: only enter the body if func(item) is truthy
         cont_block, rest_block = BasicBlock(), BasicBlock()

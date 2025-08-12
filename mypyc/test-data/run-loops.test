@@ -590,6 +590,20 @@ print(f([]))
 0
 0
 
+[case testRunForFilterNone]
+def f(a: list[int]) -> int:
+    c = 0
+    for x in filter(None, a):
+        c += 1
+    return c
+
+[file driver.py]
+from native import f
+print(f([0, 1, 2, 3, 4, 5, 6]))
+
+[out]
+6
+
 [case testRunForFilterEdgeCases]
 def f(a: list[int]) -> int:
     s = 0

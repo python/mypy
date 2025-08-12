@@ -3617,3 +3617,47 @@ L5:
 L6:
 L7:
     return s
+
+[case testForFilterNone]
+def f(a: list[int]) -> int:
+    c = 0
+    for x in filter(None, a):
+        c += 1
+    return 0
+
+[out]
+def f(a):
+    a :: list
+    c :: int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, x :: int
+    r5 :: bit
+    r6 :: int
+    r7 :: native_int
+L0:
+    c = 0
+    r0 = 0
+L1:
+    r1 = var_object_size a
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L6 :: bool
+L2:
+    r3 = list_get_item_unsafe a, r0
+    r4 = unbox(int, r3)
+    x = r4
+    r5 = x != 0
+    if r5 goto L4 else goto L3 :: bool
+L3:
+    goto L5
+L4:
+    r6 = CPyTagged_Add(c, 2)
+    c = r6
+L5:
+    r7 = r0 + 1
+    r0 = r7
+    goto L1
+L6:
+L7:
+    return 0
