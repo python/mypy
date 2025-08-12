@@ -1160,6 +1160,7 @@ class ForZip(ForGenerator):
         for gen in self.gens:
             gen.gen_cleanup()
 
+
 class ForMap(ForGenerator):
     """Generate optimized IR for a for loop over map(f, ...)."""
 
@@ -1187,7 +1188,7 @@ class ForMap(ForGenerator):
                     self.builder,
                     name_expr,
                     iterable_expr,
-                    #self.gens[-1].body_block if self.gens else self.body_block,
+                    # self.gens[-1].body_block if self.gens else self.body_block,
                     self.cond_blocks[i],
                     self.loop_exit,
                     self.line,
@@ -1208,13 +1209,13 @@ class ForMap(ForGenerator):
 
         for gen in self.gens:
             gen.begin_body()
-        
+
         # This goes here to prevent a circular import
         from mypyc.irbuild.expression import transform_call_expr
 
         call_expr = CallExpr(
             self.func_expr,
-            #items,
+            # items,
             [gen.index for gen in self.gens],
             [ARG_POS] * len(self.gens),
             [None] * len(self.gens),
