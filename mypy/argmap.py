@@ -17,6 +17,7 @@ from mypy.types import (
     TypeOfAny,
     TypeVarTupleType,
     UnpackType,
+    UnionType,
     get_proper_type,
 )
 
@@ -211,6 +212,18 @@ class ArgTypeExpander:
                     # Just return `Any`, other parts of code would raise
                     # a different error for improper use.
                     return AnyType(TypeOfAny.from_error)
+            elif isinstance(actual_type, UnionType):
+                item_types = [
+                    self.expand_actual_type(
+                        item,
+                        actual_kind=actual_kind,
+                        formal_name=formal_name,
+                        formal_kind=formal_kind,
+                        allow_unpack=allow_unpack,
+                    )
+                    for item in actual_type.items
+                ]
+                return UnionType.make_union(item_types)
             elif isinstance(actual_type, TupleType):
                 # Get the next tuple item of a tuple *arg.
                 if self.tuple_index >= len(actual_type.items):
