@@ -1170,7 +1170,11 @@ class ForFilter(ForGenerator):
 
     def init(self, index: Lvalue, func: Expression, iterable: Expression) -> None:
         self.filter_func_def = func
-        if isinstance(func, NameExpr) and isinstance(func.node, Var) and func.node.fullname == "builtins.None":
+        if (
+            isinstance(func, NameExpr)
+            and isinstance(func.node, Var)
+            and func.node.fullname == "builtins.None"
+        ):
             self.filter_func_val = None
         else:
             self.filter_func_val = self.builder.accept(func)
