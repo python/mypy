@@ -983,7 +983,7 @@ class GroupGenerator:
             emitter.emit_line(
                 (
                     '{{"{name}", (PyCFunction){prefix}{cname}, {flag} | METH_KEYWORDS, '
-                    "{doc} /* docstring */}},"
+                    "PyDoc_STR({doc}) /* docstring */}},"
                 ).format(
                     name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag, doc=doc
                 )

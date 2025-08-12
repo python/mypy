@@ -731,6 +731,53 @@ assert a(x=x)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+# https://github.com/python/mypy/issues/19575
+[case testNoCrashOnDunderCallTypeGuardTemporaryObject]
+from typing_extensions import TypeGuard
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeGuard[int]:
+        return True
+x = object()
+if E()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnDunderCallTypeIsTemporaryObject]
+from typing_extensions import TypeIs
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeIs[int]:
+        return True
+x = object()
+if E()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnDunderCallTypeIsTemporaryObjectGeneric]
+from typing import Generic, TypeVar
+from typing_extensions import TypeIs
+T = TypeVar("T")
+class E(Generic[T]):
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeIs[T]:
+        return True
+x = object()
+if E[int]()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardTemporaryObjectWithKeywordArg]
+from typing_extensions import TypeGuard
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeGuard[int]:
+        return True
+x = object()
+if E()(o=x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeGuardRestrictAwaySingleInvariant]
 from typing import List
 from typing_extensions import TypeGuard
