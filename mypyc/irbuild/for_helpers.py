@@ -490,6 +490,16 @@ def make_for_loop_generator(
             for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
             for_list.init(expr_reg, target_type, reverse=True)
             return for_list
+        
+        elif (
+            expr.callee.fullname == "builtins.filter"
+            and len(expr.args) == 2
+            and all(k == ARG_POS for k in expr.arg_kinds)
+        ):
+            for_filter = ForFilter(builder, index, body_block, loop_exit, line, nested)
+            for_filter.init(index, expr.args[0], expr.args[1])
+            return for_filter
+    
     if isinstance(expr, CallExpr) and isinstance(expr.callee, MemberExpr) and not expr.args:
         # Special cases for dictionary iterator methods, like dict.items().
         rtype = builder.node_type(expr.callee.expr)
@@ -1147,3 +1157,45 @@ class ForZip(ForGenerator):
     def gen_cleanup(self) -> None:
         for gen in self.gens:
             gen.gen_cleanup()
+
+
+class ForFilter(ForGenerator):
+    """Generate optimized IR for a for loop over filter(f, iterable)."""
+
+    def need_cleanup(self) -> bool:
+        # The wrapped for loops might need cleanup. We might generate a
+        # redundant cleanup block, but that's okay.
+        return True
+
+    def init(self, index: Lvalue, func: Expression, iterable: Expression) -> None:
+        self.filter_func = self.builder.accept(func)
+        self.iterable = iterable
+        self.index = index
+
+        self.gen = make_for_loop_generator(
+            self.builder, self.index, self.iterable, self.body_block, self.loop_exit, self.line, is_async=False, nested=True
+        )
+
+    def gen_condition(self) -> None:
+        builder = self.builder
+        line = self.line
+        # First, get the next item from the sub-generator
+        self.gen.gen_condition()
+        # Now, filter: only enter the body if func(item) is truthy
+        filter_block = BasicBlock()
+        builder.activate_block(filter_block)
+        self.gen.begin_body()
+        item = builder.read(builder.get_assignment_target(self.index), line)
+        # TODO: implement logic to handle c calls of native functions
+        result = builder.py_call(self.filter_func, [item], line)
+        builder.add_bool_branch(result, self.body_block, self.loop_exit)
+
+    def begin_body(self) -> None:
+        # The item is already assigned to self.index by the sub-generator.
+        pass
+
+    def gen_step(self) -> None:
+        self.gen.gen_step()
+
+    def gen_cleanup(self) -> None:
+        self.gen.gen_cleanup()

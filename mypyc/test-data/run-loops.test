@@ -571,3 +571,33 @@ print([x for x in native.Vector2(4, -5.2)])
 [out]
 Vector2(x=-2, y=3.1)
 \[4, -5.2]
+
+[case testRunForFilter]
+def f(a: list[int]) -> int:
+    s = 0
+    for x in filter(lambda x: x % 2 == 0, a):
+        s += x
+    return s
+
+print(f([1, 2, 3, 4, 5, 6]))
+print(f([1, 3, 5]))
+print(f([]))
+
+[out]
+12
+0
+0
+
+[case testRunForFilterEdgeCases]
+def f(a: list[int]) -> int:
+    s = 0
+    for x in filter(lambda x: x > 10, a):
+        s += x
+    return s
+
+print(f([5, 15, 25]))
+print(f([]))
+
+[out]
+40
+0
