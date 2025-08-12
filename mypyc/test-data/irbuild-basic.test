@@ -3547,7 +3547,7 @@ L0:
     r3 = box(None, 1)
     return r3
 
-[case testForFilter]
+[case testForFilterBool]
 def f(x: int) -> bool:
     return bool(x % 2)
 def g(a: list[int]) -> int:
@@ -3562,6 +3562,146 @@ def f(x):
 L0:
     r0 = CPyTagged_Remainder(x, 4)
     r1 = r0 != 0
+    return r1
+def g(a):
+    a :: list
+    s :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3, r4 :: native_int
+    r5 :: bit
+    r6 :: object
+    r7, x :: int
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: i32
+    r13 :: bit
+    r14 :: bool
+    r15 :: int
+    r16 :: native_int
+L0:
+    s = 0
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = 0
+L1:
+    r4 = var_object_size a
+    r5 = r3 < r4 :: signed
+    if r5 goto L2 else goto L6 :: bool
+L2:
+    r6 = list_get_item_unsafe a, r3
+    r7 = unbox(int, r6)
+    x = r7
+    r8 = box(int, x)
+    r9 = [r8]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r2, r10, 1, 0)
+    keep_alive r8
+    r12 = PyObject_IsTrue(r11)
+    r13 = r12 >= 0 :: signed
+    r14 = truncate r12: i32 to builtins.bool
+    if r14 goto L4 else goto L3 :: bool
+L3:
+    goto L5
+L4:
+    r15 = CPyTagged_Add(s, x)
+    s = r15
+L5:
+    r16 = r3 + 1
+    r3 = r16
+    goto L1
+L6:
+L7:
+    return s
+
+[case testForFilterInt]
+def f(x: int) -> int:
+    return x % 2
+def g(a: list[int]) -> int:
+    s = 0
+    for x in filter(f, a):
+        s += x
+    return s
+[out]
+def f(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_Remainder(x, 4)
+    return r0
+def g(a):
+    a :: list
+    s :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3, r4 :: native_int
+    r5 :: bit
+    r6 :: object
+    r7, x :: int
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: i32
+    r13 :: bit
+    r14 :: bool
+    r15 :: int
+    r16 :: native_int
+L0:
+    s = 0
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = 0
+L1:
+    r4 = var_object_size a
+    r5 = r3 < r4 :: signed
+    if r5 goto L2 else goto L6 :: bool
+L2:
+    r6 = list_get_item_unsafe a, r3
+    r7 = unbox(int, r6)
+    x = r7
+    r8 = box(int, x)
+    r9 = [r8]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r2, r10, 1, 0)
+    keep_alive r8
+    r12 = PyObject_IsTrue(r11)
+    r13 = r12 >= 0 :: signed
+    r14 = truncate r12: i32 to builtins.bool
+    if r14 goto L4 else goto L3 :: bool
+L3:
+    goto L5
+L4:
+    r15 = CPyTagged_Add(s, x)
+    s = r15
+L5:
+    r16 = r3 + 1
+    r3 = r16
+    goto L1
+L6:
+L7:
+    return s
+
+[case testForFilterStr]
+def f(x: int) -> str:
+    return str(x % 2)
+def g(a: list[int]) -> int:
+    s = 0
+    for x in filter(f, a):
+        s += x
+    return s
+[out]
+def f(x):
+    x, r0 :: int
+    r1 :: str
+L0:
+    r0 = CPyTagged_Remainder(x, 4)
+    r1 = CPyTagged_Str(r0)
     return r1
 def g(a):
     a :: list
