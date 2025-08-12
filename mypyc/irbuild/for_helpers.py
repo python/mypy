@@ -1169,10 +1169,11 @@ class ForFilter(ForGenerator):
         return True
 
     def init(self, index: Lvalue, func: Expression, iterable: Expression) -> None:
+        self.filter_func_def = func
         if isinstance(func, NameExpr) and isinstance(func.node, Var) and func.node.fullname == "builtins.None":
-            self.filter_func = None
+            self.filter_func_val = None
         else:
-            self.filter_func = self.builder.accept(func)
+            self.filter_func_val = self.builder.accept(func)
         self.iterable = iterable
         self.index = index
 
@@ -1198,11 +1199,20 @@ class ForFilter(ForGenerator):
         builder = self.builder
         line = self.line
         item = builder.read(builder.get_assignment_target(self.index), line)
-        if self.filter_func is None:
+
+        if self.filter_func_val is None:
             result = item
         else:
-            # TODO: implement logic to handle c calls of native functions
-            result = builder.py_call(self.filter_func, [item], line)
+            fake_call_expr = CallExpr(
+                self.filter_func_def,
+                [
+                    # this is unused in call_refexpr_with_args which is good because
+                    # we don't have an Expression to put here. But it works just fine.
+                ],
+                [ARG_POS],
+                [None],
+            )
+            result = builder.call_refexpr_with_args(fake_call_expr, self.filter_func_def, [item])
 
         # Now, filter: only enter the body if func(item) is truthy
         cont_block, rest_block = BasicBlock(), BasicBlock()

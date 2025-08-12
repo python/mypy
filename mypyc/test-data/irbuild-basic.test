@@ -3573,15 +3573,9 @@ def g(a):
     r5 :: bit
     r6 :: object
     r7, x :: int
-    r8 :: object
-    r9 :: object[1]
-    r10 :: object_ptr
-    r11 :: object
-    r12 :: i32
-    r13 :: bit
-    r14 :: bool
-    r15 :: int
-    r16 :: native_int
+    r8 :: bool
+    r9 :: int
+    r10 :: native_int
 L0:
     s = 0
     r0 = __main__.globals :: static
@@ -3596,23 +3590,16 @@ L2:
     r6 = list_get_item_unsafe a, r3
     r7 = unbox(int, r6)
     x = r7
-    r8 = box(int, x)
-    r9 = [r8]
-    r10 = load_address r9
-    r11 = PyObject_Vectorcall(r2, r10, 1, 0)
-    keep_alive r8
-    r12 = PyObject_IsTrue(r11)
-    r13 = r12 >= 0 :: signed
-    r14 = truncate r12: i32 to builtins.bool
-    if r14 goto L4 else goto L3 :: bool
+    r8 = f(x)
+    if r8 goto L4 else goto L3 :: bool
 L3:
     goto L5
 L4:
-    r15 = CPyTagged_Add(s, x)
-    s = r15
+    r9 = CPyTagged_Add(s, x)
+    s = r9
 L5:
-    r16 = r3 + 1
-    r3 = r16
+    r10 = r3 + 1
+    r3 = r10
     goto L1
 L6:
 L7:
@@ -3641,16 +3628,10 @@ def g(a):
     r3, r4 :: native_int
     r5 :: bit
     r6 :: object
-    r7, x :: int
-    r8 :: object
-    r9 :: object[1]
-    r10 :: object_ptr
-    r11 :: object
-    r12 :: i32
-    r13 :: bit
-    r14 :: bool
-    r15 :: int
-    r16 :: native_int
+    r7, x, r8 :: int
+    r9 :: bit
+    r10 :: int
+    r11 :: native_int
 L0:
     s = 0
     r0 = __main__.globals :: static
@@ -3665,23 +3646,17 @@ L2:
     r6 = list_get_item_unsafe a, r3
     r7 = unbox(int, r6)
     x = r7
-    r8 = box(int, x)
-    r9 = [r8]
-    r10 = load_address r9
-    r11 = PyObject_Vectorcall(r2, r10, 1, 0)
-    keep_alive r8
-    r12 = PyObject_IsTrue(r11)
-    r13 = r12 >= 0 :: signed
-    r14 = truncate r12: i32 to builtins.bool
-    if r14 goto L4 else goto L3 :: bool
+    r8 = f(x)
+    r9 = r8 != 0
+    if r9 goto L4 else goto L3 :: bool
 L3:
     goto L5
 L4:
-    r15 = CPyTagged_Add(s, x)
-    s = r15
+    r10 = CPyTagged_Add(s, x)
+    s = r10
 L5:
-    r16 = r3 + 1
-    r3 = r16
+    r11 = r3 + 1
+    r3 = r11
     goto L1
 L6:
 L7:
@@ -3713,15 +3688,10 @@ def g(a):
     r5 :: bit
     r6 :: object
     r7, x :: int
-    r8 :: object
-    r9 :: object[1]
-    r10 :: object_ptr
-    r11 :: object
-    r12 :: i32
-    r13 :: bit
-    r14 :: bool
-    r15 :: int
-    r16 :: native_int
+    r8 :: str
+    r9 :: bit
+    r10 :: int
+    r11 :: native_int
 L0:
     s = 0
     r0 = __main__.globals :: static
@@ -3736,23 +3706,17 @@ L2:
     r6 = list_get_item_unsafe a, r3
     r7 = unbox(int, r6)
     x = r7
-    r8 = box(int, x)
-    r9 = [r8]
-    r10 = load_address r9
-    r11 = PyObject_Vectorcall(r2, r10, 1, 0)
-    keep_alive r8
-    r12 = PyObject_IsTrue(r11)
-    r13 = r12 >= 0 :: signed
-    r14 = truncate r12: i32 to builtins.bool
-    if r14 goto L4 else goto L3 :: bool
+    r8 = f(x)
+    r9 = CPyStr_IsTrue(r8)
+    if r9 goto L4 else goto L3 :: bool
 L3:
     goto L5
 L4:
-    r15 = CPyTagged_Add(s, x)
-    s = r15
+    r10 = CPyTagged_Add(s, x)
+    s = r10
 L5:
-    r16 = r3 + 1
-    r3 = r16
+    r11 = r3 + 1
+    r3 = r11
     goto L1
 L6:
 L7:
