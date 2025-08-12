@@ -490,7 +490,7 @@ def make_for_loop_generator(
             for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
             for_list.init(expr_reg, target_type, reverse=True)
             return for_list
-        
+
         elif (
             expr.callee.fullname == "builtins.filter"
             and len(expr.args) == 2
@@ -499,7 +499,7 @@ def make_for_loop_generator(
             for_filter = ForFilter(builder, index, body_block, loop_exit, line, nested)
             for_filter.init(index, expr.args[0], expr.args[1])
             return for_filter
-    
+
     if isinstance(expr, CallExpr) and isinstance(expr.callee, MemberExpr) and not expr.args:
         # Special cases for dictionary iterator methods, like dict.items().
         rtype = builder.node_type(expr.callee.expr)
@@ -1173,7 +1173,14 @@ class ForFilter(ForGenerator):
         self.index = index
 
         self.gen = make_for_loop_generator(
-            self.builder, self.index, self.iterable, self.body_block, self.loop_exit, self.line, is_async=False, nested=True
+            self.builder,
+            self.index,
+            self.iterable,
+            self.body_block,
+            self.loop_exit,
+            self.line,
+            is_async=False,
+            nested=True,
         )
 
     def gen_condition(self) -> None:
