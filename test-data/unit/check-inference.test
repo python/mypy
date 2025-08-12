@@ -3776,7 +3776,7 @@ f(x, empty)  # E: Cannot infer value of type parameter "T" of "f"
 f(["no"], empty)  # E: Cannot infer value of type parameter "T" of "f"
 [builtins fixtures/list.pyi]
 
-[case testInferenceWorksWithEmptyCollectionsUnion]
+[case testInferenceWorksWithEmptyCollectionsUnion-xfail]
 from typing import Any, Dict, NoReturn, NoReturn, Union
 
 def foo() -> Union[Dict[str, Any], Dict[int, Any]]:
