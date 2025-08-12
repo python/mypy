@@ -571,3 +571,138 @@ print([x for x in native.Vector2(4, -5.2)])
 [out]
 Vector2(x=-2, y=3.1)
 \[4, -5.2]
+
+[case testRunForMap]
+def f(a: list[int]) -> int:
+    s = 0
+    for x in map(lambda x: x + 1, a):
+        s += x
+    return s
+
+def g(a: list[int], b: list[int]) -> int:
+    s = 0
+    for x in map(lambda x, y: x * y, a, b):
+        s += x
+    return s
+
+[file driver.py]
+from native import f, g
+print(f([1, 2, 3]))
+print(g([1, 2, 3], [4, 5, 6]))
+print(g([1, 2], [10, 20, 30]))  # Shortest wins: only 2 items
+
+[out]
+9
+32
+50
+
+[case testRunForMapEdgeCases]
+def f(a: list[int], b: list[int]) -> int:
+    s = 0
+    for x in map(lambda x, y: x + y, a, b):
+        s += x
+    return s
+
+[file driver.py]
+from native import f
+print(f([], []))
+print(f([1, 2], []))
+print(f([], [1, 2]))
+
+[out]
+0
+0
+0
+
+[case testRunForFilter]
+def f(a: list[int]) -> int:
+    s = 0
+    for x in filter(lambda x: x % 2 == 0, a):
+        s += x
+    return s
+
+[file driver.py]
+from native import f
+print(f([1, 2, 3, 4, 5, 6]))
+print(f([1, 3, 5]))
+print(f([]))
+
+[out]
+12
+0
+0
+
+[case testRunForFilterNone]
+def f(a: list[int]) -> int:
+    c = 0
+    for x in filter(None, a):
+        c += 1
+    return c
+
+[file driver.py]
+from native import f
+print(f([0, 1, 2, 3, 4, 5, 6]))
+
+[out]
+6
+
+[case testRunForFilterEdgeCases]
+def f(a: list[int]) -> int:
+    s = 0
+    for x in filter(lambda x: x > 10, a):
+        s += x
+    return s
+
+[file driver.py]
+from native import f
+print(f([5, 15, 25]))
+print(f([]))
+
+[out]
+40
+0
+
+[case testRunForMapThreeArgs]
+def f(a: list[int], b: list[int], c: list[int]) -> int:
+    s = 0
+    for x in map(lambda x, y, z: x * y + z, a, b, c):
+        s += x
+    return s
+
+[file driver.py]
+from native import f
+print(f([1, 2, 3], [4, 5, 6], [7, 8, 9]))
+print(f([1, 2], [10, 20, 30], [100, 200, 300]))
+print(f([], [], []))
+print(f([1, 2], [], [3, 4]))
+[out]
+56
+350
+0
+0
+
+[case testRunForMapNested]
+def f(a: list[int], b: list[int], c: list[int]) -> int:
+    s = 0
+    for x in map(lambda x, y: x + y, map(lambda x, y: x * y, a, b), c):
+        s += x
+    return s
+
+[file driver.py]
+from native import f
+print(f([1, 2, 3], [4, 5, 6], [7, 8, 9]))
+[out]
+56
+
+[case testRunForMapUnpack]
+def f(a: list[int], b: list[int]) -> int:
+    s = 0
+    for x, y in map(lambda x, y: (x, y), a, b):
+        s += x * 10 + y
+    return s
+
+[file driver.py]
+from native import f
+print(f([1, 2, 3], [4, 5, 6]))
+[out]
+75

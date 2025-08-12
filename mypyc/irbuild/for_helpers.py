@@ -11,6 +11,7 @@ from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
+    LDEF,
     CallExpr,
     DictionaryComprehension,
     Expression,
@@ -22,6 +23,7 @@ from mypy.nodes import (
     SetExpr,
     TupleExpr,
     TypeAlias,
+    Var,
 )
 from mypyc.ir.ops import (
     ERR_NEVER,
@@ -490,6 +492,16 @@ def make_for_loop_generator(
             for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
             for_list.init(expr_reg, target_type, reverse=True)
             return for_list
+
+        elif (
+            expr.callee.fullname == "builtins.map"
+            and len(expr.args) >= 2
+            and all(k == ARG_POS for k in expr.arg_kinds)
+        ):
+            for_map = ForMap(builder, index, body_block, loop_exit, line, nested)
+            for_map.init(expr.args[0], expr.args[1:])
+            return for_map
+
     if isinstance(expr, CallExpr) and isinstance(expr.callee, MemberExpr) and not expr.args:
         # Special cases for dictionary iterator methods, like dict.items().
         rtype = builder.node_type(expr.callee.expr)
@@ -1139,6 +1151,77 @@ class ForZip(ForGenerator):
     def begin_body(self) -> None:
         for gen in self.gens:
             gen.begin_body()
+
+    def gen_step(self) -> None:
+        for gen in self.gens:
+            gen.gen_step()
+
+    def gen_cleanup(self) -> None:
+        for gen in self.gens:
+            gen.gen_cleanup()
+
+class ForMap(ForGenerator):
+    """Generate optimized IR for a for loop over map(f, ...)."""
+
+    def need_cleanup(self) -> bool:
+        # The wrapped for loops might need cleanup. We might generate a
+        # redundant cleanup block, but that's okay.
+        return True
+
+    def init(self, func: Expression, exprs: list[Expression]) -> None:
+        self.func_expr = func
+        self.func = self.builder.accept(func)
+        self.exprs = exprs
+        self.cond_blocks = [BasicBlock() for _ in range(len(exprs) - 1)] + [self.body_block]
+
+        self.gens: list[ForGenerator] = []
+        for i, iterable_expr in enumerate(exprs):
+            argname = f"_mypyc_map_arg_{i}"
+            var_type = self.builder._analyze_iterable_item_type(iterable_expr)
+            name_expr = NameExpr(argname)
+            name_expr.kind = LDEF
+            name_expr.node = Var(argname, var_type)
+            self.builder.add_local_reg(name_expr.node, self.builder.node_type(iterable_expr))
+            self.gens.append(
+                make_for_loop_generator(
+                    self.builder,
+                    name_expr,
+                    iterable_expr,
+                    #self.gens[-1].body_block if self.gens else self.body_block,
+                    self.cond_blocks[i],
+                    self.loop_exit,
+                    self.line,
+                    is_async=False,
+                    nested=True,
+                )
+            )
+
+    def gen_condition(self) -> None:
+        for i, gen in enumerate(self.gens):
+            gen.gen_condition()
+            if i < len(self.gens) - 1:
+                self.builder.activate_block(self.cond_blocks[i])
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+
+        for gen in self.gens:
+            gen.begin_body()
+        
+        # This goes here to prevent a circular import
+        from mypyc.irbuild.expression import transform_call_expr
+
+        call_expr = CallExpr(
+            self.func_expr,
+            #items,
+            [gen.index for gen in self.gens],
+            [ARG_POS] * len(self.gens),
+            [None] * len(self.gens),
+        )
+
+        result = transform_call_expr(builder, call_expr)
+        builder.assign(builder.get_assignment_target(self.index), result, line)
 
     def gen_step(self) -> None:
         for gen in self.gens:

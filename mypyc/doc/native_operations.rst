@@ -37,6 +37,7 @@ Functions
 * ``slice(start, stop, step)``
 * ``globals()``
 * ``sorted(obj)``
+* ``map(fn, iterable)``
 
 Method decorators
 -----------------

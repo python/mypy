@@ -3546,3 +3546,553 @@ L0:
     r2 = PyObject_Vectorcall(r1, 0, 0, 0)
     r3 = box(None, 1)
     return r3
+
+[case testForMapBasic]
+def f(x: int) -> int:
+    return x * 2
+def g(a: list[int]) -> int:
+    s = 0
+    for x in map(f, a):
+        s += x
+    return s
+[out]
+def f(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_Multiply(x, 4)
+    return r0
+def g(a):
+    a :: list
+    s :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3, r4 :: native_int
+    r5 :: bit
+    r6 :: object
+    r7 :: int
+    r8 :: object
+    _mypyc_map_arg_0 :: list
+    r9, r10, x, r11 :: int
+    r12 :: native_int
+L0:
+    s = 0
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = 0
+L1:
+    r4 = var_object_size a
+    r5 = r3 < r4 :: signed
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    r6 = list_get_item_unsafe a, r3
+    r7 = unbox(int, r6)
+    r8 = box(int, r7)
+    _mypyc_map_arg_0 = r8
+    r9 = unbox(int, _mypyc_map_arg_0)
+    r10 = f(r9)
+    x = r10
+    r11 = CPyTagged_Add(s, x)
+    s = r11
+L3:
+    r12 = r3 + 1
+    r3 = r12
+    goto L1
+L4:
+L5:
+    return s
+
+[case testForMapMultiple]
+from typing import Any
+def f(x: int, y: int) -> int:
+    return x * y
+def g(a: list[int], b: list[int]) -> int:
+    s = 0
+    for x in map(f, a, b):
+        s += x
+    return s
+[out]
+def f(x, y):
+    x, y, r0 :: int
+L0:
+    r0 = CPyTagged_Multiply(x, y)
+    return r0
+def g(a, b):
+    a, b :: list
+    s :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3, r4, r5 :: native_int
+    r6 :: bit
+    r7 :: native_int
+    r8 :: bit
+    r9 :: object
+    r10 :: int
+    r11 :: object
+    _mypyc_map_arg_0 :: list
+    r12 :: object
+    r13 :: int
+    r14 :: object
+    _mypyc_map_arg_1 :: list
+    r15, r16, r17, x, r18 :: int
+    r19, r20 :: native_int
+L0:
+    s = 0
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = 0
+    r4 = 0
+L1:
+    r5 = var_object_size a
+    r6 = r3 < r5 :: signed
+    if r6 goto L2 else goto L5 :: bool
+L2:
+    r7 = var_object_size b
+    r8 = r4 < r7 :: signed
+    if r8 goto L3 else goto L5 :: bool
+L3:
+    r9 = list_get_item_unsafe a, r3
+    r10 = unbox(int, r9)
+    r11 = box(int, r10)
+    _mypyc_map_arg_0 = r11
+    r12 = list_get_item_unsafe b, r4
+    r13 = unbox(int, r12)
+    r14 = box(int, r13)
+    _mypyc_map_arg_1 = r14
+    r15 = unbox(int, _mypyc_map_arg_0)
+    r16 = unbox(int, _mypyc_map_arg_1)
+    r17 = f(r15, r16)
+    x = r17
+    r18 = CPyTagged_Add(s, x)
+    s = r18
+L4:
+    r19 = r3 + 1
+    r3 = r19
+    r20 = r4 + 1
+    r4 = r20
+    goto L1
+L5:
+L6:
+    return s
+
+[case testForFilter]
+def f(x: int) -> bool:
+    return bool(x % 2)
+def g(a: list[int]) -> int:
+    s = 0
+    for x in filter(f, a):
+        s += x
+    return s
+[out]
+def f(x):
+    x, r0 :: int
+    r1 :: bit
+L0:
+    r0 = CPyTagged_Remainder(x, 4)
+    r1 = r0 != 0
+    return r1
+def g(a):
+    a :: list
+    s :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3, r4 :: native_int
+    r5 :: bit
+    r6 :: object
+    r7, x :: int
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: i32
+    r13 :: bit
+    r14 :: bool
+    r15 :: int
+    r16 :: native_int
+L0:
+    s = 0
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = 0
+L1:
+    r4 = var_object_size a
+    r5 = r3 < r4 :: signed
+    if r5 goto L2 else goto L6 :: bool
+L2:
+    r6 = list_get_item_unsafe a, r3
+    r7 = unbox(int, r6)
+    x = r7
+    r8 = box(int, x)
+    r9 = [r8]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r2, r10, 1, 0)
+    keep_alive r8
+    r12 = PyObject_IsTrue(r11)
+    r13 = r12 >= 0 :: signed
+    r14 = truncate r12: i32 to builtins.bool
+    if r14 goto L4 else goto L3 :: bool
+L3:
+    goto L5
+L4:
+    r15 = CPyTagged_Add(s, x)
+    s = r15
+L5:
+    r16 = r3 + 1
+    r3 = r16
+    goto L1
+L6:
+L7:
+    return s
+
+[case testForFilterNone]
+def f(a: list[int]) -> int:
+    c = 0
+    for x in filter(None, a):
+        c += 1
+    return 0
+
+[out]
+def f(a):
+    a :: list
+    c :: int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, x :: int
+    r5 :: bit
+    r6 :: int
+    r7 :: native_int
+L0:
+    c = 0
+    r0 = 0
+L1:
+    r1 = var_object_size a
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L6 :: bool
+L2:
+    r3 = list_get_item_unsafe a, r0
+    r4 = unbox(int, r3)
+    x = r4
+    r5 = x != 0
+    if r5 goto L4 else goto L3 :: bool
+L3:
+    goto L5
+L4:
+    r6 = CPyTagged_Add(c, 2)
+    c = r6
+L5:
+    r7 = r0 + 1
+    r0 = r7
+    goto L1
+L6:
+L7:
+    return 0
+
+[case testForMapThreeArgs]
+def f(x: int, y: int, z: int) -> int:
+    return x + y + z
+def g(a: list[int], b: list[int], c: list[int]) -> int:
+    s = 0
+    for x in map(f, a, b, c):
+        s += x
+    return s
+[out]
+def f(x, y, z):
+    x, y, z, r0, r1 :: int
+L0:
+    r0 = CPyTagged_Add(x, y)
+    r1 = CPyTagged_Add(r0, z)
+    return r1
+def g(a, b, c):
+    a, b, c :: list
+    s :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3, r4, r5, r6 :: native_int
+    r7 :: bit
+    r8 :: native_int
+    r9 :: bit
+    r10 :: native_int
+    r11 :: bit
+    r12 :: object
+    r13 :: int
+    r14 :: object
+    _mypyc_map_arg_0 :: list
+    r15 :: object
+    r16 :: int
+    r17 :: object
+    _mypyc_map_arg_1 :: list
+    r18 :: object
+    r19 :: int
+    r20 :: object
+    _mypyc_map_arg_2 :: list
+    r21, r22, r23, r24, x, r25 :: int
+    r26, r27, r28 :: native_int
+L0:
+    s = 0
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = 0
+    r4 = 0
+    r5 = 0
+L1:
+    r6 = var_object_size a
+    r7 = r3 < r6 :: signed
+    if r7 goto L2 else goto L6 :: bool
+L2:
+    r8 = var_object_size b
+    r9 = r4 < r8 :: signed
+    if r9 goto L3 else goto L6 :: bool
+L3:
+    r10 = var_object_size c
+    r11 = r5 < r10 :: signed
+    if r11 goto L4 else goto L6 :: bool
+L4:
+    r12 = list_get_item_unsafe a, r3
+    r13 = unbox(int, r12)
+    r14 = box(int, r13)
+    _mypyc_map_arg_0 = r14
+    r15 = list_get_item_unsafe b, r4
+    r16 = unbox(int, r15)
+    r17 = box(int, r16)
+    _mypyc_map_arg_1 = r17
+    r18 = list_get_item_unsafe c, r5
+    r19 = unbox(int, r18)
+    r20 = box(int, r19)
+    _mypyc_map_arg_2 = r20
+    r21 = unbox(int, _mypyc_map_arg_0)
+    r22 = unbox(int, _mypyc_map_arg_1)
+    r23 = unbox(int, _mypyc_map_arg_2)
+    r24 = f(r21, r22, r23)
+    x = r24
+    r25 = CPyTagged_Add(s, x)
+    s = r25
+L5:
+    r26 = r3 + 1
+    r3 = r26
+    r27 = r4 + 1
+    r4 = r27
+    r28 = r5 + 1
+    r5 = r28
+    goto L1
+L6:
+L7:
+    return s
+
+[case testForMapEmpty]
+def f(x: int) -> int:
+    return x + 1
+def g(a: list[int]) -> int:
+    s = 0
+    for x in map(f, []):
+        s += x
+    return s
+[out]
+def f(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_Add(x, 2)
+    return r0
+def g(a):
+    a :: list
+    s :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: list
+    r4, r5 :: native_int
+    r6 :: bit
+    r7 :: object
+    r8, _mypyc_map_arg_0 :: list
+    r9, r10, x, r11 :: int
+    r12 :: native_int
+L0:
+    s = 0
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = PyList_New(0)
+    r4 = 0
+L1:
+    r5 = var_object_size r3
+    r6 = r4 < r5 :: signed
+    if r6 goto L2 else goto L4 :: bool
+L2:
+    r7 = list_get_item_unsafe r3, r4
+    r8 = cast(list, r7)
+    _mypyc_map_arg_0 = r8
+    r9 = unbox(int, _mypyc_map_arg_0)
+    r10 = f(r9)
+    x = r10
+    r11 = CPyTagged_Add(s, x)
+    s = r11
+L3:
+    r12 = r4 + 1
+    r4 = r12
+    goto L1
+L4:
+L5:
+    return s
+
+[case testForMapUnpack]
+def f(x: int, y: int) -> tuple[int, int]:
+    return (x, y)
+def g(a: list[int], b: list[int]) -> int:
+    s = 0
+    for x, y in map(f, a, b):
+        s += x + y
+    return s
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: tuple[int, int]
+L0:
+    r0 = (x, y)
+    return r0
+def g(a, b):
+    a, b :: list
+    s :: int
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3, r4, r5 :: native_int
+    r6 :: bit
+    r7 :: native_int
+    r8 :: bit
+    r9 :: object
+    r10 :: int
+    r11 :: object
+    _mypyc_map_arg_0 :: list
+    r12 :: object
+    r13 :: int
+    r14 :: object
+    _mypyc_map_arg_1 :: list
+    r15, r16 :: int
+    r17 :: tuple[int, int]
+    r18, x, r19, y, r20, r21 :: int
+    r22, r23 :: native_int
+L0:
+    s = 0
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = 0
+    r4 = 0
+L1:
+    r5 = var_object_size a
+    r6 = r3 < r5 :: signed
+    if r6 goto L2 else goto L5 :: bool
+L2:
+    r7 = var_object_size b
+    r8 = r4 < r7 :: signed
+    if r8 goto L3 else goto L5 :: bool
+L3:
+    r9 = list_get_item_unsafe a, r3
+    r10 = unbox(int, r9)
+    r11 = box(int, r10)
+    _mypyc_map_arg_0 = r11
+    r12 = list_get_item_unsafe b, r4
+    r13 = unbox(int, r12)
+    r14 = box(int, r13)
+    _mypyc_map_arg_1 = r14
+    r15 = unbox(int, _mypyc_map_arg_0)
+    r16 = unbox(int, _mypyc_map_arg_1)
+    r17 = f(r15, r16)
+    r18 = r17[0]
+    x = r18
+    r19 = r17[1]
+    y = r19
+    r20 = CPyTagged_Add(x, y)
+    r21 = CPyTagged_Add(s, r20)
+    s = r21
+L4:
+    r22 = r3 + 1
+    r3 = r22
+    r23 = r4 + 1
+    r4 = r23
+    goto L1
+L5:
+L6:
+    return s
+
+[case testForMapComprehension]
+def f(x: int, y: int) -> int:
+    return x * y
+def g(a: list[int], b: list[int]) -> list[int]:
+    return [x for x in map(f, a, b)]
+[out]
+def f(x, y):
+    x, y, r0 :: int
+L0:
+    r0 = CPyTagged_Multiply(x, y)
+    return r0
+def g(a, b):
+    a, b, r0 :: list
+    r1 :: dict
+    r2 :: str
+    r3 :: object
+    r4, r5, r6 :: native_int
+    r7 :: bit
+    r8 :: native_int
+    r9 :: bit
+    r10 :: object
+    r11 :: int
+    r12 :: object
+    _mypyc_map_arg_0 :: list
+    r13 :: object
+    r14 :: int
+    r15 :: object
+    _mypyc_map_arg_1 :: list
+    r16, r17, r18, x :: int
+    r19 :: object
+    r20 :: i32
+    r21 :: bit
+    r22, r23 :: native_int
+L0:
+    r0 = PyList_New(0)
+    r1 = __main__.globals :: static
+    r2 = 'f'
+    r3 = CPyDict_GetItem(r1, r2)
+    r4 = 0
+    r5 = 0
+L1:
+    r6 = var_object_size a
+    r7 = r4 < r6 :: signed
+    if r7 goto L2 else goto L5 :: bool
+L2:
+    r8 = var_object_size b
+    r9 = r5 < r8 :: signed
+    if r9 goto L3 else goto L5 :: bool
+L3:
+    r10 = list_get_item_unsafe a, r4
+    r11 = unbox(int, r10)
+    r12 = box(int, r11)
+    _mypyc_map_arg_0 = r12
+    r13 = list_get_item_unsafe b, r5
+    r14 = unbox(int, r13)
+    r15 = box(int, r14)
+    _mypyc_map_arg_1 = r15
+    r16 = unbox(int, _mypyc_map_arg_0)
+    r17 = unbox(int, _mypyc_map_arg_1)
+    r18 = f(r16, r17)
+    x = r18
+    r19 = box(int, x)
+    r20 = PyList_Append(r0, r19)
+    r21 = r20 >= 0 :: signed
+L4:
+    r22 = r4 + 1
+    r4 = r22
+    r23 = r5 + 1
+    r5 = r23
+    goto L1
+L5:
+L6:
+    return r0
+
