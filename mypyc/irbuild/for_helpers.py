@@ -1164,13 +1164,15 @@ class ForFilter(ForGenerator):
     """Generate optimized IR for a for loop over filter(f, iterable)."""
 
     def need_cleanup(self) -> bool:
-        # The wrapped for loops might need cleanup. We might generate a
-        # redundant cleanup block, but that's okay.
-        return True
+        return self.gen.need_cleanup()
 
     def init(self, index: Lvalue, func: Expression, iterable: Expression) -> None:
         self.filter_func_def = func
-        if isinstance(func, NameExpr) and isinstance(func.node, Var) and func.node.fullname == "builtins.None":
+        if (
+            isinstance(func, NameExpr)
+            and isinstance(func.node, Var)
+            and func.node.fullname == "builtins.None"
+        ):
             self.filter_func_val = None
         else:
             self.filter_func_val = self.builder.accept(func)

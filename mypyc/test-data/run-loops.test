@@ -604,6 +604,36 @@ print(f([0, 1, 2, 3, 4, 5, 6]))
 [out]
 6
 
+[case testRunForFilterNative]
+def f(x: int) -> int:
+    return x % 2
+def g(a: list[int]) -> int:
+    c = 0
+    for x in filter(f, a):
+        c += 1
+    return c
+
+[file driver.py]
+from native import g
+print(g([0, 1, 2, 3, 4, 5, 6]))
+
+[out]
+3
+
+[case testRunForFilterPrimitiveOp]
+def f(a: list[list[int]]) -> int:
+    c = 0
+    for x in filter(len, a):
+        c += 1
+    return c
+
+[file driver.py]
+from native import f
+print(f([[], [0, 1], [], [], [2, 3, 4], [5, 6]]))
+
+[out]
+3
+
 [case testRunForFilterEdgeCases]
 def f(a: list[int]) -> int:
     s = 0
