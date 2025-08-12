@@ -180,7 +180,7 @@ L0:
     o.x = r1; r2 = is_error
     return o
 
-[case testSubclass_toplevel]
+[case testSubclass_withgil_toplevel]
 from typing import TypeVar, Generic
 from mypy_extensions import trait
 T = TypeVar('T')
