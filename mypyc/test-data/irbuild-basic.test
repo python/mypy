@@ -3730,31 +3730,25 @@ def f(a: list[list[int]]) -> int:
     return s
 [out]
 def f(a):
-    x, r0 :: int
-    r1 :: str
-L0:
-    r0 = CPyTagged_Remainder(x, 4)
-    r1 = CPyTagged_Str(r0)
-    return r1
-def g(a):
     a :: list
     s :: int
-    r0 :: dict
+    r0 :: object
     r1 :: str
     r2 :: object
     r3, r4 :: native_int
     r5 :: bit
     r6 :: object
-    r7, x :: int
-    r8 :: str
-    r9 :: bit
-    r10 :: int
-    r11 :: native_int
+    r7, x :: list
+    r8 :: native_int
+    r9 :: short_int
+    r10 :: bit
+    r11 :: int
+    r12 :: native_int
 L0:
     s = 0
-    r0 = __main__.globals :: static
-    r1 = 'f'
-    r2 = CPyDict_GetItem(r0, r1)
+    r0 = builtins :: module
+    r1 = 'len'
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = 0
 L1:
     r4 = var_object_size a
@@ -3762,19 +3756,20 @@ L1:
     if r5 goto L2 else goto L6 :: bool
 L2:
     r6 = list_get_item_unsafe a, r3
-    r7 = unbox(int, r6)
+    r7 = cast(list, r6)
     x = r7
-    r8 = f(x)
-    r9 = CPyStr_IsTrue(r8)
-    if r9 goto L4 else goto L3 :: bool
+    r8 = var_object_size x
+    r9 = r8 << 1
+    r10 = r9 != 0
+    if r10 goto L4 else goto L3 :: bool
 L3:
     goto L5
 L4:
-    r10 = CPyTagged_Add(s, x)
-    s = r10
+    r11 = CPyTagged_Add(s, 2)
+    s = r11
 L5:
-    r11 = r3 + 1
-    r3 = r11
+    r12 = r3 + 1
+    r3 = r12
     goto L1
 L6:
 L7:
