@@ -3591,7 +3591,7 @@ L0:
 L1:
     r4 = var_object_size a
     r5 = r3 < r4 :: signed
-    if r5 goto L3 else goto L5 :: bool
+    if r5 goto L2 else goto L6 :: bool
 L2:
     r6 = list_get_item_unsafe a, r3
     r7 = unbox(int, r6)
@@ -3604,14 +3604,16 @@ L2:
     r12 = PyObject_IsTrue(r11)
     r13 = r12 >= 0 :: signed
     r14 = truncate r12: i32 to builtins.bool
-    if r14 goto L3 else goto L5 :: bool
+    if r14 goto L4 else goto L3 :: bool
 L3:
+    goto L5
+L4:
     r15 = CPyTagged_Add(s, x)
     s = r15
-L4:
+L5:
     r16 = r3 + 1
     r3 = r16
     goto L1
-L5:
 L6:
+L7:
     return s

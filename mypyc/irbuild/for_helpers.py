@@ -1184,22 +1184,26 @@ class ForFilter(ForGenerator):
         )
 
     def gen_condition(self) -> None:
+        self.gen.gen_condition()
+
+    def begin_body(self) -> None:
+        # 1. Assign the next item to the loop variable
+        self.gen.begin_body()
+
+        # 2. Call the filter function
         builder = self.builder
         line = self.line
-        # First, get the next item from the sub-generator
-        self.gen.gen_condition()
-        # Now, filter: only enter the body if func(item) is truthy
-        filter_block = BasicBlock()
-        builder.activate_block(filter_block)
-        self.gen.begin_body()
         item = builder.read(builder.get_assignment_target(self.index), line)
         # TODO: implement logic to handle c calls of native functions
         result = builder.py_call(self.filter_func, [item], line)
-        builder.add_bool_branch(result, self.body_block, self.loop_exit)
 
-    def begin_body(self) -> None:
-        # The item is already assigned to self.index by the sub-generator.
-        pass
+        # Now, filter: only enter the body if func(item) is truthy
+        cont_block, rest_block = BasicBlock(), BasicBlock()
+        builder.add_bool_branch(result, rest_block, cont_block)
+        builder.activate_block(cont_block)
+        builder.nonlocal_control[-1].gen_continue(builder, line)
+        builder.goto_and_activate(rest_block)
+        # At this point, the rest of the loop body (user code) will be emitted
 
     def gen_step(self) -> None:
         self.gen.gen_step()
