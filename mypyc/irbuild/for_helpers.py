@@ -1181,7 +1181,7 @@ class ForMap(ForGenerator):
             name_expr = NameExpr(argname)
             name_expr.kind = LDEF
             name_expr.node = Var(argname, var_type)
-            self.builder.add_local_reg(name_expr.node, self.builder.node_type(iterable_expr))
+            self.builder.add_local_reg(name_expr.node, self.builder.type_to_rtype(var_type))
             self.gens.append(
                 make_for_loop_generator(
                     self.builder,

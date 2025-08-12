@@ -3570,9 +3570,8 @@ def g(a):
     r3, r4 :: native_int
     r5 :: bit
     r6 :: object
-    r7 :: int
+    r7, _mypyc_map_arg_0 :: int
     r8 :: object
-    _mypyc_map_arg_0 :: list
     r9, r10, x, r11 :: int
     r12 :: native_int
 L0:
@@ -3588,9 +3587,9 @@ L1:
 L2:
     r6 = list_get_item_unsafe a, r3
     r7 = unbox(int, r6)
-    r8 = box(int, r7)
-    _mypyc_map_arg_0 = r8
-    r9 = unbox(int, _mypyc_map_arg_0)
+    _mypyc_map_arg_0 = r7
+    r8 = box(int, _mypyc_map_arg_0)
+    r9 = unbox(int, r8)
     r10 = f(r9)
     x = r10
     r11 = CPyTagged_Add(s, x)
@@ -3629,13 +3628,10 @@ def g(a, b):
     r7 :: native_int
     r8 :: bit
     r9 :: object
-    r10 :: int
+    r10, _mypyc_map_arg_0 :: int
     r11 :: object
-    _mypyc_map_arg_0 :: list
-    r12 :: object
-    r13 :: int
-    r14 :: object
-    _mypyc_map_arg_1 :: list
+    r12, _mypyc_map_arg_1 :: int
+    r13, r14 :: object
     r15, r16, r17, x, r18 :: int
     r19, r20 :: native_int
 L0:
@@ -3656,14 +3652,14 @@ L2:
 L3:
     r9 = list_get_item_unsafe a, r3
     r10 = unbox(int, r9)
-    r11 = box(int, r10)
-    _mypyc_map_arg_0 = r11
-    r12 = list_get_item_unsafe b, r4
-    r13 = unbox(int, r12)
-    r14 = box(int, r13)
-    _mypyc_map_arg_1 = r14
-    r15 = unbox(int, _mypyc_map_arg_0)
-    r16 = unbox(int, _mypyc_map_arg_1)
+    _mypyc_map_arg_0 = r10
+    r11 = list_get_item_unsafe b, r4
+    r12 = unbox(int, r11)
+    _mypyc_map_arg_1 = r12
+    r13 = box(int, _mypyc_map_arg_0)
+    r14 = box(int, _mypyc_map_arg_1)
+    r15 = unbox(int, r13)
+    r16 = unbox(int, r14)
     r17 = f(r15, r16)
     x = r17
     r18 = CPyTagged_Add(s, x)
@@ -3821,17 +3817,12 @@ def g(a, b, c):
     r10 :: native_int
     r11 :: bit
     r12 :: object
-    r13 :: int
+    r13, _mypyc_map_arg_0 :: int
     r14 :: object
-    _mypyc_map_arg_0 :: list
-    r15 :: object
-    r16 :: int
-    r17 :: object
-    _mypyc_map_arg_1 :: list
-    r18 :: object
-    r19 :: int
-    r20 :: object
-    _mypyc_map_arg_2 :: list
+    r15, _mypyc_map_arg_1 :: int
+    r16 :: object
+    r17, _mypyc_map_arg_2 :: int
+    r18, r19, r20 :: object
     r21, r22, r23, r24, x, r25 :: int
     r26, r27, r28 :: native_int
 L0:
@@ -3857,19 +3848,19 @@ L3:
 L4:
     r12 = list_get_item_unsafe a, r3
     r13 = unbox(int, r12)
-    r14 = box(int, r13)
-    _mypyc_map_arg_0 = r14
-    r15 = list_get_item_unsafe b, r4
-    r16 = unbox(int, r15)
-    r17 = box(int, r16)
-    _mypyc_map_arg_1 = r17
-    r18 = list_get_item_unsafe c, r5
-    r19 = unbox(int, r18)
-    r20 = box(int, r19)
-    _mypyc_map_arg_2 = r20
-    r21 = unbox(int, _mypyc_map_arg_0)
-    r22 = unbox(int, _mypyc_map_arg_1)
-    r23 = unbox(int, _mypyc_map_arg_2)
+    _mypyc_map_arg_0 = r13
+    r14 = list_get_item_unsafe b, r4
+    r15 = unbox(int, r14)
+    _mypyc_map_arg_1 = r15
+    r16 = list_get_item_unsafe c, r5
+    r17 = unbox(int, r16)
+    _mypyc_map_arg_2 = r17
+    r18 = box(int, _mypyc_map_arg_0)
+    r19 = box(int, _mypyc_map_arg_1)
+    r20 = box(int, _mypyc_map_arg_2)
+    r21 = unbox(int, r18)
+    r22 = unbox(int, r19)
+    r23 = unbox(int, r20)
     r24 = f(r21, r22, r23)
     x = r24
     r25 = CPyTagged_Add(s, x)
@@ -3909,10 +3900,9 @@ def g(a):
     r3 :: list
     r4, r5 :: native_int
     r6 :: bit
-    r7 :: object
-    r8, _mypyc_map_arg_0 :: list
-    r9, r10, x, r11 :: int
-    r12 :: native_int
+    r7, _mypyc_map_arg_0 :: object
+    r8, r9, x, r10 :: int
+    r11 :: native_int
 L0:
     s = 0
     r0 = __main__.globals :: static
@@ -3926,16 +3916,15 @@ L1:
     if r6 goto L2 else goto L4 :: bool
 L2:
     r7 = list_get_item_unsafe r3, r4
-    r8 = cast(list, r7)
-    _mypyc_map_arg_0 = r8
-    r9 = unbox(int, _mypyc_map_arg_0)
-    r10 = f(r9)
-    x = r10
-    r11 = CPyTagged_Add(s, x)
-    s = r11
+    _mypyc_map_arg_0 = r7
+    r8 = unbox(int, _mypyc_map_arg_0)
+    r9 = f(r8)
+    x = r9
+    r10 = CPyTagged_Add(s, x)
+    s = r10
 L3:
-    r12 = r4 + 1
-    r4 = r12
+    r11 = r4 + 1
+    r4 = r11
     goto L1
 L4:
 L5:
@@ -3967,13 +3956,10 @@ def g(a, b):
     r7 :: native_int
     r8 :: bit
     r9 :: object
-    r10 :: int
+    r10, _mypyc_map_arg_0 :: int
     r11 :: object
-    _mypyc_map_arg_0 :: list
-    r12 :: object
-    r13 :: int
-    r14 :: object
-    _mypyc_map_arg_1 :: list
+    r12, _mypyc_map_arg_1 :: int
+    r13, r14 :: object
     r15, r16 :: int
     r17 :: tuple[int, int]
     r18, x, r19, y, r20, r21 :: int
@@ -3996,14 +3982,14 @@ L2:
 L3:
     r9 = list_get_item_unsafe a, r3
     r10 = unbox(int, r9)
-    r11 = box(int, r10)
-    _mypyc_map_arg_0 = r11
-    r12 = list_get_item_unsafe b, r4
-    r13 = unbox(int, r12)
-    r14 = box(int, r13)
-    _mypyc_map_arg_1 = r14
-    r15 = unbox(int, _mypyc_map_arg_0)
-    r16 = unbox(int, _mypyc_map_arg_1)
+    _mypyc_map_arg_0 = r10
+    r11 = list_get_item_unsafe b, r4
+    r12 = unbox(int, r11)
+    _mypyc_map_arg_1 = r12
+    r13 = box(int, _mypyc_map_arg_0)
+    r14 = box(int, _mypyc_map_arg_1)
+    r15 = unbox(int, r13)
+    r16 = unbox(int, r14)
     r17 = f(r15, r16)
     r18 = r17[0]
     x = r18
@@ -4043,13 +4029,10 @@ def g(a, b):
     r8 :: native_int
     r9 :: bit
     r10 :: object
-    r11 :: int
+    r11, _mypyc_map_arg_0 :: int
     r12 :: object
-    _mypyc_map_arg_0 :: list
-    r13 :: object
-    r14 :: int
-    r15 :: object
-    _mypyc_map_arg_1 :: list
+    r13, _mypyc_map_arg_1 :: int
+    r14, r15 :: object
     r16, r17, r18, x :: int
     r19 :: object
     r20 :: i32
@@ -4073,14 +4056,14 @@ L2:
 L3:
     r10 = list_get_item_unsafe a, r4
     r11 = unbox(int, r10)
-    r12 = box(int, r11)
-    _mypyc_map_arg_0 = r12
-    r13 = list_get_item_unsafe b, r5
-    r14 = unbox(int, r13)
-    r15 = box(int, r14)
-    _mypyc_map_arg_1 = r15
-    r16 = unbox(int, _mypyc_map_arg_0)
-    r17 = unbox(int, _mypyc_map_arg_1)
+    _mypyc_map_arg_0 = r11
+    r12 = list_get_item_unsafe b, r5
+    r13 = unbox(int, r12)
+    _mypyc_map_arg_1 = r13
+    r14 = box(int, _mypyc_map_arg_0)
+    r15 = box(int, _mypyc_map_arg_1)
+    r16 = unbox(int, r14)
+    r17 = unbox(int, r15)
     r18 = f(r16, r17)
     x = r18
     r19 = box(int, x)
