@@ -16,8 +16,8 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarTupleType,
-    UnpackType,
     UnionType,
+    UnpackType,
     get_proper_type,
 )
 
