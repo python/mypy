@@ -252,6 +252,15 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
                 setter_type = snapshot_optional_type(first_item.var.setter_type)
         is_trivial_body = impl.is_trivial_body if impl else False
         dataclass_transform_spec = find_dataclass_transform_spec(node)
+
+        deprecated: str | list[str | None] | None = None
+        if isinstance(node, FuncDef):
+            deprecated = node.deprecated
+        elif isinstance(node, OverloadedFuncDef):
+            deprecated = [node.deprecated] + [
+                i.func.deprecated for i in node.items if isinstance(i, Decorator)
+            ]
+
         return (
             "Func",
             common,
@@ -262,7 +271,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             signature,
             is_trivial_body,
             dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
-            node.deprecated if isinstance(node, FuncDef) else None,
+            deprecated,
             setter_type,  # multi-part properties are stored as OverloadedFuncDef
         )
     elif isinstance(node, Var):
