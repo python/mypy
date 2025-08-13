@@ -721,7 +721,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             ):
                 return str(expr.node.final_value)
             return None
-        
+
         for i in range(len(exprs) - 1):
             while (
                 len(exprs) >= i + 2
