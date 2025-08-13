@@ -17,6 +17,7 @@ from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
+    FAST_PREFIX,
     IS_FREE_THREADED,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
@@ -1171,11 +1172,13 @@ class LowLevelIRBuilder:
             return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
+        fast_name = FAST_PREFIX + name
         if (
             isinstance(base.type, RInstance)
-            and base.type.class_ir.is_ext_class
+            and (base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name))
             and not base.type.class_ir.builtin_base
         ):
+            name = name if base.type.class_ir.is_ext_class else fast_name
             if base.type.class_ir.has_method(name):
                 decl = base.type.class_ir.method_decl(name)
                 if arg_kinds is None:
