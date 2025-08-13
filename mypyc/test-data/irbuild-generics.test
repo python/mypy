@@ -167,26 +167,18 @@ def execute(func, args, kwargs):
     func :: object
     args :: tuple
     kwargs :: dict
-    r0 :: list
-    r1 :: object
-    r2 :: dict[exact]
-    r3 :: dict
-    r4 :: i32
-    r5 :: bit
-    r6 :: tuple
-    r7 :: object
-    r8 :: int
+    r0 :: dict[exact]
+    r1 :: i32
+    r2 :: bit
+    r3 :: object
+    r4 :: int
 L0:
-    r0 = PyList_New(0)
-    r1 = CPyList_Extend(r0, args)
-    r2 = PyDict_New()
-    r3 = cast(dict, r2)
-    r4 = CPyDict_UpdateInDisplay(r3, kwargs)
-    r5 = r4 >= 0 :: signed
-    r6 = PyList_AsTuple(r0)
-    r7 = PyObject_Call(func, r6, r2)
-    r8 = unbox(int, r7)
-    return r8
+    r0 = PyDict_New()
+    r1 = CPyDict_UpdateInDisplay(r0, kwargs)
+    r2 = r1 >= 0 :: signed
+    r3 = PyObject_Call(func, args, r0)
+    r4 = unbox(int, r3)
+    return r4
 def f(x):
     x :: int
 L0:

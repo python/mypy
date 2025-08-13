@@ -17,15 +17,15 @@ else:
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import Any, Callable, Final, TextIO, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing_extensions import Never, TypeAlias
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
 
-_CONFIG_VALUE_TYPES: _TypeAlias = Union[
+_CONFIG_VALUE_TYPES: TypeAlias = Union[
     str, bool, int, float, dict[str, str], list[str], tuple[int, int]
 ]
-_INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
+_INI_PARSER_CALLABLE: TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 
 class VersionTypeError(argparse.ArgumentTypeError):
@@ -60,14 +60,31 @@ def parse_version(v: str | float) -> tuple[int, int]:
     return major, minor
 
 
-def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
-    """Split and trim a str or list of str into a list of str"""
+def try_split(v: str | Sequence[str] | object, split_regex: str = ",") -> list[str]:
+    """Split and trim a str or sequence (eg: list) of str into a list of str.
+    If an element of the input is not str, a type error will be raised."""
+
+    def complain(x: object, additional_info: str = "") -> Never:
+        raise argparse.ArgumentTypeError(
+            f"Expected a list or a stringified version thereof, but got: '{x}', of type {type(x).__name__}.{additional_info}"
+        )
+
     if isinstance(v, str):
         items = [p.strip() for p in re.split(split_regex, v)]
         if items and items[-1] == "":
             items.pop(-1)
         return items
-    return [p.strip() for p in v]
+    elif isinstance(v, Sequence):
+        return [
+            (
+                p.strip()
+                if isinstance(p, str)
+                else complain(p, additional_info=" (As an element of the list.)")
+            )
+            for p in v
+        ]
+    else:
+        complain(v)
 
 
 def validate_codes(codes: list[str]) -> list[str]:

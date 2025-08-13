@@ -59,6 +59,7 @@ from typing import (  # noqa: Y022,Y037,Y038,Y039,UP035
     TypeVar as _TypeVar,
     Union as Union,
     _Alias,
+    _SpecialForm,
     cast as cast,
     no_type_check as no_type_check,
     no_type_check_decorator as no_type_check_decorator,
@@ -203,15 +204,6 @@ _F = _TypeVar("_F", bound=Callable[..., Any])
 _TC = _TypeVar("_TC", bound=type[object])
 _T_co = _TypeVar("_T_co", covariant=True)  # Any type covariant containers.
 _T_contra = _TypeVar("_T_contra", contravariant=True)
-
-class _Final: ...  # This should be imported from typing but that breaks pytype
-
-# unfortunately we have to duplicate this class definition from typing.pyi or we break pytype
-class _SpecialForm(_Final):
-    def __getitem__(self, parameters: Any) -> object: ...
-    if sys.version_info >= (3, 10):
-        def __or__(self, other: Any) -> _SpecialForm: ...
-        def __ror__(self, other: Any) -> _SpecialForm: ...
 
 # Do not import (and re-export) Protocol or runtime_checkable from
 # typing module because type checkers need to be able to distinguish
@@ -480,6 +472,7 @@ else:
     def is_protocol(tp: type, /) -> bool: ...
     def get_protocol_members(tp: type, /) -> frozenset[str]: ...
     @final
+    @type_check_only
     class _NoDefaultType: ...
 
     NoDefault: _NoDefaultType
@@ -611,6 +604,7 @@ class Doc:
     def __eq__(self, other: object) -> bool: ...
 
 # PEP 728
+@type_check_only
 class _NoExtraItemsType: ...
 
 NoExtraItems: _NoExtraItemsType
