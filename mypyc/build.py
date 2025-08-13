@@ -656,7 +656,14 @@ def mypycify(
     if include_native_lib:
         extensions.append(
             get_extension()(
-                "native_buffer", sources=[os.path.join(include_dir(), "native_buffer_internal.c")]
+                "native_buffer",
+                sources=[
+                    os.path.join(include_dir(), "native_buffer_internal.c"),
+                    os.path.join(include_dir(), "int_ops.c"),
+                    os.path.join(include_dir(), "exc_ops.c"),
+                    os.path.join(include_dir(), "init.c"),
+                    os.path.join(include_dir(), "pythonsupport.c"),
+                ],
             )
         )
 

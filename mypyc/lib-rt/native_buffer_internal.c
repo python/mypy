@@ -1,12 +1,11 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "CPy.h"
 
 #define START_SIZE 512
 
 #define STR_LEN_TYPE unsigned int
-#define MAX_STR_SIZE (1 << sizeof(STR_LEN_TYPE) * 8)
-
-#define FLOAT_ERR -113.0
+#define MAX_STR_SIZE (1L << sizeof(STR_LEN_TYPE) * 8)
 
 typedef struct {
     PyObject_HEAD
@@ -122,7 +121,7 @@ static PyMethodDef Buffer_methods[] = {
 };
 
 static PyTypeObject BufferType = {
-    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
+    .ob_base = PyVarObject_HEAD_INIT(&PyType_Type, 0)
     .tp_name = "Buffer",
     .tp_doc = PyDoc_STR("Mypy cache buffer objects"),
     .tp_basicsize = sizeof(BufferObject),
@@ -137,7 +136,9 @@ static PyTypeObject BufferType = {
 static inline
 char _check_buffer(PyObject *data) {
     if (Py_TYPE(data) != &BufferType) {
-        PyErr_SetString(PyExc_TypeError, "data must be a Buffer object");
+        PyErr_Format(
+            PyExc_TypeError, "data must be a Buffer object, got %s", Py_TYPE(data)->tp_name
+        );
         return 2;
     }
     return 1;
@@ -168,7 +169,7 @@ char _check_read(BufferObject *data, Py_ssize_t need) {
     return 1;
 }
 
-char read_bool_internal(PyObject *data) {
+static char read_bool_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -180,7 +181,7 @@ char read_bool_internal(PyObject *data) {
     return res;
 }
 
-PyObject *read_bool(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject *read_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", NULL};
     PyObject *data = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
@@ -193,7 +194,7 @@ PyObject *read_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     return retval;
 }
 
-char write_bool_internal(PyObject *data, char value) {
+static char write_bool_internal(PyObject *data, char value) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -206,7 +207,7 @@ char write_bool_internal(PyObject *data, char value) {
     return 1;
 }
 
-PyObject *write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject *write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", "value", NULL};
     PyObject *data = NULL;
     PyObject *value = NULL;
@@ -223,17 +224,16 @@ PyObject *write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
-PyObject *read_str_internal(PyObject *data) {
+static PyObject *read_str_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return NULL;
 
-    STR_LEN_TYPE size;
-    if (_check_read((BufferObject *)data, sizeof(size)) == 2)
+    if (_check_read((BufferObject *)data, sizeof(STR_LEN_TYPE)) == 2)
         return NULL;
     char *buf = ((BufferObject *)data)->buf;
     // Read string length.
-    size = *(STR_LEN_TYPE *)(buf + ((BufferObject *)data)->pos);
-    ((BufferObject *)data)->pos += sizeof(size);
+    STR_LEN_TYPE size = *(STR_LEN_TYPE *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += sizeof(STR_LEN_TYPE);
     if (_check_read((BufferObject *)data, size) == 2)
         return NULL;
     // Read string content.
@@ -246,7 +246,7 @@ PyObject *read_str_internal(PyObject *data) {
     return res;
 }
 
-PyObject *read_str(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject *read_str(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", NULL};
     PyObject *data = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
@@ -254,7 +254,7 @@ PyObject *read_str(PyObject *self, PyObject *args, PyObject *kwds) {
     return read_str_internal(data);
 }
 
-char write_str_internal(PyObject *data, PyObject *value) {
+static char write_str_internal(PyObject *data, PyObject *value) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -285,7 +285,7 @@ char write_str_internal(PyObject *data, PyObject *value) {
     return 1;
 }
 
-PyObject *write_str(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject *write_str(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", "value", NULL};
     PyObject *data = NULL;
     PyObject *value = NULL;
@@ -302,31 +302,31 @@ PyObject *write_str(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
-double read_float_internal(PyObject *data) {
+static double read_float_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
-        return FLOAT_ERR;
+        return CPY_FLOAT_ERROR;
 
     if (_check_read((BufferObject *)data, sizeof(double)) == 2)
-        return FLOAT_ERR;
+        return CPY_FLOAT_ERROR;
     char *buf = ((BufferObject *)data)->buf;
     double res = *(double *)(buf + ((BufferObject *)data)->pos);
     ((BufferObject *)data)->pos += sizeof(double);
     return res;
 }
 
-PyObject *read_float(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject *read_float(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", NULL};
     PyObject *data = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
         return NULL;
     double retval = read_float_internal(data);
-    if (retval == FLOAT_ERR && PyErr_Occurred()) {
+    if (retval == CPY_FLOAT_ERROR && PyErr_Occurred()) {
         return NULL;
     }
     return PyFloat_FromDouble(retval);
 }
 
-char write_float_internal(PyObject *data, double value) {
+static char write_float_internal(PyObject *data, double value) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -339,7 +339,7 @@ char write_float_internal(PyObject *data, double value) {
     return 1;
 }
 
-PyObject *write_float(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject *write_float(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", "value", NULL};
     PyObject *data = NULL;
     PyObject *value = NULL;
@@ -356,13 +356,92 @@ PyObject *write_float(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
+static CPyTagged read_int_internal(PyObject *data) {
+    if (_check_buffer(data) == 2)
+        return CPY_INT_TAG;
+
+    if (_check_read((BufferObject *)data, sizeof(CPyTagged)) == 2)
+        return CPY_INT_TAG;
+    char *buf = ((BufferObject *)data)->buf;
+
+    CPyTagged ret = *(CPyTagged *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += sizeof(CPyTagged);
+    if ((ret & CPY_INT_TAG) == 0)
+        return ret;
+    PyObject *str_ret = read_str_internal(data);
+    if (str_ret == NULL)
+        return CPY_INT_TAG;
+    PyObject* ret_long = PyLong_FromUnicodeObject(str_ret, 10);
+    Py_DECREF(str_ret);
+    return ((CPyTagged)ret_long) | CPY_INT_TAG;
+}
+
+static PyObject *read_int(PyObject *self, PyObject *args, PyObject *kwds) {
+    static char *kwlist[] = {"data", NULL};
+    PyObject *data = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
+        return NULL;
+    CPyTagged retval = read_int_internal(data);
+    if (retval == CPY_INT_TAG) {
+        return NULL;
+    }
+    return CPyTagged_StealAsObject(retval);
+}
+
+char write_int_internal(PyObject *data, CPyTagged value) {
+    if (_check_buffer(data) == 2)
+        return 2;
+
+    if (_check_size((BufferObject *)data, sizeof(CPyTagged)) == 2)
+        return 2;
+    char *buf = ((BufferObject *)data)->buf;
+    if ((value & CPY_INT_TAG) == 0) {
+        *(CPyTagged *)(buf + ((BufferObject *)data)->pos) = value;
+    } else {
+        *(CPyTagged *)(buf + ((BufferObject *)data)->pos) = CPY_INT_TAG;
+    }
+    ((BufferObject *)data)->pos += sizeof(CPyTagged);
+    ((BufferObject *)data)->end += sizeof(CPyTagged);
+    if ((value & CPY_INT_TAG) != 0) {
+        PyObject *str_value = PyObject_Str(CPyTagged_LongAsObject(value));
+        if (str_value == NULL)
+            return 2;
+        char res = write_str_internal(data, str_value);
+        Py_DECREF(str_value);
+        if (res == 2)
+            return 2;
+    }
+    return 1;
+}
+
+static PyObject *write_int(PyObject *self, PyObject *args, PyObject *kwds) {
+    static char *kwlist[] = {"data", "value", NULL};
+    PyObject *data = NULL;
+    PyObject *value = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value))
+        return NULL;
+    if (!PyLong_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "value must be an int");
+        return NULL;
+    }
+    CPyTagged tagged_value = CPyTagged_BorrowFromObject(value);
+    if (write_int_internal(data, tagged_value) == 2) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyMethodDef native_buffer_module_methods[] = {
+    // TODO: switch public wrappers to METH_FASTCALL.
     {"write_bool", (PyCFunction)write_bool, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a bool")},
     {"read_bool", (PyCFunction)read_bool, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a bool")},
     {"write_str", (PyCFunction)write_str, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a string")},
     {"read_str", (PyCFunction)read_str, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a string")},
     {"write_float", (PyCFunction)write_float, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a float")},
     {"read_float", (PyCFunction)read_float, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a float")},
+    {"write_int", (PyCFunction)write_int, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write an int")},
+    {"read_int", (PyCFunction)read_int, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read an int")},
     {NULL, NULL, 0, NULL}
 };
 
