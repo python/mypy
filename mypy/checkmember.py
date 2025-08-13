@@ -976,8 +976,15 @@ def expand_and_bind_callable(
     freeze_all_type_vars(expanded)
     if not var.is_property:
         return expanded
-    # TODO: a decorated property can result in Overloaded here.
-    assert isinstance(expanded, CallableType)
+    if isinstance(expanded, Overloaded):
+        # Legacy way to store settable properties is with overloads. Also in case it is
+        # an actual overloaded property, selecting first item that passed check_self_arg()
+        # is a good approximation, long-term we should use check_call() inference below.
+        if not expanded.items:
+            # A broken overload, error should be already reported.
+            return AnyType(TypeOfAny.from_error)
+        expanded = expanded.items[0]
+    assert isinstance(expanded, CallableType), expanded
     if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
         if expanded.variables:
             type_ctx = mx.rvalue or TempNode(AnyType(TypeOfAny.special_form), context=mx.context)

@@ -239,9 +239,7 @@ if sys.version_info < (3, 13):
     T: Final = RegexFlag.T
     TEMPLATE: Final = RegexFlag.TEMPLATE
 if sys.version_info >= (3, 11):
-    # pytype chokes on `NOFLAG: Final = RegexFlag.NOFLAG` with `LiteralValueError`
-    # mypy chokes on `NOFLAG: Final[Literal[RegexFlag.NOFLAG]]` with `Literal[...] is invalid`
-    NOFLAG = RegexFlag.NOFLAG
+    NOFLAG: Final = RegexFlag.NOFLAG
 _FlagsType: TypeAlias = int | RegexFlag
 
 # Type-wise the compile() overloads are unnecessary, they could also be modeled using

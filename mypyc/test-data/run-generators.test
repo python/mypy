@@ -272,8 +272,17 @@ def call_nested_decorated(x: int) -> list[int]:
         a.append(x)
     return a
 
+def call_nested_recursive(x: int) -> Iterator:
+    def recursive(x: int) -> Iterator:
+        if x > 0:
+            yield from recursive(x - 1)
+        yield x
+
+    yield from recursive(x)
+
 def test_call_nested_generator_in_function() -> None:
     assert call_nested_decorated(5) == [5, 15]
+    assert list(call_nested_recursive(5)) == [0, 1, 2, 3, 4, 5]
 
 [case testYieldThrow]
 from typing import Generator, Iterable, Any, Union
@@ -871,3 +880,30 @@ def test_undefined_int_in_environment() -> None:
 
     with assertRaises(AttributeError):  # TODO: Should be UnboundLocalError
       list(gen2(False))
+
+[case testVariableWithSameNameAsHelperMethod]
+from testutil import assertRaises
+from typing import Iterator
+
+def gen_send() -> Iterator[int]:
+    send = 1
+    yield send + 1
+
+def gen_throw() -> Iterator[int]:
+    throw = 42
+    yield throw * 2
+
+def undefined() -> Iterator[int]:
+    if int():
+        send = 1
+    yield send + 1
+
+def test_same_names() -> None:
+    assert list(gen_send()) == [2]
+    assert list(gen_throw()) == [84]
+
+    with assertRaises(AttributeError, "attribute 'send' of 'undefined_gen' undefined"):
+        # TODO: Should be UnboundLocalError, this test verifies that the attribute name
+        # matches the variable name in the input code, since internally it's generated
+        # with a prefix.
+        list(undefined())
