@@ -59,7 +59,7 @@ from mypy.types import (
 )
 from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import BITMAP_BITS, SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import BITMAP_BITS, GENERATOR_ATTRIBUTE_PREFIX, SELF_NAME, TEMP_ATTR_NAME
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -651,7 +651,11 @@ class IRBuilder:
                     # current environment.
                     if self.fn_info.is_generator:
                         return self.add_var_to_env_class(
-                            symbol, reg_type, self.fn_info.generator_class, reassign=False
+                            symbol,
+                            reg_type,
+                            self.fn_info.generator_class,
+                            reassign=False,
+                            prefix=GENERATOR_ATTRIBUTE_PREFIX,
                         )
 
                     # Otherwise define a new local variable.
@@ -1333,10 +1337,11 @@ class IRBuilder:
         base: FuncInfo | ImplicitClass,
         reassign: bool = False,
         always_defined: bool = False,
+        prefix: str = "",
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
-        name = remangle_redefinition_name(var.name)
+        name = prefix + remangle_redefinition_name(var.name)
         self.fn_info.env_class.attributes[name] = rtype
         if always_defined:
             self.fn_info.env_class.attrs_with_defaults.add(name)

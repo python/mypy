@@ -180,7 +180,7 @@ L0:
     o.x = r1; r2 = is_error
     return o
 
-[case testSubclass_toplevel]
+[case testSubclass_withgil_toplevel]
 from typing import TypeVar, Generic
 from mypy_extensions import trait
 T = TypeVar('T')
@@ -1408,3 +1408,63 @@ class TestOverload:
 
     def __mypyc_generator_helper__(self, x: Any) -> Any:
         return x
+
+[case testEnumFastPath]
+from enum import Enum
+
+def test(e: E) -> bool:
+    return e.is_one()
+
+class E(Enum):
+    ONE = 1
+    TWO = 2
+
+    def is_one(self) -> bool:
+        return self == E.ONE
+[out]
+def test(e):
+    e :: __main__.E
+    r0 :: bool
+L0:
+    r0 = e.__mypyc_fast_is_one()
+    return r0
+def is_one_E_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def is_one_E_obj.__call__(__mypyc_self__, self):
+    __mypyc_self__ :: __main__.is_one_E_obj
+    self, r0 :: __main__.E
+    r1 :: bool
+    r2 :: bit
+L0:
+    r0 = __main__.E.ONE :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "ONE" was not set')
+    unreachable
+L2:
+    r2 = self == r0
+    return r2
+def E.__mypyc_fast_is_one(self):
+    self, r0 :: __main__.E
+    r1 :: bool
+    r2 :: bit
+L0:
+    r0 = __main__.E.ONE :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "ONE" was not set')
+    unreachable
+L2:
+    r2 = self == r0
+    return r2
