@@ -1209,8 +1209,6 @@ class ForFilter(ForGenerator):
         else:
             fake_call_expr = CallExpr(self.filter_func_def, [self.index], [ARG_POS], [None])
 
-            builder.types[fake_call_expr] = builder.types[self.index]
-
             # I put this here to prevent a circular import
             from mypyc.irbuild.expression import transform_call_expr
 
