@@ -1188,7 +1188,6 @@ class ForMap(ForGenerator):
                     self.builder,
                     name_expr,
                     iterable_expr,
-                    # self.gens[-1].body_block if self.gens else self.body_block,
                     self.cond_blocks[i],
                     self.loop_exit,
                     self.line,
