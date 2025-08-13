@@ -1214,7 +1214,6 @@ class ForMap(ForGenerator):
 
         call_expr = CallExpr(
             self.func_expr,
-            # items,
             [gen.index for gen in self.gens],
             [ARG_POS] * len(self.gens),
             [None] * len(self.gens),
