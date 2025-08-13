@@ -4,18 +4,22 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable
+from typing_extensions import TypeGuard
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
+from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     Instance,
     ParamSpecType,
+    ProperType,
     TupleType,
     Type,
     TypedDictType,
     TypeOfAny,
     TypeVarTupleType,
+    UnionType,
     UnpackType,
     get_proper_type,
 )
@@ -54,6 +58,16 @@ def map_actuals_to_formals(
         elif actual_kind == nodes.ARG_STAR:
             # We need to know the actual type to map varargs.
             actualt = get_proper_type(actual_arg_type(ai))
+
+            # Special case for union of equal sized tuples.
+            if (
+                isinstance(actualt, UnionType)
+                and actualt.items
+                and is_equal_sized_tuples(
+                    proper_types := [get_proper_type(t) for t in actualt.items]
+                )
+            ):
+                actualt = proper_types[0]
             if isinstance(actualt, TupleType):
                 # A tuple actual maps to a fixed number of formals.
                 for _ in range(len(actualt.items)):
@@ -171,6 +185,15 @@ class ArgTypeExpander:
         # Type context for `*` and `**` arg kinds.
         self.context = context
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ArgTypeExpander):
+            return (
+                self.tuple_index == other.tuple_index
+                and self.kwargs_used == other.kwargs_used
+                and self.context == other.context
+            )
+        return NotImplemented
+
     def expand_actual_type(
         self,
         actual_type: Type,
@@ -193,6 +216,66 @@ class ArgTypeExpander:
         original_actual = actual_type
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
+            if isinstance(actual_type, UnionType):
+                proper_types = [get_proper_type(t) for t in actual_type.items]
+                # special case: union of equal sized tuples.  (e.g. `tuple[int, int] | tuple[None, None]`)
+                if is_equal_sized_tuples(proper_types):
+                    # transform union of tuples into a tuple of unions
+                    # e.g. tuple[A, B, C] | tuple[None, None, None] -> tuple[A | None, B | None, C | None]
+                    tuple_args: list[Type] = [
+                        make_simplified_union(items)
+                        for items in zip(*(t.items for t in proper_types))
+                    ]
+                    actual_type = TupleType(
+                        tuple_args,
+                        # use Iterable[A | B | C] as the fallback type
+                        fallback=Instance(
+                            self.context.iterable_type.type, [UnionType.make_union(tuple_args)]
+                        ),
+                    )
+                else:
+                    # reinterpret all union items as iterable types (if possible)
+                    # and return the union of the iterable item types results.
+                    from mypy.subtypes import is_subtype
+
+                    iterable_type = self.context.iterable_type
+
+                    def as_iterable_type(t: Type) -> Type:
+                        """Map a type to the iterable supertype if it is a subtype."""
+                        p_t = get_proper_type(t)
+                        if isinstance(p_t, Instance) and is_subtype(t, iterable_type):
+                            return map_instance_to_supertype(p_t, iterable_type.type)
+                        if isinstance(p_t, TupleType):
+                            # Convert tuple[A, B, C] to Iterable[A | B | C].
+                            return Instance(iterable_type.type, [make_simplified_union(p_t.items)])
+                        return t
+
+                    # create copies of self for each item in the union
+                    sub_expanders = [
+                        ArgTypeExpander(context=self.context) for _ in actual_type.items
+                    ]
+                    for expander in sub_expanders:
+                        expander.tuple_index = int(self.tuple_index)
+                        expander.kwargs_used = set(self.kwargs_used)
+
+                    candidate_type = make_simplified_union(
+                        [
+                            e.expand_actual_type(
+                                as_iterable_type(item),
+                                actual_kind,
+                                formal_name,
+                                formal_kind,
+                                allow_unpack,
+                            )
+                            for e, item in zip(sub_expanders, actual_type.items)
+                        ]
+                    )
+                    assert all(expander == sub_expanders[0] for expander in sub_expanders)
+                    # carry over the new state if all sub-expanders are the same state
+                    self.tuple_index = int(sub_expanders[0].tuple_index)
+                    self.kwargs_used = set(sub_expanders[0].kwargs_used)
+                    return candidate_type
+
             if isinstance(actual_type, TypeVarTupleType):
                 # This code path is hit when *Ts is passed to a callable and various
                 # special-handling didn't catch this. The best thing we can do is to use
@@ -265,3 +348,20 @@ class ArgTypeExpander:
         else:
             # No translation for other kinds -- 1:1 mapping.
             return original_actual
+
+
+def is_equal_sized_tuples(types: Sequence[ProperType]) -> TypeGuard[Sequence[TupleType]]:
+    """Check if all types are tuples of the same size."""
+    if not types:
+        return True
+
+    iterator = iter(types)
+    first = next(iterator)
+    if not isinstance(first, TupleType):
+        return False
+    size = first.length()
+
+    for item in iterator:
+        if not isinstance(item, TupleType) or item.length() != size:
+            return False
+    return True

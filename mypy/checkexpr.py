@@ -27,6 +27,7 @@ from mypy.expandtype import (
     freshen_function_type_vars,
 )
 from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infer_type_arguments
+from mypy.join import join_type_list
 from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
@@ -5227,6 +5228,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     ctx = None
                 tt = self.accept(item.expr, ctx)
                 tt = get_proper_type(tt)
+                if isinstance(tt, UnionType):
+                    # Coercing union to join allows better inference in some
+                    # special cases like `tuple[A, B] | tuple[C, D]`
+                    tt = get_proper_type(join_type_list(tt.items))
+
                 if isinstance(tt, TupleType):
                     if find_unpack_in_list(tt.items) is not None:
                         if seen_unpack_in_items:
