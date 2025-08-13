@@ -29,7 +29,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import CallableType, Type, UnboundType, get_proper_type
-from mypyc.common import LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME
+from mypyc.common import FAST_PREFIX, LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -166,6 +166,7 @@ def gen_func_item(
     name: str,
     sig: FuncSignature,
     cdef: ClassDef | None = None,
+    make_ext_method: bool = False,
 ) -> tuple[FuncIR, Value | None]:
     """Generate and return the FuncIR for a given FuncDef.
 
@@ -217,7 +218,7 @@ def gen_func_item(
     class_name = None
     if cdef:
         ir = builder.mapper.type_to_ir[cdef.info]
-        in_non_ext = not ir.is_ext_class
+        in_non_ext = not ir.is_ext_class and not make_ext_method
         class_name = cdef.name
 
     if is_singledispatch:
@@ -339,6 +340,9 @@ def gen_func_ir(
         fitem = fn_info.fitem
         assert isinstance(fitem, FuncDef), fitem
         func_decl = builder.mapper.func_to_decl[fitem]
+        if cdef and fn_info.name == FAST_PREFIX + func_decl.name:
+            # Special-cased version of a method has a separate FuncDecl, use that one.
+            func_decl = builder.mapper.type_to_ir[cdef.info].method_decls[fn_info.name]
         if fn_info.is_decorated or is_singledispatch_main_func:
             class_name = None if cdef is None else cdef.name
             func_decl = FuncDecl(
@@ -452,6 +456,15 @@ def handle_non_ext_method(
         func_reg = builder.py_call(stat_meth, [func_reg], fdef.line)
 
     builder.add_to_non_ext_dict(non_ext, name, func_reg, fdef.line)
+
+    # If we identified that this non-extension class method can be special-cased for
+    # direct access during prepare phase, generate a "static" version of it.
+    class_ir = builder.mapper.type_to_ir[cdef.info]
+    name = FAST_PREFIX + fdef.name
+    if name in class_ir.method_decls:
+        func_ir, func_reg = gen_func_item(builder, fdef, name, sig, cdef, make_ext_method=True)
+        class_ir.methods[name] = func_ir
+        builder.functions.append(func_ir)
 
 
 def gen_func_ns(builder: IRBuilder) -> str:
