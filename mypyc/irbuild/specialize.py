@@ -711,20 +711,18 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 format_ops.append(FormatOp.STR)
                 exprs.append(item.args[0])
 
+        def get_literal_str(expr: Expression) -> str | None:
+            if isinstance(expr, StrExpr):
+                return expr.value
+            elif (
+                isinstance(expr, RefExpr)
+                and isinstance(expr.node, Var)
+                and expr.node.final_value is not None
+            ):
+                return str(expr.node.final_value)
+            return None
+        
         for i in range(len(exprs) - 1):
-
-            def get_literal_str(expr: Expression) -> str | None:
-                # NOTE: not sure where I should put this helper, this file? somewhere else?
-                if isinstance(expr, StrExpr):
-                    return expr.value
-                elif (
-                    isinstance(expr, RefExpr)
-                    and isinstance(expr.node, Var)
-                    and expr.node.final_value is not None
-                ):
-                    return str(expr.node.final_value)
-                return None
-
             while (
                 len(exprs) >= i + 2
                 and (first := get_literal_str(exprs[i])) is not None
