@@ -2710,6 +2710,56 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
+[case testEnumMethodCalls]
+from enum import Enum
+from typing import overload, Optional, Union
+
+class C:
+    def foo(self, x: Test) -> bool:
+        assert Test.ONE.is_one()
+        assert x.next(2) == Test.THREE
+        assert x.prev(2) == Test.ONE
+        assert x.enigma(22)
+        assert x.enigma("22") == 22
+        return x.is_one(inverse=True)
+
+class Test(Enum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+
+    def is_one(self, *, inverse: bool = False) -> bool:
+        if inverse:
+            return self != Test.ONE
+        return self == Test.ONE
+
+    @classmethod
+    def next(cls, val: int) -> Test:
+        return cls(val + 1)
+
+    @staticmethod
+    def prev(val: int) -> Test:
+        return Test(val - 1)
+
+    @overload
+    def enigma(self, val: int) -> bool: ...
+    @overload
+    def enigma(self, val: Optional[str] = None) -> int: ...
+    def enigma(self, val: Union[int, str, None] = None) -> Union[int, bool]:
+        if isinstance(val, int):
+            return self.is_one()
+        return 22
+[file driver.py]
+from native import Test, C
+
+assert Test.ONE.is_one()
+assert Test.TWO.is_one(inverse=True)
+assert not C().foo(Test.ONE)
+assert Test.next(2) == Test.THREE
+assert Test.prev(2) == Test.ONE
+assert Test.ONE.enigma(22)
+assert Test.ONE.enigma("22") == 22
+
 [case testStaticCallsWithUnpackingArgs]
 from typing import Tuple
 

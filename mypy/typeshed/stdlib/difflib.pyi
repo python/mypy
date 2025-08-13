@@ -1,3 +1,5 @@
+import re
+import sys
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from types import GenericAlias
 from typing import Any, AnyStr, Generic, Literal, NamedTuple, TypeVar, overload
@@ -60,7 +62,12 @@ class Differ:
     def __init__(self, linejunk: Callable[[str], bool] | None = None, charjunk: Callable[[str], bool] | None = None) -> None: ...
     def compare(self, a: Sequence[str], b: Sequence[str]) -> Iterator[str]: ...
 
-def IS_LINE_JUNK(line: str, pat: Any = ...) -> bool: ...  # pat is undocumented
+if sys.version_info >= (3, 14):
+    def IS_LINE_JUNK(line: str, pat: Callable[[str], re.Match[str] | None] | None = None) -> bool: ...
+
+else:
+    def IS_LINE_JUNK(line: str, pat: Callable[[str], re.Match[str] | None] = ...) -> bool: ...
+
 def IS_CHARACTER_JUNK(ch: str, ws: str = " \t") -> bool: ...  # ws is undocumented
 def unified_diff(
     a: Sequence[str],

@@ -1,7 +1,7 @@
 import sys
 from _typeshed import SupportsMul, SupportsRMul
 from collections.abc import Iterable
-from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, TypeVar, overload
+from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, TypeVar, overload, type_check_only
 from typing_extensions import TypeAlias
 
 _T = TypeVar("_T")
@@ -26,6 +26,7 @@ def atanh(x: _SupportsFloatOrIndex, /) -> float: ...
 if sys.version_info >= (3, 11):
     def cbrt(x: _SupportsFloatOrIndex, /) -> float: ...
 
+@type_check_only
 class _SupportsCeil(Protocol[_T_co]):
     def __ceil__(self) -> _T_co: ...
 
@@ -49,7 +50,7 @@ if sys.version_info >= (3, 11):
 def expm1(x: _SupportsFloatOrIndex, /) -> float: ...
 def fabs(x: _SupportsFloatOrIndex, /) -> float: ...
 def factorial(x: SupportsIndex, /) -> int: ...
-
+@type_check_only
 class _SupportsFloor(Protocol[_T_co]):
     def __floor__(self) -> _T_co: ...
 
@@ -99,6 +100,7 @@ _LiteralInteger = _PositiveInteger | _NegativeInteger | Literal[0]  # noqa: Y026
 _MultiplicableT1 = TypeVar("_MultiplicableT1", bound=SupportsMul[Any, Any])
 _MultiplicableT2 = TypeVar("_MultiplicableT2", bound=SupportsMul[Any, Any])
 
+@type_check_only
 class _SupportsProdWithNoDefaultGiven(SupportsMul[Any, Any], SupportsRMul[int, Any], Protocol): ...
 
 _SupportsProdNoDefaultT = TypeVar("_SupportsProdNoDefaultT", bound=_SupportsProdWithNoDefaultGiven)
@@ -127,6 +129,7 @@ def tan(x: _SupportsFloatOrIndex, /) -> float: ...
 def tanh(x: _SupportsFloatOrIndex, /) -> float: ...
 
 # Is different from `_typeshed.SupportsTrunc`, which is not generic
+@type_check_only
 class _SupportsTrunc(Protocol[_T_co]):
     def __trunc__(self) -> _T_co: ...
 
