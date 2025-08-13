@@ -799,12 +799,12 @@ class LowLevelIRBuilder:
                         # fn(*args)
                         if is_list_rprimitive(value.type):
                             value = self.primitive_op(list_tuple_op, [value], line)
-                        elif not is_tuple_rprimitive(value.type):
+                        elif not is_tuple_rprimitive(value.type) and not isinstance(value.type, RTuple):
                             value = self.primitive_op(sequence_tuple_op, [value], line)
                         return value, self._create_dict([], [], line)
                     elif len(args) == 2 and args[1][1] == ARG_STAR2:
                         # fn(*args, **kwargs)
-                        if is_tuple_rprimitive(value.type):
+                        if is_tuple_rprimitive(value.type) or isinstance(value.type, RTuple):
                             star_result = value
                         elif is_list_rprimitive(value.type):
                             star_result = self.primitive_op(list_tuple_op, [value], line)
