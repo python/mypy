@@ -1408,3 +1408,44 @@ class TestOverload:
 
     def __mypyc_generator_helper__(self, x: Any) -> Any:
         return x
+
+[case testNativeBufferFastPath]
+from native_buffer import Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float
+
+def foo() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_float(b, 0.1)
+
+    b = Buffer(b.getvalue())
+    x = read_str(b)
+    y = read_bool(b)
+    z = read_float(b)
+[out]
+def foo():
+    r0, b :: native_buffer.Buffer
+    r1 :: str
+    r2, r3, r4 :: None
+    r5 :: bytes
+    r6 :: native_buffer.Buffer
+    r7, x :: str
+    r8, y :: bool
+    r9, z :: float
+L0:
+    r0 = Buffer_internal_empty()
+    b = r0
+    r1 = 'foo'
+    r2 = write_str_internal(b, r1)
+    r3 = write_bool_internal(b, 1)
+    r4 = write_float_internal(b, 0.1)
+    r5 = Buffer_getvalue_internal(b)
+    r6 = Buffer_internal(r5)
+    b = r6
+    r7 = read_str_internal(b)
+    x = r7
+    r8 = read_bool_internal(b)
+    y = r8
+    r9 = read_float_internal(b)
+    z = r9
+    return 1

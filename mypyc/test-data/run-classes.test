@@ -2710,6 +2710,56 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
+[case testBufferRoundTrip_native_lib]
+from native_buffer import Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float
+
+def test_buffer_basic() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+
+[file driver.py]
+from native import *
+
+test_buffer_basic()
+test_buffer_roundtrip()
+
+def test_buffer_basic_interpreted() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip_interpreted() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+
+test_buffer_basic_interpreted()
+test_buffer_roundtrip_interpreted()
+
 [case testStaticCallsWithUnpackingArgs]
 from typing import Tuple
 

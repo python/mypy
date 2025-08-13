@@ -492,6 +492,7 @@ def mypycify(
     strict_dunder_typing: bool = False,
     group_name: str | None = None,
     log_trace: bool = False,
+    include_native_lib: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -652,5 +653,11 @@ def mypycify(
             extensions.extend(
                 build_single_module(group_sources, cfilenames + shared_cfilenames, cflags)
             )
+    if include_native_lib:
+        extensions.append(
+            get_extension()(
+                "native_buffer", sources=[os.path.join(include_dir(), "native_buffer_internal.c")]
+            )
+        )
 
     return extensions

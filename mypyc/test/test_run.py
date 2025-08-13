@@ -86,7 +86,7 @@ from mypyc.build import mypycify
 
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
-                           multi_file={}, opt_level='{}'),
+                           multi_file={}, opt_level='{}', include_native_lib={}),
 )
 """
 
@@ -270,14 +270,14 @@ class TestRun(MypycDataSuite):
             check_serialization_roundtrip(ir)
 
         opt_level = int(os.environ.get("MYPYC_OPT_LEVEL", 0))
-        debug_level = int(os.environ.get("MYPYC_DEBUG_LEVEL", 0))
+        native_lib = "_native_lib" in testcase.name
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, "setup.py"))
         # We pass the C file information to the build script via setup.py unfortunately
         with open(setup_file, "w", encoding="utf-8") as f:
             f.write(
                 setup_format.format(
-                    module_paths, separate, cfiles, self.multi_file, opt_level, debug_level
+                    module_paths, separate, cfiles, self.multi_file, opt_level, native_lib
                 )
             )
 
