@@ -63,6 +63,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    remove_dups,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
@@ -520,15 +521,16 @@ def callable_corresponding_argument(
 
         # def right(a: int = ...) -> None: ...
         # def left(__a: int = ..., *, a: int = ...) -> None: ...
-        from mypy.subtypes import is_equivalent
+        from mypy.meet import meet_types
 
         if (
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
-            and is_equivalent(by_name.typ, by_pos.typ)
         ):
-            return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
+            return FormalArgument(
+                by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
+            )
     return by_name if by_name is not None else by_pos
 
 
@@ -995,7 +997,7 @@ def is_singleton_type(typ: Type) -> bool:
     return typ.is_singleton_type()
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1017,21 +1019,22 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
+        # Non-empty enums cannot subclass each other so simply removing duplicates is enough.
         items = [
-            try_expanding_sum_type_to_union(item, target_fullname) for item in typ.relevant_items()
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in remove_dups(flatten_nested_unions(typ.relevant_items()))
         ]
-        return make_simplified_union(items, contract_literals=False)
+        return UnionType.make_union(items)
 
     if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.fullname == "builtins.bool":
-            items = [LiteralType(True, typ), LiteralType(False, typ)]
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
         if typ.type.is_enum:
             items = [LiteralType(name, typ) for name in typ.type.enum_members]
             if not items:
                 return typ
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType.make_union(items)
 
     return typ
 

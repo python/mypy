@@ -10,7 +10,7 @@ from _ast import (
 )
 from _typeshed import ReadableBuffer, Unused
 from collections.abc import Iterable, Iterator, Sequence
-from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar as _TypeVar, overload
+from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar as _TypeVar, overload, type_check_only
 from typing_extensions import Self, Unpack, deprecated
 
 if sys.version_info >= (3, 13):
@@ -20,6 +20,7 @@ if sys.version_info >= (3, 13):
 _EndPositionT = typing_extensions.TypeVar("_EndPositionT", int, int | None, default=int | None)
 
 # Corresponds to the names in the `_attributes` class variable which is non-empty in certain AST nodes
+@type_check_only
 class _Attributes(TypedDict, Generic[_EndPositionT], total=False):
     lineno: int
     col_offset: int
@@ -1698,8 +1699,14 @@ if sys.version_info >= (3, 12):
                 self, *, name: str = ..., default_value: expr | None = ..., **kwargs: Unpack[_Attributes[int]]
             ) -> Self: ...
 
-class _ABC(type):
-    def __init__(cls, *args: Unused) -> None: ...
+if sys.version_info >= (3, 14):
+    @type_check_only
+    class _ABC(type):
+        def __init__(cls, *args: Unused) -> None: ...
+
+else:
+    class _ABC(type):
+        def __init__(cls, *args: Unused) -> None: ...
 
 if sys.version_info < (3, 14):
     @deprecated("Replaced by ast.Constant; removed in Python 3.14")

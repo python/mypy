@@ -224,6 +224,7 @@ def f(x: int) -> int: pass
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.str"
 tmp/a.py:3: error: Unexpected keyword argument "x" for "f"
+tmp/b.py: note: "f" defined here
 
 [case testSerializeTypeGuardFunction]
 import a
