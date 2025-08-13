@@ -3767,7 +3767,8 @@ class Point(TypedDict, total=False):
 def func(cls: Type[Point]) -> None:
     reveal_type(cls)  # N: Revealed type is "type[TypedDict('__main__.Point', {'x': builtins.int, 'y'?: builtins.int})]"
     cls(x=1, y=2)
-    cls(1, 2)  # E: Too many positional arguments
+    cls(1, 2)  # E: Too many positional arguments \
+               # E: Missing named argument "x"
     cls(x=1)
     cls(y=2)  # E: Missing named argument "x"
     cls(x=1, y=2, error="")  # E: Unexpected keyword argument "error"

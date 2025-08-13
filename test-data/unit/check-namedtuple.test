@@ -93,7 +93,7 @@ x = X(1, 'x')
 x.x
 x.z      # E: "X" has no attribute "z"
 x = X(1) # E: Missing positional argument "y" in call to "X"
-x = X(1, 2, 3)  # E: Too many arguments for "X"
+x = X(1, 2, 3)  # E: Too many positional arguments for "X"
 [builtins fixtures/tuple.pyi]
 
 [case testCreateNamedTupleWithKeywordArguments]
@@ -141,7 +141,7 @@ X = namedtuple('X', ['x', 'y'], defaults=(1,))
 X()  # E: Missing positional argument "x" in call to "X"
 X(0)  # ok
 X(0, 1)  # ok
-X(0, 1, 2)  # E: Too many arguments for "X"
+X(0, 1, 2)  # E: Too many positional arguments for "X"
 
 Y = namedtuple('Y', ['x', 'y'], defaults=(1, 2, 3))  # E: Too many defaults given in call to "namedtuple()"
 Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to namedtuple()  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Iterable[Any] | None"

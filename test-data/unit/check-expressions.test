@@ -791,7 +791,7 @@ divmod()  # E: "divmod" expects 2 arguments \
 divmod(7)  # E: "divmod" expects 2 arguments \
            # E: Missing positional argument "_y" in call to "divmod"
 divmod(7, 8, 9)  # E: "divmod" expects 2 arguments \
-                 # E: Too many arguments for "divmod"
+                 # E: Too many positional arguments for "divmod"
 divmod(_x=7, _y=9)  # E: "divmod" must be called with 2 positional arguments
 
 divmod('foo', 'foo')  # E: Unsupported left operand type for divmod ("str")
@@ -1568,7 +1568,7 @@ class A:
     def __add__(self) -> 'A':
         pass
 [out]
-main:3: error: Too many arguments for "__add__" of "A"
+main:3: error: Too many positional arguments for "__add__" of "A"
 
 [case testOperatorMethodAsVar]
 from typing import Any
@@ -2561,3 +2561,29 @@ def last_known_value() -> None:
     x, y, z = xy  # E: Unpacking a string is disallowed
     reveal_type(z)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
+
+[case testTupleExpressionWithVariadicVarArg]
+def test(*args: int) -> None:
+    reveal_type(   args     )  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+    reveal_type( (*args,)   )  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+[builtins fixtures/tuple.pyi]
+
+
+[case testTupleExpressionWithTypeVarTupleVarArg]
+from typing_extensions import TypeVarTuple, Unpack
+Ts = TypeVarTuple('Ts')
+
+def test(*args: Unpack[Ts]) -> None:
+    reveal_type(   args     )  # N: Revealed type is "tuple[Unpack[Ts`-1]]"
+    reveal_type( (*args,)   )  # N: Revealed type is "tuple[Unpack[Ts`-1]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleExpressionWithParamSpecVarArg]
+from typing import Callable
+from typing_extensions import ParamSpec, Unpack
+P = ParamSpec('P')
+
+def test(fn: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
+    reveal_type(   args     )  # N: Revealed type is "P.args`-1"
+    reveal_type( (*args,)   )  # N: Revealed type is "P.args`-1"
+[builtins fixtures/tuple.pyi]

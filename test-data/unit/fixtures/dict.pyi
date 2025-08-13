@@ -52,7 +52,6 @@ class list(Sequence[T]): # needed by some test cases
     def __contains__(self, item: object) -> bool: pass
     def append(self, item: T) -> None: pass
 
-class tuple(Generic[T]): pass
 class function: pass
 class float: pass
 class complex: pass
@@ -62,3 +61,10 @@ class BaseException: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 def iter(__iterable: Iterable[T]) -> Iterator[T]: pass
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

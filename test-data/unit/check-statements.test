@@ -655,7 +655,7 @@ import typing
 try: pass
 except BaseException: pass
 else:
-  object(None) # E: Too many arguments for "object"
+  object(None) # E: Too many positional arguments for "object"
 [builtins fixtures/exception.pyi]
 
 [case testRedefinedFunctionInTryWithElse]
@@ -1411,14 +1411,14 @@ class A:
     def __enter__(self) -> None: pass
     def __exit__(self, x, y, z) -> None: pass
 with A():
-    object(A) # E: Too many arguments for "object"
+    object(A) # E: Too many positional arguments for "object"
 
 [case testWithStmtAndInvalidExit]
 import typing
 class A:
     def __enter__(self) -> None: pass
     def __exit__(self, x, y) -> None: pass
-with A(): # E: Too many arguments for "__exit__" of "A"
+with A(): # E: Too many positional arguments for "__exit__" of "A"
     pass
 
 [case testWithStmtAndMissingExit]

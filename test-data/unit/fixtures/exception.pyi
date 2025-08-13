@@ -1,12 +1,14 @@
 import sys
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Iterable, Iterator
 T = TypeVar('T')
 
 class object:
     def __init__(self): pass
 
 class type: pass
-class tuple(Generic[T]):
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Iterable[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
     def __ge__(self, other: object) -> bool: ...
 class list: pass
 class dict: pass

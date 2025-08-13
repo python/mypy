@@ -193,7 +193,7 @@ testNamespacePkgWStubsWithNamespacePackagesFlag.py:8: error: Argument 1 to "bf" 
 import typedpkg_ns.b.bbb as b
 b.bf("foo", "bar")
 [out]
-testMissingPytypedFlag.py:4: error: Too many arguments for "bf"
+testMissingPytypedFlag.py:4: error: Too many positional arguments for "bf"
 
 [case testTypedPkgNamespaceRegFromImportTwiceMissing]
 # pkgs: typedpkg_ns_a

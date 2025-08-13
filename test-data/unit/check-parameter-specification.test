@@ -2250,7 +2250,7 @@ def fn_posonly(x: int, /) -> None: ...
 def fn_posonly_args(x: int, /, y: str) -> None: ...
 
 run(fn)  # E: Argument 1 to "run" has incompatible type "Callable[[], None]"; expected "Callable[[int], None]"
-run(fn_args, 1, 'a')  # E: Too many arguments for "run" \
+run(fn_args, 1, 'a')  # E: Too many positional arguments for "run" \
                       # E: Argument 2 to "run" has incompatible type "int"; expected "str"
 run(fn_args, y='a')
 run(fn_args, 'a')
@@ -2755,4 +2755,42 @@ reveal_type(Sneaky(f7, 1, y='').kwargs)  # N: Revealed type is "TypedDict('built
 reveal_type(Sneaky(f8, 1, y='').kwargs)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
 reveal_type(Sneaky(f9, 1, y=0).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str})"
 reveal_type(Sneaky(f9, 1, y=0, z='').kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str})"
+[builtins fixtures/paramspec.pyi]
+
+
+[case testParamSpecArgsAsTupleInteraction]
+# https://github.com/python/mypy/issues/19663
+# flags: --warn-unreachable
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec, TypeVarTuple, Unpack
+
+P = ParamSpec("P")
+Ts = TypeVarTuple("Ts")
+TupleT = TypeVar("TupleT", bound=tuple)
+
+def as_tuple(*args: Unpack[Ts]) -> tuple[Unpack[Ts]]: return args
+def tuple_identity(t: TupleT) -> TupleT: return t
+def tuple_identity2(t: tuple[Unpack[Ts]]) -> tuple[Unpack[Ts]]: return t
+
+def test_paramspec(
+    dummy: Callable[P, None],  # ensure P is bound
+    /,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> None:
+    reveal_type( args )                 # N: Revealed type is "P.args`-1"
+    reveal_type( (*args,) )             # N: Revealed type is "P.args`-1"
+    reveal_type(tuple_identity(args))   # N: Revealed type is "P.args`-1"
+    reveal_type(as_tuple(*args))        # N: Revealed type is "tuple[Unpack[P.args`-1]]"
+    # TODO: this one should possible be tuple[Any, ...] ?
+    reveal_type( tuple(args) )          # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+    # TODO: this one should give the same result as tuple_identity above?
+    reveal_type(tuple_identity2(args))  # N: Revealed type is "builtins.tuple[Never, ...]" \
+                                        # E: Argument 1 to "tuple_identity2" has incompatible type "P.args"; expected "tuple[Never, ...]"
+
+    if isinstance(args, tuple):
+        pass
+    else:
+        reveal_type(args)  # N: Revealed type is "P.args`-1"
+
 [builtins fixtures/paramspec.pyi]

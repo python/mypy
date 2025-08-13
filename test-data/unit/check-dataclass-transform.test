@@ -16,7 +16,7 @@ class Person:
 
 reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
 Person('John', 32)
-Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+Person('Jonh', 21, None)  # E: Too many positional arguments for "Person"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -39,7 +39,7 @@ class Person:
 
 reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
 Person('John', 32)
-Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+Person('Jonh', 21, None)  # E: Too many positional arguments for "Person"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -61,7 +61,7 @@ class Person:
 
 reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
 Person('John', 32)
-Person('John', 21, None)  # E: Too many arguments for "Person"
+Person('John', 21, None)  # E: Too many positional arguments for "Person"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -146,7 +146,8 @@ def always_use_kw(cls: Type) -> Type:
 class Baz:
     x: int
 Baz(x=5)
-Baz(5)  # E: Too many positional arguments for "Baz"
+Baz(5)  # E: Too many positional arguments for "Baz" \
+        # E: Missing named argument "x" for "Baz"
 
 @dataclass_transform(order_default=True)
 def ordered(*, eq: bool = True) -> Callable[[Type], Type]:
@@ -183,7 +184,8 @@ class KwOnly:
 class KwOptional:
     x: int
 
-KwOnly(5)  # E: Too many positional arguments for "KwOnly"
+KwOnly(5)  # E: Too many positional arguments for "KwOnly" \
+           # E: Missing named argument "x" for "KwOnly"
 KwOptional(5)
 
 [typing fixtures/typing-full.pyi]
@@ -379,7 +381,7 @@ class B:
 
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
 reveal_type(B)  # N: Revealed type is "def (b: builtins.int) -> __main__.B"
-A(1, "hello")  # E: Too many arguments for "A"
+A(1, "hello")  # E: Too many positional arguments for "A"
 a = A(1)
 a.a = 2  # E: Property "a" defined in "A" is read-only
 
@@ -406,7 +408,7 @@ class B:
 
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
 reveal_type(B)  # N: Revealed type is "def (b: builtins.int) -> __main__.B"
-A(1, "hello")  # E: Too many arguments for "A"
+A(1, "hello")  # E: Too many positional arguments for "A"
 a = A(1)
 a.a = 2  # E: Property "a" defined in "A" is read-only
 
@@ -426,7 +428,9 @@ class Person(Dataclass, kw_only=True):
     age: int
 
 reveal_type(Person)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> __main__.Person"
-Person('Jonh', 21)  # E: Too many positional arguments for "Person"
+Person('Jonh', 21)  # E: Too many positional arguments for "Person" \
+                    # E: Missing named argument "name" for "Person" \
+                    # E: Missing named argument "age" for "Person"
 person = Person(name='John', age=32)
 person.name = "John Smith"  # E: Property "name" defined in "Person" is read-only
 
@@ -455,7 +459,9 @@ class Person(BaseDataclass, kw_only=True):
     age: int
 
 reveal_type(Person)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> __main__.Person"
-Person('Jonh', 21)  # E: Too many positional arguments for "Person"
+Person('Jonh', 21)  # E: Too many positional arguments for "Person" \
+                    # E: Missing named argument "name" for "Person" \
+                    # E: Missing named argument "age" for "Person"
 person = Person(name='John', age=32)
 person.name = "John Smith"  # E: Property "name" defined in "Person" is read-only
 
@@ -482,7 +488,7 @@ class Foo(metaclass=SubMeta):
     foo: int
 
 reveal_type(Foo)  # N: Revealed type is "def () -> __main__.Foo"
-Foo(1)  # E: Too many arguments for "Foo"
+Foo(1)  # E: Too many positional arguments for "Foo"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]

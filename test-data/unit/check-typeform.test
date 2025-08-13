@@ -792,6 +792,7 @@ print(typx.__class__)  # OK
 print(typx.__hash__())  # OK
 obj: object = typx
 [file builtins.py]
+from typing import Mapping
 class object:
     def __init__(self) -> None: pass
     __class__: None

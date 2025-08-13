@@ -25,6 +25,10 @@ class ellipsis: pass
 
 from typing import Generic, Iterator, Sequence, TypeVar
 _T = TypeVar('_T')
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+
 class list(Generic[_T], Sequence[_T]):
     def __contains__(self, item: object) -> bool: pass
     def __getitem__(self, key: int) -> _T: pass

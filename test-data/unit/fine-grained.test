@@ -257,7 +257,7 @@ class A:
     def f(self, a: 'A') -> None: pass
 [out]
 ==
-main:3: error: Too many arguments for "f" of "A"
+main:3: error: Too many positional arguments for "f" of "A"
 ==
 
 [case testFixTypeError2]
@@ -1385,7 +1385,7 @@ class A:
 class A: pass
 [out]
 ==
-main:4: error: Too many arguments for "A"
+main:4: error: Too many positional arguments for "A"
 
 [case testBaseClassConstructorChanged]
 import m
@@ -1845,14 +1845,14 @@ def g() -> None:
 3: <b.h>, <b>, <b[wildcard]>, a
 4: a.g
 [out]
-a.py:11: error: Too many arguments for "h"
+a.py:11: error: Too many positional arguments for "h"
 ==
 a.py:10: error: Cannot find implementation or library stub for module named "b"
 a.py:10: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-a.py:11: error: Too many arguments for "h"
+a.py:11: error: Too many positional arguments for "h"
 ==
-a.py:11: error: Too many arguments for "h"
+a.py:11: error: Too many positional arguments for "h"
 
 [case testDecoratorSpecialCase2]
 import a
@@ -6214,7 +6214,7 @@ class C:
 [out]
 ==
 ==
-a.py:4: error: Too many arguments for "C"
+a.py:4: error: Too many positional arguments for "C"
 
 -- Protocol tests
 
@@ -10518,7 +10518,7 @@ m.py:8: error: Argument 2 has incompatible type "int"; expected "str"
 ==
 m.py:4: note: Revealed type is "functools.partial[builtins.int]"
 m.py:8: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
-m.py:9: error: Too many arguments for "foo"
+m.py:9: error: Too many positional arguments for "foo"
 m.py:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 m.py:9: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 m.py:10: error: Unexpected keyword argument "a" for "foo"

@@ -1931,10 +1931,10 @@ if issubclass(y): # E: Missing positional argument "t" in call to "issubclass"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTooManyArgs]
-isinstance(1, 1, 1) # E: Too many arguments for "isinstance" \
+isinstance(1, 1, 1) # E: Too many positional arguments for "isinstance" \
          # E: Argument 2 to "isinstance" has incompatible type "int"; expected "type | tuple[Any, ...]"
 x: object
-if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
+if isinstance(x, str, 1): # E: Too many positional arguments for "isinstance"
     reveal_type(x) # N: Revealed type is "builtins.object"
     x = 1
     reveal_type(x) # N: Revealed type is "builtins.int"
@@ -2334,7 +2334,7 @@ def f(var: Union[int, str]) -> None:
 
 [case testIsInstanceWithWrongStarExpression]
 var = 'some string'
-if isinstance(var, *(str, int)):  # E: Too many arguments for "isinstance"
+if isinstance(var, *(str, int)):  # E: Too many positional arguments for "isinstance"
     pass
 [builtins fixtures/isinstancelist.pyi]
 

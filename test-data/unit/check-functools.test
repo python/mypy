@@ -169,7 +169,7 @@ p2("a")  # OK
 p2("a", 3)  # OK
 p2("a", c=3)  # OK
 p2(1, 3)  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
-p2(1, "a", 3)  # E: Too many arguments for "foo" \
+p2(1, "a", 3)  # E: Too many positional arguments for "foo" \
                # E: Argument 1 to "foo" has incompatible type "int"; expected "str" \
                # E: Argument 2 to "foo" has incompatible type "str"; expected "int"
 p2(a=1, b="a", c=3)  # E: Unexpected keyword argument "a" for "foo"
@@ -179,8 +179,7 @@ p3(1)  # OK
 p3(1, c=3)  # OK
 p3(a=1)  # OK
 p3(1, b="a", c=3)  # OK, keywords can be clobbered
-p3(1, 3)  # E: Too many positional arguments for "foo" \
-          # E: Argument 2 to "foo" has incompatible type "int"; expected "str"
+p3(1, 3)  # E: Too many positional arguments for "foo"
 
 functools.partial(foo, "a")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
 functools.partial(foo, b=1)  # E: Argument "b" to "foo" has incompatible type "int"; expected "str"
@@ -215,14 +214,16 @@ def bar(*a: bytes, **k: int):
     p1("a", d="a", **k)
     p1("a", **k)  # E: Argument 2 to "foo" has incompatible type "**dict[str, int]"; expected "str"
     p1(**k)  # E: Argument 1 to "foo" has incompatible type "**dict[str, int]"; expected "str"
-    p1(*a)  # E: Expected iterable as variadic argument
+    reveal_type(a)  # N: Revealed type is "builtins.tuple[builtins.bytes, ...]"
+    p1(*a)  # E: Argument 1 to "foo" has incompatible type "*tuple[bytes, ...]"; expected "str" \
+            # E: Argument 1 to "foo" has incompatible type "*tuple[bytes, ...]"; expected "int"
 
 
 def baz(a: int, b: int) -> int: ...
 def test_baz(xs: List[int]):
     p3 = functools.partial(baz, *xs)
     p3()
-    p3(1)  # E: Too many arguments for "baz"
+    p3(1)  # E: Too many positional arguments for "baz"
 
 
 [builtins fixtures/dict.pyi]
@@ -497,15 +498,13 @@ def main5(**d2: Unpack[D2]) -> None:
 def main6(a2good: A2Good, a2bad: A2Bad, **d1: Unpack[D1]) -> None:
     partial(fn3, **d1)()  # E: Missing positional argument "a1" in call to "fn3"
     partial(fn3, **d1)("asdf")  # E: Too many positional arguments for "fn3" \
-                                # E: Too few arguments for "fn3" \
-                                # E: Argument 1 to "fn3" has incompatible type "str"; expected "int"
+                                # E: Too few arguments for "fn3"
     partial(fn3, **d1)(a2="asdf")
     partial(fn3, **d1)(**a2good)
     partial(fn3, **d1)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
 
     partial(fn4, **d1)()
-    partial(fn4, **d1)("asdf")  # E: Too many positional arguments for "fn4" \
-                                # E: Argument 1 to "fn4" has incompatible type "str"; expected "int"
+    partial(fn4, **d1)("asdf")  # E: Too many positional arguments for "fn4"
     partial(fn4, **d1)(a2="asdf")
     partial(fn4, **d1)(**a2good)
     partial(fn4, **d1)(**a2bad)  # E: Argument "a2" to "fn4" has incompatible type "int"; expected "str"
@@ -530,8 +529,7 @@ reveal_type(first_kw(args=[1]))  # N: Revealed type is "builtins.int"
 
 # TODO: this is indeed invalid, but the error is incomprehensible.
 first_kw([1])  # E: Too many positional arguments for "get" \
-               # E: Too few arguments for "get" \
-               # E: Argument 1 to "get" has incompatible type "list[int]"; expected "int"
+               # E: Too few arguments for "get"
 [builtins fixtures/list.pyi]
 
 [case testFunctoolsPartialHigherOrder]

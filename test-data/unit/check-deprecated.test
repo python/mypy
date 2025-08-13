@@ -51,7 +51,7 @@ def f() -> None: ...
 
 f  # E: function __main__.f is deprecated: use f2 instead  # type: ignore[deprecated]
 f(1)  # E: function __main__.f is deprecated: use f2 instead \
-      # E: Too many arguments for "f"
+      # E: Too many positional arguments for "f"
 f[1]  # E: function __main__.f is deprecated: use f2 instead \
       # E: Value of type "Callable[[], None]" is not indexable
 g = f  # E: function __main__.f is deprecated: use f2 instead
@@ -116,7 +116,7 @@ C.missing()  # E: class __main__.C is deprecated: use C2 instead \
              # E: "type[C]" has no attribute "missing"
 C.__init__(c)  # E: class __main__.C is deprecated: use C2 instead
 C(1)  # E: class __main__.C is deprecated: use C2 instead \
-      # E: Too many arguments for "C"
+      # E: Too many positional arguments for "C"
 
 D = C  # E: class __main__.C is deprecated: use C2 instead
 D()
@@ -604,7 +604,7 @@ C.f  # E: function __main__.C.f is deprecated: use g instead
 C().f  # E: function __main__.C.f is deprecated: use g instead
 C().f()  # E: function __main__.C.f is deprecated: use g instead
 C().f(1)  # E: function __main__.C.f is deprecated: use g instead \
-          # E: Too many arguments for "f" of "C"
+          # E: Too many positional arguments for "f" of "C"
 f = C().f  # E: function __main__.C.f is deprecated: use g instead
 f()
 t = (C.f, C.f, C.g)  # E: function __main__.C.f is deprecated: use g instead

@@ -620,8 +620,8 @@ class MessageBuilder:
 
     def incompatible_argument(
         self,
-        n: int,
-        m: int,
+        n: int,  # actual_argument_index (1-based)
+        m: int,  # formal_parameter_index (1-based)
         callee: CallableType,
         arg_type: Type,
         arg_kind: ArgKind,
@@ -997,7 +997,7 @@ class MessageBuilder:
             msg = "Too many positional arguments"
         else:
             msg = "Too many positional arguments" + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG)
         self.maybe_note_about_special_args(callee, context)
 
     def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:

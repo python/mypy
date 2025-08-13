@@ -67,7 +67,7 @@ if 1:
     m.a = m.b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     m.a = m.a
     m.f()
-    m.f(m.a)    # E: Too many arguments for "f"
+    m.f(m.a)    # E: Too many positional arguments for "f"
     m.a = m.A()
     m.a = m.B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
@@ -86,7 +86,7 @@ def f() -> None:
             # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = a
         f()
-        f(a)    # E: Too many arguments for "f"
+        f(a)    # E: Too many positional arguments for "f"
         a = A()
         a = B() \
             # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -107,7 +107,7 @@ class C:
             a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
             a = a
             f()
-            f(a)    # E: Too many arguments for "f"
+            f(a)    # E: Too many positional arguments for "f"
             a = A()
             a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
@@ -123,7 +123,7 @@ import typing
 class C:
     import m
     m.f()
-    m.f(C) # E: Too many arguments for "f"
+    m.f(C) # E: Too many positional arguments for "f"
 [file m.py]
 def f() -> None: pass
 [out]
@@ -350,7 +350,7 @@ foobar('')
 [out]
 main:2: error: Cannot find implementation or library stub for module named "foobar"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:4: error: Too many arguments for "foobar"
+main:4: error: Too many positional arguments for "foobar"
 
 [case testUnknownModuleImportedWithinFunction2]
 def f():
@@ -360,7 +360,7 @@ x('')
 [out]
 main:2: error: Cannot find implementation or library stub for module named "foobar"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:4: error: Too many arguments for "x"
+main:4: error: Too many positional arguments for "x"
 
 [case testRelativeImports]
 import typing
@@ -2964,7 +2964,7 @@ reveal_type(Some.name)  # N: Revealed type is "builtins.str"
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
 C()
-C(1)  # E: Too many arguments for "C"
+C(1)  # E: Too many positional arguments for "C"
 [file m1.pyi]
 from m2 import *
 [file m2.pyi]

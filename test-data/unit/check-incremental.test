@@ -2247,7 +2247,7 @@ def foo(x) -> int:
 [rechecked2 m, n]
 [stale2 m, n]
 [out2]
-tmp/n.py:2: error: Too many arguments for "foo"
+tmp/n.py:2: error: Too many positional arguments for "foo"
 [out3]
 
 [case testCacheDeletedAfterErrorsFound]
@@ -6951,14 +6951,13 @@ tmp/a.py:8: note: Revealed type is "functools.partial[builtins.int]"
 tmp/a.py:13: error: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "Callable[..., str]"
 tmp/a.py:13: note: "partial[int].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> int"
 tmp/a.py:18: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
-tmp/a.py:19: error: Too many arguments for "foo"
+tmp/a.py:19: error: Too many positional arguments for "foo"
 tmp/a.py:19: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 tmp/a.py:19: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 tmp/a.py:20: error: Unexpected keyword argument "a" for "foo"
 tmp/partial.py:4: note: "foo" defined here
 [out2]
 tmp/a.py:8: error: Too many positional arguments for "foo"
-tmp/a.py:8: error: Argument 2 to "foo" has incompatible type "int"; expected "str"
 
 
 [case testStartUsingTypeGuard]

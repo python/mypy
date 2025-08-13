@@ -308,7 +308,7 @@ class A:
     def new(cls: Type[T], factory: Callable[[T], T]) -> T:
         reveal_type(cls)   # N: Revealed type is "type[T`-1]"
         reveal_type(cls())   # N: Revealed type is "T`-1"
-        cls(2)  # E: Too many arguments for "A"
+        cls(2)  # E: Too many positional arguments for "A"
         return cls()
 
 class B(A):

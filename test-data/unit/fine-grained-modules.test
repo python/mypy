@@ -21,7 +21,7 @@ a.f(1)
 [out]
 ==
 ==
-b.py:2: error: Too many arguments for "f"
+b.py:2: error: Too many positional arguments for "f"
 
 [case testAddFileWithErrors]
 import b
@@ -39,7 +39,7 @@ def f(x: int) -> None: pass
 a.py:2: error: Incompatible return value type (got "int", expected "str")
 ==
 a.py:2: error: Incompatible return value type (got "int", expected "str")
-b.py:2: error: Too many arguments for "f"
+b.py:2: error: Too many positional arguments for "f"
 ==
 
 [case testAddFileFixesError]
@@ -74,7 +74,7 @@ b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-b.py:2: error: Too many arguments for "f"
+b.py:2: error: Too many positional arguments for "f"
 
 [case testAddFileFixesAndGeneratesError2]
 import b
@@ -94,7 +94,7 @@ b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-b.py:2: error: Too many arguments for "f"
+b.py:2: error: Too many positional arguments for "f"
 
 [case testAddFileGeneratesError1]
 # flags: --ignore-missing-imports
@@ -106,7 +106,7 @@ f(1)
 def f() -> None: pass
 [out]
 ==
-a.py:2: error: Too many arguments for "f"
+a.py:2: error: Too many positional arguments for "f"
 
 [case testAddFilePreservesError1]
 import b
@@ -571,7 +571,7 @@ def g() -> None: pass
 [out]
 ==
 main:3: error: Missing positional argument "x" in call to "f"
-main:4: error: Too many arguments for "g"
+main:4: error: Too many positional arguments for "g"
 
 [case testModifyTwoFilesErrorsInBoth]
 import a
@@ -594,7 +594,7 @@ a.f()
 [out]
 ==
 b.py:3: error: Missing positional argument "x" in call to "f"
-a.py:3: error: Too many arguments for "g"
+a.py:3: error: Too many positional arguments for "g"
 
 [case testModifyTwoFilesFixErrorsInBoth]
 import a
@@ -616,7 +616,7 @@ def g(x: int) -> None: pass
 a.f()
 [out]
 b.py:3: error: Missing positional argument "x" in call to "f"
-a.py:3: error: Too many arguments for "g"
+a.py:3: error: Too many positional arguments for "g"
 ==
 
 [case testAddTwoFilesNoError]
@@ -660,8 +660,8 @@ a.py:1: error: Cannot find implementation or library stub for module named "b"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 a.py:2: error: Cannot find implementation or library stub for module named "c"
 ==
-c.py:3: error: Too many arguments for "f"
-b.py:3: error: Too many arguments for "g"
+c.py:3: error: Too many positional arguments for "f"
+b.py:3: error: Too many positional arguments for "g"
 
 [case testAddTwoFilesErrorsElsewhere]
 import a
@@ -677,8 +677,8 @@ main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:2: error: Cannot find implementation or library stub for module named "b"
 ==
-main:3: error: Too many arguments for "f"
-main:4: error: Too many arguments for "g"
+main:3: error: Too many positional arguments for "f"
+main:4: error: Too many positional arguments for "g"
 
 [case testDeleteTwoFilesErrorsElsewhere]
 import a
@@ -731,8 +731,8 @@ a.f(1)
 [delete a.py.2]
 [delete b.py.2]
 [out]
-b.py:3: error: Too many arguments for "f"
-a.py:3: error: Too many arguments for "g"
+b.py:3: error: Too many positional arguments for "f"
+a.py:3: error: Too many positional arguments for "g"
 ==
 main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -784,7 +784,7 @@ c.f(1)
 [out]
 ==
 ==
-a.py:2: error: Too many arguments for "f"
+a.py:2: error: Too many positional arguments for "f"
 
 [case testDeleteFileWSuperClass]
 # flags: --ignore-missing-imports
@@ -825,7 +825,7 @@ def g() -> None: pass
 [delete m/x.py.2]
 [builtins fixtures/module.pyi]
 [out]
-a.py:2: error: Too many arguments for "g"
+a.py:2: error: Too many positional arguments for "g"
 ==
 a.py:1: error: Cannot find implementation or library stub for module named "m.x"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -1247,7 +1247,7 @@ def foo(x: int) -> None: pass
 
 [out]
 ==
-a.py:2: error: Too many arguments for "foo"
+a.py:2: error: Too many positional arguments for "foo"
 ==
 
 [case testAddModuleAfterCache2-only_when_cache]
@@ -1272,7 +1272,7 @@ def foo(x: int) -> None: pass
 
 [out]
 ==
-a.py:2: error: Too many arguments for "foo"
+a.py:2: error: Too many positional arguments for "foo"
 ==
 
 [case testAddModuleAfterCache3-only_when_cache]
@@ -1305,7 +1305,7 @@ def foo(x: int) -> None: pass
 
 [out]
 ==
-a.py:2: error: Too many arguments for "foo"
+a.py:2: error: Too many positional arguments for "foo"
 ==
 
 
@@ -1325,7 +1325,7 @@ a.foo(10)
 def foo(x: int) -> None: pass
 [out]
 ==
-b.py:2: error: Too many arguments for "foo"
+b.py:2: error: Too many positional arguments for "foo"
 ==
 
 [case testAddModuleAfterCache5-only_when_cache]
@@ -1352,7 +1352,7 @@ def foo(x: int) -> None: pass
 
 [out]
 ==
-b.py:2: error: Too many arguments for "foo"
+b.py:2: error: Too many positional arguments for "foo"
 ==
 
 [case testAddModuleAfterCache6-only_when_cache]
@@ -1380,7 +1380,7 @@ def foo(x: int) -> None: pass
 
 [out]
 ==
-a.py:2: error: Too many arguments for "foo"
+a.py:2: error: Too many positional arguments for "foo"
 ==
 
 [case testRenameAndDeleteModuleAfterCache-only_when_cache]

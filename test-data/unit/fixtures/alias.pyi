@@ -1,7 +1,5 @@
 # Builtins test fixture with a type alias 'bytes'
 
-from typing import Mapping, Iterable  # needed for `ArgumentInferContext`
-
 class object:
     def __init__(self) -> None: pass
 class type:
@@ -14,3 +12,10 @@ class function: pass
 bytes = str
 
 class dict: pass
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

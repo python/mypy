@@ -10,7 +10,8 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class tuple(Sequence[T]):
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Sequence[_Tuple_co]):
     def __len__(self) -> int: pass
 
 class list(Sequence[T]): pass

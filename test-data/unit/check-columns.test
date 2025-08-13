@@ -24,7 +24,7 @@ A().f()
 A().f(1)
 A().f('') # E:7: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 A().f(1, 1) # E:10: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
-(A().f(1, 'hello', 'hi')) # E:2: Too many arguments for "f" of "A"
+(A().f(1, 'hello', 'hi')) # E:2: Too many positional arguments for "f" of "A"
 
 [case testColumnsInvalidArgumentType]
 def f(x: int, y: str) -> None: ...

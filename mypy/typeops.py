@@ -102,13 +102,15 @@ def tuple_fallback(typ: TupleType) -> Instance:
     info = typ.partial_fallback.type
     if info.fullname != "builtins.tuple":
         return typ.partial_fallback
-    items = []
+    items: list[Type] = []
     for item in typ.items:
         if isinstance(item, UnpackType):
             unpacked_type = get_proper_type(item.type)
             if isinstance(unpacked_type, TypeVarTupleType):
-                unpacked_type = get_proper_type(unpacked_type.upper_bound)
-            if (
+                # TODO: In principle the correct value is Union[*Ts]
+                #     until this is supported use Any.
+                items.append(AnyType(TypeOfAny.special_form))
+            elif (
                 isinstance(unpacked_type, Instance)
                 and unpacked_type.type.fullname == "builtins.tuple"
             ):
