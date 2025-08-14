@@ -5332,6 +5332,7 @@ class SemanticAnalyzer(
         s.expr.accept(self)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
+        old = self.statement
         self.statement = s
         if not self.is_func_scope():
             self.fail('"return" outside function', s)
@@ -5339,6 +5340,7 @@ class SemanticAnalyzer(
             self.fail('"return" not allowed in except* block', s, serious=True)
         if s.expr:
             s.expr.accept(self)
+        self.statement = old
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         self.statement = s
