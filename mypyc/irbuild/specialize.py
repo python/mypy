@@ -288,7 +288,7 @@ def translate_tuple_from_generator_call(
     """Special case for simplest tuple creation from a generator.
 
     For example:
-        tuple(f(x) for x in some_list/some_tuple/some_str)
+        tuple(f(x) for x in some_list/some_tuple/some_str/some_bytes)
     'translate_safe_generator_call()' would take care of other cases
     if this fails.
     """
