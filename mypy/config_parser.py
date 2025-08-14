@@ -535,7 +535,9 @@ def parse_section(
     template: Options,
     set_strict_flags: Callable[[], None],
     section: Mapping[str, object],
-    config_types: Mapping[str, object], # this is probably dict[str, _INI_PARSER_CALLABLE], but that causes more type errors at the moment.
+    config_types: Mapping[
+        str, object
+    ],  # this is probably dict[str, _INI_PARSER_CALLABLE], but that causes more type errors at the moment.
     stderr: TextIO = sys.stderr,
 ) -> tuple[dict[str, object], dict[str, str]]:
     """Parse one section of a config file.
