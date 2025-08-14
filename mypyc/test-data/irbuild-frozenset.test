@@ -347,4 +347,3 @@ L3:
 L4:
     r18 = PyFrozenSet_New(r10)
     return r18
-
