@@ -113,15 +113,6 @@ dict_get_item_op = method_op(
 )
 
 # dict[key] = value
-exact_dict_set_item_op = method_op(
-    name="__setitem__",
-    arg_types=[exact_dict_rprimitive, object_rprimitive, object_rprimitive],
-    return_type=c_int_rprimitive,
-    c_function_name="PyDict_SetItem",
-    error_kind=ERR_NEG_INT,
-)
-
-# dictsubclass[key] = value
 dict_set_item_op = method_op(
     name="__setitem__",
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
@@ -132,7 +123,8 @@ dict_set_item_op = method_op(
 
 # dict[key] = value (exact dict only, no subclasses)
 # NOTE: this is currently for internal use only, and not used for CallExpr specialization
-exact_dict_set_item_op = custom_op(
+exact_dict_set_item_op = method_op(
+    name="__setitem__",
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="PyDict_SetItem",
