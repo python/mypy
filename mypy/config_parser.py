@@ -493,7 +493,9 @@ def destructure_overrides(toml_data: _TomlDictDict) -> _ParserHelper:
         if isinstance(override["module"], str):
             modules = [override["module"]]
         elif isinstance(override["module"], list):
-            modules = [m if isinstance(m, str) else complain_str_list() for m in override["module"]]
+            modules = [
+                m if isinstance(m, str) else complain_str_list() for m in override["module"]
+            ]
         else:
             complain_str_list()
 
