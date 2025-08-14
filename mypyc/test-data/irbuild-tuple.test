@@ -133,18 +133,18 @@ def f(xs):
     r4, x :: str
     r5 :: native_int
 L0:
-    r0 = 0
+    r0 = var_object_size xs
+    r1 = 0
 L1:
-    r1 = var_object_size xs
-    r2 = r0 < r1 :: signed
+    r2 = r1 < r0 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = CPySequenceTuple_GetItemUnsafe(xs, r0)
+    r3 = CPySequenceTuple_GetItemUnsafe(xs, r1)
     r4 = cast(str, r3)
     x = r4
 L3:
-    r5 = r0 + 1
-    r0 = r5
+    r5 = r1 + 1
+    r1 = r5
     goto L1
 L4:
     return 1
@@ -291,8 +291,10 @@ def test():
     r1 :: native_int
     r2 :: bit
     r3 :: tuple
-    r4, r5 :: native_int
-    r6, r7 :: bit
+    r4 :: native_int
+    r5 :: bit
+    r6 :: native_int
+    r7 :: bit
     r8, x, r9 :: str
     r10 :: native_int
     a :: tuple
@@ -302,23 +304,435 @@ L0:
     r1 = CPyStr_Size_size_t(source)
     r2 = r1 >= 0 :: signed
     r3 = PyTuple_New(r1)
-    r4 = 0
+    r4 = CPyStr_Size_size_t(source)
+    r5 = r4 >= 0 :: signed
+    r6 = 0
 L1:
-    r5 = CPyStr_Size_size_t(source)
-    r6 = r5 >= 0 :: signed
-    r7 = r4 < r5 :: signed
+    r7 = r6 < r4 :: signed
     if r7 goto L2 else goto L4 :: bool
 L2:
-    r8 = CPyStr_GetItemUnsafe(source, r4)
+    r8 = CPyStr_GetItemUnsafe(source, r6)
     x = r8
     r9 = f2(x)
-    CPySequenceTuple_SetItemUnsafe(r3, r4, r9)
+    CPySequenceTuple_SetItemUnsafe(r3, r6, r9)
 L3:
-    r10 = r4 + 1
-    r4 = r10
+    r10 = r6 + 1
+    r6 = r10
     goto L1
 L4:
     a = r3
+    return 1
+
+[case testTupleBuiltFromStrExpr]
+def f2(val: str) -> str:
+    return val + "f2"
+
+def test() -> None:
+    a = tuple(f2(x) for x in "abc")
+
+[out]
+def f2(val):
+    val, r0, r1 :: str
+L0:
+    r0 = 'f2'
+    r1 = PyUnicode_Concat(val, r0)
+    return r1
+def test():
+    r0 :: str
+    r1 :: native_int
+    r2 :: bit
+    r3 :: tuple
+    r4 :: native_int
+    r5 :: bit
+    r6 :: native_int
+    r7 :: bit
+    r8, x, r9 :: str
+    r10 :: native_int
+    a :: tuple
+L0:
+    r0 = 'abc'
+    r1 = CPyStr_Size_size_t(r0)
+    r2 = r1 >= 0 :: signed
+    r3 = PyTuple_New(r1)
+    r4 = CPyStr_Size_size_t(r0)
+    r5 = r4 >= 0 :: signed
+    r6 = 0
+L1:
+    r7 = r6 < r4 :: signed
+    if r7 goto L2 else goto L4 :: bool
+L2:
+    r8 = CPyStr_GetItemUnsafe(r0, r6)
+    x = r8
+    r9 = f2(x)
+    CPySequenceTuple_SetItemUnsafe(r3, r6, r9)
+L3:
+    r10 = r6 + 1
+    r6 = r10
+    goto L1
+L4:
+    a = r3
+    return 1
+
+[case testTupleBuiltFromFinalStr]
+from typing import Final
+
+source: Final = "abc"
+
+def f2(val: str) -> str:
+    return val + "f2"
+
+def test() -> None:
+    a = tuple(f2(x) for x in source)
+[out]
+def f2(val):
+    val, r0, r1 :: str
+L0:
+    r0 = 'f2'
+    r1 = PyUnicode_Concat(val, r0)
+    return r1
+def test():
+    r0 :: str
+    r1 :: native_int
+    r2 :: bit
+    r3 :: tuple
+    r4 :: native_int
+    r5 :: bit
+    r6 :: native_int
+    r7 :: bit
+    r8, x, r9 :: str
+    r10 :: native_int
+    a :: tuple
+L0:
+    r0 = 'abc'
+    r1 = CPyStr_Size_size_t(r0)
+    r2 = r1 >= 0 :: signed
+    r3 = PyTuple_New(r1)
+    r4 = CPyStr_Size_size_t(r0)
+    r5 = r4 >= 0 :: signed
+    r6 = 0
+L1:
+    r7 = r6 < r4 :: signed
+    if r7 goto L2 else goto L4 :: bool
+L2:
+    r8 = CPyStr_GetItemUnsafe(r0, r6)
+    x = r8
+    r9 = f2(x)
+    CPySequenceTuple_SetItemUnsafe(r3, r6, r9)
+L3:
+    r10 = r6 + 1
+    r6 = r10
+    goto L1
+L4:
+    a = r3
+    return 1
+
+[case testTupleBuiltFromBytes_64bit]
+def f2(val: int) -> int:
+    return val + 2
+
+def test() -> None:
+    source = b"abc"
+    a = tuple(f2(x) for x in source)
+
+[out]
+def f2(val):
+    val, r0 :: int
+L0:
+    r0 = CPyTagged_Add(val, 4)
+    return r0
+def test():
+    r0, source :: bytes
+    r1 :: native_int
+    r2 :: tuple
+    r3, r4 :: native_int
+    r5, r6, r7 :: bit
+    r8, r9, r10, r11 :: int
+    r12 :: object
+    r13, x, r14 :: int
+    r15 :: object
+    r16 :: native_int
+    a :: tuple
+L0:
+    r0 = b'abc'
+    source = r0
+    r1 = var_object_size source
+    r2 = PyTuple_New(r1)
+    r3 = var_object_size source
+    r4 = 0
+L1:
+    r5 = r4 < r3 :: signed
+    if r5 goto L2 else goto L8 :: bool
+L2:
+    r6 = r4 <= 4611686018427387903 :: signed
+    if r6 goto L3 else goto L4 :: bool
+L3:
+    r7 = r4 >= -4611686018427387904 :: signed
+    if r7 goto L5 else goto L4 :: bool
+L4:
+    r8 = CPyTagged_FromInt64(r4)
+    r9 = r8
+    goto L6
+L5:
+    r10 = r4 << 1
+    r9 = r10
+L6:
+    r11 = CPyBytes_GetItem(source, r9)
+    r12 = box(int, r11)
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = f2(x)
+    r15 = box(int, r14)
+    CPySequenceTuple_SetItemUnsafe(r2, r4, r15)
+L7:
+    r16 = r4 + 1
+    r4 = r16
+    goto L1
+L8:
+    a = r2
+    return 1
+
+[case testTupleBuiltFromBytesExpr_64bit]
+def f2(val: int) -> int:
+    return val + 2
+
+def test() -> None:
+    a = tuple(f2(x) for x in b"abc")
+
+[out]
+def f2(val):
+    val, r0 :: int
+L0:
+    r0 = CPyTagged_Add(val, 4)
+    return r0
+def test():
+    r0 :: bytes
+    r1 :: native_int
+    r2 :: tuple
+    r3, r4 :: native_int
+    r5, r6, r7 :: bit
+    r8, r9, r10, r11 :: int
+    r12 :: object
+    r13, x, r14 :: int
+    r15 :: object
+    r16 :: native_int
+    a :: tuple
+L0:
+    r0 = b'abc'
+    r1 = var_object_size r0
+    r2 = PyTuple_New(r1)
+    r3 = var_object_size r0
+    r4 = 0
+L1:
+    r5 = r4 < r3 :: signed
+    if r5 goto L2 else goto L8 :: bool
+L2:
+    r6 = r4 <= 4611686018427387903 :: signed
+    if r6 goto L3 else goto L4 :: bool
+L3:
+    r7 = r4 >= -4611686018427387904 :: signed
+    if r7 goto L5 else goto L4 :: bool
+L4:
+    r8 = CPyTagged_FromInt64(r4)
+    r9 = r8
+    goto L6
+L5:
+    r10 = r4 << 1
+    r9 = r10
+L6:
+    r11 = CPyBytes_GetItem(r0, r9)
+    r12 = box(int, r11)
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = f2(x)
+    r15 = box(int, r14)
+    CPySequenceTuple_SetItemUnsafe(r2, r4, r15)
+L7:
+    r16 = r4 + 1
+    r4 = r16
+    goto L1
+L8:
+    a = r2
+    return 1
+
+[case testTupleBuiltFromFinalBytes_64bit]
+from typing import Final
+
+source: Final = b"abc"
+
+def f2(val: int) -> int:
+    return val + 2
+
+def test() -> None:
+    a = tuple(f2(x) for x in source)
+
+[out]
+def f2(val):
+    val, r0 :: int
+L0:
+    r0 = CPyTagged_Add(val, 4)
+    return r0
+def test():
+    r0 :: bytes
+    r1 :: bool
+    r2 :: native_int
+    r3 :: tuple
+    r4, r5 :: native_int
+    r6, r7, r8 :: bit
+    r9, r10, r11, r12 :: int
+    r13 :: object
+    r14, x, r15 :: int
+    r16 :: object
+    r17 :: native_int
+    a :: tuple
+L0:
+    r0 = __main__.source :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "source" was not set')
+    unreachable
+L2:
+    r2 = var_object_size r0
+    r3 = PyTuple_New(r2)
+    r4 = var_object_size r0
+    r5 = 0
+L3:
+    r6 = r5 < r4 :: signed
+    if r6 goto L4 else goto L10 :: bool
+L4:
+    r7 = r5 <= 4611686018427387903 :: signed
+    if r7 goto L5 else goto L6 :: bool
+L5:
+    r8 = r5 >= -4611686018427387904 :: signed
+    if r8 goto L7 else goto L6 :: bool
+L6:
+    r9 = CPyTagged_FromInt64(r5)
+    r10 = r9
+    goto L8
+L7:
+    r11 = r5 << 1
+    r10 = r11
+L8:
+    r12 = CPyBytes_GetItem(r0, r10)
+    r13 = box(int, r12)
+    r14 = unbox(int, r13)
+    x = r14
+    r15 = f2(x)
+    r16 = box(int, r15)
+    CPySequenceTuple_SetItemUnsafe(r3, r5, r16)
+L9:
+    r17 = r5 + 1
+    r5 = r17
+    goto L3
+L10:
+    a = r3
+    return 1
+
+[case testTupleBuiltFromFixedLengthTuple]
+def f(val: int) -> bool:
+    return val % 2 == 0
+
+def test() -> None:
+    source = (1, 2, 3)
+    a = tuple(f(x) for x in source)
+[out]
+def f(val):
+    val, r0 :: int
+    r1 :: bit
+L0:
+    r0 = CPyTagged_Remainder(val, 4)
+    r1 = int_eq r0, 0
+    return r1
+def test():
+    r0, source :: tuple[int, int, int]
+    r1 :: list
+    r2, r3, r4 :: object
+    r5, x :: int
+    r6 :: bool
+    r7 :: object
+    r8 :: i32
+    r9, r10 :: bit
+    r11, a :: tuple
+L0:
+    r0 = (2, 4, 6)
+    source = r0
+    r1 = PyList_New(0)
+    r2 = box(tuple[int, int, int], source)
+    r3 = PyObject_GetIter(r2)
+L1:
+    r4 = PyIter_Next(r3)
+    if is_error(r4) goto L4 else goto L2
+L2:
+    r5 = unbox(int, r4)
+    x = r5
+    r6 = f(x)
+    r7 = box(bool, r6)
+    r8 = PyList_Append(r1, r7)
+    r9 = r8 >= 0 :: signed
+L3:
+    goto L1
+L4:
+    r10 = CPy_NoErrOccurred()
+L5:
+    r11 = PyList_AsTuple(r1)
+    a = r11
+    return 1
+
+[case testTupleBuiltFromFinalFixedLengthTuple]
+from typing import Final
+
+source: Final = (1, 2, 3)
+
+def f(val: int) -> bool:
+    return val % 2 == 0
+
+def test() -> None:
+    a = tuple(f(x) for x in source)
+[out]
+def f(val):
+    val, r0 :: int
+    r1 :: bit
+L0:
+    r0 = CPyTagged_Remainder(val, 4)
+    r1 = int_eq r0, 0
+    return r1
+def test():
+    r0 :: list
+    r1 :: tuple[int, int, int]
+    r2 :: bool
+    r3, r4, r5 :: object
+    r6, x :: int
+    r7 :: bool
+    r8 :: object
+    r9 :: i32
+    r10, r11 :: bit
+    r12, a :: tuple
+L0:
+    r0 = PyList_New(0)
+    r1 = __main__.source :: static
+    if is_error(r1) goto L1 else goto L2
+L1:
+    r2 = raise NameError('value for final name "source" was not set')
+    unreachable
+L2:
+    r3 = box(tuple[int, int, int], r1)
+    r4 = PyObject_GetIter(r3)
+L3:
+    r5 = PyIter_Next(r4)
+    if is_error(r5) goto L6 else goto L4
+L4:
+    r6 = unbox(int, r5)
+    x = r6
+    r7 = f(x)
+    r8 = box(bool, r7)
+    r9 = PyList_Append(r0, r8)
+    r10 = r9 >= 0 :: signed
+L5:
+    goto L3
+L6:
+    r11 = CPy_NoErrOccurred()
+L7:
+    r12 = PyList_AsTuple(r0)
+    a = r12
     return 1
 
 [case testTupleBuiltFromVariableLengthTuple]
@@ -349,21 +763,21 @@ def test(source):
 L0:
     r0 = var_object_size source
     r1 = PyTuple_New(r0)
-    r2 = 0
+    r2 = var_object_size source
+    r3 = 0
 L1:
-    r3 = var_object_size source
-    r4 = r2 < r3 :: signed
+    r4 = r3 < r2 :: signed
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = CPySequenceTuple_GetItemUnsafe(source, r2)
+    r5 = CPySequenceTuple_GetItemUnsafe(source, r3)
     r6 = unbox(bool, r5)
     x = r6
     r7 = f(x)
     r8 = box(bool, r7)
-    CPySequenceTuple_SetItemUnsafe(r1, r2, r8)
+    CPySequenceTuple_SetItemUnsafe(r1, r3, r8)
 L3:
-    r9 = r2 + 1
-    r2 = r9
+    r9 = r3 + 1
+    r3 = r9
     goto L1
 L4:
     a = r1
