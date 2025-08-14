@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import configparser
+import datetime
 import glob as fileglob
 import os
 import re
@@ -14,7 +15,7 @@ else:
     import tomli as tomllib
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, TypeVar, TypedDict, Union
+from typing import Any, Callable, Final, TextIO, TypedDict, Union
 from typing_extensions import Never, TypeAlias
 
 from mypy import defaults
@@ -232,33 +233,49 @@ toml_config_types.update(
     }
 )
 
+_TomlValue = Union[str, int, float, bool, datetime.datetime, datetime.date, datetime.time, list['_TomlValue'], dict[str, '_TomlValue']]
+_TomlDict = dict[str, _TomlValue]
+_TomlDictMypy = TypedDict("_TomlDictMypy", {"mypy": _TomlDict})
+# Sort of like MutableMapping[str, _CONFIG_VALUE_TYPES], but with more (useless) types in it:
+_ParserHelper = _TomlDictMypy | configparser.RawConfigParser
 
 def _parse_individual_file(
     config_file: str, stderr: TextIO | None = None
-) -> tuple[MutableMapping[str, _CONFIG_VALUE_TYPES], dict[str, _INI_PARSER_CALLABLE], str] | None:
-
-    if not os.path.exists(config_file):
-        return None
-
-    parser: MutableMapping[str, Mapping[str, str]]
+) -> tuple[
+        _ParserHelper,
+        dict[str, _INI_PARSER_CALLABLE],
+        str
+    ] | None:
     try:
         if is_toml(config_file):
             with open(config_file, "rb") as f:
-                # This type is not actually 100% comprehensive. However, load returns Any, so it doesn't complain.
-                toml_data: dict[str, dict[str, _CONFIG_VALUE_TYPES]] = tomllib.load(f)
+                # tomllib.load returns dict[str, Any], so it doesn't complain about any type on the lhs.
+                # However, this is probably the actual return type of tomllib.load,
+                # assuming the optional parse_float is not used. (Indeed, we do not use it.)
+                # See https://docs.python.org/3/library/tomllib.html#conversion-table
+                # and https://github.com/hukkin/tomli/issues/261 for more info.
+                toml_data: _TomlDict = tomllib.load(f)
             # Filter down to just mypy relevant toml keys
             toml_data_tool = toml_data.get("tool", {})
-            if "mypy" not in toml_data_tool:
+            if not(isinstance(toml_data_tool, dict)) or "mypy" not in toml_data_tool:
+                # Here we might be dealing with a toml that just doesn't talk about mypy,
+                # in which case we currently just ignore it. (Maybe we should really warn?)
                 return None
-            toml_data = {"mypy": toml_data_tool["mypy"]}
-            parser = destructure_overrides(toml_data)
+            if not isinstance(toml_data_tool["mypy"], dict):
+                raise MypyConfigTOMLValueError(
+                    "If it exists, tool.mypy value must be a table, aka dict. "
+                    "Please make sure you are using appropriate syntax. "
+                    "https://toml.io/en/v1.0.0#table"
+                )
+            toml_data_mypy: _TomlDictMypy = {"mypy": toml_data_tool["mypy"]} #ignore other tools
+            parser = destructure_overrides(toml_data_mypy)
             config_types = toml_config_types
         else:
             parser = configparser.RawConfigParser()
             parser.read(config_file)
             config_types = ini_config_types
 
-    except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
+    except (FileNotFoundError, tomllib.TOMLDecodeError, configparser.Error, MypyConfigTOMLValueError) as err:
         print(f"{config_file}: {err}", file=stderr)
         return None
 
@@ -270,7 +287,7 @@ def _parse_individual_file(
 
 def _find_config_file(
     stderr: TextIO | None = None,
-) -> tuple[MutableMapping[str, Mapping[str, str]], dict[str, _INI_PARSER_CALLABLE], str] | None:
+) -> tuple[_ParserHelper, dict[str, _INI_PARSER_CALLABLE], str] | None:
 
     current_dir = os.path.abspath(os.getcwd())
 
@@ -395,13 +412,10 @@ def get_prefix(file_read: str, name: str) -> str:
 
 
 def is_toml(filename: str) -> bool:
+    """Detect if a file "is toml", in the sense that it's named *.toml (case-insensitive)."""
     return filename.lower().endswith(".toml")
 
-T = TypeVar("T")
-_TypeThatDOWants = TypedDict("_TypeThatDOWants", {"mypy": dict[str , dict[str, _CONFIG_VALUE_TYPES]]})
-def destructure_overrides(
-        toml_data: _TypeThatDOWants
-    ) -> _TypeThatDOWants:
+def destructure_overrides(toml_data: _TomlDictMypy) -> _TomlDictMypy:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 
@@ -433,19 +447,25 @@ def destructure_overrides(
             },
         }
     """
+
     if "overrides" not in toml_data["mypy"]:
         return toml_data
 
-    if not isinstance(toml_data["mypy"]["overrides"], list):
-        raise ConfigTOMLValueError(
+    result = toml_data.copy()
+    if not isinstance(result["mypy"]["overrides"], list):
+        raise MypyConfigTOMLValueError(
             "tool.mypy.overrides sections must be an array. Please make "
             "sure you are using double brackets like so: [[tool.mypy.overrides]]"
         )
 
-    result = toml_data.copy()
     for override in result["mypy"]["overrides"]:
+        if not isinstance(override, dict):
+            raise MypyConfigTOMLValueError(
+                "tool.mypy.overrides sections must be an array of tables. Please make "
+                "sure you are using double brackets like so: [[tool.mypy.overrides]]"
+            )
         if "module" not in override:
-            raise ConfigTOMLValueError(
+            raise MypyConfigTOMLValueError(
                 "toml config file contains a [[tool.mypy.overrides]] "
                 "section, but no module to override was specified."
             )
@@ -455,7 +475,7 @@ def destructure_overrides(
         elif isinstance(override["module"], list):
             modules = override["module"]
         else:
-            raise ConfigTOMLValueError(
+            raise MypyConfigTOMLValueError(
                 "toml config file contains a [[tool.mypy.overrides]] "
                 "section with a module value that is not a string or a list of "
                 "strings"
@@ -473,7 +493,7 @@ def destructure_overrides(
                         new_key in result[old_config_name]
                         and result[old_config_name][new_key] != new_value
                     ):
-                        raise ConfigTOMLValueError(
+                        raise MypyConfigTOMLValueError(
                             "toml config file contains "
                             "[[tool.mypy.overrides]] sections with conflicting "
                             f"values. Module '{module}' has two different values for '{new_key}'"
@@ -729,5 +749,5 @@ def get_config_module_names(filename: str | None, modules: list[str]) -> str:
     return "module = ['%s']" % ("', '".join(sorted(modules)))
 
 
-class ConfigTOMLValueError(ValueError):
+class MypyConfigTOMLValueError(ValueError):
     pass
