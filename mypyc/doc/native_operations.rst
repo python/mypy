@@ -37,7 +37,6 @@ Functions
 * ``slice(start, stop, step)``
 * ``globals()``
 * ``sorted(obj)``
-* ``map(fn, iterable)``
 
 Method decorators
 -----------------
@@ -55,3 +54,4 @@ These variants of statements have custom implementations:
 * ``for ... in seq:`` (for loop over a sequence)
 * ``for ... in enumerate(...):``
 * ``for ... in zip(...):``
+* ``for ... in map(...)``
