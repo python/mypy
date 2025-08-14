@@ -246,7 +246,7 @@ _TomlValue = Union[
 ]
 _TomlDict = dict[str, _TomlValue]
 _TomlDictDict = dict[str, _TomlDict]
-_ParserHelper = _TomlDictDict | configparser.RawConfigParser
+_ParserHelper = Union[_TomlDictDict, configparser.RawConfigParser]
 
 
 def _parse_individual_file(
@@ -263,7 +263,7 @@ def _parse_individual_file(
                 toml_data: _TomlDict = tomllib.load(f)
             # Filter down to just mypy relevant toml keys
             toml_data_tool = toml_data.get("tool", {})
-            if not (isinstance(toml_data_tool, dict)) or "mypy" not in toml_data_tool:
+            if not isinstance(toml_data_tool, dict) or "mypy" not in toml_data_tool:
                 # Here we might be dealing with a toml that just doesn't talk about mypy,
                 # in which case we currently just ignore it. (Maybe we should really warn?)
                 return None
