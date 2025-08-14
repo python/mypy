@@ -5,23 +5,12 @@ from __future__ import annotations
 import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Final,
-    NamedTuple,
-    NewType,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Final, NewType, TypeVar, Union, cast, overload
 from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
-from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, INVARIANT, ArgKind, FakeInfo, SymbolNode
+from mypy.nodes import ARG_KINDS, ARG_POS, ARG_STAR, ARG_STAR2, INVARIANT, ArgKind, SymbolNode
 from mypy.options import Options
 from mypy.state import state
 from mypy.util import IdMapper
@@ -538,6 +527,10 @@ class TypeVarId:
         return self.raw_id.__repr__()
 
     def __eq__(self, other: object) -> bool:
+        # Although this call is not expensive (like UnionType or TypedDictType),
+        # most of the time we get the same object here, so add a fast path.
+        if self is other:
+            return True
         return (
             isinstance(other, TypeVarId)
             and self.raw_id == other.raw_id
@@ -1243,10 +1236,10 @@ class UninhabitedType(ProperType):
         return visitor.visit_uninhabited_type(self)
 
     def __hash__(self) -> int:
-        return hash(UninhabitedType)
+        return hash((UninhabitedType, self.ambiguous))
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, UninhabitedType)
+        return isinstance(other, UninhabitedType) and other.ambiguous == self.ambiguous
 
     def serialize(self) -> JsonDict:
         return {".class": "UninhabitedType"}
@@ -1603,11 +1596,25 @@ class FunctionLike(ProperType):
         return bool(self.items) and self.items[0].is_bound
 
 
-class FormalArgument(NamedTuple):
-    name: str | None
-    pos: int | None
-    typ: Type
-    required: bool
+class FormalArgument:
+    def __init__(self, name: str | None, pos: int | None, typ: Type, required: bool) -> None:
+        self.name = name
+        self.pos = pos
+        self.typ = typ
+        self.required = required
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FormalArgument):
+            return NotImplemented
+        return (
+            self.name == other.name
+            and self.pos == other.pos
+            and self.typ == other.typ
+            and self.required == other.required
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.pos, self.typ, self.required))
 
 
 class Parameters(ProperType):
@@ -1780,7 +1787,9 @@ class Parameters(ProperType):
         assert data[".class"] == "Parameters"
         return Parameters(
             [deserialize_type(t) for t in data["arg_types"]],
-            [ArgKind(x) for x in data["arg_kinds"]],
+            # This is a micro-optimization until mypyc gets dedicated enum support. Otherwise,
+            # we would spend ~20% of types deserialization time in Enum.__call__().
+            [ARG_KINDS[x] for x in data["arg_kinds"]],
             data["arg_names"],
             variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data["variables"]],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
@@ -1797,7 +1806,7 @@ class Parameters(ProperType):
         )
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, (Parameters, CallableType)):
+        if isinstance(other, Parameters):
             return (
                 self.arg_types == other.arg_types
                 and self.arg_names == other.arg_names
@@ -1881,6 +1890,9 @@ class CallableType(FunctionLike):
         self.fallback = fallback
         assert not name or "<bound method" not in name
         self.name = name
+        # The rules for what exactly is considered a definition:
+        #   * If it is a non-decorated function, FuncDef is the definition
+        #   * If it is a decorated function, enclosing Decorator is the definition
         self.definition = definition
         self.variables = variables
         self.is_ellipsis_args = is_ellipsis_args
@@ -2210,15 +2222,9 @@ class CallableType(FunctionLike):
         )
 
     def __hash__(self) -> int:
-        # self.is_type_obj() will fail if self.fallback.type is a FakeInfo
-        if isinstance(self.fallback.type, FakeInfo):
-            is_type_obj = 2
-        else:
-            is_type_obj = self.is_type_obj()
         return hash(
             (
                 self.ret_type,
-                is_type_obj,
                 self.is_ellipsis_args,
                 self.name,
                 tuple(self.arg_types),
@@ -2236,7 +2242,6 @@ class CallableType(FunctionLike):
                 and self.arg_names == other.arg_names
                 and self.arg_kinds == other.arg_kinds
                 and self.name == other.name
-                and self.is_type_obj() == other.is_type_obj()
                 and self.is_ellipsis_args == other.is_ellipsis_args
                 and self.type_guard == other.type_guard
                 and self.type_is == other.type_is
@@ -2271,10 +2276,10 @@ class CallableType(FunctionLike):
     @classmethod
     def deserialize(cls, data: JsonDict) -> CallableType:
         assert data[".class"] == "CallableType"
-        # TODO: Set definition to the containing SymbolNode?
+        # The .definition link is set in fixup.py.
         return CallableType(
             [deserialize_type(t) for t in data["arg_types"]],
-            [ArgKind(x) for x in data["arg_kinds"]],
+            [ARG_KINDS[x] for x in data["arg_kinds"]],
             data["arg_names"],
             deserialize_type(data["ret_type"]),
             Instance.deserialize(data["fallback"]),
@@ -2931,6 +2936,8 @@ class UnionType(ProperType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnionType):
             return NotImplemented
+        if self is other:
+            return True
         return frozenset(self.items) == frozenset(other.items)
 
     @overload
