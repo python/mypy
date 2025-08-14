@@ -304,20 +304,18 @@ L0:
     r1 = CPyStr_Size_size_t(source)
     r2 = r1 >= 0 :: signed
     r3 = PyTuple_New(r1)
-    r4 = CPyStr_Size_size_t(source)
-    r5 = r4 >= 0 :: signed
-    r6 = 0
+    r4 = 0
 L1:
-    r7 = r6 < r4 :: signed
-    if r7 goto L2 else goto L4 :: bool
+    r5 = r4 < r1 :: signed
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r8 = CPyStr_GetItemUnsafe(source, r6)
-    x = r8
-    r9 = f2(x)
-    CPySequenceTuple_SetItemUnsafe(r3, r6, r9)
+    r6 = CPyStr_GetItemUnsafe(source, r4)
+    x = r6
+    r7 = f2(x)
+    CPySequenceTuple_SetItemUnsafe(r3, r4, r7)
 L3:
-    r10 = r6 + 1
-    r6 = r10
+    r8 = r4 + 1
+    r4 = r8
     goto L1
 L4:
     a = r3
