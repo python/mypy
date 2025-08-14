@@ -4,6 +4,9 @@
 struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(NULL) };
 PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;
 
+// System-wide empty tuple constant
+PyObject * __mypyc_empty_tuple__ = NULL;
+
 // Because its dynamic linker is more restricted than linux/OS X,
 // Windows doesn't allow initializing globals with values from
 // other dynamic libraries. This means we need to initialize
