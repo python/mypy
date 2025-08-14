@@ -13,9 +13,9 @@ from __future__ import annotations
 from typing import Callable
 
 from mypy.nodes import ARG_OPT, FuncDef, Var
-from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
+from mypyc.common import ENV_ATTR_NAME, GENERATOR_ATTRIBUTE_PREFIX, NEXT_LABEL_ATTR_NAME
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
+from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,
     BasicBlock,
@@ -32,7 +32,12 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import RInstance, int32_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import (
+    RInstance,
+    int32_rprimitive,
+    object_pointer_rprimitive,
+    object_rprimitive,
+)
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
@@ -45,6 +50,7 @@ from mypyc.irbuild.env_class import (
     setup_func_for_recursive_call,
 )
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.primitives.exc_ops import (
     error_catch_op,
     exc_matches_op,
@@ -62,14 +68,14 @@ def gen_generator_func(
 ) -> tuple[FuncIR, Value | None]:
     """Generate IR for generator function that returns generator object."""
     setup_generator_class(builder)
-    load_env_registers(builder)
+    load_env_registers(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
     gen_arg_defaults(builder)
     if builder.fn_info.can_merge_generator_and_env_classes():
         gen = instantiate_generator_class(builder)
         builder.fn_info._curr_env_reg = gen
-        finalize_env_class(builder)
+        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
     else:
-        finalize_env_class(builder)
+        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
         gen = instantiate_generator_class(builder)
     builder.add(Return(gen))
 
@@ -78,9 +84,7 @@ def gen_generator_func(
     return func_ir, func_reg
 
 
-def gen_generator_func_body(
-    builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature, func_reg: Value | None
-) -> None:
+def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Value | None) -> None:
     """Generate IR based on the body of a generator function.
 
     Add "__next__", "__iter__" and other generator methods to the generator
@@ -88,7 +92,7 @@ def gen_generator_func_body(
 
     Return the symbol table for the body.
     """
-    builder.enter(fn_info, ret_type=sig.ret_type)
+    builder.enter(fn_info, ret_type=object_rprimitive)
     setup_env_for_generator_class(builder)
 
     load_outer_envs(builder, builder.fn_info.generator_class)
@@ -100,11 +104,13 @@ def gen_generator_func_body(
         and top_level
         and top_level.add_nested_funcs_to_env
     ):
-        setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
+        setup_func_for_recursive_call(
+            builder, fitem, builder.fn_info.generator_class, prefix=GENERATOR_ATTRIBUTE_PREFIX
+        )
     create_switch_for_generator_class(builder)
     add_raise_exception_blocks_to_generator_class(builder, fitem.line)
 
-    add_vars_to_env(builder)
+    add_vars_to_env(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
 
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
@@ -117,7 +123,7 @@ def gen_generator_func_body(
 
     args, _, blocks, ret_type, fn_info = builder.leave()
 
-    add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
+    add_methods_to_generator_class(builder, fn_info, args, blocks, fitem.is_coroutine)
 
     # Evaluate argument defaults in the surrounding scope, since we
     # calculate them *once* when the function definition is evaluated.
@@ -153,9 +159,9 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
 
 
 def setup_generator_class(builder: IRBuilder) -> ClassIR:
-    name = f"{builder.fn_info.namespaced_name()}_gen"
-
-    generator_class_ir = ClassIR(name, builder.module_name, is_generated=True, is_final_class=True)
+    mapper = builder.mapper
+    assert isinstance(builder.fn_info.fitem, FuncDef), builder.fn_info.fitem
+    generator_class_ir = mapper.fdef_to_generator[builder.fn_info.fitem]
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
     else:
@@ -215,46 +221,29 @@ def add_raise_exception_blocks_to_generator_class(builder: IRBuilder, line: int)
 def add_methods_to_generator_class(
     builder: IRBuilder,
     fn_info: FuncInfo,
-    sig: FuncSignature,
     arg_regs: list[Register],
     blocks: list[BasicBlock],
     is_coroutine: bool,
 ) -> None:
-    helper_fn_decl = add_helper_to_generator_class(builder, arg_regs, blocks, sig, fn_info)
-    add_next_to_generator_class(builder, fn_info, helper_fn_decl, sig)
-    add_send_to_generator_class(builder, fn_info, helper_fn_decl, sig)
+    helper_fn_decl = add_helper_to_generator_class(builder, arg_regs, blocks, fn_info)
+    add_next_to_generator_class(builder, fn_info, helper_fn_decl)
+    add_send_to_generator_class(builder, fn_info, helper_fn_decl)
     add_iter_to_generator_class(builder, fn_info)
-    add_throw_to_generator_class(builder, fn_info, helper_fn_decl, sig)
+    add_throw_to_generator_class(builder, fn_info, helper_fn_decl)
     add_close_to_generator_class(builder, fn_info)
     if is_coroutine:
         add_await_to_generator_class(builder, fn_info)
 
 
 def add_helper_to_generator_class(
-    builder: IRBuilder,
-    arg_regs: list[Register],
-    blocks: list[BasicBlock],
-    sig: FuncSignature,
-    fn_info: FuncInfo,
+    builder: IRBuilder, arg_regs: list[Register], blocks: list[BasicBlock], fn_info: FuncInfo
 ) -> FuncDecl:
     """Generates a helper method for a generator class, called by '__next__' and 'throw'."""
-    sig = FuncSignature(
-        (
-            RuntimeArg(SELF_NAME, object_rprimitive),
-            RuntimeArg("type", object_rprimitive),
-            RuntimeArg("value", object_rprimitive),
-            RuntimeArg("traceback", object_rprimitive),
-            RuntimeArg("arg", object_rprimitive),
-        ),
-        sig.ret_type,
-    )
-    helper_fn_decl = FuncDecl(
-        "__mypyc_generator_helper__", fn_info.generator_class.ir.name, builder.module_name, sig
-    )
+    helper_fn_decl = fn_info.generator_class.ir.method_decls[GENERATOR_HELPER_NAME]
     helper_fn_ir = FuncIR(
         helper_fn_decl, arg_regs, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name
     )
-    fn_info.generator_class.ir.methods["__mypyc_generator_helper__"] = helper_fn_ir
+    fn_info.generator_class.ir.methods[GENERATOR_HELPER_NAME] = helper_fn_ir
     builder.functions.append(helper_fn_ir)
     fn_info.env_class.env_user_function = helper_fn_ir
 
@@ -267,9 +256,7 @@ def add_iter_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
         builder.add(Return(builder.self()))
 
 
-def add_next_to_generator_class(
-    builder: IRBuilder, fn_info: FuncInfo, fn_decl: FuncDecl, sig: FuncSignature
-) -> None:
+def add_next_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl: FuncDecl) -> None:
     """Generates the '__next__' method for a generator class."""
     with builder.enter_method(fn_info.generator_class.ir, "__next__", object_rprimitive, fn_info):
         none_reg = builder.none_object()
@@ -277,16 +264,21 @@ def add_next_to_generator_class(
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), none_reg, none_reg, none_reg, none_reg],
+                [
+                    builder.self(),
+                    none_reg,
+                    none_reg,
+                    none_reg,
+                    none_reg,
+                    Integer(0, object_pointer_rprimitive),
+                ],
                 fn_info.fitem.line,
             )
         )
         builder.add(Return(result))
 
 
-def add_send_to_generator_class(
-    builder: IRBuilder, fn_info: FuncInfo, fn_decl: FuncDecl, sig: FuncSignature
-) -> None:
+def add_send_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl: FuncDecl) -> None:
     """Generates the 'send' method for a generator class."""
     with builder.enter_method(fn_info.generator_class.ir, "send", object_rprimitive, fn_info):
         arg = builder.add_argument("arg", object_rprimitive)
@@ -295,16 +287,21 @@ def add_send_to_generator_class(
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), none_reg, none_reg, none_reg, builder.read(arg)],
+                [
+                    builder.self(),
+                    none_reg,
+                    none_reg,
+                    none_reg,
+                    builder.read(arg),
+                    Integer(0, object_pointer_rprimitive),
+                ],
                 fn_info.fitem.line,
             )
         )
         builder.add(Return(result))
 
 
-def add_throw_to_generator_class(
-    builder: IRBuilder, fn_info: FuncInfo, fn_decl: FuncDecl, sig: FuncSignature
-) -> None:
+def add_throw_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl: FuncDecl) -> None:
     """Generates the 'throw' method for a generator class."""
     with builder.enter_method(fn_info.generator_class.ir, "throw", object_rprimitive, fn_info):
         typ = builder.add_argument("type", object_rprimitive)
@@ -322,7 +319,14 @@ def add_throw_to_generator_class(
         result = builder.add(
             Call(
                 fn_decl,
-                [builder.self(), builder.read(typ), builder.read(val), builder.read(tb), none_reg],
+                [
+                    builder.self(),
+                    builder.read(typ),
+                    builder.read(val),
+                    builder.read(tb),
+                    none_reg,
+                    Integer(0, object_pointer_rprimitive),
+                ],
                 fn_info.fitem.line,
             )
         )
@@ -402,8 +406,15 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     # TODO: Use the right type here instead of object?
     exc_arg = builder.add_local(Var("arg"), object_rprimitive, is_arg=True)
 
+    # Parameter that can used to pass a pointer which can used instead of
+    # raising StopIteration(value). If the value is NULL, this won't be used.
+    stop_iter_value_arg = builder.add_local(
+        Var("stop_iter_ptr"), object_pointer_rprimitive, is_arg=True
+    )
+
     cls.exc_regs = (exc_type, exc_val, exc_tb)
     cls.send_arg_reg = exc_arg
+    cls.stop_iter_value_reg = stop_iter_value_arg
 
     cls.self_reg = builder.read(self_target, fitem.line)
     if builder.fn_info.can_merge_generator_and_env_classes():
@@ -420,7 +431,9 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
 
     # Add arguments from the original generator function to the
     # environment of the generator class.
-    add_args_to_env(builder, local=False, base=cls, reassign=False)
+    add_args_to_env(
+        builder, local=False, base=cls, reassign=False, prefix=GENERATOR_ATTRIBUTE_PREFIX
+    )
 
     # Set the next label register for the generator class.
     cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)

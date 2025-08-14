@@ -772,7 +772,7 @@ class A:
 class B(A):
     @property
     def f(self) -> Callable[[object], None]: pass
-    @func.setter
+    @f.setter
     def f(self, x: object) -> None: pass
 [builtins fixtures/property.pyi]
 
@@ -786,7 +786,7 @@ class A:
 class B(A):
     @property
     def f(self) -> Callable[[object], None]: pass
-    @func.setter
+    @f.setter
     def f(self, x: object) -> None: pass
 [builtins fixtures/property.pyi]
 
@@ -1622,7 +1622,81 @@ class A:
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return ''
 [builtins fixtures/property.pyi]
+
+[case testPropertyNameIsChecked]
+class A:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+
+a = A()
+reveal_type(a.f)  # N: Revealed type is "builtins.str"
+a.f = ''  # E: Property "f" defined in "A" is read-only
+
+class B:
+    @property
+    def f(self) -> str: ...
+    @not_f.deleter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self) -> None: ...
+
+class C:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @not_f.deleter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testPropertyAttributeIsChecked]
+class A:
+    @property
+    def f(self) -> str: ...
+    @f.unknown  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @f.bad.setter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @f  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+    @int  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
+
+[case testPropertyNameAndAttributeIsCheckedPretty]
+# flags: --pretty
+class A:
+    @property
+    def f(self) -> str: ...
+    @not_f.setter
+    def f(self, val: str) -> None: ...
+    @not_f.deleter
+    def f(self) -> None: ...
+
+class B:
+    @property
+    def f(self) -> str: ...
+    @f.unknown
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
 [out]
+main:5: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @not_f.setter
+         ^~~~~~~~~~~~
+main:7: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @not_f.deleter
+         ^~~~~~~~~~~~~
+main:13: error: Only supported top decorators are "@f.setter" and "@f.deleter"
+        @f.unknown
+         ^~~~~~~~~
+
+[case testPropertyGetterDecoratorIsRejected]
+class A:
+    @property
+    def f(self) -> str: ...
+    @f.getter  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self, val: str) -> None: ...
+[builtins fixtures/property.pyi]
 
 [case testDynamicallyTypedProperty]
 import typing
@@ -2487,6 +2561,60 @@ reveal_type(Num3() + Num1())  # N: Revealed type is "__main__.Num3"
 reveal_type(Num2() + Num3())  # N: Revealed type is "__main__.Num2"
 reveal_type(Num3() + Num2())  # N: Revealed type is "__main__.Num3"
 
+[case testReverseOperatorWithOverloads3]
+from typing import Union, overload
+
+class A:
+    def __mul__(self, value: A, /) -> A: ...
+    def __rmul__(self, value: A, /) -> A: ...
+
+class B:
+    @overload
+    def __mul__(self, other: B, /) -> B: ...
+    @overload
+    def __mul__(self, other: A, /) -> str: ...
+    def __mul__(self, other: Union[B, A], /) -> Union[B, str]: pass
+
+    @overload
+    def __rmul__(self, other: B, /) -> B: ...
+    @overload
+    def __rmul__(self, other: A, /) -> str: ...
+    def __rmul__(self, other: Union[B, A], /) -> Union[B, str]: pass
+
+[case testReverseOperatorWithOverloadsNested]
+from typing import Union, overload
+
+class A:
+    def __mul__(self, value: A, /) -> A: ...
+    def __rmul__(self, value: A, /) -> A: ...
+
+class B:
+    @overload
+    def __mul__(self, other: B, /) -> B: ...
+    @overload
+    def __mul__(self, other: A, /) -> str: ...
+    def __mul__(self, other: Union[B, A], /) -> Union[B, str]: pass
+
+    @overload
+    def __rmul__(self, other: B, /) -> B: ...
+    @overload
+    def __rmul__(self, other: A, /) -> str: ...
+    def __rmul__(self, other: Union[B, A], /) -> Union[B, str]:
+        class A1:
+            def __add__(self, other: C1) -> int: ...
+
+        class B1:
+            def __add__(self, other: C1) -> int: ...
+
+        class C1:
+            @overload
+            def __radd__(self, other: A1) -> str: ...   # E: Signatures of "__radd__" of "C1" and "__add__" of "A1" are unsafely overlapping
+            @overload
+            def __radd__(self, other: B1) -> str: ...   # E: Signatures of "__radd__" of "C1" and "__add__" of "B1" are unsafely overlapping
+            def __radd__(self, other): pass
+
+        return ""
+
 [case testDivReverseOperator]
 # No error: __div__ has no special meaning in Python 3
 class A1:
@@ -3133,7 +3261,10 @@ b.bad = 'a'  # E: Incompatible types in assignment (expression has type "str", v
 from typing import Any
 
 class Test:
-    def __setattr__() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument? # E: Invalid signature "Callable[[], None]" for "__setattr__"
+    def __setattr__() -> None: ... \
+        # E: Invalid signature "Callable[[], None]" for "__setattr__" \
+        # E: Method must have at least one argument. Did you forget the "self" argument?
+
 t = Test()
 t.crash = 'test'  # E: Attribute function "__setattr__" with type "Callable[[], None]" does not accept self argument \
                   # E: "Test" has no attribute "crash"
@@ -4588,6 +4719,23 @@ reveal_type(a.a)  # N: Revealed type is "def (a: builtins.int)"
 reveal_type(a.c)  # N: Revealed type is "def (a: builtins.int)"
 [builtins fixtures/staticmethod.pyi]
 
+[case testClassStaticMethodIndirectOverloaded]
+from typing import overload
+class A:
+    @overload
+    @staticmethod
+    def a(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def a(x: str) -> str: ...
+    @staticmethod
+    def a(x):
+        ...
+    c = a
+reveal_type(A.c)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
+reveal_type(A().c)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
+[builtins fixtures/staticmethod.pyi]
+
 [case testClassStaticMethodSubclassing]
 class A:
     @staticmethod
@@ -4686,8 +4834,8 @@ class C(B):
 class X(type): pass
 class Y(type): pass
 class A(metaclass=X): pass
-class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
-
+class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                               # N: "__main__.Y" (metaclass of "__main__.B") conflicts with "__main__.X" (metaclass of "__main__.A")
 [case testMetaclassNoTypeReveal]
 class M:
     x = 0  # type: int
@@ -5666,8 +5814,8 @@ def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C2(C1, six.with_metaclass(M)): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
-@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported  \
-    # E: Argument 1 to "add_metaclass" has incompatible type "type[A]"; expected "type[type]"
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported \
+                       # E: Argument 1 to "add_metaclass" has incompatible type "type[A]"; expected "type[type]"
 
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
@@ -5683,8 +5831,10 @@ class CD(six.with_metaclass(M)): pass  # E: Multiple metaclass definitions
 class M1(type): pass
 class Q1(metaclass=M1): pass
 @six.add_metaclass(M)
-class CQA(Q1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
-class CQW(six.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class CQA(Q1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                     # N: "__main__.M" (metaclass of "__main__.CQA") conflicts with "__main__.M1" (metaclass of "__main__.Q1")
+class CQW(six.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                            # N: "__main__.M" (metaclass of "__main__.CQW") conflicts with "__main__.M1" (metaclass of "__main__.Q1")
 [builtins fixtures/tuple.pyi]
 
 [case testSixMetaclassAny]
@@ -5802,7 +5952,8 @@ class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not sup
 
 class M1(type): pass
 class Q1(metaclass=M1): pass
-class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                                     # N: "__main__.M" (metaclass of "__main__.CQW") conflicts with "__main__.M1" (metaclass of "__main__.Q1")
 [builtins fixtures/tuple.pyi]
 
 [case testFutureMetaclassAny]
@@ -7271,18 +7422,56 @@ class ChildOfCorrectSubclass1(CorrectSubclass1): ...
 class CorrectWithType1(C, A1): ...
 class CorrectWithType2(B, C): ...
 
-class Conflict1(A1, B, E): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
-class Conflict2(A, B): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
-class Conflict3(B, A): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class Conflict1(A1, B, E): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                # N: "__main__.MyMeta1" (metaclass of "__main__.A") conflicts with "__main__.MyMeta2" (metaclass of "__main__.B")
+class Conflict2(A, B): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                            # N: "__main__.MyMeta1" (metaclass of "__main__.A") conflicts with "__main__.MyMeta2" (metaclass of "__main__.B")
+class Conflict3(B, A): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                            # N: "__main__.MyMeta2" (metaclass of "__main__.B") conflicts with "__main__.MyMeta1" (metaclass of "__main__.A")
 
-class ChildOfConflict1(Conflict3): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class ChildOfConflict1(Conflict3): ...
 class ChildOfConflict2(Conflict3, metaclass=CorrectMeta): ...
 
 class ConflictingMeta(MyMeta1, MyMeta3): ...
-class Conflict4(A1, B, E, metaclass=ConflictingMeta): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class Conflict4(A1, B, E, metaclass=ConflictingMeta): ...  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                                           # N: "__main__.ConflictingMeta" (metaclass of "__main__.Conflict4") conflicts with "__main__.MyMeta2" (metaclass of "__main__.B")
 
-class ChildOfCorrectButWrongMeta(CorrectSubclass1, metaclass=ConflictingMeta):  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+class ChildOfCorrectButWrongMeta(CorrectSubclass1, metaclass=ConflictingMeta):  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                                                                # N: "__main__.ConflictingMeta" (metaclass of "__main__.ChildOfCorrectButWrongMeta") conflicts with "__main__.CorrectMeta" (metaclass of "__main__.CorrectSubclass1")
     ...
+
+[case testMetaClassConflictIssue14033]
+class M1(type): pass
+class M2(type): pass
+class Mx(M1, M2): pass
+
+class A1(metaclass=M1): pass
+class A2(A1): pass
+
+class B1(metaclass=M2): pass
+
+class C1(metaclass=Mx): pass
+
+class TestABC(A2, B1, C1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                 # N: "__main__.M1" (metaclass of "__main__.A1") conflicts with "__main__.M2" (metaclass of "__main__.B1")
+class TestBAC(B1, A2, C1): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases \
+                                 # N: "__main__.M2" (metaclass of "__main__.B1") conflicts with "__main__.M1" (metaclass of "__main__.A1")
+
+# should not warn again for children
+class ChildOfTestABC(TestABC): pass
+
+# no metaclass is assumed if super class has a metaclass conflict
+class ChildOfTestABCMetaMx(TestABC, metaclass=Mx): pass
+class ChildOfTestABCMetaM1(TestABC, metaclass=M1): pass
+
+class TestABCMx(A2, B1, C1, metaclass=Mx): pass
+class TestBACMx(B1, A2, C1, metaclass=Mx): pass
+
+class TestACB(A2, C1, B1): pass
+class TestBCA(B1, C1, A2): pass
+
+class TestCAB(C1, A2, B1): pass
+class TestCBA(C1, B1, A2): pass
 
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any
@@ -7556,6 +7745,231 @@ class Foo:
     def bad():  # E: Method must have at least one argument. Did you forget the "self" argument?
         self.x = 0  # E: Name "self" is not defined
 
+[case testMethodSelfArgumentChecks]
+from typing import Callable, ParamSpec, TypeVar
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+def to_number_1(fn: Callable[[], int]) -> int:
+    return 0
+
+def to_number_2(fn: Callable[[int], int]) -> int:
+    return 0
+
+def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
+    return fn
+
+class A:
+    def undecorated() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+
+    def undecorated_not_self(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    def undecorated_not_self_2(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
+
+    @to_number_1
+    def fn1() -> int:
+        return 0
+
+    @to_number_1  # E: Argument 1 to "to_number_1" has incompatible type "Callable[[int], int]"; expected "Callable[[], int]"
+    def fn2(_x: int) -> int:
+        return 0
+
+    @to_number_2  # E: Argument 1 to "to_number_2" has incompatible type "Callable[[], int]"; expected "Callable[[int], int]"
+    def fn3() -> int:
+        return 0
+
+    @to_number_2
+    def fn4(_x: int) -> int:
+        return 0
+
+    @to_number_2  # E: Argument 1 to "to_number_2" has incompatible type "Callable[[str], int]"; expected "Callable[[int], int]"
+    def fn5(_x: str) -> int:
+        return 0
+
+    @to_same_callable
+    def g1() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+
+    @to_same_callable
+    def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    @to_same_callable
+    def g3(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
+
+reveal_type(A().fn1)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn2)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn3)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn4)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn5)  # N: Revealed type is "builtins.int"
+
+reveal_type(A().g1)  # E: Attribute function "g1" with type "Callable[[], None]" does not accept self argument \
+                     # N: Revealed type is "def ()"
+reveal_type(A().g2)  # E: Invalid self argument "A" to attribute function "g2" with type "Callable[[int], None]" \
+                     # N: Revealed type is "def ()"
+reveal_type(A().g3)  # E: Invalid self argument "A" to attribute function "g3" with type "Callable[[int], None]" \
+                     # N: Revealed type is "def ()"
+[builtins fixtures/tuple.pyi]
+
+[case testMethodSelfArgumentChecksConcatenate]
+from typing import Callable, ParamSpec, TypeVar
+from typing_extensions import Concatenate
+
+T = TypeVar("T")
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def to_same_callable(fn: Callable[Concatenate[T, P], R]) -> Callable[Concatenate[T, P], R]:
+    return fn
+
+def remove_first(fn: Callable[Concatenate[T, P], R]) -> Callable[P, R]:
+    ...
+
+def add_correct_first(fn: Callable[P, R]) -> Callable[Concatenate["C", P], R]:
+    ...
+
+def add_wrong_first(fn: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    ...
+
+class A:
+    @to_same_callable  # E: Argument 1 to "to_same_callable" has incompatible type "Callable[[], int]"; expected "Callable[[T], int]"
+    def fn1() -> int:
+        return 0
+
+    @to_same_callable
+    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+    @to_same_callable
+    def fn3(self, _x: int) -> int:
+        return 0
+
+reveal_type(A().fn1)  # N: Revealed type is "def () -> builtins.int"
+reveal_type(A().fn2)  # E: Invalid self argument "A" to attribute function "fn2" with type "Callable[[int], int]" \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(A().fn3)  # N: Revealed type is "def (_x: builtins.int) -> builtins.int"
+
+class B:
+    @remove_first  # E: Argument 1 to "remove_first" has incompatible type "Callable[[], int]"; expected "Callable[[T], int]"
+    def fn1() -> int:  # E: Method must have at least one argument. Did you forget the "self" argument?
+        return 0
+
+    @remove_first
+    def fn2(_x: int) -> int:  # E: Method must have at least one argument. Did you forget the "self" argument?
+        return 0
+
+    @remove_first
+    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+    @remove_first
+    def fn4(self, new_self: 'B') -> int:
+        return 0
+
+reveal_type(B().fn1)  # E: Attribute function "fn1" with type "Callable[[], int]" does not accept self argument \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(B().fn2)  # E: Attribute function "fn2" with type "Callable[[], int]" does not accept self argument \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(B().fn3)  # E: Invalid self argument "B" to attribute function "fn3" with type "Callable[[int], int]" \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(B().fn4)  # N: Revealed type is "def () -> builtins.int"
+
+class C:
+    @add_correct_first
+    def fn1() -> int:
+        return 0
+
+    @add_correct_first
+    def fn2(_x: int) -> int:
+        return 0
+
+    @add_correct_first
+    def fn3(self, _x: int) -> int:
+        return 0
+
+reveal_type(C().fn1)  # N: Revealed type is "def () -> builtins.int"
+reveal_type(C().fn2)  # N: Revealed type is "def (_x: builtins.int) -> builtins.int"
+reveal_type(C().fn3)  # N: Revealed type is "def (self: __main__.C, _x: builtins.int) -> builtins.int"
+
+class D:
+    @add_wrong_first
+    def fn1() -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+    @add_wrong_first
+    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+    @add_wrong_first
+    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+reveal_type(D().fn1)  # E: Invalid self argument "D" to attribute function "fn1" with type "Callable[[int], int]" \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(D().fn2)  # E: Invalid self argument "D" to attribute function "fn2" with type "Callable[[int, int], int]" \
+                      # N: Revealed type is "def (_x: builtins.int) -> builtins.int"
+reveal_type(D().fn3)  # E: Invalid self argument "D" to attribute function "fn3" with type "Callable[[int, D, int], int]" \
+                      # N: Revealed type is "def (self: __main__.D, _x: builtins.int) -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testMethodSelfArgumentChecksInUntyped]
+from typing import Callable, ParamSpec, TypeVar
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
+    return fn
+
+def unchecked():
+    class Bad:
+        def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+        # TODO: would be nice to make this error, but now we see the func
+        # being decorated as Any, not as a callable
+        @to_same_callable
+        def gaaa() -> None: ...
+        @to_same_callable
+        def gaaa2(x: int) -> None: ...
+
+    class Ok:
+        def fn(): ...
+        def fn2(x): ...
+
+        @to_same_callable
+        def g(): ...
+        @to_same_callable
+        def g2(x): ...
+
+def checked() -> None:
+    class Bad:
+        def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+        @to_same_callable
+        def g() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        @to_same_callable
+        def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    class AlsoBad:
+        def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x): ...
+
+        @to_same_callable
+        def g(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        @to_same_callable
+        def g2(x): ...
+
+class Ok:
+    def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    def fn2(x): ...
+
+    @to_same_callable
+    def g(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    @to_same_callable
+    def g2(x): ...
+[builtins fixtures/tuple.pyi]
+
 [case testTypeAfterAttributeAccessWithDisallowAnyExpr]
 # flags: --disallow-any-expr
 
@@ -7627,7 +8041,7 @@ class A:
     def y(self) -> int: ...
     @y.setter
     def y(self, value: int) -> None: ...
-    @dec  # E: Only supported top decorator is @y.setter
+    @dec  # E: Only supported top decorators are "@y.setter" and "@y.deleter"
     def y(self) -> None: ...
 
 reveal_type(A().y)  # N: Revealed type is "builtins.int"
@@ -8738,6 +9152,28 @@ class NoopPowerResource:
         self.hardware_type = None  # Note: intentionally recursive
 [builtins fixtures/property.pyi]
 
+[case testOverrideErrorReportingNoDuplicates]
+from typing import Callable, TypeVar
+
+def nested() -> None:
+    class B:
+        def meth(self, x: str) -> int: ...
+    class C(B):
+        def meth(self) -> str:  # E: Signature of "meth" incompatible with supertype "B" \
+                # N:      Superclass: \
+                # N:          def meth(self, x: str) -> int \
+                # N:      Subclass: \
+                # N:          def meth(self) -> str
+            pass
+    x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
 [case testPropertyAllowsDeleterBeforeSetter]
 class C:
     @property
@@ -8757,3 +9193,68 @@ class C:
 C().foo = "no"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 C().bar = "fine"
 [builtins fixtures/property.pyi]
+
+[case testCorrectConstructorTypeWithAnyFallback]
+from typing import Generic, TypeVar
+
+class B(Unknown):  # type: ignore
+    def __init__(self) -> None: ...
+class C(B): ...
+
+reveal_type(C)  # N: Revealed type is "def () -> __main__.C"
+
+T = TypeVar("T")
+class BG(Generic[T], Unknown):  # type: ignore
+    def __init__(self) -> None: ...
+class CGI(BG[int]): ...
+class CGT(BG[T]): ...
+
+reveal_type(CGI)  # N: Revealed type is "def () -> __main__.CGI"
+reveal_type(CGT)  # N: Revealed type is "def [T] () -> __main__.CGT[T`1]"
+
+[case testSettablePropertyAlias]
+from typing import Any, TypeVar
+
+class A:
+    @property
+    def prop(self: Any) -> str: ...
+    @prop.setter
+    def prop(self, val: str) -> None: ...
+
+T = TypeVar("T")
+class AT:
+    @property
+    def prop(self: T) -> T: ...
+    @prop.setter
+    def prop(self: T, val: list[T]) -> None: ...
+
+class B:
+    prop: str
+    prop_t: str
+
+class C(B):
+    prop = A.prop
+    prop_t = AT.prop  # E: Incompatible types in assignment (expression has type "C", base class "B" defined the type as "str")
+
+reveal_type(C().prop)  # N: Revealed type is "builtins.str"
+C().prop = "no"  # E: Invalid self argument "C" to attribute function "prop" with type "Callable[[A, str], None]"
+reveal_type(C().prop_t)  # N: Revealed type is "__main__.C"
+C().prop_t = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "list[C]")
+[builtins fixtures/property.pyi]
+
+[case testClassEqDecoratedAbstractNote]
+from abc import abstractmethod
+
+class C:
+    @abstractmethod
+    def __eq__(self, other: C) -> bool: ...
+[builtins fixtures/plugin_attrs.pyi]
+[out]
+main:5: error: Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"
+main:5: note: This violates the Liskov substitution principle
+main:5: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:5: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
+main:5: note:     def __eq__(self, other: object) -> bool:
+main:5: note:         if not isinstance(other, C):
+main:5: note:             return NotImplemented
+main:5: note:         return <logic to compare two C instances>

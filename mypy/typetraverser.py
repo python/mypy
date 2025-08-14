@@ -67,7 +67,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         t.default.accept(self)
 
     def visit_parameters(self, t: Parameters, /) -> None:
-        self.traverse_types(t.arg_types)
+        self.traverse_type_list(t.arg_types)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> None:
         t.default.accept(self)
@@ -78,11 +78,11 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     # Composite types
 
     def visit_instance(self, t: Instance, /) -> None:
-        self.traverse_types(t.args)
+        self.traverse_type_tuple(t.args)
 
     def visit_callable_type(self, t: CallableType, /) -> None:
         # FIX generics
-        self.traverse_types(t.arg_types)
+        self.traverse_type_list(t.arg_types)
         t.ret_type.accept(self)
         t.fallback.accept(self)
 
@@ -93,7 +93,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
             t.type_is.accept(self)
 
     def visit_tuple_type(self, t: TupleType, /) -> None:
-        self.traverse_types(t.items)
+        self.traverse_type_list(t.items)
         t.partial_fallback.accept(self)
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> None:
@@ -101,7 +101,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType, /) -> None:
-        self.traverse_types(t.items)
+        self.traverse_type_list(t.items)
 
     def visit_overloaded(self, t: Overloaded, /) -> None:
         self.traverse_types(t.items)
@@ -115,16 +115,16 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         t.typ.accept(self)
 
     def visit_unbound_type(self, t: UnboundType, /) -> None:
-        self.traverse_types(t.args)
+        self.traverse_type_tuple(t.args)
 
     def visit_type_list(self, t: TypeList, /) -> None:
-        self.traverse_types(t.items)
+        self.traverse_type_list(t.items)
 
     def visit_ellipsis_type(self, t: EllipsisType, /) -> None:
         pass
 
     def visit_placeholder_type(self, t: PlaceholderType, /) -> None:
-        self.traverse_types(t.args)
+        self.traverse_type_list(t.args)
 
     def visit_partial_type(self, t: PartialType, /) -> None:
         pass
@@ -136,7 +136,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         # TODO: sometimes we want to traverse target as well
         # We need to find a way to indicate explicitly the intent,
         # maybe make this method abstract (like for TypeTranslator)?
-        self.traverse_types(t.args)
+        self.traverse_type_list(t.args)
 
     def visit_unpack_type(self, t: UnpackType, /) -> None:
         t.type.accept(self)
@@ -144,5 +144,15 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     # Helpers
 
     def traverse_types(self, types: Iterable[Type], /) -> None:
+        for typ in types:
+            typ.accept(self)
+
+    def traverse_type_list(self, types: list[Type], /) -> None:
+        # Micro-optimization: Specialized for lists
+        for typ in types:
+            typ.accept(self)
+
+    def traverse_type_tuple(self, types: tuple[Type, ...], /) -> None:
+        # Micro-optimization: Specialized for tuples
         for typ in types:
             typ.accept(self)

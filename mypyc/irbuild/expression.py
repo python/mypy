@@ -97,7 +97,7 @@ from mypyc.irbuild.format_str_tokenizer import (
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
 from mypyc.primitives.bytes_ops import bytes_slice_op
-from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
+from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
@@ -117,9 +117,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if expr.node is None:
         builder.add(
             RaiseStandardError(
-                RaiseStandardError.RUNTIME_ERROR,
-                "mypyc internal error: should be unreachable",
-                expr.line,
+                RaiseStandardError.NAME_ERROR, f'name "{expr.name}" is not defined', expr.line
             )
         )
         return builder.none()
@@ -361,7 +359,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
     ):
         # Call a method via the *class*
-        assert isinstance(callee.expr.node, TypeInfo)
+        assert isinstance(callee.expr.node, TypeInfo), callee.expr.node
         ir = builder.mapper.type_to_ir[callee.expr.node]
         return call_classmethod(builder, ir, expr, callee)
     elif builder.is_module_member_expr(callee):
@@ -724,7 +722,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             mypy_file = builder.graph["builtins"].tree
             assert mypy_file is not None
             info = mypy_file.names["bool"].node
-            assert isinstance(info, TypeInfo)
+            assert isinstance(info, TypeInfo), info
             bool_type = Instance(info, [])
             exprs = []
             for item in items:
@@ -1032,7 +1030,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.primitive_op(dict_set_item_op, [builder.read(d), k, v], o.line)
+        builder.call_c(exact_dict_set_item_op, [builder.read(d), k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return builder.read(d)

@@ -343,7 +343,7 @@ for var2 in [g, h, i, j, k, l]:
     reveal_type(var2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 for var3 in [m, n, o, p, q, r]:
-    reveal_type(var3)  # N: Revealed type is "Union[Any, builtins.int]"
+    reveal_type(var3)  # N: Revealed type is "Union[builtins.int, Any]"
 
 T = TypeVar("T", bound=Type[Foo])
 
@@ -693,8 +693,8 @@ class A(Generic[T]): pass
 class B: pass
 
 
-f(ao, ab) # E: Cannot infer type argument 1 of "f"
-f(ab, ao) # E: Cannot infer type argument 1 of "f"
+f(ao, ab) # E: Cannot infer value of type parameter "T" of "f"
+f(ab, ao) # E: Cannot infer value of type parameter "T" of "f"
 f(ao, ao)
 f(ab, ab)
 
@@ -1247,7 +1247,7 @@ class X(TypedDict):
 
 x: X
 for a in ("hourly", "daily"):
-    reveal_type(a)  # N: Revealed type is "Union[Literal['daily']?, Literal['hourly']?]"
+    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
     reveal_type(x[a])  # N: Revealed type is "builtins.int"
     reveal_type(a.upper())  # N: Revealed type is "builtins.str"
     c = a
@@ -1405,14 +1405,12 @@ class B: pass
 [builtins fixtures/list.pyi]
 
 [case testUninferableLambda]
-# flags: --new-type-inference
 from typing import TypeVar, Callable
 X = TypeVar('X')
 def f(x: Callable[[X], X]) -> X: pass
 y = f(lambda x: x)  # E: Need type annotation for "y"
 
 [case testUninferableLambdaWithTypeError]
-# flags: --new-type-inference
 from typing import TypeVar, Callable
 X = TypeVar('X')
 def f(x: Callable[[X], X], y: str) -> X: pass
@@ -3774,8 +3772,8 @@ reveal_type(f(x, []))  # N: Revealed type is "builtins.str"
 reveal_type(f(["yes"], []))  # N: Revealed type is "builtins.str"
 
 empty: List[NoReturn]
-f(x, empty)  # E: Cannot infer type argument 1 of "f"
-f(["no"], empty)  # E: Cannot infer type argument 1 of "f"
+f(x, empty)  # E: Cannot infer value of type parameter "T" of "f"
+f(["no"], empty)  # E: Cannot infer value of type parameter "T" of "f"
 [builtins fixtures/list.pyi]
 
 [case testInferenceWorksWithEmptyCollectionsUnion]
@@ -3783,10 +3781,18 @@ from typing import Any, Dict, NoReturn, NoReturn, Union
 
 def foo() -> Union[Dict[str, Any], Dict[int, Any]]:
     return {}
+[builtins fixtures/dict.pyi]
+
+[case testExistingEmptyCollectionDoesNotUpcast]
+from typing import Any, Dict, NoReturn, NoReturn, Union
 
 empty: Dict[NoReturn, NoReturn]
+
+def foo() -> Dict[str, Any]:
+    return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "dict[str, Any]")
+
 def bar() -> Union[Dict[str, Any], Dict[int, Any]]:
-    return empty
+    return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "Union[dict[str, Any], dict[int, Any]]")
 [builtins fixtures/dict.pyi]
 
 [case testUpperBoundInferenceFallbackNotOverused]
@@ -4149,3 +4155,19 @@ class Foo:
         else:
             self.qux = {}  # E: Need type annotation for "qux" (hint: "qux: dict[<type>, <type>] = ...")
 [builtins fixtures/dict.pyi]
+
+[case testConstraintSolvingFailureShowsCorrectArgument]
+from typing import Callable, TypeVar
+
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
+def foo(
+    a: T1,
+    b: T2,
+    c: Callable[[T2], T2],
+) -> tuple[T1, T2]: ...
+
+def bar(y: float) -> float: ...
+
+foo(1, None, bar)  # E: Cannot infer value of type parameter "T2" of "foo"
+[builtins fixtures/tuple.pyi]

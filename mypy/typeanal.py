@@ -9,6 +9,7 @@ from typing import Callable, Final, Protocol, TypeVar
 
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
+from mypy.errors import ErrorInfo
 from mypy.expandtype import expand_type
 from mypy.message_registry import (
     INVALID_PARAM_SPEC_LOCATION,
@@ -675,6 +676,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     t,
                     code=codes.VALID_TYPE,
                 )
+            if self.defining_alias:
+                self.fail(
+                    "ClassVar[...] can't be used inside a type alias", t, code=codes.VALID_TYPE
+                )
             if len(t.args) == 0:
                 return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)
             if len(t.args) != 1:
@@ -1104,8 +1109,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 variables = t.variables
             else:
                 variables, _ = self.bind_function_type_variables(t, t)
-            type_guard = self.anal_type_guard(t.ret_type)
-            type_is = self.anal_type_is(t.ret_type)
+            type_guard = self.anal_type_guard(t.ret_type) if t.type_guard is None else t.type_guard
+            type_is = self.anal_type_is(t.ret_type) if t.type_is is None else t.type_is
 
             arg_kinds = t.arg_kinds
             arg_types = []
@@ -1839,11 +1844,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         defs = []
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
-                self.fail(
-                    f'Type variable "{name}" is bound by an outer class',
-                    defn,
-                    code=codes.VALID_TYPE,
-                )
+                err_msg = message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name)
+                self.fail(err_msg.value, defn, code=err_msg.code)
             binding = self.tvar_scope.bind_new(name, tvar)
             defs.append(binding)
 
@@ -1990,7 +1992,9 @@ TypeVarLikeList = list[tuple[str, TypeVarLikeExpr]]
 
 
 class MsgCallback(Protocol):
-    def __call__(self, __msg: str, __ctx: Context, *, code: ErrorCode | None = None) -> None: ...
+    def __call__(
+        self, __msg: str, __ctx: Context, *, code: ErrorCode | None = None
+    ) -> ErrorInfo | None: ...
 
 
 def get_omitted_any(

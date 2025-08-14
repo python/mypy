@@ -4,7 +4,7 @@ from _typeshed import Incomplete, MaybeNone, StrOrBytesPath
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from tkinter.constants import *
 from tkinter.font import _FontDescription
-from types import TracebackType
+from types import GenericAlias, TracebackType
 from typing import Any, ClassVar, Generic, Literal, NamedTuple, Protocol, TypedDict, TypeVar, overload, type_check_only
 from typing_extensions import TypeAlias, TypeVarTuple, Unpack, deprecated
 
@@ -308,6 +308,8 @@ class Event(Generic[_W_co]):
     type: EventType
     widget: _W_co
     delta: int
+    if sys.version_info >= (3, 14):
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 def NoDefaultRoot() -> None: ...
 
@@ -364,12 +366,14 @@ def getboolean(s): ...
 
 _Ts = TypeVarTuple("_Ts")
 
+@type_check_only
 class _GridIndexInfo(TypedDict, total=False):
     minsize: _ScreenUnits
     pad: _ScreenUnits
     uniform: str | None
     weight: int
 
+@type_check_only
 class _BusyInfo(TypedDict):
     cursor: _Cursor
 
@@ -1037,6 +1041,7 @@ def Tcl(screenName: str | None = None, baseName: str | None = None, className: s
 _InMiscTotal = TypedDict("_InMiscTotal", {"in": Misc})
 _InMiscNonTotal = TypedDict("_InMiscNonTotal", {"in": Misc}, total=False)
 
+@type_check_only
 class _PackInfo(_InMiscTotal):
     # 'before' and 'after' never appear in _PackInfo
     anchor: _Anchor
@@ -1078,6 +1083,7 @@ class Pack:
     forget = pack_forget
     propagate = Misc.pack_propagate
 
+@type_check_only
 class _PlaceInfo(_InMiscNonTotal):  # empty dict if widget hasn't been placed
     anchor: _Anchor
     bordermode: Literal["inside", "outside", "ignore"]
@@ -1114,6 +1120,7 @@ class Place:
     place = place_configure
     info = place_info
 
+@type_check_only
 class _GridInfo(_InMiscNonTotal):  # empty dict if widget hasn't been gridded
     column: int
     columnspan: int

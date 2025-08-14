@@ -1278,9 +1278,10 @@ class Bar(Foo):
     def f(self, *args: int, **kwargs: int) -> None:
         print("stuff", args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=50)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=50)
+    z.f()
 
 [out]
 stuff (1,) {'z': 50}
@@ -1300,18 +1301,19 @@ class Foo:
 def baz_f(self: Any, *args: int, **kwargs: int) -> None:
     print("Baz", args, kwargs)
 
-# Make an "interpreted" subtype of Foo
-type2: Any = type
-Bar = type2('Bar', (Foo,), {})
-Baz = type2('Baz', (Foo,), {'f': baz_f})
+def test_override() -> None:
+    # Make an "interpreted" subtype of Foo
+    type2: Any = type
+    Bar = type2('Bar', (Foo,), {})
+    Baz = type2('Baz', (Foo,), {'f': baz_f})
 
-y: Foo = Bar()
-y.f(1, z=2)
-y.f()
+    y: Foo = Bar()
+    y.f(1, z=2)
+    y.f()
 
-z: Foo = Baz()
-z.f(1, z=2)
-z.f()
+    z: Foo = Baz()
+    z.f(1, z=2)
+    z.f()
 
 [out]
 Foo 1 2
@@ -1330,9 +1332,10 @@ class Bar(Foo):
     def f(self, x: Optional[int]=None) -> None:
         print(x)
 
-z: Foo = Bar()
-z.f(1)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1)
+    z.f()
 
 [out]
 1
@@ -1349,10 +1352,11 @@ class Bar(Foo):
     def f(self, *args: int, **kwargs: int) -> None:
         print("Bar", args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=2)
-z.f(1, 2, 3)
-# z.f(x=5)  # Not tested because we (knowingly) do the wrong thing and pass it as positional
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=2)
+    z.f(1, 2, 3)
+    # z.f(x=5)  # Not tested because we (knowingly) do the wrong thing and pass it as positional
 
 [out]
 Bar (1,) {'z': 2}
@@ -1370,10 +1374,11 @@ class Bar(Foo):
     def f(self, x: int = 10, *args: int, **kwargs: int) -> None:
         print("Bar", x, args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=2)
-z.f(1, 2, 3)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=2)
+    z.f(1, 2, 3)
+    z.f()
 
 [out]
 Bar 1 () {'z': 2}
@@ -1397,18 +1402,19 @@ class Foo:
 def baz_f(self, a: int=30, y: int=50) -> None:
     print("Baz", a, y)
 
-# Make an "interpreted" subtype of Foo
-type2: Any = type
-Baz = type2('Baz', (Foo,), {'f': baz_f})
+def test_override() -> None:
+    # Make an "interpreted" subtype of Foo
+    type2: Any = type
+    Baz = type2('Baz', (Foo,), {'f': baz_f})
 
-z: Foo = Baz()
-z.f()
-z.f(y=1)
-z.f(1, 2)
-# Not tested because we don't (and probably won't) match cpython here
-# from testutil import assertRaises
-# with assertRaises(TypeError):
-#     z.f(x=7)
+    z: Foo = Baz()
+    z.f()
+    z.f(y=1)
+    z.f(1, 2)
+    # Not tested because we don't (and probably won't) match cpython here
+    # from testutil import assertRaises
+    # with assertRaises(TypeError):
+    #     z.f(x=7)
 
 [out]
 Baz 30 50
@@ -2591,7 +2597,8 @@ class Base:
 class Derived(Base):
     pass
 
-assert Derived()() == 1
+def test_inherited() -> None:
+    assert Derived()() == 1
 
 [case testClassWithFinalAttribute]
 from typing import Final
@@ -2702,6 +2709,56 @@ print(f'{Player.MIN = }')
 from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
+
+[case testEnumMethodCalls]
+from enum import Enum
+from typing import overload, Optional, Union
+
+class C:
+    def foo(self, x: Test) -> bool:
+        assert Test.ONE.is_one()
+        assert x.next(2) == Test.THREE
+        assert x.prev(2) == Test.ONE
+        assert x.enigma(22)
+        assert x.enigma("22") == 22
+        return x.is_one(inverse=True)
+
+class Test(Enum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+
+    def is_one(self, *, inverse: bool = False) -> bool:
+        if inverse:
+            return self != Test.ONE
+        return self == Test.ONE
+
+    @classmethod
+    def next(cls, val: int) -> Test:
+        return cls(val + 1)
+
+    @staticmethod
+    def prev(val: int) -> Test:
+        return Test(val - 1)
+
+    @overload
+    def enigma(self, val: int) -> bool: ...
+    @overload
+    def enigma(self, val: Optional[str] = None) -> int: ...
+    def enigma(self, val: Union[int, str, None] = None) -> Union[int, bool]:
+        if isinstance(val, int):
+            return self.is_one()
+        return 22
+[file driver.py]
+from native import Test, C
+
+assert Test.ONE.is_one()
+assert Test.TWO.is_one(inverse=True)
+assert not C().foo(Test.ONE)
+assert Test.next(2) == Test.THREE
+assert Test.prev(2) == Test.ONE
+assert Test.ONE.enigma(22)
+assert Test.ONE.enigma("22") == 22
 
 [case testStaticCallsWithUnpackingArgs]
 from typing import Tuple

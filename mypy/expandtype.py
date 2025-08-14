@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from typing import Final, TypeVar, cast, overload
 
 from mypy.nodes import ARG_STAR, FakeInfo, Var
@@ -209,7 +209,10 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        args = self.expand_types_with_unpack(list(t.args))
+        if len(t.args) == 0:
+            return t
+
+        args = self.expand_type_tuple_with_unpack(t.args)
 
         if isinstance(t.type, FakeInfo):
             # The type checker expands function definitions and bodies
@@ -431,7 +434,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             items.append(new_item)
         return Overloaded(items)
 
-    def expand_types_with_unpack(self, typs: Sequence[Type]) -> list[Type]:
+    def expand_type_list_with_unpack(self, typs: list[Type]) -> list[Type]:
         """Expands a list of types that has an unpack."""
         items: list[Type] = []
         for item in typs:
@@ -441,8 +444,19 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 items.append(item.accept(self))
         return items
 
+    def expand_type_tuple_with_unpack(self, typs: tuple[Type, ...]) -> list[Type]:
+        """Expands a tuple of types that has an unpack."""
+        # Micro-optimization: Specialized variant of expand_type_list_with_unpack
+        items: list[Type] = []
+        for item in typs:
+            if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
+                items.extend(self.expand_unpack(item))
+            else:
+                items.append(item.accept(self))
+        return items
+
     def visit_tuple_type(self, t: TupleType) -> Type:
-        items = self.expand_types_with_unpack(t.items)
+        items = self.expand_type_list_with_unpack(t.items)
         if len(items) == 1:
             # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
             item = items[0]
@@ -510,7 +524,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Target of the type alias cannot contain type variables (not bound by the type
         # alias itself), so we just expand the arguments.
-        args = self.expand_types_with_unpack(t.args)
+        if len(t.args) == 0:
+            return t
+        args = self.expand_type_list_with_unpack(t.args)
         # TODO: normalize if target is Tuple, and args are [*tuple[X, ...]]?
         return t.copy_modified(args=args)
 
