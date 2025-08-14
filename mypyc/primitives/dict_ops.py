@@ -19,6 +19,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -90,20 +91,20 @@ dict_get_item_op = method_op(
 )
 
 # dict[key] = value
-# NOTE: this is currently for internal use only, and not used for CallExpr specialization
-exact_dict_set_item_op = custom_op(
-    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
-    return_type=c_int_rprimitive,
-    c_function_name="PyDict_SetItem",
-    error_kind=ERR_NEG_INT,
-)
-
-# dictorsubclass[key] = value
 dict_set_item_op = method_op(
     name="__setitem__",
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="CPyDict_SetItem",
+    error_kind=ERR_NEG_INT,
+)
+
+# dict[key] = value (exact dict only, no subclasses)
+# NOTE: this is currently for internal use only, and not used for CallExpr specialization
+exact_dict_set_item_op = custom_op(
+    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyDict_SetItem",
     error_kind=ERR_NEG_INT,
 )
 
