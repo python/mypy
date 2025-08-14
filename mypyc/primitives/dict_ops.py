@@ -19,7 +19,6 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
-    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
