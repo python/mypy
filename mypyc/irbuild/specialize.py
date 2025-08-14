@@ -717,7 +717,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             elif (
                 isinstance(expr, RefExpr)
                 and isinstance(expr.node, Var)
-                and expr.node.final_value is not None
+                and expr.node.is_final
             ):
                 return str(expr.node.final_value)
             return None
