@@ -15,7 +15,7 @@ else:
     import tomli as tomllib
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, TypedDict, Union
+from typing import Callable, Final, TextIO, TypedDict, Union
 from typing_extensions import Never, TypeAlias
 
 from mypy import defaults
@@ -235,8 +235,7 @@ toml_config_types.update(
 
 _TomlValue = Union[str, int, float, bool, datetime.datetime, datetime.date, datetime.time, list['_TomlValue'], dict[str, '_TomlValue']]
 _TomlDict = dict[str, _TomlValue]
-_TomlDictMypy = TypedDict("_TomlDictMypy", {"mypy": _TomlDict})
-# Sort of like MutableMapping[str, _CONFIG_VALUE_TYPES], but with more (useless) types in it:
+_TomlDictMypy = dict[ str, _TomlDict ]
 _ParserHelper = _TomlDictMypy | configparser.RawConfigParser
 
 def _parse_individual_file(
@@ -263,11 +262,12 @@ def _parse_individual_file(
                 return None
             if not isinstance(toml_data_tool["mypy"], dict):
                 raise MypyConfigTOMLValueError(
-                    "If it exists, tool.mypy value must be a table, aka dict. "
+                    "If it exists, tool.mypy must be a table, aka dict. "
                     "Please make sure you are using appropriate syntax. "
                     "https://toml.io/en/v1.0.0#table"
                 )
-            toml_data_mypy: _TomlDictMypy = {"mypy": toml_data_tool["mypy"]} #ignore other tools
+            # Ignore other tools' sections, filtering down to just ours:
+            toml_data_mypy: _TomlDictMypy = {"mypy": toml_data_tool["mypy"]}
             parser = destructure_overrides(toml_data_mypy)
             config_types = toml_config_types
         else:
@@ -415,7 +415,7 @@ def is_toml(filename: str) -> bool:
     """Detect if a file "is toml", in the sense that it's named *.toml (case-insensitive)."""
     return filename.lower().endswith(".toml")
 
-def destructure_overrides(toml_data: _TomlDictMypy) -> _TomlDictMypy:
+def destructure_overrides(toml_data: _TomlDictMypy) -> _ParserHelper:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 
@@ -503,13 +503,12 @@ def destructure_overrides(toml_data: _TomlDictMypy) -> _TomlDictMypy:
     del result["mypy"]["overrides"]
     return result
 
-
 def parse_section(
     prefix: str,
     template: Options,
     set_strict_flags: Callable[[], None],
-    section: Mapping[str, Any],
-    config_types: dict[str, Any],
+    section: Mapping[str, object],
+    config_types: Mapping[str, object],
     stderr: TextIO = sys.stderr,
 ) -> tuple[dict[str, object], dict[str, str]]:
     """Parse one section of a config file.
@@ -571,7 +570,7 @@ def parse_section(
                 else:
                     continue
             ct = type(dv)
-        v: Any = None
+        v = None
         try:
             if ct is bool:
                 if isinstance(section, dict):
@@ -585,6 +584,7 @@ def parse_section(
                     print(f"{prefix}Can not invert non-boolean key {options_key}", file=stderr)
                     continue
                 try:
+                    # Why does pyright complain that 0 positional arguments are accepted here?
                     v = ct(section.get(key))
                 except VersionTypeError as err_version:
                     print(f"{prefix}{key}: {err_version}", file=stderr)
