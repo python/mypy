@@ -178,8 +178,8 @@ def for_loop_helper_with_index(
     exit_block = BasicBlock()
     condition_block = BasicBlock()
 
-    for_gen = ForSequence(builder, index, body_block, exit_block, line, False, length)
-    for_gen.init(expr_reg, target_type, reverse=False)
+    for_gen = ForSequence(builder, index, body_block, exit_block, line, False)
+    for_gen.init(expr_reg, target_type, reverse=False, length=length)
 
     builder.push_loop_stack(step_block, exit_block)
 
@@ -796,9 +796,11 @@ class ForSequence(ForGenerator):
 
     length_reg: Value | AssignmentTarget | None
 
-    def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
+    def init(self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None) -> None:
         assert is_sequence_rprimitive(expr_reg.type), expr_reg
         builder = self.builder
+        # Record a Value indicating the length of the sequence, if known at compile time.
+        self.length = length
         self.reverse = reverse
         # Define target to contain the expression, along with the index that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
