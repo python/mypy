@@ -235,8 +235,8 @@ toml_config_types.update(
 
 _TomlValue = Union[str, int, float, bool, datetime.datetime, datetime.date, datetime.time, list['_TomlValue'], dict[str, '_TomlValue']]
 _TomlDict = dict[str, _TomlValue]
-_TomlDictMypy = dict[ str, _TomlDict ]
-_ParserHelper = _TomlDictMypy | configparser.RawConfigParser
+_TomlDictDict = dict[ str, _TomlDict ]
+_ParserHelper = _TomlDictDict | configparser.RawConfigParser
 
 def _parse_individual_file(
     config_file: str, stderr: TextIO | None = None
@@ -267,7 +267,7 @@ def _parse_individual_file(
                     "https://toml.io/en/v1.0.0#table"
                 )
             # Ignore other tools' sections, filtering down to just ours:
-            toml_data_mypy: _TomlDictMypy = {"mypy": toml_data_tool["mypy"]}
+            toml_data_mypy: _TomlDictDict = {"mypy": toml_data_tool["mypy"]}
             parser = destructure_overrides(toml_data_mypy)
             config_types = toml_config_types
         else:
@@ -415,7 +415,7 @@ def is_toml(filename: str) -> bool:
     """Detect if a file "is toml", in the sense that it's named *.toml (case-insensitive)."""
     return filename.lower().endswith(".toml")
 
-def destructure_overrides(toml_data: _TomlDictMypy) -> _ParserHelper:
+def destructure_overrides(toml_data: _TomlDictDict) -> _ParserHelper:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 
