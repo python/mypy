@@ -483,16 +483,19 @@ def destructure_overrides(toml_data: _TomlDictDict) -> _ParserHelper:
                 "section, but no module to override was specified."
             )
 
-        if isinstance(override["module"], str):
-            modules = [override["module"]]
-        elif isinstance(override["module"], list):
-            modules = override["module"]
-        else:
+        def complain_str_list() -> Never:
             raise MypyConfigTOMLValueError(
                 "toml config file contains a [[tool.mypy.overrides]] "
                 "section with a module value that is not a string or a list of "
                 "strings"
             )
+
+        if isinstance(override["module"], str):
+            modules = [override["module"]]
+        elif isinstance(override["module"], list):
+            modules = [m if isinstance(m, str) else complain_str_list() for m in override["module"]]
+        else:
+            complain_str_list()
 
         for module in modules:
             module_overrides = override.copy()
