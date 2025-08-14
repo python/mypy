@@ -796,7 +796,9 @@ class ForSequence(ForGenerator):
 
     length_reg: Value | AssignmentTarget | None
 
-    def init(self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None) -> None:
+    def init(
+        self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None
+    ) -> None:
         assert is_sequence_rprimitive(expr_reg.type), expr_reg
         builder = self.builder
         # Record a Value indicating the length of the sequence, if known at compile time.
