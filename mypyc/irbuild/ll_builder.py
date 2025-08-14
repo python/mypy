@@ -1942,7 +1942,7 @@ class LowLevelIRBuilder:
         elif is_str_rprimitive(value.type):
             result = self.call_c(str_check_if_true, [value], value.line)
         elif is_same_type(value.type, exact_dict_rprimitive):
-            result = self.call_c(dict_is_true_op, [value], line=value.line)
+            result = self.primitive_op(dict_is_true_op, [value], line=value.line)
         elif is_same_type(value.type, list_rprimitive) or is_same_type(
             value.type, dict_rprimitive of is_same_type(value.type, tuple_rprimitive)
         ):
