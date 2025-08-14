@@ -6,7 +6,6 @@ import sys
 
 from pytest import skip
 
-from mypy import defaults
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError, Errors
 from mypy.options import Options
