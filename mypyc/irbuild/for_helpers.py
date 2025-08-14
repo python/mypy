@@ -796,20 +796,6 @@ class ForSequence(ForGenerator):
 
     length_reg: Value | AssignmentTarget | None
 
-    def __init__(
-        self,
-        builder: IRBuilder,
-        index: Lvalue,
-        body_block: BasicBlock,
-        loop_exit: BasicBlock,
-        line: int,
-        nested: bool,
-        length: Value | None = None,
-    ) -> None:
-        super().__init__(builder, index, body_block, loop_exit, line, nested)
-        self.length = length
-        """A Value representing the length of the sequence, if known."""
-
     def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
         assert is_sequence_rprimitive(expr_reg.type), expr_reg
         builder = self.builder
