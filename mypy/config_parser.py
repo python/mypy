@@ -624,7 +624,7 @@ def parse_section(
             else:
                 print(f"{prefix}Don't know what type {key} should have", file=stderr)
                 continue
-        except ValueError as err:
+        except (ValueError, TypeError) as err:
             print(f"{prefix}{key}: {err}", file=stderr)
             continue
         if key == "strict":
