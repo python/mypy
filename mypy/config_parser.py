@@ -16,8 +16,8 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Callable, Final, TextIO, TypedDict, Union
+from collections.abc import Mapping, Sequence
+from typing import Callable, Final, TextIO, Union
 from typing_extensions import Never, TypeAlias
 
 from mypy import defaults
@@ -244,18 +244,25 @@ toml_config_types.update(
     }
 )
 
-_TomlValue = Union[str, int, float, bool, datetime.datetime, datetime.date, datetime.time, list['_TomlValue'], dict[str, '_TomlValue']]
+_TomlValue = Union[
+    str,
+    int,
+    float,
+    bool,
+    datetime.datetime,
+    datetime.date,
+    datetime.time,
+    list["_TomlValue"],
+    dict[str, "_TomlValue"],
+]
 _TomlDict = dict[str, _TomlValue]
-_TomlDictDict = dict[ str, _TomlDict ]
+_TomlDictDict = dict[str, _TomlDict]
 _ParserHelper = _TomlDictDict | configparser.RawConfigParser
+
 
 def _parse_individual_file(
     config_file: str, stderr: TextIO | None = None
-) -> tuple[
-        _ParserHelper,
-        dict[str, _INI_PARSER_CALLABLE],
-        str
-    ] | None:
+) -> tuple[_ParserHelper, dict[str, _INI_PARSER_CALLABLE], str] | None:
     try:
         if is_toml(config_file):
             with open(config_file, "rb") as f:
@@ -267,7 +274,7 @@ def _parse_individual_file(
                 toml_data: _TomlDict = tomllib.load(f)
             # Filter down to just mypy relevant toml keys
             toml_data_tool = toml_data.get("tool", {})
-            if not(isinstance(toml_data_tool, dict)) or "mypy" not in toml_data_tool:
+            if not (isinstance(toml_data_tool, dict)) or "mypy" not in toml_data_tool:
                 # Here we might be dealing with a toml that just doesn't talk about mypy,
                 # in which case we currently just ignore it. (Maybe we should really warn?)
                 return None
@@ -286,7 +293,12 @@ def _parse_individual_file(
             parser.read(config_file)
             config_types = ini_config_types
 
-    except (FileNotFoundError, tomllib.TOMLDecodeError, configparser.Error, MypyConfigTOMLValueError) as err:
+    except (
+        FileNotFoundError,
+        tomllib.TOMLDecodeError,
+        configparser.Error,
+        MypyConfigTOMLValueError,
+    ) as err:
         print(f"{config_file}: {err}", file=stderr)
         return None
 
@@ -426,6 +438,7 @@ def is_toml(filename: str) -> bool:
     """Detect if a file "is toml", in the sense that it's named *.toml (case-insensitive)."""
     return filename.lower().endswith(".toml")
 
+
 def destructure_overrides(toml_data: _TomlDictDict) -> _ParserHelper:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
@@ -513,6 +526,7 @@ def destructure_overrides(toml_data: _TomlDictDict) -> _ParserHelper:
 
     del result["mypy"]["overrides"]
     return result
+
 
 def parse_section(
     prefix: str,
