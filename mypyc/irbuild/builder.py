@@ -91,6 +91,7 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     bitmap_rprimitive,
+    bytes_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -962,8 +963,12 @@ class IRBuilder:
         elif isinstance(target_type, Instance):
             if target_type.type.fullname == "builtins.str":
                 return str_rprimitive
-            else:
+            elif target_type.type.fullname == "builtins.bytes":
+                return bytes_rprimitive
+            try:
                 return self.type_to_rtype(target_type.args[0])
+            except IndexError:
+                raise ValueError(f"{target_type!r} is not a valid sequence.") from None
         # This elif-blocks are needed for iterating over classes derived from NamedTuple.
         elif isinstance(target_type, TypeVarLikeType):
             return self.get_sequence_type_from_type(target_type.upper_bound)
