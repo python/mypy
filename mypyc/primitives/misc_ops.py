@@ -332,11 +332,11 @@ set_immortal_op = custom_primitive_op(
     error_kind=ERR_NEVER,
 )
 
-buffer_rprimitive = KNOWN_NATIVE_TYPES["native_buffer.Buffer"]
+buffer_rprimitive = KNOWN_NATIVE_TYPES["native_internal.Buffer"]
 
 # Buffer(source)
 function_op(
-    name="native_buffer.Buffer",
+    name="native_internal.Buffer",
     arg_types=[bytes_rprimitive],
     return_type=buffer_rprimitive,
     c_function_name="Buffer_internal",
@@ -345,7 +345,7 @@ function_op(
 
 # Buffer()
 function_op(
-    name="native_buffer.Buffer",
+    name="native_internal.Buffer",
     arg_types=[],
     return_type=buffer_rprimitive,
     c_function_name="Buffer_internal_empty",
@@ -361,7 +361,7 @@ method_op(
 )
 
 function_op(
-    name="native_buffer.write_bool",
+    name="native_internal.write_bool",
     arg_types=[object_rprimitive, bool_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_bool_internal",
@@ -369,7 +369,7 @@ function_op(
 )
 
 function_op(
-    name="native_buffer.read_bool",
+    name="native_internal.read_bool",
     arg_types=[object_rprimitive],
     return_type=bool_rprimitive,
     c_function_name="read_bool_internal",
@@ -377,7 +377,7 @@ function_op(
 )
 
 function_op(
-    name="native_buffer.write_str",
+    name="native_internal.write_str",
     arg_types=[object_rprimitive, str_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_str_internal",
@@ -385,7 +385,7 @@ function_op(
 )
 
 function_op(
-    name="native_buffer.read_str",
+    name="native_internal.read_str",
     arg_types=[object_rprimitive],
     return_type=str_rprimitive,
     c_function_name="read_str_internal",
@@ -393,7 +393,7 @@ function_op(
 )
 
 function_op(
-    name="native_buffer.write_float",
+    name="native_internal.write_float",
     arg_types=[object_rprimitive, float_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_float_internal",
@@ -401,7 +401,7 @@ function_op(
 )
 
 function_op(
-    name="native_buffer.read_float",
+    name="native_internal.read_float",
     arg_types=[object_rprimitive],
     return_type=float_rprimitive,
     c_function_name="read_float_internal",
@@ -409,7 +409,7 @@ function_op(
 )
 
 function_op(
-    name="native_buffer.write_int",
+    name="native_internal.write_int",
     arg_types=[object_rprimitive, int_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_int_internal",
@@ -417,7 +417,7 @@ function_op(
 )
 
 function_op(
-    name="native_buffer.read_int",
+    name="native_internal.read_int",
     arg_types=[object_rprimitive],
     return_type=int_rprimitive,
     c_function_name="read_int_internal",

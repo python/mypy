@@ -40,7 +40,7 @@ from typing import (
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.semanal_main
-from mypy.cache import BytesIO
+from mypy.cache import Buffer
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -1576,7 +1576,7 @@ def write_cache(
 
     # Serialize data and analyze interface
     if manager.options.fixed_format_cache:
-        data_io = BytesIO()
+        data_io = Buffer()
         tree.write(data_io)
         data_bytes = data_io.getvalue()
     else:
@@ -2119,7 +2119,7 @@ class State:
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
         if isinstance(data, bytes):
-            data_io = BytesIO(data)
+            data_io = Buffer(data)
             self.tree = MypyFile.read(data_io)
         else:
             self.tree = MypyFile.deserialize(data)
@@ -2511,7 +2511,7 @@ class State:
             if self.options.debug_serialize:
                 try:
                     if self.manager.options.fixed_format_cache:
-                        data = BytesIO()
+                        data = Buffer()
                         self.tree.write(data)
                     else:
                         self.tree.serialize()

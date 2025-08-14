@@ -2710,10 +2710,8 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
-[case testBufferRoundTrip_native_lib]
-from typing import Any
-
-from native_buffer import (
+[case testBufferRoundTrip_native_libs]
+from native_internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float, write_int, read_int
 )
 
@@ -2742,7 +2740,7 @@ def test_buffer_roundtrip() -> None:
     assert read_int(b) == 0
     assert read_int(b) == 1
     assert read_int(b) == 2
-    assert read_int(b) == 2 ** 85 + 1
+    assert read_int(b) == 2 ** 85
 
 [file driver.py]
 from native import *

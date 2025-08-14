@@ -1,78 +1,54 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
+try:
+    from native_internal import (
+        Buffer as Buffer,
+        read_bool as read_bool,
+        read_float as read_float,
+        read_int as read_int,
+        read_str as read_str,
+        write_bool as write_bool,
+        write_float as write_float,
+        write_int as write_int,
+        write_str as write_str,
+    )
+except ImportError:
+    # TODO: temporary, remove this after we publish mypy-native on PyPI.
+    if not TYPE_CHECKING:
 
-class BytesIO:
-    def __init__(self, buffer: bytes | None = None) -> None:
-        if buffer is None:
-            self.write_buffer: bytearray | None = bytearray()
-            self.read_buffer = None
-        else:
-            self.read_buffer = buffer
-            self.write_buffer = None
-        self.pos = 0
+        class Buffer:
+            def __init__(self, source: bytes = b"") -> None:
+                raise NotImplementedError
 
-    def read(self, size: int) -> bytes:
-        assert self.read_buffer is not None
-        pos = self.pos
-        self.pos += size
-        return self.read_buffer[pos : self.pos]
+            def getvalue(self) -> bytes:
+                raise NotImplementedError
 
-    def write(self, chunk: bytes) -> None:
-        assert self.write_buffer is not None
-        self.write_buffer += chunk
+        def read_int(data: Buffer) -> int:
+            raise NotImplementedError
 
-    def getvalue(self) -> bytes:
-        assert self.write_buffer is not None
-        return bytes(self.write_buffer)
+        def write_int(data: Buffer, value: int) -> None:
+            raise NotImplementedError
 
+        def read_str(data: Buffer) -> str:
+            raise NotImplementedError
 
-INT_LEN: Final = 10
-FLOAT_LEN: Final = 24
+        def write_str(data: Buffer, value: str) -> None:
+            raise NotImplementedError
 
+        def read_bool(data: Buffer) -> bool:
+            raise NotImplementedError
 
-def read_int(data: BytesIO) -> int:
-    return int(data.read(INT_LEN).decode())
+        def write_bool(data: Buffer, value: bool) -> None:
+            raise NotImplementedError
 
+        def read_float(data: Buffer) -> float:
+            raise NotImplementedError
 
-def write_int(data: BytesIO, value: int) -> None:
-    str_val = str(value)
-    str_val = " " * (INT_LEN - len(str_val)) + str_val
-    data.write(str_val.encode())
-
-
-def read_str(data: BytesIO) -> str:
-    size = read_int(data)
-    encoded = data.read(size)
-    return encoded.decode()
-
-
-def write_str(data: BytesIO, value: str) -> None:
-    encoded = value.encode()
-    size = len(encoded)
-    write_int(data, size)
-    data.write(encoded)
-
-
-def read_bool(data: BytesIO) -> bool:
-    return data.read(1) == b"\xff"
-
-
-def write_bool(data: BytesIO, value: bool) -> None:
-    data.write(b"\xff" if value else b"\x00")
-
-
-def read_float(data: BytesIO) -> float:
-    value_str = data.read(FLOAT_LEN).decode()
-    return float(value_str)
-
-
-def write_float(data: BytesIO, value: float) -> None:
-    value_str = str(value)
-    value_str = "0" * (FLOAT_LEN - len(value_str)) + value_str
-    data.write(value_str.encode())
+        def write_float(data: Buffer, value: float) -> None:
+            raise NotImplementedError
 
 
 LITERAL_INT: Final = 1
@@ -83,7 +59,7 @@ LITERAL_COMPLEX: Final = 5
 LITERAL_NONE: Final = 6
 
 
-def read_literal(data: BytesIO, marker: int) -> int | str | bool | float:
+def read_literal(data: Buffer, marker: int) -> int | str | bool | float:
     if marker == LITERAL_INT:
         return read_int(data)
     elif marker == LITERAL_STR:
@@ -95,7 +71,7 @@ def read_literal(data: BytesIO, marker: int) -> int | str | bool | float:
     assert False, f"Unknown literal marker {marker}"
 
 
-def write_literal(data: BytesIO, value: int | str | bool | float | complex | None) -> None:
+def write_literal(data: Buffer, value: int | str | bool | float | complex | None) -> None:
     if isinstance(value, bool):
         write_int(data, LITERAL_BOOL)
         write_bool(data, value)
@@ -116,13 +92,13 @@ def write_literal(data: BytesIO, value: int | str | bool | float | complex | Non
         write_int(data, LITERAL_NONE)
 
 
-def read_int_opt(data: BytesIO) -> int | None:
+def read_int_opt(data: Buffer) -> int | None:
     if read_bool(data):
         return read_int(data)
     return None
 
 
-def write_int_opt(data: BytesIO, value: int | None) -> None:
+def write_int_opt(data: Buffer, value: int | None) -> None:
     if value is not None:
         write_bool(data, True)
         write_int(data, value)
@@ -130,13 +106,13 @@ def write_int_opt(data: BytesIO, value: int | None) -> None:
         write_bool(data, False)
 
 
-def read_str_opt(data: BytesIO) -> str | None:
+def read_str_opt(data: Buffer) -> str | None:
     if read_bool(data):
         return read_str(data)
     return None
 
 
-def write_str_opt(data: BytesIO, value: str | None) -> None:
+def write_str_opt(data: Buffer, value: str | None) -> None:
     if value is not None:
         write_bool(data, True)
         write_str(data, value)
@@ -144,34 +120,34 @@ def write_str_opt(data: BytesIO, value: str | None) -> None:
         write_bool(data, False)
 
 
-def read_int_list(data: BytesIO) -> list[int]:
+def read_int_list(data: Buffer) -> list[int]:
     size = read_int(data)
     return [read_int(data) for _ in range(size)]
 
 
-def write_int_list(data: BytesIO, value: list[int]) -> None:
+def write_int_list(data: Buffer, value: list[int]) -> None:
     write_int(data, len(value))
     for item in value:
         write_int(data, item)
 
 
-def read_str_list(data: BytesIO) -> list[str]:
+def read_str_list(data: Buffer) -> list[str]:
     size = read_int(data)
     return [read_str(data) for _ in range(size)]
 
 
-def write_str_list(data: BytesIO, value: Sequence[str]) -> None:
+def write_str_list(data: Buffer, value: Sequence[str]) -> None:
     write_int(data, len(value))
     for item in value:
         write_str(data, item)
 
 
-def read_str_opt_list(data: BytesIO) -> list[str | None]:
+def read_str_opt_list(data: Buffer) -> list[str | None]:
     size = read_int(data)
     return [read_str_opt(data) for _ in range(size)]
 
 
-def write_str_opt_list(data: BytesIO, value: list[str | None]) -> None:
+def write_str_opt_list(data: Buffer, value: list[str | None]) -> None:
     write_int(data, len(value))
     for item in value:
         write_str_opt(data, item)

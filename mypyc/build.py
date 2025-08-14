@@ -492,7 +492,8 @@ def mypycify(
     strict_dunder_typing: bool = False,
     group_name: str | None = None,
     log_trace: bool = False,
-    include_native_lib: bool = False,
+    depends_on_native_internal: bool = False,
+    install_native_libs: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -543,6 +544,10 @@ def mypycify(
                    mypyc_trace.txt (derived from executed operations). This is
                    useful for performance analysis, such as analyzing which
                    primitive ops are used the most and on which lines.
+        install_native_libs: If True, also build the native extension modules. Normally,
+                             those are build and published on PyPI separately, but during
+                             tests, we want to use their development versions (i.e. from
+                             current commit).
     """
 
     # Figure out our configuration
@@ -556,6 +561,7 @@ def mypycify(
         strict_dunder_typing=strict_dunder_typing,
         group_name=group_name,
         log_trace=log_trace,
+        depends_on_native_internal=depends_on_native_internal,
     )
 
     # Generate all the actual important C code
@@ -653,17 +659,21 @@ def mypycify(
             extensions.extend(
                 build_single_module(group_sources, cfilenames + shared_cfilenames, cflags)
             )
-    if include_native_lib:
+
+    if install_native_libs:
+        for name in ["native_internal.c"] + RUNTIME_C_FILES:
+            rt_file = os.path.join(build_dir, name)
+            with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
+                write_file(rt_file, f.read())
         extensions.append(
             get_extension()(
-                "native_buffer",
+                "native_internal",
                 sources=[
-                    os.path.join(include_dir(), "native_buffer_internal.c"),
-                    os.path.join(include_dir(), "int_ops.c"),
-                    os.path.join(include_dir(), "exc_ops.c"),
-                    os.path.join(include_dir(), "init.c"),
-                    os.path.join(include_dir(), "pythonsupport.c"),
+                    os.path.join(build_dir, file)
+                    for file in ["native_internal.c"] + RUNTIME_C_FILES
                 ],
+                include_dirs=[include_dir()],
+                extra_compile_args=cflags,
             )
         )
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from mypy import build
 from mypy.build import Graph
-from mypy.cache import BytesIO
+from mypy.cache import Buffer
 from mypy.errors import CompileError
 from mypy.fixup import fixup_module
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
@@ -262,10 +262,10 @@ class TypeCheckSuite(DataSuite):
             tree = graph[id].tree
             if not tree:
                 continue
-            data = BytesIO()
+            data = Buffer()
             tree.write(data)
-            new_data = BytesIO()
-            new_tree = MypyFile.read(BytesIO(data.getvalue()))
+            new_data = Buffer()
+            new_tree = MypyFile.read(Buffer(data.getvalue()))
             fixup_module(new_tree, manager.modules, False)
             new_tree.write(new_data)
             assert data.getvalue() == new_data.getvalue()

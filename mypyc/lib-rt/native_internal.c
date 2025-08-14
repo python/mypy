@@ -1,6 +1,8 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "CPy.h"
+#define NATIVE_INTERNAL_MODULE
+#include "native_internal.h"
 
 #define START_SIZE 512
 
@@ -18,7 +20,7 @@ typedef struct {
 
 static PyTypeObject BufferType;
 
-static PyObject *
+static PyObject*
 Buffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     if (type != &BufferType) {
@@ -57,12 +59,8 @@ Buffer_init_internal(BufferObject *self, PyObject *source) {
     return 0;
 }
 
-PyObject *
+static PyObject*
 Buffer_internal(PyObject *source) {
-    // Do some lazy initialization here.
-    if (PyType_Ready(&BufferType) < 0) {
-        return NULL;
-    }
     BufferObject *self = (BufferObject *)BufferType.tp_alloc(&BufferType, 0);
     if (self == NULL)
         return NULL;
@@ -77,8 +75,8 @@ Buffer_internal(PyObject *source) {
     return (PyObject *)self;
 }
 
-PyObject *
-Buffer_internal_empty() {
+static PyObject*
+Buffer_internal_empty(void) {
     return Buffer_internal(NULL);
 }
 
@@ -101,13 +99,13 @@ Buffer_dealloc(BufferObject *self)
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-PyObject *
+static PyObject*
 Buffer_getvalue_internal(PyObject *self)
 {
     return PyBytes_FromStringAndSize(((BufferObject *)self)->buf, ((BufferObject *)self)->end);
 }
 
-static PyObject *
+static PyObject*
 Buffer_getvalue(BufferObject *self, PyObject *Py_UNUSED(ignored))
 {
     return PyBytes_FromStringAndSize(self->buf, self->end);
@@ -133,8 +131,8 @@ static PyTypeObject BufferType = {
     .tp_methods = Buffer_methods,
 };
 
-static inline
-char _check_buffer(PyObject *data) {
+static inline char
+_check_buffer(PyObject *data) {
     if (Py_TYPE(data) != &BufferType) {
         PyErr_Format(
             PyExc_TypeError, "data must be a Buffer object, got %s", Py_TYPE(data)->tp_name
@@ -144,8 +142,8 @@ char _check_buffer(PyObject *data) {
     return 1;
 }
 
-static inline
-char _check_size(BufferObject *data, Py_ssize_t need) {
+static inline char
+_check_size(BufferObject *data, Py_ssize_t need) {
     Py_ssize_t target = data->pos + need;
     if (target <= data->size)
         return 1;
@@ -160,8 +158,8 @@ char _check_size(BufferObject *data, Py_ssize_t need) {
     return 1;
 }
 
-static inline
-char _check_read(BufferObject *data, Py_ssize_t need) {
+static inline char
+_check_read(BufferObject *data, Py_ssize_t need) {
     if (data->pos + need > data->end) {
         PyErr_SetString(PyExc_ValueError, "reading past the buffer end");
         return 2;
@@ -169,7 +167,8 @@ char _check_read(BufferObject *data, Py_ssize_t need) {
     return 1;
 }
 
-static char read_bool_internal(PyObject *data) {
+static char
+read_bool_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -181,7 +180,8 @@ static char read_bool_internal(PyObject *data) {
     return res;
 }
 
-static PyObject *read_bool(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject*
+read_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", NULL};
     PyObject *data = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
@@ -194,7 +194,8 @@ static PyObject *read_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     return retval;
 }
 
-static char write_bool_internal(PyObject *data, char value) {
+static char
+write_bool_internal(PyObject *data, char value) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -207,7 +208,8 @@ static char write_bool_internal(PyObject *data, char value) {
     return 1;
 }
 
-static PyObject *write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject*
+write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", "value", NULL};
     PyObject *data = NULL;
     PyObject *value = NULL;
@@ -224,7 +226,8 @@ static PyObject *write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
-static PyObject *read_str_internal(PyObject *data) {
+static PyObject*
+read_str_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return NULL;
 
@@ -246,7 +249,8 @@ static PyObject *read_str_internal(PyObject *data) {
     return res;
 }
 
-static PyObject *read_str(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject*
+read_str(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", NULL};
     PyObject *data = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
@@ -254,7 +258,8 @@ static PyObject *read_str(PyObject *self, PyObject *args, PyObject *kwds) {
     return read_str_internal(data);
 }
 
-static char write_str_internal(PyObject *data, PyObject *value) {
+static char
+write_str_internal(PyObject *data, PyObject *value) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -285,7 +290,8 @@ static char write_str_internal(PyObject *data, PyObject *value) {
     return 1;
 }
 
-static PyObject *write_str(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject*
+write_str(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", "value", NULL};
     PyObject *data = NULL;
     PyObject *value = NULL;
@@ -302,7 +308,8 @@ static PyObject *write_str(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
-static double read_float_internal(PyObject *data) {
+static double
+read_float_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return CPY_FLOAT_ERROR;
 
@@ -314,7 +321,8 @@ static double read_float_internal(PyObject *data) {
     return res;
 }
 
-static PyObject *read_float(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject*
+read_float(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", NULL};
     PyObject *data = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
@@ -326,7 +334,8 @@ static PyObject *read_float(PyObject *self, PyObject *args, PyObject *kwds) {
     return PyFloat_FromDouble(retval);
 }
 
-static char write_float_internal(PyObject *data, double value) {
+static char
+write_float_internal(PyObject *data, double value) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -339,7 +348,8 @@ static char write_float_internal(PyObject *data, double value) {
     return 1;
 }
 
-static PyObject *write_float(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject*
+write_float(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", "value", NULL};
     PyObject *data = NULL;
     PyObject *value = NULL;
@@ -356,7 +366,8 @@ static PyObject *write_float(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
-static CPyTagged read_int_internal(PyObject *data) {
+static CPyTagged
+read_int_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return CPY_INT_TAG;
 
@@ -376,7 +387,8 @@ static CPyTagged read_int_internal(PyObject *data) {
     return ((CPyTagged)ret_long) | CPY_INT_TAG;
 }
 
-static PyObject *read_int(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject*
+read_int(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", NULL};
     PyObject *data = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
@@ -388,7 +400,8 @@ static PyObject *read_int(PyObject *self, PyObject *args, PyObject *kwds) {
     return CPyTagged_StealAsObject(retval);
 }
 
-char write_int_internal(PyObject *data, CPyTagged value) {
+static char
+write_int_internal(PyObject *data, CPyTagged value) {
     if (_check_buffer(data) == 2)
         return 2;
 
@@ -414,7 +427,8 @@ char write_int_internal(PyObject *data, CPyTagged value) {
     return 1;
 }
 
-static PyObject *write_int(PyObject *self, PyObject *args, PyObject *kwds) {
+static PyObject*
+write_int(PyObject *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"data", "value", NULL};
     PyObject *data = NULL;
     PyObject *value = NULL;
@@ -432,7 +446,7 @@ static PyObject *write_int(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
-static PyMethodDef native_buffer_module_methods[] = {
+static PyMethodDef native_internal_module_methods[] = {
     // TODO: switch public wrappers to METH_FASTCALL.
     {"write_bool", (PyCFunction)write_bool, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a bool")},
     {"read_bool", (PyCFunction)read_bool, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a bool")},
@@ -446,7 +460,12 @@ static PyMethodDef native_buffer_module_methods[] = {
 };
 
 static int
-native_buffer_module_exec(PyObject *m)
+NativeInternal_ABI_Version(void) {
+    return NATIVE_INTERNAL_ABI_VERSION;
+}
+
+static int
+native_internal_module_exec(PyObject *m)
 {
     if (PyType_Ready(&BufferType) < 0) {
         return -1;
@@ -454,28 +473,48 @@ native_buffer_module_exec(PyObject *m)
     if (PyModule_AddObjectRef(m, "Buffer", (PyObject *) &BufferType) < 0) {
         return -1;
     }
+
+    // Export mypy internal C API, be careful with the order!
+    static void *NativeInternal_API[12] = {
+        (void *)Buffer_internal,
+        (void *)Buffer_internal_empty,
+        (void *)Buffer_getvalue_internal,
+        (void *)write_bool_internal,
+        (void *)read_bool_internal,
+        (void *)write_str_internal,
+        (void *)read_str_internal,
+        (void *)write_float_internal,
+        (void *)read_float_internal,
+        (void *)write_int_internal,
+        (void *)read_int_internal,
+        (void *)&NativeInternal_ABI_Version,
+    };
+    PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "native_internal._C_API", NULL);
+    if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
+        return -1;
+    }
     return 0;
 }
 
-static PyModuleDef_Slot native_buffer_module_slots[] = {
-    {Py_mod_exec, native_buffer_module_exec},
+static PyModuleDef_Slot native_internal_module_slots[] = {
+    {Py_mod_exec, native_internal_module_exec},
 #ifdef Py_MOD_GIL_NOT_USED
     {Py_mod_gil, Py_MOD_GIL_NOT_USED},
 #endif
     {0, NULL}
 };
 
-static PyModuleDef native_buffer_module = {
+static PyModuleDef native_internal_module = {
     .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "native_buffer",
+    .m_name = "native_internal",
     .m_doc = "Mypy cache serialization utils",
     .m_size = 0,
-    .m_methods = native_buffer_module_methods,
-    .m_slots = native_buffer_module_slots,
+    .m_methods = native_internal_module_methods,
+    .m_slots = native_internal_module_slots,
 };
 
 PyMODINIT_FUNC
-PyInit_native_buffer(void)
+PyInit_native_internal(void)
 {
-    return PyModuleDef_Init(&native_buffer_module);
+    return PyModuleDef_Init(&native_internal_module);
 }
