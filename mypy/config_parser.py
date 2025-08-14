@@ -589,7 +589,6 @@ def parse_section(
                 else:
                     continue
             ct = type(dv)
-        v = None
         try:
             if ct is bool:
                 # ConfigParser has an equivalent (but poorly-stubbed) getboolean method,
