@@ -587,10 +587,9 @@ def parse_section(
         v = None
         try:
             if ct is bool:
-                if isinstance(section, dict):
-                    v = convert_to_boolean(section.get(key))
-                else:
-                    v = section.getboolean(key)  # type: ignore[attr-defined]  # Until better stub
+                # ConfigParser has an equivalent (but poorly-stubbed) getboolean method,
+                # which we do not use. https://docs.python.org/3/library/configparser.html#configparser.ConfigParser.getboolean
+                v = convert_to_boolean(section.get(key))
                 if invert:
                     v = not v
             elif callable(ct):
