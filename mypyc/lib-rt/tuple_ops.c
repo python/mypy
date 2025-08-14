@@ -5,6 +5,9 @@
 #include <Python.h>
 #include "CPy.h"
 
+// System-wide empty tuple constant
+PyObject * __mypyc_empty_tuple__ = NULL;
+
 PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);

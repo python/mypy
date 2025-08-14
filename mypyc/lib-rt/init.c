@@ -10,4 +10,14 @@ PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;
 // things at load time.
 void CPy_Init(void) {
     _CPy_ExcDummyStruct.ob_base.ob_type = &PyBaseObject_Type;
+
+    // Initialize system-wide empty tuple constant
+    if (__mypyc_empty_tuple__ == NULL) {
+        __mypyc_empty_tuple__ = PyTuple_New(0);
+        if (!__mypyc_empty_tuple__) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to initialize __mypyc_empty_tuple__");
+            return;
+        }
+        Py_INCREF(__mypyc_empty_tuple__);
+    }
 }
