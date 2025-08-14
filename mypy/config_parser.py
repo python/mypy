@@ -250,11 +250,18 @@ _ParserHelper = Union[_TomlDictDict, configparser.RawConfigParser]
 
 
 def _parse_individual_file(
-    config_file: str, stderr: TextIO | None = None
+    config_filename: str, stderr: TextIO | None = None
 ) -> tuple[_ParserHelper, dict[str, _INI_PARSER_CALLABLE], str] | None:
+    """Internal utility function for doing the first part of parsing config files.
+    Returns None for most conditions where the file doesn't exist or isn't about mypy
+    or isn't formatted correctly. Sometimes this prints an error."""
+
+    if not os.path.exists(config_filename):
+        return None
+
     try:
-        if is_toml(config_file):
-            with open(config_file, "rb") as f:
+        if is_toml(config_filename):
+            with open(config_filename, "rb") as f:
                 # tomllib.load returns dict[str, Any], so it doesn't complain about any type on the lhs.
                 # However, this is probably the actual return type of tomllib.load,
                 # assuming the optional parse_float is not used. (Indeed, we do not use it.)
@@ -279,7 +286,7 @@ def _parse_individual_file(
             config_types = toml_config_types
         else:
             parser = configparser.RawConfigParser()
-            parser.read(config_file)
+            parser.read(config_filename)
             config_types = ini_config_types
 
     except (
@@ -288,13 +295,13 @@ def _parse_individual_file(
         configparser.Error,
         MypyConfigTOMLValueError,
     ) as err:
-        print(f"{config_file}: {err}", file=stderr)
+        print(f"{config_filename}: {err}", file=stderr)
         return None
 
-    if os.path.basename(config_file) in defaults.SHARED_CONFIG_NAMES and "mypy" not in parser:
+    if os.path.basename(config_filename) in defaults.SHARED_CONFIG_NAMES and "mypy" not in parser:
         return None
 
-    return parser, config_types, config_file
+    return parser, config_types, config_filename
 
 
 def _find_config_file(
