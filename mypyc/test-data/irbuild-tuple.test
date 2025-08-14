@@ -742,8 +742,7 @@ def test(source):
 L0:
     r0 = var_object_size source
     r1 = PyTuple_New(r0)
-    r2 = var_object_size source
-    r3 = 0
+    r2 = 0
 L1:
     r3 = r2 < r0 :: signed
     if r3 goto L2 else goto L4 :: bool
