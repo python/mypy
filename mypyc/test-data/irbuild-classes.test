@@ -297,7 +297,7 @@ L2:
     r27 = CPyType_FromTemplate(r26, r24, r25)
     r28 = C_trait_vtable_setup()
     r29 = '__mypyc_attrs__'
-    r30 = PyTuple_Pack(0)
+    r30 = _CPyTuple_LoadEmptyTupleConstant()
     r31 = PyObject_SetAttr(r27, r29, r30)
     r32 = r31 >= 0 :: signed
     __main__.C = r27 :: type
@@ -310,7 +310,7 @@ L2:
     r39 = __main__.S_template :: type
     r40 = CPyType_FromTemplate(r39, r37, r38)
     r41 = '__mypyc_attrs__'
-    r42 = PyTuple_Pack(0)
+    r42 = _CPyTuple_LoadEmptyTupleConstant()
     r43 = PyObject_SetAttr(r40, r41, r42)
     r44 = r43 >= 0 :: signed
     __main__.S = r40 :: type
