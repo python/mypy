@@ -27,7 +27,6 @@ from mypy.expandtype import (
     freshen_function_type_vars,
 )
 from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infer_type_arguments
-from mypy.join import join_type_list
 from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
@@ -2286,7 +2285,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def argument_infer_context(self) -> ArgumentInferContext:
         if self._arg_infer_context_cache is None:
             self._arg_infer_context_cache = ArgumentInferContext(
-                self.chk.named_type("typing.Mapping"), self.chk.named_type("typing.Iterable")
+                self.chk.named_type("typing.Mapping"),
+                self.chk.named_type("typing.Iterable"),
+                self.chk.named_type("builtins.function"),
             )
         return self._arg_infer_context_cache
 
@@ -2670,6 +2671,30 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         caller_type = get_proper_type(caller_type)
         original_caller_type = get_proper_type(original_caller_type)
         callee_type = get_proper_type(callee_type)
+
+        if isinstance(callee_type, UnpackType) and not isinstance(caller_type, UnpackType):
+            # it can happen that the caller_type got expanded.
+            # since this is from a callable definition, it should be one of the following:
+            # - TupleType, TypeVarTupleType, or a variable length tuple Instance.
+            unpack_arg = get_proper_type(callee_type.type)
+            if isinstance(unpack_arg, TypeVarTupleType):
+                # substitute with upper bound of the TypeVarTuple
+                unpack_arg = get_proper_type(unpack_arg.upper_bound)
+            # note: not using elif, since in the future upper bound may be a finite tuple
+            if isinstance(unpack_arg, Instance) and unpack_arg.type.fullname == "builtins.tuple":
+                callee_type = get_proper_type(unpack_arg.args[0])
+            elif isinstance(unpack_arg, TupleType):
+                # this branch should currently never hit, but it may hit in the future,
+                # if it will ever be allowed to upper bound TypeVarTuple with a tuple type.
+                elements = flatten_nested_tuples(unpack_arg.items)
+                if m < len(elements):
+                    # pick the corresponding item from the tuple
+                    callee_type = get_proper_type(elements[m])
+                else:
+                    self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, context)
+                    return
+            else:
+                raise TypeError(f"did not expect unpack_arg to be of type {type(unpack_arg)=}")
 
         if isinstance(caller_type, DeletedType):
             self.msg.deleted_as_rvalue(caller_type, context)
@@ -5228,10 +5253,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     ctx = None
                 tt = self.accept(item.expr, ctx)
                 tt = get_proper_type(tt)
-                if isinstance(tt, UnionType):
-                    # Coercing union to join allows better inference in some
-                    # special cases like `tuple[A, B] | tuple[C, D]`
-                    tt = get_proper_type(join_type_list(tt.items))
+                # convert tt to one of TupleType, IterableType, AnyType or
+                mapper = ArgTypeExpander(self.argument_infer_context())
+                tt = mapper.parse_star_args_type(tt)
 
                 if isinstance(tt, TupleType):
                     if find_unpack_in_list(tt.items) is not None:
