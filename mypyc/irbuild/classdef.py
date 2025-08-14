@@ -488,7 +488,9 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
     # Add it to the dict
     builder.call_c(
-        exact_dict_set_item_op, [builder.load_globals_dict(), builder.load_str(cdef.name), tp], cdef.line
+        exact_dict_set_item_op,
+        [builder.load_globals_dict(), builder.load_str(cdef.name), tp],
+        cdef.line,
     )
 
     return tp
