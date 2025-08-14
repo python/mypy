@@ -260,6 +260,7 @@ def _parse_individual_file(
         return None
 
     try:
+        parser: _ParserHelper
         if is_toml(config_filename):
             with open(config_filename, "rb") as f:
                 # tomllib.load returns dict[str, Any], so it doesn't complain about any type on the lhs.
@@ -435,7 +436,7 @@ def is_toml(filename: str) -> bool:
     return filename.lower().endswith(".toml")
 
 
-def destructure_overrides(toml_data: _TomlDictDict) -> _ParserHelper:
+def destructure_overrides(toml_data: _TomlDictDict) -> _TomlDictDict:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 
@@ -534,7 +535,7 @@ def parse_section(
     template: Options,
     set_strict_flags: Callable[[], None],
     section: Mapping[str, object],
-    config_types: Mapping[str, object],
+    config_types: Mapping[str, object], # this is probably dict[str, _INI_PARSER_CALLABLE], but that causes more type errors at the moment.
     stderr: TextIO = sys.stderr,
 ) -> tuple[dict[str, object], dict[str, str]]:
     """Parse one section of a config file.
@@ -609,7 +610,8 @@ def parse_section(
                     print(f"{prefix}Can not invert non-boolean key {options_key}", file=stderr)
                     continue
                 try:
-                    # Why does pyright complain that 0 positional arguments are accepted here?
+                    # pyright complains that 0 positional arguments are accepted here
+                    # (because ct might be type(None) for all it knows)
                     v = ct(section.get(key))
                 except VersionTypeError as err_version:
                     print(f"{prefix}{key}: {err_version}", file=stderr)
