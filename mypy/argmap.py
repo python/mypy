@@ -34,8 +34,6 @@ if TYPE_CHECKING:
 
 IterableType = NewType("IterableType", Instance)
 """Represents an instance of `Iterable[T]`."""
-TupleInstance = NewType("TupleInstance", Instance)
-"""Represents an instance of `builtins.tuple[T, ...]`."""
 
 
 def map_actuals_to_formals(
@@ -284,16 +282,6 @@ class ArgTypeExpander:
 
         return is_subtype(typ, self.context.iterable_type)
 
-    def is_iterable_instance_subtype(self, typ: Type) -> TypeGuard[Instance]:
-        from mypy.subtypes import is_subtype
-
-        p_t = get_proper_type(typ)
-        return (
-            isinstance(p_t, Instance)
-            and bool(p_t.args)
-            and is_subtype(p_t, self.context.iterable_type)
-        )
-
     def is_iterable_instance_type(self, typ: Type) -> TypeGuard[IterableType]:
         """Check if the type is an Iterable[T] or a subtype of it."""
         p_t = get_proper_type(typ)
@@ -302,10 +290,6 @@ class ArgTypeExpander:
     def _make_iterable_instance_type(self, arg: Type) -> IterableType:
         value = Instance(self.context.iterable_type.type, [arg])
         return cast(IterableType, value)
-
-    def _make_tuple_instance_type(self, arg: Type) -> TupleInstance:
-        value = Instance(self.context.tuple_type.type, [arg])
-        return cast(TupleInstance, value)
 
     def _solve_as_iterable(self, typ: Type) -> IterableType | AnyType:
         r"""Use the solver to cast a type as Iterable[T].

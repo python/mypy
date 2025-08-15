@@ -23,13 +23,17 @@ class function:
     __name__: str
 class ellipsis: pass
 
-from typing import Generic, Iterator, Sequence, TypeVar
+from typing import Generic, Iterator, Sequence, TypeVar, Iterable
 _T = TypeVar('_T')
 class list(Generic[_T], Sequence[_T]):
     def __contains__(self, item: object) -> bool: pass
     def __getitem__(self, key: int) -> _T: pass
     def __iter__(self) -> Iterator[_T]: pass
 
-class dict: pass
+# class tuple(Generic[_T], Sequence[_T]):
+#     def __contains__(self, item: object) -> bool: pass
+#     def __getitem__(self, key: int) -> _T: pass
+#     def __iter__(self) -> Iterator[_T]: pass
 
+class dict: pass
 # Definition of None is implicit

@@ -498,6 +498,20 @@ f(**m)
 g(**m)  # E: Argument 1 to "g" has incompatible type "**Mapping[str, object]"; expected "int"
 [builtins fixtures/dict.pyi]
 
+[case testStarArgsTupleExpressionVersusTypeVarTuple]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
+# https://github.com/python/mypy/issues/19665
+from typing import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple('Ts')
+
+def as_tuple(*args: Unpack[Ts]) -> tuple[Unpack[Ts]]: return args
+
+def test(one: int, many: tuple[int, ...]) -> None:
+    reveal_type( (one, *many, one) )           # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]], builtins.int]"
+    reveal_type( as_tuple(one, *many, one) )   # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]], builtins.int]"
+[builtins fixtures/tuple.pyi]
+
 [case testTupleConversionWithUnionStarArgs]
 from typing import Union, List, Set, Tuple, Unpack, TypeVarTuple
 
@@ -805,47 +819,42 @@ def test_union_recursive(x: Union[list[Union[NESTED, None]], list[NESTED]]) -> N
 [builtins fixtures/primitives.pyi]
 
 
-[case testStarArgsWithPaddedTypeVarTuple]
-# https://github.com/python/mypy/issues/19659
-from typing import Union, TypeVarTuple
+[case testStarArgsWithPaddedTupleArgument]
+from typing import Union, TypeVarTuple, Unpack
 
 class A: pass
 Ts = TypeVarTuple('Ts')
 
-def test_union_typevartuple(
-    padded_tuple: tuple[A, *Ts, A],
-    padded_union: Union[tuple[A, *Ts, A], tuple[None, None, None]],
-) -> None:
+def test_padded_tuple(padded_tuple: tuple[A, Unpack[Ts], A]) -> None:
     # technically, this should be ``typ[A | None | Union[*Ts]]``
     reveal_type( (*padded_tuple,) )  # N: Revealed type is "tuple[__main__.A, Unpack[Ts`-1], __main__.A]"
     reveal_type( [*padded_tuple] )   # N: Revealed type is "builtins.list[builtins.object]"
     reveal_type( {*padded_tuple} )   # N: Revealed type is "builtins.set[builtins.object]"
+
+def test_padded_union(padded_union: Union[tuple[A, Unpack[Ts], A], tuple[None, None, None]]) -> None:
     reveal_type( (*padded_union,) )  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
     reveal_type( [*padded_union] )   # N: Revealed type is "builtins.list[builtins.object]"
     reveal_type( {*padded_union} )   # N: Revealed type is "builtins.set[builtins.object]"
 [builtins fixtures/primitives.pyi]
 
-[case testStarArgsWithParamSpec]
-# https://github.com/python/mypy/issues/19663
-from typing import Union, ParamSpec, Callable
 
-P = ParamSpec('P')
+[case testStarArgsWithPaddedTupleArgumentUpcast]
+# https://github.com/python/mypy/issues/19659
+from typing import Iterable, TypeVarTuple, Unpack, Union, TypeVar
 
-def test_paramspec(
-    a: A,  # E: Name "A" is not defined
-    dummy: Callable[P, None],  # ensure P is bound
-    /,
-    *args: P.args,
-    **kwargs: P.kwargs,
-) -> None:
-    # technically, this should be ``typ[A | None | Union[*Ts]]``
-    reveal_type( args     )  # N: Revealed type is "P.args`-1"
-    reveal_type( (*args,) )  # N: Revealed type is "builtins.tuple[P.args`-1, ...]"
-    reveal_type( [*args]  )  # N: Revealed type is "builtins.list[P.args`-1]"
-    reveal_type( {*args}  )  # N: Revealed type is "builtins.set[P.args`-1]"
+class A: pass
+Ts = TypeVarTuple('Ts')
+T = TypeVar('T')
 
-    # test padded tuple expression
-    reveal_type( (a, *args, a) )  # N: Revealed type is "builtins.tuple[__main__.A, Unpack[builtins.tuple[P.args`-1, ...]], __main__.A]"
+def upcast(arg: Iterable[T]) -> Iterable[T]: return arg
+
+def test_padded_tuple(padded_tuple: tuple[A, Unpack[Ts], A]) -> None:
+    as_iterable = upcast(padded_tuple)
+    reveal_type(as_iterable)  # N: Revealed type is "typing.Iterable[Any]"
+
+def test_padded_union(padded_union: Union[tuple[A, Unpack[Ts], A], tuple[None, None, None]]) -> None:
+    as_iterable = upcast(padded_union)
+    reveal_type(as_iterable)  # N: Revealed type is "typing.Iterable[Any]"
 [builtins fixtures/primitives.pyi]
 
 [case testStarArgsWithUnion]
@@ -973,7 +982,6 @@ def test_bad_case(
            # E: Argument 1 to "g" has incompatible type "*tuple[Union[A, B, C, None], ...]"; expected "Optional[D]"
 [builtins fixtures/tuple.pyi]
 
-
 [case testListExpressionWithListSubtypeStarArgs]
 # https://github.com/python/mypy/issues/19662
 class MyList(list[int]): ...
@@ -982,8 +990,6 @@ def test(x: MyList, y: list[int]) -> None:
     reveal_type( [*x] )  # N: Revealed type is "builtins.list[builtins.int]"
     reveal_type( [*y] )  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
-
-
 
 [case testPassingEmptyDictWithStars]
 def f(): pass

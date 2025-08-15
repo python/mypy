@@ -2288,7 +2288,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.chk.named_type("typing.Mapping"),
                 self.chk.named_type("typing.Iterable"),
                 self.chk.named_type("builtins.function"),
-                self.chk.named_type("builtins.tuple"),
             )
         return self._arg_infer_context_cache
 
@@ -5252,12 +5251,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     ctx = ctx_item.type
                 else:
                     ctx = None
-
-                arg_type_expander = ArgTypeExpander(self.argument_infer_context())
                 original_arg_type = self.accept(item.expr, ctx)
                 # convert arg type to one of TupleType, IterableType, AnyType or
+                arg_type_expander = ArgTypeExpander(self.argument_infer_context())
                 star_args_type = arg_type_expander.parse_star_args_type(original_arg_type)
-
                 if isinstance(star_args_type, TupleType):
                     if find_unpack_in_list(star_args_type.items) is not None:
                         if seen_unpack_in_items:
