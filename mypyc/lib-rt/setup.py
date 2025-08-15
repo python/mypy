@@ -80,13 +80,7 @@ else:
         ext_modules=[
             Extension(
                 "native_internal",
-                [
-                    "native_internal.c",
-                    "init.c",
-                    "int_ops.c",
-                    "exc_ops.c",
-                    "pythonsupport.c",
-                ],
+                ["native_internal.c", "init.c", "int_ops.c", "exc_ops.c", "pythonsupport.c"],
                 include_dirs=["."],
                 **kwargs,
             )

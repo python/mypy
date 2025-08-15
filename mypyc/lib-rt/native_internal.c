@@ -268,6 +268,8 @@ write_str_internal(PyObject *data, PyObject *value) {
     if (!chunk)
         return 2;
     if (size > MAX_STR_SIZE) {
+        // This is a micro-optimization to reduce cache size, if someone
+        // will complain about their 65K-long string literals we can adjust.
         PyErr_Format(
             PyExc_OverflowError,
             "cannot store string longer than %d bytes",
@@ -379,6 +381,7 @@ read_int_internal(PyObject *data) {
     ((BufferObject *)data)->pos += sizeof(CPyTagged);
     if ((ret & CPY_INT_TAG) == 0)
         return ret;
+    // People who have literal ints not fitting in size_t should be punished :-)
     PyObject *str_ret = read_str_internal(data);
     if (str_ret == NULL)
         return CPY_INT_TAG;
@@ -487,7 +490,7 @@ native_internal_module_exec(PyObject *m)
         (void *)read_float_internal,
         (void *)write_int_internal,
         (void *)read_int_internal,
-        (void *)&NativeInternal_ABI_Version,
+        (void *)NativeInternal_ABI_Version,
     };
     PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "native_internal._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

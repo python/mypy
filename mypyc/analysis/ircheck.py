@@ -182,7 +182,7 @@ disjoint_types = {
     set_rprimitive.name,
     tuple_rprimitive.name,
     range_rprimitive.name,
-} | set(KNOWN_NATIVE_TYPES.values())
+} | set(KNOWN_NATIVE_TYPES)
 
 
 def can_coerce_to(src: RType, dest: RType) -> bool:
