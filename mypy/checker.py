@@ -2448,10 +2448,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
         return False
 
-    def get_property_instance(self, method: Decorator | OverloadedFuncDef) -> Instance | None:
+    def get_property_instance(
+        self, method: Var | Decorator | OverloadedFuncDef
+    ) -> Instance | None:
         if method.type is None:
             return None
-        deco = method if isinstance(method, Decorator) else method.items[0]
+
+        func: SymbolNode | None = method
+        if isinstance(method, Var):
+            mt = get_proper_type(method.type)
+            if isinstance(mt, Overloaded):
+                func = mt.items[0].definition
+            elif isinstance(mt, CallableType):
+                func = mt.definition
+        if not isinstance(func, (Decorator, OverloadedFuncDef)):
+            return None
+        deco = func if isinstance(func, Decorator) else func.items[0]
         if not isinstance(deco, Decorator):
             return None
         property_deco_name = next(

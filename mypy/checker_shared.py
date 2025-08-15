@@ -275,7 +275,9 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def get_property_instance(self, method: Decorator | OverloadedFuncDef) -> Instance | None:
+    def get_property_instance(
+        self, method: Var | Decorator | OverloadedFuncDef
+    ) -> Instance | None:
         raise NotImplementedError
 
     @abstractmethod
