@@ -13,7 +13,6 @@ from mypy.types import (
     AnyType,
     CallableType,
     Instance,
-    ParamSpecFlavor,
     ParamSpecType,
     ProperType,
     TupleType,
@@ -246,9 +245,6 @@ class ArgTypeExpander:
                 return item
             elif isinstance(star_args_type, ParamSpecType):
                 # ParamSpec is valid in *args but it can't be unpacked.
-                assert (
-                    star_args_type.flavor == ParamSpecFlavor.ARGS
-                ), f"ParamSpecType for *args should have ARGS flavor, got {star_args_type.flavor}"
                 return star_args_type
             else:
                 return AnyType(TypeOfAny.from_error)
@@ -390,17 +386,12 @@ class ArgTypeExpander:
     ) -> TupleType | IterableType | ParamSpecType | AnyType:
         """Parse the type of a ``*args`` argument.
 
-        Returns one of TupleType, IterableType, ParamSpecType (ARGS flavor),
-        or AnyType(TypeOfAny.from_error) if the type cannot be parsed or is invalid.
+        Returns one of TupleType, TupleInstance or AnyType.
         """
         p_t = get_proper_type(typ)
-        if isinstance(p_t, (TupleType, AnyType)):
+        if isinstance(p_t, (TupleType, ParamSpecType, AnyType)):
             # just return the type as-is
             return p_t
-        elif isinstance(p_t, ParamSpecType):
-            if p_t.flavor == ParamSpecFlavor.ARGS:
-                return p_t
-            return AnyType(TypeOfAny.from_error)
         elif isinstance(p_t, TypeVarTupleType):
             return self.parse_star_args_type(p_t.upper_bound)
         elif isinstance(p_t, UnionType):
