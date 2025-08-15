@@ -386,7 +386,7 @@ class ArgTypeExpander:
     ) -> TupleType | IterableType | ParamSpecType | AnyType:
         """Parse the type of a ``*args`` argument.
 
-        Returns one of TupleType, IterableType, ParamSpecType (ARGS flavor),
+        Returns one of TupleType, IterableType, ParamSpecType,
         or AnyType(TypeOfAny.from_error) if the type cannot be parsed or is invalid.
         """
         p_t = get_proper_type(typ)
