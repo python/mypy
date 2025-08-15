@@ -7,7 +7,6 @@ import os
 import re
 import unittest
 
-from mypyc.ir.ops import PrimitiveDescription
 from mypyc.primitives import registry
 
 
