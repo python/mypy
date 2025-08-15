@@ -498,7 +498,7 @@ f(**m)
 g(**m)  # E: Argument 1 to "g" has incompatible type "**Mapping[str, object]"; expected "int"
 [builtins fixtures/dict.pyi]
 
-[case testTupleExpressionWithUnionStarArgs]
+[case testTupleConversionWithUnionStarArgs]
 from typing import Union, List, Set, Tuple, Unpack, TypeVarTuple
 
 class A: pass
@@ -506,6 +506,84 @@ class B: pass
 class C: pass
 class D: pass
 
+Ts = TypeVarTuple('Ts')
+def as_tuple(*args: Unpack[Ts]) -> tuple[Unpack[Ts]]:
+    return (*args,)
+
+def test_union_same_size_tuple(
+    x1: Union[tuple[A, B], tuple[None, None]],
+    x2: Union[tuple[A, B], tuple[None, Unpack[tuple[None]]]],
+    x3: Union[tuple[A, B], tuple[None, None, Unpack[tuple[()]]]],
+    xx: tuple[Union[A, None], Union[B, None]],  # reference type
+) -> None:
+    reveal_type( as_tuple(*x1) )  # N: Revealed type is "tuple[Union[__main__.A, None], Union[__main__.B, None]]"
+    reveal_type( as_tuple(*x2) )  # N: Revealed type is "tuple[Union[__main__.A, None], Union[__main__.B, None]]"
+    reveal_type( as_tuple(*x3) )  # N: Revealed type is "tuple[Union[__main__.A, None], Union[__main__.B, None]]"
+    reveal_type( as_tuple(*xx) )  # N: Revealed type is "tuple[Union[__main__.A, None], Union[__main__.B, None]]"
+
+def test_union_different_size_tuple(
+    y1: Union[tuple[A, B], tuple[None, None, None]],
+    y2: Union[tuple[A, B], tuple[None]],
+    y3: Union[tuple[A, B], tuple[None, None, None, Unpack[tuple[()]]]],
+    yy: tuple[Union[A, B, None], ...],  # reference type
+) -> None:
+    reveal_type( as_tuple(*y1) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B, None], ...]"
+    reveal_type( as_tuple(*y2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B, None], ...]"
+    reveal_type( as_tuple(*y2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B, None], ...]"
+    reveal_type( as_tuple(*yy) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B, None], ...]"
+
+def test_union_fixed_size_and_variadic_tuple(
+    z1: Union[tuple[A, B, C], tuple[None, ...]],
+    z2: Union[tuple[A, B, C], tuple[None, Unpack[tuple[None, ...]], None]],
+    zz: tuple[Union[A, B, C, None], ...],  # reference type
+) -> None:
+    reveal_type( as_tuple(*z1) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B, __main__.C, None], ...]"
+    reveal_type( as_tuple(*z2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B, __main__.C, None], ...]"
+    reveal_type( as_tuple(*zz) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B, __main__.C, None], ...]"
+
+def test_union_variable_size_tuples(
+    # same + subtype
+    tt1: Union[Tuple[Union[A, None], ...], Tuple[A, ...]],
+    ll1: Union[List[Union[A, None]], List[A]],
+    ss1: Union[Set[Union[A, None]], Set[A]],
+    # mixed + subtype
+    tl1: Union[Tuple[Union[A, None], ...], List[A]],
+    ts1: Union[Tuple[Union[A, None], ...], Set[A]],
+    ls1: Union[List[Union[A, None]], Set[A]],
+    # same + not subtype
+    tt2: Union[Tuple[A, ...], Tuple[B, ...]],
+    ll2: Union[List[A], List[B]],
+    ss2: Union[Set[A], Set[B]],
+    # mixed + not subtype
+    tl2: Union[Tuple[A, ...], List[B]],
+    ts2: Union[Tuple[A, ...], Set[B]],
+    ls2: Union[List[A], Set[B]],
+) -> None:
+    reveal_type( as_tuple(*tt1) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, None], ...]"
+    reveal_type( as_tuple(*ll1) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, None], ...]"
+    reveal_type( as_tuple(*ss1) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, None], ...]"
+    reveal_type( as_tuple(*tl1) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, None], ...]"
+    reveal_type( as_tuple(*ts1) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, None], ...]"
+    reveal_type( as_tuple(*ls1) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, None], ...]"
+    reveal_type( as_tuple(*tt2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+    reveal_type( as_tuple(*ll2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+    reveal_type( as_tuple(*ss2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+    reveal_type( as_tuple(*tl2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+    reveal_type( as_tuple(*ts2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+    reveal_type( as_tuple(*ls2) )  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+
+NESTED = Union[str, list[NESTED]]
+def test_union_recursive(x: Union[list[Union[NESTED, None]], list[NESTED]]) -> None:
+    reveal_type( as_tuple(*x) )  # N: Revealed type is "builtins.tuple[Union[builtins.str, builtins.list[Union[builtins.str, builtins.list[...]]], None], ...]"
+[builtins fixtures/primitives.pyi]
+
+[case testTupleExpressionWithUnionStarArgs]
+from typing import Union, List, Set, Tuple, Unpack
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
 
 def test_union_same_size_tuple(
     x1: Union[tuple[A, B], tuple[None, None]],
@@ -576,7 +654,7 @@ def test_union_recursive(x: Union[list[Union[NESTED, None]], list[NESTED]]) -> N
 
 
 [case testListExpressionWithUnionStarArgs]
-from typing import Union, List, Set, Tuple, Unpack, TypeVarTuple
+from typing import Union, List, Set, Tuple, Unpack
 
 class A: pass
 class B: pass
@@ -652,7 +730,7 @@ def test_union_recursive(x: Union[list[Union[NESTED, None]], list[NESTED]]) -> N
 
 
 [case testSetExpressionWithUnionStarArgs]
-from typing import Union, List, Set, Tuple, Unpack, TypeVarTuple
+from typing import Union, List, Set, Tuple, Unpack
 
 class A: pass
 class B: pass
@@ -727,7 +805,7 @@ def test_union_recursive(x: Union[list[Union[NESTED, None]], list[NESTED]]) -> N
 [builtins fixtures/primitives.pyi]
 
 
-[case testStarArgsWithUnionTypeVarTuple-xfail]
+[case testStarArgsWithPaddedTypeVarTuple]
 # https://github.com/python/mypy/issues/19659
 from typing import Union, TypeVarTuple
 
@@ -735,14 +813,40 @@ class A: pass
 Ts = TypeVarTuple('Ts')
 
 def test_union_typevartuple(
-    tt1: Union[tuple[A, *Ts, A], tuple[None, None, None]],
+    padded_tuple: tuple[A, *Ts, A],
+    padded_union: Union[tuple[A, *Ts, A], tuple[None, None, None]],
 ) -> None:
     # technically, this should be ``typ[A | None | Union[*Ts]]``
-    reveal_type( (*tt1,) )  # N: Revealed type is "builtins.tuple[Any, ...]"
-    reveal_type( [*tt1] )  # N: Revealed type is "builtins.list[Any]"
-    reveal_type( {*tt1} )  # N: Revealed type is "builtins.set[Any]"
+    reveal_type( (*padded_tuple,) )  # N: Revealed type is "tuple[__main__.A, Unpack[Ts`-1], __main__.A]"
+    reveal_type( [*padded_tuple] )   # N: Revealed type is "builtins.list[builtins.object]"
+    reveal_type( {*padded_tuple} )   # N: Revealed type is "builtins.set[builtins.object]"
+    reveal_type( (*padded_union,) )  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+    reveal_type( [*padded_union] )   # N: Revealed type is "builtins.list[builtins.object]"
+    reveal_type( {*padded_union} )   # N: Revealed type is "builtins.set[builtins.object]"
 [builtins fixtures/primitives.pyi]
 
+[case testStarArgsWithParamSpec]
+# https://github.com/python/mypy/issues/19663
+from typing import Union, ParamSpec, Callable
+
+P = ParamSpec('P')
+
+def test_paramspec(
+    a: A,  # E: Name "A" is not defined
+    dummy: Callable[P, None],  # ensure P is bound
+    /,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> None:
+    # technically, this should be ``typ[A | None | Union[*Ts]]``
+    reveal_type( args     )  # N: Revealed type is "P.args`-1"
+    reveal_type( (*args,) )  # N: Revealed type is "builtins.tuple[P.args`-1, ...]"
+    reveal_type( [*args]  )  # N: Revealed type is "builtins.list[P.args`-1]"
+    reveal_type( {*args}  )  # N: Revealed type is "builtins.set[P.args`-1]"
+
+    # test padded tuple expression
+    reveal_type( (a, *args, a) )  # N: Revealed type is "builtins.tuple[__main__.A, Unpack[builtins.tuple[P.args`-1, ...]], __main__.A]"
+[builtins fixtures/primitives.pyi]
 
 [case testStarArgsWithUnion]
 from typing import Union

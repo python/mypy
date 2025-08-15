@@ -2288,6 +2288,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.chk.named_type("typing.Mapping"),
                 self.chk.named_type("typing.Iterable"),
                 self.chk.named_type("builtins.function"),
+                self.chk.named_type("builtins.tuple"),
             )
         return self._arg_infer_context_cache
 
@@ -5251,33 +5252,35 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     ctx = ctx_item.type
                 else:
                     ctx = None
-                tt = self.accept(item.expr, ctx)
-                tt = get_proper_type(tt)
-                # convert tt to one of TupleType, IterableType, AnyType or
-                mapper = ArgTypeExpander(self.argument_infer_context())
-                tt = mapper.parse_star_args_type(tt)
 
-                if isinstance(tt, TupleType):
-                    if find_unpack_in_list(tt.items) is not None:
+                arg_type_expander = ArgTypeExpander(self.argument_infer_context())
+                original_arg_type = self.accept(item.expr, ctx)
+                # convert arg type to one of TupleType, IterableType, AnyType or
+                star_args_type = arg_type_expander.parse_star_args_type(original_arg_type)
+
+                if isinstance(star_args_type, TupleType):
+                    if find_unpack_in_list(star_args_type.items) is not None:
                         if seen_unpack_in_items:
                             # Multiple unpack items are not allowed in tuples,
                             # fall back to instance type.
                             return self.check_lst_expr(e, "builtins.tuple", "<tuple>")
                         else:
                             seen_unpack_in_items = True
-                    items.extend(tt.items)
+                    items.extend(star_args_type.items)
                     # Note: this logic depends on full structure match in tuple_context_matches().
                     if unpack_in_context:
                         j += 1
                     else:
                         # If there is an unpack in expressions, but not in context, this will
                         # result in an error later, just do something predictable here.
-                        j += len(tt.items)
+                        j += len(star_args_type.items)
                 else:
                     if allow_precise_tuples and not seen_unpack_in_items:
                         # Handle (x, *y, z), where y is e.g. tuple[Y, ...].
-                        if isinstance(tt, Instance) and self.chk.type_is_iterable(tt):
-                            item_type = self.chk.iterable_item_type(tt, e)
+                        if isinstance(star_args_type, Instance) and self.chk.type_is_iterable(
+                            star_args_type
+                        ):
+                            item_type = self.chk.iterable_item_type(star_args_type, e)
                             mapped = self.chk.named_generic_type("builtins.tuple", [item_type])
                             items.append(UnpackType(mapped))
                             seen_unpack_in_items = True

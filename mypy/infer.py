@@ -29,6 +29,7 @@ class ArgumentInferContext(NamedTuple):
     mapping_type: Instance
     iterable_type: Instance
     function_type: Instance
+    tuple_type: Instance
 
 
 def infer_function_type_arguments(

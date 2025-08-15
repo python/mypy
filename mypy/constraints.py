@@ -167,15 +167,18 @@ def infer_constraints_for_callable(
                     allow_unpack=True,
                 )
 
-                if arg_kinds[actual] != ARG_STAR or isinstance(
-                    get_proper_type(actual_arg_type), TupleType
-                ):
-                    actual_types.append(expanded_actual)
+                if arg_kinds[actual] == ARG_STAR:
+                    # Use the expanded form, one of TupleType | IterableType | ParamSpecType | AnyType
+                    star_args_type = mapper.parse_star_args_type(actual_arg_type)
+                    if isinstance(star_args_type, TupleType):
+                        actual_types.append(expanded_actual)
+                    else:
+                        # If we are expanding an iterable inside * actual, append a homogeneous item instead
+                        actual_types.append(
+                            UnpackType(tuple_instance.copy_modified(args=[expanded_actual]))
+                        )
                 else:
-                    # If we are expanding an iterable inside * actual, append a homogeneous item instead
-                    actual_types.append(
-                        UnpackType(tuple_instance.copy_modified(args=[expanded_actual]))
-                    )
+                    actual_types.append(expanded_actual)
 
             if isinstance(unpacked_type, TypeVarTupleType):
                 constraints.append(

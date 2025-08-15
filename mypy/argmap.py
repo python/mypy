@@ -34,6 +34,8 @@ if TYPE_CHECKING:
 
 IterableType = NewType("IterableType", Instance)
 """Represents an instance of `Iterable[T]`."""
+TupleInstance = NewType("TupleInstance", Instance)
+"""Represents an instance of `builtins.tuple[T, ...]`."""
 
 
 def map_actuals_to_formals(
@@ -218,18 +220,18 @@ class ArgTypeExpander:
         if actual_kind == nodes.ARG_STAR:
             # parse *args as one of the following:
             #    IterableType | TupleType | ParamSpecType | AnyType
-            star_args = self.parse_star_args_type(actual_type)
+            star_args_type = self.parse_star_args_type(actual_type)
 
-            if self.is_iterable_instance_type(star_args):
-                return star_args.args[0]
-            elif isinstance(star_args, TupleType):
+            if self.is_iterable_instance_type(star_args_type):
+                return star_args_type.args[0]
+            elif isinstance(star_args_type, TupleType):
                 # Get the next tuple item of a tuple *arg.
-                if self.tuple_index >= len(star_args.items):
+                if self.tuple_index >= len(star_args_type.items):
                     # Exhausted a tuple -- continue to the next *args.
                     self.tuple_index = 1
                 else:
                     self.tuple_index += 1
-                item = star_args.items[self.tuple_index - 1]
+                item = star_args_type.items[self.tuple_index - 1]
                 if isinstance(item, UnpackType) and not allow_unpack:
                     # An unpack item that doesn't have special handling, use upper bound as above.
                     unpacked = get_proper_type(item.type)
@@ -243,9 +245,9 @@ class ArgTypeExpander:
                     )
                     item = fallback.args[0]
                 return item
-            elif isinstance(star_args, ParamSpecType):
+            elif isinstance(star_args_type, ParamSpecType):
                 # ParamSpec is valid in *args but it can't be unpacked.
-                return star_args
+                return star_args_type
             else:
                 return AnyType(TypeOfAny.from_error)
         elif actual_kind == nodes.ARG_STAR2:
@@ -300,6 +302,10 @@ class ArgTypeExpander:
     def _make_iterable_instance_type(self, arg: Type) -> IterableType:
         value = Instance(self.context.iterable_type.type, [arg])
         return cast(IterableType, value)
+
+    def _make_tuple_instance_type(self, arg: Type) -> TupleInstance:
+        value = Instance(self.context.tuple_type.type, [arg])
+        return cast(TupleInstance, value)
 
     def _solve_as_iterable(self, typ: Type) -> IterableType | AnyType:
         r"""Use the solver to cast a type as Iterable[T].
@@ -391,9 +397,9 @@ class ArgTypeExpander:
     def parse_star_args_type(
         self, typ: Type
     ) -> TupleType | IterableType | ParamSpecType | AnyType:
-        """Parse the type of a *args argument.
+        """Parse the type of a ``*args`` argument.
 
-        Returns one TupleType, IterableType, ParamSpecType or AnyType.
+        Returns one of TupleType, TupleInstance or AnyType.
         """
         p_t = get_proper_type(typ)
         if isinstance(p_t, (TupleType, ParamSpecType, AnyType)):
