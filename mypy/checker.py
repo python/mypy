@@ -7892,11 +7892,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 types.append(TypeRange(typ, is_upper_bound=False))
             else:  # we didn't see an actual type, but rather a variable with unknown value
                 return None
-        if not types:
-            # this can happen if someone has empty tuple as 2nd argument to isinstance
-            # strictly speaking, we should return UninhabitedType but for simplicity we will simply
-            # refuse to do any type inference for now
-            return None
+        # Note: types can be an empty list, for example in `isinstance(x, ())`,
+        #  which always returns False at runtime.
         return types
 
     def is_literal_enum(self, n: Expression) -> bool:
@@ -8124,53 +8121,83 @@ def conditional_types(
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
-    Returns a 2-tuple: The first element is the proposed type, if the expression
-    can be the proposed type. The second element is the type it would hold
-    if it was not the proposed type, if any. UninhabitedType means unreachable.
-    None means no new information can be inferred. If default is set it is returned
-    instead."""
-    if proposed_type_ranges:
-        if len(proposed_type_ranges) == 1:
-            target = proposed_type_ranges[0].item
-            target = get_proper_type(target)
-            if isinstance(target, LiteralType) and (
-                target.is_enum_literal() or isinstance(target.value, bool)
-            ):
-                enum_name = target.fallback.type.fullname
-                current_type = try_expanding_sum_type_to_union(current_type, enum_name)
-        proposed_items = [type_range.item for type_range in proposed_type_ranges]
-        proposed_type = make_simplified_union(proposed_items)
-        if isinstance(proposed_type, AnyType):
-            # We don't really know much about the proposed type, so we shouldn't
-            # attempt to narrow anything. Instead, we broaden the expr to Any to
-            # avoid false positives
-            return proposed_type, default
-        elif not any(
-            type_range.is_upper_bound for type_range in proposed_type_ranges
-        ) and is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
-            # Expression is always of one of the types in proposed_type_ranges
-            return default, UninhabitedType()
-        elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
-            # Expression is never of any type in proposed_type_ranges
-            return UninhabitedType(), default
-        else:
-            # we can only restrict when the type is precise, not bounded
-            proposed_precise_type = UnionType.make_union(
-                [
-                    type_range.item
-                    for type_range in proposed_type_ranges
-                    if not type_range.is_upper_bound
-                ]
-            )
-            remaining_type = restrict_subtype_away(
-                current_type,
-                proposed_precise_type,
-                consider_runtime_isinstance=consider_runtime_isinstance,
-            )
-            return proposed_type, remaining_type
-    else:
+    Returns a 2-tuple:
+        The first element is the proposed type, if the expression can be the proposed type.
+        The second element is the type it would hold if it was not the proposed type, if any.
+            UninhabitedType means unreachable.
+            None means no new information can be inferred.
+        If default is set it is returned instead.
+    """
+    if proposed_type_ranges is None:
         # An isinstance check, but we don't understand the type
         return current_type, default
+    if not proposed_type_ranges:
+        # This is the case for `if isinstance(x, ())` which always returns False.
+        return UninhabitedType(), default
+
+    if len(proposed_type_ranges) == 1:
+        # expand e.g. bool -> Literal[True] | Literal[False]
+        target = proposed_type_ranges[0].item
+        target = get_proper_type(target)
+        if isinstance(target, LiteralType) and (
+            target.is_enum_literal() or isinstance(target.value, bool)
+        ):
+            enum_name = target.fallback.type.fullname
+            current_type = try_expanding_sum_type_to_union(current_type, enum_name)
+
+    current_type = get_proper_type(current_type)
+    if (
+        isinstance(current_type, UnionType)
+        and not any(tr.is_upper_bound for tr in proposed_type_ranges)
+        and (default in (current_type, None))
+    ):
+        # factorize over union types
+        # if we try to narrow A|B to C, we instead narrow A to C and B to C, and
+        # return the union of the results
+        result: list[tuple[Type | None, Type | None]] = [
+            conditional_types(
+                union_item,
+                proposed_type_ranges,
+                default=union_item,
+                consider_runtime_isinstance=consider_runtime_isinstance,
+            )
+            for union_item in get_proper_types(current_type.items)
+        ]
+        # separate list of tuples into two lists
+        yes_types, no_types = zip(*result)
+        proposed_type = make_simplified_union([t for t in yes_types if t is not None])
+    else:
+        proposed_items = [type_range.item for type_range in proposed_type_ranges]
+        proposed_type = make_simplified_union(proposed_items)
+
+    if isinstance(proposed_type, AnyType):
+        # We don't really know much about the proposed type, so we shouldn't
+        # attempt to narrow anything. Instead, we broaden the expr to Any to
+        # avoid false positives
+        return proposed_type, default
+    elif not any(
+        type_range.is_upper_bound for type_range in proposed_type_ranges
+    ) and is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
+        # Expression is always of one of the types in proposed_type_ranges
+        return default, UninhabitedType()
+    elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+        # Expression is never of any type in proposed_type_ranges
+        return UninhabitedType(), default
+    else:
+        # we can only restrict when the type is precise, not bounded
+        proposed_precise_type = UnionType.make_union(
+            [
+                type_range.item
+                for type_range in proposed_type_ranges
+                if not type_range.is_upper_bound
+            ]
+        )
+        remaining_type = restrict_subtype_away(
+            current_type,
+            proposed_precise_type,
+            consider_runtime_isinstance=consider_runtime_isinstance,
+        )
+        return proposed_type, remaining_type
 
 
 def conditional_types_to_typemaps(
