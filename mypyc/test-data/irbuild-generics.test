@@ -767,10 +767,9 @@ L9:
     r28 = cast(dict, r27)
     r29 = CPyDict_UpdateInDisplay(r28, kwargs)
     r30 = r29 >= 0 :: signed
-    r31 = PyList_AsTuple(r27)
-    r32 = PyObject_Call(r26, args, r27)
-    r33 = unbox(int, r32)
-    return r33
+    r31 = PyObject_Call(r26, args, r27)
+    r32 = unbox(int, r31)
+    return r32
 def deco(func):
     func :: object
     r0 :: __main__.deco_env
