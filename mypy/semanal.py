@@ -1059,7 +1059,7 @@ class SemanticAnalyzer(
         # It is OK for TypedDict to have a key named 'kwargs'.
         overlap.discard(typ.arg_names[-1])
         if overlap:
-            overlapped = ", ".join([f'"{name}"' for name in overlap])
+            overlapped = ", ".join([f'"{name}"' for name in sorted(filter(None, overlap))])
             self.fail(f"Overlap between argument names and ** TypedDict items: {overlapped}", defn)
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
