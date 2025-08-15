@@ -98,6 +98,15 @@ dict_set_item_op = method_op(
     error_kind=ERR_NEG_INT,
 )
 
+# dict[key] = value (exact dict only, no subclasses)
+# NOTE: this is currently for internal use only, and not used for CallExpr specialization
+exact_dict_set_item_op = custom_op(
+    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyDict_SetItem",
+    error_kind=ERR_NEG_INT,
+)
+
 # key in dict
 binary_op(
     name="in",

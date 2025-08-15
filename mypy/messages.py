@@ -2432,13 +2432,13 @@ class MessageBuilder:
         """Format very long tuple type using an ellipsis notation"""
         item_cnt = len(typ.items)
         if item_cnt > MAX_TUPLE_ITEMS:
-            return "tuple[{}, {}, ... <{} more items>]".format(
+            return '"tuple[{}, {}, ... <{} more items>]"'.format(
                 format_type_bare(typ.items[0], self.options),
                 format_type_bare(typ.items[1], self.options),
                 str(item_cnt - 2),
             )
         else:
-            return format_type_bare(typ, self.options)
+            return format_type(typ, self.options)
 
     def generate_incompatible_tuple_error(
         self,
@@ -2517,15 +2517,12 @@ class MessageBuilder:
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
-    no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
         type_string in ["Module", "overloaded function", "<deleted>"]
         or type_string.startswith("Module ")
-        or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
     ):
-        # Messages are easier to read if these aren't quoted.  We use a
-        # regex to match strings with variable contents.
+        # These messages are easier to read if these aren't quoted.
         return type_string
     return f'"{type_string}"'
 

@@ -605,3 +605,43 @@ L3:
     r6 = r7
 L4:
     return r6
+
+[case testFStringFromConstants]
+from typing import Final
+string: Final = "abc"
+integer: Final = 123
+floating: Final = 3.14
+boolean: Final = True
+
+def test(x: str) -> str:
+    return f"{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}"
+def test2(x: str) -> str:
+    return f"{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
+def test3(x: str) -> str:
+    return f"{x}{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
+
+[out]
+def test(x):
+    x, r0, r1, r2, r3 :: str
+L0:
+    r0 = 'abc1233.14True'
+    r1 = 'True3.14123abc'
+    r2 = 'abc1233.14True'
+    r3 = CPyStr_Build(5, r0, x, r1, x, r2)
+    return r3
+def test2(x):
+    x, r0, r1, r2, r3 :: str
+L0:
+    r0 = 'abc1233.14True'
+    r1 = 'True3.14123abc'
+    r2 = 'abc1233.14True'
+    r3 = CPyStr_Build(6, r0, x, r1, x, r2, x)
+    return r3
+def test3(x):
+    x, r0, r1, r2, r3 :: str
+L0:
+    r0 = 'abc1233.14True'
+    r1 = 'True3.14123abc'
+    r2 = 'abc1233.14True'
+    r3 = CPyStr_Build(7, x, r0, x, r1, x, r2, x)
+    return r3

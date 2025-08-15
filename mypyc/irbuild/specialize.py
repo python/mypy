@@ -31,6 +31,7 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     TupleExpr,
+    Var,
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
@@ -288,7 +289,7 @@ def translate_tuple_from_generator_call(
     """Special case for simplest tuple creation from a generator.
 
     For example:
-        tuple(f(x) for x in some_list/some_tuple/some_str)
+        tuple(f(x) for x in some_list/some_tuple/some_str/some_bytes)
     'translate_safe_generator_call()' would take care of other cases
     if this fails.
     """
@@ -709,6 +710,22 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             elif isinstance(item, CallExpr):
                 format_ops.append(FormatOp.STR)
                 exprs.append(item.args[0])
+
+        def get_literal_str(expr: Expression) -> str | None:
+            if isinstance(expr, StrExpr):
+                return expr.value
+            elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_final:
+                return str(expr.node.final_value)
+            return None
+
+        for i in range(len(exprs) - 1):
+            while (
+                len(exprs) >= i + 2
+                and (first := get_literal_str(exprs[i])) is not None
+                and (second := get_literal_str(exprs[i + 1])) is not None
+            ):
+                exprs = [*exprs[:i], StrExpr(first + second), *exprs[i + 2 :]]
+                format_ops = [*format_ops[:i], FormatOp.STR, *format_ops[i + 2 :]]
 
         substitutions = convert_format_expr_to_str(builder, format_ops, exprs, expr.line)
         if substitutions is None:
