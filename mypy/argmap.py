@@ -75,6 +75,7 @@ def map_actuals_to_formals(
                     proper_types := [get_proper_type(t) for t in actualt.items]
                 )
             ):
+                # pick an arbitrary member
                 actualt = proper_types[0]
             if isinstance(actualt, TupleType):
                 # A tuple actual maps to a fixed number of formals.
@@ -193,15 +194,6 @@ class ArgTypeExpander:
         # Type context for `*` and `**` arg kinds.
         self.context = context
 
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, ArgTypeExpander):
-            return (
-                self.tuple_index == other.tuple_index
-                and self.kwargs_used == other.kwargs_used
-                and self.context == other.context
-            )
-        return NotImplemented
-
     def expand_actual_type(
         self,
         actual_type: Type,
@@ -227,29 +219,8 @@ class ArgTypeExpander:
             # parse *args as one of the following:
             #    IterableType | TupleType | ParamSpecType | AnyType
             star_args = self.parse_star_args_type(actual_type)
-            # star_args = actual_type
 
-            # print(f"expand_actual_type:  {actual_type=}  {star_args=}")
-
-            # if isinstance(star_args, TypeVarTupleType):
-            #     # This code path is hit when *Ts is passed to a callable and various
-            #     # special-handling didn't catch this. The best thing we can do is to use
-            #     # the upper bound.
-            #     star_args = get_proper_type(star_args.upper_bound)
-            # if isinstance(star_args, Instance) and star_args.args:
-            #     from mypy.subtypes import is_subtype
-            #
-            #     if is_subtype(star_args, self.context.iterable_type):
-            #         return map_instance_to_supertype(
-            #             star_args, self.context.iterable_type.type
-            #         ).args[0]
-            #     else:
-            #         # We cannot properly unpack anything other
-            #         # than `Iterable` type with `*`.
-            #         # Just return `Any`, other parts of code would raise
-            #         # a different error for improper use.
-            #         return AnyType(TypeOfAny.from_error)
-            if self.is_iterable_type(star_args):
+            if self.is_iterable_instance_type(star_args):
                 return star_args.args[0]
             elif isinstance(star_args, TupleType):
                 # Get the next tuple item of a tuple *arg.
@@ -321,30 +292,75 @@ class ArgTypeExpander:
             and is_subtype(p_t, self.context.iterable_type)
         )
 
-    def is_iterable_type(self, typ: Type) -> TypeGuard[IterableType]:
+    def is_iterable_instance_type(self, typ: Type) -> TypeGuard[IterableType]:
         """Check if the type is an Iterable[T] or a subtype of it."""
         p_t = get_proper_type(typ)
         return isinstance(p_t, Instance) and p_t.type == self.context.iterable_type.type
 
+    def _make_iterable_instance_type(self, arg: Type) -> IterableType:
+        value = Instance(self.context.iterable_type.type, [arg])
+        return cast(IterableType, value)
+
+    def _solve_as_iterable(self, typ: Type) -> IterableType | AnyType:
+        r"""Use the solver to cast a type as Iterable[T].
+
+        Returns `AnyType` if solving fails.
+        """
+        from mypy.constraints import infer_constraints_for_callable
+        from mypy.nodes import ARG_POS
+        from mypy.solve import solve_constraints
+
+        iterable_kind = self.context.iterable_type.type
+
+        # We first create an upcast function:
+        #    def [T] (Iterable[T]) -> Iterable[T]: ...
+        # and then solve for T, given the input type as the argument.
+        T = TypeVarType(
+            "T",
+            "T",
+            TypeVarId(-1),
+            values=[],
+            upper_bound=AnyType(TypeOfAny.special_form),
+            default=AnyType(TypeOfAny.special_form),
+        )
+        target = Instance(iterable_kind, [T])
+
+        upcast_callable = CallableType(
+            variables=[T],
+            arg_types=[target],
+            arg_kinds=[ARG_POS],
+            arg_names=[None],
+            ret_type=T,
+            fallback=self.context.function_type,
+        )
+        constraints = infer_constraints_for_callable(
+            upcast_callable, [typ], [ARG_POS], [None], [[0]], context=self.context
+        )
+
+        (sol,), _ = solve_constraints([T], constraints)
+
+        if sol is None:  # solving failed, return AnyType fallback
+            return AnyType(TypeOfAny.from_error)
+        return self._make_iterable_instance_type(sol)
+
     def as_iterable_type(self, typ: Type) -> IterableType | AnyType:
         """Reinterpret a type as Iterable[T], or return AnyType if not possible."""
         p_t = get_proper_type(typ)
-        if self.is_iterable_type(p_t):
+        if self.is_iterable_instance_type(p_t) or isinstance(p_t, AnyType):
             return p_t
-        elif self.is_iterable_instance_subtype(p_t):
-            cls = self.context.iterable_type.type
-            return cast(IterableType, map_instance_to_supertype(p_t, cls))
         elif isinstance(p_t, UnionType):
             # If the type is a union, map each item to the iterable supertype.
             # the return the combined iterable type Iterable[A] | Iterable[B] -> Iterable[A | B]
             converted_types = [self.as_iterable_type(get_proper_type(item)) for item in p_t.items]
-            # if an item could not be interpreted as Iterable[T], we return AnyType
-            if all(self.is_iterable_type(it) for it in converted_types):
+
+            if any(not self.is_iterable_instance_type(it) for it in converted_types):
+                # if any item could not be interpreted as Iterable[T], we return AnyType
+                return AnyType(TypeOfAny.from_error)
+            else:
                 # all items are iterable, return Iterable[T₁ | T₂ | ... | Tₙ]
                 iterable_types = cast(list[IterableType], converted_types)
                 arg = make_simplified_union([it.args[0] for it in iterable_types])
-                return self.make_iterable_type(arg)
-            return AnyType(TypeOfAny.from_error)
+                return self._make_iterable_instance_type(arg)
         elif isinstance(p_t, TupleType):
             # maps tuple[A, B, C] -> Iterable[A | B | C]
             # note: proper_elements may contain UnpackType, for instance with
@@ -354,25 +370,23 @@ class ArgTypeExpander:
             for p_e in proper_elements:
                 if isinstance(p_e, UnpackType):
                     r = self.as_iterable_type(p_e)
-                    if self.is_iterable_type(r):
+                    if self.is_iterable_instance_type(r):
                         args.append(r.args[0])
                     else:
+                        # this *should* never happen
                         args.append(r)
                 else:
                     args.append(p_e)
-            return self.make_iterable_type(make_simplified_union(args))
-        if isinstance(p_t, UnpackType):
+            return self._make_iterable_instance_type(make_simplified_union(args))
+        elif isinstance(p_t, UnpackType):
             return self.as_iterable_type(p_t.type)
-        if isinstance(p_t, (TypeVarType, TypeVarTupleType)):
+        elif isinstance(p_t, (TypeVarType, TypeVarTupleType)):
             return self.as_iterable_type(p_t.upper_bound)
-        # fallback: use the solver to reinterpret the type as Iterable[T]
-        if self.is_iterable(p_t):
+        elif self.is_iterable(p_t):
+            # TODO: add a 'fast path' (needs measurement) that uses the map_instance_to_supertype
+            #   mechanism? (Only if it works: gh-19662)
             return self._solve_as_iterable(p_t)
         return AnyType(TypeOfAny.from_error)
-
-    def make_iterable_type(self, arg: Type) -> IterableType:
-        value = Instance(self.context.iterable_type.type, [arg])
-        return cast(IterableType, value)
 
     def parse_star_args_type(
         self, typ: Type
@@ -411,60 +425,18 @@ class ArgTypeExpander:
             #    Note that this covers unions of differently sized tuples as well.
             else:
                 converted_types = [self.as_iterable_type(p_i) for p_i in proper_items]
-                if all(self.is_iterable_type(it) for it in converted_types):
+                if all(self.is_iterable_instance_type(it) for it in converted_types):
                     # all items are iterable, return Iterable[T₁ | T₂ | ... | Tₙ]
                     iterables = cast(list[IterableType], converted_types)
                     arg = make_simplified_union([it.args[0] for it in iterables])
-                    return self.make_iterable_type(arg)
+                    return self._make_iterable_instance_type(arg)
                 else:
                     # some items in the union are not iterable, return AnyType
                     return AnyType(TypeOfAny.from_error)
-        elif self.is_iterable_type(parsed := self.as_iterable_type(p_t)):
+        elif self.is_iterable_instance_type(parsed := self.as_iterable_type(p_t)):
             # in all other cases, we try to reinterpret the type as Iterable[T]
             return parsed
         return AnyType(TypeOfAny.from_error)
-
-    def _solve_as_iterable(self, typ: Type) -> IterableType | AnyType:
-        r"""Use the solver to cast a type as Iterable[T].
-
-        Returns the type as-is if solving fails.
-        """
-        from mypy.constraints import infer_constraints_for_callable
-        from mypy.nodes import ARG_POS
-        from mypy.solve import solve_constraints
-
-        iterable_kind = self.context.iterable_type.type
-
-        # We first create an upcast function:
-        #    def [T] (Iterable[T]) -> Iterable[T]: ...
-        # and then solve for T, given the input type as the argument.
-        T = TypeVarType(
-            "T",
-            "T",
-            TypeVarId(-1),
-            values=[],
-            upper_bound=AnyType(TypeOfAny.special_form),
-            default=AnyType(TypeOfAny.special_form),
-        )
-        target = Instance(iterable_kind, [T])
-
-        upcast_callable = CallableType(
-            variables=[T],
-            arg_types=[target],
-            arg_kinds=[ARG_POS],
-            arg_names=[None],
-            ret_type=T,
-            fallback=self.context.function_type,
-        )
-        constraints = infer_constraints_for_callable(
-            upcast_callable, [typ], [ARG_POS], [None], [[0]], context=self.context
-        )
-
-        (sol,), _ = solve_constraints([T], constraints)
-
-        if sol is None:  # solving failed, return AnyType fallback
-            return AnyType(TypeOfAny.from_error)
-        return self.make_iterable_type(sol)
 
 
 def is_equal_sized_tuples(types: Sequence[ProperType]) -> TypeGuard[Sequence[TupleType]]:

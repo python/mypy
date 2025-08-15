@@ -724,7 +724,6 @@ def test_union_variable_size_tuples(
 NESTED = Union[str, list[NESTED]]
 def test_union_recursive(x: Union[list[Union[NESTED, None]], list[NESTED]]) -> None:
     reveal_type( {*x} )  # N: Revealed type is "builtins.set[Union[builtins.str, builtins.list[Union[builtins.str, builtins.list[...]]], None]]"
-
 [builtins fixtures/primitives.pyi]
 
 
@@ -869,6 +868,18 @@ def test_bad_case(
     g(*y)  # E: Argument 1 to "g" has incompatible type "*tuple[Union[A, B, C, None], ...]"; expected "Optional[A]" \
            # E: Argument 1 to "g" has incompatible type "*tuple[Union[A, B, C, None], ...]"; expected "Optional[D]"
 [builtins fixtures/tuple.pyi]
+
+
+[case testListExpressionWithListSubtypeStarArgs]
+# https://github.com/python/mypy/issues/19662
+class MyList(list[int]): ...
+
+def test(x: MyList, y: list[int]) -> None:
+    reveal_type( [*x] )  # N: Revealed type is "builtins.list[builtins.int]"
+    reveal_type( [*y] )  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+
 
 [case testPassingEmptyDictWithStars]
 def f(): pass
