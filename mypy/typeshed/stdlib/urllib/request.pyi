@@ -325,7 +325,7 @@ def urlretrieve(
 def urlcleanup() -> None: ...
 
 if sys.version_info < (3, 14):
-    @deprecated("Deprecated since Python 3.3; Removed in 3.14; Use newer urlopen functions and methods.")
+    @deprecated("Deprecated since Python 3.3; removed in Python 3.14. Use newer `urlopen` functions and methods.")
     class URLopener:
         version: ClassVar[str]
         def __init__(self, proxies: dict[str, str] | None = None, **x509: str) -> None: ...
@@ -356,7 +356,7 @@ if sys.version_info < (3, 14):
         def open_unknown_proxy(self, proxy: str, fullurl: str, data: ReadableBuffer | None = None) -> None: ...  # undocumented
         def __del__(self) -> None: ...
 
-    @deprecated("Deprecated since Python 3.3; Removed in 3.14; Use newer urlopen functions and methods.")
+    @deprecated("Deprecated since Python 3.3; removed in Python 3.14. Use newer `urlopen` functions and methods.")
     class FancyURLopener(URLopener):
         def prompt_user_passwd(self, host: str, realm: str) -> tuple[str, str]: ...
         def get_user_passwd(self, host: str, realm: str, clear_cache: int = 0) -> tuple[str, str]: ...  # undocumented
