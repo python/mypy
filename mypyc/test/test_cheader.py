@@ -32,8 +32,6 @@ class TestHeaderInclusion(unittest.TestCase):
             registry.function_ops.values(),
         ]:
             for ops in values:
-                if isinstance(ops, PrimitiveDescription):
-                    ops = [ops]
                 for op in ops:
                     if op.c_function_name is not None:
                         check_name(op.c_function_name)
