@@ -9287,12 +9287,36 @@ class B:
 
 class C(B):
     prop = A.prop
-    prop_t = AT.prop  # E: Incompatible types in assignment (expression has type "C", base class "B" defined the type as "str")
+    prop_t = AT.prop
 
 reveal_type(C().prop)  # N: Revealed type is "builtins.str"
 C().prop = "no"  # E: Invalid self argument "C" to attribute function "prop" with type "Callable[[A, str], None]"
 reveal_type(C().prop_t)  # N: Revealed type is "__main__.C"
 C().prop_t = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "list[C]")
+[builtins fixtures/property.pyi]
+
+[case testPropertyAliasClassAccess]
+class A:
+    @property
+    def ro(self) -> int: ...
+
+    @property
+    def rw(self) -> int: ...
+    @rw.setter
+    def rw(self, val: int) -> None: ...
+
+class B:
+    ro = A.ro
+    rw = A.rw
+
+reveal_type(A.ro)  # N: Revealed type is "builtins.property"
+reveal_type(A.rw)  # N: Revealed type is "builtins.property"
+reveal_type(B.ro)  # N: Revealed type is "builtins.property"
+reveal_type(B.rw)  # N: Revealed type is "builtins.property"
+reveal_type(B().ro)  # E: Invalid self argument "B" to attribute function "ro" with type "Callable[[A], int]" \
+                     # N: Revealed type is "builtins.int"
+reveal_type(B().rw)  # E: Invalid self argument "B" to attribute function "rw" with type "Callable[[A], int]" \
+                     # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
 
 [case testClassEqDecoratedAbstractNote]
