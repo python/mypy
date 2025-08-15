@@ -74,6 +74,9 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
                     if last.end_line is not None:
                         # We are on a Python version recent enough to support end lines.
                         self.skipped_lines |= set(range(next_def.line, last.end_line + 1))
+                file.imports = [
+                    i for i in file.imports if (i.line, i.column) <= (defn.line, defn.column)
+                ]
                 del file.defs[i + 1 :]
                 break
         file.skipped_lines = self.skipped_lines
