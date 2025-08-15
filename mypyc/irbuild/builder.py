@@ -59,7 +59,7 @@ from mypy.types import (
 )
 from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import BITMAP_BITS, SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import BITMAP_BITS, GENERATOR_ATTRIBUTE_PREFIX, SELF_NAME, TEMP_ATTR_NAME
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -91,6 +91,7 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     bitmap_rprimitive,
+    bytes_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -424,6 +425,10 @@ class IRBuilder:
     def debug_print(self, toprint: str | Value) -> None:
         return self.builder.debug_print(toprint)
 
+    def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
+        """Make an object immortal on free-threaded builds (to avoid contention)."""
+        self.builder.set_immortal_if_free_threaded(v, line)
+
     # Helpers for IR building
 
     def add_to_non_ext_dict(
@@ -432,6 +437,10 @@ class IRBuilder:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
         self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
+
+        # It's important that accessing class dictionary items from multiple threads
+        # doesn't cause contention.
+        self.builder.set_immortal_if_free_threaded(val, line)
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
@@ -643,7 +652,11 @@ class IRBuilder:
                     # current environment.
                     if self.fn_info.is_generator:
                         return self.add_var_to_env_class(
-                            symbol, reg_type, self.fn_info.generator_class, reassign=False
+                            symbol,
+                            reg_type,
+                            self.fn_info.generator_class,
+                            reassign=False,
+                            prefix=GENERATOR_ATTRIBUTE_PREFIX,
                         )
 
                     # Otherwise define a new local variable.
@@ -950,8 +963,12 @@ class IRBuilder:
         elif isinstance(target_type, Instance):
             if target_type.type.fullname == "builtins.str":
                 return str_rprimitive
-            else:
+            elif target_type.type.fullname == "builtins.bytes":
+                return bytes_rprimitive
+            try:
                 return self.type_to_rtype(target_type.args[0])
+            except IndexError:
+                raise ValueError(f"{target_type!r} is not a valid sequence.") from None
         # This elif-blocks are needed for iterating over classes derived from NamedTuple.
         elif isinstance(target_type, TypeVarLikeType):
             return self.get_sequence_type_from_type(target_type.upper_bound)
@@ -1325,10 +1342,11 @@ class IRBuilder:
         base: FuncInfo | ImplicitClass,
         reassign: bool = False,
         always_defined: bool = False,
+        prefix: str = "",
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
-        name = remangle_redefinition_name(var.name)
+        name = prefix + remangle_redefinition_name(var.name)
         self.fn_info.env_class.attributes[name] = rtype
         if always_defined:
             self.fn_info.env_class.attrs_with_defaults.add(name)

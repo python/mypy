@@ -300,6 +300,21 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     Py_XDECREF(dummy_class);
 
+    // Unlike the tp_doc slots of most other object, a heap type's tp_doc
+    // must be heap allocated.
+    if (template_->tp_doc) {
+        // Silently truncate the docstring if it contains a null byte
+        Py_ssize_t size = strlen(template_->tp_doc) + 1;
+        char *tp_doc = (char *)PyMem_Malloc(size);
+        if (tp_doc == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
+
+        memcpy(tp_doc, template_->tp_doc, size);
+        t->ht_type.tp_doc = tp_doc;
+    }
+
 #if PY_MINOR_VERSION == 11
     // This is a hack. Python 3.11 doesn't include good public APIs to work with managed
     // dicts, which are the default for heap types. So we try to opt-out until Python 3.12.
@@ -1058,7 +1073,7 @@ void CPyTrace_LogEvent(const char *location, const char *line, const char *op, c
 
 #endif
 
-#ifdef CPY_3_12_FEATURES
+#if CPY_3_12_FEATURES
 
 // Copied from Python 3.12.3, since this struct is internal to CPython. It defines
 // the structure of typing.TypeAliasType objects. We need it since compute_value is
@@ -1085,6 +1100,16 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
         Py_DECREF(obj->compute_value);
     }
     obj->compute_value = compute_value;
+}
+
+#endif
+
+#if CPY_3_14_FEATURES
+
+#include "internal/pycore_object.h"
+
+void CPy_SetImmortal(PyObject *obj) {
+    _Py_SetImmortal(obj);
 }
 
 #endif

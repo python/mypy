@@ -6,6 +6,7 @@ See the docstring of class LowLevelIRBuilder for more information.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from typing import Callable, Final, Optional
 
@@ -16,6 +17,8 @@ from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
+    FAST_PREFIX,
+    IS_FREE_THREADED,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
@@ -164,6 +167,7 @@ from mypyc.primitives.misc_ops import (
     fast_isinstance_op,
     none_object_op,
     not_implemented_op,
+    set_immortal_op,
     var_object_size,
 )
 from mypyc.primitives.registry import (
@@ -785,6 +789,18 @@ class LowLevelIRBuilder:
         for value, kind, name in args:
             if kind == ARG_STAR:
                 if star_result is None:
+                    # fast path if star expr is a tuple:
+                    # we can pass the immutable tuple straight into the function call.
+                    if is_tuple_rprimitive(value.type):
+                        if len(args) == 1:
+                            # fn(*args)
+                            return value, self._create_dict([], [], line)
+                        elif len(args) == 2 and args[1][1] == ARG_STAR2:
+                            # fn(*args, **kwargs)
+                            star_result = value
+                            continue
+                        # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
+                    # TODO optimize this case using the length utils - currently in review
                     star_result = self.new_list_op(star_values, line)
                 self.primitive_op(list_extend_op, [star_result, value], line)
             elif kind == ARG_STAR2:
@@ -882,9 +898,11 @@ class LowLevelIRBuilder:
             # tuple. Otherwise create the tuple from the list.
             if star_result is None:
                 star_result = self.new_tuple(star_values, line)
-            else:
+            elif not is_tuple_rprimitive(star_result.type):
+                # if star_result is a tuple we took the fast path
                 star_result = self.primitive_op(list_tuple_op, [star_result], line)
         if has_star2 and star2_result is None:
+            # TODO: use dict_copy_op for simple cases of **kwargs
             star2_result = self._create_dict(star2_keys, star2_values, line)
 
         return star_result, star2_result
@@ -1168,11 +1186,13 @@ class LowLevelIRBuilder:
             return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
+        fast_name = FAST_PREFIX + name
         if (
             isinstance(base.type, RInstance)
-            and base.type.class_ir.is_ext_class
+            and (base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name))
             and not base.type.class_ir.builtin_base
         ):
+            name = name if base.type.class_ir.is_ext_class else fast_name
             if base.type.class_ir.has_method(name):
                 decl = base.type.class_ir.method_decl(name)
                 if arg_kinds is None:
@@ -2321,6 +2341,11 @@ class LowLevelIRBuilder:
 
     def int_to_float(self, n: Value, line: int) -> Value:
         return self.primitive_op(int_to_float_op, [n], line)
+
+    def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
+        """Make an object immortal on free-threaded builds (to avoid contention)."""
+        if IS_FREE_THREADED and sys.version_info >= (3, 14):
+            self.primitive_op(set_immortal_op, [v], line)
 
     # Internal helpers
 

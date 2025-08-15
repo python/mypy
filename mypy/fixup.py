@@ -29,6 +29,7 @@ from mypy.types import (
     Overloaded,
     Parameters,
     ParamSpecType,
+    ProperType,
     TupleType,
     TypeAliasType,
     TypedDictType,
@@ -165,6 +166,8 @@ class NodeFixer(NodeVisitor[None]):
             func.info = self.current_info
         if func.type is not None:
             func.type.accept(self.type_fixer)
+            if isinstance(func.type, CallableType):
+                func.type.definition = func
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         if self.current_info is not None:
@@ -175,6 +178,10 @@ class NodeFixer(NodeVisitor[None]):
             item.accept(self)
         if o.impl:
             o.impl.accept(self)
+        if isinstance(o.type, Overloaded):
+            # For error messages we link the original definition for each item.
+            for typ, item in zip(o.type.items, o.items):
+                typ.definition = item
 
     def visit_decorator(self, d: Decorator) -> None:
         if self.current_info is not None:
@@ -185,6 +192,9 @@ class NodeFixer(NodeVisitor[None]):
             d.var.accept(self)
         for node in d.decorators:
             node.accept(self)
+        typ = d.var.type
+        if isinstance(typ, ProperType) and isinstance(typ, CallableType):
+            typ.definition = d.func
 
     def visit_class_def(self, c: ClassDef) -> None:
         for v in c.type_vars:
