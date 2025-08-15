@@ -6,9 +6,6 @@
 
 #define START_SIZE 512
 
-#define STR_LEN_TYPE unsigned int
-#define MAX_STR_SIZE (1L << sizeof(STR_LEN_TYPE) * 8)
-
 typedef struct {
     PyObject_HEAD
     Py_ssize_t pos;
@@ -119,7 +116,7 @@ static PyMethodDef Buffer_methods[] = {
 };
 
 static PyTypeObject BufferType = {
-    .ob_base = PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "Buffer",
     .tp_doc = PyDoc_STR("Mypy cache buffer objects"),
     .tp_basicsize = sizeof(BufferObject),
@@ -231,12 +228,12 @@ read_str_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return NULL;
 
-    if (_check_read((BufferObject *)data, sizeof(STR_LEN_TYPE)) == 2)
+    if (_check_read((BufferObject *)data, sizeof(Py_ssize_t)) == 2)
         return NULL;
     char *buf = ((BufferObject *)data)->buf;
     // Read string length.
-    STR_LEN_TYPE size = *(STR_LEN_TYPE *)(buf + ((BufferObject *)data)->pos);
-    ((BufferObject *)data)->pos += sizeof(STR_LEN_TYPE);
+    Py_ssize_t size = *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
     if (_check_read((BufferObject *)data, size) == 2)
         return NULL;
     // Read string content.
@@ -267,24 +264,14 @@ write_str_internal(PyObject *data, PyObject *value) {
     const char *chunk = PyUnicode_AsUTF8AndSize(value, &size);
     if (!chunk)
         return 2;
-    if (size > MAX_STR_SIZE) {
-        // This is a micro-optimization to reduce cache size, if someone
-        // will complain about their 65K-long string literals we can adjust.
-        PyErr_Format(
-            PyExc_OverflowError,
-            "cannot store string longer than %d bytes",
-            MAX_STR_SIZE
-        );
-        return 2;
-    }
-    Py_ssize_t need = size + sizeof(STR_LEN_TYPE);
+    Py_ssize_t need = size + sizeof(Py_ssize_t);
     if (_check_size((BufferObject *)data, need) == 2)
         return 2;
 
     char *buf = ((BufferObject *)data)->buf;
     // Write string length.
-    *(STR_LEN_TYPE *)(buf + ((BufferObject *)data)->pos) = (STR_LEN_TYPE)size;
-    ((BufferObject *)data)->pos += sizeof(STR_LEN_TYPE);
+    *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos) = size;
+    ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
     // Write string content.
     memcpy(buf + ((BufferObject *)data)->pos, chunk, size);
     ((BufferObject *)data)->pos += size;
