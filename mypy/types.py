@@ -5,8 +5,20 @@ from __future__ import annotations
 import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Final, NewType, TypeVar, Union, cast, overload
-from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
+from enum import IntEnum
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Final,
+    Generic,
+    Literal,
+    NewType,
+    Union,
+    cast,
+    overload,
+)
+from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard, TypeVar
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -694,16 +706,19 @@ class TypeVarType(TypeVarLikeType):
         )
 
 
-class ParamSpecFlavor:
+class ParamSpecFlavor(IntEnum):
     # Simple ParamSpec reference such as "P"
-    BARE: Final = 0
+    BARE = 0
     # P.args
-    ARGS: Final = 1
+    ARGS = 1
     # P.kwargs
-    KWARGS: Final = 2
+    KWARGS = 2
 
 
-class ParamSpecType(TypeVarLikeType):
+Flavor = TypeVar("Flavor", bound=ParamSpecFlavor, default=Any)
+
+
+class ParamSpecType(TypeVarLikeType, Generic[Flavor]):
     """Type that refers to a ParamSpec.
 
     A ParamSpec is a type variable that represents the parameter
@@ -721,9 +736,14 @@ class ParamSpecType(TypeVarLikeType):
     always just 'object').
     """
 
+    # convenience type aliases
+    BARE: _TypeAlias = "ParamSpecType[Literal[ParamSpecFlavor.BARE]]"
+    ARGS: _TypeAlias = "ParamSpecType[Literal[ParamSpecFlavor.ARGS]]"
+    KWARGS: _TypeAlias = "ParamSpecType[Literal[ParamSpecFlavor.KWARGS]]"
+
     __slots__ = ("flavor", "prefix")
 
-    flavor: int
+    flavor: Flavor
     prefix: Parameters
 
     def __init__(
@@ -731,7 +751,7 @@ class ParamSpecType(TypeVarLikeType):
         name: str,
         fullname: str,
         id: TypeVarId,
-        flavor: int,
+        flavor: Flavor,
         upper_bound: Type,
         default: Type,
         *,
@@ -740,10 +760,12 @@ class ParamSpecType(TypeVarLikeType):
         prefix: Parameters | None = None,
     ) -> None:
         super().__init__(name, fullname, id, upper_bound, default, line=line, column=column)
-        self.flavor = flavor
+        self.flavor = ParamSpecFlavor(flavor)  # type: ignore[assignment]
         self.prefix = prefix or Parameters([], [], [])
 
-    def with_flavor(self, flavor: int) -> ParamSpecType:
+    _F = TypeVar("_F", bound=ParamSpecFlavor, default=Flavor)
+
+    def with_flavor(self, flavor: _F) -> ParamSpecType[_F]:
         return ParamSpecType(
             self.name,
             self.fullname,
@@ -758,16 +780,16 @@ class ParamSpecType(TypeVarLikeType):
         self,
         *,
         id: Bogus[TypeVarId] = _dummy,
-        flavor: int = _dummy_int,
+        flavor: _F = _dummy_int,  # type: ignore[assignment]
         prefix: Bogus[Parameters] = _dummy,
         default: Bogus[Type] = _dummy,
         **kwargs: Any,
-    ) -> ParamSpecType:
+    ) -> ParamSpecType[_F]:
         return ParamSpecType(
             self.name,
             self.fullname,
             id if id is not _dummy else self.id,
-            flavor if flavor != _dummy_int else self.flavor,
+            flavor if flavor != _dummy_int else self.flavor,  # type: ignore[arg-type]
             self.upper_bound,
             default=default if default is not _dummy else self.default,
             line=self.line,
