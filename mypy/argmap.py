@@ -283,7 +283,7 @@ class ArgTypeExpander:
         return is_subtype(typ, self.context.iterable_type)
 
     def is_iterable_instance_type(self, typ: Type) -> TypeGuard[IterableType]:
-        """Check if the type is an Iterable[T] or a subtype of it."""
+        """Check if the type is an Iterable[T]."""
         p_t = get_proper_type(typ)
         return isinstance(p_t, Instance) and p_t.type == self.context.iterable_type.type
 
@@ -363,7 +363,10 @@ class ArgTypeExpander:
                     if self.is_iterable_instance_type(r):
                         args.append(r.args[0])
                     else:
-                        # this *should* never happen
+                        # this *should* never happen, since UnpackType should
+                        # only contain TypeVarTuple or a variable length tuple.
+                        # However, we could get an `AnyType(TypeOfAny.from_error)`
+                        # if for some reason the solver was triggered and failed.
                         args.append(r)
                 else:
                     args.append(p_e)
@@ -416,7 +419,7 @@ class ArgTypeExpander:
             else:
                 converted_types = [self.as_iterable_type(p_i) for p_i in proper_items]
                 if all(self.is_iterable_instance_type(it) for it in converted_types):
-                    # all items are iterable, return Iterable[T₁ | T₂ | ... | Tₙ]
+                    # all items are iterable, return Iterable[T1 | T2 | ... | Tn]
                     iterables = cast(list[IterableType], converted_types)
                     arg = make_simplified_union([it.args[0] for it in iterables])
                     return self._make_iterable_instance_type(arg)
