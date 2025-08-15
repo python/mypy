@@ -34,6 +34,7 @@ class TestExternal(unittest.TestCase):
                     "build_ext",
                     f"--build-lib={tmpdir}",
                     f"--build-temp={tmpdir}",
+                    "--run-capi-tests",
                 ],
                 env=env,
                 cwd=os.path.join(base_dir, "mypyc", "lib-rt"),

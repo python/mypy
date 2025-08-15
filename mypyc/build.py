@@ -544,6 +544,7 @@ def mypycify(
                    mypyc_trace.txt (derived from executed operations). This is
                    useful for performance analysis, such as analyzing which
                    primitive ops are used the most and on which lines.
+        depends_on_native_internal: This is True only for mypy itself.
         install_native_libs: If True, also build the native extension modules. Normally,
                              those are build and published on PyPI separately, but during
                              tests, we want to use their development versions (i.e. from

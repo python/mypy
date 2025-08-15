@@ -44,28 +44,52 @@ class build_ext_custom(build_ext):  # noqa: N801
         return build_ext.run(self)
 
 
-setup(
-    name="test_capi",
-    version="0.1",
-    ext_modules=[
-        Extension(
-            "test_capi",
-            [
-                "test_capi.cc",
-                "init.c",
-                "int_ops.c",
-                "float_ops.c",
-                "list_ops.c",
-                "exc_ops.c",
-                "generic_ops.c",
-                "pythonsupport.c",
-            ],
-            depends=["CPy.h", "mypyc_util.h", "pythonsupport.h"],
-            extra_compile_args=["-Wno-unused-function", "-Wno-sign-compare"] + compile_args,
-            libraries=["gtest"],
-            include_dirs=["../external/googletest", "../external/googletest/include"],
-            **kwargs,
-        )
-    ],
-    cmdclass={"build_ext": build_ext_custom},
-)
+if "--run-capi-tests" in sys.argv:
+    sys.argv.pop()
+    setup(
+        name="test_capi",
+        version="0.1",
+        ext_modules=[
+            Extension(
+                "test_capi",
+                [
+                    "test_capi.cc",
+                    "init.c",
+                    "int_ops.c",
+                    "float_ops.c",
+                    "list_ops.c",
+                    "exc_ops.c",
+                    "generic_ops.c",
+                    "pythonsupport.c",
+                ],
+                depends=["CPy.h", "mypyc_util.h", "pythonsupport.h"],
+                extra_compile_args=["-Wno-unused-function", "-Wno-sign-compare"] + compile_args,
+                libraries=["gtest"],
+                include_dirs=["../external/googletest", "../external/googletest/include"],
+                **kwargs,
+            )
+        ],
+        cmdclass={"build_ext": build_ext_custom},
+    )
+else:
+    # TODO: this is a stub, we need a way to share common build logic with
+    # mypyc/build.py without code duplication.
+    setup(
+        name="mypy-native",
+        version="0.0.1",
+        ext_modules=[
+            Extension(
+                "native_internal",
+                [
+                    "native_internal.c",
+                    "init.c",
+                    "int_ops.c",
+                    "exc_ops.c",
+                    "pythonsupport.c",
+                ],
+                include_dirs=["."],
+                **kwargs,
+            )
+        ],
+        cmdclass={"build_ext": build_ext_custom},
+    )
