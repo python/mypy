@@ -210,6 +210,9 @@ class ClassIR:
         # per-type free "list" of up to length 1.
         self.reuse_freed_instance = False
 
+        # Is this a class inheriting from enum.Enum? Such classes can be special-cased.
+        self.is_enum = False
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -410,6 +413,7 @@ class ClassIR:
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
+            "is_enum": self.is_enum,
         }
 
     @classmethod
@@ -466,6 +470,7 @@ class ClassIR:
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.is_enum = data["is_enum"]
 
         return ir
 

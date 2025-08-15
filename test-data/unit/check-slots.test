@@ -544,3 +544,19 @@ x = X()
 X.a  # E: "a" in __slots__ conflicts with class variable access
 x.a
 [builtins fixtures/tuple.pyi]
+
+[case testSlotsOnSelfType]
+from typing_extensions import Self
+
+class X:
+    __slots__ = ("foo",)
+    foo: int
+
+    def method1(self: Self) -> Self:
+        self.bar = 0  # E: Trying to assign name "bar" that is not in "__slots__" of type "__main__.X"
+        return self
+
+    def method2(self) -> Self:
+        self.bar = 0  # E: Trying to assign name "bar" that is not in "__slots__" of type "__main__.X"
+        return self
+[builtins fixtures/tuple.pyi]

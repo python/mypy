@@ -16,7 +16,6 @@ from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
-    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -64,6 +63,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    remove_dups,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
@@ -421,27 +421,9 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = []
-        original_type = get_proper_type(original_type)
-        for c in method.items:
-            if isinstance(original_type, Instance):
-                # Filter based on whether declared self type can match actual object type.
-                # For example, if self has type C[int] and method is accessed on a C[str] value,
-                # omit this item. This is best effort since bind_self can be called in many
-                # contexts, and doing complete validation might trigger infinite recursion.
-                #
-                # Note that overload item filtering normally happens elsewhere. This is needed
-                # at least during constraint inference.
-                keep = is_valid_self_type_best_effort(c, original_type)
-            else:
-                keep = True
-            if keep:
-                items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
-        if len(items) == 0:
-            # If no item matches, returning all items helps avoid some spurious errors
-            items = [
-                bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-            ]
+        items = [
+            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+        ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func: CallableType = method
@@ -510,43 +492,6 @@ def bind_self(
     return cast(F, res)
 
 
-def is_valid_self_type_best_effort(c: CallableType, self_type: Instance) -> bool:
-    """Quickly check if self_type might match the self in a callable.
-
-    Avoid performing any complex type operations. This is performance-critical.
-
-    Default to returning True if we don't know (or it would be too expensive).
-    """
-    if (
-        self_type.args
-        and c.arg_types
-        and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
-        and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
-        and arg_type.args
-        and self_type.type.fullname != "functools._SingleDispatchCallable"
-    ):
-        if self_type.type is not arg_type.type:
-            # We can't map to supertype, since it could trigger expensive checks for
-            # protocol types, so we consevatively assume this is fine.
-            return True
-
-        # Fast path: no explicit annotation on self
-        if all(
-            (
-                type(arg) is TypeVarType
-                and type(arg.upper_bound) is Instance
-                and arg.upper_bound.type.fullname == "builtins.object"
-            )
-            for arg in arg_type.args
-        ):
-            return True
-
-        from mypy.meet import is_overlapping_types
-
-        return is_overlapping_types(self_type, c.arg_types[0])
-    return True
-
-
 def erase_to_bound(t: Type) -> Type:
     # TODO: use value restrictions to produce a union?
     t = get_proper_type(t)
@@ -576,15 +521,16 @@ def callable_corresponding_argument(
 
         # def right(a: int = ...) -> None: ...
         # def left(__a: int = ..., *, a: int = ...) -> None: ...
-        from mypy.subtypes import is_equivalent
+        from mypy.meet import meet_types
 
         if (
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
-            and is_equivalent(by_name.typ, by_pos.typ)
         ):
-            return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
+            return FormalArgument(
+                by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
+            )
     return by_name if by_name is not None else by_pos
 
 
@@ -1051,7 +997,7 @@ def is_singleton_type(typ: Type) -> bool:
     return typ.is_singleton_type()
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1073,21 +1019,22 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
+        # Non-empty enums cannot subclass each other so simply removing duplicates is enough.
         items = [
-            try_expanding_sum_type_to_union(item, target_fullname) for item in typ.relevant_items()
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in remove_dups(flatten_nested_unions(typ.relevant_items()))
         ]
-        return make_simplified_union(items, contract_literals=False)
+        return UnionType.make_union(items)
 
     if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.fullname == "builtins.bool":
-            items = [LiteralType(True, typ), LiteralType(False, typ)]
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
         if typ.type.is_enum:
             items = [LiteralType(name, typ) for name in typ.type.enum_members]
             if not items:
                 return typ
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType.make_union(items)
 
     return typ
 

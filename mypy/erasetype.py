@@ -145,29 +145,34 @@ def erase_typevars(t: Type, ids_to_erase: Container[TypeVarId] | None = None) ->
     or just the ones in the provided collection.
     """
 
+    if ids_to_erase is None:
+        return t.accept(TypeVarEraser(None, AnyType(TypeOfAny.special_form)))
+
     def erase_id(id: TypeVarId) -> bool:
-        if ids_to_erase is None:
-            return True
         return id in ids_to_erase
 
     return t.accept(TypeVarEraser(erase_id, AnyType(TypeOfAny.special_form)))
 
 
+def erase_meta_id(id: TypeVarId) -> bool:
+    return id.is_meta_var()
+
+
 def replace_meta_vars(t: Type, target_type: Type) -> Type:
     """Replace unification variables in a type with the target type."""
-    return t.accept(TypeVarEraser(lambda id: id.is_meta_var(), target_type))
+    return t.accept(TypeVarEraser(erase_meta_id, target_type))
 
 
 class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
-    def __init__(self, erase_id: Callable[[TypeVarId], bool], replacement: Type) -> None:
+    def __init__(self, erase_id: Callable[[TypeVarId], bool] | None, replacement: Type) -> None:
         super().__init__()
         self.erase_id = erase_id
         self.replacement = replacement
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        if self.erase_id(t.id):
+        if self.erase_id is None or self.erase_id(t.id):
             return self.replacement
         return t
 
@@ -212,12 +217,12 @@ class TypeVarEraser(TypeTranslator):
         return result
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
-        if self.erase_id(t.id):
+        if self.erase_id is None or self.erase_id(t.id):
             return t.tuple_fallback.copy_modified(args=[self.replacement])
         return t
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
-        if self.erase_id(t.id):
+        if self.erase_id is None or self.erase_id(t.id):
             return self.replacement
         return t
 
