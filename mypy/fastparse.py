@@ -929,7 +929,7 @@ class ASTConverter:
 
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
-        if special_function_elide_names(n.name):
+        if self.options.pos_only_special_methods and special_function_elide_names(n.name):
             for arg in args:
                 arg.pos_only = True
 
