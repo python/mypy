@@ -314,20 +314,21 @@ isinstance_int = function_op(
     error_kind=ERR_NEVER,
 )
 
-# int.to_bytes(length, byteorder, *, signed=False)
+# int.to_bytes(length, byteorder)
 method_op(
     name="to_bytes",
-    arg_types=[int_rprimitive, int_rprimitive, str_rprimitive, bool_rprimitive],
+    arg_types=[int_rprimitive, int_rprimitive, str_rprimitive],
+    extra_int_constants=[(0, bool_rprimitive)],
     return_type=bytes_rprimitive,
     c_function_name="CPyTagged_ToBytes",
     error_kind=ERR_MAGIC,
 )
 
-# int.bit_length()
+# int.to_bytes(length, byteorder, signed)
 method_op(
-    name="bit_length",
-    arg_types=[int_rprimitive],
-    return_type=int_rprimitive,
-    c_function_name="CPyInt_BitLength",
+    name="to_bytes",
+    arg_types=[int_rprimitive, int_rprimitive, str_rprimitive, bool_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyTagged_ToBytes",
     error_kind=ERR_MAGIC,
 )
