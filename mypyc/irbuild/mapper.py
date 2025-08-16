@@ -25,6 +25,7 @@ from mypy.types import (
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     RInstance,
     RTuple,
     RType,
@@ -119,6 +120,8 @@ class Mapper:
                 return int16_rprimitive
             elif typ.type.fullname == "mypy_extensions.u8":
                 return uint8_rprimitive
+            elif typ.type.fullname in KNOWN_NATIVE_TYPES:
+                return KNOWN_NATIVE_TYPES[typ.type.fullname]
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):

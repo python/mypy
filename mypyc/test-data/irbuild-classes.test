@@ -1409,6 +1409,55 @@ class TestOverload:
     def __mypyc_generator_helper__(self, x: Any) -> Any:
         return x
 
+[case testNativeBufferFastPath]
+from native_internal import (
+    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float, write_int, read_int
+)
+
+def foo() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_float(b, 0.1)
+    write_int(b, 1)
+
+    b = Buffer(b.getvalue())
+    x = read_str(b)
+    y = read_bool(b)
+    z = read_float(b)
+    t = read_int(b)
+[out]
+def foo():
+    r0, b :: native_internal.Buffer
+    r1 :: str
+    r2, r3, r4, r5 :: None
+    r6 :: bytes
+    r7 :: native_internal.Buffer
+    r8, x :: str
+    r9, y :: bool
+    r10, z :: float
+    r11, t :: int
+L0:
+    r0 = Buffer_internal_empty()
+    b = r0
+    r1 = 'foo'
+    r2 = write_str_internal(b, r1)
+    r3 = write_bool_internal(b, 1)
+    r4 = write_float_internal(b, 0.1)
+    r5 = write_int_internal(b, 2)
+    r6 = Buffer_getvalue_internal(b)
+    r7 = Buffer_internal(r6)
+    b = r7
+    r8 = read_str_internal(b)
+    x = r8
+    r9 = read_bool_internal(b)
+    y = r9
+    r10 = read_float_internal(b)
+    z = r10
+    r11 = read_int_internal(b)
+    t = r11
+    return 1
+
 [case testEnumFastPath]
 from enum import Enum
 
