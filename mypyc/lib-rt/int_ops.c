@@ -606,7 +606,7 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
 }
 
 // Helper for PyLong_ToBytes (Python 3.2+)
-PyObject *PyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder, int signed_flag) {
+PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder, int signed_flag) {
     // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
     unsigned char *bytes = (unsigned char *)PyMem_Malloc(length);
     if (!bytes) {
