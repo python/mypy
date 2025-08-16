@@ -181,6 +181,14 @@ class _flags(_UninstantiableStructseq, tuple[int, ...]):
     if sys.version_info >= (3, 11):
         @property
         def safe_path(self) -> bool: ...
+    if sys.version_info >= (3, 13):
+        @property
+        def gil(self) -> Literal[0, 1]: ...
+    if sys.version_info >= (3, 14):
+        @property
+        def thread_inherit_context(self) -> Literal[0, 1]: ...
+        @property
+        def context_aware_warnings(self) -> Literal[0, 1]: ...
     # Whether or not this exists on lower versions of Python
     # may depend on which patch release you're using
     # (it was backported to all Python versions on 3.8+ as a security fix)

@@ -1097,15 +1097,17 @@ class Constant(expr):
     kind: str | None
     if sys.version_info < (3, 14):
         # Aliases for value, for backwards compatibility
-        @deprecated("Will be removed in Python 3.14; use value instead")
         @property
+        @deprecated("Will be removed in Python 3.14. Use `value` instead.")
         def n(self) -> _ConstantValue: ...
         @n.setter
+        @deprecated("Will be removed in Python 3.14. Use `value` instead.")
         def n(self, value: _ConstantValue) -> None: ...
-        @deprecated("Will be removed in Python 3.14; use value instead")
         @property
+        @deprecated("Will be removed in Python 3.14. Use `value` instead.")
         def s(self) -> _ConstantValue: ...
         @s.setter
+        @deprecated("Will be removed in Python 3.14. Use `value` instead.")
         def s(self, value: _ConstantValue) -> None: ...
 
     def __init__(self, value: _ConstantValue, kind: str | None = None, **kwargs: Unpack[_Attributes]) -> None: ...
