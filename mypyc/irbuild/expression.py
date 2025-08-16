@@ -752,35 +752,52 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
 def try_specialize_in_expr(
     builder: IRBuilder, op: str, lhs: Expression, rhs: Expression, line: int
 ) -> Value | None:
-    if isinstance(rhs, (TupleExpr, ListExpr)):
-        items = rhs.items
+    left: Value | None = None
+    items: list[Value] | None = None
+
+    # 16 is arbitrarily chosen to limit code size
+    if isinstance(rhs, (TupleExpr, ListExpr)) and len(rhs.items) < 16:
+        left = builder.accept(lhs)
+        items = [builder.accept(item) for item in rhs.items]
+    elif isinstance(builder.node_type(rhs), RTuple):
+        left = builder.accept(lhs)
+        tuple_val = builder.accept(rhs)
+        assert isinstance(tuple_val.type, RTuple)
+        items = [builder.add(TupleGet(tuple_val, i)) for i in range(len(tuple_val.type.types))]
+
+    if items is not None:
+        assert left is not None
         n_items = len(items)
         # x in y -> x == y[0] or ... or x == y[n]
         # x not in y -> x != y[0] and ... and x != y[n]
-        # 16 is arbitrarily chosen to limit code size
-        if 1 < n_items < 16:
+        if n_items > 1:
             if op == "in":
-                bin_op = "or"
                 cmp_op = "=="
             else:
-                bin_op = "and"
                 cmp_op = "!="
-            mypy_file = builder.graph["builtins"].tree
-            assert mypy_file is not None
-            info = mypy_file.names["bool"].node
-            assert isinstance(info, TypeInfo), info
-            bool_type = Instance(info, [])
-            exprs = []
+            out = BasicBlock()
             for item in items:
-                expr = ComparisonExpr([cmp_op], [lhs, item])
-                builder.types[expr] = bool_type
-                exprs.append(expr)
-
-            or_expr: Expression = exprs.pop(0)
-            for expr in exprs:
-                or_expr = OpExpr(bin_op, or_expr, expr)
-                builder.types[or_expr] = bool_type
-            return builder.accept(or_expr)
+                x = transform_basic_comparison(builder, cmp_op, left, item, line)
+                b = builder.builder.bool_value(x)
+                nxt = BasicBlock()
+                if op == "in":
+                    builder.add_bool_branch(b, out, nxt)
+                else:
+                    builder.add_bool_branch(b, nxt, out)
+                builder.activate_block(nxt)
+            r = Register(bool_rprimitive)
+            end = BasicBlock()
+            if op == "in":
+                values = builder.false(), builder.true()
+            else:
+                values = builder.true(), builder.false()
+            builder.assign(r, values[0], line)
+            builder.goto(end)
+            builder.activate_block(out)
+            builder.assign(r, values[1], line)
+            builder.goto(end)
+            builder.activate_block(end)
+            return r
         # x in [y]/(y) -> x == y
         # x not in [y]/(y) -> x != y
         elif n_items == 1:
@@ -788,8 +805,7 @@ def try_specialize_in_expr(
                 cmp_op = "=="
             else:
                 cmp_op = "!="
-            left = builder.accept(lhs)
-            right = builder.accept(items[0])
+            right = items[0]
             return transform_basic_comparison(builder, cmp_op, left, right, line)
         # x in []/() -> False
         # x not in []/() -> True
