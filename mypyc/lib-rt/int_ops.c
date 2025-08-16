@@ -581,3 +581,54 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
     }
     return 1.0;
 }
+
+// int.to_bytes(length, byteorder, signed=False)
+PyObject *CPyInt_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag) {
+    PyObject *pyint = CPyTagged_StealAsObject(self);
+    if (!PyLong_Check(pyint)) {
+        Py_DECREF(pyint);
+        PyErr_SetString(PyExc_TypeError, "self must be int");
+        return NULL;
+    }
+    if (!PyUnicode_Check(byteorder)) {
+        Py_DECREF(pyint);
+        PyErr_SetString(PyExc_TypeError, "byteorder must be str");
+        return NULL;
+    }
+    const char *order = PyUnicode_AsUTF8(byteorder);
+    if (!order) {
+        Py_DECREF(pyint);
+        return NULL;
+    }
+    PyObject *result = PyLong_ToBytes(pyint, length, order, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// Helper for PyLong_ToBytes (Python 3.2+)
+PyObject *PyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder, int signed_flag) {
+    // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
+    unsigned char *bytes = (unsigned char *)PyMem_Malloc(length);
+    if (!bytes) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    int little_endian = 0;
+    if (strcmp(byteorder, "little") == 0) {
+        little_endian = 1;
+    } else if (strcmp(byteorder, "big") == 0) {
+        little_endian = 0;
+    } else {
+        PyMem_Free(bytes);
+        PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
+        return NULL;
+    }
+    int res = PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
+    if (res < 0) {
+        PyMem_Free(bytes);
+        return NULL;
+    }
+    PyObject *result = PyBytes_FromStringAndSize((const char *)bytes, length);
+    PyMem_Free(bytes);
+    return result;
+}

@@ -210,3 +210,14 @@ L0:
     r0 = CPyTagged_Invert(n)
     x = r0
     return x
+
+[case testIntToBytes]
+def f(x: int) -> bytes:
+    return x.to_bytes(2, "big")
+[out]
+def f(x):
+    x :: int
+    r0 :: bytes
+L0:
+    r0 = int_to_bytes x, 2, 'big', 0
+    return r0
