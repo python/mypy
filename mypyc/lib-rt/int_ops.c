@@ -600,12 +600,12 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
         Py_DECREF(pyint);
         return NULL;
     }
-    PyObject *result = PyLong_ToBytes(pyint, length, order, signed_flag);
+    PyObject *result = CPyLong_ToBytes(pyint, length, order, signed_flag);
     Py_DECREF(pyint);
     return result;
 }
 
-// Helper for PyLong_ToBytes (Python 3.2+)
+// Helper for CPyLong_ToBytes (Python 3.2+)
 PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder, int signed_flag) {
     // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
     unsigned char *bytes = (unsigned char *)PyMem_Malloc(length);
