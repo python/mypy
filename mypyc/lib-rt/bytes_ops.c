@@ -4,6 +4,7 @@
 
 #include <Python.h>
 #include "CPy.h"
+#include <string.h>
 
 // Returns -1 on error, 0 on inequality, 1 on equality.
 //
@@ -162,3 +163,51 @@ CPyTagged CPyBytes_Ord(PyObject *obj) {
     PyErr_SetString(PyExc_TypeError, "ord() expects a character");
     return CPY_INT_TAG;
 }
+
+PyObject *CPyBytes_Rjust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
+    if (!PyBytes_Check(self)) {
+        PyErr_SetString(PyExc_TypeError, "self must be bytes");
+        return NULL;
+    }
+    if (!PyBytes_Check(fillbyte) || PyBytes_Size(fillbyte) != 1) {
+        PyErr_SetString(PyExc_TypeError, "fillbyte must be a single byte");
+        return NULL;
+    }
+    Py_ssize_t len = PyBytes_Size(self);
+    if (width <= len) {
+        return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
+    }
+    char fill = PyBytes_AsString(fillbyte)[0];
+    Py_ssize_t pad = width - len;
+    PyObject *result = PyBytes_FromStringAndSize(NULL, width);
+    if (!result) return NULL;
+    char *res_buf = PyBytes_AsString(result);
+    memset(res_buf, fill, pad);
+    memcpy(res_buf + pad, PyBytes_AsString(self), len);
+    return result;
+}
+
+PyObject *CPyBytes_Ljust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
+    if (!PyBytes_Check(self)) {
+        PyErr_SetString(PyExc_TypeError, "self must be bytes");
+        return NULL;
+    }
+    if (!PyBytes_Check(fillbyte) || PyBytes_Size(fillbyte) != 1) {
+        PyErr_SetString(PyExc_TypeError, "fillbyte must be a single byte");
+        return NULL;
+    }
+    Py_ssize_t len = PyBytes_Size(self);
+    if (width <= len) {
+        return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
+    }
+    char fill = PyBytes_AsString(fillbyte)[0];
+    Py_ssize_t pad = width - len;
+    PyObject *result = PyBytes_FromStringAndSize(NULL, width);
+    if (!result) return NULL;
+    char *res_buf = PyBytes_AsString(result);
+    memcpy(res_buf, PyBytes_AsString(self), len);
+    memset(res_buf + len, fill, pad);
+    return result;
+}
+
+// ... existing code ...
