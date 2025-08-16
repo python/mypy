@@ -1228,9 +1228,6 @@ class ForMap(ForGenerator):
         for gen in self.gens:
             gen.begin_body()
 
-        # This goes here to prevent a circular import
-        from mypyc.irbuild.expression import transform_call_expr
-
         call_expr = CallExpr(
             self.func_expr,
             [gen.index for gen in self.gens],
@@ -1238,7 +1235,7 @@ class ForMap(ForGenerator):
             [None] * len(self.gens),
         )
 
-        result = transform_call_expr(builder, call_expr)
+        result = builder.accept(call_expr)
         builder.assign(builder.get_assignment_target(self.index), result, line)
 
     def gen_step(self) -> None:
