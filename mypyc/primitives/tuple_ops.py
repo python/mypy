@@ -76,7 +76,7 @@ list_tuple_op = function_op(
 )
 
 # Construct tuple from an arbitrary (iterable) object.
-function_op(
+sequence_tuple_op = function_op(
     name="builtins.tuple",
     arg_types=[object_rprimitive],
     return_type=tuple_rprimitive,

@@ -1675,25 +1675,19 @@ def g():
     r1 :: dict
     r2 :: str
     r3 :: object
-    r4 :: list
+    r4 :: dict
     r5, r6 :: object
-    r7 :: tuple
-    r8 :: dict
-    r9 :: object
-    r10 :: tuple[int, int, int]
+    r7 :: tuple[int, int, int]
 L0:
     r0 = (2, 4, 6)
     r1 = __main__.globals :: static
     r2 = 'f'
     r3 = CPyDict_GetItem(r1, r2)
-    r4 = PyList_New(0)
+    r4 = PyDict_New()
     r5 = box(tuple[int, int, int], r0)
-    r6 = CPyList_Extend(r4, r5)
-    r7 = PyList_AsTuple(r4)
-    r8 = PyDict_New()
-    r9 = PyObject_Call(r3, r7, r8)
-    r10 = unbox(tuple[int, int, int], r9)
-    return r10
+    r6 = PyObject_Call(r3, r5, r4)
+    r7 = unbox(tuple[int, int, int], r6)
+    return r7
 def h():
     r0 :: tuple[int, int]
     r1 :: dict
@@ -3546,3 +3540,266 @@ L0:
     r2 = PyObject_Vectorcall(r1, 0, 0, 0)
     r3 = box(None, 1)
     return r3
+
+[case testStarArgFastPathTuple]
+from typing import Any, Callable
+def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def wrapper(*args: Any) -> Any:
+        return fn(*args)
+    return wrapper
+
+[out]
+def wrapper_deco_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def wrapper_deco_obj.__call__(__mypyc_self__, args):
+    __mypyc_self__ :: __main__.wrapper_deco_obj
+    args :: tuple
+    r0 :: __main__.deco_env
+    r1 :: object
+    r2 :: dict
+    r3 :: object
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.fn
+    r2 = PyDict_New()
+    r3 = PyObject_Call(r1, args, r2)
+    return r3
+def deco(fn):
+    fn :: object
+    r0 :: __main__.deco_env
+    r1 :: bool
+    r2 :: __main__.wrapper_deco_obj
+    r3 :: bool
+    wrapper :: object
+L0:
+    r0 = deco_env()
+    r0.fn = fn; r1 = is_error
+    r2 = wrapper_deco_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    wrapper = r2
+    return wrapper
+
+[case testStarArgFastPathList]
+from typing import Any, Callable
+def deco(fn: Callable[..., Any]) -> Callable[[list[Any]], Any]:
+    def wrapper(args: list[Any]) -> Any:
+        return fn(*args)
+    return wrapper
+
+[out]
+def wrapper_deco_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def wrapper_deco_obj.__call__(__mypyc_self__, args):
+    __mypyc_self__ :: __main__.wrapper_deco_obj
+    args :: list
+    r0 :: __main__.deco_env
+    r1 :: object
+    r2 :: tuple
+    r3 :: dict
+    r4 :: object
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.fn
+    r2 = PyList_AsTuple(args)
+    r3 = PyDict_New()
+    r4 = PyObject_Call(r1, r2, r3)
+    return r4
+def deco(fn):
+    fn :: object
+    r0 :: __main__.deco_env
+    r1 :: bool
+    r2 :: __main__.wrapper_deco_obj
+    r3 :: bool
+    wrapper :: object
+L0:
+    r0 = deco_env()
+    r0.fn = fn; r1 = is_error
+    r2 = wrapper_deco_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    wrapper = r2
+    return wrapper
+
+[case testStarArgFastPathListWithKwargs]
+from typing import Any, Callable
+def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def wrapper(lst: list[Any], kwargs: dict[str, Any]) -> Any:
+        return fn(*lst, **kwargs)
+    return wrapper
+
+[out]
+def wrapper_deco_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def wrapper_deco_obj.__call__(__mypyc_self__, lst, kwargs):
+    __mypyc_self__ :: __main__.wrapper_deco_obj
+    lst :: list
+    kwargs :: dict
+    r0 :: __main__.deco_env
+    r1 :: object
+    r2 :: tuple
+    r3 :: dict
+    r4 :: i32
+    r5 :: bit
+    r6 :: object
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.fn
+    r2 = PyList_AsTuple(lst)
+    r3 = PyDict_New()
+    r4 = CPyDict_UpdateInDisplay(r3, kwargs)
+    r5 = r4 >= 0 :: signed
+    r6 = PyObject_Call(r1, r2, r3)
+    return r6
+def deco(fn):
+    fn :: object
+    r0 :: __main__.deco_env
+    r1 :: bool
+    r2 :: __main__.wrapper_deco_obj
+    r3 :: bool
+    wrapper :: object
+L0:
+    r0 = deco_env()
+    r0.fn = fn; r1 = is_error
+    r2 = wrapper_deco_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    wrapper = r2
+    return wrapper
+
+[case testStarArgFastPathSequence]
+from typing import Any, Callable
+def deco(fn: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    def wrapper(args: Any) -> Any:
+        return fn(*args)
+    return wrapper
+
+[out]
+def wrapper_deco_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def wrapper_deco_obj.__call__(__mypyc_self__, args):
+    __mypyc_self__ :: __main__.wrapper_deco_obj
+    args :: object
+    r0 :: __main__.deco_env
+    r1 :: object
+    r2 :: tuple
+    r3 :: dict
+    r4 :: object
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.fn
+    r2 = PySequence_Tuple(args)
+    r3 = PyDict_New()
+    r4 = PyObject_Call(r1, r2, r3)
+    return r4
+def deco(fn):
+    fn :: object
+    r0 :: __main__.deco_env
+    r1 :: bool
+    r2 :: __main__.wrapper_deco_obj
+    r3 :: bool
+    wrapper :: object
+L0:
+    r0 = deco_env()
+    r0.fn = fn; r1 = is_error
+    r2 = wrapper_deco_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    wrapper = r2
+    return wrapper
+
+[case testStarArgFastPathSequenceWithKwargs]
+from typing import Any, Callable
+def deco(fn: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    def wrapper(args: Any, **kwargs: Any) -> Any:
+        return fn(*args, **kwargs)
+    return wrapper
+
+[out]
+def wrapper_deco_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def wrapper_deco_obj.__call__(__mypyc_self__, args, kwargs):
+    __mypyc_self__ :: __main__.wrapper_deco_obj
+    args :: object
+    kwargs :: dict
+    r0 :: __main__.deco_env
+    r1 :: object
+    r2 :: tuple
+    r3 :: dict
+    r4 :: i32
+    r5 :: bit
+    r6 :: object
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.fn
+    r2 = PySequence_Tuple(args)
+    r3 = PyDict_New()
+    r4 = CPyDict_UpdateInDisplay(r3, kwargs)
+    r5 = r4 >= 0 :: signed
+    r6 = PyObject_Call(r1, r2, r3)
+    return r6
+def deco(fn):
+    fn :: object
+    r0 :: __main__.deco_env
+    r1 :: bool
+    r2 :: __main__.wrapper_deco_obj
+    r3 :: bool
+    wrapper :: object
+L0:
+    r0 = deco_env()
+    r0.fn = fn; r1 = is_error
+    r2 = wrapper_deco_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    wrapper = r2
+    return wrapper
