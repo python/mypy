@@ -319,7 +319,8 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     elif top is None:
         candidate = bottom
     elif is_subtype(bottom, top):
-        candidate = bottom
+        # Need to meet in case like Literal["x"]? <: T <: Literal["x"]
+        candidate = meet_types(bottom, top)
     else:
         candidate = None
     return candidate
