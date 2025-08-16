@@ -31,7 +31,14 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     void_rtype,
 )
-from mypyc.primitives.registry import binary_op, custom_op, function_op, load_address_op, unary_op
+from mypyc.primitives.registry import (
+    binary_op,
+    custom_op,
+    function_op,
+    load_address_op,
+    method_op,
+    unary_op,
+)
 
 # Constructors for builtins.int and native int types have the same behavior. In
 # interpreted mode, native int types are just aliases to 'int'.
