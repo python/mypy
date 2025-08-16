@@ -594,9 +594,16 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
         Py_ssize_t val = CPyTagged_ShortAsSsize_t(self);
         Py_ssize_t absval = val < 0 ? -val : val;
         int bits = 0;
-        while (absval) {
-            absval >>= 1;
-            bits++;
+        if (absval) {
+#if defined(__GNUC__) || defined(__clang__)
+            bits = (int)(sizeof(absval) * 8) - __builtin_clzll((unsigned long long)absval);
+#else
+            // Fallback to loop if no builtin
+            while (absval) {
+                absval >>= 1;
+                bits++;
+            }
+#endif
         }
         return bits << 1;
     }
