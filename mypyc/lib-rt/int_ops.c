@@ -608,7 +608,7 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
         PyErr_SetString(PyExc_TypeError, "self must be int");
         return CPY_INT_TAG;
     }
-    int bits = _PyLong_NumBits((PyLongObject *)pyint);
+    int bits = _PyLong_NumBits(pyint);
     Py_DECREF(pyint);
     if (bits < 0) {
         // _PyLong_NumBits sets an error on failure
