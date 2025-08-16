@@ -543,7 +543,7 @@ class TypeVarId:
     # function type variables.
 
     # Metavariables are allocated unique ids starting from 1.
-    raw_id: int
+    raw_id: Final[int]
 
     # Level of the variable in type inference. Currently either 0 for
     # declared types, or 1 for type inference metavariables.
@@ -586,7 +586,7 @@ class TypeVarId:
         return not (self == other)
 
     def __hash__(self) -> int:
-        return hash((self.raw_id, self.meta_level, self.namespace))
+        return self.raw_id ^ (self.meta_level << 8) ^ hash(self.namespace)
 
     def is_meta_var(self) -> bool:
         return self.meta_level > 0
