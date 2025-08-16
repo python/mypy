@@ -17,6 +17,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
+    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -68,6 +69,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -1400,6 +1402,79 @@ def analyze_typeddict_access(
             fallback=mx.chk.named_type("builtins.function"),
             name=name,
         )
+    elif name == "get":
+        # synthesize TypedDict.get() overloads
+        str_type = mx.chk.named_type("builtins.str")
+        fn_type = mx.chk.named_type("builtins.function")
+        object_type = mx.chk.named_type("builtins.object")
+        t = TypeVarType(
+            "T",
+            "T",
+            id=TypeVarId(-1),
+            values=[],
+            upper_bound=object_type,
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
+        overloads: list[CallableType] = []
+        for key, val in typ.items.items():
+            if key in typ.required_keys:
+                # If the key is required, we know it must be present in the TypedDict.
+                overload = CallableType(
+                    arg_types=[LiteralType(key, fallback=str_type), object_type],
+                    arg_kinds=[ARG_POS, ARG_OPT],
+                    arg_names=[None, None],
+                    ret_type=val,
+                    fallback=fn_type,
+                    name=name,
+                )
+                overloads.append(overload)
+            else:
+                # The key is not required, so we add the overloads:
+                # def (Literal[Key]) -> Val | None
+                # def (Literal[Key], default: Val) -> Val
+                # def [T] (Literal[Key], default: T = ..., /) -> Val | T
+                # TODO: simplify the last two overloads to just one
+                overload = CallableType(
+                    arg_types=[LiteralType(key, fallback=str_type)],
+                    arg_kinds=[ARG_POS],
+                    arg_names=[None],
+                    ret_type=UnionType.make_union([val, NoneType()]),
+                    fallback=fn_type,
+                    name=name,
+                )
+                overloads.append(overload)
+                overload = CallableType(
+                    arg_types=[LiteralType(key, fallback=str_type), val],
+                    arg_kinds=[ARG_POS, ARG_POS],
+                    arg_names=[None, None],
+                    ret_type=val,
+                    fallback=fn_type,
+                    name=name,
+                )
+                overloads.append(overload)
+                overload = CallableType(
+                    variables=[t],
+                    arg_types=[LiteralType(key, fallback=str_type), t],
+                    arg_kinds=[ARG_POS, ARG_OPT],
+                    arg_names=[None, None],
+                    ret_type=UnionType.make_union([val, t]),
+                    fallback=fn_type,
+                    name=name,
+                )
+                overloads.append(overload)
+
+        # finally, add fallback overload when a key is used that is not in the TypedDict
+        # def (str, object=...) -> object
+        fallback_overload = CallableType(
+            arg_types=[str_type, object_type],
+            arg_kinds=[ARG_POS, ARG_OPT],
+            arg_names=[None, None],
+            ret_type=object_type,
+            fallback=fn_type,
+            name=name,
+        )
+        overloads.append(fallback_overload)
+        return Overloaded(overloads)
     return _analyze_member_access(name, typ.fallback, mx, override_info)
 
 
