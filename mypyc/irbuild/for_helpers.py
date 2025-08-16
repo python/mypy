@@ -1232,7 +1232,7 @@ class ForFilter(ForGenerator):
             # from mypyc.irbuild.expression import transform_call_expr
 
             # result = transform_call_expr(builder, fake_call_expr)
-            resulr = builder.accept(fake_call_expr)
+            result = builder.accept(fake_call_expr)
 
         # Now, filter: only enter the body if func(item) is truthy
         cont_block, rest_block = BasicBlock(), BasicBlock()
