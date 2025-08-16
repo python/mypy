@@ -248,12 +248,11 @@ def allow_fast_container_literal(t: Type) -> bool:
     )
 
 
-def extract_refexpr_names(expr: RefExpr) -> set[str]:
+def extract_refexpr_names(expr: RefExpr, output: set[str]) -> None:
     """Recursively extracts all module references from a reference expression.
 
     Note that currently, the only two subclasses of RefExpr are NameExpr and
     MemberExpr."""
-    output: set[str] = set()
     while isinstance(expr.node, MypyFile) or expr.fullname:
         if isinstance(expr.node, MypyFile) and expr.fullname:
             # If it's None, something's wrong (perhaps due to an
@@ -277,7 +276,6 @@ def extract_refexpr_names(expr: RefExpr) -> set[str]:
                 break
         else:
             raise AssertionError(f"Unknown RefExpr subclass: {type(expr)}")
-    return output
 
 
 class Finished(Exception):
@@ -372,7 +370,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         It can be of any kind: local, member or global.
         """
-        self.chk.module_refs.update(extract_refexpr_names(e))
+        extract_refexpr_names(e, self.chk.module_refs)
         result = self.analyze_ref_expr(e)
         narrowed = self.narrow_type_from_binder(e, result)
         self.chk.check_deprecated(e.node, e)
@@ -3345,7 +3343,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
-        self.chk.module_refs.update(extract_refexpr_names(e))
+        extract_refexpr_names(e, self.chk.module_refs)
         result = self.analyze_ordinary_member_access(e, is_lvalue)
         narrowed = self.narrow_type_from_binder(e, result)
         self.chk.warn_deprecated(e.node, e)
