@@ -22,7 +22,7 @@ from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.primitives.dict_ops import (
     dict_copy,
-    dict_del_item,
+    exact_dict_del_item,
     mapping_has_key,
     supports_mapping_protocol,
 )
@@ -239,7 +239,7 @@ class MatchVisitor(TraverserVisitor):
             self.builder.assign(target, rest, pattern.rest.line)
 
             for i, key_name in enumerate(keys):
-                self.builder.call_c(dict_del_item, [rest, key_name], pattern.keys[i].line)
+                self.builder.call_c(exact_dict_del_item, [rest, key_name], pattern.keys[i].line)
 
             self.builder.goto(self.code_block)
 

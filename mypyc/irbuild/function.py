@@ -56,7 +56,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     bool_rprimitive,
-    dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
 )
@@ -77,8 +77,8 @@ from mypyc.irbuild.env_class import (
 from mypyc.irbuild.generator import gen_generator_func, gen_generator_func_body
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.primitives.dict_ops import (
-    dict_get_method_with_none,
     dict_new_op,
+    exact_dict_get_method_with_none,
     exact_dict_set_item_op,
 )
 from mypyc.primitives.generic_ops import py_setattr_op
@@ -127,7 +127,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
 
     if decorated_func is not None:
         # Set the callable object representing the decorated function as a global.
-        builder.call_c(
+        builder.primitive_op(
             exact_dict_set_item_op,
             [builder.load_globals_dict(), builder.load_str(dec.func.name), decorated_func],
             decorated_func.line,
@@ -814,10 +814,12 @@ def generate_singledispatch_dispatch_function(
 
     arg_type = builder.builder.get_type_of_obj(arg_info.args[0], line)
     dispatch_cache = builder.builder.get_attr(
-        dispatch_func_obj, "dispatch_cache", dict_rprimitive, line
+        dispatch_func_obj, "dispatch_cache", exact_dict_rprimitive, line
     )
     call_find_impl, use_cache, call_func = BasicBlock(), BasicBlock(), BasicBlock()
-    get_result = builder.primitive_op(dict_get_method_with_none, [dispatch_cache, arg_type], line)
+    get_result = builder.primitive_op(
+        exact_dict_get_method_with_none, [dispatch_cache, arg_type], line
+    )
     is_not_none = builder.translate_is_op(get_result, builder.none_object(), "is not", line)
     impl_to_use = Register(object_rprimitive)
     builder.add_bool_branch(is_not_none, use_cache, call_find_impl)
@@ -830,7 +832,7 @@ def generate_singledispatch_dispatch_function(
     find_impl = builder.load_module_attr_by_fullname("functools._find_impl", line)
     registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
     uncached_impl = builder.py_call(find_impl, [arg_type, registry], line)
-    builder.call_c(exact_dict_set_item_op, [dispatch_cache, arg_type, uncached_impl], line)
+    builder.primitive_op(exact_dict_set_item_op, [dispatch_cache, arg_type, uncached_impl], line)
     builder.assign(impl_to_use, uncached_impl, line)
     builder.goto(call_func)
 
@@ -894,8 +896,8 @@ def gen_dispatch_func_ir(
     """
     builder.enter(FuncInfo(fitem, dispatch_name))
     setup_callable_class(builder)
-    builder.fn_info.callable_class.ir.attributes["registry"] = dict_rprimitive
-    builder.fn_info.callable_class.ir.attributes["dispatch_cache"] = dict_rprimitive
+    builder.fn_info.callable_class.ir.attributes["registry"] = exact_dict_rprimitive
+    builder.fn_info.callable_class.ir.attributes["dispatch_cache"] = exact_dict_rprimitive
     builder.fn_info.callable_class.ir.has_dict = True
     builder.fn_info.callable_class.ir.needs_getseters = True
     generate_singledispatch_callable_class_ctor(builder)
@@ -958,7 +960,7 @@ def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo)
 
 
 def load_singledispatch_registry(builder: IRBuilder, dispatch_func_obj: Value, line: int) -> Value:
-    return builder.builder.get_attr(dispatch_func_obj, "registry", dict_rprimitive, line)
+    return builder.builder.get_attr(dispatch_func_obj, "registry", exact_dict_rprimitive, line)
 
 
 def singledispatch_main_func_name(orig_name: str) -> str:
@@ -1007,9 +1009,9 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
         for typ in types:
             loaded_type = load_type(builder, typ, None, line)
-            builder.call_c(exact_dict_set_item_op, [registry, loaded_type, to_insert], line)
+            builder.primitive_op(exact_dict_set_item_op, [registry, loaded_type, to_insert], line)
         dispatch_cache = builder.builder.get_attr(
-            dispatch_func_obj, "dispatch_cache", dict_rprimitive, line
+            dispatch_func_obj, "dispatch_cache", exact_dict_rprimitive, line
         )
         builder.gen_method_call(dispatch_cache, "clear", [], None, line)
 
