@@ -312,7 +312,7 @@ method_op(
     name="to_bytes",
     arg_types=[int_rprimitive, int_rprimitive, str_rprimitive, bool_rprimitive],
     return_type=bytes_rprimitive,
-    c_function_name="CPyInt_ToBytes",
+    c_function_name="CPyTagged_ToBytes",
     error_kind=ERR_MAGIC,
 )
 

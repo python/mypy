@@ -583,7 +583,7 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
 }
 
 // int.to_bytes(length, byteorder, signed=False)
-PyObject *CPyInt_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag) {
+PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag) {
     PyObject *pyint = CPyTagged_StealAsObject(self);
     if (!PyLong_Check(pyint)) {
         Py_DECREF(pyint);
