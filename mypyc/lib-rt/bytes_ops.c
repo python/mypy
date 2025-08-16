@@ -189,7 +189,7 @@ PyObject *CPyBytes_RjustDefaultFill(PyObject *self, CPyTagged width) {
 }
 
 
-PyObject *CPyBytes_Rjust(PyObject *self, CPyTagged width, PyObject *fillbyte) {
+PyObject *CPyBytes_RjustCustomFill(PyObject *self, CPyTagged width, PyObject *fillbyte) {
     if (!PyBytes_Check(self)) {
         PyErr_SetString(PyExc_TypeError, "self must be bytes");
         return NULL;
@@ -238,7 +238,7 @@ PyObject *CPyBytes_LjustDefaultFill(PyObject *self, CPyTagged width) {
 }
 
 
-PyObject *CPyBytes_Ljust(PyObject *self, CPyTagged width, PyObject *fillbyte) {
+PyObject *CPyBytes_LjustCustomFill(PyObject *self, CPyTagged width, PyObject *fillbyte) {
     if (!PyBytes_Check(self)) {
         PyErr_SetString(PyExc_TypeError, "self must be bytes");
         return NULL;
