@@ -293,10 +293,9 @@ def test():
     r3 :: tuple
     r4 :: native_int
     r5 :: bit
-    r6 :: native_int
+    r6, x, r7 :: str
     r7 :: bit
-    r8, x, r9 :: str
-    r10 :: native_int
+    r8 :: native_int
     a :: tuple
 L0:
     r0 = 'abc'
