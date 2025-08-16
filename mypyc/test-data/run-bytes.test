@@ -376,6 +376,8 @@ class bytes:
     pass
 
 [case testBytesRjustLjust]
+from testutil import assertRaises
+
 def rjust_bytes(b: bytes, width: int, fill: bytes = b' ') -> bytes:
     return b.rjust(width, fill)
 
