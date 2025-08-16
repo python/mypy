@@ -616,4 +616,3 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
     }
     return bits << 1;
 }
-
