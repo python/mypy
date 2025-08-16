@@ -581,3 +581,38 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
     }
     return 1.0;
 }
+
+// int.bit_length()
+CPyTagged CPyTagged_BitLength(CPyTagged self) {
+    // Handle zero
+    if (self == 0) {
+        return 0;
+    }
+
+    // Fast path for small (tagged) ints
+    if (CPyTagged_CheckShort(self)) {
+        Py_ssize_t val = CPyTagged_ShortAsSsize_t(self);
+        Py_ssize_t absval = val < 0 ? -val : val;
+        int bits = 0;
+        while (absval) {
+            absval >>= 1;
+            bits++;
+        }
+        return bits << 1;
+    }
+
+    // Slow path for big ints
+    PyObject *pyint = CPyTagged_StealAsObject(self);
+    if (!PyLong_Check(pyint)) {
+        Py_DECREF(pyint);
+        PyErr_SetString(PyExc_TypeError, "self must be int");
+        return CPY_INT_TAG;
+    }
+    int bits = _PyLong_NumBits(pyint);
+    Py_DECREF(pyint);
+    if (bits < 0) {
+        // _PyLong_NumBits sets an error on failure
+        return CPY_INT_TAG;
+    }
+    return bits << 1;
+}
