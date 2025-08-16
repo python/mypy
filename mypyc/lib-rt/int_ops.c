@@ -605,6 +605,12 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
     return result;
 }
 
+#if PY_VERSION_HEX >= 0x030A0000
+    #define CPy_PyLong_AsByteArray PyLong_AsByteArray
+#else
+    #define CPy_PyLong_AsByteArray _PyLong_AsByteArray
+#endif
+
 // Helper for CPyLong_ToBytes (Python 3.2+)
 PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder, int signed_flag) {
     // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
@@ -623,7 +629,7 @@ PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder,
         PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
         return NULL;
     }
-    int res = PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
+    int res = CPy_PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
     if (res < 0) {
         PyMem_Free(bytes);
         return NULL;
