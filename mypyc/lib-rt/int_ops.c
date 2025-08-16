@@ -15,6 +15,17 @@
 #define CPyLong_FromSsize_t PyLong_FromSsize_t
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#  if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__) || (defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8)
+#    define CPY_CLZ(x) __builtin_clzll((unsigned long long)(x))
+#    define CPY_BITS 64
+#  else
+#    define CPY_CLZ(x) __builtin_clz((unsigned int)(x))
+#    define CPY_BITS 32
+#  endif
+#endif
+
+
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     // We use a Python object if the value shifted left by 1 is too
     // large for Py_ssize_t
@@ -596,7 +607,7 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
         int bits = 0;
         if (absval) {
 #if defined(__GNUC__) || defined(__clang__)
-            bits = (int)(sizeof(absval) * 8) - __builtin_clzll((unsigned long long)absval);
+            bits = (int)(CPY_BITS - CPY_CLZ(absval));
 #else
             // Fallback to loop if no builtin
             while (absval) {
