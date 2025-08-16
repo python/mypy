@@ -1223,7 +1223,6 @@ class ForMap(ForGenerator):
 
     def begin_body(self) -> None:
         builder = self.builder
-        line = self.line
 
         for gen in self.gens:
             gen.begin_body()
@@ -1235,8 +1234,11 @@ class ForMap(ForGenerator):
             [None] * len(self.gens),
         )
 
-        result = builder.accept(call_expr)
-        builder.assign(builder.get_assignment_target(self.index), result, line)
+        # TODO: debug redundant box->unbox op in builder.accept and then replace this
+        from mypyc.irbuild.expression import transform_call_expr
+
+        result = transform_call_expr(builder, call_expr)
+        builder.assign(builder.get_assignment_target(self.index), result, self.line)
 
     def gen_step(self) -> None:
         for gen in self.gens:
