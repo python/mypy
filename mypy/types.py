@@ -2104,8 +2104,6 @@ class CallableType(FunctionLike):
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
-        if variables is None:
-            variables = []
         self.arg_types = list(arg_types)
         for t in self.arg_types:
             if isinstance(t, ParamSpecType):
@@ -2123,7 +2121,11 @@ class CallableType(FunctionLike):
         #   * If it is a non-decorated function, FuncDef is the definition
         #   * If it is a decorated function, enclosing Decorator is the definition
         self.definition = definition
-        self.variables = variables
+        self.variables: tuple[TypeVarLikeType, ...]
+        if variables is None:
+            self.variables = ()
+        else:
+            self.variables = tuple(variables)
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
         self.special_sig = special_sig
