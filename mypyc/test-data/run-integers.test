@@ -582,3 +582,9 @@ def test_bit_length() -> None:
     assert bit_length(255) == 8
     assert bit_length(256) == 9
     assert bit_length(-256) == 9
+    # Large positive int
+    assert bit_length(1 << 70) == 71
+    # Large negative int
+    assert bit_length(-(1 << 70)) == 71
+    # Large int with all bits set
+    assert bit_length((1 << 100) - 1) == 100
