@@ -3591,9 +3591,9 @@ L0:
     return wrapper
 
 [case testStarArgFastPathList]
-from typing import Any, Callable, List
-def deco(fn: Callable[..., Any]) -> Callable[[List[Any]], Any]:
-    def wrapper(args: List[Any]) -> Any:
+from typing import Any, Callable
+def deco(fn: Callable[..., Any]) -> Callable[[list[Any]], Any]:
+    def wrapper(args: list[Any]) -> Any:
         return fn(*args)
     return wrapper
 
@@ -3642,9 +3642,9 @@ L0:
     return wrapper
 
 [case testStarArgFastPathListWithKwargs]
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
-    def wrapper(lst: List[Any], kwargs: Dict[str, Any]) -> Any:
+    def wrapper(lst: list[Any], kwargs: dict[str, Any]) -> Any:
         return fn(*lst, **kwargs)
     return wrapper
 
