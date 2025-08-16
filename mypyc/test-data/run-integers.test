@@ -572,3 +572,12 @@ class subc(int):
 [file userdefinedint.py]
 class int:
     pass
+
+[case testIntToBytes]
+def to_bytes(n: int, length: int, byteorder: str, signed: bool = False) -> bytes:
+    return n.to_bytes(length, byteorder, signed=signed)
+def test_to_bytes() -> None:
+    assert to_bytes(255, 2, "big") == b'\x00\xff'
+    assert to_bytes(255, 2, "little") == b'\xff\x00'
+    assert to_bytes(-1, 2, "big", True) == b'\xff\xff'
+    assert to_bytes(0, 1, "big") == b'\x00'
