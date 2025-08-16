@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable, cast
-from typing_extensions import NewType, TypeGuard
+from typing_extensions import NewType, TypeGuard, TypeIs
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
@@ -278,11 +278,12 @@ class ArgTypeExpander:
             return original_actual
 
     def is_iterable(self, typ: Type) -> bool:
+        """Check if the type is an iterable, i.e. implements the Iterable Protocol."""
         from mypy.subtypes import is_subtype
 
         return is_subtype(typ, self.context.iterable_type)
 
-    def is_iterable_instance_type(self, typ: Type) -> TypeGuard[IterableType]:
+    def is_iterable_instance_type(self, typ: Type) -> TypeIs[IterableType]:
         """Check if the type is an Iterable[T]."""
         p_t = get_proper_type(typ)
         return isinstance(p_t, Instance) and p_t.type == self.context.iterable_type.type
@@ -300,8 +301,6 @@ class ArgTypeExpander:
         from mypy.nodes import ARG_POS
         from mypy.solve import solve_constraints
 
-        iterable_kind = self.context.iterable_type.type
-
         # We first create an upcast function:
         #    def [T] (Iterable[T]) -> Iterable[T]: ...
         # and then solve for T, given the input type as the argument.
@@ -310,21 +309,20 @@ class ArgTypeExpander:
             "T",
             TypeVarId(-1),
             values=[],
-            upper_bound=AnyType(TypeOfAny.special_form),
-            default=AnyType(TypeOfAny.special_form),
+            upper_bound=AnyType(TypeOfAny.from_omitted_generics),
+            default=AnyType(TypeOfAny.from_omitted_generics),
         )
-        target = Instance(iterable_kind, [T])
-
+        target = self._make_iterable_instance_type(T)
         upcast_callable = CallableType(
             variables=[T],
             arg_types=[target],
             arg_kinds=[ARG_POS],
             arg_names=[None],
-            ret_type=T,
+            ret_type=target,
             fallback=self.context.function_type,
         )
         constraints = infer_constraints_for_callable(
-            upcast_callable, [typ], [ARG_POS], [None], [[0]], context=self.context
+            upcast_callable, [typ], [ARG_POS], [None], [[0]], self.context
         )
 
         (sol,), _ = solve_constraints([T], constraints)
@@ -334,7 +332,11 @@ class ArgTypeExpander:
         return self._make_iterable_instance_type(sol)
 
     def as_iterable_type(self, typ: Type) -> IterableType | AnyType:
-        """Reinterpret a type as Iterable[T], or return AnyType if not possible."""
+        """Reinterpret a type as Iterable[T], or return AnyType if not possible.
+
+        This function specially handles certain types like UnionType, TupleType, and UnpackType.
+        Otherwise, the upcasting is performed using the solver.
+        """
         p_t = get_proper_type(typ)
         if self.is_iterable_instance_type(p_t) or isinstance(p_t, AnyType):
             return p_t
@@ -386,8 +388,8 @@ class ArgTypeExpander:
     ) -> TupleType | IterableType | ParamSpecType | AnyType:
         """Parse the type of a ``*args`` argument.
 
-        Returns one of TupleType, IterableType, ParamSpecType,
-        or AnyType(TypeOfAny.from_error) if the type cannot be parsed or is invalid.
+        Returns one of TupleType, IterableType, ParamSpecType or AnyType.
+        Returns AnyType(TypeOfAny.from_error) if the type cannot be parsed or is invalid.
         """
         p_t = get_proper_type(typ)
         if isinstance(p_t, (TupleType, ParamSpecType, AnyType)):
