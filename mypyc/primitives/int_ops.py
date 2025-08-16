@@ -305,3 +305,12 @@ isinstance_int = function_op(
     c_function_name="PyLong_Check",
     error_kind=ERR_NEVER,
 )
+
+# int.bit_length()
+method_op(
+    name="bit_length",
+    arg_types=[int_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyInt_BitLength",
+    error_kind=ERR_MAGIC,
+)

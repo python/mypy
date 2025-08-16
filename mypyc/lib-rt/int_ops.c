@@ -581,3 +581,24 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
     }
     return 1.0;
 }
+
+// int.bit_length()
+CPyTagged CPyInt_BitLength(CPyTagged self) {
+    PyObject *pyint = CPyTagged_StealAsObject(self);
+    if (!PyLong_Check(pyint)) {
+        Py_DECREF(pyint);
+        PyErr_SetString(PyExc_TypeError, "self must be int");
+        return CPY_INT_TAG;
+    }
+    PyObject *res = PyObject_CallMethod(pyint, "bit_length", NULL);
+    Py_DECREF(pyint);
+    if (!res) {
+        return CPY_INT_TAG;
+    }
+    long value = PyLong_AsLong(res);
+    Py_DECREF(res);
+    if (value == -1 && PyErr_Occurred()) {
+        return CPY_INT_TAG;
+    }
+    return value << 1;
+}
