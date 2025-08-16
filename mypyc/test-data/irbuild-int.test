@@ -216,8 +216,7 @@ def f(x: int) -> int:
     return x.bit_length()
 [out]
 def f(x):
-    x :: int
-    r0 :: int
+    x, r0 :: int
 L0:
-    r0 = int_bit_length x
+    r0 = CPyTagged_BitLength(x)
     return r0
