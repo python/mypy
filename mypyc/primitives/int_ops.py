@@ -311,6 +311,6 @@ method_op(
     name="bit_length",
     arg_types=[int_rprimitive],
     return_type=int_rprimitive,
-    c_function_name="CPyInt_BitLength",
+    c_function_name="CPyTagged_BitLength",
     error_kind=ERR_MAGIC,
 )

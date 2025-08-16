@@ -583,7 +583,7 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
 }
 
 // int.bit_length()
-CPyTagged CPyInt_BitLength(CPyTagged self) {
+CPyTagged CPyTagged_BitLength(CPyTagged self) {
     PyObject *pyint = CPyTagged_StealAsObject(self);
     if (!PyLong_Check(pyint)) {
         Py_DECREF(pyint);
