@@ -303,7 +303,7 @@ L2:
     __main__.C = r27 :: type
     r33 = __main__.globals :: static
     r34 = 'C'
-    r35 = CPyDict_SetItem(r33, r34, r27)
+    r35 = PyDict_SetItem(r33, r34, r27)
     r36 = r35 >= 0 :: signed
     r37 = <error> :: object
     r38 = '__main__'
@@ -316,7 +316,7 @@ L2:
     __main__.S = r40 :: type
     r45 = __main__.globals :: static
     r46 = 'S'
-    r47 = CPyDict_SetItem(r45, r46, r40)
+    r47 = PyDict_SetItem(r45, r46, r40)
     r48 = r47 >= 0 :: signed
     r49 = __main__.C :: type
     r50 = __main__.S :: type
@@ -340,7 +340,7 @@ L2:
     __main__.D = r61 :: type
     r68 = __main__.globals :: static
     r69 = 'D'
-    r70 = CPyDict_SetItem(r68, r69, r61)
+    r70 = PyDict_SetItem(r68, r69, r61)
     r71 = r70 >= 0 :: signed
     return 1
 
