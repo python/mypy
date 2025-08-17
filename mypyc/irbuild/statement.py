@@ -117,6 +117,7 @@ from mypyc.primitives.generic_ops import iter_op, next_op, next_raw_op, py_delat
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
+    debug_print_op,
     import_from_many_op,
     import_many_op,
     import_op,
@@ -1036,26 +1037,27 @@ def _transform_with_contextmanager(
     def except_body() -> None:
         exc_original = builder.call_c(get_exc_value_op, [], line)
 
-        builder.py_call(builder.py_get_attr(gen, "throw", line), [], line)
-        err_occurred = builder.call_c(err_occurred_op, [], line)
-
         error_block, no_error_block = BasicBlock(), BasicBlock()
-        builder.add(Branch(err_occurred, error_block, no_error_block, Branch.BOOL))
+
+        builder.builder.push_error_handler(error_block)
+        builder.goto_and_activate(BasicBlock())
+        builder.py_call(builder.py_get_attr(gen, "throw", line), [exc_original], line)
+        builder.goto(no_error_block)
+        builder.builder.pop_error_handler()
+
+        builder.activate_block(no_error_block)
+        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop after throw()", line))
+        builder.add(Unreachable())
 
         builder.activate_block(error_block)
-
         stop_iteration = builder.call_c(check_stop_op, [], line)
-        is_same_exc = builder.binary_op(stop_iteration, exc_original, "is", line)
+        is_same_exc = builder.binary_op(stop_iteration, exc_original, "==", line)
 
         suppress_block, propagate_block = BasicBlock(), BasicBlock()
         builder.add(Branch(is_same_exc, suppress_block, propagate_block, Branch.BOOL))
 
         builder.activate_block(propagate_block)
         builder.call_c(keep_propagating_op, [], line)
-        builder.add(Unreachable())
-
-        builder.activate_block(no_error_block)
-        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop after throw()", line))
         builder.add(Unreachable())
 
         builder.activate_block(suppress_block)
