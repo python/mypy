@@ -81,6 +81,7 @@ class int:
     def __gt__(self, n: int) -> bool: pass
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
+    def to_bytes(self, length: int, order: Literal["small", "big"], signed: bool = False) -> bytes: pass
 
 class str:
     @overload
@@ -123,7 +124,6 @@ class str:
     def removesuffix(self, suffix: str, /) -> str: ...
     def islower(self) -> bool: ...
     def count(self, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int: pass
-    def to_bytes(self, length: int, order: Literal["small", "big"], signed: bool = False) -> bytes: pass
 
 class float:
     def __init__(self, x: object) -> None: pass
