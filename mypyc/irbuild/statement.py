@@ -101,23 +101,21 @@ from mypyc.irbuild.targets import (
 )
 from mypyc.primitives.exc_ops import (
     error_catch_op,
+    error_clear_op,
     exc_matches_op,
     get_exc_info_op,
     get_exc_value_op,
     keep_propagating_op,
-    err_occurred_op,
     no_err_occurred_op,
     propagate_if_error_op,
     raise_exception_op,
     reraise_exception_op,
     restore_exc_info_op,
-    error_clear_op,
 )
-from mypyc.primitives.generic_ops import iter_op, next_op, next_raw_op, py_delattr_op
+from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
-    debug_print_op,
     import_from_many_op,
     import_many_op,
     import_op,
@@ -993,7 +991,10 @@ def _transform_with_contextmanager(
 
     # mgrv = ctx.__wrapped__(*args, **kwargs)
     wrapped_call = mypy.nodes.CallExpr(
-        mypy.nodes.MemberExpr(expr.callee, "__wrapped__"), expr.args, expr.arg_kinds, expr.arg_names
+        mypy.nodes.MemberExpr(expr.callee, "__wrapped__"),
+        expr.args,
+        expr.arg_kinds,
+        expr.arg_names,
     )
     wrapped_call.line = line
     gen = builder.accept(wrapped_call)
@@ -1008,7 +1009,9 @@ def _transform_with_contextmanager(
     builder.add(Branch(mgr_target, runtime_block, main_block, Branch.IS_ERROR))
 
     builder.activate_block(runtime_block)
-    builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't yield", line))
+    builder.add(
+        RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't yield", line)
+    )
     builder.add(Unreachable())
 
     builder.activate_block(main_block)
@@ -1047,7 +1050,11 @@ def _transform_with_contextmanager(
         builder.builder.pop_error_handler()
 
         builder.activate_block(no_error_block)
-        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop after throw()", line))
+        builder.add(
+            RaiseStandardError(
+                RaiseStandardError.RUNTIME_ERROR, "generator didn't stop after throw()", line
+            )
+        )
         builder.add(Unreachable())
 
         builder.activate_block(error_block)
@@ -1086,20 +1093,16 @@ def _transform_with_contextmanager(
         builder.activate_block(close_block)
         # TODO: this isn't exactly the right order
         builder.py_call(builder.py_get_attr(gen, "close", line), [], line)
-        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop", line))
+        builder.add(
+            RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop", line)
+        )
         builder.add(Unreachable())
 
         builder.activate_block(stop_block)
         # TODO: should check for StopIteration
         builder.call_c(error_clear_op, [], -1)
 
-    transform_try_except(
-        builder,
-        try_body,
-        handlers,
-        else_body,
-        line,
-    )
+    transform_try_except(builder, try_body, handlers, else_body, line)
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
