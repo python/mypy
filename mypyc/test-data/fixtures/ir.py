@@ -4,7 +4,7 @@
 import _typeshed
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
-    overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol, Literal,
+    overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol,
 )
 
 _T = TypeVar('_T')
@@ -81,7 +81,7 @@ class int:
     def __gt__(self, n: int) -> bool: pass
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
-    def to_bytes(self, length: int, order: Literal["small", "big"], signed: bool = False) -> bytes: pass
+    def to_bytes(self, length: int, order: str, signed: bool = False) -> bytes: pass
 
 class str:
     @overload
