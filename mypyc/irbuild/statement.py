@@ -111,7 +111,7 @@ from mypyc.primitives.exc_ops import (
     reraise_exception_op,
     restore_exc_info_op,
 )
-from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
+from mypyc.primitives.generic_ops import iter_op, next_op, next_raw_op, py_delattr_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
@@ -887,6 +887,19 @@ def transform_with(
     is_async: bool,
     line: int,
 ) -> None:
+
+    if (
+        not is_async
+        and isinstance(expr, mypy.nodes.CallExpr)
+        and isinstance(expr.callee, mypy.nodes.RefExpr)
+        and isinstance(dec := expr.callee.node, mypy.nodes.Decorator)
+        and len(dec.decorators) == 1
+        and isinstance(dec1 := dec.decorators[0], mypy.nodes.RefExpr)
+        and dec1.node
+        and dec1.node.fullname == "contextlib.contextmanager"
+    ):
+        return _transform_with_contextmanager(builder, expr, target, body, line)
+
     # This is basically a straight transcription of the Python code in PEP 343.
     # I don't actually understand why a bunch of it is the way it is.
     # We could probably optimize the case where the manager is compiled by us,
@@ -960,6 +973,102 @@ def transform_with(
         builder,
         lambda: transform_try_except(builder, try_body, [(None, None, except_body)], None, line),
         finally_body,
+        line,
+    )
+
+
+def _transform_with_contextmanager(
+    builder: IRBuilder,
+    expr: mypy.nodes.CallExpr,
+    target: Lvalue | None,
+    with_body: GenFunc,
+    line: int,
+) -> None:
+    assert isinstance(expr.callee, mypy.nodes.RefExpr)
+    dec = expr.callee.node
+    assert isinstance(dec, mypy.nodes.Decorator)
+
+    # mgrv = ctx.__wrapped__(*args, **kwargs)
+    wrapped_call = mypy.nodes.CallExpr(
+        mypy.nodes.MemberExpr(expr.callee, "__wrapped__"), expr.args, expr.arg_kinds, expr.arg_names
+    )
+    gen = builder.accept(wrapped_call)
+
+    # try:
+    #   target = next(gen)
+    # except StopIteration:
+    #     raise RuntimeError("generator didn't yield") from None
+    mgr_target = builder.call_c(next_raw_op, [gen], line)
+
+    runtime_block, main_block = BasicBlock(), BasicBlock()
+    builder.add(Branch(mgr_target, runtime_block, main_block, Branch.IS_ERROR))
+
+    builder.activate_block(runtime_block)
+    builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't yield", line))
+    builder.add(Unreachable())
+
+    builder.activate_block(main_block)
+
+    # try:
+    #     {body}
+
+    def try_body() -> None:
+        if target:
+            builder.assign(builder.get_assignment_target(target), mgr_target, line)
+        with_body()
+
+    # except Exception as e:
+    #     exc = True
+    #     try:
+    #         gen.throw(e)
+    #     except StopIteration as e2:
+    #         if e2 is not e:
+    #             raise
+    #         return
+    #     except RuntimeError:
+    #         # TODO: some other stuff
+    #         ...
+    #     except BaseException:
+    #         # TODO: some other stuff
+    #         ...
+
+    def except_body() -> None:
+        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "TODO", line))
+        builder.add(Unreachable())
+
+    # TODO: actually do the exceptions
+    handlers = [(None, None, except_body)]
+
+    # else:
+    #     try:
+    #         next(gen)
+    #     except StopIteration:
+    #         pass
+    #     else:
+    #         try:
+    #             raise RuntimeError("generator didn't stop")
+    #         finally:
+    #             gen.close()
+
+    def else_body() -> None:
+        value = builder.call_c(next_raw_op, [builder.read(gen)], line)
+        stop_block, close_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(value, stop_block, close_block, Branch.IS_ERROR))
+
+        builder.activate_block(close_block)
+        # TODO: this isn't exactly the right order
+        builder.py_call(builder.py_get_attr(gen, "close", line), [], line)
+        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop", line))
+        builder.add(Unreachable())
+
+        builder.activate_block(stop_block)
+        builder.call_c(error_catch_op, [], -1)
+
+    transform_try_except(
+        builder,
+        try_body,
+        handlers,
+        else_body,
         line,
     )
 
