@@ -219,5 +219,5 @@ def f(x):
     x :: int
     r0 :: bytes
 L0:
-    r0 = int_to_bytes x, 2, 'big', 0
+    r0 = CPyTagged_ToBytes(x, 4, 'big', 0)
     return r0
