@@ -9258,3 +9258,18 @@ main:5: note:     def __eq__(self, other: object) -> bool:
 main:5: note:         if not isinstance(other, C):
 main:5: note:             return NotImplemented
 main:5: note:         return <logic to compare two C instances>
+
+[case testLambdaInAttributeCallValue]
+# https://github.com/python/mypy/issues/19632
+import foo
+
+def nop(fn: object) -> foo.Bar:
+    return foo.Bar()
+
+class Bar:
+    foo: foo.Bar = nop(
+        lambda: 0
+    )
+[file foo.py]
+class Bar:
+    ...

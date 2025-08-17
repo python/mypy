@@ -351,7 +351,7 @@ L17:
     k = r49
     v = r50
     r51 = box(int, v)
-    r52 = CPyDict_SetItem(r40, k, r51)
+    r52 = PyDict_SetItem(r40, k, r51)
     r53 = r52 >= 0 :: signed
 L18:
     r54 = CPyDict_CheckSize(m, r42)
@@ -493,7 +493,7 @@ L17:
     r49 = cast(union[int, str], r47)
     k = r48
     v = r49
-    r50 = CPyDict_SetItem(r39, k, v)
+    r50 = PyDict_SetItem(r39, k, v)
     r51 = r50 >= 0 :: signed
 L18:
     r52 = CPyDict_CheckSize(m, r41)
@@ -630,7 +630,7 @@ L17:
     r47 = cast(str, r45)
     k = r47
     v = r46
-    r48 = CPyDict_SetItem(r38, k, v)
+    r48 = PyDict_SetItem(r38, k, v)
     r49 = r48 >= 0 :: signed
 L18:
     r50 = CPyDict_CheckSize(t, r40)
