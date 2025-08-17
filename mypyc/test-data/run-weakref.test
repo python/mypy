@@ -43,7 +43,6 @@ test_weakref_ref_with_callback()
 
 
 [case testWeakrefProxy]
-import pytest  # type: ignore [import-not-found]
 from weakref import proxy
 from mypy_extensions import mypyc_attr
 
@@ -60,7 +59,7 @@ def test_weakref_proxy():
     assert p.some_meth() == 1
     obj.some_meth()
     obj = None
-    with pytest.raises(ReferenceError):
+    with assertRaises(ReferenceError):
         p.some_meth()
 
 [builtins fixtures/test-weakref.pyi]
@@ -71,7 +70,6 @@ test_weakref_proxy()
 
 
 [case testWeakrefProxyWithCallback]
-import pytest  # type: ignore [import-not-found]
 from weakref import proxy
 from mypy_extensions import mypyc_attr
 
@@ -88,7 +86,7 @@ def test_weakref_proxy_with_callback():
     assert p.some_meth() == 1
     obj.some_meth()
     obj = None
-    with pytest.raises(ReferenceError):
+    with assertRaises(ReferenceError):
         p.some_meth()
 
 [builtins fixtures/test-weakref.pyi]
