@@ -214,6 +214,8 @@ L0:
 [case testIntToBytes]
 def f(x: int) -> bytes:
     return x.to_bytes(2, "big")
+def g(x: int) -> bytes:
+    return x.to_bytes(4, "little", True)
 [out]
 def f(x):
     x :: int
@@ -221,5 +223,13 @@ def f(x):
     r1 :: bytes
 L0:
     r0 = 'big'
-    r1 = CPyTagged_ToBytes(x, 4, r1, 0)
-    return r0
+    r1 = CPyTagged_ToBytes(x, 4, r0, 0)
+    return r1
+def g(x):
+    x :: int
+    r0 :: str
+    r1 :: bytes
+L0:
+    r0 = 'little'
+    r1 = CPyTagged_ToBytes(x, 8, r0, 1)
+    return r1
