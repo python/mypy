@@ -1,12 +1,14 @@
 # Test cases for weakrefs (compile and run)
 
 [case testWeakrefRef]
-from weakref import ref
+from weakref import proxy, ref
 from mypy_extensions import mypyc_attr
 
 @mypyc_attr(native_class=False)
 class Object:
     """some random weakreffable object"""
+    def some_meth(self) -> int:
+        return 1
 
 def test_weakref_ref():
     obj = Object()
@@ -15,32 +17,12 @@ def test_weakref_ref():
     obj = None
     assert r() is None, r()
 
-
-[case testWeakrefRefWithCallback]
-from weakref import ref
-from mypy_extensions import mypyc_attr
-
-@mypyc_attr(native_class=False)
-class Object:
-    """some random weakreffable object"""
-
 def test_weakref_ref_with_callback():
     obj = Object()
     r = ref(obj, lambda x: x)
     assert r() is obj
     obj = None
     assert r() is None, r()
-
-
-[case testWeakrefProxy]
-from weakref import proxy
-from mypy_extensions import mypyc_attr
-
-@mypyc_attr(native_class=False)
-class Object:
-    """some random weakreffable object"""
-    def some_meth(self) -> int:
-        return 1
 
 def test_weakref_proxy():
     obj = Object()
@@ -51,19 +33,6 @@ def test_weakref_proxy():
     obj = None
     with assertRaises(ReferenceError):
         p.some_meth()
-
-[builtins fixtures/test-weakref.pyi]
-
-
-[case testWeakrefProxyWithCallback]
-from weakref import proxy
-from mypy_extensions import mypyc_attr
-
-@mypyc_attr(native_class=False)
-class Object:
-    """some random weakreffable object"""
-    def some_meth(self) -> int:
-        return 1
 
 def test_weakref_proxy_with_callback():
     obj = Object()
