@@ -105,11 +105,13 @@ from mypyc.primitives.exc_ops import (
     get_exc_info_op,
     get_exc_value_op,
     keep_propagating_op,
+    err_occurred_op,
     no_err_occurred_op,
     propagate_if_error_op,
     raise_exception_op,
     reraise_exception_op,
     restore_exc_info_op,
+    error_clear_op,
 )
 from mypyc.primitives.generic_ops import iter_op, next_op, next_raw_op, py_delattr_op
 from mypyc.primitives.misc_ops import (
@@ -1018,7 +1020,6 @@ def _transform_with_contextmanager(
         with_body()
 
     # except Exception as e:
-    #     exc = True
     #     try:
     #         gen.throw(e)
     #     except StopIteration as e2:
@@ -1026,15 +1027,39 @@ def _transform_with_contextmanager(
     #             raise
     #         return
     #     except RuntimeError:
-    #         # TODO: some other stuff
-    #         ...
+    #         # TODO: check the traceback munging
+    #         raise
     #     except BaseException:
-    #         # TODO: some other stuff
-    #         ...
+    #         # approximately
+    #         raise
 
     def except_body() -> None:
-        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "TODO", line))
+        exc_original = builder.call_c(get_exc_value_op, [], line)
+
+        builder.py_call(builder.py_get_attr(gen, "throw", line), [], line)
+        err_occurred = builder.call_c(err_occurred_op, [], line)
+
+        error_block, no_error_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(err_occurred, error_block, no_error_block, Branch.BOOL))
+
+        builder.activate_block(error_block)
+
+        stop_iteration = builder.call_c(check_stop_op, [], line)
+        is_same_exc = builder.binary_op(stop_iteration, exc_original, "is", line)
+
+        suppress_block, propagate_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(is_same_exc, suppress_block, propagate_block, Branch.BOOL))
+
+        builder.activate_block(propagate_block)
+        builder.call_c(keep_propagating_op, [], line)
         builder.add(Unreachable())
+
+        builder.activate_block(no_error_block)
+        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR, "generator didn't stop after throw()", line))
+        builder.add(Unreachable())
+
+        builder.activate_block(suppress_block)
+        builder.call_c(error_clear_op, [], -1)
 
     # TODO: actually do the exceptions
     handlers = [(None, None, except_body)]
@@ -1062,7 +1087,8 @@ def _transform_with_contextmanager(
         builder.add(Unreachable())
 
         builder.activate_block(stop_block)
-        builder.call_c(error_catch_op, [], -1)
+        # TODO: should check for StopIteration
+        builder.call_c(error_clear_op, [], -1)
 
     transform_try_except(
         builder,
