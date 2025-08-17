@@ -10,6 +10,8 @@ class Object:
     def some_meth(self) -> int:
         return 1
 
+_callback_called_cache: dict[str, bool] = {"ref": False, "proxy": False}
+
 def test_weakref_ref():
     obj = Object()
     r = ref(obj)
@@ -19,10 +21,11 @@ def test_weakref_ref():
 
 def test_weakref_ref_with_callback():
     obj = Object()
-    r = ref(obj, lambda x: x)
+    r = ref(obj, lambda x: _callback_called_cache["ref"] = True)
     assert r() is obj
     obj = None
     assert r() is None, r()
+    assert _callback_called_cache["ref"] is True
 
 def test_weakref_proxy():
     obj = Object()
@@ -36,12 +39,13 @@ def test_weakref_proxy():
 
 def test_weakref_proxy_with_callback():
     obj = Object()
-    p = proxy(obj, lambda x: x)
+    p = proxy(obj, lambda x: _callback_called_cache["proxy"] = True)
     assert obj.some_meth() == 1
     assert p.some_meth() == 1
     obj.some_meth()
     obj = None
     with assertRaises(ReferenceError):
         p.some_meth()
+    assert _callback_called_cache["proxy"] is True
 
 [builtins fixtures/test-weakref.pyi]
