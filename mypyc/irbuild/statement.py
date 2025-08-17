@@ -995,6 +995,7 @@ def _transform_with_contextmanager(
     wrapped_call = mypy.nodes.CallExpr(
         mypy.nodes.MemberExpr(expr.callee, "__wrapped__"), expr.args, expr.arg_kinds, expr.arg_names
     )
+    wrapped_call.line = line
     gen = builder.accept(wrapped_call)
 
     # try:
