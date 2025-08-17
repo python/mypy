@@ -94,7 +94,7 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.int_ops import isinstance_int
-from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op, list_append_op
+from mypyc.primitives.list_ops import isinstance_list, list_append_op, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
@@ -296,7 +296,8 @@ def translate_list_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], CallExpr)
         and isinstance(expr.args[0].callee, NameExpr)
-        and expr.args[0].callee.fullname in (
+        and expr.args[0].callee.fullname
+        in (
             # TODO: make constant for these vals
             "builtins.map",
             "builtins.filter",
@@ -307,7 +308,7 @@ def translate_list_from_generator_call(
         itemtype = builder._analyze_iterable_item_type(call_expr)
         indextype = builder.type_to_rtype(itemtype)
         index = Register(indextype, "__mypyc_list_helper__", line=call_expr.line)
-        
+
         result = builder.new_list_op([], expr.line)
 
         def body_insts():
