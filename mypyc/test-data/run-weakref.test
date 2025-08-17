@@ -15,11 +15,6 @@ def test_weakref_ref():
     obj = None
     assert r() is None, r()
 
-[file driver.py]
-from native import test_weakref_ref
-
-test_weakref_ref()
-
 
 [case testWeakrefRefWithCallback]
 from weakref import ref
@@ -35,11 +30,6 @@ def test_weakref_ref_with_callback():
     assert r() is obj
     obj = None
     assert r() is None, r()
-
-[file driver.py]
-from native import test_weakref_ref_with_callback
-
-test_weakref_ref_with_callback()
 
 
 [case testWeakrefProxy]
@@ -63,10 +53,6 @@ def test_weakref_proxy():
         p.some_meth()
 
 [builtins fixtures/test-weakref.pyi]
-[file driver.py]
-from native import test_weakref_proxy
-
-test_weakref_proxy()
 
 
 [case testWeakrefProxyWithCallback]
@@ -90,7 +76,3 @@ def test_weakref_proxy_with_callback():
         p.some_meth()
 
 [builtins fixtures/test-weakref.pyi]
-[file driver.py]
-from native import test_weakref_proxy_with_callback
-
-test_weakref_proxy_with_callback()
