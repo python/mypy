@@ -34,15 +34,16 @@ from mypy_extensions import trait
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
+    RStruct,
     RTuple,
     RType,
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
+    cstring_rprimitive,
     float_rprimitive,
     int_rprimitive,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
@@ -228,6 +229,40 @@ class Float(Value):
         self.value = value
         self.type = float_rprimitive
         self.line = line
+
+
+@final
+class CString(Value):
+    """C string literal (zero-terminated).
+
+    You can also include zero values in the value, but then you'll need to track
+    the length of the string separately.
+    """
+
+    def __init__(self, value: bytes, line: int = -1) -> None:
+        self.value = value
+        self.type = cstring_rprimitive
+        self.line = line
+
+
+@final
+class Undef(Value):
+    """An undefined value.
+
+    Use Undef() as the initial value followed by one or more SetElement
+    ops to initialize a struct. Pseudocode example:
+
+      r0 = set_element undef MyStruct, "field1", f1
+      r1 = set_element r0, "field2", f2
+      # r1 now has new struct value with two fields set
+
+    Warning: Always initialize undefined values before using them,
+    as otherwise the values are garbage. You shouldn't expect that
+    undefined values are zeroed, in particular.
+    """
+
+    def __init__(self, rtype: RType) -> None:
+        self.type = rtype
 
 
 class Op(Value):
@@ -811,17 +846,23 @@ class GetAttr(RegisterOp):
     error_kind = ERR_MAGIC
 
     def __init__(
-        self, obj: Value, attr: str, line: int, *, borrow: bool = False, allow_null: bool = False
+        self,
+        obj: Value,
+        attr: str,
+        line: int,
+        *,
+        borrow: bool = False,
+        allow_error_value: bool = False,
     ) -> None:
         super().__init__(line)
         self.obj = obj
         self.attr = attr
-        self.allow_null = allow_null
+        self.allow_error_value = allow_error_value
         assert isinstance(obj.type, RInstance), "Attribute access not supported: %s" % obj.type
         self.class_type = obj.type
         attr_type = obj.type.attr_type(attr)
         self.type = attr_type
-        if allow_null:
+        if allow_error_value:
             self.error_kind = ERR_NEVER
         elif attr_type.error_overlap:
             self.error_kind = ERR_MAGIC_OVERLAPPING
@@ -1068,11 +1109,7 @@ class Box(RegisterOp):
         self.src = src
         self.type = object_rprimitive
         # When we box None and bool values, we produce a borrowed result
-        if (
-            is_none_rprimitive(self.src.type)
-            or is_bool_rprimitive(self.src.type)
-            or is_bit_rprimitive(self.src.type)
-        ):
+        if is_none_rprimitive(self.src.type) or is_bool_or_bit_rprimitive(self.src.type):
             self.is_borrowed = True
 
     def sources(self) -> list[Value]:
@@ -1542,14 +1579,13 @@ class LoadMem(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, line: int = -1, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.type = type
-        # TODO: for now we enforce that the src memory address should be Py_ssize_t
-        #       later we should also support same width unsigned int
+        # TODO: Support other native integer types
         assert is_pointer_rprimitive(src.type)
         self.src = src
-        self.is_borrowed = True
+        self.is_borrowed = borrow and type.is_refcounted
 
     def sources(self) -> list[Value]:
         return [self.src]
@@ -1618,6 +1654,39 @@ class GetElementPtr(RegisterOp):
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_get_element_ptr(self)
+
+
+@final
+class SetElement(RegisterOp):
+    """Set the value of a struct element.
+
+    This evaluates to a new struct with the changed value.
+
+    Use together with Undef to initialize a fresh struct value
+    (see Undef for more details).
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, field: str, item: Value, line: int = -1) -> None:
+        super().__init__(line)
+        assert isinstance(src.type, RStruct), src.type
+        self.type = src.type
+        self.src = src
+        self.item = item
+        self.field = field
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
+    def stolen(self) -> list[Value]:
+        return [self.src]
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_set_element(self)
 
 
 @final
@@ -1890,6 +1959,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_get_element_ptr(self, op: GetElementPtr) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_set_element(self, op: SetElement) -> T:
         raise NotImplementedError
 
     @abstractmethod

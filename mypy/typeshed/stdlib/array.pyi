@@ -3,11 +3,14 @@ from _typeshed import ReadableBuffer, SupportsRead, SupportsWrite
 from collections.abc import Iterable, MutableSequence
 from types import GenericAlias
 from typing import Any, ClassVar, Literal, SupportsIndex, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, deprecated
 
 _IntTypeCode: TypeAlias = Literal["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q"]
 _FloatTypeCode: TypeAlias = Literal["f", "d"]
-_UnicodeTypeCode: TypeAlias = Literal["u"]
+if sys.version_info >= (3, 13):
+    _UnicodeTypeCode: TypeAlias = Literal["u", "w"]
+else:
+    _UnicodeTypeCode: TypeAlias = Literal["u"]
 _TypeCode: TypeAlias = _IntTypeCode | _FloatTypeCode | _UnicodeTypeCode
 
 _T = TypeVar("_T", int, float, str)
@@ -27,10 +30,23 @@ class array(MutableSequence[_T]):
     def __new__(
         cls: type[array[float]], typecode: _FloatTypeCode, initializer: bytes | bytearray | Iterable[float] = ..., /
     ) -> array[float]: ...
-    @overload
-    def __new__(
-        cls: type[array[str]], typecode: _UnicodeTypeCode, initializer: bytes | bytearray | Iterable[str] = ..., /
-    ) -> array[str]: ...
+    if sys.version_info >= (3, 13):
+        @overload
+        def __new__(
+            cls: type[array[str]], typecode: Literal["w"], initializer: bytes | bytearray | Iterable[str] = ..., /
+        ) -> array[str]: ...
+        @overload
+        @deprecated("Deprecated since Python 3.3; will be removed in Python 3.16. Use 'w' typecode instead.")
+        def __new__(
+            cls: type[array[str]], typecode: Literal["u"], initializer: bytes | bytearray | Iterable[str] = ..., /
+        ) -> array[str]: ...
+    else:
+        @overload
+        @deprecated("Deprecated since Python 3.3; will be removed in Python 3.16.")
+        def __new__(
+            cls: type[array[str]], typecode: Literal["u"], initializer: bytes | bytearray | Iterable[str] = ..., /
+        ) -> array[str]: ...
+
     @overload
     def __new__(cls, typecode: str, initializer: Iterable[_T], /) -> Self: ...
     @overload
@@ -58,6 +74,7 @@ class array(MutableSequence[_T]):
     def tounicode(self) -> str: ...
 
     __hash__: ClassVar[None]  # type: ignore[assignment]
+    def __contains__(self, value: object, /) -> bool: ...
     def __len__(self) -> int: ...
     @overload
     def __getitem__(self, key: SupportsIndex, /) -> _T: ...

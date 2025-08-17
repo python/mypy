@@ -123,6 +123,7 @@ class str:
     def islower(self) -> bool: ...
     def lower(self) -> str: ...
     def upper(self) -> str: ...
+    def count(self, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int: pass
 
 class float:
     def __init__(self, x: object) -> None: pass
@@ -172,6 +173,7 @@ class bytes:
     def __getitem__(self, i: slice) -> bytes: ...
     def join(self, x: Iterable[object]) -> bytes: ...
     def decode(self, x: str=..., y: str=...) -> str: ...
+    def __iter__(self) -> Iterator[int]: ...
 
 class bytearray:
     @overload
@@ -351,7 +353,12 @@ class GeneratorExit(BaseException): pass
 
 def any(i: Iterable[_T]) -> bool: pass
 def all(i: Iterable[_T]) -> bool: pass
-def sum(i: Iterable[_T]) -> int: pass
+@overload
+def sum(i: Iterable[bool]) -> int: pass
+@overload
+def sum(i: Iterable[_T]) -> _T: pass
+@overload
+def sum(i: Iterable[_T], start: _T) -> _T: pass
 def reversed(object: Sequence[_T]) -> Iterator[_T]: ...
 def id(o: object) -> int: pass
 # This type is obviously wrong but the test stubs don't have Sized anymore

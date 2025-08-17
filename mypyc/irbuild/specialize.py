@@ -14,7 +14,7 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -31,6 +31,7 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     TupleExpr,
+    Var,
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
@@ -83,19 +84,26 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
+from mypyc.primitives.bytes_ops import isinstance_bytearray, isinstance_bytes
 from mypyc.primitives.dict_ops import (
     dict_items_op,
     dict_keys_op,
     dict_setdefault_spec_init_op,
     dict_values_op,
+    isinstance_dict,
 )
-from mypyc.primitives.list_ops import new_list_set_item_op
+from mypyc.primitives.float_ops import isinstance_float
+from mypyc.primitives.int_ops import isinstance_int
+from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
+from mypyc.primitives.misc_ops import isinstance_bool
+from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
+    isinstance_str,
     str_encode_ascii_strict,
     str_encode_latin1_strict,
     str_encode_utf8_strict,
 )
-from mypyc.primitives.tuple_ops import new_tuple_set_item_op
+from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -281,7 +289,7 @@ def translate_tuple_from_generator_call(
     """Special case for simplest tuple creation from a generator.
 
     For example:
-        tuple(f(x) for x in some_list/some_tuple/some_str)
+        tuple(f(x) for x in some_list/some_tuple/some_str/some_bytes)
     'translate_safe_generator_call()' would take care of other cases
     if this fails.
     """
@@ -546,6 +554,21 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
     return retval
 
 
+isinstance_primitives: Final = {
+    "builtins.bool": isinstance_bool,
+    "builtins.bytearray": isinstance_bytearray,
+    "builtins.bytes": isinstance_bytes,
+    "builtins.dict": isinstance_dict,
+    "builtins.float": isinstance_float,
+    "builtins.frozenset": isinstance_frozenset,
+    "builtins.int": isinstance_int,
+    "builtins.list": isinstance_list,
+    "builtins.set": isinstance_set,
+    "builtins.str": isinstance_str,
+    "builtins.tuple": isinstance_tuple,
+}
+
+
 @specialize_function("builtins.isinstance")
 def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for builtins.isinstance.
@@ -554,11 +577,10 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     there is no need to coerce something to a new type before checking
     what type it is, and the coercion could lead to bugs.
     """
-    if (
-        len(expr.args) == 2
-        and expr.arg_kinds == [ARG_POS, ARG_POS]
-        and isinstance(expr.args[1], (RefExpr, TupleExpr))
-    ):
+    if not (len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]):
+        return None
+
+    if isinstance(expr.args[1], (RefExpr, TupleExpr)):
         builder.types[expr.args[0]] = AnyType(TypeOfAny.from_error)
 
         irs = builder.flatten_classes(expr.args[1])
@@ -569,6 +591,15 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             )
             obj = builder.accept(expr.args[0], can_borrow=can_borrow)
             return builder.builder.isinstance_helper(obj, irs, expr.line)
+
+    if isinstance(expr.args[1], RefExpr):
+        node = expr.args[1].node
+        if node:
+            desc = isinstance_primitives.get(node.fullname)
+            if desc:
+                obj = builder.accept(expr.args[0])
+                return builder.primitive_op(desc, [obj], expr.line)
+
     return None
 
 
@@ -679,6 +710,22 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             elif isinstance(item, CallExpr):
                 format_ops.append(FormatOp.STR)
                 exprs.append(item.args[0])
+
+        def get_literal_str(expr: Expression) -> str | None:
+            if isinstance(expr, StrExpr):
+                return expr.value
+            elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_final:
+                return str(expr.node.final_value)
+            return None
+
+        for i in range(len(exprs) - 1):
+            while (
+                len(exprs) >= i + 2
+                and (first := get_literal_str(exprs[i])) is not None
+                and (second := get_literal_str(exprs[i + 1])) is not None
+            ):
+                exprs = [*exprs[:i], StrExpr(first + second), *exprs[i + 2 :]]
+                format_ops = [*format_ops[:i], FormatOp.STR, *format_ops[i + 2 :]]
 
         substitutions = convert_format_expr_to_str(builder, format_ops, exprs, expr.line)
         if substitutions is None:

@@ -167,6 +167,11 @@ class GeneratorClass(ImplicitClass):
         # Holds the arg passed to send
         self.send_arg_reg: Value | None = None
 
+        # Holds the PyObject ** pointer through which return value can be passed
+        # instead of raising StopIteration(ret_value) (only if not NULL). This
+        # is used for faster native-to-native calls.
+        self.stop_iter_value_reg: Value | None = None
+
         # The switch block is used to decide which instruction to go using the value held in the
         # next-label register.
         self.switch_block = BasicBlock()

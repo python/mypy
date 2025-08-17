@@ -1720,7 +1720,7 @@ from typing import Iterator, Callable, List, Optional
 from a import f
 import a
 
-def dec(f: Callable[['A'], Optional[Iterator[int]]]) -> Callable[[int], int]: pass
+def dec(f: Callable[['A'], Optional[Iterator[int]]]) -> Callable[['A', int], int]: pass
 
 class A:
     @dec
@@ -7312,9 +7312,7 @@ class C:
 ==
 mod.py:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testOverloadedMethodSupertype-only_when_cache]
--- Different cache/no-cache tests because
--- CallableType.def_extras.first_arg differs ("self"/None)
+[case testOverloadedMethodSupertype]
 from typing import overload, Any
 import b
 class Child(b.Parent):
@@ -7354,49 +7352,6 @@ main:4: note:          @overload
 main:4: note:          def f(self, arg: int) -> int
 main:4: note:          @overload
 main:4: note:          def f(self, arg: str) -> str
-
-[case testOverloadedMethodSupertype2-only_when_nocache]
--- Different cache/no-cache tests because
--- CallableType.def_extras.first_arg differs ("self"/None)
-from typing import overload, Any
-import b
-class Child(b.Parent):
-    @overload                           # Fail
-    def f(self, arg: int) -> int: ...
-    @overload
-    def f(self, arg: str) -> str: ...
-    def f(self, arg: Any) -> Any: ...
-[file b.py]
-from typing import overload, Any
-class C: pass
-class Parent:
-    @overload
-    def f(self, arg: int) -> int: ...
-    @overload
-    def f(self, arg: str) -> str: ...
-    def f(self, arg: Any) -> Any: ...
-[file b.py.2]
-from typing import overload, Any
-class C: pass
-class Parent:
-    @overload
-    def f(self, arg: int) -> int: ...
-    @overload
-    def f(self, arg: str) -> C: ...
-    def f(self, arg: Any) -> Any: ...
-[out]
-==
-main:4: error: Signature of "f" incompatible with supertype "b.Parent"
-main:4: note:      Superclass:
-main:4: note:          @overload
-main:4: note:          def f(self, arg: int) -> int
-main:4: note:          @overload
-main:4: note:          def f(self, arg: str) -> C
-main:4: note:      Subclass:
-main:4: note:          @overload
-main:4: note:          def f(arg: int) -> int
-main:4: note:          @overload
-main:4: note:          def f(arg: str) -> str
 
 [case testOverloadedInitSupertype]
 import a
@@ -8486,9 +8441,7 @@ class D:
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
 
-[case testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache]
--- Different cache/no-cache tests because
--- CallableType.def_extras.first_arg differs ("self"/None)
+[case testFinalBodyReprocessedAndStillFinalOverloaded]
 import a
 [file a.py]
 from c import C
@@ -8530,53 +8483,6 @@ a.py:3: note:          @overload
 a.py:3: note:          def meth(self, x: int) -> int
 a.py:3: note:          @overload
 a.py:3: note:          def meth(self, x: str) -> str
-a.py:3: note:      Subclass:
-a.py:3: note:          def meth(self) -> None
-
-[case testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache]
--- Different cache/no-cache tests because
--- CallableType.def_extras.first_arg differs ("self"/None)
-import a
-[file a.py]
-from c import C
-class A:
-    def meth(self) -> None: ...
-
-[file a.py.3]
-from c import C
-class A(C):
-    def meth(self) -> None: ...
-
-[file c.py]
-from typing import final, overload, Union
-from d import D
-
-class C:
-    @overload
-    def meth(self, x: int) -> int: ...
-    @overload
-    def meth(self, x: str) -> str: ...
-    @final
-    def meth(self, x: Union[int, str]) -> Union[int, str]:
-        D(int())
-        return x
-[file d.py]
-class D:
-    def __init__(self, x: int) -> None: ...
-[file d.py.2]
-from typing import Optional
-class D:
-    def __init__(self, x: Optional[int]) -> None: ...
-[out]
-==
-==
-a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
-a.py:3: error: Signature of "meth" incompatible with supertype "c.C"
-a.py:3: note:      Superclass:
-a.py:3: note:          @overload
-a.py:3: note:          def meth(x: int) -> int
-a.py:3: note:          @overload
-a.py:3: note:          def meth(x: str) -> str
 a.py:3: note:      Subclass:
 a.py:3: note:          def meth(self) -> None
 
@@ -11031,6 +10937,314 @@ main:6: error: class a.D is deprecated: use D2 instead
 main:7: error: class a.D is deprecated: use D2 instead
 b.py:1: error: class a.C is deprecated: use C2 instead
 b.py:2: error: class a.D is deprecated: use D2 instead
+
+
+[case testDeprecatedAddKeepChangeAndRemoveOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.3]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.4]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int, please")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.5]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+==
+
+
+[case testDeprecatedRemoveOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+
+
+[case testDeprecatedKeepOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+
+
+[case testDeprecatedAddOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+
+
+[case testDeprecatedChangeOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int, please")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+
+
+[case testDeprecatedRemoveOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+
+
+[case testDeprecatedOverloadedFunctionAlreadyDecorated]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import Callable, overload, Union
+
+def d(t: Callable[[str], str]) -> Callable[[str], str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+@d
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import Callable, overload, Union
+from typing_extensions import deprecated
+
+def d(t: Callable[[str], str]) -> Callable[[str], str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("deprecated decorated overload")
+@d
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: deprecated decorated overload
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: deprecated decorated overload
 
 
 [case testDeprecatedChangeClassDeprecationIndirectImport]

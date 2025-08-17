@@ -1,0 +1,223 @@
+[case testSignaturesBasic]
+def f1(): pass
+def f2(x): pass
+def f3(x, /): pass
+def f4(*, x): pass
+def f5(*x): pass
+def f6(**x): pass
+def f7(x=None): pass
+def f8(x=None, /): pass
+def f9(*, x=None): pass
+def f10(a, /, b, c=None, *args, d=None, **h): pass
+
+[file driver.py]
+import inspect
+from native import *
+
+assert str(inspect.signature(f1)) == "()"
+assert str(inspect.signature(f2)) == "(x)"
+assert str(inspect.signature(f3)) == "(x, /)"
+assert str(inspect.signature(f4)) == "(*, x)"
+assert str(inspect.signature(f5)) == "(*x)"
+assert str(inspect.signature(f6)) == "(**x)"
+assert str(inspect.signature(f7)) == "(x=None)"
+assert str(inspect.signature(f8)) == "(x=None, /)"
+assert str(inspect.signature(f9)) == "(*, x=None)"
+assert str(inspect.signature(f10)) == "(a, /, b, c=None, *args, d=None, **h)"
+
+for fn in [f1, f2, f3, f4, f5, f6, f7, f8, f9, f10]:
+    assert getattr(fn, "__doc__") is None
+
+[case testSignaturesValidDefaults]
+from typing import Final
+A: Final = 1
+
+def default_int(x=1): pass
+def default_str(x="a"): pass
+def default_float(x=1.0): pass
+def default_true(x=True): pass
+def default_false(x=False): pass
+def default_none(x=None): pass
+def default_tuple_empty(x=()): pass
+def default_tuple_literals(x=(1, "a", 1.0, False, True, None, (), (1,2,(3,4)))): pass
+def default_tuple_singleton(x=(1,)): pass
+def default_named_constant(x=A): pass
+
+[file driver.py]
+import inspect
+from native import *
+
+assert str(inspect.signature(default_int)) == "(x=1)"
+assert str(inspect.signature(default_str)) == "(x='a')"
+assert str(inspect.signature(default_float)) == "(x=1.0)"
+assert str(inspect.signature(default_true)) == "(x=True)"
+assert str(inspect.signature(default_false)) == "(x=False)"
+assert str(inspect.signature(default_none)) == "(x=None)"
+assert str(inspect.signature(default_tuple_empty)) == "(x=())"
+assert str(inspect.signature(default_tuple_literals)) == "(x=(1, 'a', 1.0, False, True, None, (), (1, 2, (3, 4))))"
+assert str(inspect.signature(default_named_constant)) == "(x=1)"
+
+# Check __text_signature__ directly since inspect.signature produces
+# an incorrect signature for 1-tuple default arguments prior to
+# Python 3.12 (cpython#102379).
+# assert str(inspect.signature(default_tuple_singleton)) == "(x=(1,))"
+assert getattr(default_tuple_singleton, "__text_signature__") == "(x=(1,))"
+
+[case testSignaturesStringDefaults]
+def f1(x="'foo"): pass
+def f2(x='"foo'): pass
+def f3(x=""""Isn\'t," they said."""): pass
+def f4(x="\\ \a \b \f \n \r \t \v \x00"): pass
+def f5(x="\N{BANANA}sv"): pass
+
+[file driver.py]
+import inspect
+from native import *
+
+assert str(inspect.signature(f1)) == """(x="'foo")"""
+assert str(inspect.signature(f2)) == """(x='"foo')"""
+assert str(inspect.signature(f3)) == r"""(x='"Isn\'t," they said.')"""
+assert str(inspect.signature(f4)) == r"""(x='\\ \x07 \x08 \x0c \n \r \t \x0b \x00')"""
+assert str(inspect.signature(f5)) == """(x='\N{BANANA}sv')"""
+
+[case testSignaturesIrrepresentableDefaults]
+import enum
+class Color(enum.Enum):
+    RED = 1
+misc = object()
+
+# Default arguments that cannot be represented in a __text_signature__
+def bad_object(x=misc): pass
+def bad_list_nonliteral(x=[misc]): pass
+def bad_dict_nonliteral(x={'a': misc}): pass
+def bad_set_nonliteral(x={misc}): pass
+def bad_set_empty(x=set()): pass  # supported by ast.literal_eval, but not by inspect._signature_fromstr
+def bad_nan(x=float("nan")): pass
+def bad_enum(x=Color.RED): pass
+
+# TODO: Default arguments that could potentially be represented in a
+# __text_signature__, but which are not currently supported.
+# See 'inspect._signature_fromstr' for what default values are supported at runtime.
+def bad_complex(x=1+2j): pass
+def bad_list_empty(x=[]): pass
+def bad_list_literals(x=[1, 2, 3]): pass
+def bad_dict_empty(x={}): pass
+def bad_dict_literals(x={'a': 1}): pass
+def bad_set_literals(x={1, 2, 3}): pass
+def bad_tuple_literals(x=([1, 2, 3], {'a': 1}, {1, 2, 3})): pass
+def bad_ellipsis(x=...): pass
+def bad_literal_fold(x=1+2): pass
+
+[file driver.py]
+import inspect
+from testutil import assertRaises
+import native
+
+all_bad = [fn for name, fn in vars(native).items() if name.startswith("bad_")]
+assert all_bad
+
+for bad in all_bad:
+    assert bad.__text_signature__ is None, f"{bad.__name__} has unexpected __text_signature__"
+    with assertRaises(ValueError, "no signature found for builtin"):
+        inspect.signature(bad)
+
+[case testSignaturesMethods]
+class Foo:
+    def f1(self, x): pass
+    @classmethod
+    def f2(cls, x): pass
+    @staticmethod
+    def f3(x): pass
+    def __eq__(self, x: object): pass
+
+[file driver.py]
+import inspect
+from native import *
+
+assert str(inspect.signature(Foo.f1)) == "(self, /, x)"
+assert str(inspect.signature(Foo().f1)) == "(x)"
+
+assert str(inspect.signature(Foo.f2)) == "(x)"
+assert str(inspect.signature(Foo().f2)) == "(x)"
+
+assert str(inspect.signature(Foo.f3)) == "(x)"
+assert str(inspect.signature(Foo().f3)) == "(x)"
+
+assert str(inspect.signature(Foo.__eq__)) == "(self, value, /)"
+assert str(inspect.signature(Foo().__eq__)) == "(value, /)"
+
+[case testSignaturesConstructors]
+class Empty: pass
+
+class HasInit:
+    def __init__(self, x) -> None: pass
+
+class InheritedInit(HasInit): pass
+
+class HasInitBad:
+    def __init__(self, x=[]) -> None: pass
+
+[file driver.py]
+import inspect
+from testutil import assertRaises
+from native import *
+
+assert str(inspect.signature(Empty)) == "()"
+assert str(inspect.signature(Empty.__init__)) == "(self, /, *args, **kwargs)"
+
+assert str(inspect.signature(HasInit)) == "(x)"
+assert str(inspect.signature(HasInit.__init__)) == "(self, /, *args, **kwargs)"
+
+assert str(inspect.signature(InheritedInit)) == "(x)"
+assert str(inspect.signature(InheritedInit.__init__)) == "(self, /, *args, **kwargs)"
+
+assert getattr(HasInitBad, "__text_signature__") is None
+with assertRaises(ValueError, "no signature found for builtin"):
+    inspect.signature(HasInitBad)
+
+# CPython detail note: type objects whose tp_doc contains only a text signature behave
+# differently from method objects whose ml_doc contains only a test signature: type
+# objects will have __doc__="" whereas method objects will have __doc__=None. This
+# difference stems from the former using _PyType_GetDocFromInternalDoc(...) and the
+# latter using PyUnicode_FromString(_PyType_DocWithoutSignature(...)).
+for cls in [Empty, HasInit, InheritedInit]:
+    assert getattr(cls, "__doc__") == ""
+assert getattr(HasInitBad, "__doc__") is None
+
+[case testSignaturesConstructorsNonExt]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class NonExt:
+    def __init__(self, x) -> None: pass
+
+[file driver.py]
+import inspect
+from testutil import assertRaises
+from native import *
+
+# TODO: support constructor signatures for non-extension classes
+with assertRaises(ValueError, "no signature found for builtin"):
+    inspect.signature(NonExt)
+
+[case testSignaturesHistoricalPositionalOnly]
+import inspect
+
+def f1(__x): pass
+def f2(__x, y): pass
+def f3(*, __y): pass
+def f4(x, *, __y): pass
+def f5(__x, *, __y): pass
+
+class A:
+    def func(self, __x): pass
+
+def test_historical_positional_only() -> None:
+    assert str(inspect.signature(f1)) == "(__x, /)"
+    assert str(inspect.signature(f2)) == "(__x, /, y)"
+    assert str(inspect.signature(f3)) == "(*, __y)"
+    assert str(inspect.signature(f4)) == "(x, *, __y)"
+    assert str(inspect.signature(f5)) == "(__x, /, *, __y)"
+
+    assert str(inspect.signature(A.func)) == "(self, __x, /)"
+    assert str(inspect.signature(A().func)) == "(__x, /)"

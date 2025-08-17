@@ -4271,3 +4271,39 @@ reveal_type(dicts.TF)  # N: Revealed type is "def (*, user_id: builtins.int =) -
 reveal_type(dicts.TotalFalse)  # N: Revealed type is "def (*, user_id: builtins.int =) -> TypedDict('__main__.Dicts.TF', {'user_id'?: builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testRecursiveNestedTypedDictInference]
+from typing import TypedDict, Sequence
+from typing_extensions import NotRequired
+
+class Component(TypedDict):
+    type: str
+    components: NotRequired[Sequence['Component']]
+
+inputs: Sequence[Component] = [{
+    'type': 'tuple',
+    'components': [
+        {'type': 'uint256'},
+        {'type': 'address'},
+    ]
+}]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAssignableToWiderContext]
+from typing import TypedDict, Union
+
+class TD(TypedDict):
+    x: int
+
+x: Union[TD, dict[str, str]] = {"x": "foo"}
+y: Union[TD, dict[str, int]] = {"x": "foo"}  # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
+
+def ok(d: Union[TD, dict[str, str]]) -> None: ...
+ok({"x": "foo"})
+
+def bad(d: Union[TD, dict[str, int]]) -> None: ...
+bad({"x": "foo"})  # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

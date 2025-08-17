@@ -1,7 +1,7 @@
 """Generate C code for a Python C extension module from Python source code."""
 
 # FIXME: Basically nothing in this file operates on the level of a
-# single module and it should be renamed.
+#        single module and it should be renamed.
 
 from __future__ import annotations
 
@@ -30,7 +30,11 @@ from mypy.util import hash_digest, json_dumps
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
-from mypyc.codegen.emitfunc import generate_native_function, native_function_header
+from mypyc.codegen.emitfunc import (
+    generate_native_function,
+    native_function_doc_initializer,
+    native_function_header,
+)
 from mypyc.codegen.emitwrapper import (
     generate_legacy_wrapper_function,
     generate_wrapper_function,
@@ -61,12 +65,13 @@ from mypyc.options import CompilerOptions
 from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
+from mypyc.transform.log_trace import insert_event_trace_logging
 from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.spill import insert_spills
 from mypyc.transform.uninit import insert_uninit_checks
 
-# All of the modules being compiled are divided into "groups". A group
+# All the modules being compiled are divided into "groups". A group
 # is a set of modules that are placed into the same shared library.
 # Two common configurations are that every module is placed in a group
 # by itself (fully separate compilation) and that every module is
@@ -159,7 +164,7 @@ class MypycPlugin(Plugin):
         if hash_digest(meta_json) != ir_data["meta_hash"]:
             return None
 
-        # Check that all of the source files are present and as
+        # Check that all the source files are present and as
         # expected. The main situation where this would come up is the
         # user deleting the build directory without deleting
         # .mypy_cache, which we should handle gracefully.
@@ -210,8 +215,8 @@ def compile_scc_to_ir(
 ) -> ModuleIRs:
     """Compile an SCC into ModuleIRs.
 
-    Any modules that this SCC depends on must have either compiled or
-    loaded from a cache into mapper.
+    Any modules that this SCC depends on must have either been compiled,
+    type checked, or loaded from a cache into mapper.
 
     Arguments:
         scc: The list of MypyFiles to compile
@@ -239,15 +244,18 @@ def compile_scc_to_ir(
 
     for module in modules.values():
         for fn in module.functions:
-            # Insert uninit checks.
+            # Insert checks for uninitialized values.
             insert_uninit_checks(fn)
             # Insert exception handling.
             insert_exception_handling(fn)
-            # Insert refcount handling.
+            # Insert reference count handling.
             insert_ref_count_opcodes(fn)
 
             if fn in env_user_functions:
                 insert_spills(fn, env_user_functions[fn])
+
+            if compiler_options.log_trace:
+                insert_event_trace_logging(fn, compiler_options)
 
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
@@ -361,7 +369,7 @@ def write_cache(
         cache are in sync and refer to the same version of the code.
         This is particularly important if mypyc crashes/errors/is
         stopped after mypy has written its cache but before mypyc has.
-      * The hashes of all of the source file outputs for the group
+      * The hashes of all the source file outputs for the group
         the module is in. This is so that the module will be
         recompiled if the source outputs are missing.
     """
@@ -421,7 +429,7 @@ def compile_modules_to_c(
     Each shared library module provides, for each module in its group,
     a PyCapsule containing an initialization function.
     Additionally, it provides a capsule containing an export table of
-    pointers to all of the group's functions and static variables.
+    pointers to all the group's functions and static variables.
 
     Arguments:
         result: The BuildResult from the mypy front-end
@@ -496,7 +504,7 @@ class GroupGenerator:
 
         The code for a compilation group contains an internal and an
         external .h file, and then one .c if not in multi_file mode or
-        one .c file per module if in multi_file mode.)
+        one .c file per module if in multi_file mode.
 
         Arguments:
             modules: (name, ir) pairs for each module in the group
@@ -504,8 +512,7 @@ class GroupGenerator:
             group_name: The name of the group (or None if this is single-module compilation)
             group_map: A map of modules to their group names
             names: The name generator for the compilation
-            multi_file: Whether to put each module in its own source file regardless
-                        of group structure.
+            compiler_options: Mypyc specific options, including multi_file mode
         """
         self.modules = modules
         self.source_paths = source_paths
@@ -634,7 +641,7 @@ class GroupGenerator:
             decls = ext_declarations if declaration.is_type else declarations
             if not declaration.is_type:
                 decls.emit_lines(f"extern {declaration.decl[0]}", *declaration.decl[1:])
-                # If there is a definition, emit it. Otherwise repeat the declaration
+                # If there is a definition, emit it. Otherwise, repeat the declaration
                 # (without an extern).
                 if declaration.defn:
                     emitter.emit_lines(*declaration.defn)
@@ -644,7 +651,8 @@ class GroupGenerator:
                 decls.emit_lines(*declaration.decl)
 
         if self.group_name:
-            self.generate_export_table(ext_declarations, emitter)
+            if self.compiler_options.separate:
+                self.generate_export_table(ext_declarations, emitter)
 
             self.generate_shared_lib_init(emitter)
 
@@ -762,13 +770,13 @@ class GroupGenerator:
     def generate_shared_lib_init(self, emitter: Emitter) -> None:
         """Generate the init function for a shared library.
 
-        A shared library contains all of the actual code for a
+        A shared library contains all the actual code for a
         compilation group.
 
         The init function is responsible for creating Capsules that
         wrap pointers to the initialization function of all the real
         init functions for modules in this shared library as well as
-        the export table containing all of the exported functions and
+        the export table containing all the exported functions and
         values from all the modules.
 
         These capsules are stored in attributes of the shared library.
@@ -776,57 +784,56 @@ class GroupGenerator:
         assert self.group_name is not None
 
         emitter.emit_line()
+
+        short_name = shared_lib_name(self.group_name).split(".")[-1]
+
         emitter.emit_lines(
-            "PyMODINIT_FUNC PyInit_{}(void)".format(
-                shared_lib_name(self.group_name).split(".")[-1]
-            ),
+            f"static int exec_{short_name}(PyObject *module)",
             "{",
-            (
-                'static PyModuleDef def = {{ PyModuleDef_HEAD_INIT, "{}", NULL, -1, NULL, NULL }};'.format(
-                    shared_lib_name(self.group_name)
-                )
-            ),
             "int res;",
             "PyObject *capsule;",
             "PyObject *tmp;",
-            "static PyObject *module;",
-            "if (module) {",
-            "Py_INCREF(module);",
-            "return module;",
-            "}",
-            "module = PyModule_Create(&def);",
-            "if (!module) {",
-            "goto fail;",
-            "}",
             "",
         )
 
-        emitter.emit_lines(
-            'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
-                shared_lib_name(self.group_name)
-            ),
-            "if (!capsule) {",
-            "goto fail;",
-            "}",
-            'res = PyObject_SetAttrString(module, "exports", capsule);',
-            "Py_DECREF(capsule);",
-            "if (res < 0) {",
-            "goto fail;",
-            "}",
-            "",
-        )
-
-        for mod in self.modules:
-            name = exported_name(mod)
+        if self.compiler_options.separate:
             emitter.emit_lines(
-                f"extern PyObject *CPyInit_{name}(void);",
-                'capsule = PyCapsule_New((void *)CPyInit_{}, "{}.init_{}", NULL);'.format(
-                    name, shared_lib_name(self.group_name), name
+                'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
+                    shared_lib_name(self.group_name)
                 ),
                 "if (!capsule) {",
                 "goto fail;",
                 "}",
-                f'res = PyObject_SetAttrString(module, "init_{name}", capsule);',
+                'res = PyObject_SetAttrString(module, "exports", capsule);',
+                "Py_DECREF(capsule);",
+                "if (res < 0) {",
+                "goto fail;",
+                "}",
+                "",
+            )
+
+        for mod in self.modules:
+            name = exported_name(mod)
+            if self.multi_phase_init:
+                capsule_func_prefix = "CPyExec_"
+                capsule_name_prefix = "exec_"
+                emitter.emit_line(f"extern int CPyExec_{name}(PyObject *);")
+            else:
+                capsule_func_prefix = "CPyInit_"
+                capsule_name_prefix = "init_"
+                emitter.emit_line(f"extern PyObject *CPyInit_{name}(void);")
+            emitter.emit_lines(
+                'capsule = PyCapsule_New((void *){}{}, "{}.{}{}", NULL);'.format(
+                    capsule_func_prefix,
+                    name,
+                    shared_lib_name(self.group_name),
+                    capsule_name_prefix,
+                    name,
+                ),
+                "if (!capsule) {",
+                "goto fail;",
+                "}",
+                f'res = PyObject_SetAttrString(module, "{capsule_name_prefix}{name}", capsule);',
                 "Py_DECREF(capsule);",
                 "if (res < 0) {",
                 "goto fail;",
@@ -852,7 +859,56 @@ class GroupGenerator:
                 "",
             )
 
-        emitter.emit_lines("return module;", "fail:", "Py_XDECREF(module);", "return NULL;", "}")
+        emitter.emit_lines("return 0;", "fail:", "return -1;", "}")
+
+        if self.multi_phase_init:
+            emitter.emit_lines(
+                f"static PyModuleDef_Slot slots_{short_name}[] = {{",
+                f"{{Py_mod_exec, exec_{short_name}}},",
+                "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},",
+                "{Py_mod_gil, Py_MOD_GIL_NOT_USED},",
+                "{0, NULL},",
+                "};",
+            )
+
+        size = 0 if self.multi_phase_init else -1
+        emitter.emit_lines(
+            f"static PyModuleDef module_def_{short_name} = {{",
+            "PyModuleDef_HEAD_INIT,",
+            f'.m_name = "{shared_lib_name(self.group_name)}",',
+            ".m_doc = NULL,",
+            f".m_size = {size},",
+            ".m_methods = NULL,",
+        )
+        if self.multi_phase_init:
+            emitter.emit_line(f".m_slots = slots_{short_name},")
+        emitter.emit_line("};")
+
+        if self.multi_phase_init:
+            emitter.emit_lines(
+                f"PyMODINIT_FUNC PyInit_{short_name}(void) {{",
+                f"return PyModuleDef_Init(&module_def_{short_name});",
+                "}",
+            )
+        else:
+            emitter.emit_lines(
+                f"PyMODINIT_FUNC PyInit_{short_name}(void) {{",
+                "static PyObject *module = NULL;",
+                "if (module) {",
+                "Py_INCREF(module);",
+                "return module;",
+                "}",
+                f"module = PyModule_Create(&module_def_{short_name});",
+                "if (!module) {",
+                "return NULL;",
+                "}",
+                f"if (exec_{short_name}(module) < 0) {{",
+                "Py_DECREF(module);",
+                "return NULL;",
+                "}",
+                "return module;",
+                "}",
+            )
 
     def generate_globals_init(self, emitter: Emitter) -> None:
         emitter.emit_lines(
@@ -878,16 +934,22 @@ class GroupGenerator:
     def generate_module_def(self, emitter: Emitter, module_name: str, module: ModuleIR) -> None:
         """Emit the PyModuleDef struct for a module and the module init function."""
         module_prefix = emitter.names.private_name(module_name)
-        self.emit_module_exec_func(emitter, module_name, module_prefix, module)
-        if self.multi_phase_init:
-            self.emit_module_def_slots(emitter, module_prefix)
         self.emit_module_methods(emitter, module_name, module_prefix, module)
-        self.emit_module_def_struct(emitter, module_name, module_prefix)
-        self.emit_module_init_func(emitter, module_name, module_prefix)
+        self.emit_module_exec_func(emitter, module_name, module_prefix, module)
 
-    def emit_module_def_slots(self, emitter: Emitter, module_prefix: str) -> None:
+        # If using multi-phase init and a shared lib, parts of module definition
+        # will happen in the shim modules, so we skip some steps here.
+        if not (self.multi_phase_init and self.use_shared_lib):
+            if self.multi_phase_init:
+                self.emit_module_def_slots(emitter, module_prefix, module_name)
+            self.emit_module_def_struct(emitter, module_name, module_prefix)
+            self.emit_module_init_func(emitter, module_name, module_prefix)
+
+    def emit_module_def_slots(
+        self, emitter: Emitter, module_prefix: str, module_name: str
+    ) -> None:
         name = f"{module_prefix}_slots"
-        exec_name = f"{module_prefix}_exec"
+        exec_name = f"CPyExec_{exported_name(module_name)}"
 
         emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
         emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
@@ -917,11 +979,14 @@ class GroupGenerator:
                 flag = "METH_FASTCALL"
             else:
                 flag = "METH_VARARGS"
+            doc = native_function_doc_initializer(fn)
             emitter.emit_line(
                 (
                     '{{"{name}", (PyCFunction){prefix}{cname}, {flag} | METH_KEYWORDS, '
-                    "NULL /* docstring */}},"
-                ).format(name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag)
+                    "PyDoc_STR({doc}) /* docstring */}},"
+                ).format(
+                    name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag, doc=doc
+                )
             )
         emitter.emit_line("{NULL, NULL, 0, NULL}")
         emitter.emit_line("};")
@@ -939,7 +1004,7 @@ class GroupGenerator:
             "0,       /* size of per-interpreter state of the module */",
             f"{module_prefix}module_methods,",
         )
-        if self.multi_phase_init:
+        if self.multi_phase_init and not self.use_shared_lib:
             slots_name = f"{module_prefix}_slots"
             emitter.emit_line(f"{slots_name}, /* m_slots */")
         else:
@@ -950,15 +1015,16 @@ class GroupGenerator:
     def emit_module_exec_func(
         self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
     ) -> None:
-        """Emit the module init function.
+        """Emit the module exec function.
 
-        If we are compiling just one module, this will be the C API init
-        function. If we are compiling 2+ modules, we generate a shared
+        If we are compiling just one module, this will be the normal C API
+        exec function. If we are compiling 2+ modules, we generate a shared
         library for the modules and shims that call into the shared
-        library, and in this case we use an internal module initialized
-        function that will be called by the shim.
+        library, and in this case the shared module defines an internal
+        exec function for each module and these will be called by the shims
+        via Capsules.
         """
-        declaration = f"static int {module_prefix}_exec(PyObject *module)"
+        declaration = f"int CPyExec_{exported_name(module_name)}(PyObject *module)"
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
         emitter.emit_line("PyObject* modname = NULL;")
@@ -974,6 +1040,12 @@ class GroupGenerator:
             f"if (unlikely({module_globals} == NULL))",
             "    goto fail;",
         )
+
+        if self.multi_phase_init:
+            emitter.emit_lines(
+                f"if (PyModule_AddFunctions(module, {module_prefix}module_methods) < 0)",
+                "    goto fail;",
+            )
 
         # HACK: Manually instantiate generated classes here
         type_structs: list[str] = []
@@ -1026,7 +1098,7 @@ class GroupGenerator:
             emitter.emit_line("}")
             return
 
-        exec_func = f"{module_prefix}_exec"
+        exec_func = f"CPyExec_{exported_name(module_name)}"
 
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will

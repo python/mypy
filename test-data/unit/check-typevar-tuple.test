@@ -886,7 +886,6 @@ reveal_type(z)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicWithBadType]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, Generic
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -989,7 +988,7 @@ from typing_extensions import Unpack
 
 def pipeline(*xs: Unpack[Tuple[int, Unpack[Tuple[float, ...]], bool]]) -> None:
     for x in xs:
-        reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.int]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testFixedUnpackItemInInstanceArguments]
@@ -2665,4 +2664,31 @@ def identity(smth: _FT) -> _FT:
 @identity
 class S(tuple[Unpack[Ts]], Generic[T, Unpack[Ts]]):
     def f(self, x: T, /) -> T: ...
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashSubclassingTupleWithTrivialUnpack]
+# https://github.com/python/mypy/issues/19105
+from typing import Unpack
+
+class A(tuple[Unpack[tuple[int]]]): ...
+class B(tuple[Unpack[tuple[()]]]): ...
+
+a: A
+reveal_type(tuple(a))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+(x,) = a
+
+b: B
+(_,) = b  # E: Need more than 0 values to unpack (1 expected)
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashSubclassingTupleWithVariadicUnpack]
+# https://github.com/python/mypy/issues/19105
+from typing import Unpack
+
+class A(tuple[Unpack[tuple[int, ...]]]): ...
+
+a: A
+tuple(a)
+(x,) = a
+(_,) = a
 [builtins fixtures/tuple.pyi]

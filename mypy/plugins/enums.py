@@ -14,14 +14,15 @@ semanal_enum.py).
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Final, TypeVar, cast
+from typing import TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.nodes import TypeInfo
-from mypy.semanal_enum import ENUM_BASES
+from mypy.checker_shared import TypeCheckerSharedApi
+from mypy.nodes import TypeInfo, Var
 from mypy.subtypes import is_equivalent
 from mypy.typeops import fixup_partial_type, make_simplified_union
 from mypy.types import (
+    ELLIPSIS_TYPE_NAMES,
     CallableType,
     Instance,
     LiteralType,
@@ -30,13 +31,6 @@ from mypy.types import (
     get_proper_type,
     is_named_instance,
 )
-
-ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
-    f"{prefix}._name_" for prefix in ENUM_BASES
-}
-ENUM_VALUE_ACCESS: Final = {f"{prefix}.value" for prefix in ENUM_BASES} | {
-    f"{prefix}._value_" for prefix in ENUM_BASES
-}
 
 
 def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
@@ -87,6 +81,19 @@ def _infer_value_type_with_auto_fallback(
     if proper_type is None:
         return None
     proper_type = get_proper_type(fixup_partial_type(proper_type))
+    # Enums in stubs may have ... instead of actual values. If `_value_` is annotated
+    # (manually or inherited from IntEnum, for example), it is a more reasonable guess
+    # than literal ellipsis type.
+    if (
+        _is_defined_in_stub(ctx)
+        and isinstance(proper_type, Instance)
+        and proper_type.type.fullname in ELLIPSIS_TYPE_NAMES
+        and isinstance(ctx.type, Instance)
+    ):
+        value_type = ctx.type.type.get("_value_")
+        if value_type is not None and isinstance(var := value_type.node, Var):
+            return var.type
+        return proper_type
     if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
         if is_named_instance(proper_type, "enum.member") and proper_type.args:
             return proper_type.args[0]
@@ -114,6 +121,11 @@ def _infer_value_type_with_auto_fallback(
     return ctx.default_attr_type
 
 
+def _is_defined_in_stub(ctx: mypy.plugin.AttributeContext) -> bool:
+    assert isinstance(ctx.api, TypeCheckerSharedApi)
+    return isinstance(ctx.type, Instance) and ctx.api.is_defined_in_stub(ctx.type)
+
+
 def _implements_new(info: TypeInfo) -> bool:
     """Check whether __new__ comes from enum.Enum or was implemented in a
     subclass. In the latter case, we must infer Any as long as mypy can't infer
@@ -132,7 +144,7 @@ def _implements_new(info: TypeInfo) -> bool:
 def enum_member_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     """By default `member(1)` will be inferred as `member[int]`,
     we want to improve the inference to be `Literal[1]` here."""
-    if ctx.arg_types or ctx.arg_types[0]:
+    if ctx.arg_types and ctx.arg_types[0]:
         arg = get_proper_type(ctx.arg_types[0][0])
         proper_return = get_proper_type(ctx.default_return_type)
         if (

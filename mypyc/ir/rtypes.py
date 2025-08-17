@@ -192,7 +192,7 @@ class RVoid(RType):
     def serialize(self) -> str:
         return "void"
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> TypeGuard[RVoid]:
         return isinstance(other, RVoid)
 
     def __hash__(self) -> int:
@@ -254,13 +254,11 @@ class RPrimitive(RType):
         elif ctype == "CPyPtr":
             # TODO: Invent an overlapping error value?
             self.c_undefined = "0"
-        elif ctype == "PyObject *":
-            # Boxed types use the null pointer as the error value.
+        elif ctype.endswith("*"):
+            # Boxed and pointer types use the null pointer as the error value.
             self.c_undefined = "NULL"
         elif ctype == "char":
             self.c_undefined = "2"
-        elif ctype in ("PyObject **", "void *"):
-            self.c_undefined = "NULL"
         elif ctype == "double":
             self.c_undefined = "-113.0"
         elif ctype in ("uint8_t", "uint16_t", "uint32_t", "uint64_t"):
@@ -281,7 +279,7 @@ class RPrimitive(RType):
     def __repr__(self) -> str:
         return "<RPrimitive %s>" % self.name
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> TypeGuard[RPrimitive]:
         return isinstance(other, RPrimitive) and other.name == self.name
 
     def __hash__(self) -> int:
@@ -445,6 +443,10 @@ c_pointer_rprimitive: Final = RPrimitive(
     "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *"
 )
 
+cstring_rprimitive: Final = RPrimitive(
+    "cstring", is_unboxed=True, is_refcounted=False, ctype="const char *"
+)
+
 # The type corresponding to mypyc.common.BITMAP_TYPE
 bitmap_rprimitive: Final = uint32_rprimitive
 
@@ -511,15 +513,15 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
 
-def is_tagged(rtype: RType) -> bool:
+def is_tagged(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int_rprimitive or rtype is short_int_rprimitive
 
 
-def is_int_rprimitive(rtype: RType) -> bool:
+def is_int_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int_rprimitive
 
 
-def is_short_int_rprimitive(rtype: RType) -> bool:
+def is_short_int_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is short_int_rprimitive
 
 
@@ -533,7 +535,7 @@ def is_int32_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     )
 
 
-def is_int64_rprimitive(rtype: RType) -> bool:
+def is_int64_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int64_rprimitive or (
         rtype is c_pyssize_t_rprimitive and rtype._ctype == "int64_t"
     )
@@ -552,77 +554,93 @@ def is_uint8_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is uint8_rprimitive
 
 
-def is_uint32_rprimitive(rtype: RType) -> bool:
+def is_uint32_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is uint32_rprimitive
 
 
-def is_uint64_rprimitive(rtype: RType) -> bool:
+def is_uint64_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is uint64_rprimitive
 
 
-def is_c_py_ssize_t_rprimitive(rtype: RType) -> bool:
+def is_c_py_ssize_t_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is c_pyssize_t_rprimitive
 
 
-def is_pointer_rprimitive(rtype: RType) -> bool:
+def is_pointer_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is pointer_rprimitive
 
 
-def is_float_rprimitive(rtype: RType) -> bool:
+def is_float_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.float"
 
 
-def is_bool_rprimitive(rtype: RType) -> bool:
+def is_bool_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.bool"
 
 
-def is_bit_rprimitive(rtype: RType) -> bool:
+def is_bit_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "bit"
 
 
-def is_object_rprimitive(rtype: RType) -> bool:
+def is_bool_or_bit_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype)
+
+
+def is_object_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.object"
 
 
-def is_none_rprimitive(rtype: RType) -> bool:
+def is_none_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.None"
 
 
-def is_list_rprimitive(rtype: RType) -> bool:
+def is_list_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.list"
 
 
-def is_dict_rprimitive(rtype: RType) -> bool:
+def is_dict_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.dict"
 
 
-def is_set_rprimitive(rtype: RType) -> bool:
+def is_set_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.set"
 
 
-def is_frozenset_rprimitive(rtype: RType) -> bool:
+def is_frozenset_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.frozenset"
 
 
-def is_str_rprimitive(rtype: RType) -> bool:
+def is_str_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.str"
 
 
-def is_bytes_rprimitive(rtype: RType) -> bool:
+def is_bytes_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.bytes"
 
 
-def is_tuple_rprimitive(rtype: RType) -> bool:
+def is_tuple_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.tuple"
 
 
-def is_range_rprimitive(rtype: RType) -> bool:
+def is_range_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.range"
 
 
-def is_sequence_rprimitive(rtype: RType) -> bool:
+def is_sequence_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return isinstance(rtype, RPrimitive) and (
-        is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype) or is_str_rprimitive(rtype)
+        is_list_rprimitive(rtype)
+        or is_tuple_rprimitive(rtype)
+        or is_str_rprimitive(rtype)
+        or is_bytes_rprimitive(rtype)
+    )
+
+
+def is_immutable_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return (
+        is_str_rprimitive(rtype)
+        or is_bytes_rprimitive(rtype)
+        or is_tuple_rprimitive(rtype)
+        or is_frozenset_rprimitive(rtype)
     )
 
 
@@ -711,7 +729,7 @@ class RTuple(RType):
     def __repr__(self) -> str:
         return "<RTuple %s>" % ", ".join(repr(typ) for typ in self.types)
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> TypeGuard[RTuple]:
         return isinstance(other, RTuple) and self.types == other.types
 
     def __hash__(self) -> int:
@@ -844,7 +862,7 @@ class RStruct(RType):
             ", ".join(name + ":" + repr(typ) for name, typ in zip(self.names, self.types)),
         )
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> TypeGuard[RStruct]:
         return (
             isinstance(other, RStruct)
             and self.name == other.name
@@ -914,7 +932,7 @@ class RInstance(RType):
     def __repr__(self) -> str:
         return "<RInstance %s>" % self.name
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> TypeGuard[RInstance]:
         return isinstance(other, RInstance) and other.name == self.name
 
     def __hash__(self) -> int:
@@ -968,7 +986,7 @@ class RUnion(RType):
         return "union[%s]" % ", ".join(str(item) for item in self.items)
 
     # We compare based on the set because order in a union doesn't matter
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> TypeGuard[RUnion]:
         return isinstance(other, RUnion) and self.items_set == other.items_set
 
     def __hash__(self) -> int:
@@ -1010,7 +1028,7 @@ def optional_value_type(rtype: RType) -> RType | None:
     return None
 
 
-def is_optional_type(rtype: RType) -> bool:
+def is_optional_type(rtype: RType) -> TypeGuard[RUnion]:
     """Is rtype an optional type with exactly two union items?"""
     return optional_value_type(rtype) is not None
 
@@ -1042,7 +1060,7 @@ class RArray(RType):
     def __repr__(self) -> str:
         return f"<RArray {self.item_type!r}[{self.length}]>"
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> TypeGuard[RArray]:
         return (
             isinstance(other, RArray)
             and self.item_type == other.item_type
