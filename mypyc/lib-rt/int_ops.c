@@ -614,11 +614,11 @@ PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder,
         PyErr_NoMemory();
         return NULL;
     }
-    int little_endian = 0;
-    if (strcmp(byteorder, "little") == 0) {
-        little_endian = 1;
-    } else if (strcmp(byteorder, "big") == 0) {
+    int little_endian;
+    if (strcmp(byteorder, "big") == 0) {
         little_endian = 0;
+    } else if (strcmp(byteorder, "little") == 0) {
+        little_endian = 1;
     } else {
         PyMem_Free(bytes);
         PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
