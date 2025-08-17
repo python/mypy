@@ -605,7 +605,7 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
     return result;
 }
 
-#if PY_VERSION_HEX >= 0x030A0000
+#if PY_VERSION_HEX >= 0x030C0000
 // If not declared, declare it ourselves
 #ifndef PyLong_AsByteArray
 PyAPI_FUNC(int) PyLong_AsByteArray(
