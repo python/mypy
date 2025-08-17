@@ -1471,7 +1471,7 @@ class Instance(ProperType):
 
     def __hash__(self) -> int:
         if self._hash == -1:
-            self._hash = hash((self.type, self.args, self.last_known_value, self.extra_attrs))
+            self._hash = hash((self.type, self.args, self.last_known_value))
         return self._hash
 
     def __eq__(self, other: object) -> bool:
@@ -2895,6 +2895,7 @@ class UnionType(ProperType):
 
     __slots__ = (
         "items",
+        "_frozen_items",
         "is_evaluated",
         "uses_pep604_syntax",
         "original_str_expr",
@@ -2914,6 +2915,7 @@ class UnionType(ProperType):
         # We must keep this false to avoid crashes during semantic analysis.
         # TODO: maybe switch this to True during type-checking pass?
         self.items = flatten_nested_unions(items, handle_type_alias_type=False)
+        self._frozen_items = frozenset(self.items)
         # is_evaluated should be set to false for type comments and string literals
         self.is_evaluated = is_evaluated
         # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
@@ -2931,14 +2933,14 @@ class UnionType(ProperType):
         return any(item.can_be_false for item in self.items)
 
     def __hash__(self) -> int:
-        return hash(frozenset(self.items))
+        return hash(self._frozen_items)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnionType):
             return NotImplemented
         if self is other:
             return True
-        return frozenset(self.items) == frozenset(other.items)
+        return self._frozen_items == other._frozen_items
 
     @overload
     @staticmethod
