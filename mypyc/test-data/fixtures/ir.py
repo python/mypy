@@ -4,7 +4,7 @@
 import _typeshed
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
-    overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
+    overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol, Literal,
 )
 
 _T = TypeVar('_T')
@@ -123,6 +123,7 @@ class str:
     def removesuffix(self, suffix: str, /) -> str: ...
     def islower(self) -> bool: ...
     def count(self, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int: pass
+    def to_bytes(self, length: int, order: Literal["small", "big"], signed: bool = False) -> bytes: pass
 
 class float:
     def __init__(self, x: object) -> None: pass
