@@ -21,7 +21,7 @@ def test_weakref_ref():
 
 def test_weakref_ref_with_callback():
     obj = Object()
-    r = ref(obj, lambda x: _callback_called_cache["ref"] = True)
+    r = ref(obj, lambda x: _callback_called_cache.__setitem__("ref", True))
     assert r() is obj
     obj = None
     assert r() is None, r()
@@ -39,7 +39,7 @@ def test_weakref_proxy():
 
 def test_weakref_proxy_with_callback():
     obj = Object()
-    p = proxy(obj, lambda x: _callback_called_cache["proxy"] = True)
+    p = proxy(obj, lambda x: _callback_called_cache.__setitem__("proxy", True))
     assert obj.some_meth() == 1
     assert p.some_meth() == 1
     obj.some_meth()
