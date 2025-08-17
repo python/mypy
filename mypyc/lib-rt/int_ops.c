@@ -624,7 +624,11 @@ PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder,
         PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
         return NULL;
     }
+#if PY_VERSION_HEX >= 0x030D0000  // 3.13.0
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag, 1);
+#else
     int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
+#endif
     if (res < 0) {
         PyMem_Free(bytes);
         return NULL;
