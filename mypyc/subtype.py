@@ -1,4 +1,3 @@
-
 """Subtype check for RTypes."""
 
 from __future__ import annotations
