@@ -1993,7 +1993,7 @@ L6:
     r13 = CPyTagged_Multiply(x, x)
     r14 = box(int, x)
     r15 = box(int, r13)
-    r16 = CPyDict_SetItem(r0, r14, r15)
+    r16 = PyDict_SetItem(r0, r14, r15)
     r17 = r16 >= 0 :: signed
 L7:
     r18 = r6 + 1
@@ -2620,7 +2620,7 @@ L0:
     d = r14
     r15 = __main__.globals :: static
     r16 = 'd'
-    r17 = CPyDict_SetItem(r15, r16, r14)
+    r17 = PyDict_SetItem(r15, r16, r14)
     r18 = r17 >= 0 :: signed
     r19 = 'c'
     r20 = builtins :: module
@@ -2693,7 +2693,7 @@ L2:
     keep_alive r17
     r24 = __main__.globals :: static
     r25 = 'c'
-    r26 = CPyDict_SetItem(r24, r25, r23)
+    r26 = PyDict_SetItem(r24, r25, r23)
     r27 = r26 >= 0 :: signed
     return 1
 
