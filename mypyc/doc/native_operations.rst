@@ -54,3 +54,5 @@ These variants of statements have custom implementations:
 * ``for ... in seq:`` (for loop over a sequence)
 * ``for ... in enumerate(...):``
 * ``for ... in zip(...):``
+* ``for ... in filter(...):``
+* ``for ... in itertools.filterfalse(...):``
