@@ -101,6 +101,7 @@ exact_dict_get_item_op = method_op(
     return_type=object_rprimitive,
     c_function_name="CPyDict_GetItemUnsafe",
     error_kind=ERR_MAGIC,
+    priority=2,
 )
 
 # dictsubclass[key]
@@ -141,6 +142,7 @@ binary_op(
     error_kind=ERR_NEG_INT,
     truncated_type=bool_rprimitive,
     ordering=[1, 0],
+    priority=2,
 )
 
 # key in dict or dict subclass
@@ -233,15 +235,6 @@ method_op(
 # dict.get(key, default)
 method_op(
     name="get",
-    arg_types=[exact_dict_rprimitive, object_rprimitive, object_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyDict_Get",
-    error_kind=ERR_MAGIC,
-)
-
-# dictorsubclass.get(key, default)
-method_op(
-    name="get",
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_Get",
@@ -273,6 +266,7 @@ exact_dict_setdefault_op = method_op(
     return_type=object_rprimitive,
     c_function_name="PyDict_SetDefault",
     error_kind=ERR_NEVER,
+    priority=2,
 )
 
 # dictorsubclass.setdefault(key, default)
@@ -285,15 +279,6 @@ dict_setdefault_op = method_op(
 )
 
 # dict.setdefault(key)
-method_op(
-    name="setdefault",
-    arg_types=[exact_dict_rprimitive, object_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyDict_SetDefaultWithNone",
-    error_kind=ERR_MAGIC,
-)
-
-# dictorsubclass.setdefault(key)
 method_op(
     name="setdefault",
     arg_types=[dict_rprimitive, object_rprimitive],
@@ -320,6 +305,7 @@ method_op(
     return_type=object_rprimitive,
     c_function_name="CPyDict_KeysViewUnsafe",
     error_kind=ERR_MAGIC,
+    priority=2,
 )
 
 # dictorsubclass.keys()
@@ -338,6 +324,7 @@ method_op(
     return_type=object_rprimitive,
     c_function_name="CPyDict_ValuesViewUnsafe",
     error_kind=ERR_MAGIC,
+    priority=2,
 )
 
 # dictorsubclass.values()
@@ -356,6 +343,7 @@ method_op(
     return_type=object_rprimitive,
     c_function_name="CPyDict_ItemsViewUnsafe",
     error_kind=ERR_MAGIC,
+    priority=2,
 )
 
 # dictorsubclass.items()
@@ -374,6 +362,7 @@ method_op(
     return_type=void_rtype,
     c_function_name="PyDict_Clear",
     error_kind=ERR_NEVER,
+    priority=2,
 )
 
 # dictsubclass.clear()
