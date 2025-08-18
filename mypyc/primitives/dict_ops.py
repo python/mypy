@@ -55,7 +55,7 @@ dict_build_op = custom_op(
     c_function_name="CPyDict_Build",
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
-)
+)f
 
 # Construct a dictionary from another dictionary.
 dict_copy_op = function_op(
@@ -129,6 +129,7 @@ exact_dict_set_item_op = method_op(
     return_type=c_int_rprimitive,
     c_function_name="PyDict_SetItem",
     error_kind=ERR_NEG_INT,
+    priority=2,
 )
 
 # key in dict
