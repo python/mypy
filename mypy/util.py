@@ -609,8 +609,8 @@ class FancyFormatter:
             }
         else:
             if should_force_color():
-                print("warning: failed to detect a suitable color scheme "
-                      "but MYPY_FORCE_COLOR or FORCE_COLOR is enabled")
+                print("warning: failed to detect a suitable terminal color scheme "
+                      "but MYPY_FORCE_COLOR or FORCE_COLOR is set to on")
             self.colors = {
                 "red": "",
                 "green": "",

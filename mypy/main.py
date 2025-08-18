@@ -124,7 +124,8 @@ def main(
         install_types(formatter, options, non_interactive=options.non_interactive)
         return
 
-    use_color = (formatter.default_colored if options.color_output == "auto"
+    use_color = (True if util.should_force_color()
+                 else formatter.default_colored if options.color_output == "auto"
                  else bool(options.color_output))
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr, use_color)
