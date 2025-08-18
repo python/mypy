@@ -760,32 +760,31 @@ def delDict():
     r0, r1 :: str
     r2, r3 :: object
     r4 :: dict[exact]
-    r5, d :: dict
-    r6 :: str
-    r7 :: i32
-    r8 :: bit
+    d :: dict
+    r5 :: str
+    r6 :: i32
+    r7 :: bit
 L0:
     r0 = 'one'
     r1 = 'two'
     r2 = object 1
     r3 = object 2
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
-    r5 = cast(dict, r4)
-    d = r5
-    r6 = 'one'
-    r7 = PyObject_DelItem(d, r6)
-    r8 = r7 >= 0 :: signed
+    d = r4
+    r5 = 'one'
+    r6 = PyObject_DelItem(d, r5)
+    r7 = r6 >= 0 :: signed
     return 1
 def delDictMultiple():
     r0, r1, r2, r3 :: str
     r4, r5, r6, r7 :: object
     r8 :: dict[exact]
-    r9, d :: dict
-    r10, r11 :: str
-    r12 :: i32
-    r13 :: bit
-    r14 :: i32
-    r15 :: bit
+    d :: dict
+    r9, r10 :: str
+    r11 :: i32
+    r12 :: bit
+    r13 :: i32
+    r14 :: bit
 L0:
     r0 = 'one'
     r1 = 'two'
@@ -796,14 +795,13 @@ L0:
     r6 = object 3
     r7 = object 4
     r8 = CPyDict_Build(4, r0, r4, r1, r5, r2, r6, r3, r7)
-    r9 = cast(dict, r8)
-    d = r9
-    r10 = 'one'
-    r11 = 'four'
-    r12 = PyObject_DelItem(d, r10)
-    r13 = r12 >= 0 :: signed
-    r14 = PyObject_DelItem(d, r11)
-    r15 = r14 >= 0 :: signed
+    d = r8
+    r9 = 'one'
+    r10 = 'four'
+    r11 = PyObject_DelItem(d, r9)
+    r12 = r11 >= 0 :: signed
+    r13 = PyObject_DelItem(d, r10)
+    r14 = r13 >= 0 :: signed
     return 1
 
 [case testDelAttribute]
