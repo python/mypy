@@ -784,19 +784,19 @@ def try_specialize_in_expr(
                 else:
                     builder.add_bool_branch(bool_val, next_block, out)
                 builder.activate_block(next_block)
-            result = Register(bool_rprimitive)
+            result_reg = Register(bool_rprimitive)
             end = BasicBlock()
             if op == "in":
                 values = builder.false(), builder.true()
             else:
                 values = builder.true(), builder.false()
-            builder.assign(result, values[0], line)
+            builder.assign(result_reg, values[0], line)
             builder.goto(end)
             builder.activate_block(out)
-            builder.assign(result, values[1], line)
+            builder.assign(result_reg, values[1], line)
             builder.goto(end)
             builder.activate_block(end)
-            return result
+            return result_reg
         # x in [y]/(y) -> x == y
         # x not in [y]/(y) -> x != y
         elif n_items == 1:
