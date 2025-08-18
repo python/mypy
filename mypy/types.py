@@ -1236,10 +1236,10 @@ class UninhabitedType(ProperType):
         return visitor.visit_uninhabited_type(self)
 
     def __hash__(self) -> int:
-        return hash(UninhabitedType)
+        return hash((UninhabitedType, self.ambiguous))
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, UninhabitedType)
+        return isinstance(other, UninhabitedType) and other.ambiguous == self.ambiguous
 
     def serialize(self) -> JsonDict:
         return {".class": "UninhabitedType"}

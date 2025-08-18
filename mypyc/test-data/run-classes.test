@@ -3115,3 +3115,51 @@ f(C(1, "yes"))
 [out]
 B 1
 C yes
+
+[case testTypeObjectName]
+from typing import Any
+import re
+
+from dynamic import E, foo, Thing
+
+class C: pass
+class D(C): pass
+
+def type_name(t: type[object]) -> str:
+    return t.__name__
+
+def any_name(x: Any) -> str:
+    return x.__name__
+
+def assert_type_name(x: Any) -> None:
+    assert type_name(x) == getattr(x, "__name__")
+    assert any_name(x) == getattr(x, "__name__")
+
+def assert_any_name(x: Any) -> None:
+    assert any_name(x) == getattr(x, "__name__")
+
+def test_type_name() -> None:
+    assert_type_name(C)
+    assert_type_name(D)
+    assert_type_name(int)
+    assert_type_name(E)
+    assert_type_name(re.Pattern)
+
+def test_module_name() -> None:
+    assert_any_name(re)
+
+def test_function_name() -> None:
+    assert_any_name(any_name)
+    assert_any_name(foo)
+
+def test_obj_name() -> None:
+    assert_any_name(Thing())
+
+[file dynamic.py]
+class E: pass
+
+def foo(): pass
+
+class Thing:
+    def __init__(self):
+        self.__name__ = "xyz"

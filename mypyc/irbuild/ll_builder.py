@@ -795,18 +795,19 @@ class LowLevelIRBuilder:
         for value, kind, name in args:
             if kind == ARG_STAR:
                 if star_result is None:
-                    # fast path if star expr is a tuple:
-                    # we can pass the immutable tuple straight into the function call.
+                    # star args fastpath
                     if len(args) == 1:
                         # fn(*args)
                         if is_list_rprimitive(value.type):
                             value = self.primitive_op(list_tuple_op, [value], line)
-                        elif not is_tuple_rprimitive(value.type):
+                        elif not is_tuple_rprimitive(value.type) and not isinstance(
+                            value.type, RTuple
+                        ):
                             value = self.primitive_op(sequence_tuple_op, [value], line)
                         return value, None
                     elif len(args) == 2 and args[1][1] == ARG_STAR2:
                         # fn(*args, **kwargs)
-                        if is_tuple_rprimitive(value.type):
+                        if is_tuple_rprimitive(value.type) or isinstance(value.type, RTuple):
                             star_result = value
                         elif is_list_rprimitive(value.type):
                             star_result = self.primitive_op(list_tuple_op, [value], line)
