@@ -123,10 +123,7 @@ UNPACK_TYPE_NAMES: Final = ("typing.Unpack", "typing_extensions.Unpack")
 DEPRECATED_TYPE_NAMES: Final = ("warnings.deprecated", "typing_extensions.deprecated")
 
 # Supported @disjoint_base decorator names
-DISJOINT_BASE_DECORATOR_NAMES: Final = (
-    "typing.disjoint_base",
-    "typing_extensions.disjoint_base",
-)
+DISJOINT_BASE_DECORATOR_NAMES: Final = ("typing.disjoint_base", "typing_extensions.disjoint_base")
 
 # We use this constant in various places when checking `tuple` subtyping:
 TUPLE_LIKE_INSTANCE_NAMES: Final = (
