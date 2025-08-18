@@ -488,18 +488,17 @@ def _shape_differs(t1: type[object], t2: type[object]) -> bool:
             )
         t_size = t1.__basicsize__
         if (
-            # TODO: better understanding of attributes of type objects
-            not t2.__weakrefoffset__  # static analysis: ignore[value_always_true]
+            not t2.__weakrefoffset__
             and t1.__weakrefoffset__ + SIZEOF_PYOBJECT == t_size
         ):
             t_size -= SIZEOF_PYOBJECT
         if (
-            not t2.__dictoffset__  # static analysis: ignore[value_always_true]
+            not t2.__dictoffset__
             and t1.__dictoffset__ + SIZEOF_PYOBJECT == t_size
         ):
             t_size -= SIZEOF_PYOBJECT
         if (
-            not t2.__weakrefoffset__  # static analysis: ignore[value_always_true]
+            not t2.__weakrefoffset__
             and t2.__weakrefoffset__ == t_size
         ):
             t_size -= SIZEOF_PYOBJECT
