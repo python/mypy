@@ -1950,7 +1950,6 @@ def f():
     r16 :: i32
     r17 :: bit
     r18 :: native_int
-    r19 :: dict
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
@@ -1991,8 +1990,7 @@ L7:
     r6 = r18
     goto L1
 L8:
-    r19 = cast(dict, r0)
-    return r19
+    return r0
 
 [case testLoopsMultipleAssign]
 from typing import List, Tuple
