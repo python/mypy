@@ -701,72 +701,9 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
     first_op = e.operators[0]
-    if (
-        first_op in ["in", "not in"]
-        and len(e.operators) == 1
-        and isinstance(e.operands[1], (TupleExpr, ListExpr))
-    ):
-        items = e.operands[1].items
-        n_items = len(items)
-        # x in y -> x == y[0] or ... or x == y[n]
-        # x not in y -> x != y[0] and ... and x != y[n]
-        # 16 is arbitrarily chosen to limit code size
-        if 1 < n_items < 16:
-            if e.operators[0] == "in":
-                bin_op = "or"
-                cmp_op = "=="
-            else:
-                bin_op = "and"
-                cmp_op = "!="
-            lhs = e.operands[0]
-            mypy_file = builder.graph["builtins"].tree
-            assert mypy_file is not None
-            info = mypy_file.names["bool"].node
-            assert isinstance(info, TypeInfo), info
-            bool_type = Instance(info, [])
-            exprs = []
-            for item in items:
-                expr = ComparisonExpr([cmp_op], [lhs, item])
-                builder.types[expr] = bool_type
-                exprs.append(expr)
-
-            or_expr: Expression = exprs.pop(0)
-            for expr in exprs:
-                or_expr = OpExpr(bin_op, or_expr, expr)
-                builder.types[or_expr] = bool_type
-            return builder.accept(or_expr)
-        # x in [y]/(y) -> x == y
-        # x not in [y]/(y) -> x != y
-        elif n_items == 1:
-            if e.operators[0] == "in":
-                cmp_op = "=="
-            else:
-                cmp_op = "!="
-            e.operators = [cmp_op]
-            e.operands[1] = items[0]
-        # x in []/() -> False
-        # x not in []/() -> True
-        elif n_items == 0:
-            if e.operators[0] == "in":
-                return builder.false()
-            else:
-                return builder.true()
-
-    # x in {...}
-    # x not in {...}
-    if (
-        first_op in ("in", "not in")
-        and len(e.operators) == 1
-        and isinstance(e.operands[1], SetExpr)
-    ):
-        set_literal = precompute_set_literal(builder, e.operands[1])
-        if set_literal is not None:
-            lhs = e.operands[0]
-            result = builder.builder.primitive_op(
-                set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
-            )
-            if first_op == "not in":
-                return builder.unary_op(result, "not", e.line)
+    if first_op in ["in", "not in"] and len(e.operators) == 1:
+        result = try_specialize_in_expr(builder, first_op, e.operands[0], e.operands[1], e.line)
+        if result is not None:
             return result
 
     if len(e.operators) == 1:
@@ -810,6 +747,71 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         )
 
     return go(0, builder.accept(e.operands[0]))
+
+
+def try_specialize_in_expr(
+    builder: IRBuilder, op: str, lhs: Expression, rhs: Expression, line: int
+) -> Value | None:
+    if isinstance(rhs, (TupleExpr, ListExpr)):
+        items = rhs.items
+        n_items = len(items)
+        # x in y -> x == y[0] or ... or x == y[n]
+        # x not in y -> x != y[0] and ... and x != y[n]
+        # 16 is arbitrarily chosen to limit code size
+        if 1 < n_items < 16:
+            if op == "in":
+                bin_op = "or"
+                cmp_op = "=="
+            else:
+                bin_op = "and"
+                cmp_op = "!="
+            mypy_file = builder.graph["builtins"].tree
+            assert mypy_file is not None
+            info = mypy_file.names["bool"].node
+            assert isinstance(info, TypeInfo), info
+            bool_type = Instance(info, [])
+            exprs = []
+            for item in items:
+                expr = ComparisonExpr([cmp_op], [lhs, item])
+                builder.types[expr] = bool_type
+                exprs.append(expr)
+
+            or_expr: Expression = exprs.pop(0)
+            for expr in exprs:
+                or_expr = OpExpr(bin_op, or_expr, expr)
+                builder.types[or_expr] = bool_type
+            return builder.accept(or_expr)
+        # x in [y]/(y) -> x == y
+        # x not in [y]/(y) -> x != y
+        elif n_items == 1:
+            if op == "in":
+                cmp_op = "=="
+            else:
+                cmp_op = "!="
+            left = builder.accept(lhs)
+            right = builder.accept(items[0])
+            return transform_basic_comparison(builder, cmp_op, left, right, line)
+        # x in []/() -> False
+        # x not in []/() -> True
+        elif n_items == 0:
+            if op == "in":
+                return builder.false()
+            else:
+                return builder.true()
+
+    # x in {...}
+    # x not in {...}
+    if isinstance(rhs, SetExpr):
+        set_literal = precompute_set_literal(builder, rhs)
+        if set_literal is not None:
+            result = builder.builder.primitive_op(
+                set_in_op, [builder.accept(lhs), set_literal], line, bool_rprimitive
+            )
+            if op == "not in":
+                return builder.unary_op(result, "not", line)
+            return result
+
+    return None
 
 
 def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Value:
