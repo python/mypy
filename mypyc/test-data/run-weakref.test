@@ -10,7 +10,7 @@ class Object:
     def some_meth(self) -> int:
         return 1
 
-_callback_called_cache: dict[str, bool] = {"ref": False, "proxy": False}
+_callback_called_cache = {"ref": False, "proxy": False}
 
 def test_weakref_ref():
     obj = Object()
