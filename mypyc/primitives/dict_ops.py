@@ -161,7 +161,7 @@ exact_dict_update_op = method_op(
     return_type=c_int_rprimitive,
     c_function_name="PyDict_Update",
     error_kind=ERR_NEG_INT,
-    priority=2,
+    priority=5,
 )
 
 # dictorsubclass.update(dict)
@@ -171,7 +171,7 @@ dict_update_from_exact_dict_op = method_op(
     return_type=c_int_rprimitive,
     c_function_name="CPyDict_Update",
     error_kind=ERR_NEG_INT,
-    priority=2,
+    priority=3,
 )
 
 # dict.update(dictsubclass)
@@ -181,7 +181,7 @@ exact_dict_update_from_dict_op = method_op(
     return_type=c_int_rprimitive,
     c_function_name="PyDict_Update",
     error_kind=ERR_NEG_INT,
-    priority=2,
+    priority=4,
 )
 
 # dictsubclass1.update(dictsubclass2)
@@ -392,6 +392,7 @@ method_op(
     return_type=exact_dict_rprimitive,
     c_function_name="PyDict_Copy",
     error_kind=ERR_NEVER,
+    priority=2,
 )
 
 # dictsubclass.copy()
