@@ -1045,7 +1045,7 @@ error:
     return NULL;
 }
 
-#ifdef CPY_3_11_FEATURES
+#if CPY_3_11_FEATURES
 
 // Return obj.__name__ (specialized to type objects, which are the most common target).
 PyObject *CPy_GetName(PyObject *obj) {
