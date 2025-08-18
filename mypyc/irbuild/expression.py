@@ -755,8 +755,7 @@ def try_specialize_in_expr(
     left: Value | None = None
     items: list[Value] | None = None
 
-    # 16 is arbitrarily chosen to limit code size
-    if isinstance(rhs, (TupleExpr, ListExpr)) and len(rhs.items) < 16:
+    if isinstance(rhs, (TupleExpr, ListExpr)):
         left = builder.accept(lhs)
         items = [builder.accept(item) for item in rhs.items]
     elif isinstance(builder.node_type(rhs), RTuple):
