@@ -55,7 +55,7 @@ dict_build_op = custom_op(
     c_function_name="CPyDict_Build",
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
-)f
+)
 
 # Construct a dictionary from another dictionary.
 dict_copy_op = function_op(
