@@ -1614,6 +1614,60 @@ assert annotations
         )
 
     @collect_cases
+    def test_disjoint_base(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class A: pass
+            """,
+            runtime="""
+            class A: pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import disjoint_base
+
+            @disjoint_base
+            class B: pass
+            """,
+            runtime="""
+            class B: pass
+            """,
+            error="test_module.B",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Self
+
+            class mytakewhile:
+                def __new__(cls, predicate: object, iterable: object, /) -> Self: ...
+                def __iter__(self) -> Self: ...
+                def __next__(self) -> object: ...
+            """,
+            runtime="""
+            from itertools import takewhile as mytakewhile
+            """,
+            # Should have @disjoint_base
+            error="test_module.mytakewhile",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import disjoint_base, Self
+
+            @disjoint_base
+            class mycorrecttakewhile:
+                def __new__(cls, predicate: object, iterable: object, /) -> Self: ...
+                def __iter__(self) -> Self: ...
+                def __next__(self) -> object: ...
+            """,
+            runtime="""
+            from itertools import takewhile as mycorrecttakewhile
+            """,
+            error=None,
+        )
+
+    @collect_cases
     def test_has_runtime_final_decorator(self) -> Iterator[Case]:
         yield Case(
             stub="from typing_extensions import final",

@@ -1272,3 +1272,24 @@ if FOO is not None:
 
     def func() -> int:
         return FOO
+
+[case testDisjointBase]
+from typing_extensions import disjoint_base
+
+@disjoint_base
+class Disjoint1: pass
+
+@disjoint_base
+class Disjoint2: pass
+
+@disjoint_base
+class DisjointChild(Disjoint1): pass
+
+class C1: pass
+class C2(Disjoint1, C1): pass
+class C3(DisjointChild, Disjoint1): pass
+
+class C4(Disjoint1, Disjoint2):  # E: Class "C4" has incompatible disjoint bases
+    pass
+
+[builtins fixtures/tuple.pyi]
