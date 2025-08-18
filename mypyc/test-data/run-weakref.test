@@ -3,6 +3,7 @@
 [case testWeakrefRef]
 from weakref import proxy, ref
 from mypy_extensions import mypyc_attr
+from testutil import assertRaises
 
 @mypyc_attr(native_class=False)
 class Object:
