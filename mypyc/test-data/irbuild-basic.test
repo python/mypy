@@ -1758,38 +1758,33 @@ L0:
 def h():
     r0, r1 :: str
     r2, r3 :: object
-    r4 :: dict[exact]
-    r5 :: dict
-    r6 :: dict[exact]
-    r7 :: str
-    r8 :: object
-    r9 :: dict[exact]
-    r10 :: dict
-    r11 :: i32
-    r12 :: bit
+    r4, r5 :: dict[exact]
+    r6 :: str
+    r7 :: object
+    r8 :: dict[exact]
+    r9 :: i32
+    r10 :: bit
+    r11 :: object
+    r12 :: tuple
     r13 :: object
-    r14 :: tuple
-    r15 :: object
-    r16 :: tuple[int, int, int]
+    r14 :: tuple[int, int, int]
 L0:
     r0 = 'b'
     r1 = 'c'
     r2 = object 2
     r3 = object 3
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
-    r5 = cast(dict, r4)
-    r6 = __main__.globals :: static
-    r7 = 'f'
-    r8 = CPyDict_GetItemUnsafe(r6, r7)
-    r9 = PyDict_New()
-    r10 = cast(dict, r9)
-    r11 = CPyDict_UpdateInDisplay(r10, r5)
-    r12 = r11 >= 0 :: signed
-    r13 = object 1
-    r14 = PyTuple_Pack(1, r13)
-    r15 = PyObject_Call(r8, r14, r9)
-    r16 = unbox(tuple[int, int, int], r15)
-    return r16
+    r5 = __main__.globals :: static
+    r6 = 'f'
+    r7 = CPyDict_GetItemUnsafe(r5, r6)
+    r8 = PyDict_New()
+    r9 = PyDict_Update(r8, r4)
+    r10 = r9 >= 0 :: signed
+    r11 = object 1
+    r12 = PyTuple_Pack(1, r11)
+    r13 = PyObject_Call(r7, r12, r8)
+    r14 = unbox(tuple[int, int, int], r13)
+    return r14
 
 [case testFunctionCallWithDefaultArgs]
 def f(x: int, y: int = 3, z: str = "test") -> None:
