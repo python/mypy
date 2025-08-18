@@ -492,8 +492,8 @@ exact_dict_rprimitive: Final = RPrimitive(
     "builtins.dict[exact]", is_unboxed=False, is_refcounted=True)
 )
 
-dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
 # An instance of a subclass of dict.
+dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
 
 # Python set object (or an instance of a subclass of set).
 set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True)
