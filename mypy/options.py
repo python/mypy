@@ -205,7 +205,7 @@ class Options:
         self.show_error_context = False
 
         # Use nicer output (when possible).
-        self.color_output = True
+        self.color_output = "auto"
         self.error_summary = True
 
         # Assume arguments with default values of None are Optional

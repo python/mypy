@@ -579,10 +579,11 @@ def parse_gray_color(cup: bytes) -> str:
 
 def should_force_color() -> bool:
     env_var = os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0"))
+    # This logic feels a bit counter-intuitive but it's legacy so rather preserve it
     try:
-        return bool(int(env_var))
+        return int(env_var) != 0
     except ValueError:
-        return bool(env_var)
+        return env_var != ""
 
 
 class FancyFormatter:
@@ -596,21 +597,9 @@ class FancyFormatter:
     ) -> None:
         self.hide_error_codes = hide_error_codes
         self.hide_success = hide_success
-
-        # Check if we are in a human-facing terminal on a supported platform.
-        if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
-            self.dummy_term = True
-            return
-        if not should_force_color() and (not f_out.isatty() or not f_err.isatty()):
-            self.dummy_term = True
-            return
-        if sys.platform == "win32":
-            self.dummy_term = not self.initialize_win_colors()
-        elif sys.platform == "emscripten":
-            self.dummy_term = not self.initialize_vt100_colors()
-        else:
-            self.dummy_term = not self.initialize_unix_colors()
-        if not self.dummy_term:
+        self.default_colored = f_out.isatty() and f_err.isatty()
+        self.colors_ok = self.detect_terminal_colors(f_out, f_err)
+        if self.colors_ok:
             self.colors = {
                 "red": self.RED,
                 "green": self.GREEN,
@@ -618,6 +607,27 @@ class FancyFormatter:
                 "yellow": self.YELLOW,
                 "none": "",
             }
+        else:
+            if should_force_color():
+                print("warning: failed to detect a suitable color scheme "
+                      "but MYPY_FORCE_COLOR or FORCE_COLOR is enabled")
+            self.colors = {
+                "red": "",
+                "green": "",
+                "blue": "",
+                "yellow": "",
+                "none": "",
+            }
+
+    def detect_terminal_colors(self, f_out: IO[str], f_err: IO[str]) -> bool:
+        if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
+            return False
+        if sys.platform == "win32":
+            return self.initialize_win_colors()
+        elif sys.platform == "emscripten":
+            return self.initialize_vt100_colors()
+        else:
+            return self.initialize_unix_colors()
 
     def initialize_vt100_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
@@ -709,8 +719,6 @@ class FancyFormatter:
         dim: bool = False,
     ) -> str:
         """Apply simple color and style (underlined or bold)."""
-        if self.dummy_term:
-            return text
         if bold:
             start = self.BOLD
         else:
