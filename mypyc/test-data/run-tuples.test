@@ -292,6 +292,15 @@ TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 def test_final_boxed_tuple() -> None:
     t = TUPLE
     assert t == ('x', 'y')
+    assert 'x' in TUPLE
+    assert 'y' in TUPLE
+    b: object = 'z' in TUPLE
+    assert not b
+    assert 'z' not in TUPLE
+    b2: object = 'x' not in TUPLE
+    assert not b2
+    b3: object = 'y' not in TUPLE
+    assert not b3
 
 def test_add() -> None:
     res = (1, 2, 3, 4)

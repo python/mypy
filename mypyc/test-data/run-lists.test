@@ -364,6 +364,7 @@ def test_multiply() -> None:
     assert l1 == [1, 1, 1]
 
 [case testOperatorInExpression]
+from typing import Final
 
 def tuple_in_int0(i: int) -> bool:
     return i in []
@@ -416,71 +417,128 @@ def list_not_in_str(s: "str") -> bool:
 def list_in_mixed(i: object):
     return i in [[], (), "", 0, 0.0, False, 0j, {}, set(), type]
 
-[file driver.py]
+def test_in_operator_various_cases() -> None:
+    assert not tuple_in_int0(0)
+    assert not tuple_in_int1(0)
+    assert tuple_in_int1(1)
+    assert not tuple_in_int3(0)
+    assert tuple_in_int3(1)
+    assert tuple_in_int3(2)
+    assert tuple_in_int3(3)
+    assert not tuple_in_int3(4)
 
-from native import *
+    assert tuple_not_in_int0(0)
+    assert tuple_not_in_int1(0)
+    assert not tuple_not_in_int1(1)
+    assert tuple_not_in_int3(0)
+    assert not tuple_not_in_int3(1)
+    assert not tuple_not_in_int3(2)
+    assert not tuple_not_in_int3(3)
+    assert tuple_not_in_int3(4)
 
-assert not tuple_in_int0(0)
-assert not tuple_in_int1(0)
-assert tuple_in_int1(1)
-assert not tuple_in_int3(0)
-assert tuple_in_int3(1)
-assert tuple_in_int3(2)
-assert tuple_in_int3(3)
-assert not tuple_in_int3(4)
+    assert tuple_in_str("foo")
+    assert tuple_in_str("bar")
+    assert tuple_in_str("baz")
+    assert not tuple_in_str("apple")
+    assert not tuple_in_str("pie")
+    assert not tuple_in_str("\0")
+    assert not tuple_in_str("")
 
-assert tuple_not_in_int0(0)
-assert tuple_not_in_int1(0)
-assert not tuple_not_in_int1(1)
-assert tuple_not_in_int3(0)
-assert not tuple_not_in_int3(1)
-assert not tuple_not_in_int3(2)
-assert not tuple_not_in_int3(3)
-assert tuple_not_in_int3(4)
+    assert not list_in_int0(0)
+    assert not list_in_int1(0)
+    assert list_in_int1(1)
+    assert not list_in_int3(0)
+    assert list_in_int3(1)
+    assert list_in_int3(2)
+    assert list_in_int3(3)
+    assert not list_in_int3(4)
 
-assert tuple_in_str("foo")
-assert tuple_in_str("bar")
-assert tuple_in_str("baz")
-assert not tuple_in_str("apple")
-assert not tuple_in_str("pie")
-assert not tuple_in_str("\0")
-assert not tuple_in_str("")
+    assert list_not_in_int0(0)
+    assert list_not_in_int1(0)
+    assert not list_not_in_int1(1)
+    assert list_not_in_int3(0)
+    assert not list_not_in_int3(1)
+    assert not list_not_in_int3(2)
+    assert not list_not_in_int3(3)
+    assert list_not_in_int3(4)
 
-assert not list_in_int0(0)
-assert not list_in_int1(0)
-assert list_in_int1(1)
-assert not list_in_int3(0)
-assert list_in_int3(1)
-assert list_in_int3(2)
-assert list_in_int3(3)
-assert not list_in_int3(4)
+    assert list_in_str("foo")
+    assert list_in_str("bar")
+    assert list_in_str("baz")
+    assert not list_in_str("apple")
+    assert not list_in_str("pie")
+    assert not list_in_str("\0")
+    assert not list_in_str("")
 
-assert list_not_in_int0(0)
-assert list_not_in_int1(0)
-assert not list_not_in_int1(1)
-assert list_not_in_int3(0)
-assert not list_not_in_int3(1)
-assert not list_not_in_int3(2)
-assert not list_not_in_int3(3)
-assert list_not_in_int3(4)
+    assert list_in_mixed(0)
+    assert list_in_mixed([])
+    assert list_in_mixed({})
+    assert list_in_mixed(())
+    assert list_in_mixed(False)
+    assert list_in_mixed(0.0)
+    assert not list_in_mixed([1])
+    assert not list_in_mixed(object)
+    assert list_in_mixed(type)
 
-assert list_in_str("foo")
-assert list_in_str("bar")
-assert list_in_str("baz")
-assert not list_in_str("apple")
-assert not list_in_str("pie")
-assert not list_in_str("\0")
-assert not list_in_str("")
+TUP2: Final = ('x', 'y')
+TUP1: Final = ('x',)
+TUP0: Final = ()
 
-assert list_in_mixed(0)
-assert list_in_mixed([])
-assert list_in_mixed({})
-assert list_in_mixed(())
-assert list_in_mixed(False)
-assert list_in_mixed(0.0)
-assert not list_in_mixed([1])
-assert not list_in_mixed(object)
-assert list_in_mixed(type)
+def test_final_tuple_in() -> None:
+    assert 'x' + str() in TUP2
+    assert 'y' + str() in TUP2
+    b: object = 'z' + str() in TUP2
+    assert not b
+
+    assert 'x' + str() in TUP1
+    b2: object = 'y' in TUP1
+    assert not b2
+
+    b3: object = 'x' in TUP0
+    assert not b3
+
+def test_final_tuple_not_in() -> None:
+    assert 'z' + str() not in TUP2
+    b: object = 'x' + str() not in TUP2
+    assert not b
+    b2: object = 'y' + str() not in TUP2
+    assert not b2
+
+    assert 'y' + str() not in TUP1
+    b3: object = 'x' not in TUP1
+    assert not b2
+
+    assert 'x' not in TUP0
+
+log = []
+
+def f_a() -> str:
+    log.append('f_a')
+    return 'a'
+
+def f_a2() -> str:
+    log.append('f_a2')
+    return 'a'
+
+def f_b() -> str:
+    log.append('f_b')
+    return 'b'
+
+def f_c() -> str:
+    log.append('f_c')
+    return 'c'
+
+def test_tuple_in_order_of_evaluation() -> None:
+    assert f_a() in (f_b(), f_a2())
+    assert log ==["f_a", "f_b", "f_a2"]
+
+    log.clear()
+    assert f_a() not in (f_b(), f_c())
+    assert log ==["f_a", "f_b", "f_c"]
+
+    log.clear()
+    assert f_a() in (f_b(), f_a2(), f_c())
+    assert log ==["f_a", "f_b", "f_a2", "f_c"]
 
 [case testListBuiltFromGenerator]
 def test_from_gen() -> None:

@@ -281,36 +281,6 @@ L5:
 L6:
     return r6
 
-[case testTupleOperatorInFinalTuple]
-from typing import Final
-
-tt: Final = (1, 2)
-
-def f(x: int) -> bool:
-    return x in tt
-[out]
-def f(x):
-    x :: int
-    r0 :: tuple[int, int]
-    r1 :: bool
-    r2, r3 :: object
-    r4 :: i32
-    r5 :: bit
-    r6 :: bool
-L0:
-    r0 = __main__.tt :: static
-    if is_error(r0) goto L1 else goto L2
-L1:
-    r1 = raise NameError('value for final name "tt" was not set')
-    unreachable
-L2:
-    r2 = box(int, x)
-    r3 = box(tuple[int, int], r0)
-    r4 = PySequence_Contains(r3, r2)
-    r5 = r4 >= 0 :: signed
-    r6 = truncate r4: i32 to builtins.bool
-    return r6
-
 [case testTupleBuiltFromList]
 def f(val: int) -> bool:
     return val % 2 == 0
