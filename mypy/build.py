@@ -3326,8 +3326,22 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 #
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
+                if platform.python_implementation() == "CPython":
+                    # When deserializing cache we create huge amount of new objects, so even
+                    # with our generous GC thresholds, GC is still doing a lot of pointless
+                    # work searching for garbage. So, we temporarily disable it when
+                    # processing fresh SCCs, and then move all the new objects to the oldest
+                    # generation with the freeze()/unfreeze() trick below. This is arguably
+                    # a hack, but it gives huge performance wins for large third-party
+                    # libraries, like torch.
+                    gc.collect()
+                    gc.disable()
                 for prev_scc in fresh_scc_queue:
                     process_fresh_modules(graph, prev_scc, manager)
+                if platform.python_implementation() == "CPython":
+                    gc.freeze()
+                    gc.unfreeze()
+                    gc.enable()
                 fresh_scc_queue = []
             size = len(scc)
             if size == 1:
