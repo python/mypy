@@ -1257,7 +1257,19 @@ def get_protocol_member(
 
 def _is_disjoint_base(info: TypeInfo) -> bool:
     # It either has the @disjoint_base decorator or defines nonempty __slots__.
-    return info.is_disjoint_base or bool(info.slots)
+    if info.is_disjoint_base:
+        return True
+    if not info.slots:
+        return False
+    own_slots = {
+        slot
+        for slot in info.slots
+        if not any(
+            base_info.type.slots is not None and slot in base_info.type.slots
+            for base_info in info.bases
+        )
+    }
+    return bool(own_slots)
 
 
 def _get_disjoint_base_of(instance: Instance) -> TypeInfo | None:
