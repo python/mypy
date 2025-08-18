@@ -364,8 +364,6 @@ def test_multiply() -> None:
     assert l1 == [1, 1, 1]
 
 [case testOperatorInExpression]
-from typing import Final
-
 def tuple_in_int0(i: int) -> bool:
     return i in []
 
