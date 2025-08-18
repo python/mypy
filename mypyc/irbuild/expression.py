@@ -76,6 +76,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
+    is_object_rprimitive,
     object_rprimitive,
     set_rprimitive,
 )
@@ -98,7 +99,7 @@ from mypyc.irbuild.format_str_tokenizer import (
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
-from mypyc.primitives.generic_ops import iter_op
+from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.registry import builtin_names
@@ -217,6 +218,13 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     can_borrow = builder.is_native_attr_ref(expr)
     obj = builder.accept(expr.expr, can_borrow=can_borrow)
     rtype = builder.node_type(expr)
+
+    if (
+        is_object_rprimitive(obj.type)
+        and expr.name == "__name__"
+        and builder.options.capi_version >= (3, 11)
+    ):
+        return builder.primitive_op(name_op, [obj], expr.line)
 
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
