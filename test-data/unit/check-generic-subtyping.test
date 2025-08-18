@@ -753,6 +753,20 @@ s, s = Nums() # E: Incompatible types in assignment (expression has type "int", 
 [builtins fixtures/for.pyi]
 [out]
 
+[case testUninhabitedCacheChecksAmbiguous]
+# https://github.com/python/mypy/issues/19641
+from typing import Mapping, Never, TypeVar
+
+M = TypeVar("M", bound=Mapping[str,object])
+
+def get(arg: M, /) -> M:
+    return arg
+
+get({})
+
+def upcast(d: dict[Never, Never]) -> Mapping[str, object]:
+    return d  # E: Incompatible return value type (got "dict[Never, Never]", expected "Mapping[str, object]")
+[builtins fixtures/dict.pyi]
 
 -- Variance
 -- --------
