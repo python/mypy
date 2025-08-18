@@ -14,6 +14,7 @@ from mypyc.ir.rtypes import (
     RVoid,
     is_bit_rprimitive,
     is_bool_rprimitive,
+    is_dict_rprimitive,
     is_exact_dict_rprimitive,
     is_fixed_width_rtype,
     is_int_rprimitive,
