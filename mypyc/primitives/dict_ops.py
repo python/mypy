@@ -248,6 +248,7 @@ exact_dict_get_method_with_none = method_op(
     return_type=object_rprimitive,
     c_function_name="CPyDict_GetWithNone",
     error_kind=ERR_MAGIC,
+    priority=2,
 )
 
 # dictorsubclass.get(key)
