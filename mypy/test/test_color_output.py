@@ -1,5 +1,5 @@
 from functools import partial
-from subprocess import PIPE, run
+from subprocess import run
 from typing import Any
 
 import pytest
