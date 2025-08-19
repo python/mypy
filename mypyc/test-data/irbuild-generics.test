@@ -741,7 +741,7 @@ L6:
     r16 = cast(str, r14)
     k = r16
     v = r15
-    r17 = CPyDict_SetItem(r7, k, v)
+    r17 = PyDict_SetItem(r7, k, v)
     r18 = r17 >= 0 :: signed
 L7:
     r19 = CPyDict_CheckSize(kwargs, r9)
