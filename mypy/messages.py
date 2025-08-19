@@ -1345,7 +1345,7 @@ class MessageBuilder:
             isinstance(original, Instance)
             and isinstance(override, Instance)
             and override.type.fullname == "typing.AsyncIterator"
-            and original.type.fullname == "typing.Coroutine"
+            and original.type.fullname == "types.CoroutineType"
             and len(original.args) == 3
             and original.args[2] == override
         ):
