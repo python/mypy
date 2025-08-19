@@ -6,7 +6,7 @@ import pytest
 # TODO Would like help with this test, how do I make it runnable?
 
 def test(expect_color: bool, *args: Any, **kwargs: Any) -> None:
-    res = run(*args, stdout=PIPE, stderr=PIPE, **kwargs) #type:ignore[call-overload]
+    res = run(*args, capture_output=True, **kwargs) #type:ignore[call-overload]
     if "Found" not in res.stdout: #??
         pytest.fail("Command failed to complete or did not detect type error")
     if expect_color: # Expect color control chars
