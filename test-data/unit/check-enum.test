@@ -1440,6 +1440,36 @@ x: Literal[MyEnum.foo]  # E: Parameter 1 of Literal[...] is invalid
 y: Literal[MyEnum.bar]  # E: Parameter 1 of Literal[...] is invalid
 [builtins fixtures/enum.pyi]
 
+[case testEnumAttributesInheritedFromMixin]
+from enum import Enum
+from typing import TYPE_CHECKING, ClassVar, Final, Literal
+
+class A:
+    var1 = 1
+    var2: ClassVar[str]
+    var3: Final[int] = 3
+    var4: str
+
+class E(A, Enum):
+    mem = 1
+
+reveal_type(E.var1)  # N: Revealed type is "builtins.int"
+reveal_type(E.var2)  # N: Revealed type is "builtins.str"
+reveal_type(E.var3)  # N: Revealed type is "builtins.int"
+reveal_type(E.var4)  # N: Revealed type is "builtins.str"
+reveal_type(E.mem)  # N: Revealed type is "Literal[__main__.E.mem]?"
+
+E.var1.value  # E: "int" has no attribute "value"
+E.var2.name  # E: "str" has no attribute "name"
+E.mem.name
+
+x1: Literal[E.var1]  # E: Parameter 1 of Literal[...] is invalid
+x2: Literal[E.var2]  # E: Parameter 1 of Literal[...] is invalid
+x3: Literal[E.var3]  # E: Parameter 1 of Literal[...] is invalid
+x4: Literal[E.var4]  # E: Parameter 1 of Literal[...] is invalid
+m: Literal[E.mem]
+[builtins fixtures/enum.pyi]
+
 [case testEnumWithInstanceAttributes]
 from enum import Enum
 class Foo(Enum):
