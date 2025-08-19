@@ -573,88 +573,54 @@ Vector2(x=-2, y=3.1)
 \[4, -5.2]
 
 [case testRunForMap]
-def f(a: list[int]) -> int:
+def single(a: list[int]) -> int:
     s = 0
     for x in map(lambda x: x + 1, a):
         s += x
     return s
-
-def g(a: list[int], b: list[int]) -> int:
+def double(a: list[int], b: list[int]) -> int:
     s = 0
     for x in map(lambda x, y: x * y, a, b):
         s += x
     return s
-
-[file driver.py]
-from native import f, g
-print(f([1, 2, 3]))
-print(g([1, 2, 3], [4, 5, 6]))
-print(g([1, 2], [10, 20, 30]))  # Shortest wins: only 2 items
-
-[out]
-9
-32
-50
-
-[case testRunForMapEdgeCases]
-def f(a: list[int], b: list[int]) -> int:
-    s = 0
-    for x in map(lambda x, y: x + y, a, b):
-        s += x
-    return s
-
-[file driver.py]
-from native import f
-print(f([], []))
-print(f([1, 2], []))
-print(f([], [1, 2]))
-
-[out]
-0
-0
-0
-
-[case testRunForMapThreeArgs]
-def f(a: list[int], b: list[int], c: list[int]) -> int:
+def triple(a: list[int], b: list[int], c: list[int]) -> int:
     s = 0
     for x in map(lambda x, y, z: x * y + z, a, b, c):
         s += x
     return s
-
-[file driver.py]
-from native import f
-print(f([1, 2, 3], [4, 5, 6], [7, 8, 9]))
-print(f([1, 2], [10, 20, 30], [100, 200, 300]))
-print(f([], [], []))
-print(f([1, 2], [], [3, 4]))
-[out]
-56
-350
-0
-0
-
-[case testRunForMapNested]
-def f(a: list[int], b: list[int], c: list[int]) -> int:
+def nested(a: list[int], b: list[int], c: list[int]) -> int:
     s = 0
     for x in map(lambda x, y: x + y, map(lambda x, y: x * y, a, b), c):
         s += x
     return s
-
-[file driver.py]
-from native import f
-print(f([1, 2, 3], [4, 5, 6], [7, 8, 9]))
-[out]
-56
-
-[case testRunForMapUnpack]
-def f(a: list[int], b: list[int]) -> int:
+def unpack(a: list[int], b: list[int]) -> int:
     s = 0
     for x, y in map(lambda x, y: (x, y), a, b):
         s += x * 10 + y
     return s
 
-[file driver.py]
-from native import f
-print(f([1, 2, 3], [4, 5, 6]))
-[out]
-75
+def test_single() -> None:
+    assert single([1, 2, 3]) == 9
+def test_double() -> None:
+    assert double([1, 2, 3], [4, 5, 6]) == 32
+def test_double_uneven() -> None:
+    # Shortest wins: only 2 items
+    assert double([1, 2], [10, 20, 30]) == 50
+def test_double_empty() -> None:
+    assert double([], []) == 0
+def test_double_empty_first() -> None:
+    assert double([], [1, 2]) == 0
+def test_double_empty_second() -> None:
+    assert double([1, 2], []) == 0
+def test_triple() -> None:
+    assert triple([1, 2, 3], [4, 5, 6], [7, 8, 9]) == 56
+def test_triple_uneven() -> None:
+    assert triple([1, 2], [10, 20, 30], [100, 200, 300]) == 350
+def test_triple_empty() -> None:
+    assert triple([], [], []) == 0
+def test_triple_one_empty() -> None:
+    assert triple([1, 2], [], [3, 4]) == 0
+def test_nested() -> None:
+    assert nested([1, 2, 3], [4, 5, 6], [7, 8, 9]) == 56
+def test_unpack() -> None:
+    assert unpack([1, 2, 3], [4, 5, 6]) == 75
