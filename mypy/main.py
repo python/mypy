@@ -137,7 +137,7 @@ def main(
             install_types(formatter, options, after_run=True, non_interactive=True)
             fscache.flush()
             print()
-            res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+            res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr, use_color)
         show_messages(messages, stderr, formatter, options, use_color)
 
     if MEM_PROFILE:
@@ -469,7 +469,8 @@ class CapturableVersionAction(argparse.Action):
 
 # Coupled with the usage in define_options
 class ColorOutputAction(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(self, parser: argparse.ArgumentParser, namespace: argparse.Namespace,
+                 values: str | Sequence[Any] | None, option_string: str | None = None) -> None:
         assert values in ("auto", None)
         print(f"{values=}")
         setattr(namespace, self.dest, True if values is None else "auto")
