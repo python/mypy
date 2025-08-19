@@ -8,7 +8,7 @@ import pytest
 
 
 def test(expect_color: bool, *args: Any, **kwargs: Any) -> None:
-    res = run(*args, capture_output=True, **kwargs)  # type:ignore[call-overload]
+    res = run(*args, capture_output=True, **kwargs)
     if "Found" not in res.stdout:  # ??
         pytest.fail("Command failed to complete or did not detect type error")
     if expect_color:  # Expect color control chars
