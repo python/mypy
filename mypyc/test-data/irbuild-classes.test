@@ -1516,3 +1516,45 @@ L0:
     r0 = CPy_GetName(t)
     r1 = cast(str, r0)
     return r1
+
+[case testTypeOfObject]
+class C: pass
+class D(C): pass
+
+def generic_type(x: object) -> type[object]:
+    return type(x)
+
+def generic_class(x: object) -> type[object]:
+    return x.__class__
+
+def native_type(x: C) -> type[object]:
+    return type(x)
+
+def native_class(x: C) -> type[object]:
+    return x.__class__
+[out]
+def generic_type(x):
+    x, r0 :: object
+L0:
+    r0 = CPy_TYPE(x)
+    return r0
+def generic_class(x):
+    x :: object
+    r0 :: str
+    r1 :: object
+L0:
+    r0 = '__class__'
+    r1 = CPyObject_GetAttr(x, r0)
+    return r1
+def native_type(x):
+    x :: __main__.C
+    r0 :: object
+L0:
+    r0 = CPy_TYPE(x)
+    return r0
+def native_class(x):
+    x :: __main__.C
+    r0 :: object
+L0:
+    r0 = CPy_TYPE(x)
+    return r0

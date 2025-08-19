@@ -752,6 +752,9 @@ PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
+PyObject *CPy_DecodeUTF8(PyObject *bytes);
+PyObject *CPy_DecodeASCII(PyObject *bytes);
+PyObject *CPy_DecodeLatin1(PyObject *bytes);
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
@@ -872,6 +875,12 @@ static inline bool CPyFloat_Check(PyObject *o) {
 //       use inline functions
 static inline bool CPy_TypeCheck(PyObject *o, PyObject *type) {
     return PyObject_TypeCheck(o, (PyTypeObject *)type);
+}
+
+static inline PyObject *CPy_TYPE(PyObject *obj) {
+    PyObject *result = (PyObject *)Py_TYPE(obj);
+    Py_INCREF(result);
+    return result;
 }
 
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);

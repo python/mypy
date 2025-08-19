@@ -214,7 +214,7 @@ new_slice_op = function_op(
 type_op = function_op(
     name="builtins.type",
     arg_types=[object_rprimitive],
-    c_function_name="PyObject_Type",
+    c_function_name="CPy_TYPE",
     return_type=object_rprimitive,
     error_kind=ERR_NEVER,
 )

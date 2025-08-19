@@ -1484,13 +1484,7 @@ def analyze_decorator_or_funcbase_access(
     if isinstance(defn, Decorator):
         return analyze_var(name, defn.var, itype, mx)
     typ = function_type(defn, mx.chk.named_type("builtins.function"))
-    is_trivial_self = False
-    if isinstance(defn, Decorator):
-        # Use fast path if there are trivial decorators like @classmethod or @property
-        is_trivial_self = defn.func.is_trivial_self and not defn.decorators
-    elif isinstance(defn, (FuncDef, OverloadedFuncDef)):
-        is_trivial_self = defn.is_trivial_self
-    if is_trivial_self:
+    if isinstance(defn, (FuncDef, OverloadedFuncDef)) and defn.is_trivial_self:
         return bind_self_fast(typ, mx.self_type)
     typ = check_self_arg(typ, mx.self_type, defn.is_class, mx.context, name, mx.msg)
     return bind_self(typ, original_type=mx.self_type, is_classmethod=defn.is_class)
