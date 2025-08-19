@@ -1468,3 +1468,51 @@ L1:
 L2:
     r2 = self == r0
     return r2
+
+[case testTypeObjectName_python3_11]
+from typing import Any
+
+class C: pass
+class D(C): pass
+
+def n1(t: type[object]) -> str:
+    return t.__name__
+
+def n2(t: Any) -> str:
+    return t.__name__
+
+def n3() -> str:
+    return C.__name__
+
+def n4(t: type[C]) -> str:
+    return t.__name__
+[out]
+def n1(t):
+    t, r0 :: object
+    r1 :: str
+L0:
+    r0 = CPy_GetName(t)
+    r1 = cast(str, r0)
+    return r1
+def n2(t):
+    t, r0 :: object
+    r1 :: str
+L0:
+    r0 = CPy_GetName(t)
+    r1 = cast(str, r0)
+    return r1
+def n3():
+    r0, r1 :: object
+    r2 :: str
+L0:
+    r0 = __main__.C :: type
+    r1 = CPy_GetName(r0)
+    r2 = cast(str, r1)
+    return r2
+def n4(t):
+    t, r0 :: object
+    r1 :: str
+L0:
+    r0 = CPy_GetName(t)
+    r1 = cast(str, r0)
+    return r1
