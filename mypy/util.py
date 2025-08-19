@@ -609,15 +609,11 @@ class FancyFormatter:
             }
         else:
             if should_force_color():
-                print("warning: failed to detect a suitable terminal color scheme "
-                      "but MYPY_FORCE_COLOR or FORCE_COLOR is set to on")
-            self.colors = {
-                "red": "",
-                "green": "",
-                "blue": "",
-                "yellow": "",
-                "none": "",
-            }
+                print(
+                    "warning: failed to detect a suitable terminal color scheme "
+                    "but MYPY_FORCE_COLOR or FORCE_COLOR is set to on"
+                )
+            self.colors = {"red": "", "green": "", "blue": "", "yellow": "", "none": ""}
 
     def detect_terminal_colors(self, f_out: IO[str], f_err: IO[str]) -> bool:
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
