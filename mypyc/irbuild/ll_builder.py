@@ -795,7 +795,6 @@ class LowLevelIRBuilder:
 
         for value, kind, name in args:
             if kind == ARG_STAR:
-                # star args fastpath
                 if star_result is None:
                     # star args fastpath
                     if len(args) == 1:
