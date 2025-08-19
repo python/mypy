@@ -254,6 +254,7 @@ from mypy.types import (
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
     DEPRECATED_TYPE_NAMES,
+    DISJOINT_BASE_DECORATOR_NAMES,
     FINAL_DECORATOR_NAMES,
     FINAL_TYPE_NAMES,
     IMPORTED_REVEAL_TYPE_NAMES,
@@ -2188,6 +2189,8 @@ class SemanticAnalyzer(
         """
         if refers_to_fullname(decorator, FINAL_DECORATOR_NAMES):
             info.is_final = True
+        elif refers_to_fullname(decorator, DISJOINT_BASE_DECORATOR_NAMES):
+            info.is_disjoint_base = True
         elif refers_to_fullname(decorator, TYPE_CHECK_ONLY_NAMES):
             info.is_type_check_only = True
         elif (deprecated := self.get_deprecated(decorator)) is not None:

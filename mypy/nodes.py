@@ -3004,6 +3004,7 @@ class TypeInfo(SymbolNode):
         "_mro_refs",
         "bad_mro",
         "is_final",
+        "is_disjoint_base",
         "declared_metaclass",
         "metaclass_type",
         "names",
@@ -3055,6 +3056,7 @@ class TypeInfo(SymbolNode):
     _mro_refs: list[str] | None
     bad_mro: bool  # Could not construct full MRO
     is_final: bool
+    is_disjoint_base: bool
 
     declared_metaclass: mypy.types.Instance | None
     metaclass_type: mypy.types.Instance | None
@@ -3209,6 +3211,7 @@ class TypeInfo(SymbolNode):
         "is_protocol",
         "runtime_protocol",
         "is_final",
+        "is_disjoint_base",
         "is_intersection",
     ]
 
@@ -3241,6 +3244,7 @@ class TypeInfo(SymbolNode):
         self.type_var_tuple_suffix: int | None = None
         self.add_type_vars()
         self.is_final = False
+        self.is_disjoint_base = False
         self.is_enum = False
         self.fallback_to_any = False
         self.meta_fallback_to_any = False
