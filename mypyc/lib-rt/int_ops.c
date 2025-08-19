@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 #ifndef _WIN32
 // On 64-bit Linux and macOS, ssize_t and long are both 64 bits, and
 // PyLong_FromLong is faster than PyLong_FromSsize_t, so use the faster one
@@ -606,7 +610,19 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
         Py_ssize_t absval = val < 0 ? -val : val;
         int bits = 0;
         if (absval) {
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(_MSC_VER)
+    #if defined(_WIN64)
+            unsigned long idx;
+            if (_BitScanReverse64(&idx, (unsigned __int64)absval)) {
+                bits = (int)(idx + 1);
+            }
+    #else
+            unsigned long idx;
+            if (_BitScanReverse(&idx, (unsigned long)absval)) {
+                bits = (int)(idx + 1);
+            }
+    #endif
+#elif defined(__GNUC__) || defined(__clang__)
             bits = (int)(CPY_BITS - CPY_CLZ(absval));
 #else
             // Fallback to loop if no builtin
