@@ -1349,7 +1349,7 @@ def analyze_enum_class_attribute_access(
         return None
 
     node = itype.type.get(name)
-    if node.type:
+    if node and node.type:
         proper = get_proper_type(node.type)
         # Support `A = nonmember(1)` function call and decorator.
         if (
