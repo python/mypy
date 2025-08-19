@@ -877,6 +877,12 @@ static inline bool CPy_TypeCheck(PyObject *o, PyObject *type) {
     return PyObject_TypeCheck(o, (PyTypeObject *)type);
 }
 
+static inline PyObject *CPy_TYPE(PyObject *obj) {
+    PyObject *result = (PyObject *)Py_TYPE(obj);
+    Py_INCREF(result);
+    return result;
+}
+
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
 PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);

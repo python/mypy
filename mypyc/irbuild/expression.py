@@ -69,6 +69,7 @@ from mypyc.ir.ops import (
     Value,
 )
 from mypyc.ir.rtypes import (
+    RInstance,
     RTuple,
     bool_rprimitive,
     int_rprimitive,
@@ -225,6 +226,11 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         and builder.options.capi_version >= (3, 11)
     ):
         return builder.primitive_op(name_op, [obj], expr.line)
+
+    if isinstance(obj.type, RInstance) and expr.name == "__class__":
+        # A non-native class could override "__class__" using "__getattribute__", so
+        # only apply to RInstance types.
+        return builder.primitive_op(type_op, [obj], expr.line)
 
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))

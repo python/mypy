@@ -412,7 +412,7 @@ def foo(x):
     r36 :: bit
 L0:
     r0 = PyObject_Vectorcall(x, 0, 0, 0)
-    r1 = PyObject_Type(r0)
+    r1 = CPy_TYPE(r0)
     r2 = '__exit__'
     r3 = CPyObject_GetAttr(r1, r2)
     r4 = '__enter__'

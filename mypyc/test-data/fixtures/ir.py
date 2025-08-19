@@ -39,6 +39,7 @@ __SupportsSomeKindOfPow = Union[
 ]
 
 class object:
+    __class__: type
     def __init__(self) -> None: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
