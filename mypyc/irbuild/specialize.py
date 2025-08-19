@@ -316,7 +316,7 @@ def translate_list_from_generator_call(
 
         result = builder.new_list_op([], expr.line)
 
-        def body_insts():
+        def body_insts() -> None:
             builder.primitive_op(list_append_op, [result, index], expr.line)
 
         for_loop_helper(
