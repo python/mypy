@@ -1,0 +1,41 @@
+name: Test stubgenc on pybind11_fixtures
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master, 'release*']
+    tags: ['*']
+  pull_request:
+    paths:
+    - 'misc/test-stubgenc.sh'
+    - 'mypy/stubgenc.py'
+    - 'mypy/stubdoc.py'
+    - 'mypy/stubutil.py'
+    - 'test-data/stubgen/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  stubgenc:
+    # Check stub file generation for a small pybind11 project
+    # (full text match is required to pass)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Setup 🐍 3.9
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.9
+
+    - name: Test stubgenc
+      run: misc/test-stubgenc.sh

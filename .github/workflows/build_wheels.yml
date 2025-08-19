@@ -1,0 +1,25 @@
+name: Trigger wheel build
+
+on:
+  push:
+    branches: [main, master, 'release*']
+    tags: ['*']
+
+permissions:
+  contents: read
+
+jobs:
+  build-wheels:
+    if: github.repository == 'python/mypy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Trigger script
+        env:
+          WHEELS_PUSH_TOKEN: ${{ secrets.WHEELS_PUSH_TOKEN }}
+        run: ./misc/trigger_wheel_build.sh

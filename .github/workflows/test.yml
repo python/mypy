@@ -3,7 +3,7 @@ name: Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main, master, 'release*', color-output-option]
+    branches: [main, master, 'release*']
     tags: ['*']
   pull_request:
     paths-ignore:
