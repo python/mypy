@@ -12,7 +12,7 @@ import sys
 import time
 from collections.abc import Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, TYPE_CHECKING, Any, Callable, Final, Literal, TypeVar, cast
+from typing import IO, Any, Callable, Final, Literal, TypeVar
 
 orjson: Any
 try:
@@ -593,8 +593,12 @@ class FancyFormatter:
     """
 
     def __init__(
-        self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool, hide_success: bool = False,
-        color_request: bool | Literal["auto"] = "auto"
+        self,
+        f_out: IO[str],
+        f_err: IO[str],
+        hide_error_codes: bool,
+        hide_success: bool = False,
+        color_request: bool | Literal["auto"] = "auto",
     ) -> None:
         self.hide_error_codes = hide_error_codes
         self.hide_success = hide_success
@@ -729,7 +733,7 @@ class FancyFormatter:
             start += self.UNDER
         if dim:
             start += self.DIM
-        #if TYPE_CHECKING:
+        # if TYPE_CHECKING:
         #    reveal_type(self.colors)
         return start + self.colors[color] + text + self.NORMAL
 

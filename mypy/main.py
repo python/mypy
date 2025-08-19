@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from gettext import gettext
 from io import TextIOWrapper
-from typing import IO, TYPE_CHECKING, Any, Final, Literal, NoReturn, TextIO, Union, cast
+from typing import IO, TYPE_CHECKING, Any, Final, Literal, NoReturn, TextIO, cast
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
@@ -94,15 +94,15 @@ def main(
     use_color: bool | Literal["auto"] = (
         True
         if util.should_force_color()
-        else (
-            "auto"
-            if options.color_output == "auto"
-            else cast(bool, options.color_output)
-        )
+        else ("auto" if options.color_output == "auto" else cast(bool, options.color_output))
     )
 
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output), color_request=use_color
+        stdout,
+        stderr,
+        options.hide_error_codes,
+        hide_success=bool(options.output),
+        color_request=use_color,
     )
 
     if options.allow_redefinition_new and not options.local_partial_types:
@@ -198,8 +198,11 @@ def run_build(
     use_color: bool | Literal["auto"],
 ) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output),
-        color_request=use_color
+        stdout,
+        stderr,
+        options.hide_error_codes,
+        hide_success=bool(options.output),
+        color_request=use_color,
     )
 
     messages = []

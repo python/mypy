@@ -199,22 +199,19 @@ class Server:
         # (details in https://github.com/python/mypy/issues/4492)
         options.local_partial_types = True
         self.status_file = status_file
-        
+
         # Type annotation needed for mypy (Pyright understands this)
         use_color: bool | Literal["auto"] = (
             True
             if util.should_force_color()
-            else (
-                "auto"
-                if options.color_output == "auto"
-                else cast(bool, options.color_output)
-            )
+            else ("auto" if options.color_output == "auto" else cast(bool, options.color_output))
         )
 
         # Since the object is created in the parent process we can check
         # the output terminal options here.
-        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.hide_error_codes,
-                                        color_request=use_color)
+        self.formatter = FancyFormatter(
+            sys.stdout, sys.stderr, options.hide_error_codes, color_request=use_color
+        )
 
     def _response_metadata(self) -> dict[str, str]:
         py_version = f"{self.options.python_version[0]}_{self.options.python_version[1]}"
