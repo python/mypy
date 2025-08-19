@@ -3163,3 +3163,49 @@ def foo(): pass
 class Thing:
     def __init__(self):
         self.__name__ = "xyz"
+
+[case testTypeOfObject]
+from typing import Any
+
+from dynamic import Dyn
+
+class Foo: pass
+class Bar(Foo): pass
+
+def generic_type(x) -> type[object]:
+    return x.__class__
+
+def test_built_in_type() -> None:
+    i: Any = int
+    l: Any = list
+    assert type(i()) is i().__class__
+    assert type(i()) is int
+    assert type(l()) is list
+    n = 5
+    assert n.__class__ is i
+
+def test_native_class() -> None:
+    f_any: Any = Foo()
+    b_any: Any = Bar()
+    f: Foo = f_any
+    b: Foo = b_any
+    if int("1"):  # use int("1") to avoid constant folding
+        assert type(f) is Foo
+        assert type(b) is Bar
+    if int("2"):
+        assert f.__class__ is Foo
+        assert b.__class__ is Bar
+    if int("3"):
+        assert f_any.__class__ is Foo
+        assert b_any.__class__ is Bar
+    if int("4"):
+        assert type(f_any) is Foo
+        assert type(b_any) is Bar
+
+def test_python_class() -> None:
+    d = Dyn()
+    assert type(d) is Dyn
+    assert d.__class__ is Dyn
+
+[file dynamic.py]
+class Dyn: pass
