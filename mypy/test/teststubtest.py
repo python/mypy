@@ -2592,6 +2592,11 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         assert output == "Success: no issues found in 1 module\n"
 
+        output = run_stubtest(
+            stub="def f(*, a): ...", runtime="def f(a): pass", options=["--ignore-keyword-only"]
+        )
+        assert output == "Success: no issues found in 1 module\n"
+
     def test_allowlist(self) -> None:
         # Can't use this as a context because Windows
         allowlist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
