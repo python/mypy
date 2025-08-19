@@ -1,5 +1,6 @@
 # builtins stub used in for statement test cases
 
+import collections
 from typing import TypeVar, Generic, Iterable, Iterator, Generator
 from abc import abstractmethod, ABCMeta
 

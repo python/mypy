@@ -3,6 +3,7 @@
 # NOTE: Use dict-full.pyi if you need more builtins instead of adding here,
 #       if feasible.
 
+import collections
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
