@@ -855,7 +855,7 @@ class Server:
             True
             if util.should_force_color()
             else (
-                self.formatter.default_colored
+                is_tty
                 if self.options.color_output == "auto"
                 else bool(self.options.color_output)
             )
