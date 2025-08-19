@@ -923,9 +923,27 @@ in error messages.
     Use visually nicer output in error messages: use soft word wrap,
     show source code snippets, and show error location markers.
 
+.. option:: --color-output[=auto]
+
+    Enables colored output in error messages.
+
+    When ``--color-output=auto`` is given, uses colored output if the output
+    (both stdout and stderr) is going to a tty. This is also the default.
+
+    .. note::
+        When the environment variable ``MYPY_FORCE_COLOR`` is set to a
+        non-``0`` non-empty string, mypy always enables colored output
+        (even if ``--no-color-output`` is given).
+
+        .. Note: Here I decide not to document ``FORCE_COLOR`` as its
+           logic seems counter-intuitive from earlier conventions
+           (PR13853)
+
 .. option:: --no-color-output
 
-    This flag will disable color output in error messages, enabled by default.
+    Disables colored output in error messages.
+
+    See also note above.
 
 .. option:: --no-error-summary
 
