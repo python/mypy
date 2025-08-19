@@ -1674,10 +1674,8 @@ def g():
     r0 :: tuple[int, int, int]
     r1 :: dict
     r2 :: str
-    r3, r4 :: object
-    r5 :: tuple
-    r6 :: object
-    r7 :: tuple[int, int, int]
+    r3, r4, r5 :: object
+    r6 :: tuple[int, int, int]
 L0:
     r0 = (2, 4, 6)
     r1 = __main__.globals :: static
@@ -1685,8 +1683,8 @@ L0:
     r3 = CPyDict_GetItem(r1, r2)
     r4 = box(tuple[int, int, int], r0)
     r5 = PyObject_CallObject(r3, r4)
-    r7 = unbox(tuple[int, int, int], r6)
-    return r7
+    r6 = unbox(tuple[int, int, int], r5)
+    return r6
 def h():
     r0 :: tuple[int, int]
     r1 :: dict
