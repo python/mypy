@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from gettext import gettext
 from io import TextIOWrapper
-from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
+from typing import IO, TYPE_CHECKING, Any, Final, Literal, NoReturn, TextIO, Union, cast
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
@@ -90,8 +90,19 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
+    # Type annotation needed for mypy (Pyright understands this)
+    use_color: bool | Literal["auto"] = (
+        True
+        if util.should_force_color()
+        else (
+            "auto"
+            if options.color_output == "auto"
+            else cast(bool, options.color_output)
+        )
+    )
+
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
+        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output), color_request=use_color
     )
 
     if options.allow_redefinition_new and not options.local_partial_types:
@@ -123,16 +134,6 @@ def main(
     if options.install_types and not sources:
         install_types(formatter, options, non_interactive=options.non_interactive)
         return
-
-    use_color = (
-        True
-        if util.should_force_color()
-        else (
-            formatter.default_colored
-            if options.color_output == "auto"
-            else bool(options.color_output)
-        )
-    )
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr, use_color)
 
@@ -194,10 +195,11 @@ def run_build(
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
-    use_color: bool,
+    use_color: bool | Literal["auto"],
 ) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
+        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output),
+        color_request=use_color
     )
 
     messages = []
@@ -255,8 +257,10 @@ def show_messages(
     f: TextIO,
     formatter: util.FancyFormatter,
     options: Options,
-    use_color: bool,
+    use_color: bool | Literal["auto"],
 ) -> None:
+    if use_color == "auto":
+        use_color = formatter.default_colored
     for msg in messages:
         if use_color:
             msg = formatter.colorize(msg)
@@ -489,7 +493,6 @@ class ColorOutputAction(argparse.Action):
         option_string: str | None = None,
     ) -> None:
         assert values in ("auto", None)
-        print(f"{values=}")
         setattr(namespace, self.dest, True if values is None else "auto")
 
 

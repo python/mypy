@@ -12,7 +12,7 @@ import sys
 import time
 from collections.abc import Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, Any, Callable, Final, Literal, TypeVar
+from typing import IO, TYPE_CHECKING, Any, Callable, Final, Literal, TypeVar, cast
 
 orjson: Any
 try:
@@ -593,14 +593,19 @@ class FancyFormatter:
     """
 
     def __init__(
-        self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool, hide_success: bool = False
+        self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool, hide_success: bool = False,
+        color_request: bool | Literal["auto"] = "auto"
     ) -> None:
         self.hide_error_codes = hide_error_codes
         self.hide_success = hide_success
         self.default_colored = f_out.isatty() and f_err.isatty()
         self.colors_ok = self.detect_terminal_colors(f_out, f_err)
+        self.RED: str
+        self.GREEN: str
+        self.BLUE: str
+        self.YELLOW: str
         if self.colors_ok:
-            self.colors = {
+            self.colors: dict[str, str] = {
                 "red": self.RED,
                 "green": self.GREEN,
                 "blue": self.BLUE,
@@ -608,12 +613,13 @@ class FancyFormatter:
                 "none": "",
             }
         else:
-            if should_force_color():
+            if color_request is True or (color_request == "auto" and self.default_colored):
                 print(
                     "warning: failed to detect a suitable terminal color scheme "
-                    "but MYPY_FORCE_COLOR or FORCE_COLOR is set to on"
+                    "but colored output is requested"
                 )
             self.colors = {"red": "", "green": "", "blue": "", "yellow": "", "none": ""}
+            self.NORMAL = self.BOLD = self.UNDER = self.DIM = ""
 
     def detect_terminal_colors(self, f_out: IO[str], f_err: IO[str]) -> bool:
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
@@ -723,6 +729,8 @@ class FancyFormatter:
             start += self.UNDER
         if dim:
             start += self.DIM
+        #if TYPE_CHECKING:
+        #    reveal_type(self.colors)
         return start + self.colors[color] + text + self.NORMAL
 
     def fit_in_terminal(
@@ -823,7 +831,7 @@ class FancyFormatter:
         end = match.end()
         return note[:start] + self.style(note[start:end], "none", underline=True) + note[end:]
 
-    def format_success(self, n_sources: int, use_color: bool = True) -> str:
+    def format_success(self, n_sources: int, use_color: bool | Literal["auto"] = True) -> str:
         """Format short summary in case of success.
 
         n_sources is total number of files passed directly on command line,
@@ -833,7 +841,7 @@ class FancyFormatter:
             return ""
 
         msg = f"Success: no issues found in {n_sources} source file{plural_s(n_sources)}"
-        if not use_color:
+        if not (use_color is True or (use_color == "auto" and self.default_colored)):
             return msg
         return self.style(msg, "green", bold=True)
 
@@ -844,7 +852,7 @@ class FancyFormatter:
         n_sources: int,
         *,
         blockers: bool = False,
-        use_color: bool = True,
+        use_color: bool | Literal["auto"] = True,
     ) -> str:
         """Format a short summary in case of errors."""
         msg = f"Found {n_errors} error{plural_s(n_errors)} in {n_files} file{plural_s(n_files)}"
@@ -852,7 +860,7 @@ class FancyFormatter:
             msg += " (errors prevented further checking)"
         else:
             msg += f" (checked {n_sources} source file{plural_s(n_sources)})"
-        if not use_color:
+        if not (use_color is True or (use_color == "auto" and self.default_colored)):
             return msg
         return self.style(msg, "red", bold=True)
 
