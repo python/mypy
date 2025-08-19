@@ -2710,6 +2710,74 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
+[case testBufferRoundTrip_native_libs]
+from native_internal import (
+    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float, write_int, read_int
+)
+
+def test_buffer_basic() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+    write_int(b, 0)
+    write_int(b, 1)
+    write_int(b, 2)
+    write_int(b, 2 ** 85)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+    assert read_int(b) == 0
+    assert read_int(b) == 1
+    assert read_int(b) == 2
+    assert read_int(b) == 2 ** 85
+
+[file driver.py]
+from native import *
+
+test_buffer_basic()
+test_buffer_roundtrip()
+
+def test_buffer_basic_interpreted() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip_interpreted() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+    write_int(b, 0)
+    write_int(b, 1)
+    write_int(b, 2)
+    write_int(b, 2 ** 85)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+    assert read_int(b) == 0
+    assert read_int(b) == 1
+    assert read_int(b) == 2
+    assert read_int(b) == 2 ** 85
+
+test_buffer_basic_interpreted()
+test_buffer_roundtrip_interpreted()
+
 [case testEnumMethodCalls]
 from enum import Enum
 from typing import overload, Optional, Union
