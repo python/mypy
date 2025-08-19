@@ -3290,7 +3290,7 @@ def root():
     r4 :: str
     r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: str
     r9 :: object
     r10 :: i32
@@ -3301,7 +3301,7 @@ def root():
     r16 :: str
     r17 :: object
     r18 :: str
-    r19 :: dict
+    r19 :: dict[exact]
     r20 :: str
     r21 :: object
     r22 :: i32
@@ -3347,12 +3347,12 @@ def submodule():
     r4 :: str
     r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: str
     r9 :: object
     r10 :: i32
     r11 :: bit
-    r12 :: dict
+    r12 :: dict[exact]
     r13 :: str
     r14 :: object
     r15 :: str
