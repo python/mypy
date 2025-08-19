@@ -457,7 +457,8 @@ class F(Generic[T], Enum):  # E: Enum class cannot be generic
     x: T
     y: T
 
-reveal_type(F[int].x)  # N: Revealed type is "__main__.F[builtins.int]"
+reveal_type(F[int].x)  # E: Access to generic instance variables via class is ambiguous \
+                       # N: Revealed type is "builtins.int"
 [builtins fixtures/enum.pyi]
 
 [case testEnumFlag]
@@ -1421,6 +1422,23 @@ class Comparator(enum.Enum):
 
 reveal_type(Comparator.__foo__)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 [builtins fixtures/dict.pyi]
+
+[case testEnumClassAttributeUnannotated]
+import enum
+from typing import ClassVar, Literal
+
+class MyEnum(enum.Enum):
+    foo: ClassVar[str]
+    bar: str
+
+    VALUE_A = 1
+    VALUE_B = 2
+
+reveal_type(MyEnum.foo)  # N: Revealed type is "builtins.str"
+reveal_type(MyEnum.bar)  # N: Revealed type is "builtins.str"
+x: Literal[MyEnum.foo]  # E: Parameter 1 of Literal[...] is invalid
+y: Literal[MyEnum.bar]  # E: Parameter 1 of Literal[...] is invalid
+[builtins fixtures/enum.pyi]
 
 [case testEnumWithInstanceAttributes]
 from enum import Enum

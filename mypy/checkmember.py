@@ -1342,6 +1342,7 @@ def apply_class_attr_hook(
 def analyze_enum_class_attribute_access(
     itype: Instance, name: str, mx: MemberContext
 ) -> Type | None:
+    # This function should be kept in sync with TypeInfo.enum_members
     # Skip these since Enum will remove it
     if name in EXCLUDED_ENUM_ATTRIBUTES:
         return report_missing_attribute(mx.original_type, itype, name, mx)
@@ -1350,6 +1351,9 @@ def analyze_enum_class_attribute_access(
         return None
 
     node = itype.type.get(name)
+    if not isinstance(node.node, Var) or not node.node.has_explicit_value:
+        # Annotated but not assigned attributes are not enum members
+        return None
     if node and node.type:
         proper = get_proper_type(node.type)
         # Support `A = nonmember(1)` function call and decorator.

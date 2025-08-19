@@ -3317,6 +3317,7 @@ class TypeInfo(SymbolNode):
 
     @property
     def enum_members(self) -> list[str]:
+        # This method should be kept in sync with checkmember.analyze_enum_class_attribute_access
         # TODO: cache the results?
         members = []
         for name, sym in self.names.items():
