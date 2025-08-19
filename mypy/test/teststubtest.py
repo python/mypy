@@ -1405,9 +1405,16 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
+            import sys
             from typing import Final, Literal
-            class BytesEnum(bytes, enum.Enum):
-                a = b'foo'
+            from typing_extensions import disjoint_base
+            if sys.version_info >= (3, 12):
+                class BytesEnum(bytes, enum.Enum):
+                    a = b'foo'
+            else:
+                @disjoint_base
+                class BytesEnum(bytes, enum.Enum):
+                    a = b'foo'
             FOO: Literal[BytesEnum.a]
             BAR: Final = BytesEnum.a
             BAZ: BytesEnum
@@ -1611,6 +1618,60 @@ assert annotations
             stub="class CannotBeSubclassed:\n  def __init_subclass__(cls) -> None: ...",
             runtime="class CannotBeSubclassed:\n  def __init_subclass__(cls): raise TypeError",
             error="CannotBeSubclassed",
+        )
+
+    @collect_cases
+    def test_disjoint_base(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class A: pass
+            """,
+            runtime="""
+            class A: pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import disjoint_base
+
+            @disjoint_base
+            class B: pass
+            """,
+            runtime="""
+            class B: pass
+            """,
+            error="test_module.B",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Self
+
+            class mytakewhile:
+                def __new__(cls, predicate: object, iterable: object, /) -> Self: ...
+                def __iter__(self) -> Self: ...
+                def __next__(self) -> object: ...
+            """,
+            runtime="""
+            from itertools import takewhile as mytakewhile
+            """,
+            # Should have @disjoint_base
+            error="test_module.mytakewhile",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import disjoint_base, Self
+
+            @disjoint_base
+            class mycorrecttakewhile:
+                def __new__(cls, predicate: object, iterable: object, /) -> Self: ...
+                def __iter__(self) -> Self: ...
+                def __next__(self) -> object: ...
+            """,
+            runtime="""
+            from itertools import takewhile as mycorrecttakewhile
+            """,
+            error=None,
         )
 
     @collect_cases

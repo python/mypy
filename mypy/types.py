@@ -119,8 +119,11 @@ CONCATENATE_TYPE_NAMES: Final = ("typing.Concatenate", "typing_extensions.Concat
 # Supported Unpack type names.
 UNPACK_TYPE_NAMES: Final = ("typing.Unpack", "typing_extensions.Unpack")
 
-# Supported @deprecated type names
+# Supported @deprecated decorator names
 DEPRECATED_TYPE_NAMES: Final = ("warnings.deprecated", "typing_extensions.deprecated")
+
+# Supported @disjoint_base decorator names
+DISJOINT_BASE_DECORATOR_NAMES: Final = ("typing.disjoint_base", "typing_extensions.disjoint_base")
 
 # We use this constant in various places when checking `tuple` subtyping:
 TUPLE_LIKE_INSTANCE_NAMES: Final = (
@@ -1236,10 +1239,10 @@ class UninhabitedType(ProperType):
         return visitor.visit_uninhabited_type(self)
 
     def __hash__(self) -> int:
-        return hash(UninhabitedType)
+        return hash((UninhabitedType, self.ambiguous))
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, UninhabitedType)
+        return isinstance(other, UninhabitedType) and other.ambiguous == self.ambiguous
 
     def serialize(self) -> JsonDict:
         return {".class": "UninhabitedType"}
