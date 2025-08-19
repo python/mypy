@@ -334,6 +334,9 @@ def f(b: bytes) -> None:
     encoding = 'utf-8'
     b.decode(encoding)
     b.decode('utf-8', 'backslashreplace')
+def variants(b: bytes) -> None:
+    b.decode(encoding="UTF_8")
+    b.decode("ascii", errors="strict")
 [out]
 def f(b):
     b :: bytes
@@ -352,6 +355,13 @@ L0:
     r9 = 'utf-8'
     r10 = 'backslashreplace'
     r11 = CPy_Decode(b, r9, r10)
+    return 1
+def variants(b):
+    b :: bytes
+    r0, r1 :: str
+L0:
+    r0 = CPy_DecodeUTF8(b)
+    r1 = CPy_DecodeASCII(b)
     return 1
 
 [case testEncode_64bit]
