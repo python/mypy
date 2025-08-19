@@ -21,10 +21,10 @@ from contextlib import redirect_stderr, redirect_stdout
 from typing import Any, Callable, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
-from mypy import util
 import mypy.build
 import mypy.errors
 import mypy.main
+from mypy import util
 from mypy.dmypy_util import WriteToConn, receive, send
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
@@ -842,9 +842,15 @@ class Server:
         is_tty: bool = False,
         terminal_width: int | None = None,
     ) -> list[str]:
-        use_color = (True if util.should_force_color()
-                     else self.formatter.default_colored if self.options.color_output == "auto"
-                     else bool(self.options.color_output))
+        use_color = (
+            True
+            if util.should_force_color()
+            else (
+                self.formatter.default_colored
+                if self.options.color_output == "auto"
+                else bool(self.options.color_output)
+            )
+        )
         fit_width = self.options.pretty and is_tty
         if fit_width:
             messages = self.formatter.fit_in_terminal(

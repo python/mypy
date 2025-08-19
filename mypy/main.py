@@ -124,9 +124,15 @@ def main(
         install_types(formatter, options, non_interactive=options.non_interactive)
         return
 
-    use_color = (True if util.should_force_color()
-                 else formatter.default_colored if options.color_output == "auto"
-                 else bool(options.color_output))
+    use_color = (
+        True
+        if util.should_force_color()
+        else (
+            formatter.default_colored
+            if options.color_output == "auto"
+            else bool(options.color_output)
+        )
+    )
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr, use_color)
 
@@ -137,7 +143,9 @@ def main(
             install_types(formatter, options, after_run=True, non_interactive=True)
             fscache.flush()
             print()
-            res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr, use_color)
+            res, messages, blockers = run_build(
+                sources, options, fscache, t0, stdout, stderr, use_color
+            )
         show_messages(messages, stderr, formatter, options, use_color)
 
     if MEM_PROFILE:
@@ -243,8 +251,11 @@ def run_build(
 
 
 def show_messages(
-    messages: list[str], f: TextIO, formatter: util.FancyFormatter, options: Options,
-    use_color: bool
+    messages: list[str],
+    f: TextIO,
+    formatter: util.FancyFormatter,
+    options: Options,
+    use_color: bool,
 ) -> None:
     for msg in messages:
         if use_color:
@@ -467,10 +478,16 @@ class CapturableVersionAction(argparse.Action):
         parser._print_message(formatter.format_help(), self.stdout)
         parser.exit()
 
+
 # Coupled with the usage in define_options
 class ColorOutputAction(argparse.Action):
-    def __call__(self, parser: argparse.ArgumentParser, namespace: argparse.Namespace,
-                 values: str | Sequence[Any] | None, option_string: str | None = None) -> None:
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
         assert values in ("auto", None)
         print(f"{values=}")
         setattr(namespace, self.dest, True if values is None else "auto")
@@ -1016,16 +1033,13 @@ def define_options(
         nargs="?",
         choices=["auto"],
         help="Colorize error messages (inverse: --no-color-output). "
-             "Detects if to use color when option is omitted and --no-color-output "
-             "is not given, or when --color-output=auto",
+        "Detects if to use color when option is omitted and --no-color-output "
+        "is not given, or when --color-output=auto",
     )
     error_group.add_argument(
-        "--no-color-output",
-        dest="color_output",
-        action="store_false",
-        help=argparse.SUPPRESS,
+        "--no-color-output", dest="color_output", action="store_false", help=argparse.SUPPRESS
     )
-    #error_group.set_defaults(color_output="auto")
+    # error_group.set_defaults(color_output="auto")
     add_invertible_flag(
         "--no-error-summary",
         dest="error_summary",

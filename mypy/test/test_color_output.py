@@ -1,23 +1,27 @@
-from subprocess import run, PIPE
 from functools import partial
+from subprocess import PIPE, run
 from typing import Any
+
 import pytest
 
 # TODO Would like help with this test, how do I make it runnable?
 
+
 def test(expect_color: bool, *args: Any, **kwargs: Any) -> None:
-    res = run(*args, stdout=PIPE, stderr=PIPE, **kwargs) #type:ignore[call-overload]
-    if "Found" not in res.stdout: #??
+    res = run(*args, stdout=PIPE, stderr=PIPE, **kwargs)  # type:ignore[call-overload]
+    if "Found" not in res.stdout:  # ??
         pytest.fail("Command failed to complete or did not detect type error")
-    if expect_color: # Expect color control chars
+    if expect_color:  # Expect color control chars
         assert "<string>:1: error:" not in res.stdout
         assert "\nFound" not in res.stdout
-    else: # Expect no color control chars
+    else:  # Expect no color control chars
         assert "<string>:1: error:" in res.stdout
         assert "\nFound" in res.stdout
 
+
 colored = partial(test, True)
 not_colored = partial(test, False)
+
 
 @pytest.mark.parametrize("command", ["mypy", "dmypy run --"])
 def test_color_output(command: str) -> None:
@@ -28,7 +32,8 @@ def test_color_output(command: str) -> None:
     colored(f"{command} -c \"1+'a'\"", env={"MYPY_FORCE_COLOR": "1"})
     colored(f"{command} -c \"1+'a'\" --color-output")
     not_colored(f"{command} -c \"1+'a'\" --no-color-output")
-    colored(f"{command} -c \"1+'a'\" --no-color-output", env={"MYPY_FORCE_COLOR": "1"}) #TODO
+    colored(f"{command} -c \"1+'a'\" --no-color-output", env={"MYPY_FORCE_COLOR": "1"})  # TODO
+
 
 # TODO: Tests in the terminal (require manual testing?)
 """
