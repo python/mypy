@@ -1351,10 +1351,10 @@ def analyze_enum_class_attribute_access(
         return None
 
     node = itype.type.get(name)
-    if not isinstance(node.node, Var) or not node.node.has_explicit_value:
+    if not node or not isinstance(node.node, Var) or not node.node.has_explicit_value:
         # Annotated but not assigned attributes are not enum members
         return None
-    if node and node.type:
+    if node.type:
         proper = get_proper_type(node.type)
         # Support `A = nonmember(1)` function call and decorator.
         if (
