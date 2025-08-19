@@ -806,7 +806,6 @@ class LowLevelIRBuilder:
                             value.type, RTuple
                         ):
                             value = self.primitive_op(sequence_tuple_op, [value], line)
-                        # we can pass the immutable tuple straight into the function call.
                         return value, self._create_dict([], [], line)
                     elif len(args) == 2 and args[1][1] == ARG_STAR2:
                         # fn(*args, **kwargs)
