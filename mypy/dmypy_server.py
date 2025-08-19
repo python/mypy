@@ -855,9 +855,7 @@ class Server:
             True
             if util.should_force_color()
             else (
-                is_tty
-                if self.options.color_output == "auto"
-                else bool(self.options.color_output)
+                is_tty if self.options.color_output == "auto" else bool(self.options.color_output)
             )
         )
         fit_width = self.options.pretty and is_tty
