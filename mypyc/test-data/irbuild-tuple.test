@@ -294,7 +294,6 @@ def test():
     r4 :: native_int
     r5 :: bit
     r6, x, r7 :: str
-    r7 :: bit
     r8 :: native_int
     a :: tuple
 L0:
