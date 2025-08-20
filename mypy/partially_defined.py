@@ -48,6 +48,16 @@ from mypy.traverser import ExtendedTraverserVisitor
 from mypy.types import Type, UninhabitedType, get_proper_type
 
 
+def _ambv(s: str) -> None:
+    assert s
+    pass  # print("DEBUG:", s)
+
+
+def _ambv_cont(s: str) -> None:
+    assert s
+    pass  # print(s)
+
+
 class BranchState:
     """BranchState contains information about variable definition at the end of a branching statement.
     `if` and `match` are examples of branching statements.
@@ -117,6 +127,9 @@ class BranchStatement:
     def record_nested_branch(self, state: BranchState) -> None:
         assert len(self.branches) > 0
         current_branch = self.branches[-1]
+        _ambv(
+            f"record_nested_branch: state.must={state.must_be_defined if 'value' in state.must_be_defined else '...'}, state.may={'value' if 'value' in state.may_be_defined else '...'}, state.skipped={state.skipped}"
+        )
         if state.skipped:
             current_branch.skipped = True
             return
@@ -154,6 +167,17 @@ class BranchStatement:
             all_vars.update(b.must_be_defined)
         # For the rest of the things, we only care about branches that weren't skipped.
         non_skipped_branches = [b for b in self.branches if not b.skipped]
+        import sys
+
+        _called_by = sys._getframe(2).f_code.co_name
+        _ambv(
+            f"done {_called_by}: branches={len(self.branches)}, non_skipped={len(non_skipped_branches)}"
+        )
+        for i, b in enumerate(self.branches):
+            has_value = "value" in b.must_be_defined or "value" in b.may_be_defined
+            _ambv_cont(
+                f"  Branch {i}: has_value={has_value}, skipped={b.skipped}, must={b.must_be_defined}, may={b.may_be_defined}"
+            )
         if non_skipped_branches:
             must_be_defined = non_skipped_branches[0].must_be_defined
             for b in non_skipped_branches[1:]:
@@ -163,6 +187,7 @@ class BranchStatement:
         # Everything that wasn't defined in all branches but was defined
         # in at least one branch should be in `may_be_defined`!
         may_be_defined = all_vars.difference(must_be_defined)
+        _ambv_cont(f"  Result: must={must_be_defined}, may={may_be_defined}")
         return BranchState(
             must_be_defined=must_be_defined,
             may_be_defined=may_be_defined,
@@ -295,6 +320,8 @@ class DefinedVariableTracker:
 class Loop:
     def __init__(self) -> None:
         self.has_break = False
+        # variables defined in every loop branch with `break`
+        self.break_vars: set[str] | None = None
 
 
 class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
@@ -336,6 +363,10 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         for name in implicit_module_attrs:
             self.tracker.record_definition(name)
 
+    # def visit_block(self, block: Block, /) -> None:
+    #    _ambv(f"PossiblyUndefinedVariableVisitor visiting {block}")
+    #    super().visit_block(block)
+
     def var_used_before_def(self, name: str, context: Context) -> None:
         if self.msg.errors.is_error_code_enabled(errorcodes.USED_BEFORE_DEF):
             self.msg.var_used_before_def(name, context)
@@ -349,6 +380,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         if not self.tracker.in_scope(ScopeType.Class):
             refs = self.tracker.pop_undefined_ref(name)
             for ref in refs:
+                _ambv(
+                    f"process_definition for {name}, ref at line {ref.line}, loops={bool(self.loops)}"
+                )
                 if self.loops:
                     self.variable_may_be_undefined(name, ref)
                 else:
@@ -370,6 +404,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def process_lvalue(self, lvalue: Lvalue | None) -> None:
         if isinstance(lvalue, NameExpr):
+            _ambv(
+                f"process_lvalue calling process_definition for {lvalue.name} at line {lvalue.line}"
+            )
             self.process_definition(lvalue.name)
         elif isinstance(lvalue, StarExpr):
             self.process_lvalue(lvalue.expr)
@@ -378,6 +415,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
                 self.process_lvalue(item)
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+        _ambv(f"visit_assignment_stmt at line {o.line}")
         for lvalue in o.lvalues:
             self.process_lvalue(lvalue)
         super().visit_assignment_stmt(o)
@@ -456,22 +494,39 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.exit_scope()
 
     def visit_for_stmt(self, o: ForStmt) -> None:
+        _ambv(f"visit_for_stmt: line {o.line}")
         o.expr.accept(self)
         self.process_lvalue(o.index)
         o.index.accept(self)
         self.tracker.start_branch_statement()
         loop = Loop()
         self.loops.append(loop)
+        _ambv(
+            f"visit_for_stmt: Before body, current state: {self.tracker._scope().branch_stmts[-1].branches[-1].must_be_defined}, may={self.tracker._scope().branch_stmts[-1].branches[-1].may_be_defined}"
+        )
         o.body.accept(self)
+        _ambv(f"visit_for_stmt: after body, has_break={loop.has_break}")
+        _ambv(
+            f"visit_for_stmt: After body, current state: {self.tracker._scope().branch_stmts[-1].branches[-1].must_be_defined}, may={self.tracker._scope().branch_stmts[-1].branches[-1].may_be_defined}"
+        )
         self.tracker.next_branch()
+        _ambv(
+            f"visit_for_stmt: After next_branch, new branch state: {self.tracker._scope().branch_stmts[-1].branches[-1].must_be_defined}, may={self.tracker._scope().branch_stmts[-1].branches[-1].may_be_defined}"
+        )
         self.tracker.end_branch_statement()
         if o.else_body is not None:
             # If the loop has a `break` inside, `else` is executed conditionally.
             # If the loop doesn't have a `break` either the function will return or
             # execute the `else`.
             has_break = loop.has_break
+            _ambv(
+                f"visit_for_stmt: else_body present, has_break={has_break}, break_vars={loop.break_vars}"
+            )
             if has_break:
                 self.tracker.start_branch_statement()
+                if loop.break_vars is not None:
+                    for bv in loop.break_vars:
+                        self.tracker.record_definition(bv)
                 self.tracker.next_branch()
             o.else_body.accept(self)
             if has_break:
@@ -497,6 +552,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.skip_branch()
 
     def visit_continue_stmt(self, o: ContinueStmt) -> None:
+        _ambv(f"continue at line {o.line}, skipping branch")
         super().visit_continue_stmt(o)
         self.tracker.skip_branch()
 
@@ -504,6 +560,14 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         super().visit_break_stmt(o)
         if self.loops:
             self.loops[-1].has_break = True
+            # Track variables that are definitely defined at the point of break
+            if len(self.tracker._scope().branch_stmts) > 0:
+                branch = self.tracker._scope().branch_stmts[-1].branches[-1]
+                if self.loops[-1].break_vars is None:
+                    self.loops[-1].break_vars = set(branch.must_be_defined)
+                else:
+                    # we only want variables that have been defined in each branch
+                    self.loops[-1].break_vars.intersection_update(branch.must_be_defined)
         self.tracker.skip_branch()
 
     def visit_expression_stmt(self, o: ExpressionStmt) -> None:
@@ -545,6 +609,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.try_depth -= 1
 
     def process_try_stmt(self, o: TryStmt) -> None:
+        _ambv(f"process_try_stmt: line {o.line}, handlers={len(o.handlers)}")
         """
         Processes try statement decomposing it into the following:
         if ...:
@@ -620,6 +685,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.name in self.builtins and self.tracker.in_scope(ScopeType.Global):
             return
+        _ambv(
+            f"visit_name_expr {o.name} at line {o.line}, possibly_undefined={self.tracker.is_possibly_undefined(o.name)}, defined_in_different_branch={self.tracker.is_defined_in_different_branch(o.name)}, is_undefined={self.tracker.is_undefined(o.name)}"
+        )
         if self.tracker.is_possibly_undefined(o.name):
             # A variable is only defined in some branches.
             self.variable_may_be_undefined(o.name, o)
@@ -640,6 +708,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             # Case (1) will be caught by semantic analyzer. Case (2) is a forward ref that should
             # be caught by this visitor. Save the ref for later, so that if we see a definition,
             # we know it's a used-before-definition scenario.
+            _ambv(f"Recording undefined ref for {o.name} at line {o.line}")
             self.tracker.record_undefined_ref(o)
         super().visit_name_expr(o)
 
