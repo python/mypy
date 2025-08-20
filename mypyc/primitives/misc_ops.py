@@ -4,14 +4,18 @@ from __future__ import annotations
 
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     bit_rprimitive,
     bool_rprimitive,
+    bytes_rprimitive,
     c_int_rprimitive,
     c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     cstring_rprimitive,
     dict_rprimitive,
+    float_rprimitive,
     int_rprimitive,
+    none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
     pointer_rprimitive,
@@ -24,6 +28,7 @@ from mypyc.primitives.registry import (
     custom_primitive_op,
     function_op,
     load_address_op,
+    method_op,
 )
 
 # Get the 'bool' type object.
@@ -325,4 +330,96 @@ set_immortal_op = custom_primitive_op(
     arg_types=[object_rprimitive],
     return_type=void_rtype,
     error_kind=ERR_NEVER,
+)
+
+buffer_rprimitive = KNOWN_NATIVE_TYPES["native_internal.Buffer"]
+
+# Buffer(source)
+function_op(
+    name="native_internal.Buffer",
+    arg_types=[bytes_rprimitive],
+    return_type=buffer_rprimitive,
+    c_function_name="Buffer_internal",
+    error_kind=ERR_MAGIC,
+)
+
+# Buffer()
+function_op(
+    name="native_internal.Buffer",
+    arg_types=[],
+    return_type=buffer_rprimitive,
+    c_function_name="Buffer_internal_empty",
+    error_kind=ERR_MAGIC,
+)
+
+method_op(
+    name="getvalue",
+    arg_types=[buffer_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="Buffer_getvalue_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_bool",
+    arg_types=[object_rprimitive, bool_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_bool_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_bool",
+    arg_types=[object_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="read_bool_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_str",
+    arg_types=[object_rprimitive, str_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_str_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_str",
+    arg_types=[object_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="read_str_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_float",
+    arg_types=[object_rprimitive, float_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_float_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_float",
+    arg_types=[object_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="read_float_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_int",
+    arg_types=[object_rprimitive, int_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_int_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_int",
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="read_int_internal",
+    error_kind=ERR_MAGIC,
 )
