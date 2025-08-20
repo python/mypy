@@ -535,8 +535,6 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
     if all(is_similar_constraints(valid_options[0], c) for c in valid_options[1:]):
         # All options have same structure. In this case we can merge-in trivial
         # options (i.e. those that only have Any) and try again.
-        # TODO: More generally, if a given (variable, direction) pair appears in
-        # every option, combine the bounds with meet/join always, not just for Any.
         trivial_options = select_trivial(valid_options)
         if 0 < len(trivial_options) < len(valid_options):
             merged_options = []
@@ -545,7 +543,10 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
                     continue
                 merged_options.append([merge_with_any(c) for c in option])
             return any_constraints(list(merged_options), eager=eager)
-        return sum(valid_options, [])
+        # Solver will apply meets and joins as necessary, return everything we know.
+        # Just deduplicate to reduce the amount of work.
+        all_combined = sum(valid_options, [])
+        return list(dict.fromkeys(all_combined))
 
     # If normal logic didn't work, try excluding trivially unsatisfiable constraint (due to
     # upper bounds) from each option, and comparing them again.
