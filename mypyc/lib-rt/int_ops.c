@@ -637,11 +637,6 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
 
     // Slow path for big ints
     PyObject *pyint = CPyTagged_StealAsObject(self);
-    if (!PyLong_Check(pyint)) {
-        Py_DECREF(pyint);
-        PyErr_SetString(PyExc_TypeError, "self must be int");
-        return CPY_INT_TAG;
-    }
     int bits = _PyLong_NumBits(pyint);
     Py_DECREF(pyint);
     if (bits < 0) {
