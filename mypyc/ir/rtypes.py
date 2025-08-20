@@ -517,7 +517,7 @@ weakref_rprimitive: Final = RPrimitive(
     "weakref.ReferenceType", is_unboxed=False, is_refcounted=True
 )
 
-  
+
 KNOWN_NATIVE_TYPES: Final = {
     name: RPrimitive(name, is_unboxed=False, is_refcounted=True)
     for name in ["native_internal.Buffer"]
