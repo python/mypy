@@ -173,17 +173,14 @@ PyObject *CPyBytes_RjustDefaultFill(PyObject *self, CPyTagged width) {
     Py_ssize_t width_size_t = CPyTagged_AsSsize_t(width);
     Py_ssize_t len = PyBytes_Size(self);
     if (width_size_t <= len) {
-        return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
+        Py_INCREF(self);
+        return self;
     }
-    // should this be a constant?
-    PyObject *fillbyte = PyBytes_FromStringAndSize(" ", 1);
-    // can we optimize out the above line and the below line?
-    char fill = PyBytes_AsString(fillbyte)[0];
     Py_ssize_t pad = width_size_t - len;
     PyObject *result = PyBytes_FromStringAndSize(NULL, width_size_t);
     if (!result) return NULL;
     char *res_buf = PyBytes_AsString(result);
-    memset(res_buf, fill, pad);
+    memset(res_buf, ' ', pad);
     memcpy(res_buf + pad, PyBytes_AsString(self), len);
     return result;
 }
@@ -201,7 +198,8 @@ PyObject *CPyBytes_RjustCustomFill(PyObject *self, CPyTagged width, PyObject *fi
     Py_ssize_t width_size_t = CPyTagged_AsSsize_t(width);
     Py_ssize_t len = PyBytes_Size(self);
     if (width_size_t <= len) {
-        return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
+        Py_INCREF(self);
+        return self;
     }
     char fill = PyBytes_AsString(fillbyte)[0];
     Py_ssize_t pad = width_size_t - len;
@@ -222,18 +220,15 @@ PyObject *CPyBytes_LjustDefaultFill(PyObject *self, CPyTagged width) {
     Py_ssize_t width_size_t = CPyTagged_AsSsize_t(width);
     Py_ssize_t len = PyBytes_Size(self);
     if (width_size_t <= len) {
-        return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
+        Py_INCREF(self);
+        return self;
     }
-    // should this be a constant?
-    PyObject *fillbyte = PyBytes_FromStringAndSize(" ", 1);
-    // can we optimize out the above line and the below line?
-    char fill = PyBytes_AsString(fillbyte)[0];
     Py_ssize_t pad = width_size_t - len;
     PyObject *result = PyBytes_FromStringAndSize(NULL, width_size_t);
     if (!result) return NULL;
     char *res_buf = PyBytes_AsString(result);
     memcpy(res_buf, PyBytes_AsString(self), len);
-    memset(res_buf + len, fill, pad);
+    memset(res_buf + len, ' ', pad);
     return result;
 }
 
@@ -250,7 +245,8 @@ PyObject *CPyBytes_LjustCustomFill(PyObject *self, CPyTagged width, PyObject *fi
     Py_ssize_t width_size_t = CPyTagged_AsSsize_t(width);
     Py_ssize_t len = PyBytes_Size(self);
     if (width_size_t <= len) {
-        return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
+        Py_INCREF(self);
+        return self;
     }
     char fill = PyBytes_AsString(fillbyte)[0];
     Py_ssize_t pad = width_size_t - len;
