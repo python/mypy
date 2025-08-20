@@ -1430,6 +1430,19 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            class HasSlotsAndNothingElse:
+                __slots__ = ("x",)
+                x: int
+            """,
+            runtime="""
+            class HasSlotsAndNothingElse:
+                __slots__ = ("x",)
+                x: int
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_decorator(self) -> Iterator[Case]:
