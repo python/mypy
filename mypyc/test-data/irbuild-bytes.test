@@ -185,3 +185,69 @@ L0:
     r10 = CPyBytes_Build(2, var, r9)
     b4 = r10
     return 1
+
+[case testBytesRjustDefault]
+def f(b: bytes) -> bytes:
+    return b.rjust(6)
+[out]
+def f(b):
+    b :: bytes
+    r0 :: bytes
+L0:
+    r0 = b.rjust(6, b' ')
+    return r0
+
+[case testBytesRjustCustom]
+def f(b: bytes) -> bytes:
+    return b.rjust(8, b'0')
+[out]
+def f(b):
+    b :: bytes
+    r0 :: bytes
+L0:
+    r0 = b.rjust(8, b'0')
+    return r0
+
+[case testBytesLjustDefault]
+def f(b: bytes) -> bytes:
+    return b.ljust(7)
+[out]
+def f(b):
+    b :: bytes
+    r0 :: bytes
+L0:
+    r0 = b.ljust(7, b' ')
+    return r0
+
+[case testBytesLjustCustom]
+def f(b: bytes) -> bytes:
+    return b.ljust(10, b'_')
+[out]
+def f(b):
+    b :: bytes
+    r0 :: bytes
+L0:
+    r0 = b.ljust(10, b'_')
+    return r0
+
+[case testBytesRjustNoPad]
+def f(b: bytes) -> bytes:
+    return b.rjust(2)
+[out]
+def f(b):
+    b :: bytes
+    r0 :: bytes
+L0:
+    r0 = b.rjust(2, b' ')
+    return r0
+
+[case testBytesLjustNoPad]
+def f(b: bytes) -> bytes:
+    return b.ljust(1)
+[out]
+def f(b):
+    b :: bytes
+    r0 :: bytes
+L0:
+    r0 = b.ljust(1, b' ')
+    return r0
