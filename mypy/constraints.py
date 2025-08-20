@@ -411,18 +411,15 @@ def _infer_constraints(
         # When the template is a union, we are okay with leaving some
         # type variables indeterminate. This helps with some special
         # cases, though this isn't very principled.
-        result = any_constraints(
+        if has_recursive_types(template) and not has_recursive_types(actual):
+            return handle_recursive_union(template, actual, direction)
+        return any_constraints(
             [
                 infer_constraints_if_possible(t_item, actual, direction)
                 for t_item in template.items
             ],
             eager=isinstance(actual, AnyType),
         )
-        if result:
-            return result
-        elif has_recursive_types(template) and not has_recursive_types(actual):
-            return handle_recursive_union(template, actual, direction)
-        return []
 
     # Remaining cases are handled by ConstraintBuilderVisitor.
     return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op))
