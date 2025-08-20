@@ -1158,7 +1158,7 @@ if random():
             break
     else:
         raise RuntimeError
-    
+
     print(value)  # Should not error - value is defined if we broke
 else:
     value = random()
