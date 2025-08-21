@@ -200,17 +200,12 @@ class Server:
         options.local_partial_types = True
         self.status_file = status_file
 
-        # Type annotation needed for mypy (Pyright understands this)
-        use_color: bool | Literal["auto"] = (
-            True
-            if util.should_force_color()
-            else ("auto" if options.color_output == "auto" else cast(bool, options.color_output))
-        )
-
         # Since the object is created in the parent process we can check
         # the output terminal options here.
         self.formatter = FancyFormatter(
-            sys.stdout, sys.stderr, options.hide_error_codes, color_request=use_color
+            sys.stdout, sys.stderr, options.hide_error_codes,
+            color_request=util.should_force_color() or options.color_output is not False,
+            warn_color_fail=options.warn_color_fail
         )
 
     def _response_metadata(self) -> dict[str, str]:
@@ -853,10 +848,8 @@ class Server:
     ) -> list[str]:
         use_color = (
             True
-            if util.should_force_color()
-            else (
-                is_tty if self.options.color_output == "auto" else bool(self.options.color_output)
-            )
+            if util.should_force_color() or self.options.color_output == "force"
+            else (is_tty if self.options.color_output is True else False)
         )
         fit_width = self.options.pretty and is_tty
         if fit_width:

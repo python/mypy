@@ -923,25 +923,28 @@ in error messages.
     Use visually nicer output in error messages: use soft word wrap,
     show source code snippets, and show error location markers.
 
-.. option:: --color-output[=auto]
+.. option:: --color-output[=force]
 
-    Enables colored output in error messages.
+    ``--color-output`` enables colored output if the output is going to a terminal.
 
-    When ``--color-output=auto`` is given, uses colored output if the output
-    (both stdout and stderr) is going to a tty. This is also the default.
+    ``--color-output=force`` enables colored output unconditionally.
+
+    Output will still be uncolored if mypy fails to detect a color code scheme.
 
     .. note::
         When the environment variable ``MYPY_FORCE_COLOR`` is set to a
-        non-``0`` non-empty string, mypy always enables colored output
-        (even if ``--no-color-output`` is given).
+        non-``0`` non-empty string, mypy ignores ``--color-output[=force]``
+        and ``--no-color-output``, and behaves as if ``--color-output=force``
+        is given.
 
-        .. Note: Here I decide not to document ``FORCE_COLOR`` as its
-           logic seems counter-intuitive from earlier conventions
-           (PR13853)
+        If ``MYPY_FORCE_COLOR`` is ``0``, it has no effect.
+
+        If ``MYPY_FORCE_COLOR`` is not defined, but ``FORCE_COLOR`` is defined,
+        it is treated the same way (like a fallback).
 
 .. option:: --no-color-output
 
-    Disables colored output in error messages.
+    Disables colored output.
 
     See also note above.
 

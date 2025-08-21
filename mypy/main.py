@@ -90,19 +90,20 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
-    # Type annotation needed for mypy (Pyright understands this)
-    use_color: bool | Literal["auto"] = (
-        True
-        if util.should_force_color()
-        else ("auto" if options.color_output == "auto" else cast(bool, options.color_output))
-    )
-
     formatter = util.FancyFormatter(
         stdout,
         stderr,
         options.hide_error_codes,
         hide_success=bool(options.output),
-        color_request=use_color,
+        color_request=util.should_force_color() or options.color_output is not False,
+        warn_color_fail=options.warn_color_fail,
+    )
+
+    # Type annotation needed for mypy (Pyright understands this)
+    use_color: bool = (
+        True if util.should_force_color() or options.color_output == "force"
+        else formatter.default_colored if options.color_output is True
+        else False
     )
 
     if options.allow_redefinition_new and not options.local_partial_types:
@@ -195,7 +196,7 @@ def run_build(
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
-    use_color: bool | Literal["auto"],
+    use_color: bool,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(
         stdout,
@@ -203,6 +204,7 @@ def run_build(
         options.hide_error_codes,
         hide_success=bool(options.output),
         color_request=use_color,
+        warn_color_fail=options.warn_color_fail,
     )
 
     messages = []
@@ -260,10 +262,8 @@ def show_messages(
     f: TextIO,
     formatter: util.FancyFormatter,
     options: Options,
-    use_color: bool | Literal["auto"],
+    use_color: bool,
 ) -> None:
-    if use_color == "auto":
-        use_color = formatter.default_colored
     for msg in messages:
         if use_color:
             msg = formatter.colorize(msg)
@@ -495,8 +495,8 @@ class ColorOutputAction(argparse.Action):
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ) -> None:
-        assert values in ("auto", None)
-        setattr(namespace, self.dest, True if values is None else "auto")
+        assert values in ("force", None)
+        setattr(namespace, self.dest, True if values is None else "force")
 
 
 def define_options(
@@ -1037,15 +1037,21 @@ def define_options(
         dest="color_output",
         action=ColorOutputAction,
         nargs="?",
-        choices=["auto"],
-        help="Colorize error messages (inverse: --no-color-output). "
-        "Detects if to use color when option is omitted and --no-color-output "
-        "is not given, or when --color-output=auto",
+        choices=["force"],
+        help="Colorize error messages if output is going to a terminal (inverse: --no-color-output). "
+        "When --color-output=auto, colorizes output unconditionally",
     )
     error_group.add_argument(
         "--no-color-output", dest="color_output", action="store_false", help=argparse.SUPPRESS
     )
-    # error_group.set_defaults(color_output="auto")
+    add_invertible_flag(
+        "--warn-color-fail",
+        dest="warn_color_fail",
+        default=False,
+        help="Print warning message when mypy cannot detect "
+        "a terminal color scheme and colored output is requested",
+        group=error_group,
+    )
     add_invertible_flag(
         "--no-error-summary",
         dest="error_summary",

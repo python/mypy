@@ -7,7 +7,7 @@ import sysconfig
 import warnings
 from collections.abc import Mapping
 from re import Pattern
-from typing import Any, Callable, Final
+from typing import Any, Callable, Final, Literal
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -206,8 +206,9 @@ class Options:
         self.show_error_context = False
 
         # Use nicer output (when possible).
-        self.color_output = "auto"
+        self.color_output: bool | Literal["force"] = True
         self.error_summary = True
+        self.warn_color_fail: bool = False
 
         # Assume arguments with default values of None are Optional
         self.implicit_optional = False
