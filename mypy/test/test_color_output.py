@@ -1,10 +1,10 @@
-from functools import partial
 import subprocess
-from typing import TYPE_CHECKING, Any
 import sys
+from typing import TYPE_CHECKING
+
 import pytest
 
-#XXX Would like help with this test, how do I make it runnable?
+# XXX Would like help with this test, how do I make it runnable?
 # Haven't run this test yet
 
 PTY_SIZE = (80, 40)
@@ -12,7 +12,7 @@ PTY_SIZE = (80, 40)
 if sys.platform == "win32":
     if TYPE_CHECKING:
         # This helps my IDE find the type annotations
-        from winpty.winpty import PTY #type:ignore[import-untyped]
+        from winpty.winpty import PTY  # type:ignore[import-untyped]
     else:
         from winpty import PTY
 
@@ -24,6 +24,7 @@ if sys.platform == "win32":
         while pty.isalive():
             pass
         return pty.read(), pty.read_stderr()
+
 elif sys.platform == "unix":
     from pty import openpty
 
@@ -38,6 +39,8 @@ elif sys.platform == "unix":
             return os.read(slave_fd, 10000).decode(), p.stderr
         finally:
             os.close(master_fd)
+
+
 def test(expect_color: bool, pty: bool, cmd: str, env: dict[str, str] = {}) -> None:
     if pty:
         stdout, stderr = run_pty(cmd, env=env)
@@ -57,6 +60,7 @@ def test(expect_color: bool, pty: bool, cmd: str, env: dict[str, str] = {}) -> N
 
 def test_pty(expect_color: bool, cmd: str, env: dict[str, str] = {}) -> None:
     test(expect_color, True, cmd, env)
+
 
 def test_not_pty(expect_color: bool, cmd: str, env: dict[str, str] = {}) -> None:
     test(expect_color, False, cmd, env)

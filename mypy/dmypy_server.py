@@ -18,7 +18,7 @@ import time
 import traceback
 from collections.abc import Sequence, Set as AbstractSet
 from contextlib import redirect_stderr, redirect_stdout
-from typing import Any, Callable, Final, Literal, cast
+from typing import Any, Callable, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
@@ -203,9 +203,11 @@ class Server:
         # Since the object is created in the parent process we can check
         # the output terminal options here.
         self.formatter = FancyFormatter(
-            sys.stdout, sys.stderr, options.hide_error_codes,
+            sys.stdout,
+            sys.stderr,
+            options.hide_error_codes,
             color_request=util.should_force_color() or options.color_output is not False,
-            warn_color_fail=options.warn_color_fail
+            warn_color_fail=options.warn_color_fail,
         )
 
     def _response_metadata(self) -> dict[str, str]:

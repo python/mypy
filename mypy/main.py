@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from gettext import gettext
 from io import TextIOWrapper
-from typing import IO, TYPE_CHECKING, Any, Final, Literal, NoReturn, TextIO, cast
+from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
@@ -101,9 +101,9 @@ def main(
 
     # Type annotation needed for mypy (Pyright understands this)
     use_color: bool = (
-        True if util.should_force_color() or options.color_output == "force"
-        else formatter.default_colored if options.color_output is True
-        else False
+        True
+        if util.should_force_color() or options.color_output == "force"
+        else formatter.default_colored if options.color_output is True else False
     )
 
     if options.allow_redefinition_new and not options.local_partial_types:
