@@ -6,6 +6,7 @@ from _typeshed.importlib import LoaderProtocol
 from collections.abc import Mapping, Sequence
 from types import ModuleType
 from typing import Any, ClassVar
+from typing_extensions import deprecated
 
 # Signature of `builtins.__import__` should be kept identical to `importlib.__import__`
 def __import__(
@@ -49,6 +50,7 @@ class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader)
     # MetaPathFinder
     if sys.version_info < (3, 12):
         @classmethod
+        @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `find_spec()` instead.")
         def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
 
     @classmethod
@@ -67,6 +69,10 @@ class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader)
     # Loader
     if sys.version_info < (3, 12):
         @staticmethod
+        @deprecated(
+            "Deprecated since Python 3.4; removed in Python 3.12. "
+            "The module spec is now used by the import machinery to generate a module repr."
+        )
         def module_repr(module: types.ModuleType) -> str: ...
     if sys.version_info >= (3, 10):
         @staticmethod
@@ -83,6 +89,7 @@ class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # MetaPathFinder
     if sys.version_info < (3, 12):
         @classmethod
+        @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `find_spec()` instead.")
         def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
 
     @classmethod
@@ -101,6 +108,10 @@ class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # Loader
     if sys.version_info < (3, 12):
         @staticmethod
+        @deprecated(
+            "Deprecated since Python 3.4; removed in Python 3.12. "
+            "The module spec is now used by the import machinery to generate a module repr."
+        )
         def module_repr(m: types.ModuleType) -> str: ...
     if sys.version_info >= (3, 10):
         @staticmethod

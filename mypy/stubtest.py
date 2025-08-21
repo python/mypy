@@ -17,6 +17,7 @@ import inspect
 import os
 import pkgutil
 import re
+import struct
 import symtable
 import sys
 import traceback
@@ -466,6 +467,67 @@ def _verify_final(
         )
 
 
+SIZEOF_PYOBJECT = struct.calcsize("P")
+
+
+def _shape_differs(t1: type[object], t2: type[object]) -> bool:
+    """Check whether two types differ in shape.
+
+    Mirrors the shape_differs() function in typeobject.c in CPython."""
+    if sys.version_info >= (3, 12):
+        return t1.__basicsize__ != t2.__basicsize__ or t1.__itemsize__ != t2.__itemsize__
+    else:
+        # CPython had more complicated logic before 3.12:
+        # https://github.com/python/cpython/blob/f3c6f882cddc8dc30320d2e73edf019e201394fc/Objects/typeobject.c#L2224
+        # We attempt to mirror it here well enough to support the most common cases.
+        if t1.__itemsize__ or t2.__itemsize__:
+            return t1.__basicsize__ != t2.__basicsize__ or t1.__itemsize__ != t2.__itemsize__
+        t_size = t1.__basicsize__
+        if not t2.__weakrefoffset__ and t1.__weakrefoffset__ + SIZEOF_PYOBJECT == t_size:
+            t_size -= SIZEOF_PYOBJECT
+        if not t2.__dictoffset__ and t1.__dictoffset__ + SIZEOF_PYOBJECT == t_size:
+            t_size -= SIZEOF_PYOBJECT
+        if not t2.__weakrefoffset__ and t2.__weakrefoffset__ == t_size:
+            t_size -= SIZEOF_PYOBJECT
+        return t_size != t2.__basicsize__
+
+
+def _is_disjoint_base(typ: type[object]) -> bool:
+    """Return whether a type is a disjoint base at runtime, mirroring CPython's logic in typeobject.c.
+
+    See PEP 800."""
+    if typ is object:
+        return True
+    base = typ.__base__
+    assert base is not None, f"Type {typ} has no base"
+    return _shape_differs(typ, base)
+
+
+def _verify_disjoint_base(
+    stub: nodes.TypeInfo, runtime: type[object], object_path: list[str]
+) -> Iterator[Error]:
+    # If it's final, doesn't matter whether it's a disjoint base or not
+    if stub.is_final:
+        return
+    is_disjoint_runtime = _is_disjoint_base(runtime)
+    if is_disjoint_runtime and not stub.is_disjoint_base:
+        yield Error(
+            object_path,
+            "is a disjoint base at runtime, but isn't marked with @disjoint_base in the stub",
+            stub,
+            runtime,
+            stub_desc=repr(stub),
+        )
+    elif not is_disjoint_runtime and stub.is_disjoint_base:
+        yield Error(
+            object_path,
+            "is marked with @disjoint_base in the stub, but isn't a disjoint base at runtime",
+            stub,
+            runtime,
+            stub_desc=repr(stub),
+        )
+
+
 def _verify_metaclass(
     stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str], *, is_runtime_typeddict: bool
 ) -> Iterator[Error]:
@@ -534,6 +596,7 @@ def verify_typeinfo(
         return
 
     yield from _verify_final(stub, runtime, object_path)
+    yield from _verify_disjoint_base(stub, runtime, object_path)
     is_runtime_typeddict = stub.typeddict_type is not None and is_typeddict(runtime)
     yield from _verify_metaclass(
         stub, runtime, object_path, is_runtime_typeddict=is_runtime_typeddict

@@ -513,6 +513,45 @@ PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
     }
 }
 
+PyObject *CPy_DecodeUTF8(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeUTF8(buffer, size, "strict");
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "utf-8", "strict");
+    }
+}
+
+PyObject *CPy_DecodeASCII(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeASCII(buffer, size, "strict");;
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "ascii", "strict");
+    }
+}
+
+PyObject *CPy_DecodeLatin1(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeLatin1(buffer, size, "strict");
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "latin1", "strict");
+    }
+}
+
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
     const char *enc = NULL;
     const char *err = NULL;

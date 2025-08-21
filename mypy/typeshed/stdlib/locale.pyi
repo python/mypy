@@ -18,6 +18,7 @@ from builtins import str as _str
 from collections.abc import Callable, Iterable
 from decimal import Decimal
 from typing import Any
+from typing_extensions import deprecated
 
 if sys.version_info >= (3, 11):
     from _locale import getencoding as getencoding
@@ -137,9 +138,14 @@ def getpreferredencoding(do_setlocale: bool = True) -> _str: ...
 def normalize(localename: _str) -> _str: ...
 
 if sys.version_info < (3, 13):
-    def resetlocale(category: int = ...) -> None: ...
+    if sys.version_info >= (3, 11):
+        @deprecated("Deprecated since Python 3.11; removed in Python 3.13. Use `locale.setlocale(locale.LC_ALL, '')` instead.")
+        def resetlocale(category: int = ...) -> None: ...
+    else:
+        def resetlocale(category: int = ...) -> None: ...
 
 if sys.version_info < (3, 12):
+    @deprecated("Deprecated since Python 3.7; removed in Python 3.12. Use `locale.format_string()` instead.")
     def format(
         percent: _str, value: float | Decimal, grouping: bool = False, monetary: bool = False, *additional: Any
     ) -> _str: ...

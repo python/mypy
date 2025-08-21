@@ -37,6 +37,7 @@ else:
         def exec_module(self, module: types.ModuleType) -> None: ...
 
 if sys.version_info < (3, 12):
+    @deprecated("Deprecated since Python 3.3; removed in Python 3.12. Use `MetaPathFinder` or `PathEntryFinder` instead.")
     class Finder(metaclass=ABCMeta): ...
 
 @deprecated("Deprecated as of Python 3.7: Use importlib.resources.abc.TraversableResources instead.")
@@ -71,6 +72,7 @@ if sys.version_info >= (3, 10):
     # Please keep in sync with _typeshed.importlib.MetaPathFinderProtocol
     class MetaPathFinder(metaclass=ABCMeta):
         if sys.version_info < (3, 12):
+            @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `MetaPathFinder.find_spec()` instead.")
             def find_module(self, fullname: str, path: Sequence[str] | None) -> Loader | None: ...
 
         def invalidate_caches(self) -> None: ...
@@ -81,7 +83,9 @@ if sys.version_info >= (3, 10):
 
     class PathEntryFinder(metaclass=ABCMeta):
         if sys.version_info < (3, 12):
+            @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `PathEntryFinder.find_spec()` instead.")
             def find_module(self, fullname: str) -> Loader | None: ...
+            @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `find_spec()` instead.")
             def find_loader(self, fullname: str) -> tuple[Loader | None, Sequence[str]]: ...
 
         def invalidate_caches(self) -> None: ...
