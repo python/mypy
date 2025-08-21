@@ -1964,7 +1964,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         new_items: list[Type] = []
         num_unpacks = 0
         final_unpack = None
-        for item in flatten_nested_tuples(items):
+        for item in items:
             # TODO: handle forward references here, they appear as Unpack[Any].
             if isinstance(item, UnpackType) and not isinstance(
                 get_proper_type(item.type), TupleType
