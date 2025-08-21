@@ -1740,12 +1740,10 @@ def g():
     r6, r7 :: dict
     r8 :: str
     r9 :: object
-    r10 :: dict
-    r11 :: i32
-    r12 :: bit
-    r13 :: tuple
-    r14 :: object
-    r15 :: tuple[int, int, int]
+    r10 :: tuple
+    r11 :: dict
+    r12 :: object
+    r13 :: tuple[int, int, int]
 L0:
     r0 = 'a'
     r1 = 'b'
@@ -1757,13 +1755,11 @@ L0:
     r7 = __main__.globals :: static
     r8 = 'f'
     r9 = CPyDict_GetItem(r7, r8)
-    r10 = PyDict_New()
-    r11 = CPyDict_UpdateInDisplay(r10, r6)
-    r12 = r11 >= 0 :: signed
-    r13 = PyTuple_Pack(0)
-    r14 = PyObject_Call(r9, r13, r10)
-    r15 = unbox(tuple[int, int, int], r14)
-    return r15
+    r10 = PyTuple_Pack(0)
+    r11 = PyDict_Copy(r6)
+    r12 = PyObject_Call(r9, r10, r11)
+    r13 = unbox(tuple[int, int, int], r12)
+    return r13
 def h():
     r0, r1 :: str
     r2, r3 :: object
@@ -3670,18 +3666,14 @@ def wrapper_deco_obj.__call__(__mypyc_self__, lst, kwargs):
     r1 :: object
     r2 :: tuple
     r3 :: dict
-    r4 :: i32
-    r5 :: bit
-    r6 :: object
+    r4 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PyList_AsTuple(lst)
-    r3 = PyDict_New()
-    r4 = CPyDict_UpdateInDisplay(r3, kwargs)
-    r5 = r4 >= 0 :: signed
-    r6 = PyObject_Call(r1, r2, r3)
-    return r6
+    r3 = PyDict_Copy(kwargs)
+    r4 = PyObject_Call(r1, r2, r3)
+    return r4
 def deco(fn):
     fn :: object
     r0 :: __main__.deco_env
@@ -3777,18 +3769,14 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args, kwargs):
     r1 :: object
     r2 :: tuple
     r3 :: dict
-    r4 :: i32
-    r5 :: bit
-    r6 :: object
+    r4 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PySequence_Tuple(args)
-    r3 = PyDict_New()
-    r4 = CPyDict_UpdateInDisplay(r3, kwargs)
-    r5 = r4 >= 0 :: signed
-    r6 = PyObject_Call(r1, r2, r3)
-    return r6
+    r3 = PyDict_Copy(kwargs)
+    r4 = PyObject_Call(r1, r2, r3)
+    return r4
 def deco(fn):
     fn :: object
     r0 :: __main__.deco_env
