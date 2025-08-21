@@ -584,12 +584,7 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
 
 // int.to_bytes(length, byteorder, signed=False)
 PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag) {
-    PyObject *pyint = CPyTagged_StealAsObject(self);
-    if (!PyLong_Check(pyint)) {
-        Py_DECREF(pyint);
-        PyErr_SetString(PyExc_TypeError, "self must be int");
-        return NULL;
-    }
+    PyObject *pyint = CPyTagged_AsObject(self);
     if (!PyUnicode_Check(byteorder)) {
         Py_DECREF(pyint);
         PyErr_SetString(PyExc_TypeError, "byteorder must be str");
