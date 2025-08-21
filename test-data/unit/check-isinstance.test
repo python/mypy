@@ -2551,6 +2551,33 @@ def f2(x: T2) -> T2:
         return C()
 [builtins fixtures/isinstance.pyi]
 
+[case testIsInstanceDisjointBase]
+# flags: --warn-unreachable
+from typing_extensions import disjoint_base
+
+@disjoint_base
+class Disjoint1: pass
+@disjoint_base
+class Disjoint2: pass
+@disjoint_base
+class Disjoint3(Disjoint1): pass
+class Child(Disjoint1): pass
+class Unrelated: pass
+
+def f(d1: Disjoint1, u: Unrelated, c: Child) -> object:
+    if isinstance(d1, Disjoint2): # E: Subclass of "Disjoint1" and "Disjoint2" cannot exist: have distinct disjoint bases
+        return u  # E: Statement is unreachable
+    if isinstance(u, Disjoint1):  # OK
+        return d1
+    if isinstance(c, Disjoint3):  # OK
+        return c
+    if isinstance(c, Disjoint2):  # E: Subclass of "Child" and "Disjoint2" cannot exist: have distinct disjoint bases
+        return c  # E: Statement is unreachable
+    return d1
+
+[builtins fixtures/isinstance.pyi]
+
+
 [case testIsInstanceAdHocIntersectionUsage]
 # flags: --warn-unreachable
 class A: pass

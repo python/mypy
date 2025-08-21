@@ -72,6 +72,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
         "strict_bytes",
+        "fixed_format_cache",
     }
 ) - {"debug_cache"}
 
@@ -286,6 +287,7 @@ class Options:
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
         self.sqlite_cache = False
+        self.fixed_format_cache = False
         self.debug_cache = False
         self.skip_version_check = False
         self.skip_cache_mtime_checks = False

@@ -1057,6 +1057,9 @@ def define_options(
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
     incremental_group.add_argument(
+        "--fixed-format-cache", action="store_true", help=argparse.SUPPRESS
+    )
+    incremental_group.add_argument(
         "--skip-version-check",
         action="store_true",
         help="Allow using cache written by older mypy version",
