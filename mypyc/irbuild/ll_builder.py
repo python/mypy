@@ -128,6 +128,8 @@ from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.dict_ops import (
     dict_build_op,
+    dict_copy,
+    dict_copy_op,
     dict_new_op,
     dict_ssize_t_size_op,
     dict_update_in_display_op,
@@ -806,19 +808,40 @@ class LowLevelIRBuilder:
                         return value, self._create_dict([], [], line)
                     elif len(args) == 2 and args[1][1] == ARG_STAR2:
                         # fn(*args, **kwargs)
+                        # TODO: extend to cover(*args, **k, **w, **a, **r, **g, **s)
                         if is_tuple_rprimitive(value.type) or isinstance(value.type, RTuple):
                             star_result = value
                         elif is_list_rprimitive(value.type):
                             star_result = self.primitive_op(list_tuple_op, [value], line)
                         else:
                             star_result = self.primitive_op(sequence_tuple_op, [value], line)
-                        continue
+
+                        star2_arg = args[1]
+                        star2_value = star2_arg[0]
+                        if is_dict_rprimitive(star2_value.type):
+                            star2_fastpath_op = dict_copy_op
+                        else:
+                            star2_fastpath_op = dict_copy
+                        return star_result, self.primitive_op(
+                            star2_fastpath_op, [star2_value], line
+                        )
                         # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
                     # TODO optimize this case using the length utils - currently in review
                     star_result = self.new_list_op(star_values, line)
                 self.primitive_op(list_extend_op, [star_result, value], line)
             elif kind == ARG_STAR2:
                 if star2_result is None:
+                    if len(args) == 1:
+                        # early exit with fastpath if the only arg is ARG_STAR2
+                        # TODO: can we maintain an empty tuple in memory and just reuse it again and again?
+                        if is_dict_rprimitive(value.type):
+                            star2_fastpath_op = dict_copy_op
+                        else:
+                            star2_fastpath_op = dict_copy
+                        return self.new_tuple([], line), self.primitive_op(
+                            star2_fastpath_op, [value], line
+                        )
+
                     star2_result = self._create_dict(star2_keys, star2_values, line)
 
                 self.call_c(dict_update_in_display_op, [star2_result, value], line=line)
