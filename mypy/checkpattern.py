@@ -539,12 +539,12 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         type_info = o.class_ref.node
         if type_info is None:
-            return PatternType(AnyType(TypeOfAny.from_error), AnyType(TypeOfAny.from_error), {})
-        if isinstance(type_info, TypeAlias) and not type_info.no_args:
+            typ: Type = AnyType(TypeOfAny.from_error)
+        elif isinstance(type_info, TypeAlias) and not type_info.no_args:
             self.msg.fail(message_registry.CLASS_PATTERN_GENERIC_TYPE_ALIAS, o)
             return self.early_non_match()
-        if isinstance(type_info, TypeInfo):
-            typ: Type = fill_typevars_with_any(type_info)
+        elif isinstance(type_info, TypeInfo):
+            typ = fill_typevars_with_any(type_info)
         elif isinstance(type_info, TypeAlias):
             typ = type_info.target
         elif (

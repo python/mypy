@@ -721,13 +721,14 @@ m: object
 match m:
     case xyz(y):  # E: Name "xyz" is not defined
         reveal_type(m)  # N: Revealed type is "Any"
-        reveal_type(y)  # E: Cannot determine type of "y" \
-                        # N: Revealed type is "Any"
+        reveal_type(y)  # N: Revealed type is "Any"
 
 match m:
     case xyz(z=x):  # E: Name "xyz" is not defined
-        reveal_type(x)  # E: Cannot determine type of "x" \
-                        # N: Revealed type is "Any"
+        reveal_type(x)  # N: Revealed type is "Any"
+    case (xyz1() as n) | (xyz2(attr=n)):  # E: Name "xyz1" is not defined \
+                                          # E: Name "xyz2" is not defined
+        reveal_type(n)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternCaptureDataclass]
 from dataclasses import dataclass
