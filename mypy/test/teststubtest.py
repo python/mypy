@@ -1435,11 +1435,23 @@ class StubtestUnit(unittest.TestCase):
             class HasSlotsAndNothingElse:
                 __slots__ = ("x",)
                 x: int
+
+            class HasInheritedSlots(HasSlotsAndNothingElse):
+                pass
+
+            class HasEmptySlots:
+                __slots__ = ()
             """,
             runtime="""
             class HasSlotsAndNothingElse:
                 __slots__ = ("x",)
                 x: int
+
+            class HasInheritedSlots(HasSlotsAndNothingElse):
+                pass
+
+            class HasEmptySlots:
+                __slots__ = ()
             """,
             error=None,
         )

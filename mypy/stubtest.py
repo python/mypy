@@ -512,7 +512,7 @@ def _verify_disjoint_base(
     is_disjoint_runtime = _is_disjoint_base(runtime)
     # Don't complain about missing @disjoint_base if there are __slots__, because
     # in that case we can infer that it's a disjoint base.
-    if is_disjoint_runtime and not stub.is_disjoint_base and stub.slots is None:
+    if is_disjoint_runtime and not stub.is_disjoint_base and not runtime.__dict__.get("__slots__"):
         yield Error(
             object_path,
             "is a disjoint base at runtime, but isn't marked with @disjoint_base in the stub",
