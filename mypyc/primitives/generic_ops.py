@@ -26,6 +26,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     method_op,
     unary_op,
@@ -380,5 +381,14 @@ anext_op = custom_op(
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPy_GetANext",
+    error_kind=ERR_MAGIC,
+)
+
+# x.__name__ (requires Python 3.11+)
+name_op = custom_primitive_op(
+    name="__name__",
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_GetName",
     error_kind=ERR_MAGIC,
 )

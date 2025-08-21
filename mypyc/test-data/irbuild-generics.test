@@ -167,17 +167,13 @@ def execute(func, args, kwargs):
     func :: object
     args :: tuple
     kwargs, r0 :: dict
-    r1 :: i32
-    r2 :: bit
-    r3 :: object
-    r4 :: int
+    r1 :: object
+    r2 :: int
 L0:
-    r0 = PyDict_New()
-    r1 = CPyDict_UpdateInDisplay(r0, kwargs)
-    r2 = r1 >= 0 :: signed
-    r3 = PyObject_Call(func, args, r0)
-    r4 = unbox(int, r3)
-    return r4
+    r0 = PyDict_Copy(kwargs)
+    r1 = PyObject_Call(func, args, r0)
+    r2 = unbox(int, r1)
+    return r2
 def f(x):
     x :: int
 L0:
@@ -703,10 +699,8 @@ def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     r21, can_iter, r22, can_use_keys, r23, can_use_values :: list
     r24 :: object
     r25 :: dict
-    r26 :: i32
-    r27 :: bit
-    r28 :: object
-    r29 :: int
+    r26 :: object
+    r27 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = var_object_size args
@@ -757,12 +751,10 @@ L9:
     r23 = CPyDict_Values(kwargs)
     can_use_values = r23
     r24 = r0.func
-    r25 = PyDict_New()
-    r26 = CPyDict_UpdateInDisplay(r25, kwargs)
-    r27 = r26 >= 0 :: signed
-    r28 = PyObject_Call(r24, args, r25)
-    r29 = unbox(int, r28)
-    return r29
+    r25 = PyDict_Copy(kwargs)
+    r26 = PyObject_Call(r24, args, r25)
+    r27 = unbox(int, r26)
+    return r27
 def deco(func):
     func :: object
     r0 :: __main__.deco_env
