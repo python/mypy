@@ -510,7 +510,9 @@ def _verify_disjoint_base(
     if stub.is_final:
         return
     is_disjoint_runtime = _is_disjoint_base(runtime)
-    if is_disjoint_runtime and not stub.is_disjoint_base:
+    # Don't complain about missing @disjoint_base if there are __slots__, because
+    # in that case we can infer that it's a disjoint base.
+    if is_disjoint_runtime and not stub.is_disjoint_base and not runtime.__dict__.get("__slots__"):
         yield Error(
             object_path,
             "is a disjoint base at runtime, but isn't marked with @disjoint_base in the stub",
@@ -936,6 +938,7 @@ class Signature(Generic[T]):
                     or arg.pos_only
                     or assume_positional_only
                     or arg.variable.name.strip("_") == "self"
+                    or (index == 0 and arg.variable.name.strip("_") == "cls")
                     else arg.variable.name
                 )
                 all_args.setdefault(name, []).append((arg, index))
@@ -1006,6 +1009,7 @@ def _verify_signature(
             and not stub_arg.pos_only
             and not stub_arg.variable.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
+            and stub_arg.variable.name.strip("_") != "cls"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
@@ -1017,6 +1021,7 @@ def _verify_signature(
             and (stub_arg.pos_only or stub_arg.variable.name.startswith("__"))
             and not runtime_arg.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
+            and stub_arg.variable.name.strip("_") != "cls"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
@@ -1660,6 +1665,71 @@ def is_read_only_property(runtime: object) -> bool:
 
 
 def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
+    if (
+        hasattr(runtime, "__name__")
+        and runtime.__name__ == "__init__"
+        and hasattr(runtime, "__text_signature__")
+        and runtime.__text_signature__ == "($self, /, *args, **kwargs)"
+        and hasattr(runtime, "__objclass__")
+        and hasattr(runtime.__objclass__, "__text_signature__")
+        and runtime.__objclass__.__text_signature__ is not None
+    ):
+        # This is an __init__ method with the generic C-class signature.
+        # In this case, the underlying class often has a better signature,
+        # which we can convert into an __init__ signature by adding in the
+        # self parameter.
+        try:
+            s = inspect.signature(runtime.__objclass__)
+
+            parameter_kind: inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+            if s.parameters:
+                first_parameter = next(iter(s.parameters.values()))
+                if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
+                    parameter_kind = inspect.Parameter.POSITIONAL_ONLY
+            return s.replace(
+                parameters=[inspect.Parameter("self", parameter_kind), *s.parameters.values()]
+            )
+        except Exception:
+            pass
+
+    if (
+        hasattr(runtime, "__name__")
+        and runtime.__name__ == "__new__"
+        and hasattr(runtime, "__text_signature__")
+        and runtime.__text_signature__ == "($type, *args, **kwargs)"
+        and hasattr(runtime, "__self__")
+        and hasattr(runtime.__self__, "__text_signature__")
+        and runtime.__self__.__text_signature__ is not None
+    ):
+        # This is a __new__ method with the generic C-class signature.
+        # In this case, the underlying class often has a better signature,
+        # which we can convert into a __new__ signature by adding in the
+        # cls parameter.
+
+        # If the attached class has a valid __init__, skip recovering a
+        # signature for this __new__ method.
+        has_init = False
+        if (
+            hasattr(runtime.__self__, "__init__")
+            and hasattr(runtime.__self__.__init__, "__objclass__")
+            and runtime.__self__.__init__.__objclass__ is runtime.__self__
+        ):
+            has_init = True
+
+        if not has_init:
+            try:
+                s = inspect.signature(runtime.__self__)
+                parameter_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+                if s.parameters:
+                    first_parameter = next(iter(s.parameters.values()))
+                    if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
+                        parameter_kind = inspect.Parameter.POSITIONAL_ONLY
+                return s.replace(
+                    parameters=[inspect.Parameter("cls", parameter_kind), *s.parameters.values()]
+                )
+            except Exception:
+                pass
+
     try:
         try:
             return inspect.signature(runtime)
