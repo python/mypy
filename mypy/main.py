@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from gettext import gettext
 from io import TextIOWrapper
-from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
+from typing import IO, TYPE_CHECKING, Any, Final, Literal, NoReturn, TextIO, cast
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
@@ -90,8 +90,19 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
+    # Type annotation needed for mypy (Pyright understands this)
+    use_color: bool | Literal["auto"] = (
+        True
+        if util.should_force_color()
+        else ("auto" if options.color_output == "auto" else cast(bool, options.color_output))
+    )
+
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
+        stdout,
+        stderr,
+        options.hide_error_codes,
+        hide_success=bool(options.output),
+        color_request=use_color,
     )
 
     if options.allow_redefinition_new and not options.local_partial_types:
@@ -124,7 +135,7 @@ def main(
         install_types(formatter, options, non_interactive=options.non_interactive)
         return
 
-    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr, use_color)
 
     if options.non_interactive:
         missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
@@ -133,8 +144,10 @@ def main(
             install_types(formatter, options, after_run=True, non_interactive=True)
             fscache.flush()
             print()
-            res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
-        show_messages(messages, stderr, formatter, options)
+            res, messages, blockers = run_build(
+                sources, options, fscache, t0, stdout, stderr, use_color
+            )
+        show_messages(messages, stderr, formatter, options, use_color)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
@@ -148,12 +161,12 @@ def main(
     if options.error_summary:
         if n_errors:
             summary = formatter.format_error(
-                n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
+                n_errors, n_files, len(sources), blockers=blockers, use_color=use_color
             )
             stdout.write(summary + "\n")
         # Only notes should also output success
         elif not messages or n_notes == len(messages):
-            stdout.write(formatter.format_success(len(sources), options.color_output) + "\n")
+            stdout.write(formatter.format_success(len(sources), use_color) + "\n")
         stdout.flush()
 
     if options.install_types and not options.non_interactive:
@@ -182,9 +195,14 @@ def run_build(
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
+    use_color: bool | Literal["auto"],
 ) -> tuple[build.BuildResult | None, list[str], bool]:
     formatter = util.FancyFormatter(
-        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
+        stdout,
+        stderr,
+        options.hide_error_codes,
+        hide_success=bool(options.output),
+        color_request=use_color,
     )
 
     messages = []
@@ -200,7 +218,7 @@ def run_build(
             # Collect messages and possibly show them later.
             return
         f = stderr if serious else stdout
-        show_messages(new_messages, f, formatter, options)
+        show_messages(new_messages, f, formatter, options, use_color)
 
     serious = False
     blockers = False
@@ -238,10 +256,16 @@ def run_build(
 
 
 def show_messages(
-    messages: list[str], f: TextIO, formatter: util.FancyFormatter, options: Options
+    messages: list[str],
+    f: TextIO,
+    formatter: util.FancyFormatter,
+    options: Options,
+    use_color: bool | Literal["auto"],
 ) -> None:
+    if use_color == "auto":
+        use_color = formatter.default_colored
     for msg in messages:
-        if options.color_output:
+        if use_color:
             msg = formatter.colorize(msg)
         f.write(msg + "\n")
     f.flush()
@@ -460,6 +484,19 @@ class CapturableVersionAction(argparse.Action):
         formatter.add_text(self.version)
         parser._print_message(formatter.format_help(), self.stdout)
         parser.exit()
+
+
+# Coupled with the usage in define_options
+class ColorOutputAction(argparse.Action):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        assert values in ("auto", None)
+        setattr(namespace, self.dest, True if values is None else "auto")
 
 
 def define_options(
@@ -993,13 +1030,22 @@ def define_options(
         " and show error location markers",
         group=error_group,
     )
-    add_invertible_flag(
-        "--no-color-output",
+    # XXX Setting default doesn't seem to work unless I change
+    # the attribute in options.Options
+    error_group.add_argument(
+        "--color-output",
         dest="color_output",
-        default=True,
-        help="Do not colorize error messages",
-        group=error_group,
+        action=ColorOutputAction,
+        nargs="?",
+        choices=["auto"],
+        help="Colorize error messages (inverse: --no-color-output). "
+        "Detects if to use color when option is omitted and --no-color-output "
+        "is not given, or when --color-output=auto",
     )
+    error_group.add_argument(
+        "--no-color-output", dest="color_output", action="store_false", help=argparse.SUPPRESS
+    )
+    # error_group.set_defaults(color_output="auto")
     add_invertible_flag(
         "--no-error-summary",
         dest="error_summary",
@@ -1530,7 +1576,8 @@ def process_options(
                 reason = cache.find_module(p)
                 if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     fail(
-                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker. "
+                        "See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
                         stderr,
                         options,
                     )

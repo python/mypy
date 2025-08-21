@@ -579,10 +579,11 @@ def parse_gray_color(cup: bytes) -> str:
 
 def should_force_color() -> bool:
     env_var = os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0"))
+    # This logic feels a bit counter-intuitive but it's legacy so rather preserve it
     try:
-        return bool(int(env_var))
+        return int(env_var) != 0
     except ValueError:
-        return bool(env_var)
+        return env_var != ""
 
 
 class FancyFormatter:
@@ -592,32 +593,47 @@ class FancyFormatter:
     """
 
     def __init__(
-        self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool, hide_success: bool = False
+        self,
+        f_out: IO[str],
+        f_err: IO[str],
+        hide_error_codes: bool,
+        hide_success: bool = False,
+        color_request: bool | Literal["auto"] = "auto",
     ) -> None:
         self.hide_error_codes = hide_error_codes
         self.hide_success = hide_success
-
-        # Check if we are in a human-facing terminal on a supported platform.
-        if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
-            self.dummy_term = True
-            return
-        if not should_force_color() and (not f_out.isatty() or not f_err.isatty()):
-            self.dummy_term = True
-            return
-        if sys.platform == "win32":
-            self.dummy_term = not self.initialize_win_colors()
-        elif sys.platform == "emscripten":
-            self.dummy_term = not self.initialize_vt100_colors()
-        else:
-            self.dummy_term = not self.initialize_unix_colors()
-        if not self.dummy_term:
-            self.colors = {
+        self.default_colored = f_out.isatty() and f_err.isatty()
+        self.colors_ok = self.detect_terminal_colors(f_out, f_err)
+        self.RED: str
+        self.GREEN: str
+        self.BLUE: str
+        self.YELLOW: str
+        if self.colors_ok:
+            self.colors: dict[str, str] = {
                 "red": self.RED,
                 "green": self.GREEN,
                 "blue": self.BLUE,
                 "yellow": self.YELLOW,
                 "none": "",
             }
+        else:
+            if color_request is True or (color_request == "auto" and self.default_colored):
+                print(
+                    "warning: failed to detect a suitable terminal color scheme "
+                    "but colored output is requested"
+                )
+            self.colors = {"red": "", "green": "", "blue": "", "yellow": "", "none": ""}
+            self.NORMAL = self.BOLD = self.UNDER = self.DIM = ""
+
+    def detect_terminal_colors(self, f_out: IO[str], f_err: IO[str]) -> bool:
+        if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
+            return False
+        if sys.platform == "win32":
+            return self.initialize_win_colors()
+        elif sys.platform == "emscripten":
+            return self.initialize_vt100_colors()
+        else:
+            return self.initialize_unix_colors()
 
     def initialize_vt100_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
@@ -709,8 +725,6 @@ class FancyFormatter:
         dim: bool = False,
     ) -> str:
         """Apply simple color and style (underlined or bold)."""
-        if self.dummy_term:
-            return text
         if bold:
             start = self.BOLD
         else:
@@ -719,6 +733,8 @@ class FancyFormatter:
             start += self.UNDER
         if dim:
             start += self.DIM
+        # if TYPE_CHECKING:
+        #    reveal_type(self.colors)
         return start + self.colors[color] + text + self.NORMAL
 
     def fit_in_terminal(
@@ -819,7 +835,7 @@ class FancyFormatter:
         end = match.end()
         return note[:start] + self.style(note[start:end], "none", underline=True) + note[end:]
 
-    def format_success(self, n_sources: int, use_color: bool = True) -> str:
+    def format_success(self, n_sources: int, use_color: bool | Literal["auto"] = True) -> str:
         """Format short summary in case of success.
 
         n_sources is total number of files passed directly on command line,
@@ -829,7 +845,7 @@ class FancyFormatter:
             return ""
 
         msg = f"Success: no issues found in {n_sources} source file{plural_s(n_sources)}"
-        if not use_color:
+        if not (use_color is True or (use_color == "auto" and self.default_colored)):
             return msg
         return self.style(msg, "green", bold=True)
 
@@ -840,7 +856,7 @@ class FancyFormatter:
         n_sources: int,
         *,
         blockers: bool = False,
-        use_color: bool = True,
+        use_color: bool | Literal["auto"] = True,
     ) -> str:
         """Format a short summary in case of errors."""
         msg = f"Found {n_errors} error{plural_s(n_errors)} in {n_files} file{plural_s(n_files)}"
@@ -848,7 +864,7 @@ class FancyFormatter:
             msg += " (errors prevented further checking)"
         else:
             msg += f" (checked {n_sources} source file{plural_s(n_sources)})"
-        if not use_color:
+        if not (use_color is True or (use_color == "auto" and self.default_colored)):
             return msg
         return self.style(msg, "red", bold=True)
 
