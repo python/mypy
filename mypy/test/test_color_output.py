@@ -5,14 +5,14 @@ import sys
 import pytest
 
 #XXX Would like help with this test, how do I make it runnable?
-
 # Haven't run this test yet
 
 PTY_SIZE = (80, 40)
 
 if sys.platform == "win32":
     if TYPE_CHECKING:
-        from winpty.winpty import PTY
+        # This helps my IDE find the type annotations
+        from winpty.winpty import PTY #type:ignore[import-untyped]
     else:
         from winpty import PTY
 
@@ -28,8 +28,9 @@ elif sys.platform == "unix":
     from pty import openpty
 
     def run_pty(cmd: str, env: dict[str, str] = {}) -> tuple[str, str]:
-        # TODO Would like help checking quality of this function,
+        # NOTE Would like help checking quality of this function,
         # it's partially written by Copilot because I'm not familiar with Unix openpty
+        # and cannot use Unix openpty
         master_fd, slave_fd = openpty()
         try:
             p = subprocess.run(cmd, stdout=slave_fd, stderr=subprocess.PIPE, env=env, text=True)
@@ -66,34 +67,12 @@ def test_it(command: str) -> None:
     # Note: Though we don't check stderr, capturing it is useful
     # because it provides traceback if mypy crashes due to exception
     # and pytest reveals it upon failure (?)
-    test_pty(True, "mypy -c \"1+'a'\" --color-output=force")
-    test_pty(False, "mypy -c \"1+'a'\" --no-color-output")
-    test_not_pty(False, "mypy -c \"1+'a'\" --color-output")
-    test_not_pty(True, "mypy -c \"1+'a'\" --color-output=force")
-    test_not_pty(False, "mypy -c \"1+'a'\" --color-output", {"MYPY_FORCE_COLOR": "1"})
-    test_not_pty(True, "mypy -c \"1+'a'\" --color-output=force", {"MYPY_FORCE_COLOR": "1"})
-    test_not_pty(False, "mypy -c \"1+'a'\" --no-color-output", {"MYPY_FORCE_COLOR": "1"})
-    test_not_pty(False, "mypy -c \"1+'a'\" --no-color-output", {"FORCE_COLOR": "1"})
-    test_not_pty(False, "mypy -c \"1+'a'\" --color-output", {"MYPY_FORCE_COLOR": "0"})
-
-
-# TODO: Tests in the terminal (require manual testing?)
-"""
-In the terminal:
-    colored: mypy -c "1+'a'"
-    colored: mypy -c "1+'a'" --color-output
-not colored: mypy -c "1+'a'" --no-color-output
-    colored: mypy -c "1+'a'" --color-output (with MYPY_FORCE_COLOR=1)
-    colored: mypy -c "1+'a'" --no-color-output (with MYPY_FORCE_COLOR=1)
-
-To test, save this as a .bat and run in a Windows terminal (I don't know the Unix equivalent):
-
-set MYPY_FORCE_COLOR=
-mypy -c "1+'a'"
-mypy -c "1+'a'" --color-output
-mypy -c "1+'a'" --no-color-output
-set MYPY_FORCE_COLOR=1
-mypy -c "1+'a'" --color-output
-mypy -c "1+'a'" --no-color-output
-set MYPY_FORCE_COLOR=
-"""
+    test_pty(True, f"{command} -c \"1+'a'\" --color-output=force")
+    test_pty(False, f"{command} -c \"1+'a'\" --no-color-output")
+    test_not_pty(False, f"{command} -c \"1+'a'\" --color-output")
+    test_not_pty(True, f"{command} -c \"1+'a'\" --color-output=force")
+    test_not_pty(False, f"{command} -c \"1+'a'\" --color-output", {"MYPY_FORCE_COLOR": "1"})
+    test_not_pty(True, f"{command} -c \"1+'a'\" --color-output=force", {"MYPY_FORCE_COLOR": "1"})
+    test_not_pty(False, f"{command} -c \"1+'a'\" --no-color-output", {"MYPY_FORCE_COLOR": "1"})
+    test_not_pty(False, f"{command} -c \"1+'a'\" --no-color-output", {"FORCE_COLOR": "1"})
+    test_not_pty(False, f"{command} -c \"1+'a'\" --color-output", {"MYPY_FORCE_COLOR": "0"})
