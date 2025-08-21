@@ -1337,4 +1337,4 @@ def test_star_fastpath_generic() -> None:
 def test_star2_fastpath() -> None:
     assert star2(x="a", y=3) == "aaa"
 def test_star2_fastpath_generic() -> None:
-    assert star2_generic({x: "a", y: 3}) == "aaa"
+    assert star2_generic({"x": "a", "y": 3}) == "aaa"
