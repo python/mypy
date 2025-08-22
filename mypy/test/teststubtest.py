@@ -1407,14 +1407,9 @@ class StubtestUnit(unittest.TestCase):
             stub="""
             import sys
             from typing import Final, Literal
-            from typing_extensions import disjoint_base
-            if sys.version_info >= (3, 12):
-                class BytesEnum(bytes, enum.Enum):
-                    a = b'foo'
-            else:
-                @disjoint_base
-                class BytesEnum(bytes, enum.Enum):
-                    a = b'foo'
+            class BytesEnum(bytes, enum.Enum):
+                a = b'foo'
+
             FOO: Literal[BytesEnum.a]
             BAR: Final = BytesEnum.a
             BAZ: BytesEnum
@@ -1697,6 +1692,53 @@ assert annotations
             from itertools import takewhile as mycorrecttakewhile
             """,
             error=None,
+        )
+        yield Case(
+            runtime="""
+            class IsDisjointBaseBecauseItHasSlots:
+                __slots__ = ("a",)
+                a: int
+            """,
+            stub="""
+            from typing_extensions import disjoint_base
+
+            @disjoint_base
+            class IsDisjointBaseBecauseItHasSlots:
+                a: int
+            """,
+            error="test_module.IsDisjointBaseBecauseItHasSlots",
+        )
+        yield Case(
+            runtime="""
+            class IsFinalSoDisjointBaseIsRedundant: ...
+            """,
+            stub="""
+            from typing_extensions import disjoint_base, final
+
+            @final
+            @disjoint_base
+            class IsFinalSoDisjointBaseIsRedundant: ...
+            """,
+            error="test_module.IsFinalSoDisjointBaseIsRedundant",
+        )
+        yield Case(
+            runtime="""
+            import enum
+
+            class IsEnumWithMembersSoDisjointBaseIsRedundant(enum.Enum):
+                A = 1
+                B = 2
+            """,
+            stub="""
+            from typing_extensions import disjoint_base
+            import enum
+
+            @disjoint_base
+            class IsEnumWithMembersSoDisjointBaseIsRedundant(enum.Enum):
+                A = 1
+                B = 2
+            """,
+            error="test_module.IsEnumWithMembersSoDisjointBaseIsRedundant",
         )
 
     @collect_cases
