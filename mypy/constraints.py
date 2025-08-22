@@ -559,7 +559,7 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
 
-    if all_similar:
+    if eager and all_similar:
         # Now we know all constraints might be satisfiable and have similar structure.
         # Solver will apply meets and joins as necessary, return everything we know.
         # Just deduplicate to reduce the amount of work.
