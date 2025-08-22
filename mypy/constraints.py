@@ -383,6 +383,40 @@ def _infer_constraints(
             res.extend(infer_constraints(t_item, actual, direction))
         return res
     if direction == SUPERTYPE_OF and isinstance(actual, UnionType):
+        # Special handling for Union[T, X] vs Union[Y, Z] case
+        template_proper = get_proper_type(orig_template)
+        if isinstance(template_proper, UnionType) and len(template_proper.items) == 2:
+            type_var_items = []
+            non_type_var_items = []
+            
+            for t_item in template_proper.items:
+                t_item_proper = get_proper_type(t_item)
+                if isinstance(t_item_proper, TypeVarType):
+                    type_var_items.append(t_item_proper)
+                else:
+                    non_type_var_items.append(t_item_proper)
+            
+            if len(type_var_items) == 1 and len(non_type_var_items) == 1:
+                # This is Union[T, X] vs Union[Y, Z] case
+                type_var = type_var_items[0]
+                non_type_var = non_type_var_items[0]
+                
+                # Check if any actual items are NOT subtypes of the non-type-var part
+                compatible_items = []
+                actual_proper = get_proper_type(actual)
+                if isinstance(actual_proper, UnionType):
+                    for actual_item in actual_proper.items:
+                        if not mypy.subtypes.is_subtype(actual_item, non_type_var):
+                            compatible_items.append(actual_item)
+                
+                # If we have compatible items, create constraint for the type variable
+                if compatible_items:
+                    if len(compatible_items) == 1:
+                        return [Constraint(type_var, SUBTYPE_OF, compatible_items[0])]
+                    else:
+                        union_type = UnionType.make_union(compatible_items)
+                        return [Constraint(type_var, SUBTYPE_OF, union_type)]
+        
         res = []
         for a_item in actual.items:
             # `orig_template` has to be preserved intact in case it's recursive.

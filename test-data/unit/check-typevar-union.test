@@ -1,0 +1,145 @@
+[case testUnionTypeVarInferenceBasic]
+from typing import TypeVar, Union
+
+class A: pass
+class B: pass
+class C: pass
+
+T = TypeVar('T')
+
+def foo(x: Union[T, A]) -> T: ...
+
+obj: Union[B, C]
+reveal_type(foo(obj))  # N: Revealed type is "__main__.B | __main__.C"
+
+[builtins fixtures/tuple.pyi]
+
+[case testUnionTypeVarInferenceSingle]
+from typing import TypeVar, Union
+
+class A: pass
+class B: pass
+
+T = TypeVar('T')
+
+def foo(x: Union[T, A]) -> T: ...
+
+obj: B
+reveal_type(foo(obj))  # N: Revealed type is "__main__.B"
+
+[builtins fixtures/tuple.pyi]
+
+[case testUnionTypeVarInferenceThreeWay]
+from typing import TypeVar, Union
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+
+T = TypeVar('T')
+
+def foo(x: Union[T, A]) -> T: ...
+
+obj: Union[B, C, D]
+reveal_type(foo(obj))  # N: Revealed type is "__main__.B | __main__.C | __main__.D"
+
+[builtins fixtures/tuple.pyi]
+
+[case testUnionTypeVarInferenceOverlapping]
+from typing import TypeVar, Union
+
+class A: pass
+class B: pass
+
+T = TypeVar('T')
+
+def foo(x: Union[T, A]) -> T: ...
+
+obj: Union[A, B]
+reveal_type(foo(obj))  # N: Revealed type is "__main__.A | __main__.B"
+
+[builtins fixtures/tuple.pyi]
+
+[case testUnionTypeVarInferenceJustA]
+from typing import TypeVar, Union
+
+class A: pass
+
+T = TypeVar('T')
+
+def foo(x: Union[T, A]) -> T: ...
+
+obj: A
+reveal_type(foo(obj))  # N: Revealed type is "__main__.A"
+
+[builtins fixtures/tuple.pyi]
+
+[case testUnionTypeVarInferenceComplex]
+from typing import TypeVar, Union
+from dataclasses import dataclass
+import pathlib
+
+class Cancelled: pass
+
+T = TypeVar('T')
+
+@dataclass
+class CreateProject:
+    jsonFilePath: pathlib.Path
+
+@dataclass  
+class LoadProject:
+    jsonFilePath: pathlib.Path
+
+@dataclass
+class MigrateProject:
+    oldJsonFilePath: pathlib.Path
+    newProjectFolderPath: pathlib.Path
+
+Project = Union[CreateProject, LoadProject, MigrateProject]
+
+def getProject() -> Union[Project, Cancelled]: ...
+
+def value(maybeCancelled: Union[T, Cancelled]) -> T: ...
+
+def main() -> None:
+    maybeCancelled = getProject()
+    project: Project = reveal_type(value(maybeCancelled))  # N: Revealed type is "__main__.CreateProject | __main__.LoadProject | __main__.MigrateProject"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testUnionTypeVarInferenceComplex]
+from typing import TypeVar, Union
+import pathlib
+
+class Cancelled: pass
+
+T = TypeVar('T')
+
+@dataclass
+class CreateProject:
+    jsonFilePath: pathlib.Path
+
+@dataclass  
+class LoadProject:
+    jsonFilePath: pathlib.Path
+
+@dataclass
+class MigrateProject:
+    oldJsonFilePath: pathlib.Path
+    newProjectFolderPath: pathlib.Path
+
+Project = Union[CreateProject, LoadProject, MigrateProject]
+
+def getProject() -> Union[Project, Cancelled]: ...
+
+def value(maybeCancelled: Union[T, Cancelled]) -> T: ...
+
+def main() -> None:
+    maybeCancelled = getProject()
+    project: Project = reveal_type(value(maybeCancelled))  # N: Revealed type is "__main__.CreateProject | __main__.LoadProject | __main__.MigrateProject"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
