@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -38,7 +38,7 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import PROPSET_PREFIX, SELF_NAME, get_id_from_name
+from mypyc.common import FAST_PREFIX, PROPSET_PREFIX, SELF_NAME, get_id_from_name
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -70,6 +70,8 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
+
+GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 
 
 def build_type_map(
@@ -104,6 +106,7 @@ def build_type_map(
             class_ir.children = None
         mapper.type_to_ir[cdef.info] = class_ir
         mapper.symbol_fullnames.add(class_ir.fullname)
+        class_ir.is_enum = cdef.info.is_enum and len(cdef.info.enum_members) > 0
 
     # Populate structural information in class IR for extension classes.
     for module, cdef in classes:
@@ -229,7 +232,7 @@ def create_generator_class_if_needed(
 
         # The implementation of most generator functionality is behind this magic method.
         helper_fn_decl = FuncDecl(
-            "__mypyc_generator_helper__", name, module_name, helper_sig, internal=True
+            GENERATOR_HELPER_NAME, name, module_name, helper_sig, internal=True
         )
         cir.method_decls[helper_fn_decl.name] = helper_fn_decl
 
@@ -266,6 +269,36 @@ def prepare_method_def(
             assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
+
+
+def prepare_fast_path(
+    ir: ClassIR,
+    module_name: str,
+    cdef: ClassDef,
+    mapper: Mapper,
+    node: SymbolNode | None,
+    options: CompilerOptions,
+) -> None:
+    """Add fast (direct) variants of methods in non-extension classes."""
+    if ir.is_enum:
+        # We check that non-empty enums are implicitly final in mypy, so we
+        # can generate direct calls to enum methods.
+        if isinstance(node, OverloadedFuncDef):
+            if node.is_property:
+                return
+            node = node.impl
+        if not isinstance(node, FuncDef):
+            # TODO: support decorated methods (at least @classmethod and @staticmethod).
+            return
+        # The simplest case is a regular or overloaded method without decorators. In this
+        # case we can generate practically identical IR method body, but with a signature
+        # suitable for direct calls (usual non-extension class methods are converted to
+        # callable classes, and thus have an extra __mypyc_self__ argument).
+        name = FAST_PREFIX + node.name
+        sig = mapper.fdef_to_sig(node, options.strict_dunders_typing)
+        decl = FuncDecl(name, cdef.name, module_name, sig, FUNC_NORMAL)
+        ir.method_decls[name] = decl
+    return
 
 
 def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
@@ -577,6 +610,8 @@ def prepare_non_ext_class_def(
             else:
                 prepare_method_def(ir, module_name, cdef, mapper, get_func_def(node.node), options)
 
+        prepare_fast_path(ir, module_name, cdef, mapper, node.node, options)
+
     if any(cls in mapper.type_to_ir and mapper.type_to_ir[cls].is_ext_class for cls in info.mro):
         errors.error(
             "Non-extension classes may not inherit from extension classes", path, cdef.line
@@ -614,6 +649,12 @@ class SingledispatchVisitor(TraverserVisitor):
         self.decorators_to_remove: dict[FuncDef, list[int]] = {}
 
         self.errors: Errors = errors
+        self.func_stack_depth = 0
+
+    def visit_func_def(self, o: FuncDef) -> None:
+        self.func_stack_depth += 1
+        super().visit_func_def(o)
+        self.func_stack_depth -= 1
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
@@ -625,6 +666,10 @@ class SingledispatchVisitor(TraverserVisitor):
             for i, d in enumerate(decorators_to_store):
                 impl = get_singledispatch_register_call_info(d, dec.func)
                 if impl is not None:
+                    if self.func_stack_depth > 0:
+                        self.errors.error(
+                            "Registering nested functions not supported", self.current_path, d.line
+                        )
                     self.singledispatch_impls[impl.singledispatch_func].append(
                         (impl.dispatch_type, dec.func)
                     )
@@ -641,6 +686,12 @@ class SingledispatchVisitor(TraverserVisitor):
                         )
                 else:
                     if refers_to_fullname(d, "functools.singledispatch"):
+                        if self.func_stack_depth > 0:
+                            self.errors.error(
+                                "Nested singledispatch functions not supported",
+                                self.current_path,
+                                d.line,
+                            )
                         decorators_to_remove.append(i)
                         # make sure that we still treat the function as a singledispatch function
                         # even if we don't find any registered implementations (which might happen

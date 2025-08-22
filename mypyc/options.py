@@ -16,6 +16,8 @@ class CompilerOptions:
         python_version: tuple[int, int] | None = None,
         strict_dunder_typing: bool = False,
         group_name: str | None = None,
+        log_trace: bool = False,
+        depends_on_native_internal: bool = False,
     ) -> None:
         self.strip_asserts = strip_asserts
         self.multi_file = multi_file
@@ -45,3 +47,11 @@ class CompilerOptions:
         # library is generated (with shims). This can be used to make the output
         # file names more predictable.
         self.group_name = group_name
+        # If enabled, write a trace log of events based on executed operations to
+        # mypyc_trace.txt when compiled module is executed. This is useful for
+        # performance analysis.
+        self.log_trace = log_trace
+        # If enabled, add capsule imports of native_internal API. This should be used
+        # only for mypy itself, third-party code compiled with mypyc should not use
+        # native_internal.
+        self.depends_on_native_internal = depends_on_native_internal

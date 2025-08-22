@@ -55,6 +55,7 @@ from mypy.nodes import (
     SymbolTable,
     TypeInfo,
     Var,
+    get_func_def,
     reverse_builtin_aliases,
 )
 from mypy.operators import op_methods, op_methods_to_symbols
@@ -1003,7 +1004,7 @@ class MessageBuilder:
         if self.prefer_simple_messages():
             return
         # https://github.com/python/mypy/issues/11309
-        first_arg = callee.def_extras.get("first_arg")
+        first_arg = get_first_arg(callee)
         if first_arg and first_arg not in {"self", "cls", "mcs"}:
             self.note(
                 "Looks like the first special argument in a method "
@@ -2431,13 +2432,13 @@ class MessageBuilder:
         """Format very long tuple type using an ellipsis notation"""
         item_cnt = len(typ.items)
         if item_cnt > MAX_TUPLE_ITEMS:
-            return "tuple[{}, {}, ... <{} more items>]".format(
+            return '"tuple[{}, {}, ... <{} more items>]"'.format(
                 format_type_bare(typ.items[0], self.options),
                 format_type_bare(typ.items[1], self.options),
                 str(item_cnt - 2),
             )
         else:
-            return format_type_bare(typ, self.options)
+            return format_type(typ, self.options)
 
     def generate_incompatible_tuple_error(
         self,
@@ -2516,15 +2517,12 @@ class MessageBuilder:
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
-    no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
         type_string in ["Module", "overloaded function", "<deleted>"]
         or type_string.startswith("Module ")
-        or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
     ):
-        # Messages are easier to read if these aren't quoted.  We use a
-        # regex to match strings with variable contents.
+        # These messages are easier to read if these aren't quoted.
         return type_string
     return f'"{type_string}"'
 
@@ -2938,10 +2936,11 @@ def format_type_distinctly(*types: Type, options: Options, bare: bool = False) -
 
 def pretty_class_or_static_decorator(tp: CallableType) -> str | None:
     """Return @classmethod or @staticmethod, if any, for the given callable type."""
-    if tp.definition is not None and isinstance(tp.definition, SYMBOL_FUNCBASE_TYPES):
-        if tp.definition.is_class:
+    definition = get_func_def(tp)
+    if definition is not None and isinstance(definition, SYMBOL_FUNCBASE_TYPES):
+        if definition.is_class:
             return "@classmethod"
-        if tp.definition.is_static:
+        if definition.is_static:
             return "@staticmethod"
     return None
 
@@ -2991,12 +2990,13 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             slash = True
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
+    definition = get_func_def(tp)
     if (
-        isinstance(tp.definition, FuncDef)
-        and hasattr(tp.definition, "arguments")
+        isinstance(definition, FuncDef)
+        and hasattr(definition, "arguments")
         and not tp.from_concatenate
     ):
-        definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
+        definition_arg_names = [arg.variable.name for arg in definition.arguments]
         if (
             len(definition_arg_names) > len(tp.arg_names)
             and definition_arg_names[0]
@@ -3005,9 +3005,9 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             if s:
                 s = ", " + s
             s = definition_arg_names[0] + s
-        s = f"{tp.definition.name}({s})"
+        s = f"{definition.name}({s})"
     elif tp.name:
-        first_arg = tp.def_extras.get("first_arg")
+        first_arg = get_first_arg(tp)
         if first_arg:
             if s:
                 s = ", " + s
@@ -3048,6 +3048,13 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
                 tvars.append(repr(tvar))
         s = f"[{', '.join(tvars)}] {s}"
     return f"def {s}"
+
+
+def get_first_arg(tp: CallableType) -> str | None:
+    definition = get_func_def(tp)
+    if not isinstance(definition, FuncDef) or not definition.info or definition.is_static:
+        return None
+    return definition.original_first_arg
 
 
 def variance_string(variance: int) -> str:

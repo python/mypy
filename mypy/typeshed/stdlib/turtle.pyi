@@ -3,8 +3,8 @@ from _typeshed import StrPath
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from tkinter import Canvas, Frame, Misc, PhotoImage, Scrollbar
-from typing import Any, ClassVar, Literal, TypedDict, overload
-from typing_extensions import Self, TypeAlias
+from typing import Any, ClassVar, Literal, TypedDict, overload, type_check_only
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "ScrolledCanvas",
@@ -146,6 +146,7 @@ if sys.version_info < (3, 13):
 _Color: TypeAlias = str | tuple[float, float, float]
 _AnyColor: TypeAlias = Any
 
+@type_check_only
 class _PenState(TypedDict):
     shown: bool
     pendown: bool
@@ -425,6 +426,7 @@ class RawTurtle(TPen, TNavigator):  # type: ignore[misc]  # Conflicting methods 
     def get_shapepoly(self) -> _PolygonCoords | None: ...
 
     if sys.version_info < (3, 13):
+        @deprecated("Deprecated since Python 3.1; removed in Python 3.13. Use `tiltangle()` instead.")
         def settiltangle(self, angle: float) -> None: ...
 
     @overload
@@ -487,19 +489,8 @@ Pen = Turtle
 
 def write_docstringdict(filename: str = "turtle_docstringdict") -> None: ...
 
-# Note: it's somewhat unfortunate that we have to copy the function signatures.
-# It would be nice if we could partially reduce the redundancy by doing something
-# like the following:
-#
-#     _screen: Screen
-#     clear = _screen.clear
-#
-# However, it seems pytype does not support this type of syntax in pyi files.
-
 # Functions copied from TurtleScreenBase:
 
-# Note: mainloop() was always present in the global scope, but was added to
-# TurtleScreenBase in Python 3.0
 def mainloop() -> None: ...
 def textinput(title: str, prompt: str) -> str | None: ...
 def numinput(
@@ -717,6 +708,7 @@ def shapetransform(
 def get_shapepoly() -> _PolygonCoords | None: ...
 
 if sys.version_info < (3, 13):
+    @deprecated("Deprecated since Python 3.1; removed in Python 3.13. Use `tiltangle()` instead.")
     def settiltangle(angle: float) -> None: ...
 
 @overload

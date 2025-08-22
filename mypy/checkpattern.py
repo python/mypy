@@ -192,7 +192,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         for capture_list in capture_types.values():
             typ = UninhabitedType()
             for _, other in capture_list:
-                typ = join_types(typ, other)
+                typ = make_simplified_union([typ, other])
 
             captures[capture_list[0][0]] = typ
 
@@ -796,9 +796,9 @@ def get_var(expr: Expression) -> Var:
     Warning: this in only true for expressions captured by a match statement.
     Don't call it from anywhere else
     """
-    assert isinstance(expr, NameExpr)
+    assert isinstance(expr, NameExpr), expr
     node = expr.node
-    assert isinstance(node, Var)
+    assert isinstance(node, Var), node
     return node
 
 

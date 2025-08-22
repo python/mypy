@@ -11,6 +11,7 @@ from _ctypes import (
     _CData as _CData,
     _CDataType as _CDataType,
     _CField as _CField,
+    _CTypeBaseType,
     _Pointer as _Pointer,
     _PointerLike as _PointerLike,
     _SimpleCData as _SimpleCData,
@@ -32,7 +33,7 @@ if sys.platform == "win32":
     from _ctypes import FormatError as FormatError, get_last_error as get_last_error, set_last_error as set_last_error
 
     if sys.version_info >= (3, 14):
-        from _ctypes import COMError as COMError
+        from _ctypes import COMError as COMError, CopyComPointer as CopyComPointer
 
 if sys.version_info >= (3, 11):
     from ctypes._endian import BigEndianUnion as BigEndianUnion, LittleEndianUnion as LittleEndianUnion
@@ -162,7 +163,7 @@ c_buffer = create_string_buffer
 
 def create_unicode_buffer(init: int | str, size: int | None = None) -> Array[c_wchar]: ...
 @deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.15")
-def SetPointerType(pointer: type[_Pointer[Any]], cls: Any) -> None: ...
+def SetPointerType(pointer: type[_Pointer[Any]], cls: _CTypeBaseType) -> None: ...
 def ARRAY(typ: _CT, len: int) -> Array[_CT]: ...  # Soft Deprecated, no plans to remove
 
 if sys.platform == "win32":

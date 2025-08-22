@@ -850,11 +850,13 @@ class StubtestUnit(unittest.TestCase):
             class Good:
                 @property
                 def read_only_attr(self) -> int: ...
+                read_only_attr_alias = read_only_attr
             """,
             runtime="""
             class Good:
                 @property
                 def read_only_attr(self): return 1
+                read_only_attr_alias = read_only_attr
             """,
             error=None,
         )
@@ -916,6 +918,7 @@ class StubtestUnit(unittest.TestCase):
                 def read_write_attr(self) -> int: ...
                 @read_write_attr.setter
                 def read_write_attr(self, val: int) -> None: ...
+                read_write_attr_alias = read_write_attr
             """,
             runtime="""
             class Z:
@@ -923,6 +926,7 @@ class StubtestUnit(unittest.TestCase):
                 def read_write_attr(self): return self._val
                 @read_write_attr.setter
                 def read_write_attr(self, val): self._val = val
+                read_write_attr_alias = read_write_attr
             """,
             error=None,
         )
@@ -1401,9 +1405,11 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
+            import sys
             from typing import Final, Literal
             class BytesEnum(bytes, enum.Enum):
                 a = b'foo'
+
             FOO: Literal[BytesEnum.a]
             BAR: Final = BytesEnum.a
             BAZ: BytesEnum
@@ -1416,6 +1422,31 @@ class StubtestUnit(unittest.TestCase):
             BAR = BytesEnum.a
             BAZ = BytesEnum.a
             EGGS = BytesEnum.a
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class HasSlotsAndNothingElse:
+                __slots__ = ("x",)
+                x: int
+
+            class HasInheritedSlots(HasSlotsAndNothingElse):
+                pass
+
+            class HasEmptySlots:
+                __slots__ = ()
+            """,
+            runtime="""
+            class HasSlotsAndNothingElse:
+                __slots__ = ("x",)
+                x: int
+
+            class HasInheritedSlots(HasSlotsAndNothingElse):
+                pass
+
+            class HasEmptySlots:
+                __slots__ = ()
             """,
             error=None,
         )
@@ -1607,6 +1638,107 @@ assert annotations
             stub="class CannotBeSubclassed:\n  def __init_subclass__(cls) -> None: ...",
             runtime="class CannotBeSubclassed:\n  def __init_subclass__(cls): raise TypeError",
             error="CannotBeSubclassed",
+        )
+
+    @collect_cases
+    def test_disjoint_base(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class A: pass
+            """,
+            runtime="""
+            class A: pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import disjoint_base
+
+            @disjoint_base
+            class B: pass
+            """,
+            runtime="""
+            class B: pass
+            """,
+            error="test_module.B",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Self
+
+            class mytakewhile:
+                def __new__(cls, predicate: object, iterable: object, /) -> Self: ...
+                def __iter__(self) -> Self: ...
+                def __next__(self) -> object: ...
+            """,
+            runtime="""
+            from itertools import takewhile as mytakewhile
+            """,
+            # Should have @disjoint_base
+            error="test_module.mytakewhile",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import disjoint_base, Self
+
+            @disjoint_base
+            class mycorrecttakewhile:
+                def __new__(cls, predicate: object, iterable: object, /) -> Self: ...
+                def __iter__(self) -> Self: ...
+                def __next__(self) -> object: ...
+            """,
+            runtime="""
+            from itertools import takewhile as mycorrecttakewhile
+            """,
+            error=None,
+        )
+        yield Case(
+            runtime="""
+            class IsDisjointBaseBecauseItHasSlots:
+                __slots__ = ("a",)
+                a: int
+            """,
+            stub="""
+            from typing_extensions import disjoint_base
+
+            @disjoint_base
+            class IsDisjointBaseBecauseItHasSlots:
+                a: int
+            """,
+            error="test_module.IsDisjointBaseBecauseItHasSlots",
+        )
+        yield Case(
+            runtime="""
+            class IsFinalSoDisjointBaseIsRedundant: ...
+            """,
+            stub="""
+            from typing_extensions import disjoint_base, final
+
+            @final
+            @disjoint_base
+            class IsFinalSoDisjointBaseIsRedundant: ...
+            """,
+            error="test_module.IsFinalSoDisjointBaseIsRedundant",
+        )
+        yield Case(
+            runtime="""
+            import enum
+
+            class IsEnumWithMembersSoDisjointBaseIsRedundant(enum.Enum):
+                A = 1
+                B = 2
+            """,
+            stub="""
+            from typing_extensions import disjoint_base
+            import enum
+
+            @disjoint_base
+            class IsEnumWithMembersSoDisjointBaseIsRedundant(enum.Enum):
+                A = 1
+                B = 2
+            """,
+            error="test_module.IsEnumWithMembersSoDisjointBaseIsRedundant",
         )
 
     @collect_cases
@@ -2468,6 +2600,17 @@ assert annotations
             runtime="def func2() -> None: ...",
             error="func2",
         )
+        # A type that exists at runtime is allowed to alias a type marked
+        # as '@type_check_only' in the stubs.
+        yield Case(
+            stub="""
+            @type_check_only
+            class _X1: ...
+            X2 = _X1
+            """,
+            runtime="class X2: ...",
+            error=None,
+        )
 
     @collect_cases
     def test_type_default_protocol(self) -> Iterator[Case]:
@@ -2507,8 +2650,8 @@ class StubtestMiscUnit(unittest.TestCase):
             options=[],
         )
         expected = (
-            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
-            'from runtime argument "num"\n'
+            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub parameter "number" differs '
+            'from runtime parameter "num"\n'
             f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
             "def (number: builtins.int, text: builtins.str)\n"
             f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
@@ -2523,7 +2666,9 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         expected = (
             "{}.bad is inconsistent, "
-            'stub argument "number" differs from runtime argument "num"\n'.format(TEST_MODULE_NAME)
+            'stub parameter "number" differs from runtime parameter "num"\n'.format(
+                TEST_MODULE_NAME
+            )
         )
         assert output == expected
 

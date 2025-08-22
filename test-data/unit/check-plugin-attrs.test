@@ -1201,7 +1201,6 @@ class A:
 [builtins fixtures/bool.pyi]
 
 [case testAttrsFactoryBadReturn]
-# flags: --new-type-inference
 import attr
 def my_factory() -> int:
     return 7

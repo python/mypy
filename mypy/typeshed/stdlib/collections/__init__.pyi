@@ -2,7 +2,7 @@ import sys
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import SupportsItems, SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
 from types import GenericAlias
-from typing import Any, ClassVar, Generic, NoReturn, SupportsIndex, TypeVar, final, overload
+from typing import Any, ClassVar, Generic, NoReturn, SupportsIndex, TypeVar, final, overload, type_check_only
 from typing_extensions import Self
 
 if sys.version_info >= (3, 10):
@@ -107,6 +107,8 @@ class UserDict(MutableMapping[_KT, _VT]):
     if sys.version_info >= (3, 12):
         @overload
         def get(self, key: _KT, default: None = None) -> _VT | None: ...
+        @overload
+        def get(self, key: _KT, default: _VT) -> _VT: ...
         @overload
         def get(self, key: _KT, default: _T) -> _VT | _T: ...
 
@@ -340,14 +342,17 @@ class _OrderedDictValuesView(ValuesView[_VT_co]):
 # but they are not exposed anywhere)
 # pyright doesn't have a specific error code for subclassing error!
 @final
+@type_check_only
 class _odict_keys(dict_keys[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[_KT_co]: ...
 
 @final
+@type_check_only
 class _odict_items(dict_items[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
 
 @final
+@type_check_only
 class _odict_values(dict_values[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[_VT_co]: ...
 
@@ -451,6 +456,8 @@ class ChainMap(MutableMapping[_KT, _VT]):
     def __contains__(self, key: object) -> bool: ...
     @overload
     def get(self, key: _KT, default: None = None) -> _VT | None: ...
+    @overload
+    def get(self, key: _KT, default: _VT) -> _VT: ...
     @overload
     def get(self, key: _KT, default: _T) -> _VT | _T: ...
     def __missing__(self, key: _KT) -> _VT: ...  # undocumented

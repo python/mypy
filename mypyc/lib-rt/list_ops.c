@@ -59,14 +59,6 @@ PyObject *CPyList_Copy(PyObject *list) {
     return PyObject_CallMethodNoArgs(list, name);
 }
 
-
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
-    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-    PyObject *result = PyList_GET_ITEM(list, n);
-    Py_INCREF(result);
-    return result;
-}
-
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
     Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
     Py_ssize_t size = PyList_GET_SIZE(list);
@@ -239,30 +231,55 @@ bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
 }
 
 // This function should only be used to fill in brand new lists.
-bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value) {
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        PyList_SET_ITEM(list, n, value);
-        return true;
-    } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return false;
-    }
+void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value) {
+    PyList_SET_ITEM(list, index, value);
 }
 
-PyObject *CPyList_PopLast(PyObject *obj)
+#ifdef Py_GIL_DISABLED
+// The original optimized list.pop implementation doesn't work on free-threaded
+// builds, so provide an alternative that is a bit slower but works.
+//
+// Note that this implementation isn't intended to be atomic.
+static inline PyObject *list_pop_index(PyObject *list, Py_ssize_t index) {
+    PyObject *item = PyList_GetItemRef(list, index);
+    if (item == NULL) {
+        return NULL;
+    }
+    if (PySequence_DelItem(list, index) < 0) {
+        Py_DECREF(item);
+        return NULL;
+    }
+    return item;
+}
+#endif
+
+PyObject *CPyList_PopLast(PyObject *list)
 {
+#ifdef Py_GIL_DISABLED
+    // The other implementation causes segfaults on a free-threaded Python 3.14b4 build.
+    Py_ssize_t index = PyList_GET_SIZE(list) - 1;
+    return list_pop_index(list, index);
+#else
     // I tried a specalized version of pop_impl for just removing the
     // last element and it wasn't any faster in microbenchmarks than
     // the generic one so I ditched it.
-    return list_pop_impl((PyListObject *)obj, -1);
+    return list_pop_impl((PyListObject *)list, -1);
+#endif
 }
 
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index)
 {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+#ifdef Py_GIL_DISABLED
+        // We must use a slower implementation on free-threaded builds.
+        if (n < 0) {
+            n += PyList_GET_SIZE(obj);
+        }
+        return list_pop_index(obj, n);
+#else
         return list_pop_impl((PyListObject *)obj, n);
+#endif
     } else {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
