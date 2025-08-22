@@ -2599,7 +2599,9 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         expected = (
             "{}.bad is inconsistent, "
-            'stub parameter "number" differs from runtime parameter "num"\n'.format(TEST_MODULE_NAME)
+            'stub parameter "number" differs from runtime parameter "num"\n'.format(
+                TEST_MODULE_NAME
+            )
         )
         assert output == expected
 
