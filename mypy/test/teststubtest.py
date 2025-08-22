@@ -1725,7 +1725,7 @@ assert annotations
             runtime="""
             import enum
 
-            class IsEnumSoDisjointBaseIsRedundant(enum.Enum):
+            class IsEnumWithMembersSoDisjointBaseIsRedundant(enum.Enum):
                 A = 1
                 B = 2
             """,
@@ -1734,11 +1734,11 @@ assert annotations
             import enum
 
             @disjoint_base
-            class IsEnumSoDisjointBaseIsRedundant(enum.Enum):
+            class IsEnumWithMembersSoDisjointBaseIsRedundant(enum.Enum):
                 A = 1
                 B = 2
             """,
-            error="test_module.IsEnumSoDisjointBaseIsRedundant",
+            error="test_module.IsEnumWithMembersSoDisjointBaseIsRedundant",
         )
 
     @collect_cases
