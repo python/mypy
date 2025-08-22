@@ -1542,3 +1542,21 @@ def f(x: P) -> None:
 def g(x: Union[dict[str, Any], None], s: Union[str, None]) -> None:
     f(x or {'x': s})
 [builtins fixtures/dict.pyi]
+
+[case testInferConstrainedTypeVarInUnion]
+from typing import Generic, TypeVar, Union
+
+_S_co = TypeVar("_S_co", str, int, covariant=True)
+_S = TypeVar("_S", str, int)
+
+class HasFoo(Generic[_S_co]):
+    def foo(self) -> _S_co: ...
+
+def walk(path: Union[_S, HasFoo[_S]]) -> None:
+    ...
+
+class Path(HasFoo[str]):
+    def foo(self) -> str: ...
+
+walk(Path())
+[builtins fixtures/tuple.pyi]

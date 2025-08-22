@@ -532,7 +532,8 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
         # Multiple sets of constraints that are all the same. Just pick any one of them.
         return valid_options[0]
 
-    if all(is_similar_constraints(valid_options[0], c) for c in valid_options[1:]):
+    all_similar = all(is_similar_constraints(valid_options[0], c) for c in valid_options[1:])
+    if all_similar:
         # All options have same structure. In this case we can merge-in trivial
         # options (i.e. those that only have Any) and try again.
         trivial_options = select_trivial(valid_options)
@@ -543,10 +544,6 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
                     continue
                 merged_options.append([merge_with_any(c) for c in option])
             return any_constraints(list(merged_options), eager=eager)
-        # Solver will apply meets and joins as necessary, return everything we know.
-        # Just deduplicate to reduce the amount of work.
-        all_combined = sum(valid_options, [])
-        return list(dict.fromkeys(all_combined))
 
     # If normal logic didn't work, try excluding trivially unsatisfiable constraint (due to
     # upper bounds) from each option, and comparing them again.
@@ -561,6 +558,13 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
     filtered_options = [exclude_non_meta_vars(o) for o in options]
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
+
+    if all_similar:
+        # Now we know all constraints might be satisfiable and have similar structure.
+        # Solver will apply meets and joins as necessary, return everything we know.
+        # Just deduplicate to reduce the amount of work.
+        all_combined = sum(valid_options, [])
+        return list(dict.fromkeys(all_combined))
 
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
