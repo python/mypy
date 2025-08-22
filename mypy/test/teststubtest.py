@@ -1407,14 +1407,9 @@ class StubtestUnit(unittest.TestCase):
             stub="""
             import sys
             from typing import Final, Literal
-            from typing_extensions import disjoint_base
-            if sys.version_info >= (3, 12):
-                class BytesEnum(bytes, enum.Enum):
-                    a = b'foo'
-            else:
-                @disjoint_base
-                class BytesEnum(bytes, enum.Enum):
-                    a = b'foo'
+            class BytesEnum(bytes, enum.Enum):
+                a = b'foo'
+
             FOO: Literal[BytesEnum.a]
             BAR: Final = BytesEnum.a
             BAZ: BytesEnum
