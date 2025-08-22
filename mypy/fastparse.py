@@ -188,6 +188,13 @@ else:
     ast_TypeVar = Any
     ast_TypeVarTuple = Any
 
+if sys.version_info >= (3, 14):
+    ast_TemplateStr = ast3.TemplateStr
+    ast_Interpolation = ast3.Interpolation
+else:
+    ast_TemplateStr = Any
+    ast_Interpolation = Any
+
 N = TypeVar("N", bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
@@ -631,7 +638,7 @@ class ASTConverter:
         ret: list[Statement] = []
         current_overload: list[OverloadPart] = []
         current_overload_name: str | None = None
-        seen_unconditional_func_def = False
+        last_unconditional_func_def: str | None = None
         last_if_stmt: IfStmt | None = None
         last_if_overload: Decorator | FuncDef | OverloadedFuncDef | None = None
         last_if_stmt_overload_name: str | None = None
@@ -641,7 +648,7 @@ class ASTConverter:
             if_overload_name: str | None = None
             if_block_with_overload: Block | None = None
             if_unknown_truth_value: IfStmt | None = None
-            if isinstance(stmt, IfStmt) and seen_unconditional_func_def is False:
+            if isinstance(stmt, IfStmt):
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
@@ -669,11 +676,18 @@ class ASTConverter:
                     last_if_unknown_truth_value = None
                 current_overload.append(stmt)
                 if isinstance(stmt, FuncDef):
-                    seen_unconditional_func_def = True
+                    # This is, strictly speaking, wrong: there might be a decorated
+                    # implementation. However, it only affects the error message we show:
+                    # ideally it's "already defined", but "implementation must come last"
+                    # is also reasonable.
+                    # TODO: can we get rid of this completely and just always emit
+                    # "implementation must come last" instead?
+                    last_unconditional_func_def = stmt.name
             elif (
                 current_overload_name is not None
                 and isinstance(stmt, IfStmt)
                 and if_overload_name == current_overload_name
+                and last_unconditional_func_def != current_overload_name
             ):
                 # IfStmt only contains stmts relevant to current_overload.
                 # Check if stmts are reachable and add them to current_overload,
@@ -729,7 +743,7 @@ class ASTConverter:
                 # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
                 # related, but multiple underscore functions next to each other aren't necessarily
                 # related
-                seen_unconditional_func_def = False
+                last_unconditional_func_def = None
                 if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
@@ -1698,6 +1712,21 @@ class ASTConverter:
         )
         return self.set_line(result_expression, n)
 
+    # TemplateStr(expr* values)
+    def visit_TemplateStr(self, n: ast_TemplateStr) -> Expression:
+        self.fail(
+            ErrorMessage("PEP 750 template strings are not yet supported"),
+            n.lineno,
+            n.col_offset,
+            blocker=False,
+        )
+        e = TempNode(AnyType(TypeOfAny.from_error))
+        return self.set_line(e, n)
+
+    # Interpolation(expr value, constant str, int conversion, expr? format_spec)
+    def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
+        assert False, "Unreachable"
+
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:
         value = n.value
@@ -2227,7 +2256,7 @@ class FindAttributeAssign(TraverserVisitor):
         pass
 
     def visit_member_expr(self, e: MemberExpr) -> None:
-        if self.lvalue:
+        if self.lvalue and isinstance(e.expr, NameExpr):
             self.found = True
 
 

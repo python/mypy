@@ -6,6 +6,7 @@ See the docstring of class LowLevelIRBuilder for more information.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from typing import Callable, Final, Optional
 
@@ -16,6 +17,8 @@ from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
+    FAST_PREFIX,
+    IS_FREE_THREADED,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
@@ -93,8 +96,7 @@ from mypyc.ir.rtypes import (
     dict_rprimitive,
     float_rprimitive,
     int_rprimitive,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
@@ -126,6 +128,8 @@ from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.dict_ops import (
     dict_build_op,
+    dict_copy,
+    dict_copy_op,
     dict_new_op,
     dict_ssize_t_size_op,
     dict_update_in_display_op,
@@ -165,6 +169,7 @@ from mypyc.primitives.misc_ops import (
     fast_isinstance_op,
     none_object_op,
     not_implemented_op,
+    set_immortal_op,
     var_object_size,
 )
 from mypyc.primitives.registry import (
@@ -175,8 +180,18 @@ from mypyc.primitives.registry import (
     unary_ops,
 )
 from mypyc.primitives.set_ops import new_set_op
-from mypyc.primitives.str_ops import str_check_if_true, str_ssize_t_size_op, unicode_compare
-from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op, new_tuple_with_length_op
+from mypyc.primitives.str_ops import (
+    str_check_if_true,
+    str_eq,
+    str_ssize_t_size_op,
+    unicode_compare,
+)
+from mypyc.primitives.tuple_ops import (
+    list_tuple_op,
+    new_tuple_op,
+    new_tuple_with_length_op,
+    sequence_tuple_op,
+)
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
@@ -282,6 +297,9 @@ class LowLevelIRBuilder:
     def keep_alive(self, values: list[Value], *, steal: bool = False) -> None:
         self.add(KeepAlive(values, steal=steal))
 
+    def load_mem(self, ptr: Value, value_type: RType, *, borrow: bool = False) -> Value:
+        return self.add(LoadMem(value_type, ptr, borrow=borrow))
+
     def push_error_handler(self, handler: BasicBlock | None) -> None:
         self.error_handlers.append(handler)
 
@@ -376,16 +394,12 @@ class LowLevelIRBuilder:
             ):
                 # Equivalent types
                 return src
-            elif (is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)) and is_tagged(
-                target_type
-            ):
+            elif is_bool_or_bit_rprimitive(src_type) and is_tagged(target_type):
                 shifted = self.int_op(
                     bool_rprimitive, src, Integer(1, bool_rprimitive), IntOp.LEFT_SHIFT
                 )
                 return self.add(Extend(shifted, target_type, signed=False))
-            elif (
-                is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
-            ) and is_fixed_width_rtype(target_type):
+            elif is_bool_or_bit_rprimitive(src_type) and is_fixed_width_rtype(target_type):
                 return self.add(Extend(src, target_type, signed=False))
             elif isinstance(src, Integer) and is_float_rprimitive(target_type):
                 if is_tagged(src_type):
@@ -432,7 +446,7 @@ class LowLevelIRBuilder:
 
     def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
         assert is_fixed_width_rtype(target_type), target_type
-        assert isinstance(target_type, RPrimitive)
+        assert isinstance(target_type, RPrimitive), target_type
 
         res = Register(target_type)
 
@@ -538,9 +552,10 @@ class LowLevelIRBuilder:
                 line,
             )
 
-        assert is_fixed_width_rtype(src.type)
-        assert isinstance(src.type, RPrimitive)
         src_type = src.type
+
+        assert is_fixed_width_rtype(src_type), src_type
+        assert isinstance(src_type, RPrimitive), src_type
 
         res = Register(int_rprimitive)
 
@@ -659,7 +674,7 @@ class LowLevelIRBuilder:
 
     def get_type_of_obj(self, obj: Value, line: int) -> Value:
         ob_type_address = self.add(GetElementPtr(obj, PyObject, "ob_type", line))
-        ob_type = self.add(LoadMem(object_rprimitive, ob_type_address))
+        ob_type = self.load_mem(ob_type_address, object_rprimitive, borrow=True)
         self.add(KeepAlive([obj]))
         return ob_type
 
@@ -781,10 +796,52 @@ class LowLevelIRBuilder:
         for value, kind, name in args:
             if kind == ARG_STAR:
                 if star_result is None:
+                    # star args fastpath
+                    if len(args) == 1:
+                        # fn(*args)
+                        if is_list_rprimitive(value.type):
+                            value = self.primitive_op(list_tuple_op, [value], line)
+                        elif not is_tuple_rprimitive(value.type) and not isinstance(
+                            value.type, RTuple
+                        ):
+                            value = self.primitive_op(sequence_tuple_op, [value], line)
+                        return value, self._create_dict([], [], line)
+                    elif len(args) == 2 and args[1][1] == ARG_STAR2:
+                        # fn(*args, **kwargs)
+                        # TODO: extend to cover(*args, **k, **w, **a, **r, **g, **s)
+                        if is_tuple_rprimitive(value.type) or isinstance(value.type, RTuple):
+                            star_result = value
+                        elif is_list_rprimitive(value.type):
+                            star_result = self.primitive_op(list_tuple_op, [value], line)
+                        else:
+                            star_result = self.primitive_op(sequence_tuple_op, [value], line)
+
+                        star2_arg = args[1]
+                        star2_value = star2_arg[0]
+                        if is_dict_rprimitive(star2_value.type):
+                            star2_fastpath_op = dict_copy_op
+                        else:
+                            star2_fastpath_op = dict_copy
+                        return star_result, self.primitive_op(
+                            star2_fastpath_op, [star2_value], line
+                        )
+                        # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
+                    # TODO optimize this case using the length utils - currently in review
                     star_result = self.new_list_op(star_values, line)
                 self.primitive_op(list_extend_op, [star_result, value], line)
             elif kind == ARG_STAR2:
                 if star2_result is None:
+                    if len(args) == 1:
+                        # early exit with fastpath if the only arg is ARG_STAR2
+                        # TODO: can we maintain an empty tuple in memory and just reuse it again and again?
+                        if is_dict_rprimitive(value.type):
+                            star2_fastpath_op = dict_copy_op
+                        else:
+                            star2_fastpath_op = dict_copy
+                        return self.new_tuple([], line), self.primitive_op(
+                            star2_fastpath_op, [value], line
+                        )
+
                     star2_result = self._create_dict(star2_keys, star2_values, line)
 
                 self.call_c(dict_update_in_display_op, [star2_result, value], line=line)
@@ -878,9 +935,11 @@ class LowLevelIRBuilder:
             # tuple. Otherwise create the tuple from the list.
             if star_result is None:
                 star_result = self.new_tuple(star_values, line)
-            else:
+            elif not is_tuple_rprimitive(star_result.type):
+                # if star_result is a tuple we took the fast path
                 star_result = self.primitive_op(list_tuple_op, [star_result], line)
         if has_star2 and star2_result is None:
+            # TODO: use dict_copy_op for simple cases of **kwargs
             star2_result = self._create_dict(star2_keys, star2_values, line)
 
         return star_result, star2_result
@@ -1164,11 +1223,13 @@ class LowLevelIRBuilder:
             return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
+        fast_name = FAST_PREFIX + name
         if (
             isinstance(base.type, RInstance)
-            and base.type.class_ir.is_ext_class
+            and (base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name))
             and not base.type.class_ir.builtin_base
         ):
+            name = name if base.type.class_ir.is_ext_class else fast_name
             if base.type.class_ir.has_method(name):
                 decl = base.type.class_ir.method_decl(name)
                 if arg_kinds is None:
@@ -1336,7 +1397,11 @@ class LowLevelIRBuilder:
             return self.compare_strings(lreg, rreg, op, line)
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ("==", "!="):
             return self.compare_bytes(lreg, rreg, op, line)
-        if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in BOOL_BINARY_OPS:
+        if (
+            is_bool_or_bit_rprimitive(ltype)
+            and is_bool_or_bit_rprimitive(rtype)
+            and op in BOOL_BINARY_OPS
+        ):
             if op in ComparisonOp.signed_ops:
                 return self.bool_comparison_op(lreg, rreg, op, line)
             else:
@@ -1350,7 +1415,7 @@ class LowLevelIRBuilder:
                     op_id = int_op_to_id[op]
                 else:
                     op_id = IntOp.DIV
-                if is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype):
+                if is_bool_or_bit_rprimitive(rtype):
                     rreg = self.coerce(rreg, ltype, line)
                     rtype = ltype
                 if is_fixed_width_rtype(rtype) or is_tagged(rtype):
@@ -1362,7 +1427,7 @@ class LowLevelIRBuilder:
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(rtype):
                     rreg = self.coerce_int_to_fixed_width(rreg, ltype, line)
-                elif is_bool_rprimitive(rtype) or is_bit_rprimitive(rtype):
+                elif is_bool_or_bit_rprimitive(rtype):
                     rreg = self.coerce(rreg, ltype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if is_fixed_width_rtype(rreg.type):
@@ -1382,13 +1447,13 @@ class LowLevelIRBuilder:
                     )
                 if is_tagged(ltype):
                     return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
-                if is_bool_rprimitive(ltype) or is_bit_rprimitive(ltype):
+                if is_bool_or_bit_rprimitive(ltype):
                     lreg = self.coerce(lreg, rtype, line)
                     return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(ltype):
                     lreg = self.coerce_int_to_fixed_width(lreg, rtype, line)
-                elif is_bool_rprimitive(ltype) or is_bit_rprimitive(ltype):
+                elif is_bool_or_bit_rprimitive(ltype):
                     lreg = self.coerce(lreg, rtype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if isinstance(lreg, Integer):
@@ -1471,6 +1536,11 @@ class LowLevelIRBuilder:
 
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
+        if op == "==":
+            return self.primitive_op(str_eq, [lhs, rhs], line)
+        elif op == "!=":
+            eq = self.primitive_op(str_eq, [lhs, rhs], line)
+            return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
         compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
         error_constant = Integer(-1, c_int_rprimitive, line)
         compare_error_check = self.add(
@@ -1504,7 +1574,7 @@ class LowLevelIRBuilder:
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int = -1) -> Value:
         """Compare two tuples item by item"""
         # type cast to pass mypy check
-        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
+        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple), (lhs.type, rhs.type)
         equal = True if op == "==" else False
         result = Register(bool_rprimitive)
         # tuples of different lengths
@@ -1534,7 +1604,7 @@ class LowLevelIRBuilder:
             compare = self.binary_op(lhs_item, rhs_item, op, line)
             # Cast to bool if necessary since most types uses comparison returning a object type
             # See generic_ops.py for more information
-            if not (is_bool_rprimitive(compare.type) or is_bit_rprimitive(compare.type)):
+            if not is_bool_or_bit_rprimitive(compare.type):
                 compare = self.primitive_op(bool_op, [compare], line)
             if i < len(lhs.type.types) - 1:
                 branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL)
@@ -1553,7 +1623,7 @@ class LowLevelIRBuilder:
 
     def translate_instance_contains(self, inst: Value, item: Value, op: str, line: int) -> Value:
         res = self.gen_method_call(inst, "__contains__", [item], None, line)
-        if not is_bool_rprimitive(res.type):
+        if not is_bool_or_bit_rprimitive(res.type):
             res = self.primitive_op(bool_op, [res], line)
         if op == "not in":
             res = self.bool_bitwise_op(res, Integer(1, rtype=bool_rprimitive), "^", line)
@@ -1580,7 +1650,7 @@ class LowLevelIRBuilder:
 
     def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
         typ = value.type
-        if is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+        if is_bool_or_bit_rprimitive(typ):
             if expr_op == "not":
                 return self.unary_not(value, line)
             if expr_op == "+":
@@ -1738,7 +1808,7 @@ class LowLevelIRBuilder:
 
         The result type can be bit_rprimitive or bool_rprimitive.
         """
-        if is_bool_rprimitive(value.type) or is_bit_rprimitive(value.type):
+        if is_bool_or_bit_rprimitive(value.type):
             result = value
         elif is_runtime_subtype(value.type, int_rprimitive):
             zero = Integer(0, short_int_rprimitive)
@@ -2094,6 +2164,33 @@ class LowLevelIRBuilder:
     def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(FloatComparisonOp(lhs, rhs, op, line))
 
+    def int_add(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to add two native integers.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.ADD, line=-1)
+
+    def int_sub(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to subtract a native integer from another one.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.SUB, line=-1)
+
+    def int_mul(self, lhs: Value, rhs: Value | int) -> Value:
+        """Helper to multiply two native integers.
+
+        The result has the type of lhs.
+        """
+        if isinstance(rhs, int):
+            rhs = Integer(rhs, lhs.type)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.MUL, line=-1)
+
     def fixed_width_int_op(
         self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int
     ) -> Value:
@@ -2224,7 +2321,7 @@ class LowLevelIRBuilder:
             size_value = self.primitive_op(var_object_size, [val], line)
         elif is_set_rprimitive(typ) or is_frozenset_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            size_value = self.load_mem(elem_address, c_pyssize_t_rprimitive)
             self.add(KeepAlive([val]))
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_ssize_t_size_op, [val], line)
@@ -2281,6 +2378,11 @@ class LowLevelIRBuilder:
 
     def int_to_float(self, n: Value, line: int) -> Value:
         return self.primitive_op(int_to_float_op, [n], line)
+
+    def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
+        """Make an object immortal on free-threaded builds (to avoid contention)."""
+        if IS_FREE_THREADED and sys.version_info >= (3, 14):
+            self.primitive_op(set_immortal_op, [v], line)
 
     # Internal helpers
 

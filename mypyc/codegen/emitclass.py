@@ -375,7 +375,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         flags.append("Py_TPFLAGS_MANAGED_DICT")
     fields["tp_flags"] = " | ".join(flags)
 
-    fields["tp_doc"] = native_class_doc_initializer(cl)
+    fields["tp_doc"] = f"PyDoc_STR({native_class_doc_initializer(cl)})"
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
     emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
@@ -925,7 +925,7 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
             flags.append("METH_CLASS")
 
         doc = native_function_doc_initializer(fn)
-        emitter.emit_line(" {}, {}}},".format(" | ".join(flags), doc))
+        emitter.emit_line(" {}, PyDoc_STR({})}},".format(" | ".join(flags), doc))
 
     # Provide a default __getstate__ and __setstate__
     if not cl.has_method("__setstate__") and not cl.has_method("__getstate__"):

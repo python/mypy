@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Callable
 
 from mypy.nodes import ARG_OPT, FuncDef, Var
-from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME
+from mypyc.common import ENV_ATTR_NAME, GENERATOR_ATTRIBUTE_PREFIX, NEXT_LABEL_ATTR_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import (
@@ -50,6 +50,7 @@ from mypyc.irbuild.env_class import (
     setup_func_for_recursive_call,
 )
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.primitives.exc_ops import (
     error_catch_op,
     exc_matches_op,
@@ -67,14 +68,14 @@ def gen_generator_func(
 ) -> tuple[FuncIR, Value | None]:
     """Generate IR for generator function that returns generator object."""
     setup_generator_class(builder)
-    load_env_registers(builder)
+    load_env_registers(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
     gen_arg_defaults(builder)
     if builder.fn_info.can_merge_generator_and_env_classes():
         gen = instantiate_generator_class(builder)
         builder.fn_info._curr_env_reg = gen
-        finalize_env_class(builder)
+        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
     else:
-        finalize_env_class(builder)
+        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
         gen = instantiate_generator_class(builder)
     builder.add(Return(gen))
 
@@ -103,11 +104,13 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Val
         and top_level
         and top_level.add_nested_funcs_to_env
     ):
-        setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
+        setup_func_for_recursive_call(
+            builder, fitem, builder.fn_info.generator_class, prefix=GENERATOR_ATTRIBUTE_PREFIX
+        )
     create_switch_for_generator_class(builder)
     add_raise_exception_blocks_to_generator_class(builder, fitem.line)
 
-    add_vars_to_env(builder)
+    add_vars_to_env(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
 
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
@@ -157,7 +160,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
 
 def setup_generator_class(builder: IRBuilder) -> ClassIR:
     mapper = builder.mapper
-    assert isinstance(builder.fn_info.fitem, FuncDef)
+    assert isinstance(builder.fn_info.fitem, FuncDef), builder.fn_info.fitem
     generator_class_ir = mapper.fdef_to_generator[builder.fn_info.fitem]
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
@@ -236,11 +239,11 @@ def add_helper_to_generator_class(
     builder: IRBuilder, arg_regs: list[Register], blocks: list[BasicBlock], fn_info: FuncInfo
 ) -> FuncDecl:
     """Generates a helper method for a generator class, called by '__next__' and 'throw'."""
-    helper_fn_decl = fn_info.generator_class.ir.method_decls["__mypyc_generator_helper__"]
+    helper_fn_decl = fn_info.generator_class.ir.method_decls[GENERATOR_HELPER_NAME]
     helper_fn_ir = FuncIR(
         helper_fn_decl, arg_regs, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name
     )
-    fn_info.generator_class.ir.methods["__mypyc_generator_helper__"] = helper_fn_ir
+    fn_info.generator_class.ir.methods[GENERATOR_HELPER_NAME] = helper_fn_ir
     builder.functions.append(helper_fn_ir)
     fn_info.env_class.env_user_function = helper_fn_ir
 
@@ -428,7 +431,9 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
 
     # Add arguments from the original generator function to the
     # environment of the generator class.
-    add_args_to_env(builder, local=False, base=cls, reassign=False)
+    add_args_to_env(
+        builder, local=False, base=cls, reassign=False, prefix=GENERATOR_ATTRIBUTE_PREFIX
+    )
 
     # Set the next label register for the generator class.
     cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)

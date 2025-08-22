@@ -184,6 +184,22 @@ for cls in [Empty, HasInit, InheritedInit]:
     assert getattr(cls, "__doc__") == ""
 assert getattr(HasInitBad, "__doc__") is None
 
+[case testSignaturesConstructorsNonExt]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class NonExt:
+    def __init__(self, x) -> None: pass
+
+[file driver.py]
+import inspect
+from testutil import assertRaises
+from native import *
+
+# TODO: support constructor signatures for non-extension classes
+with assertRaises(ValueError, "no signature found for builtin"):
+    inspect.signature(NonExt)
+
 [case testSignaturesHistoricalPositionalOnly]
 import inspect
 

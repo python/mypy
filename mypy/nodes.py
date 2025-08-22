@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from abc import abstractmethod
 from collections import defaultdict
@@ -13,6 +14,30 @@ from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 from mypy_extensions import trait
 
 import mypy.strconv
+from mypy.cache import (
+    LITERAL_COMPLEX,
+    LITERAL_NONE,
+    Buffer,
+    read_bool,
+    read_float,
+    read_int,
+    read_int_list,
+    read_int_opt,
+    read_literal,
+    read_str,
+    read_str_list,
+    read_str_opt,
+    read_str_opt_list,
+    write_bool,
+    write_int,
+    write_int_list,
+    write_int_opt,
+    write_literal,
+    write_str,
+    write_str_list,
+    write_str_opt,
+    write_str_opt_list,
+)
 from mypy.options import Options
 from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
@@ -240,6 +265,13 @@ class SymbolNode(Node):
             return method(data)
         raise NotImplementedError(f"unexpected .class {classname}")
 
+    def write(self, data: Buffer) -> None:
+        raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
+
+    @classmethod
+    def read(cls, data: Buffer) -> SymbolNode:
+        raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
+
 
 # Items: fullname, related symbol table node, surrounding type (if any)
 Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
@@ -368,7 +400,7 @@ class MypyFile(SymbolNode):
             "is_stub": self.is_stub,
             "path": self.path,
             "is_partial_stub_package": self.is_partial_stub_package,
-            "future_import_flags": list(self.future_import_flags),
+            "future_import_flags": sorted(self.future_import_flags),
         }
 
     @classmethod
@@ -382,6 +414,28 @@ class MypyFile(SymbolNode):
         tree.is_partial_stub_package = data["is_partial_stub_package"]
         tree.is_cache_skeleton = True
         tree.future_import_flags = set(data["future_import_flags"])
+        return tree
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, MYPY_FILE)
+        write_str(data, self._fullname)
+        self.names.write(data, self._fullname)
+        write_bool(data, self.is_stub)
+        write_str(data, self.path)
+        write_bool(data, self.is_partial_stub_package)
+        write_str_list(data, sorted(self.future_import_flags))
+
+    @classmethod
+    def read(cls, data: Buffer) -> MypyFile:
+        assert read_int(data) == MYPY_FILE
+        tree = MypyFile([], [])
+        tree._fullname = read_str(data)
+        tree.names = SymbolTable.read(data)
+        tree.is_stub = read_bool(data)
+        tree.path = read_str(data)
+        tree.is_partial_stub_package = read_bool(data)
+        tree.future_import_flags = set(read_str_list(data))
+        tree.is_cache_skeleton = True
         return tree
 
 
@@ -595,12 +649,14 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         """
         if self._is_trivial_self is not None:
             return self._is_trivial_self
-        for item in self.items:
+        for i, item in enumerate(self.items):
+            # Note: bare @property is removed in visit_decorator().
+            trivial = 1 if i > 0 or not self.is_property else 0
             if isinstance(item, FuncDef):
                 if not item.is_trivial_self:
                     self._is_trivial_self = False
                     return False
-            elif item.decorators or not item.func.is_trivial_self:
+            elif len(item.decorators) > trivial or not item.func.is_trivial_self:
                 self._is_trivial_self = False
                 return False
         self._is_trivial_self = True
@@ -651,6 +707,41 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         set_flags(res, data["flags"])
         res.deprecated = data["deprecated"]
         res.setter_index = data["setter_index"]
+        # NOTE: res.info will be set in the fixup phase.
+        return res
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, OVERLOADED_FUNC_DEF)
+        write_int(data, len(self.items))
+        for item in self.items:
+            item.write(data)
+        mypy.types.write_type_opt(data, self.type)
+        write_str(data, self._fullname)
+        if self.impl is None:
+            write_bool(data, False)
+        else:
+            write_bool(data, True)
+            self.impl.write(data)
+        write_flags(data, self, FUNCBASE_FLAGS)
+        write_str_opt(data, self.deprecated)
+        write_int_opt(data, self.setter_index)
+
+    @classmethod
+    def read(cls, data: Buffer) -> OverloadedFuncDef:
+        res = OverloadedFuncDef([read_overload_part(data) for _ in range(read_int(data))])
+        typ = mypy.types.read_type_opt(data)
+        if typ is not None:
+            assert isinstance(typ, mypy.types.ProperType)
+            res.type = typ
+        res._fullname = read_str(data)
+        if read_bool(data):
+            res.impl = read_overload_part(data)
+            # set line for empty overload items, as not set in __init__
+            if len(res.items) > 0:
+                res.set_line(res.impl.line)
+        read_flags(data, res, FUNCBASE_FLAGS)
+        res.deprecated = read_str_opt(data)
+        res.setter_index = read_int_opt(data)
         # NOTE: res.info will be set in the fixup phase.
         return res
 
@@ -816,11 +907,13 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "original_def",
         "is_trivial_body",
         "is_trivial_self",
+        "has_self_attr_def",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
         "docstring",
         "deprecated",
+        "original_first_arg",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -853,6 +946,14 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
+        # Keep track of functions where self attributes are defined.
+        self.has_self_attr_def = False
+        # This is needed because for positional-only arguments the name is set to None,
+        # but we sometimes still want to show it in error messages.
+        if arguments:
+            self.original_first_arg: str | None = arguments[0].variable.name
+        else:
+            self.original_first_arg = None
 
     @property
     def name(self) -> str:
@@ -884,6 +985,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                 else self.dataclass_transform_spec.serialize()
             ),
             "deprecated": self.deprecated,
+            "original_first_arg": self.original_first_arg,
         }
 
     @classmethod
@@ -904,7 +1006,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         set_flags(ret, data["flags"])
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
-        ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
+        ret.original_first_arg = data.get("original_first_arg")
+        ret.arg_kinds = [ARG_KINDS[x] for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
         ret.dataclass_transform_spec = (
             DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
@@ -912,6 +1015,46 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             else None
         )
         ret.deprecated = data["deprecated"]
+        # Leave these uninitialized so that future uses will trigger an error
+        del ret.arguments
+        del ret.max_pos
+        del ret.min_args
+        return ret
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, FUNC_DEF)
+        write_str(data, self._name)
+        mypy.types.write_type_opt(data, self.type)
+        write_str(data, self._fullname)
+        write_flags(data, self, FUNCDEF_FLAGS)
+        write_str_opt_list(data, self.arg_names)
+        write_int_list(data, [int(ak.value) for ak in self.arg_kinds])
+        write_int(data, self.abstract_status)
+        if self.dataclass_transform_spec is None:
+            write_bool(data, False)
+        else:
+            write_bool(data, True)
+            self.dataclass_transform_spec.write(data)
+        write_str_opt(data, self.deprecated)
+        write_str_opt(data, self.original_first_arg)
+
+    @classmethod
+    def read(cls, data: Buffer) -> FuncDef:
+        name = read_str(data)
+        typ: mypy.types.FunctionLike | None = None
+        if read_bool(data):
+            typ = mypy.types.read_function_like(data)
+        ret = FuncDef(name, [], Block([]), typ)
+        ret._fullname = read_str(data)
+        read_flags(data, ret, FUNCDEF_FLAGS)
+        # NOTE: ret.info is set in the fixup phase.
+        ret.arg_names = read_str_opt_list(data)
+        ret.arg_kinds = [ARG_KINDS[ak] for ak in read_int_list(data)]
+        ret.abstract_status = read_int(data)
+        if read_bool(data):
+            ret.dataclass_transform_spec = DataclassTransformSpec.read(data)
+        ret.deprecated = read_str_opt(data)
+        ret.original_first_arg = read_str_opt(data)
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -988,6 +1131,22 @@ class Decorator(SymbolNode, Statement):
         assert data[".class"] == "Decorator"
         dec = Decorator(FuncDef.deserialize(data["func"]), [], Var.deserialize(data["var"]))
         dec.is_overload = data["is_overload"]
+        return dec
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, DECORATOR)
+        self.func.write(data)
+        self.var.write(data)
+        write_bool(data, self.is_overload)
+
+    @classmethod
+    def read(cls, data: Buffer) -> Decorator:
+        assert read_int(data) == FUNC_DEF
+        func = FuncDef.read(data)
+        assert read_int(data) == VAR
+        var = Var.read(data)
+        dec = Decorator(func, [], var)
+        dec.is_overload = read_bool(data)
         return dec
 
     def is_dynamic(self) -> bool:
@@ -1166,6 +1325,35 @@ class Var(SymbolNode):
         v.final_value = data.get("final_value")
         return v
 
+    def write(self, data: Buffer) -> None:
+        write_int(data, VAR)
+        write_str(data, self._name)
+        mypy.types.write_type_opt(data, self.type)
+        mypy.types.write_type_opt(data, self.setter_type)
+        write_str(data, self._fullname)
+        write_flags(data, self, VAR_FLAGS)
+        write_literal(data, self.final_value)
+
+    @classmethod
+    def read(cls, data: Buffer) -> Var:
+        name = read_str(data)
+        typ = mypy.types.read_type_opt(data)
+        v = Var(name, typ)
+        setter_type: mypy.types.CallableType | None = None
+        if read_bool(data):
+            assert read_int(data) == mypy.types.CALLABLE_TYPE
+            setter_type = mypy.types.CallableType.read(data)
+        v.setter_type = setter_type
+        v.is_ready = False  # Override True default set in __init__
+        v._fullname = read_str(data)
+        read_flags(data, v, VAR_FLAGS)
+        marker = read_int(data)
+        if marker == LITERAL_COMPLEX:
+            v.final_value = complex(read_float(data), read_float(data))
+        elif marker != LITERAL_NONE:
+            v.final_value = read_literal(data, marker)
+        return v
+
 
 class ClassDef(Statement):
     """Class definition"""
@@ -1274,6 +1462,22 @@ class ClassDef(Statement):
             ],
         )
         res.fullname = data["fullname"]
+        return res
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, CLASS_DEF)
+        write_str(data, self.name)
+        mypy.types.write_type_list(data, self.type_vars)
+        write_str(data, self.fullname)
+
+    @classmethod
+    def read(cls, data: Buffer) -> ClassDef:
+        res = ClassDef(
+            read_str(data),
+            Block([]),
+            [mypy.types.read_type_var_like(data) for _ in range(read_int(data))],
+        )
+        res.fullname = read_str(data)
         return res
 
 
@@ -2002,6 +2206,8 @@ ARG_NAMED: Final = ArgKind.ARG_NAMED
 ARG_STAR2: Final = ArgKind.ARG_STAR2
 ARG_NAMED_OPT: Final = ArgKind.ARG_NAMED_OPT
 
+ARG_KINDS: Final = (ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT)
+
 
 class CallExpr(Expression):
     """Call expression.
@@ -2691,6 +2897,26 @@ class TypeVarExpr(TypeVarLikeExpr):
             data["variance"],
         )
 
+    def write(self, data: Buffer) -> None:
+        write_int(data, TYPE_VAR_EXPR)
+        write_str(data, self._name)
+        write_str(data, self._fullname)
+        mypy.types.write_type_list(data, self.values)
+        self.upper_bound.write(data)
+        self.default.write(data)
+        write_int(data, self.variance)
+
+    @classmethod
+    def read(cls, data: Buffer) -> TypeVarExpr:
+        return TypeVarExpr(
+            read_str(data),
+            read_str(data),
+            mypy.types.read_type_list(data),
+            mypy.types.read_type(data),
+            mypy.types.read_type(data),
+            read_int(data),
+        )
+
 
 class ParamSpecExpr(TypeVarLikeExpr):
     __slots__ = ()
@@ -2719,6 +2945,24 @@ class ParamSpecExpr(TypeVarLikeExpr):
             mypy.types.deserialize_type(data["upper_bound"]),
             mypy.types.deserialize_type(data["default"]),
             data["variance"],
+        )
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, PARAM_SPEC_EXPR)
+        write_str(data, self._name)
+        write_str(data, self._fullname)
+        self.upper_bound.write(data)
+        self.default.write(data)
+        write_int(data, self.variance)
+
+    @classmethod
+    def read(cls, data: Buffer) -> ParamSpecExpr:
+        return ParamSpecExpr(
+            read_str(data),
+            read_str(data),
+            mypy.types.read_type(data),
+            mypy.types.read_type(data),
+            read_int(data),
         )
 
 
@@ -2769,6 +3013,28 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             mypy.types.Instance.deserialize(data["tuple_fallback"]),
             mypy.types.deserialize_type(data["default"]),
             data["variance"],
+        )
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, TYPE_VAR_TUPLE_EXPR)
+        self.tuple_fallback.write(data)
+        write_str(data, self._name)
+        write_str(data, self._fullname)
+        self.upper_bound.write(data)
+        self.default.write(data)
+        write_int(data, self.variance)
+
+    @classmethod
+    def read(cls, data: Buffer) -> TypeVarTupleExpr:
+        assert read_int(data) == mypy.types.INSTANCE
+        fallback = mypy.types.Instance.read(data)
+        return TypeVarTupleExpr(
+            read_str(data),
+            read_str(data),
+            mypy.types.read_type(data),
+            fallback,
+            mypy.types.read_type(data),
+            read_int(data),
         )
 
 
@@ -2988,6 +3254,7 @@ class TypeInfo(SymbolNode):
         "_mro_refs",
         "bad_mro",
         "is_final",
+        "is_disjoint_base",
         "declared_metaclass",
         "metaclass_type",
         "names",
@@ -3022,6 +3289,7 @@ class TypeInfo(SymbolNode):
         "dataclass_transform_spec",
         "is_type_check_only",
         "deprecated",
+        "type_object_type",
     )
 
     _fullname: str  # Fully qualified name
@@ -3038,6 +3306,7 @@ class TypeInfo(SymbolNode):
     _mro_refs: list[str] | None
     bad_mro: bool  # Could not construct full MRO
     is_final: bool
+    is_disjoint_base: bool
 
     declared_metaclass: mypy.types.Instance | None
     metaclass_type: mypy.types.Instance | None
@@ -3178,6 +3447,10 @@ class TypeInfo(SymbolNode):
     # The type's deprecation message (in case it is deprecated)
     deprecated: str | None
 
+    # Cached value of class constructor type, i.e. the type of class object when it
+    # appears in runtime context.
+    type_object_type: mypy.types.FunctionLike | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3188,6 +3461,7 @@ class TypeInfo(SymbolNode):
         "is_protocol",
         "runtime_protocol",
         "is_final",
+        "is_disjoint_base",
         "is_intersection",
     ]
 
@@ -3220,6 +3494,7 @@ class TypeInfo(SymbolNode):
         self.type_var_tuple_suffix: int | None = None
         self.add_type_vars()
         self.is_final = False
+        self.is_disjoint_base = False
         self.is_enum = False
         self.fallback_to_any = False
         self.meta_fallback_to_any = False
@@ -3236,6 +3511,7 @@ class TypeInfo(SymbolNode):
         self.dataclass_transform_spec = None
         self.is_type_check_only = False
         self.deprecated = None
+        self.type_object_type = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3471,6 +3747,8 @@ class TypeInfo(SymbolNode):
             self.special_alias = alias
         else:
             self.special_alias.target = alias.target
+            # Invalidate recursive status cache in case it was previously set.
+            self.special_alias._is_recursive = None
 
     def update_typeddict_type(self, typ: mypy.types.TypedDictType) -> None:
         """Update typeddict_type and special_alias as needed."""
@@ -3480,6 +3758,8 @@ class TypeInfo(SymbolNode):
             self.special_alias = alias
         else:
             self.special_alias.target = alias.target
+            # Invalidate recursive status cache in case it was previously set.
+            self.special_alias._is_recursive = None
 
     def __str__(self) -> str:
         """Return a string representation of the type.
@@ -3568,7 +3848,6 @@ class TypeInfo(SymbolNode):
         module_name = data["module_name"]
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data["fullname"]
-        # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = [(attr[0], attr[1]) for attr in data["abstract_attributes"]]
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
@@ -3626,6 +3905,100 @@ class TypeInfo(SymbolNode):
                 data["dataclass_transform_spec"]
             )
         ti.deprecated = data.get("deprecated")
+        return ti
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, TYPE_INFO)
+        self.names.write(data, self.fullname)
+        self.defn.write(data)
+        write_str(data, self.module_name)
+        write_str(data, self.fullname)
+        write_str_list(data, [a for a, _ in self.abstract_attributes])
+        write_int_list(data, [s for _, s in self.abstract_attributes])
+        write_str_list(data, self.type_vars)
+        write_bool(data, self.has_param_spec_type)
+        mypy.types.write_type_list(data, self.bases)
+        write_str_list(data, [c.fullname for c in self.mro])
+        mypy.types.write_type_list(data, self._promote)
+        mypy.types.write_type_opt(data, self.alt_promote)
+        mypy.types.write_type_opt(data, self.declared_metaclass)
+        mypy.types.write_type_opt(data, self.metaclass_type)
+        mypy.types.write_type_opt(data, self.tuple_type)
+        mypy.types.write_type_opt(data, self.typeddict_type)
+        write_flags(data, self, TypeInfo.FLAGS)
+        write_str(data, json.dumps(self.metadata))
+        if self.slots is None:
+            write_bool(data, False)
+        else:
+            write_bool(data, True)
+            write_str_list(data, sorted(self.slots))
+        write_str_list(data, self.deletable_attributes)
+        mypy.types.write_type_opt(data, self.self_type)
+        if self.dataclass_transform_spec is None:
+            write_bool(data, False)
+        else:
+            write_bool(data, True)
+            self.dataclass_transform_spec.write(data)
+        write_str_opt(data, self.deprecated)
+
+    @classmethod
+    def read(cls, data: Buffer) -> TypeInfo:
+        names = SymbolTable.read(data)
+        assert read_int(data) == CLASS_DEF
+        defn = ClassDef.read(data)
+        module_name = read_str(data)
+        ti = TypeInfo(names, defn, module_name)
+        ti._fullname = read_str(data)
+        attrs = read_str_list(data)
+        statuses = read_int_list(data)
+        ti.abstract_attributes = list(zip(attrs, statuses))
+        ti.type_vars = read_str_list(data)
+        ti.has_param_spec_type = read_bool(data)
+        num_bases = read_int(data)
+        ti.bases = []
+        for _ in range(num_bases):
+            assert read_int(data) == mypy.types.INSTANCE
+            ti.bases.append(mypy.types.Instance.read(data))
+        # NOTE: ti.mro will be set in the fixup phase based on these
+        # names.  The reason we need to store the mro instead of just
+        # recomputing it from base classes has to do with a subtle
+        # point about fine-grained incremental: the cache files might
+        # not be loaded until after a class in the mro has changed its
+        # bases, which causes the mro to change. If we recomputed our
+        # mro, we would compute the *new* mro, which leaves us with no
+        # way to detect that the mro has changed! Thus, we need to make
+        # sure to load the original mro so that once the class is
+        # rechecked, it can tell that the mro has changed.
+        ti._mro_refs = read_str_list(data)
+        ti._promote = cast(list[mypy.types.ProperType], mypy.types.read_type_list(data))
+        if read_bool(data):
+            assert read_int(data) == mypy.types.INSTANCE
+            ti.alt_promote = mypy.types.Instance.read(data)
+        if read_bool(data):
+            assert read_int(data) == mypy.types.INSTANCE
+            ti.declared_metaclass = mypy.types.Instance.read(data)
+        if read_bool(data):
+            assert read_int(data) == mypy.types.INSTANCE
+            ti.metaclass_type = mypy.types.Instance.read(data)
+        if read_bool(data):
+            assert read_int(data) == mypy.types.TUPLE_TYPE
+            ti.tuple_type = mypy.types.TupleType.read(data)
+        if read_bool(data):
+            assert read_int(data) == mypy.types.TYPED_DICT_TYPE
+            ti.typeddict_type = mypy.types.TypedDictType.read(data)
+        read_flags(data, ti, TypeInfo.FLAGS)
+        metadata = read_str(data)
+        if metadata != "{}":
+            ti.metadata = json.loads(metadata)
+        if read_bool(data):
+            ti.slots = set(read_str_list(data))
+        ti.deletable_attributes = read_str_list(data)
+        if read_bool(data):
+            assert read_int(data) == mypy.types.TYPE_VAR_TYPE
+            ti.self_type = mypy.types.TypeVarType.read(data)
+        if read_bool(data):
+            ti.dataclass_transform_spec = DataclassTransformSpec.read(data)
+        ti.deprecated = read_str_opt(data)
         return ti
 
 
@@ -3856,6 +4229,9 @@ class TypeAlias(SymbolNode):
     def has_param_spec_type(self) -> bool:
         return any(isinstance(v, mypy.types.ParamSpecType) for v in self.alias_tvars)
 
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_type_alias(self)
+
     def serialize(self) -> JsonDict:
         data: JsonDict = {
             ".class": "TypeAlias",
@@ -3869,9 +4245,6 @@ class TypeAlias(SymbolNode):
             "python_3_12_type_alias": self.python_3_12_type_alias,
         }
         return data
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_type_alias(self)
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> TypeAlias:
@@ -3894,6 +4267,33 @@ class TypeAlias(SymbolNode):
             no_args=no_args,
             normalized=normalized,
             python_3_12_type_alias=python_3_12_type_alias,
+        )
+
+    def write(self, data: Buffer) -> None:
+        write_int(data, TYPE_ALIAS)
+        write_str(data, self._fullname)
+        self.target.write(data)
+        mypy.types.write_type_list(data, self.alias_tvars)
+        write_int(data, self.line)
+        write_int(data, self.column)
+        write_bool(data, self.no_args)
+        write_bool(data, self.normalized)
+        write_bool(data, self.python_3_12_type_alias)
+
+    @classmethod
+    def read(cls, data: Buffer) -> TypeAlias:
+        fullname = read_str(data)
+        target = mypy.types.read_type(data)
+        alias_tvars = [mypy.types.read_type_var_like(data) for _ in range(read_int(data))]
+        return TypeAlias(
+            target,
+            fullname,
+            read_int(data),
+            read_int(data),
+            alias_tvars=alias_tvars,
+            no_args=read_bool(data),
+            normalized=read_bool(data),
+            python_3_12_type_alias=read_bool(data),
         )
 
 
@@ -4154,6 +4554,49 @@ class SymbolTableNode:
             stnode.plugin_generated = data["plugin_generated"]
         return stnode
 
+    def write(self, data: Buffer, prefix: str, name: str) -> None:
+        write_int(data, self.kind)
+        write_bool(data, self.module_hidden)
+        write_bool(data, self.module_public)
+        write_bool(data, self.implicit)
+        write_bool(data, self.plugin_generated)
+
+        cross_ref = None
+        if isinstance(self.node, MypyFile):
+            cross_ref = self.node.fullname
+        else:
+            assert self.node is not None, f"{prefix}:{name}"
+            if prefix is not None:
+                fullname = self.node.fullname
+                if (
+                    "." in fullname
+                    and fullname != prefix + "." + name
+                    and not (isinstance(self.node, Var) and self.node.from_module_getattr)
+                ):
+                    assert not isinstance(
+                        self.node, PlaceholderNode
+                    ), f"Definition of {fullname} is unexpectedly incomplete"
+                    cross_ref = fullname
+
+        write_str_opt(data, cross_ref)
+        if cross_ref is None:
+            assert self.node is not None
+            self.node.write(data)
+
+    @classmethod
+    def read(cls, data: Buffer) -> SymbolTableNode:
+        sym = SymbolTableNode(read_int(data), None)
+        sym.module_hidden = read_bool(data)
+        sym.module_public = read_bool(data)
+        sym.implicit = read_bool(data)
+        sym.plugin_generated = read_bool(data)
+        cross_ref = read_str_opt(data)
+        if cross_ref is None:
+            sym.node = read_symbol(data)
+        else:
+            sym.cross_ref = cross_ref
+        return sym
+
 
 class SymbolTable(dict[str, SymbolTableNode]):
     """Static representation of a namespace dictionary.
@@ -4205,6 +4648,29 @@ class SymbolTable(dict[str, SymbolTableNode]):
                 st[key] = SymbolTableNode.deserialize(value)
         return st
 
+    def write(self, data: Buffer, fullname: str) -> None:
+        size = 0
+        for key, value in self.items():
+            # Skip __builtins__: it's a reference to the builtins
+            # module that gets added to every module by
+            # SemanticAnalyzerPass2.visit_file(), but it shouldn't be
+            # accessed by users of the module.
+            if key == "__builtins__" or value.no_serialize:
+                continue
+            size += 1
+        write_int(data, size)
+        for key in sorted(self):
+            value = self[key]
+            if key == "__builtins__" or value.no_serialize:
+                continue
+            write_str(data, key)
+            value.write(data, fullname, key)
+
+    @classmethod
+    def read(cls, data: Buffer) -> SymbolTable:
+        size = read_int(data)
+        return SymbolTable([(read_str(data), SymbolTableNode.read(data)) for _ in range(size)])
+
 
 class DataclassTransformSpec:
     """Specifies how a dataclass-like transform should be applied. The fields here are based on the
@@ -4255,6 +4721,23 @@ class DataclassTransformSpec:
             field_specifiers=tuple(data.get("field_specifiers", [])),
         )
 
+    def write(self, data: Buffer) -> None:
+        write_bool(data, self.eq_default)
+        write_bool(data, self.order_default)
+        write_bool(data, self.kw_only_default)
+        write_bool(data, self.frozen_default)
+        write_str_list(data, self.field_specifiers)
+
+    @classmethod
+    def read(cls, data: Buffer) -> DataclassTransformSpec:
+        return DataclassTransformSpec(
+            eq_default=read_bool(data),
+            order_default=read_bool(data),
+            kw_only_default=read_bool(data),
+            frozen_default=read_bool(data),
+            field_specifiers=tuple(read_str_list(data)),
+        )
+
 
 def get_flags(node: Node, names: list[str]) -> list[str]:
     return [name for name in names if getattr(node, name)]
@@ -4263,6 +4746,17 @@ def get_flags(node: Node, names: list[str]) -> list[str]:
 def set_flags(node: Node, flags: list[str]) -> None:
     for name in flags:
         setattr(node, name, True)
+
+
+def write_flags(data: Buffer, node: SymbolNode, flags: list[str]) -> None:
+    for flag in flags:
+        write_bool(data, getattr(node, flag))
+
+
+def read_flags(data: Buffer, node: SymbolNode, flags: list[str]) -> None:
+    for flag in flags:
+        if read_bool(data):
+            setattr(node, flag, True)
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str | None:
@@ -4354,6 +4848,13 @@ def is_final_node(node: SymbolNode | None) -> bool:
     return isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and node.is_final
 
 
+def get_func_def(typ: mypy.types.CallableType) -> SymbolNode | None:
+    definition = typ.definition
+    if isinstance(definition, Decorator):
+        definition = definition.func
+    return definition
+
+
 def local_definitions(
     names: SymbolTable, name_prefix: str, info: TypeInfo | None = None
 ) -> Iterator[Definition]:
@@ -4373,3 +4874,49 @@ def local_definitions(
             yield fullname, symnode, info
             if isinstance(node, TypeInfo):
                 yield from local_definitions(node.names, fullname, node)
+
+
+MYPY_FILE: Final = 0
+OVERLOADED_FUNC_DEF: Final = 1
+FUNC_DEF: Final = 2
+DECORATOR: Final = 3
+VAR: Final = 4
+TYPE_VAR_EXPR: Final = 5
+PARAM_SPEC_EXPR: Final = 6
+TYPE_VAR_TUPLE_EXPR: Final = 7
+TYPE_INFO: Final = 8
+TYPE_ALIAS: Final = 9
+CLASS_DEF: Final = 10
+
+
+def read_symbol(data: Buffer) -> mypy.nodes.SymbolNode:
+    marker = read_int(data)
+    # The branches here are ordered manually by type "popularity".
+    if marker == VAR:
+        return mypy.nodes.Var.read(data)
+    if marker == FUNC_DEF:
+        return mypy.nodes.FuncDef.read(data)
+    if marker == DECORATOR:
+        return mypy.nodes.Decorator.read(data)
+    if marker == TYPE_INFO:
+        return mypy.nodes.TypeInfo.read(data)
+    if marker == OVERLOADED_FUNC_DEF:
+        return mypy.nodes.OverloadedFuncDef.read(data)
+    if marker == TYPE_VAR_EXPR:
+        return mypy.nodes.TypeVarExpr.read(data)
+    if marker == TYPE_ALIAS:
+        return mypy.nodes.TypeAlias.read(data)
+    if marker == PARAM_SPEC_EXPR:
+        return mypy.nodes.ParamSpecExpr.read(data)
+    if marker == TYPE_VAR_TUPLE_EXPR:
+        return mypy.nodes.TypeVarTupleExpr.read(data)
+    assert False, f"Unknown symbol marker {marker}"
+
+
+def read_overload_part(data: Buffer) -> OverloadPart:
+    marker = read_int(data)
+    if marker == DECORATOR:
+        return Decorator.read(data)
+    if marker == FUNC_DEF:
+        return FuncDef.read(data)
+    assert False, f"Invalid marker for an OverloadPart {marker}"

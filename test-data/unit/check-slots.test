@@ -180,6 +180,7 @@ b.m = 2
 b.b = 2
 b._two = 2
 [out]
+main:5: error: Class "B" has incompatible disjoint bases
 main:11: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
 main:16: error: "B" has no attribute "b"
 main:17: error: "B" has no attribute "_two"
@@ -496,6 +497,29 @@ class A:
         self.missing = 3
 [builtins fixtures/dict.pyi]
 
+[case testSlotsNotInClass]
+# Shouldn't be triggered
+__slots__ = [1, 2]
+reveal_type(__slots__)  # N: Revealed type is "builtins.list[builtins.int]"
+
+def foo() -> None:
+    __slots__ = 1
+    reveal_type(__slots__)  # N: Revealed type is "builtins.int"
+
+[case testSlotsEmptyList]
+class A:
+    __slots__ = []
+    reveal_type(__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
+
+reveal_type(A.__slots__)  # N: Revealed type is "builtins.list[builtins.str]"
+
+[case testSlotsEmptySet]
+class A:
+    __slots__ = set()
+    reveal_type(__slots__)  # N: Revealed type is "builtins.set[builtins.str]"
+
+reveal_type(A.__slots__)  # N: Revealed type is "builtins.set[builtins.str]"
+[builtins fixtures/set.pyi]
 
 [case testSlotsWithAny]
 from typing import Any
@@ -520,4 +544,20 @@ class X:
 x = X()
 X.a  # E: "a" in __slots__ conflicts with class variable access
 x.a
+[builtins fixtures/tuple.pyi]
+
+[case testSlotsOnSelfType]
+from typing_extensions import Self
+
+class X:
+    __slots__ = ("foo",)
+    foo: int
+
+    def method1(self: Self) -> Self:
+        self.bar = 0  # E: Trying to assign name "bar" that is not in "__slots__" of type "__main__.X"
+        return self
+
+    def method2(self) -> Self:
+        self.bar = 0  # E: Trying to assign name "bar" that is not in "__slots__" of type "__main__.X"
+        return self
 [builtins fixtures/tuple.pyi]
