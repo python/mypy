@@ -747,8 +747,8 @@ def _verify_arg_name(
     if stub_arg.variable.name == "_self":
         return
     yield (
-        f'stub argument "{stub_arg.variable.name}" '
-        f'differs from runtime argument "{runtime_arg.name}"'
+        f'stub parameter "{stub_arg.variable.name}" '
+        f'differs from runtime parameter "{runtime_arg.name}"'
     )
 
 
@@ -759,8 +759,8 @@ def _verify_arg_default_value(
     if runtime_arg.default is not inspect.Parameter.empty:
         if stub_arg.kind.is_required():
             yield (
-                f'runtime argument "{runtime_arg.name}" '
-                "has a default value but stub argument does not"
+                f'runtime parameter "{runtime_arg.name}" '
+                "has a default value but stub parameter does not"
             )
         else:
             runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
@@ -781,9 +781,9 @@ def _verify_arg_default_value(
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
-                    f'runtime argument "{runtime_arg.name}" '
+                    f'runtime parameter "{runtime_arg.name}" '
                     f"has a default value of type {runtime_type}, "
-                    f"which is incompatible with stub argument type {stub_type}"
+                    f"which is incompatible with stub parameter type {stub_type}"
                 )
             if stub_arg.initializer is not None:
                 stub_default = evaluate_expression(stub_arg.initializer)
@@ -807,15 +807,15 @@ def _verify_arg_default_value(
                             defaults_match = False
                     if not defaults_match:
                         yield (
-                            f'runtime argument "{runtime_arg.name}" '
+                            f'runtime parameter "{runtime_arg.name}" '
                             f"has a default value of {runtime_arg.default!r}, "
-                            f"which is different from stub argument default {stub_default!r}"
+                            f"which is different from stub parameter default {stub_default!r}"
                         )
     else:
         if stub_arg.kind.is_optional():
             yield (
-                f'stub argument "{stub_arg.variable.name}" has a default value '
-                f"but runtime argument does not"
+                f'stub parameter "{stub_arg.variable.name}" has a default value '
+                f"but runtime parameter does not"
             )
 
 
@@ -1013,7 +1013,7 @@ def _verify_signature(
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                f'stub argument "{stub_arg.variable.name}" should be positional-only '
+                f'stub parameter "{stub_arg.variable.name}" should be positional-only '
                 f'(add "/", e.g. "{runtime_arg.name}, /")'
             )
         if (
@@ -1025,7 +1025,7 @@ def _verify_signature(
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
+                f'stub parameter "{stub_arg.variable.name}" should be positional or keyword '
                 '(remove "/")'
             )
 
@@ -1040,28 +1040,28 @@ def _verify_signature(
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
                 # keyword-only argument
                 if stub_arg.variable.name not in runtime.kwonly:
-                    msg = f'runtime does not have argument "{stub_arg.variable.name}"'
+                    msg = f'runtime does not have parameter "{stub_arg.variable.name}"'
                     if runtime.varkw is not None:
                         msg += ". Maybe you forgot to make it keyword-only in the stub?"
                     yield msg
                 else:
-                    yield f'stub argument "{stub_arg.variable.name}" is not keyword-only'
+                    yield f'stub parameter "{stub_arg.variable.name}" is not keyword-only'
             if stub.varpos is not None:
-                yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
+                yield f'runtime does not have *args parameter "{stub.varpos.variable.name}"'
     elif len(stub.pos) < len(runtime.pos):
         for runtime_arg in runtime.pos[len(stub.pos) :]:
             if runtime_arg.name not in stub.kwonly:
                 if not _is_private_parameter(runtime_arg):
-                    yield f'stub does not have argument "{runtime_arg.name}"'
+                    yield f'stub does not have parameter "{runtime_arg.name}"'
             else:
-                yield f'runtime argument "{runtime_arg.name}" is not keyword-only'
+                yield f'runtime parameter "{runtime_arg.name}" is not keyword-only'
 
     # Checks involving *args
     if len(stub.pos) <= len(runtime.pos) or runtime.varpos is None:
         if stub.varpos is None and runtime.varpos is not None:
-            yield f'stub does not have *args argument "{runtime.varpos.name}"'
+            yield f'stub does not have *args parameter "{runtime.varpos.name}"'
         if stub.varpos is not None and runtime.varpos is None:
-            yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
+            yield f'runtime does not have *args parameter "{stub.varpos.variable.name}"'
 
     # Check keyword-only args
     for arg in sorted(set(stub.kwonly) & set(runtime.kwonly)):
@@ -1080,9 +1080,9 @@ def _verify_signature(
             if arg in {runtime_arg.name for runtime_arg in runtime.pos}:
                 # Don't report this if we've reported it before
                 if arg not in {runtime_arg.name for runtime_arg in runtime.pos[len(stub.pos) :]}:
-                    yield f'runtime argument "{arg}" is not keyword-only'
+                    yield f'runtime parameter "{arg}" is not keyword-only'
             else:
-                yield f'runtime does not have argument "{arg}"'
+                yield f'runtime does not have parameter "{arg}"'
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
         if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
@@ -1090,10 +1090,10 @@ def _verify_signature(
                 runtime.varpos is None
                 and arg in {stub_arg.variable.name for stub_arg in stub.pos[len(runtime.pos) :]}
             ):
-                yield f'stub argument "{arg}" is not keyword-only'
+                yield f'stub parameter "{arg}" is not keyword-only'
         else:
             if not _is_private_parameter(runtime.kwonly[arg]):
-                yield f'stub does not have argument "{arg}"'
+                yield f'stub does not have parameter "{arg}"'
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:
@@ -1103,9 +1103,9 @@ def _verify_signature(
         stub_pos_names = {stub_arg.variable.name for stub_arg in stub.pos}
         # Ideally we'd do a strict subset check, but in practice the errors from that aren't useful
         if not set(runtime.kwonly).issubset(set(stub.kwonly) | stub_pos_names):
-            yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
+            yield f'stub does not have **kwargs parameter "{runtime.varkw.name}"'
     if stub.varkw is not None and runtime.varkw is None:
-        yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
+        yield f'runtime does not have **kwargs parameter "{stub.varkw.variable.name}"'
 
 
 def _is_private_parameter(arg: inspect.Parameter) -> bool:
@@ -1425,7 +1425,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         if decorator.fullname == "builtins.classmethod":
             if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
                 raise StubtestFailure(
-                    f"unexpected class argument name {func.arguments[0].variable.name!r} "
+                    f"unexpected class parameter name {func.arguments[0].variable.name!r} "
                     f"in {dec.fullname}"
                 )
             # FuncItem is written so that copy.copy() actually works, even when compiled

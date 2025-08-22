@@ -2583,8 +2583,8 @@ class StubtestMiscUnit(unittest.TestCase):
             options=[],
         )
         expected = (
-            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
-            'from runtime argument "num"\n'
+            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub parameter "number" differs '
+            'from runtime parameter "num"\n'
             f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
             "def (number: builtins.int, text: builtins.str)\n"
             f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
@@ -2599,7 +2599,9 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         expected = (
             "{}.bad is inconsistent, "
-            'stub argument "number" differs from runtime argument "num"\n'.format(TEST_MODULE_NAME)
+            'stub parameter "number" differs from runtime parameter "num"\n'.format(
+                TEST_MODULE_NAME
+            )
         )
         assert output == expected
 
