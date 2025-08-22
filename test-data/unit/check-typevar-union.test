@@ -88,7 +88,7 @@ T = TypeVar('T')
 class CreateProject:
     jsonFilePath: pathlib.Path
 
-@dataclass  
+@dataclass
 class LoadProject:
     jsonFilePath: pathlib.Path
 
@@ -122,7 +122,7 @@ T = TypeVar('T')
 class CreateProject:
     jsonFilePath: pathlib.Path
 
-@dataclass  
+@dataclass
 class LoadProject:
     jsonFilePath: pathlib.Path
 
