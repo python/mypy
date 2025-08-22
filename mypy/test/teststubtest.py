@@ -1698,6 +1698,53 @@ assert annotations
             """,
             error=None,
         )
+        yield Case(
+            runtime="""
+            class IsDisjointBaseBecauseItHasSlots:
+                __slots__ = ("a",)
+                a: int
+            """,
+            stub="""
+            from typing_extensions import disjoint_base
+
+            @disjoint_base
+            class IsDisjointBaseBecauseItHasSlots:
+                a: int
+            """,
+            error="test_module.IsDisjointBaseBecauseItHasSlots",
+        )
+        yield Case(
+            runtime="""
+            class IsFinalSoDisjointBaseIsRedundant: ...
+            """,
+            stub="""
+            from typing_extensions import disjoint_base, final
+
+            @final
+            @disjoint_base
+            class IsFinalSoDisjointBaseIsRedundant: ...
+            """,
+            error="test_module.IsFinalSoDisjointBaseIsRedundant",
+        )
+        yield Case(
+            runtime="""
+            import enum
+
+            class IsEnumSoDisjointBaseIsRedundant(enum.Enum):
+                A = 1
+                B = 2
+            """,
+            stub="""
+            from typing_extensions import disjoint_base
+            import enum
+
+            @disjoint_base
+            class IsEnumSoDisjointBaseIsRedundant(enum.Enum):
+                A = 1
+                B = 2
+            """,
+            error="test_module.IsEnumSoDisjointBaseIsRedundant",
+        )
 
     @collect_cases
     def test_has_runtime_final_decorator(self) -> Iterator[Case]:
