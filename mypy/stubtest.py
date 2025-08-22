@@ -509,7 +509,13 @@ def _verify_disjoint_base(
     is_disjoint_runtime = _is_disjoint_base(runtime)
     # Don't complain about missing @disjoint_base if there are __slots__, because
     # in that case we can infer that it's a disjoint base.
-    if is_disjoint_runtime and not stub.is_disjoint_base and not runtime.__dict__.get("__slots__") and not stub.is_final and not (stub.is_enum and stub.enum_members):
+    if (
+        is_disjoint_runtime
+        and not stub.is_disjoint_base
+        and not runtime.__dict__.get("__slots__")
+        and not stub.is_final
+        and not (stub.is_enum and stub.enum_members)
+    ):
         yield Error(
             object_path,
             "is a disjoint base at runtime, but isn't marked with @disjoint_base in the stub",
@@ -537,8 +543,7 @@ def _verify_disjoint_base(
         elif stub.is_final:
             yield Error(
                 object_path,
-                "is marked as @disjoint_base, but also marked as @final; "
-                "remove @disjoint_base",
+                "is marked as @disjoint_base, but also marked as @final; remove @disjoint_base",
                 stub,
                 runtime,
                 stub_desc=repr(stub),
