@@ -403,9 +403,8 @@ def _infer_constraints(
 
                 # Check if any actual items are NOT subtypes of the non-type-var part
                 compatible_items = []
-                actual_proper = get_proper_type(actual)
-                if isinstance(actual_proper, UnionType):
-                    for actual_item in actual_proper.items:
+                if isinstance(actual, UnionType):
+                    for actual_item in actual.items:
                         if not mypy.subtypes.is_subtype(actual_item, non_type_var):
                             compatible_items.append(actual_item)
 
