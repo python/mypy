@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterable, Iterator
 from io import TextIOWrapper
 from os import PathLike
 from types import TracebackType
-from typing import IO, Final, Literal, Protocol, overload
+from typing import IO, Final, Literal, Protocol, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 __all__ = [
@@ -24,13 +24,15 @@ __all__ = [
     "LargeZipFile",
 ]
 
+if sys.version_info >= (3, 14):
+    __all__ += ["ZIP_ZSTANDARD"]
+
 # TODO: use TypeAlias for these two when mypy bugs are fixed
 # https://github.com/python/mypy/issues/16581
 _DateTuple = tuple[int, int, int, int, int, int]  # noqa: Y026
 _ZipFileMode = Literal["r", "w", "x", "a"]  # noqa: Y026
 
 _ReadWriteMode: TypeAlias = Literal["r", "w"]
-_ReadWriteBinaryMode: TypeAlias = Literal["r", "w", "rb", "wb"]
 
 class BadZipFile(Exception): ...
 
@@ -39,6 +41,7 @@ error = BadZipfile
 
 class LargeZipFile(Exception): ...
 
+@type_check_only
 class _ZipStream(Protocol):
     def read(self, n: int, /) -> bytes: ...
     # The following methods are optional:
@@ -47,11 +50,13 @@ class _ZipStream(Protocol):
     # def seek(self, n: int, /) -> object: ...
 
 # Stream shape as required by _EndRecData() and _EndRecData64().
+@type_check_only
 class _SupportsReadSeekTell(Protocol):
     def read(self, n: int = ..., /) -> bytes: ...
     def seek(self, cookie: int, whence: int, /) -> object: ...
     def tell(self) -> int: ...
 
+@type_check_only
 class _ClosableZipStream(_ZipStream, Protocol):
     def close(self) -> object: ...
 
@@ -91,18 +96,23 @@ class ZipExtFile(io.BufferedIOBase):
     def read1(self, n: int | None) -> bytes: ...  # type: ignore[override]
     def seek(self, offset: int, whence: int = 0) -> int: ...
 
+@type_check_only
 class _Writer(Protocol):
     def write(self, s: str, /) -> object: ...
 
+@type_check_only
 class _ZipReadable(Protocol):
     def seek(self, offset: int, whence: int = 0, /) -> int: ...
     def read(self, n: int = -1, /) -> bytes: ...
 
+@type_check_only
 class _ZipTellable(Protocol):
     def tell(self) -> int: ...
 
+@type_check_only
 class _ZipReadableTellable(_ZipReadable, _ZipTellable, Protocol): ...
 
+@type_check_only
 class _ZipWritable(Protocol):
     def flush(self) -> None: ...
     def close(self) -> None: ...
@@ -321,25 +331,20 @@ else:
             @property
             def stem(self) -> str: ...
 
-        if sys.version_info >= (3, 9):
-            @overload
-            def open(
-                self,
-                mode: Literal["r", "w"] = "r",
-                encoding: str | None = None,
-                errors: str | None = None,
-                newline: str | None = None,
-                line_buffering: bool = ...,
-                write_through: bool = ...,
-                *,
-                pwd: bytes | None = None,
-            ) -> TextIOWrapper: ...
-            @overload
-            def open(self, mode: Literal["rb", "wb"], *, pwd: bytes | None = None) -> IO[bytes]: ...
-        else:
-            def open(
-                self, mode: _ReadWriteBinaryMode = "r", pwd: bytes | None = None, *, force_zip64: bool = False
-            ) -> IO[bytes]: ...
+        @overload
+        def open(
+            self,
+            mode: Literal["r", "w"] = "r",
+            encoding: str | None = None,
+            errors: str | None = None,
+            newline: str | None = None,
+            line_buffering: bool = ...,
+            write_through: bool = ...,
+            *,
+            pwd: bytes | None = None,
+        ) -> TextIOWrapper: ...
+        @overload
+        def open(self, mode: Literal["rb", "wb"], *, pwd: bytes | None = None) -> IO[bytes]: ...
 
         if sys.version_info >= (3, 10):
             def iterdir(self) -> Iterator[Self]: ...
@@ -362,23 +367,26 @@ else:
             def joinpath(self, *other: StrPath) -> Path: ...
         else:
             def joinpath(self, add: StrPath) -> Path: ...  # undocumented
-        if sys.version_info >= (3, 12):
-            def glob(self, pattern: str) -> Iterator[Self]: ...
-            def rglob(self, pattern: str) -> Iterator[Self]: ...
-            def is_symlink(self) -> Literal[False]: ...
-            def relative_to(self, other: Path, *extra: StrPath) -> str: ...
-            def match(self, path_pattern: str) -> bool: ...
-            def __eq__(self, other: object) -> bool: ...
-            def __hash__(self) -> int: ...
 
         def __truediv__(self, add: StrPath) -> Path: ...
 
 def is_zipfile(filename: StrOrBytesPath | _SupportsReadSeekTell) -> bool: ...
 
-ZIP_STORED: Final[int]
-ZIP_DEFLATED: Final[int]
 ZIP64_LIMIT: Final[int]
 ZIP_FILECOUNT_LIMIT: Final[int]
 ZIP_MAX_COMMENT: Final[int]
-ZIP_BZIP2: Final[int]
-ZIP_LZMA: Final[int]
+
+ZIP_STORED: Final = 0
+ZIP_DEFLATED: Final = 8
+ZIP_BZIP2: Final = 12
+ZIP_LZMA: Final = 14
+if sys.version_info >= (3, 14):
+    ZIP_ZSTANDARD: Final = 93
+
+DEFAULT_VERSION: Final[int]
+ZIP64_VERSION: Final[int]
+BZIP2_VERSION: Final[int]
+LZMA_VERSION: Final[int]
+if sys.version_info >= (3, 14):
+    ZSTANDARD_VERSION: Final[int]
+MAX_EXTRACT_VERSION: Final[int]

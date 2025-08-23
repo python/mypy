@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Final, NamedTuple
 
-import mypy.checker
 from mypy import message_registry
+from mypy.checker_shared import TypeCheckerSharedApi, TypeRange
 from mypy.checkmember import analyze_member_access
 from mypy.expandtype import expand_type_by_instance
 from mypy.join import join_types
@@ -91,7 +91,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: mypy.checker.TypeChecker
+    chk: TypeCheckerSharedApi
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Currently unused
@@ -112,7 +112,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     options: Options
 
     def __init__(
-        self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin, options: Options
+        self, chk: TypeCheckerSharedApi, msg: MessageBuilder, plugin: Plugin, options: Options
     ) -> None:
         self.chk = chk
         self.msg = msg
@@ -192,7 +192,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         for capture_list in capture_types.values():
             typ = UninhabitedType()
             for _, other in capture_list:
-                typ = join_types(typ, other)
+                typ = make_simplified_union([typ, other])
 
             captures[capture_list[0][0]] = typ
 
@@ -598,7 +598,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                         is_lvalue=False,
                         is_super=False,
                         is_operator=False,
-                        msg=self.msg,
                         original_type=typ,
                         chk=self.chk,
                     )
@@ -664,7 +663,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                         is_lvalue=False,
                         is_super=False,
                         is_operator=False,
-                        msg=self.msg,
                         original_type=new_type,
                         chk=self.chk,
                     )
@@ -798,13 +796,13 @@ def get_var(expr: Expression) -> Var:
     Warning: this in only true for expressions captured by a match statement.
     Don't call it from anywhere else
     """
-    assert isinstance(expr, NameExpr)
+    assert isinstance(expr, NameExpr), expr
     node = expr.node
-    assert isinstance(node, Var)
+    assert isinstance(node, Var), node
     return node
 
 
-def get_type_range(typ: Type) -> mypy.checker.TypeRange:
+def get_type_range(typ: Type) -> TypeRange:
     typ = get_proper_type(typ)
     if (
         isinstance(typ, Instance)
@@ -812,7 +810,7 @@ def get_type_range(typ: Type) -> mypy.checker.TypeRange:
         and isinstance(typ.last_known_value.value, bool)
     ):
         typ = typ.last_known_value
-    return mypy.checker.TypeRange(typ, is_upper_bound=False)
+    return TypeRange(typ, is_upper_bound=False)
 
 
 def is_uninhabited(typ: Type) -> bool:

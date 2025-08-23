@@ -24,8 +24,7 @@ __all__ = [
     "BadOptionError",
     "check_choice",
 ]
-# pytype is not happy with `NO_DEFAULT: Final = ("NO", "DEFAULT")`
-NO_DEFAULT: Final[tuple[Literal["NO"], Literal["DEFAULT"]]]
+NO_DEFAULT: Final = ("NO", "DEFAULT")
 SUPPRESS_HELP: Final = "SUPPRESSHELP"
 SUPPRESS_USAGE: Final = "SUPPRESSUSAGE"
 
@@ -239,7 +238,7 @@ class Values:
     # __getattr__ doesn't exist, but anything passed as a default to __init__
     # is set on the instance.
     def __getattr__(self, name: str) -> Any: ...
-    # TODO mypy infers -> object for __getattr__ if __setattr__ has `value: object`
+    # TODO: mypy infers -> object for __getattr__ if __setattr__ has `value: object`
     def __setattr__(self, name: str, value: Any, /) -> None: ...
     def __eq__(self, other: object) -> bool: ...
 

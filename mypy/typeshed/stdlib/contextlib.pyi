@@ -4,7 +4,7 @@ from _typeshed import FileDescriptorOrPath, Unused
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterator
 from types import TracebackType
-from typing import IO, Any, Generic, Protocol, TypeVar, overload, runtime_checkable
+from typing import IO, Any, Generic, Protocol, TypeVar, overload, runtime_checkable, type_check_only
 from typing_extensions import ParamSpec, Self, TypeAlias
 
 __all__ = [
@@ -33,7 +33,7 @@ _T_co = TypeVar("_T_co", covariant=True)
 _T_io = TypeVar("_T_io", bound=IO[str] | None)
 _ExitT_co = TypeVar("_ExitT_co", covariant=True, bound=bool | None, default=bool | None)
 _F = TypeVar("_F", bound=Callable[..., Any])
-_G = TypeVar("_G", bound=Generator[Any, Any, Any] | AsyncGenerator[Any, Any], covariant=True)
+_G_co = TypeVar("_G_co", bound=Generator[Any, Any, Any] | AsyncGenerator[Any, Any], covariant=True)
 _P = ParamSpec("_P")
 
 _SendT_contra = TypeVar("_SendT_contra", contravariant=True, default=None)
@@ -68,11 +68,11 @@ class ContextDecorator:
     def _recreate_cm(self) -> Self: ...
     def __call__(self, func: _F) -> _F: ...
 
-class _GeneratorContextManagerBase(Generic[_G]):
+class _GeneratorContextManagerBase(Generic[_G_co]):
     # Ideally this would use ParamSpec, but that requires (*args, **kwargs), which this isn't. see #6676
-    def __init__(self, func: Callable[..., _G], args: tuple[Any, ...], kwds: dict[str, Any]) -> None: ...
-    gen: _G
-    func: Callable[..., _G]
+    def __init__(self, func: Callable[..., _G_co], args: tuple[Any, ...], kwds: dict[str, Any]) -> None: ...
+    gen: _G_co
+    func: Callable[..., _G_co]
     args: tuple[Any, ...]
     kwds: dict[str, Any]
 
@@ -81,14 +81,9 @@ class _GeneratorContextManager(
     AbstractContextManager[_T_co, bool | None],
     ContextDecorator,
 ):
-    if sys.version_info >= (3, 9):
-        def __exit__(
-            self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
-        ) -> bool | None: ...
-    else:
-        def __exit__(
-            self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
-        ) -> bool | None: ...
+    def __exit__(
+        self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+    ) -> bool | None: ...
 
 def contextmanager(func: Callable[_P, Iterator[_T_co]]) -> Callable[_P, _GeneratorContextManager[_T_co]]: ...
 
@@ -117,7 +112,7 @@ else:
         ) -> bool | None: ...
 
 def asynccontextmanager(func: Callable[_P, AsyncIterator[_T_co]]) -> Callable[_P, _AsyncGeneratorContextManager[_T_co]]: ...
-
+@type_check_only
 class _SupportsClose(Protocol):
     def close(self) -> object: ...
 
@@ -128,6 +123,7 @@ class closing(AbstractContextManager[_SupportsCloseT, None]):
     def __exit__(self, *exc_info: Unused) -> None: ...
 
 if sys.version_info >= (3, 10):
+    @type_check_only
     class _SupportsAclose(Protocol):
         def aclose(self) -> Awaitable[object]: ...
 
@@ -184,7 +180,7 @@ class AsyncExitStack(_BaseExitStack[_ExitT_co], metaclass=abc.ABCMeta):
     async def __aenter__(self) -> Self: ...
     async def __aexit__(
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None, /
-    ) -> bool: ...
+    ) -> _ExitT_co: ...
 
 if sys.version_info >= (3, 10):
     class nullcontext(AbstractContextManager[_T, None], AbstractAsyncContextManager[_T, None]):

@@ -7,7 +7,7 @@ from re import Pattern
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Protocol, overload
+from typing import Any, Protocol, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 __all__ = [
@@ -65,7 +65,7 @@ class SMTPAuthenticationError(SMTPResponseException): ...
 
 def quoteaddr(addrstring: str) -> str: ...
 def quotedata(data: str) -> str: ...
-
+@type_check_only
 class _AuthObject(Protocol):
     @overload
     def __call__(self, challenge: None = None, /) -> str | None: ...
@@ -185,20 +185,11 @@ class SMTP_SSL(SMTP):
 LMTP_PORT: int
 
 class LMTP(SMTP):
-    if sys.version_info >= (3, 9):
-        def __init__(
-            self,
-            host: str = "",
-            port: int = 2003,
-            local_hostname: str | None = None,
-            source_address: _SourceAddress | None = None,
-            timeout: float = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            host: str = "",
-            port: int = 2003,
-            local_hostname: str | None = None,
-            source_address: _SourceAddress | None = None,
-        ) -> None: ...
+    def __init__(
+        self,
+        host: str = "",
+        port: int = 2003,
+        local_hostname: str | None = None,
+        source_address: _SourceAddress | None = None,
+        timeout: float = ...,
+    ) -> None: ...

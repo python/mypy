@@ -78,16 +78,21 @@ assert hasattr(c, 'x')
 
 [case testTypedDictWithFields]
 import collections
+import json
 from typing import TypedDict
 class C(TypedDict):
     x: collections.deque
+    spam: json.JSONDecoder
 [file driver.py]
 from native import C
 from collections import deque
+from json import JSONDecoder
 
 print(C.__annotations__["x"] is deque)
+print(C.__annotations__["spam"] is JSONDecoder)
 [typing fixtures/typing-full.pyi]
 [out]
+True
 True
 
 [case testClassWithDeletableAttributes]
@@ -929,6 +934,53 @@ def welp() -> int:
 from native import welp
 assert welp() == 35
 
+[case testSubclassUnsupportedException]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class MyError(ZeroDivisionError):
+    pass
+
+@mypyc_attr(native_class=False)
+class MyError2(ZeroDivisionError):
+    def __init__(self, s: str) -> None:
+        super().__init__(s + "!")
+        self.x = s.upper()
+
+def f() -> None:
+    raise MyError("foobar")
+
+def test_non_native_exception_subclass_basics() -> None:
+    e = MyError()
+    assert isinstance(e, MyError)
+    assert isinstance(e, ZeroDivisionError)
+    assert isinstance(e, Exception)
+
+    e = MyError("x")
+    assert repr(e) == "MyError('x')"
+
+    e2 = MyError2("ab")
+    assert repr(e2) == "MyError2('ab!')", repr(e2)
+    assert e2.x == "AB"
+
+def test_raise_non_native_exception_subclass_1() -> None:
+    try:
+        f()
+    except MyError:
+        x = True
+    else:
+        assert False
+    assert x
+
+def test_raise_non_native_exception_subclass_2() -> None:
+    try:
+        f()
+    except ZeroDivisionError:
+        x = True
+    else:
+        assert False
+    assert x
+
 [case testSubclassPy]
 from b import B, V
 class A(B):
@@ -1226,9 +1278,10 @@ class Bar(Foo):
     def f(self, *args: int, **kwargs: int) -> None:
         print("stuff", args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=50)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=50)
+    z.f()
 
 [out]
 stuff (1,) {'z': 50}
@@ -1248,18 +1301,19 @@ class Foo:
 def baz_f(self: Any, *args: int, **kwargs: int) -> None:
     print("Baz", args, kwargs)
 
-# Make an "interpreted" subtype of Foo
-type2: Any = type
-Bar = type2('Bar', (Foo,), {})
-Baz = type2('Baz', (Foo,), {'f': baz_f})
+def test_override() -> None:
+    # Make an "interpreted" subtype of Foo
+    type2: Any = type
+    Bar = type2('Bar', (Foo,), {})
+    Baz = type2('Baz', (Foo,), {'f': baz_f})
 
-y: Foo = Bar()
-y.f(1, z=2)
-y.f()
+    y: Foo = Bar()
+    y.f(1, z=2)
+    y.f()
 
-z: Foo = Baz()
-z.f(1, z=2)
-z.f()
+    z: Foo = Baz()
+    z.f(1, z=2)
+    z.f()
 
 [out]
 Foo 1 2
@@ -1278,9 +1332,10 @@ class Bar(Foo):
     def f(self, x: Optional[int]=None) -> None:
         print(x)
 
-z: Foo = Bar()
-z.f(1)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1)
+    z.f()
 
 [out]
 1
@@ -1297,10 +1352,11 @@ class Bar(Foo):
     def f(self, *args: int, **kwargs: int) -> None:
         print("Bar", args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=2)
-z.f(1, 2, 3)
-# z.f(x=5)  # Not tested because we (knowingly) do the wrong thing and pass it as positional
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=2)
+    z.f(1, 2, 3)
+    # z.f(x=5)  # Not tested because we (knowingly) do the wrong thing and pass it as positional
 
 [out]
 Bar (1,) {'z': 2}
@@ -1318,10 +1374,11 @@ class Bar(Foo):
     def f(self, x: int = 10, *args: int, **kwargs: int) -> None:
         print("Bar", x, args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=2)
-z.f(1, 2, 3)
-z.f()
+def test_override() -> None:
+    z: Foo = Bar()
+    z.f(1, z=2)
+    z.f(1, 2, 3)
+    z.f()
 
 [out]
 Bar 1 () {'z': 2}
@@ -1345,18 +1402,19 @@ class Foo:
 def baz_f(self, a: int=30, y: int=50) -> None:
     print("Baz", a, y)
 
-# Make an "interpreted" subtype of Foo
-type2: Any = type
-Baz = type2('Baz', (Foo,), {'f': baz_f})
+def test_override() -> None:
+    # Make an "interpreted" subtype of Foo
+    type2: Any = type
+    Baz = type2('Baz', (Foo,), {'f': baz_f})
 
-z: Foo = Baz()
-z.f()
-z.f(y=1)
-z.f(1, 2)
-# Not tested because we don't (and probably won't) match cpython here
-# from testutil import assertRaises
-# with assertRaises(TypeError):
-#     z.f(x=7)
+    z: Foo = Baz()
+    z.f()
+    z.f(y=1)
+    z.f(1, 2)
+    # Not tested because we don't (and probably won't) match cpython here
+    # from testutil import assertRaises
+    # with assertRaises(TypeError):
+    #     z.f(x=7)
 
 [out]
 Baz 30 50
@@ -2539,7 +2597,8 @@ class Base:
 class Derived(Base):
     pass
 
-assert Derived()() == 1
+def test_inherited() -> None:
+    assert Derived()() == 1
 
 [case testClassWithFinalAttribute]
 from typing import Final
@@ -2651,6 +2710,124 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
+[case testBufferRoundTrip_native_libs]
+from native_internal import (
+    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float, write_int, read_int
+)
+
+def test_buffer_basic() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+    write_int(b, 0)
+    write_int(b, 1)
+    write_int(b, 2)
+    write_int(b, 2 ** 85)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+    assert read_int(b) == 0
+    assert read_int(b) == 1
+    assert read_int(b) == 2
+    assert read_int(b) == 2 ** 85
+
+[file driver.py]
+from native import *
+
+test_buffer_basic()
+test_buffer_roundtrip()
+
+def test_buffer_basic_interpreted() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip_interpreted() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+    write_int(b, 0)
+    write_int(b, 1)
+    write_int(b, 2)
+    write_int(b, 2 ** 85)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+    assert read_int(b) == 0
+    assert read_int(b) == 1
+    assert read_int(b) == 2
+    assert read_int(b) == 2 ** 85
+
+test_buffer_basic_interpreted()
+test_buffer_roundtrip_interpreted()
+
+[case testEnumMethodCalls]
+from enum import Enum
+from typing import overload, Optional, Union
+
+class C:
+    def foo(self, x: Test) -> bool:
+        assert Test.ONE.is_one()
+        assert x.next(2) == Test.THREE
+        assert x.prev(2) == Test.ONE
+        assert x.enigma(22)
+        assert x.enigma("22") == 22
+        return x.is_one(inverse=True)
+
+class Test(Enum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+
+    def is_one(self, *, inverse: bool = False) -> bool:
+        if inverse:
+            return self != Test.ONE
+        return self == Test.ONE
+
+    @classmethod
+    def next(cls, val: int) -> Test:
+        return cls(val + 1)
+
+    @staticmethod
+    def prev(val: int) -> Test:
+        return Test(val - 1)
+
+    @overload
+    def enigma(self, val: int) -> bool: ...
+    @overload
+    def enigma(self, val: Optional[str] = None) -> int: ...
+    def enigma(self, val: Union[int, str, None] = None) -> Union[int, bool]:
+        if isinstance(val, int):
+            return self.is_one()
+        return 22
+[file driver.py]
+from native import Test, C
+
+assert Test.ONE.is_one()
+assert Test.TWO.is_one(inverse=True)
+assert not C().foo(Test.ONE)
+assert Test.next(2) == Test.THREE
+assert Test.prev(2) == Test.ONE
+assert Test.ONE.enigma(22)
+assert Test.ONE.enigma("22") == 22
+
 [case testStaticCallsWithUnpackingArgs]
 from typing import Tuple
 
@@ -2749,6 +2926,21 @@ def test_function():
     assert(isinstance(d.fitem, ForwardDefinedClass))
     assert(isinstance(d.fitems, ForwardDefinedClass))
 
+[case testDelForDictSubclass-xfail]
+# The crash in issue mypy#19175 is fixed.
+# But, for classes that derive from built-in Python classes, user-defined __del__ method is not
+# being invoked.
+class DictSubclass(dict):
+    def __del__(self):
+        print("deleting DictSubclass...")
+
+[file driver.py]
+import native
+native.DictSubclass()
+
+[out]
+deleting DictSubclass...
+
 [case testDel]
 class A:
     def __del__(self):
@@ -2768,6 +2960,12 @@ class C(B):
 
 class D(A):
     pass
+
+# Just make sure that this class compiles (see issue mypy#19175). testDelForDictSubclass tests for
+# correct output.
+class NormDict(dict):
+    def __del__(self) -> None:
+        pass
 
 [file driver.py]
 import native
@@ -2829,3 +3027,253 @@ Traceback (most recent call last):
   File "native.py", line 5, in __del__
     raise Exception("e2")
 Exception: e2
+
+[case testMypycAttrNativeClass]
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+@mypyc_attr(native_class=False)
+class AnnontatedNonExtensionClass:
+    pass
+
+class DerivedClass(AnnontatedNonExtensionClass):
+    pass
+
+class ImplicitExtensionClass():
+    pass
+
+@mypyc_attr(native_class=True)
+class AnnotatedExtensionClass():
+    pass
+
+def test_function():
+    setattr(AnnontatedNonExtensionClass, 'attr_class', 5)
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == True)
+    assert(getattr(AnnontatedNonExtensionClass, 'attr_class') == 5)
+    delattr(AnnontatedNonExtensionClass, 'attr_class')
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == False)
+
+    inst = AnnontatedNonExtensionClass()
+    setattr(inst, 'attr_instance', 6)
+    assert(hasattr(inst, 'attr_instance') == True)
+    assert(getattr(inst, 'attr_instance') == 6)
+    delattr(inst, 'attr_instance')
+    assert(hasattr(inst, 'attr_instance') == False)
+
+    setattr(DerivedClass, 'attr_class', 5)
+    assert(hasattr(DerivedClass, 'attr_class') == True)
+    assert(getattr(DerivedClass, 'attr_class') == 5)
+    delattr(DerivedClass, 'attr_class')
+    assert(hasattr(DerivedClass, 'attr_class') == False)
+
+    derived_inst = DerivedClass()
+    setattr(derived_inst, 'attr_instance', 6)
+    assert(hasattr(derived_inst, 'attr_instance') == True)
+    assert(getattr(derived_inst, 'attr_instance') == 6)
+    delattr(derived_inst, 'attr_instance')
+    assert(hasattr(derived_inst, 'attr_instance') == False)
+
+    ext_inst = ImplicitExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(ext_inst, 'attr_instance', 6)
+
+    explicit_ext_inst = AnnotatedExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(explicit_ext_inst, 'attr_instance', 6)
+
+[case testMypycAttrNativeClassDunder]
+from mypy_extensions import mypyc_attr
+from typing import Generic, Optional, TypeVar
+
+_T = TypeVar("_T")
+
+get_count = set_count = del_count = 0
+
+@mypyc_attr(native_class=False)
+class Bar(Generic[_T]):
+    # Note the lack of __deletable__
+    def __init__(self) -> None:
+        self.value: str = 'start'
+    def __get__(self, instance: _T, owner: Optional[type[_T]] = None) -> str:
+        global get_count
+        get_count += 1
+        return self.value
+    def __set__(self, instance: _T, value: str) -> None:
+        global set_count
+        set_count += 1
+        self.value = value
+    def __delete__(self, instance: _T) -> None:
+        global del_count
+        del_count += 1
+        del self.value
+
+@mypyc_attr(native_class=False)
+class Foo(object):
+    bar: Bar = Bar()
+
+[file driver.py]
+import native
+
+f = native.Foo()
+assert(hasattr(f, 'bar'))
+assert(native.get_count == 1)
+assert(f.bar == 'start')
+assert(native.get_count == 2)
+f.bar = 'test'
+assert(f.bar == 'test')
+assert(native.set_count == 1)
+del f.bar
+assert(not hasattr(f, 'bar'))
+assert(native.del_count == 1)
+
+[case testMypycAttrNativeClassMeta]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar, TypeVar
+
+_T = TypeVar("_T")
+
+@mypyc_attr(native_class=False)
+class M(type):
+    count: ClassVar[int] = 0
+    def make(cls: type[_T]) -> _T:
+        M.count += 1
+        return cls()
+
+# implicit native_class=False
+# see testMypycAttrNativeClassMetaError for when trying to set it True
+class A(metaclass=M):
+    pass
+
+[file driver.py]
+import native
+
+a: native.A = native.A.make()
+assert(native.A.count == 1)
+
+class B(native.A):
+    pass
+
+b: B = B.make()
+assert(B.count == 2)
+
+[case testTypeVarNarrowing]
+from typing import TypeVar
+
+class B:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class C(B):
+    def __init__(self, x: int, y: str) -> None:
+        self.x = x
+        self.y = y
+
+T = TypeVar("T", bound=B)
+def f(x: T) -> T:
+    if isinstance(x, C):
+        print("C", x.y)
+        return x
+    print("B", x.x)
+    return x
+
+[file driver.py]
+from native import f, B, C
+
+f(B(1))
+f(C(1, "yes"))
+[out]
+B 1
+C yes
+
+[case testTypeObjectName]
+from typing import Any
+import re
+
+from dynamic import E, foo, Thing
+
+class C: pass
+class D(C): pass
+
+def type_name(t: type[object]) -> str:
+    return t.__name__
+
+def any_name(x: Any) -> str:
+    return x.__name__
+
+def assert_type_name(x: Any) -> None:
+    assert type_name(x) == getattr(x, "__name__")
+    assert any_name(x) == getattr(x, "__name__")
+
+def assert_any_name(x: Any) -> None:
+    assert any_name(x) == getattr(x, "__name__")
+
+def test_type_name() -> None:
+    assert_type_name(C)
+    assert_type_name(D)
+    assert_type_name(int)
+    assert_type_name(E)
+    assert_type_name(re.Pattern)
+
+def test_module_name() -> None:
+    assert_any_name(re)
+
+def test_function_name() -> None:
+    assert_any_name(any_name)
+    assert_any_name(foo)
+
+def test_obj_name() -> None:
+    assert_any_name(Thing())
+
+[file dynamic.py]
+class E: pass
+
+def foo(): pass
+
+class Thing:
+    def __init__(self):
+        self.__name__ = "xyz"
+
+[case testTypeOfObject]
+from typing import Any
+
+from dynamic import Dyn
+
+class Foo: pass
+class Bar(Foo): pass
+
+def generic_type(x) -> type[object]:
+    return x.__class__
+
+def test_built_in_type() -> None:
+    i: Any = int
+    l: Any = list
+    assert type(i()) is i().__class__
+    assert type(i()) is int
+    assert type(l()) is list
+    n = 5
+    assert n.__class__ is i
+
+def test_native_class() -> None:
+    f_any: Any = Foo()
+    b_any: Any = Bar()
+    f: Foo = f_any
+    b: Foo = b_any
+    if int("1"):  # use int("1") to avoid constant folding
+        assert type(f) is Foo
+        assert type(b) is Bar
+    if int("2"):
+        assert f.__class__ is Foo
+        assert b.__class__ is Bar
+    if int("3"):
+        assert f_any.__class__ is Foo
+        assert b_any.__class__ is Bar
+    if int("4"):
+        assert type(f_any) is Foo
+        assert type(b_any) is Bar
+
+def test_python_class() -> None:
+    d = Dyn()
+    assert type(d) is Dyn
+    assert d.__class__ is Dyn
+
+[file dynamic.py]
+class Dyn: pass

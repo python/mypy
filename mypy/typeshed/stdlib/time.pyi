@@ -1,6 +1,6 @@
 import sys
 from _typeshed import structseq
-from typing import Any, Final, Literal, Protocol, final
+from typing import Any, Final, Literal, Protocol, final, type_check_only
 from typing_extensions import TypeAlias
 
 _TimeTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int]
@@ -31,7 +31,7 @@ if sys.platform == "darwin":
         CLOCK_UPTIME_RAW_APPROX: int
         CLOCK_MONOTONIC_RAW_APPROX: int
 
-if sys.version_info >= (3, 9) and sys.platform == "linux":
+if sys.platform == "linux":
     CLOCK_TAI: int
 
 # Constructor takes an iterable of any type, of length between 9 and 11 elements.
@@ -80,6 +80,7 @@ def time() -> float: ...
 if sys.platform != "win32":
     def tzset() -> None: ...  # Unix only
 
+@type_check_only
 class _ClockInfo(Protocol):
     adjustable: bool
     implementation: str

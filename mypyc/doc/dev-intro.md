@@ -386,6 +386,25 @@ Test cases can also have a `[out]` section, which specifies the
 expected contents of stdout the test case should produce. New test
 cases should prefer assert statements to `[out]` sections.
 
+### Adding Debug Prints and Editing Generated C
+
+Sometimes it's helpful to add some debug prints or other debugging helpers
+to the generated C code. You can run mypyc using `--skip-c-gen` to skip the C
+generation step, so all manual changes to C files are preserved. Here is
+an example of how to use the workflow:
+
+* Compile some file you want to debug: `python -m mypyc foo.py`.
+* Add debug prints to the generated C in `build/__native.c`.
+* Run the same compilation command line again, but add `--skip-c-gen`:
+  `python -m mypyc --skip-c-gen foo.py`. This will only rebuild the
+  binaries.
+* Run the compiled code, including your changes: `python -c 'import foo'`.
+  You should now see the output from the debug prints you added.
+
+This can also be helpful if you want to quickly experiment with different
+implementation techniques, without having to first figure out how to
+modify mypyc to generate the desired C code.
+
 ### Debugging Segfaults
 
 If you experience a segfault, it's recommended to use a debugger that supports

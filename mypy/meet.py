@@ -50,6 +50,7 @@ from mypy.types import (
     find_unpack_in_list,
     get_proper_type,
     get_proper_types,
+    has_type_vars,
     is_named_instance,
     split_with_prefix_and_suffix,
 )
@@ -115,8 +116,11 @@ def meet_types(s: Type, t: Type) -> ProperType:
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
     # TODO: check infinite recursion for aliases here.
-    if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
-        # A type guard forces the new type even if it doesn't overlap the old.
+    if isinstance(narrowed, TypeGuardedType):
+        # A type guard forces the new type even if it doesn't overlap the old...
+        if is_proper_subtype(declared, narrowed.type_guard, ignore_promotions=True):
+            # ...unless it is a proper supertype of declared type.
+            return declared
         return narrowed.type_guard
 
     original_declared = declared
@@ -127,23 +131,46 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if declared == narrowed:
         return original_declared
     if isinstance(declared, UnionType):
+        declared_items = declared.relevant_items()
+        if isinstance(narrowed, UnionType):
+            narrowed_items = narrowed.relevant_items()
+        else:
+            narrowed_items = [narrowed]
         return make_simplified_union(
             [
-                narrow_declared_type(x, narrowed)
-                for x in declared.relevant_items()
+                narrow_declared_type(d, n)
+                for d in declared_items
+                for n in narrowed_items
                 # This (ugly) special-casing is needed to support checking
                 # branches like this:
                 # x: Union[float, complex]
                 # if isinstance(x, int):
                 #     ...
+                # And assignments like this:
+                # x: float | None
+                # y: int | None
+                # x = y
                 if (
-                    is_overlapping_types(x, narrowed, ignore_promotions=True)
-                    or is_subtype(narrowed, x, ignore_promotions=False)
+                    is_overlapping_types(d, n, ignore_promotions=True)
+                    or is_subtype(n, d, ignore_promotions=False)
                 )
             ]
         )
     if is_enum_overlapping_union(declared, narrowed):
-        return original_narrowed
+        # Quick check before reaching `is_overlapping_types`. If it's enum/literal overlap,
+        # avoid full expansion and make it faster.
+        assert isinstance(narrowed, UnionType)
+        return make_simplified_union(
+            [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
+        )
+    elif (
+        isinstance(declared, TypeVarType)
+        and not has_type_vars(original_narrowed)
+        and is_subtype(original_narrowed, declared.upper_bound)
+    ):
+        # We put this branch early to get T(bound=Union[A, B]) instead of
+        # Union[T(bound=A), T(bound=B)] that will be confusing for users.
+        return declared.copy_modified(upper_bound=original_narrowed)
     elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
         if state.strict_optional:
             return UninhabitedType()
@@ -267,6 +294,18 @@ def is_object(t: ProperType) -> bool:
     return isinstance(t, Instance) and t.type.fullname == "builtins.object"
 
 
+def is_none_typevarlike_overlap(t1: ProperType, t2: ProperType) -> bool:
+    return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
+
+
+def is_none_object_overlap(t1: ProperType, t2: ProperType) -> bool:
+    return (
+        isinstance(t1, NoneType)
+        and isinstance(t2, Instance)
+        and t2.type.fullname == "builtins.object"
+    )
+
+
 def is_overlapping_types(
     left: Type,
     right: Type,
@@ -284,9 +323,7 @@ def is_overlapping_types(
     positives), for example: None only overlaps with explicitly optional types, Any
     doesn't overlap with anything except object, we don't ignore positional argument names.
     """
-    if isinstance(left, TypeGuardedType) or isinstance(  # type: ignore[misc]
-        right, TypeGuardedType
-    ):
+    if isinstance(left, TypeGuardedType) or isinstance(right, TypeGuardedType):
         # A type guard forces the new type even if it doesn't overlap the old.
         return True
 
@@ -358,14 +395,6 @@ def is_overlapping_types(
     ):
         return True
 
-    def is_none_object_overlap(t1: Type, t2: Type) -> bool:
-        t1, t2 = get_proper_types((t1, t2))
-        return (
-            isinstance(t1, NoneType)
-            and isinstance(t2, Instance)
-            and t2.type.fullname == "builtins.object"
-        )
-
     if overlap_for_overloads:
         if is_none_object_overlap(left, right) or is_none_object_overlap(right, left):
             return False
@@ -394,10 +423,6 @@ def is_overlapping_types(
     #
     # If both types are singleton variants (and are not TypeVarLikes), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
-
-    def is_none_typevarlike_overlap(t1: Type, t2: Type) -> bool:
-        t1, t2 = get_proper_types((t1, t2))
-        return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
 
     if prohibit_none_typevar_overlap:
         if is_none_typevarlike_overlap(left, right) or is_none_typevarlike_overlap(right, left):
@@ -772,7 +797,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
-            return self.s
+            if self.s.upper_bound == t.upper_bound:
+                return self.s
+            return self.s.copy_modified(upper_bound=self.meet(self.s.upper_bound, t.upper_bound))
         else:
             return self.default(self.s)
 

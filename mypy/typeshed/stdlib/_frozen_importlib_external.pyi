@@ -36,10 +36,14 @@ def spec_from_file_location(
     loader: LoaderProtocol | None = None,
     submodule_search_locations: list[str] | None = ...,
 ) -> importlib.machinery.ModuleSpec | None: ...
-
+@deprecated(
+    "Deprecated as of Python 3.6: Use site configuration instead. "
+    "Future versions of Python may not enable this finder by default."
+)
 class WindowsRegistryFinder(importlib.abc.MetaPathFinder):
     if sys.version_info < (3, 12):
         @classmethod
+        @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `find_spec()` instead.")
         def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
 
     @classmethod
@@ -67,6 +71,7 @@ class PathFinder(importlib.abc.MetaPathFinder):
     ) -> ModuleSpec | None: ...
     if sys.version_info < (3, 12):
         @classmethod
+        @deprecated("Deprecated since Python 3.4; removed in Python 3.12. Use `find_spec()` instead.")
         def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
 
 SOURCE_SUFFIXES: list[str]
@@ -118,6 +123,13 @@ class FileLoader:
 class SourceFileLoader(importlib.abc.FileLoader, FileLoader, importlib.abc.SourceLoader, SourceLoader):  # type: ignore[misc]  # incompatible method arguments in base classes
     def set_data(self, path: str, data: ReadableBuffer, *, _mode: int = 0o666) -> None: ...
     def path_stats(self, path: str) -> Mapping[str, Any]: ...
+    def source_to_code(  # type: ignore[override]  # incompatible with InspectLoader.source_to_code
+        self,
+        data: ReadableBuffer | str | _ast.Module | _ast.Expression | _ast.Interactive,
+        path: ReadableBuffer | StrPath,
+        *,
+        _optimize: int = -1,
+    ) -> types.CodeType: ...
 
 class SourcelessFileLoader(importlib.abc.FileLoader, FileLoader, _LoaderBasics):
     def get_code(self, fullname: str) -> types.CodeType | None: ...
@@ -148,7 +160,10 @@ if sys.version_info >= (3, 11):
         def get_resource_reader(self, module: types.ModuleType) -> importlib.readers.NamespaceReader: ...
         if sys.version_info < (3, 12):
             @staticmethod
-            @deprecated("module_repr() is deprecated, and has been removed in Python 3.12")
+            @deprecated(
+                "Deprecated since Python 3.4; removed in Python 3.12. "
+                "The module spec is now used by the import machinery to generate a module repr."
+            )
             def module_repr(module: types.ModuleType) -> str: ...
 
     _NamespaceLoader = NamespaceLoader
@@ -166,12 +181,18 @@ else:
         def load_module(self, fullname: str) -> types.ModuleType: ...
         if sys.version_info >= (3, 10):
             @staticmethod
-            @deprecated("module_repr() is deprecated, and has been removed in Python 3.12")
+            @deprecated(
+                "Deprecated since Python 3.4; removed in Python 3.12. "
+                "The module spec is now used by the import machinery to generate a module repr."
+            )
             def module_repr(module: types.ModuleType) -> str: ...
             def get_resource_reader(self, module: types.ModuleType) -> importlib.readers.NamespaceReader: ...
         else:
             @classmethod
-            @deprecated("module_repr() is deprecated, and has been removed in Python 3.12")
+            @deprecated(
+                "Deprecated since Python 3.4; removed in Python 3.12. "
+                "The module spec is now used by the import machinery to generate a module repr."
+            )
             def module_repr(cls, module: types.ModuleType) -> str: ...
 
 if sys.version_info >= (3, 13):

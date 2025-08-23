@@ -60,11 +60,13 @@ from sqlite3.dbapi2 import (
     sqlite_version as sqlite_version,
     sqlite_version_info as sqlite_version_info,
     threadsafety as threadsafety,
-    version_info as version_info,
 )
 from types import TracebackType
 from typing import Any, Literal, Protocol, SupportsIndex, TypeVar, final, overload, type_check_only
 from typing_extensions import Self, TypeAlias
+
+if sys.version_info < (3, 14):
+    from sqlite3.dbapi2 import version_info as version_info
 
 if sys.version_info >= (3, 12):
     from sqlite3.dbapi2 import (
@@ -218,23 +220,29 @@ _SqliteData: TypeAlias = str | ReadableBuffer | int | float | None
 _AdaptedInputData: TypeAlias = _SqliteData | Any
 # The Mapping must really be a dict, but making it invariant is too annoying.
 _Parameters: TypeAlias = SupportsLenAndGetItem[_AdaptedInputData] | Mapping[str, _AdaptedInputData]
+# Controls the legacy transaction handling mode of sqlite3.
+_IsolationLevel: TypeAlias = Literal["DEFERRED", "EXCLUSIVE", "IMMEDIATE"] | None
 
+@type_check_only
 class _AnyParamWindowAggregateClass(Protocol):
     def step(self, *args: Any) -> object: ...
     def inverse(self, *args: Any) -> object: ...
     def value(self) -> _SqliteData: ...
     def finalize(self) -> _SqliteData: ...
 
+@type_check_only
 class _WindowAggregateClass(Protocol):
     step: Callable[..., object]
     inverse: Callable[..., object]
     def value(self) -> _SqliteData: ...
     def finalize(self) -> _SqliteData: ...
 
+@type_check_only
 class _AggregateProtocol(Protocol):
     def step(self, value: int, /) -> object: ...
     def finalize(self) -> int: ...
 
+@type_check_only
 class _SingleParamWindowAggregateClass(Protocol):
     def step(self, param: Any, /) -> object: ...
     def inverse(self, param: Any, /) -> object: ...
@@ -283,7 +291,7 @@ class Connection:
     def Warning(self) -> type[Warning]: ...
     @property
     def in_transaction(self) -> bool: ...
-    isolation_level: str | None  # one of '', 'DEFERRED', 'IMMEDIATE' or 'EXCLUSIVE'
+    isolation_level: _IsolationLevel
     @property
     def total_changes(self) -> int: ...
     if sys.version_info >= (3, 12):
@@ -297,26 +305,26 @@ class Connection:
         def __init__(
             self,
             database: StrOrBytesPath,
-            timeout: float = ...,
-            detect_types: int = ...,
-            isolation_level: str | None = ...,
-            check_same_thread: bool = ...,
+            timeout: float = 5.0,
+            detect_types: int = 0,
+            isolation_level: _IsolationLevel = "DEFERRED",
+            check_same_thread: bool = True,
             factory: type[Connection] | None = ...,
-            cached_statements: int = ...,
-            uri: bool = ...,
+            cached_statements: int = 128,
+            uri: bool = False,
             autocommit: bool = ...,
         ) -> None: ...
     else:
         def __init__(
             self,
             database: StrOrBytesPath,
-            timeout: float = ...,
-            detect_types: int = ...,
-            isolation_level: str | None = ...,
-            check_same_thread: bool = ...,
+            timeout: float = 5.0,
+            detect_types: int = 0,
+            isolation_level: _IsolationLevel = "DEFERRED",
+            check_same_thread: bool = True,
             factory: type[Connection] | None = ...,
-            cached_statements: int = ...,
-            uri: bool = ...,
+            cached_statements: int = 128,
+            uri: bool = False,
         ) -> None: ...
 
     def close(self) -> None: ...
