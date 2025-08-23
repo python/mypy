@@ -958,12 +958,13 @@ class Signature(Generic[T]):
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None
             args = maybe_strip_cls(stub.name, func.arguments)
-            for arg in args:
+            for index, arg in enumerate(args):
                 if (
                     arg.variable.name.startswith("__")
                     or arg.pos_only
                     or assume_positional_only
                     or arg.variable.name.strip("_") == "self"
+                    or (index == 0 and arg.variable.name.strip("_") == "cls")
                 ):
                     is_arg_pos_only[arg.variable.name].add(True)
                 else:
