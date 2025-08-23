@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_native_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
     is_optional_type,
@@ -704,7 +705,7 @@ class Emitter:
             self.emit_lines(f"    {dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
-        elif is_object_rprimitive(typ):
+        elif is_object_rprimitive(typ) or is_native_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f"PyObject *{dest};")
             self.emit_arg_check(src, dest, typ, "", optional)

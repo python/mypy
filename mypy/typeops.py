@@ -63,6 +63,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    remove_dups,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
@@ -520,15 +521,16 @@ def callable_corresponding_argument(
 
         # def right(a: int = ...) -> None: ...
         # def left(__a: int = ..., *, a: int = ...) -> None: ...
-        from mypy.subtypes import is_equivalent
+        from mypy.meet import meet_types
 
         if (
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
-            and is_equivalent(by_name.typ, by_pos.typ)
         ):
-            return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
+            return FormalArgument(
+                by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
+            )
     return by_name if by_name is not None else by_pos
 
 
@@ -995,7 +997,7 @@ def is_singleton_type(typ: Type) -> bool:
     return typ.is_singleton_type()
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1017,21 +1019,22 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
+        # Non-empty enums cannot subclass each other so simply removing duplicates is enough.
         items = [
-            try_expanding_sum_type_to_union(item, target_fullname) for item in typ.relevant_items()
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in remove_dups(flatten_nested_unions(typ.relevant_items()))
         ]
-        return make_simplified_union(items, contract_literals=False)
+        return UnionType.make_union(items)
 
     if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.fullname == "builtins.bool":
-            items = [LiteralType(True, typ), LiteralType(False, typ)]
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
         if typ.type.is_enum:
             items = [LiteralType(name, typ) for name in typ.type.enum_members]
             if not items:
                 return typ
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType.make_union(items)
 
     return typ
 
@@ -1250,3 +1253,54 @@ def get_protocol_member(
             )
         )
     return subtype
+
+
+def _is_disjoint_base(info: TypeInfo) -> bool:
+    # It either has the @disjoint_base decorator or defines nonempty __slots__.
+    if info.is_disjoint_base:
+        return True
+    if not info.slots:
+        return False
+    own_slots = {
+        slot
+        for slot in info.slots
+        if not any(
+            base_info.type.slots is not None and slot in base_info.type.slots
+            for base_info in info.bases
+        )
+    }
+    return bool(own_slots)
+
+
+def _get_disjoint_base_of(instance: Instance) -> TypeInfo | None:
+    """Returns the disjoint base of the given instance, if it exists."""
+    if _is_disjoint_base(instance.type):
+        return instance.type
+    for base in instance.type.mro:
+        if _is_disjoint_base(base):
+            return base
+    return None
+
+
+def can_have_shared_disjoint_base(instances: list[Instance]) -> bool:
+    """Returns whether the given instances can share a disjoint base.
+
+    This means that a child class of these classes can exist at runtime.
+    """
+    # Ignore None disjoint bases (which are `object`).
+    disjoint_bases = [
+        base for instance in instances if (base := _get_disjoint_base_of(instance)) is not None
+    ]
+    if not disjoint_bases:
+        # All are `object`.
+        return True
+
+    candidate = disjoint_bases[0]
+    for base in disjoint_bases[1:]:
+        if candidate.has_base(base.fullname):
+            continue
+        elif base.has_base(candidate.fullname):
+            candidate = base
+        else:
+            return False
+    return True

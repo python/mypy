@@ -8,6 +8,7 @@ from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import (
+    GENERATOR_ATTRIBUTE_PREFIX,
     HAVE_IMMORTAL,
     MODULE_PREFIX,
     NATIVE_PREFIX,
@@ -436,7 +437,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     exc_class = "PyExc_AttributeError"
                     self.emitter.emit_line(
                         'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                            exc_class, repr(op.attr), repr(cl.name)
+                            exc_class,
+                            repr(op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)),
+                            repr(cl.name),
                         )
                     )
 
@@ -938,7 +941,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.source_path.replace("\\", "\\\\"),
                 op.traceback_entry[0],
                 class_name,
-                attr,
+                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
                 op.traceback_entry[1],
                 globals_static,
             )
