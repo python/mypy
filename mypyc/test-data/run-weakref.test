@@ -1,13 +1,17 @@
 # Test cases for weakrefs (compile and run)
 
 [case testWeakrefRef]
-from weakref import ref
+from weakref import proxy, ref
 from mypy_extensions import mypyc_attr
+from testutil import assertRaises
 
 @mypyc_attr(native_class=False)
 class Object:
     """some random weakreffable object"""
-    pass
+    def some_meth(self) -> int:
+        return 1
+
+_callback_called_cache = {"ref": False, "proxy": False}
 
 def test_weakref_ref():
     obj = Object()
@@ -18,13 +22,31 @@ def test_weakref_ref():
 
 def test_weakref_ref_with_callback():
     obj = Object()
-    r = ref(obj, lambda x: x)
+    r = ref(obj, lambda x: _callback_called_cache.__setitem__("ref", True))
     assert r() is obj
     obj = None
     assert r() is None, r()
+    assert _callback_called_cache["ref"] is True
 
-[file driver.py]
-from native import test_weakref_ref, test_weakref_ref_with_callback
+def test_weakref_proxy():
+    obj = Object()
+    p = proxy(obj)
+    assert obj.some_meth() == 1
+    assert p.some_meth() == 1
+    obj.some_meth()
+    obj = None
+    with assertRaises(ReferenceError):
+        p.some_meth()
 
-test_weakref_ref()
-test_weakref_ref_with_callback()
+def test_weakref_proxy_with_callback():
+    obj = Object()
+    p = proxy(obj, lambda x: _callback_called_cache.__setitem__("proxy", True))
+    assert obj.some_meth() == 1
+    assert p.some_meth() == 1
+    obj.some_meth()
+    obj = None
+    with assertRaises(ReferenceError):
+        p.some_meth()
+    assert _callback_called_cache["proxy"] is True
+
+[builtins fixtures/test-weakref.pyi]
