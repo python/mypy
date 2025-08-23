@@ -239,6 +239,9 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
 )
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
+# Disjoint bases
+INCOMPATIBLE_DISJOINT_BASES: Final = ErrorMessage('Class "{}" has incompatible disjoint bases')
+
 # Enum
 ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN: Final = ErrorMessage(
     'Assigned "__members__" will be overridden by "Enum" internally'

@@ -582,7 +582,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     and not node.node.no_args
                     and not (
                         isinstance(union_target := get_proper_type(node.node.target), UnionType)
-                        and union_target.uses_pep604_syntax
+                        and (
+                            union_target.uses_pep604_syntax
+                            or self.chk.options.python_version >= (3, 10)
+                        )
                     )
                 ):
                     self.msg.type_arguments_not_allowed(e)
@@ -2722,6 +2725,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         #         for example, when we have a fallback alternative that accepts an unrestricted
         #         typevar. See https://github.com/python/mypy/issues/4063 for related discussion.
         erased_targets: list[CallableType] | None = None
+        inferred_types: list[Type] | None = None
         unioned_result: tuple[Type, Type] | None = None
 
         # Determine whether we need to encourage union math. This should be generally safe,
@@ -2749,13 +2753,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # Record if we succeeded. Next we need to see if maybe normal procedure
                 # gives a narrower type.
                 if unioned_return:
-                    returns, inferred_types = zip(*unioned_return)
+                    returns = [u[0] for u in unioned_return]
+                    inferred_types = [u[1] for u in unioned_return]
                     # Note that we use `combine_function_signatures` instead of just returning
                     # a union of inferred callables because for example a call
                     # Union[int -> int, str -> str](Union[int, str]) is invalid and
                     # we don't want to introduce internal inconsistencies.
                     unioned_result = (
-                        make_simplified_union(list(returns), context.line, context.column),
+                        make_simplified_union(returns, context.line, context.column),
                         self.combine_function_signatures(get_proper_types(inferred_types)),
                     )
 
@@ -2770,7 +2775,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             object_type,
             context,
         )
-        # If any of checks succeed, stop early.
+        # If any of checks succeed, perform deprecation tests and stop early.
         if inferred_result is not None and unioned_result is not None:
             # Both unioned and direct checks succeeded, choose the more precise type.
             if (
@@ -2778,11 +2783,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 and not isinstance(get_proper_type(inferred_result[0]), AnyType)
                 and not none_type_var_overlap
             ):
-                return inferred_result
+                unioned_result = None
+            else:
+                inferred_result = None
+        if unioned_result is not None:
+            if inferred_types is not None:
+                for inferred_type in inferred_types:
+                    if isinstance(c := get_proper_type(inferred_type), CallableType):
+                        self.chk.warn_deprecated(c.definition, context)
             return unioned_result
-        elif unioned_result is not None:
-            return unioned_result
-        elif inferred_result is not None:
+        if inferred_result is not None:
+            if isinstance(c := get_proper_type(inferred_result[1]), CallableType):
+                self.chk.warn_deprecated(c.definition, context)
             return inferred_result
 
         # Step 4: Failure. At this point, we know there is no match. We fall back to trying
@@ -2936,8 +2948,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
                     self.chk.store_types(m)
-                    if isinstance(infer_type, ProperType) and isinstance(infer_type, CallableType):
-                        self.chk.warn_deprecated(infer_type.definition, context)
                     return ret_type, infer_type
                 p_infer_type = get_proper_type(infer_type)
                 if isinstance(p_infer_type, CallableType):
@@ -2974,11 +2984,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
-            inferred_callable = inferred_types[0]
-            if isinstance(inferred_callable, ProperType) and isinstance(
-                inferred_callable, CallableType
-            ):
-                self.chk.warn_deprecated(inferred_callable.definition, context)
             return return_types[0], inferred_types[0]
 
     def overload_erased_call_targets(
