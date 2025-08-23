@@ -82,8 +82,12 @@ class IRTransform(OpVisitor[Optional[Value]]):
         """
         block_map: dict[BasicBlock, BasicBlock] = {}
         op_map = self.op_map
-        empties = set()
+
+        # First, build all new blocks and ops, and track which old blocks were empty
+        originally_empty = set()
         for block in blocks:
+            if is_empty_block(block):
+                originally_empty.add(block)
             new_block = BasicBlock()
             block_map[block] = new_block
             self.builder.activate_block(new_block)
@@ -92,10 +96,22 @@ class IRTransform(OpVisitor[Optional[Value]]):
                 new_op = op.accept(self)
                 if new_op is not op:
                     op_map[op] = new_op
-            # A transform can produce empty blocks which can be removed.
-            if is_empty_block(new_block) and not is_empty_block(block):
+
+        # Now, after all blocks are built, collect branch targets
+        branch_targets = set()
+        for block in block_map.values():
+            for op in block.ops:
+                if isinstance(op, Branch):
+                    #raise ValueError(op.targets())
+                    branch_targets.update(op.targets())
+
+        # Remove blocks that became empty (only Unreachable), are not branch targets, and were not empty before
+        empties = set()
+        for old_block, new_block in block_map.items():
+            if is_empty_block(new_block) and old_block not in originally_empty and old_block not in branch_targets and new_block not in branch_targets:
                 empties.add(new_block)
         self.builder.blocks = [block for block in self.builder.blocks if block not in empties]
+
         # Update all op/block references to point to the transformed ones.
         patcher = PatchVisitor(op_map, block_map)
         for block in self.builder.blocks:
