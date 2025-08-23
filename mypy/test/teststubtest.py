@@ -2828,7 +2828,10 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = result.files["__main__"].names["myfunction"].node
         assert isinstance(stub, nodes.OverloadedFuncDef)
         sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
-        assert str(sig) == "def (arg: Union[builtins.int, builtins.str])"
+        if sys.version_info >= (3, 10):
+            assert str(sig) == "def (arg: builtins.int | builtins.str)"
+        else:
+            assert str(sig) == "def (arg: Union[builtins.int, builtins.str])"
 
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"
