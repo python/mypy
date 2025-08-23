@@ -152,14 +152,12 @@ def cleanup_cfg(blocks: list[BasicBlock]) -> None:
         cfg = get_cfg(blocks)
         orig_blocks = blocks.copy()
         blocks.clear()
-        
+
         for i, block in enumerate(orig_blocks):
             # Keep the block if it's the entry block or has any predecessors
             # OR if it is a branch target (i.e., appears in any terminator.targets())
             is_branch_target = any(
-                block is tgt
-                for b in orig_blocks
-                for tgt in b.terminator.targets()
+                block is tgt for b in orig_blocks for tgt in b.terminator.targets()
             )
             if i == 0 or cfg.pred[block] or is_branch_target:
                 blocks.append(block)
