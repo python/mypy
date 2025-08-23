@@ -2663,8 +2663,9 @@ assert annotations
     def test_type_default_protocol(self) -> Iterator[Case]:
         yield Case(
             stub="""
-            from typing import Protocol
+            from typing import Protocol, type_check_only
 
+            @type_check_only
             class _FormatterClass(Protocol):
                 def __call__(self, *, prog: str) -> HelpFormatter: ...
 
