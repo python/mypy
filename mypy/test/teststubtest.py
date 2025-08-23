@@ -13,7 +13,11 @@ from collections.abc import Iterator
 from typing import Any, Callable
 
 import mypy.stubtest
+from mypy import build, nodes
+from mypy.modulefinder import BuildSource
+from mypy.options import Options
 from mypy.stubtest import parse_options, test_stubs
+from mypy.test.config import test_temp_dir
 from mypy.test.data import root_dir
 
 
@@ -156,6 +160,14 @@ class Flag(Enum):
         __rand__ = __and__
         __rxor__ = __xor__
 """
+
+
+def build_helper(source: str) -> build.BuildResult:
+    return build.build(
+        sources=[BuildSource("main.pyi", None, textwrap.dedent(source))],
+        options=Options(),
+        alt_lib_path=test_temp_dir,
+    )
 
 
 def run_stubtest_with_stderr(
@@ -839,6 +851,18 @@ class StubtestUnit(unittest.TestCase):
             class Bar:
                 def f1(self, *a) -> int: ...
                 def f2(self, *a) -> int: ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f(a: int) -> int: ...
+            @overload
+            def f(a: int, b: str, /) -> str: ...
+            """,
+            runtime="""
+            def f(a, *args): ...
             """,
             error=None,
         )
@@ -2814,6 +2838,25 @@ class StubtestMiscUnit(unittest.TestCase):
             str(mypy.stubtest.Signature.from_inspect_signature(sig))
             == "def (self, sep = ..., bytes_per_sep = ...)"
         )
+
+    def test_overload_signature(self) -> None:
+        # The same argument as both positional-only and pos-or-kw in
+        # different overloads previously produced incorrect signatures
+        source = """
+        from typing import overload
+        @overload
+        def myfunction(arg: int) -> None: ...
+        @overload
+        def myfunction(arg: str, /) -> None: ...
+        """
+        result = build_helper(source)
+        stub = result.files["__main__"].names["myfunction"].node
+        assert isinstance(stub, nodes.OverloadedFuncDef)
+        sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
+        if sys.version_info >= (3, 10):
+            assert str(sig) == "def (arg: builtins.int | builtins.str)"
+        else:
+            assert str(sig) == "def (arg: Union[builtins.int, builtins.str])"
 
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"
