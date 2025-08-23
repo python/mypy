@@ -504,6 +504,9 @@ def load_plugins(
     """
     custom_plugins, snapshot = load_plugins_from_config(options, errors, stdout)
 
+    if options._on_plugins_loaded is not None:
+        options._on_plugins_loaded()
+
     custom_plugins += extra_plugins
 
     default_plugin: Plugin = DefaultPlugin(options)

@@ -1456,8 +1456,15 @@ def process_options(
     validate_package_allow_list(options.untyped_calls_exclude)
     validate_package_allow_list(options.deprecated_calls_exclude)
 
-    options.process_error_codes(error_callback=parser.error)
     options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
+
+    def on_plugins_loaded() -> None:
+        # Processing error codes after plugins have loaded since plugins may
+        # register custom error codes that we don't know about until plugins
+        # have loaded.
+        options.process_error_codes(error_callback=parser.error)
+
+    options._on_plugins_loaded = on_plugins_loaded
 
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:
