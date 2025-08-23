@@ -188,6 +188,13 @@ else:
     ast_TypeVar = Any
     ast_TypeVarTuple = Any
 
+if sys.version_info >= (3, 14):
+    ast_TemplateStr = ast3.TemplateStr
+    ast_Interpolation = ast3.Interpolation
+else:
+    ast_TemplateStr = Any
+    ast_Interpolation = Any
+
 N = TypeVar("N", bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
@@ -1705,6 +1712,21 @@ class ASTConverter:
         )
         return self.set_line(result_expression, n)
 
+    # TemplateStr(expr* values)
+    def visit_TemplateStr(self, n: ast_TemplateStr) -> Expression:
+        self.fail(
+            ErrorMessage("PEP 750 template strings are not yet supported"),
+            n.lineno,
+            n.col_offset,
+            blocker=False,
+        )
+        e = TempNode(AnyType(TypeOfAny.from_error))
+        return self.set_line(e, n)
+
+    # Interpolation(expr value, constant str, int conversion, expr? format_spec)
+    def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
+        assert False, "Unreachable"
+
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:
         value = n.value
@@ -2234,7 +2256,7 @@ class FindAttributeAssign(TraverserVisitor):
         pass
 
     def visit_member_expr(self, e: MemberExpr) -> None:
-        if self.lvalue:
+        if self.lvalue and isinstance(e.expr, NameExpr):
             self.found = True
 
 

@@ -2750,7 +2750,6 @@ reveal_type(func(1))  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testGenericLambdaGenericMethodNoCrash]
-# flags: --new-type-inference
 from typing import TypeVar, Union, Callable, Generic
 
 S = TypeVar("S")
@@ -2789,7 +2788,6 @@ reveal_type(dict2)  # N: Revealed type is "builtins.dict[Any, __main__.B]"
 -- ------------------------------------------------------------------
 
 [case testInferenceAgainstGenericCallable]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 X = TypeVar('X')
@@ -2807,7 +2805,6 @@ reveal_type(bar(id))  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableNoLeak]
-# flags: --new-type-inference
 from typing import TypeVar, Callable
 
 T = TypeVar('T')
@@ -2823,7 +2820,6 @@ reveal_type(f(tpl))  # N: Revealed type is "Any"
 [out]
 
 [case testInferenceAgainstGenericCallableChain]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 X = TypeVar('X')
@@ -2836,7 +2832,6 @@ reveal_type(chain(id, id))  # N: Revealed type is "def (builtins.int) -> builtin
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGeneric]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2857,7 +2852,6 @@ reveal_type(same(42))  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericReverse]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2878,7 +2872,6 @@ reveal_type(same([42]))  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericArg]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2899,7 +2892,6 @@ reveal_type(single(42))  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericChain]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2913,7 +2905,6 @@ reveal_type(comb(id, id))  # N: Revealed type is "def [T] (T`1) -> T`1"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericNonLinear]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2934,7 +2925,6 @@ reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`4) -> builtins
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCurry]
-# flags: --new-type-inference
 from typing import Callable, List, TypeVar
 
 S = TypeVar("S")
@@ -2953,7 +2943,6 @@ reveal_type(dec2(test2))  # N: Revealed type is "def [T] (T`3) -> def (T`3) -> T
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableNewVariable]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2968,7 +2957,6 @@ reveal_type(dec(test))  # N: Revealed type is "def [U] (builtins.list[U`-1]) -> 
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericAlias]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2986,7 +2974,6 @@ reveal_type(dec(id))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1]
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericProtocol]
-# flags: --new-type-inference
 from typing import TypeVar, Protocol, Generic, Optional
 
 T = TypeVar('T')
@@ -3002,7 +2989,6 @@ reveal_type(lift(g))  # N: Revealed type is "def [T] (Union[T`1, None]) -> Union
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrder]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -3017,7 +3003,6 @@ reveal_type(dec(id, id))  # N: Revealed type is "def (builtins.int) -> builtins.
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrderGeneric]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, Tuple
 
 S = TypeVar('S')
@@ -3048,7 +3033,6 @@ reveal_type(id)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericEllipsisSelfSpecialCase]
-# flags: --new-type-inference
 from typing import Self, Callable, TypeVar
 
 T = TypeVar("T")
@@ -3062,7 +3046,6 @@ c: C
 reveal_type(c.test())  # N: Revealed type is "__main__.C"
 
 [case testInferenceAgainstGenericBoundsAndValues]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 class B: ...
@@ -3090,7 +3073,6 @@ reveal_type(dec2(id2))  # N: Revealed type is "def (Never) -> builtins.list[Neve
                         # E: Argument 1 to "dec2" has incompatible type "Callable[[V], V]"; expected "Callable[[Never], Never]"
 
 [case testInferenceAgainstGenericLambdas]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -3127,7 +3109,6 @@ dec4_bound(lambda x: x)  # E: Value of type variable "I" of "dec4_bound" cannot 
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecBasicInList]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple
 from typing_extensions import ParamSpec
 
@@ -3146,7 +3127,6 @@ reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (x: U`-1, y: V`-2) -> 
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecBasicDeList]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple
 from typing_extensions import ParamSpec
 
@@ -3163,7 +3143,6 @@ reveal_type(dec(either))  # N: Revealed type is "def [T] (x: builtins.list[T`5],
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecPopOff]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple
 from typing_extensions import ParamSpec, Concatenate
 
@@ -3184,7 +3163,6 @@ reveal_type(dec(dec))  # N: Revealed type is "def () -> def [T, P, S] (def (T`-1
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecPopOn]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple
 from typing_extensions import ParamSpec, Concatenate
 
@@ -3206,7 +3184,6 @@ reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`13, f: def () -> def
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecVsParamSpec]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple, Generic
 from typing_extensions import ParamSpec, Concatenate
 
@@ -3227,7 +3204,6 @@ reveal_type(dec(h))  # N: Revealed type is "def [T, Q] (T`-1, *Q.args, **Q.kwarg
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecVsParamSpecConcatenate]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple, Generic
 from typing_extensions import ParamSpec, Concatenate
 
@@ -3245,7 +3221,6 @@ reveal_type(dec(h))  # N: Revealed type is "def [T, Q] (T`-1, *Q.args, **Q.kwarg
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecSecondary]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple, Generic
 from typing_extensions import ParamSpec, Concatenate
 
@@ -3263,7 +3238,6 @@ reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[[
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecSecondOrder]
-# flags: --new-type-inference
 from typing import TypeVar, Callable
 from typing_extensions import ParamSpec, Concatenate
 
@@ -3285,7 +3259,6 @@ reveal_type(transform(dec2))  # N: Revealed type is "def [W, T] (def (builtins.i
 [builtins fixtures/tuple.pyi]
 
 [case testNoAccidentalVariableClashInNestedGeneric]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, Generic, Tuple
 
 T = TypeVar('T')
@@ -3302,7 +3275,6 @@ def apply(a: S, b: T) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericParamSpecSpuriousBoundsNotUsed]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, Generic
 from typing_extensions import ParamSpec, Concatenate
 
@@ -3321,7 +3293,6 @@ reveal_type(test)  # N: Revealed type is "def () -> def [Q] (__main__.Foo[Q`-1])
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicBasicInList]
-# flags: --new-type-inference
 from typing import Tuple, TypeVar, List, Callable
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -3341,7 +3312,6 @@ reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (U`-1, V`-2) -> builti
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicBasicDeList]
-# flags: --new-type-inference
 from typing import Tuple, TypeVar, List, Callable
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -3359,7 +3329,6 @@ reveal_type(dec(either))  # N: Revealed type is "def [T] (builtins.list[T`5], bu
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicPopOff]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -3381,7 +3350,6 @@ reveal_type(dec(dec))  # N: Revealed type is "def () -> def [T, Ts, S] (def (T`-
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericVariadicPopOn]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -3404,7 +3372,6 @@ reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`13, def () -> def (T
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericVariadicVsVariadic]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, List, Generic
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -3424,7 +3391,6 @@ reveal_type(dec(g))  # N: Revealed type is "def [Ts] (*Unpack[Ts`4]) -> builtins
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericVariadicVsVariadicConcatenate]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, Generic
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -3443,7 +3409,6 @@ reveal_type(dec(h))  # N: Revealed type is "def [T, Us] (T`-1, *Unpack[Us`-2]) -
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericVariadicSecondary]
-# flags: --new-type-inference
 from typing import TypeVar, Callable, Generic
 from typing_extensions import Unpack, TypeVarTuple
 

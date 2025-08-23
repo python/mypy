@@ -2710,6 +2710,124 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
+[case testBufferRoundTrip_native_libs]
+from native_internal import (
+    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float, write_int, read_int
+)
+
+def test_buffer_basic() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+    write_int(b, 0)
+    write_int(b, 1)
+    write_int(b, 2)
+    write_int(b, 2 ** 85)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+    assert read_int(b) == 0
+    assert read_int(b) == 1
+    assert read_int(b) == 2
+    assert read_int(b) == 2 ** 85
+
+[file driver.py]
+from native import *
+
+test_buffer_basic()
+test_buffer_roundtrip()
+
+def test_buffer_basic_interpreted() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip_interpreted() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+    write_int(b, 0)
+    write_int(b, 1)
+    write_int(b, 2)
+    write_int(b, 2 ** 85)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+    assert read_int(b) == 0
+    assert read_int(b) == 1
+    assert read_int(b) == 2
+    assert read_int(b) == 2 ** 85
+
+test_buffer_basic_interpreted()
+test_buffer_roundtrip_interpreted()
+
+[case testEnumMethodCalls]
+from enum import Enum
+from typing import overload, Optional, Union
+
+class C:
+    def foo(self, x: Test) -> bool:
+        assert Test.ONE.is_one()
+        assert x.next(2) == Test.THREE
+        assert x.prev(2) == Test.ONE
+        assert x.enigma(22)
+        assert x.enigma("22") == 22
+        return x.is_one(inverse=True)
+
+class Test(Enum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+
+    def is_one(self, *, inverse: bool = False) -> bool:
+        if inverse:
+            return self != Test.ONE
+        return self == Test.ONE
+
+    @classmethod
+    def next(cls, val: int) -> Test:
+        return cls(val + 1)
+
+    @staticmethod
+    def prev(val: int) -> Test:
+        return Test(val - 1)
+
+    @overload
+    def enigma(self, val: int) -> bool: ...
+    @overload
+    def enigma(self, val: Optional[str] = None) -> int: ...
+    def enigma(self, val: Union[int, str, None] = None) -> Union[int, bool]:
+        if isinstance(val, int):
+            return self.is_one()
+        return 22
+[file driver.py]
+from native import Test, C
+
+assert Test.ONE.is_one()
+assert Test.TWO.is_one(inverse=True)
+assert not C().foo(Test.ONE)
+assert Test.next(2) == Test.THREE
+assert Test.prev(2) == Test.ONE
+assert Test.ONE.enigma(22)
+assert Test.ONE.enigma("22") == 22
+
 [case testStaticCallsWithUnpackingArgs]
 from typing import Tuple
 
@@ -3065,3 +3183,97 @@ f(C(1, "yes"))
 [out]
 B 1
 C yes
+
+[case testTypeObjectName]
+from typing import Any
+import re
+
+from dynamic import E, foo, Thing
+
+class C: pass
+class D(C): pass
+
+def type_name(t: type[object]) -> str:
+    return t.__name__
+
+def any_name(x: Any) -> str:
+    return x.__name__
+
+def assert_type_name(x: Any) -> None:
+    assert type_name(x) == getattr(x, "__name__")
+    assert any_name(x) == getattr(x, "__name__")
+
+def assert_any_name(x: Any) -> None:
+    assert any_name(x) == getattr(x, "__name__")
+
+def test_type_name() -> None:
+    assert_type_name(C)
+    assert_type_name(D)
+    assert_type_name(int)
+    assert_type_name(E)
+    assert_type_name(re.Pattern)
+
+def test_module_name() -> None:
+    assert_any_name(re)
+
+def test_function_name() -> None:
+    assert_any_name(any_name)
+    assert_any_name(foo)
+
+def test_obj_name() -> None:
+    assert_any_name(Thing())
+
+[file dynamic.py]
+class E: pass
+
+def foo(): pass
+
+class Thing:
+    def __init__(self):
+        self.__name__ = "xyz"
+
+[case testTypeOfObject]
+from typing import Any
+
+from dynamic import Dyn
+
+class Foo: pass
+class Bar(Foo): pass
+
+def generic_type(x) -> type[object]:
+    return x.__class__
+
+def test_built_in_type() -> None:
+    i: Any = int
+    l: Any = list
+    assert type(i()) is i().__class__
+    assert type(i()) is int
+    assert type(l()) is list
+    n = 5
+    assert n.__class__ is i
+
+def test_native_class() -> None:
+    f_any: Any = Foo()
+    b_any: Any = Bar()
+    f: Foo = f_any
+    b: Foo = b_any
+    if int("1"):  # use int("1") to avoid constant folding
+        assert type(f) is Foo
+        assert type(b) is Bar
+    if int("2"):
+        assert f.__class__ is Foo
+        assert b.__class__ is Bar
+    if int("3"):
+        assert f_any.__class__ is Foo
+        assert b_any.__class__ is Bar
+    if int("4"):
+        assert type(f_any) is Foo
+        assert type(b_any) is Bar
+
+def test_python_class() -> None:
+    d = Dyn()
+    assert type(d) is Dyn
+    assert d.__class__ is Dyn
+
+[file dynamic.py]
+class Dyn: pass

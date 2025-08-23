@@ -2283,6 +2283,43 @@ reveal_type(Check.foo())  # N: Revealed type is "def () -> __main__.Check"
 reveal_type(Check().foo())  # N: Revealed type is "__main__.Check"
 [builtins fixtures/tuple.pyi]
 
+[case testSelfInClassmethodWithOtherSelfMethod]
+from typing import Any, Callable, Self, TypeVar
+
+_C = TypeVar("_C", bound=Callable[..., Any])
+
+def identity(func: _C, /) -> _C:
+    return func
+
+class A:
+    def meth(self) -> Self: ...
+
+    @classmethod
+    def other_meth(cls) -> Self:
+        reveal_type(cls.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`1) -> Self`1"
+        reveal_type(A.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`2) -> Self`2"
+        return cls().meth()
+
+class B:
+    @identity
+    def meth(self) -> Self: ...
+
+    @classmethod
+    def other_meth(cls) -> Self:
+        reveal_type(cls.meth)  # N: Revealed type is "def [Self <: __main__.B] (self: Self`5) -> Self`5"
+        reveal_type(B.meth)  # N: Revealed type is "def [Self <: __main__.B] (self: Self`6) -> Self`6"
+        return cls().meth()
+
+class C:
+    @classmethod
+    def other_meth(cls) -> Self: ...
+
+    def meth(self) -> Self:
+        reveal_type(self.other_meth)  # N: Revealed type is "def () -> Self`0"
+        reveal_type(type(self).other_meth)  # N: Revealed type is "def () -> Self`0"
+        return self.other_meth()
+[builtins fixtures/tuple.pyi]
+
 [case testSelfTypeUpperBoundFiler]
 from typing import Generic, TypeVar, overload, Sequence
 

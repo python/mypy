@@ -671,8 +671,10 @@ C().g = "x"  # E: function __main__.C.g is deprecated: use g2 instead \
 [case testDeprecatedDescriptor]
 # flags: --enable-error-code=deprecated
 
-from typing import Any, Optional, Union, overload
+from typing import Any, Generic, Optional, overload, TypeVar, Union
 from typing_extensions import deprecated
+
+T = TypeVar("T")
 
 @deprecated("use E1 instead")
 class D1:
@@ -701,10 +703,19 @@ class D3:
     def __set__(self, obj: C, value: str) -> None: ...
     def __set__(self, obj: C, value: Union[int, str]) -> None: ...
 
+class D4(Generic[T]):
+    @overload
+    def __get__(self, obj: None, objtype: Any) -> T: ...
+    @overload
+    @deprecated("deprecated instance access")
+    def __get__(self, obj: C, objtype: Any) -> T: ...
+    def __get__(self, obj: Optional[C], objtype: Any) -> T: ...
+
 class C:
     d1 = D1()  # E: class __main__.D1 is deprecated: use E1 instead
     d2 = D2()
     d3 = D3()
+    d4 = D4[int]()
 
 c: C
 C.d1
@@ -719,14 +730,20 @@ C.d3  # E: overload def (self: __main__.D3, obj: None, objtype: Any) -> __main__
 c.d3  # E: overload def (self: __main__.D3, obj: __main__.C, objtype: Any) -> builtins.int of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
 c.d3 = 1
 c.d3 = "x"  # E: overload def (self: __main__.D3, obj: __main__.C, value: builtins.str) of function __main__.D3.__set__ is deprecated: use E3.__set__ instead
+
+C.d4
+c.d4  # E: overload def (self: __main__.D4[T`1], obj: __main__.C, objtype: Any) -> T`1 of function __main__.D4.__get__ is deprecated: deprecated instance access
 [builtins fixtures/property.pyi]
 
 
 [case testDeprecatedOverloadedFunction]
 # flags: --enable-error-code=deprecated
 
-from typing import Union, overload
+from typing import Any, overload, Union
 from typing_extensions import deprecated
+
+int_or_str: Union[int, str]
+any: Any
 
 @overload
 def f(x: int) -> int: ...
@@ -738,6 +755,8 @@ def f(x: Union[int, str]) -> Union[int, str]: ...
 f  # E: function __main__.f is deprecated: use f2 instead
 f(1)  # E: function __main__.f is deprecated: use f2 instead
 f("x")  # E: function __main__.f is deprecated: use f2 instead
+f(int_or_str)  # E: function __main__.f is deprecated: use f2 instead
+f(any)  # E: function __main__.f is deprecated: use f2 instead
 f(1.0)  # E: function __main__.f is deprecated: use f2 instead \
         # E: No overload variant of "f" matches argument type "float" \
         # N: Possible overload variants: \
@@ -754,6 +773,8 @@ def g(x: Union[int, str]) -> Union[int, str]: ...
 g
 g(1)  # E: overload def (x: builtins.int) -> builtins.int of function __main__.g is deprecated: work with str instead
 g("x")
+g(int_or_str)  # E: overload def (x: builtins.int) -> builtins.int of function __main__.g is deprecated: work with str instead
+g(any)
 g(1.0)  # E: No overload variant of "g" matches argument type "float" \
         # N: Possible overload variants: \
         # N:     def g(x: int) -> int \
@@ -769,13 +790,62 @@ def h(x: Union[int, str]) -> Union[int, str]: ...
 h
 h(1)
 h("x")  # E: overload def (x: builtins.str) -> builtins.str of function __main__.h is deprecated: work with int instead
+h(int_or_str)  # E: overload def (x: builtins.str) -> builtins.str of function __main__.h is deprecated: work with int instead
+h(any)
 h(1.0)  # E: No overload variant of "h" matches argument type "float" \
         # N: Possible overload variants: \
         # N:     def h(x: int) -> int \
         # N:     def h(x: str) -> str
 
-[builtins fixtures/tuple.pyi]
+@overload
+def i(x: int) -> int: ...
+@overload
+@deprecated("work with int instead")
+def i(x: str) -> str: ...
+@overload
+def i(x: Any) -> Any: ...
+def i(x: Union[int, str]) -> Union[int, str]: ...
 
+i
+i(1)
+i("x")  # E: overload def (x: builtins.str) -> builtins.str of function __main__.i is deprecated: work with int instead
+i(int_or_str)  # E: overload def (x: builtins.str) -> builtins.str of function __main__.i is deprecated: work with int instead
+i(any)
+i(1.0)
+
+@overload
+def j(x: int) -> int: ...
+@overload
+def j(x: str) -> str: ...
+@overload
+@deprecated("work with int or str instead")
+def j(x: Any) -> Any: ...
+def j(x: Union[int, str]) -> Union[int, str]: ...
+
+j
+j(1)
+j("x")
+j(int_or_str)
+j(any)
+j(1.0)  # E: overload def (x: Any) -> Any of function __main__.j is deprecated: work with int or str instead
+
+@overload
+@deprecated("work with str instead")
+def k(x: int) -> int: ...
+@overload
+def k(x: str) -> str: ...
+@overload
+@deprecated("work with str instead")
+def k(x: object) -> Any: ...
+def k(x: object) -> Union[int, str]: ...
+
+k
+k(1)  # E: overload def (x: builtins.int) -> builtins.int of function __main__.k is deprecated: work with str instead
+k("x")
+k(int_or_str)  # E: overload def (x: builtins.int) -> builtins.int of function __main__.k is deprecated: work with str instead
+k(any)
+k(1.0)  # E: overload def (x: builtins.object) -> Any of function __main__.k is deprecated: work with str instead
+[builtins fixtures/tuple.pyi]
 
 [case testDeprecatedImportedOverloadedFunction]
 # flags: --enable-error-code=deprecated

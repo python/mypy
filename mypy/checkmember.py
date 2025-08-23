@@ -921,6 +921,18 @@ def analyze_var(
         result = AnyType(TypeOfAny.special_form)
     fullname = f"{var.info.fullname}.{name}"
     hook = mx.chk.plugin.get_attribute_hook(fullname)
+
+    if var.info.is_enum and not mx.is_lvalue:
+        if name in var.info.enum_members and name not in {"name", "value"}:
+            enum_literal = LiteralType(name, fallback=itype)
+            result = itype.copy_modified(last_known_value=enum_literal)
+        elif (
+            isinstance(p_result := get_proper_type(result), Instance)
+            and p_result.type.fullname == "enum.nonmember"
+            and p_result.args
+        ):
+            # Unwrap nonmember similar to class-level access
+            result = p_result.args[0]
     if result and not (implicit or var.info.is_protocol and is_instance_var(var)):
         result = analyze_descriptor_access(result, mx)
     if hook:
@@ -964,8 +976,15 @@ def expand_and_bind_callable(
     freeze_all_type_vars(expanded)
     if not var.is_property:
         return expanded
-    # TODO: a decorated property can result in Overloaded here.
-    assert isinstance(expanded, CallableType)
+    if isinstance(expanded, Overloaded):
+        # Legacy way to store settable properties is with overloads. Also in case it is
+        # an actual overloaded property, selecting first item that passed check_self_arg()
+        # is a good approximation, long-term we should use check_call() inference below.
+        if not expanded.items:
+            # A broken overload, error should be already reported.
+            return AnyType(TypeOfAny.from_error)
+        expanded = expanded.items[0]
+    assert isinstance(expanded, CallableType), expanded
     if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
         if expanded.variables:
             type_ctx = mx.rvalue or TempNode(AnyType(TypeOfAny.special_form), context=mx.context)
@@ -1249,9 +1268,6 @@ def analyze_class_attribute_access(
             or isinstance(node.node, Var)
             and node.node.is_classmethod
         )
-        is_staticmethod = (is_decorated and cast(Decorator, node.node).func.is_static) or (
-            isinstance(node.node, SYMBOL_FUNCBASE_TYPES) and node.node.is_static
-        )
         t = get_proper_type(t)
         is_trivial_self = False
         if isinstance(node.node, Decorator):
@@ -1274,7 +1290,7 @@ def analyze_class_attribute_access(
             original_vars=original_vars,
             is_trivial_self=is_trivial_self,
         )
-        if is_decorated and not is_staticmethod:
+        if is_decorated:
             t = expand_self_type_if_needed(
                 t, mx, cast(Decorator, node.node).var, itype, is_class=is_classmethod
             )
@@ -1468,13 +1484,7 @@ def analyze_decorator_or_funcbase_access(
     if isinstance(defn, Decorator):
         return analyze_var(name, defn.var, itype, mx)
     typ = function_type(defn, mx.chk.named_type("builtins.function"))
-    is_trivial_self = False
-    if isinstance(defn, Decorator):
-        # Use fast path if there are trivial decorators like @classmethod or @property
-        is_trivial_self = defn.func.is_trivial_self and not defn.decorators
-    elif isinstance(defn, (FuncDef, OverloadedFuncDef)):
-        is_trivial_self = defn.is_trivial_self
-    if is_trivial_self:
+    if isinstance(defn, (FuncDef, OverloadedFuncDef)) and defn.is_trivial_self:
         return bind_self_fast(typ, mx.self_type)
     typ = check_self_arg(typ, mx.self_type, defn.is_class, mx.context, name, mx.msg)
     return bind_self(typ, original_type=mx.self_type, is_classmethod=defn.is_class)

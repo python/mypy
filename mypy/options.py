@@ -72,6 +72,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
         "strict_bytes",
+        "fixed_format_cache",
     }
 ) - {"debug_cache"}
 
@@ -286,6 +287,7 @@ class Options:
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
         self.sqlite_cache = False
+        self.fixed_format_cache = False
         self.debug_cache = False
         self.skip_version_check = False
         self.skip_cache_mtime_checks = False
@@ -391,10 +393,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Disable new experimental type inference algorithm.
+        # Disable new type inference algorithm.
         self.old_type_inference = False
-        # Deprecated reverse version of the above, do not use.
-        self.new_type_inference = False
         # Disable expression cache (for debugging).
         self.disable_expression_cache = False
         # Export line-level, limited, fine-grained dependency information in cache data
@@ -507,7 +507,6 @@ class Options:
             code = error_codes[code_str]
             new_options.enabled_error_codes.add(code)
             new_options.disabled_error_codes.discard(code)
-
         return new_options
 
     def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
