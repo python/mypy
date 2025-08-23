@@ -721,13 +721,14 @@ m: object
 match m:
     case xyz(y):  # E: Name "xyz" is not defined
         reveal_type(m)  # N: Revealed type is "Any"
-        reveal_type(y)  # E: Cannot determine type of "y" \
-                        # N: Revealed type is "Any"
+        reveal_type(y)  # N: Revealed type is "Any"
 
 match m:
     case xyz(z=x):  # E: Name "xyz" is not defined
-        reveal_type(x)  # E: Cannot determine type of "x" \
-                        # N: Revealed type is "Any"
+        reveal_type(x)  # N: Revealed type is "Any"
+    case (xyz1() as n) | (xyz2(attr=n)):  # E: Name "xyz1" is not defined \
+                                          # E: Name "xyz2" is not defined
+        reveal_type(n)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternCaptureDataclass]
 from dataclasses import dataclass
@@ -1204,13 +1205,13 @@ match m:
     case 1 | "foo":
         reveal_type(m)  # N: Revealed type is "Union[Literal[1], Literal['foo']]"
 
-[case testMatchOrPatterCapturesMissing]
+[case testMatchOrPatternCapturesMissing]
 from typing import List
 m: List[int]
 
 match m:
     case [x, y] | list(x):  # E: Alternative patterns bind different names
-        reveal_type(x)  # N: Revealed type is "builtins.object"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.list[builtins.int]]"
         reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
@@ -1219,7 +1220,7 @@ m: object
 
 match m:
     case list(x) | dict(x):
-        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.list[Any], builtins.dict[Any, Any]]"
 [builtins fixtures/dict.pyi]
 
 -- Interactions --
@@ -1405,7 +1406,7 @@ m: Union[str, bytes, int]
 
 match m:
     case str(a) | bytes(a):
-        reveal_type(a)  # N: Revealed type is "builtins.object"
+        reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.bytes]"
         reveal_type(m)  # N: Revealed type is "Union[builtins.str, builtins.bytes]"
     case b:
         reveal_type(b)  # N: Revealed type is "builtins.int"
