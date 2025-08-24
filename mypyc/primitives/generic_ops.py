@@ -308,6 +308,15 @@ py_call_with_kwargs_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# Call callable object with positional args only: func(*args)
+# Arguments are (func, *args tuple).
+py_call_with_posargs_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyObject_CallObject",
+    error_kind=ERR_MAGIC,
+)
+
 # Call method with positional arguments: obj.method(arg1, ...)
 # Arguments are (object, attribute name, arg1, ...).
 py_method_call_op = custom_op(
