@@ -630,6 +630,27 @@ L3:
 L4:
     return r6
 
+
+[case testLower]
+def do_lower(s: str) -> str:
+    return s.lower()
+[out]
+def do_lower(s):
+    s, r0 :: str
+L0:
+    r0 = CPyStr_Lower(s)
+    return r0
+
+[case testUpper]
+def do_upper(s: str) -> str:
+    return s.upper()
+[out]
+def do_upper(s):
+    s, r0 :: str
+L0:
+    r0 = CPyStr_Upper(s)
+    return r0
+
 [case testFStringFromConstants]
 from typing import Final
 string: Final = "abc"
