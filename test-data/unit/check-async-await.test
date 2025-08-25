@@ -1094,7 +1094,7 @@ async def test_await() -> str:
 async def test_nested_await() -> str:
     def inner() -> int:
         return 123
-    
+
     # The await should not affect type inference of inner function call
     value = inner()
     result = await func(value)
