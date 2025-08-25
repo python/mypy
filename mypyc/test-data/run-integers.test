@@ -574,6 +574,7 @@ class int:
     pass
 
 [case testIntToBytes]
+from testutil import assertRaises
 def to_bytes(n: int, length: int, byteorder: str, signed: bool = False) -> bytes:
     return n.to_bytes(length, byteorder, signed=signed)
 def test_to_bytes() -> None:
@@ -583,3 +584,12 @@ def test_to_bytes() -> None:
     assert to_bytes(0, 1, "big") == b'\x00'
     # test with a value that does not fit in 64 bits
     assert to_bytes(10**30, 16, "big") == b'\x00\x00\x00\x0c\x9f,\x9c\xd0Ft\xed\xea@\x00\x00\x00'
+    # unsigned, too large for 1 byte
+    with assertRaises(OverflowError):
+        to_bytes(256, 1, "big")
+    # signed, too small for 1 byte
+    with assertRaises(OverflowError):
+        to_bytes(-129, 1, "big", True)
+    # signed, too large for 1 byte
+    with assertRaises(OverflowError):
+        to_bytes(128, 1, "big", True)
