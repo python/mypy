@@ -1080,3 +1080,25 @@ class Launcher(P):
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testAwaitCallExprTypeInference]
+async def func(x: int) -> str:
+    return str(x)
+
+async def test_await() -> str:
+    # This should not cause incorrect type inference for the argument
+    result = await func(42)
+    return result
+
+# Test that the expected type doesn't propagate incorrectly to call arguments
+async def test_nested_await() -> str:
+    def inner() -> int:
+        return 123
+    
+    # The await should not affect type inference of inner function call
+    value = inner()
+    result = await func(value)
+    return result
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]

@@ -6181,7 +6181,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         expected_type = self.type_context[-1]
         if expected_type is not None:
             expected_type = self.chk.named_generic_type("typing.Awaitable", [expected_type])
-        actual_type = get_proper_type(self.accept(e.expr, expected_type))
+        
+        # For async function calls, don't propagate the expected type to avoid
+        # incorrect type inference affecting argument types
+        if isinstance(e.expr, CallExpr):
+            # Don't use expected type for function calls inside await to prevent
+            # incorrect constraint inference affecting argument types
+            actual_type = get_proper_type(self.accept(e.expr, None))
+        else:
+            actual_type = get_proper_type(self.accept(e.expr, expected_type))
+            
         if isinstance(actual_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=actual_type)
         ret = self.check_awaitable_expr(
