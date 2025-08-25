@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from tkinter import Canvas, Frame, Misc, PhotoImage, Scrollbar
 from typing import Any, ClassVar, Literal, TypedDict, overload, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "ScrolledCanvas",
@@ -426,6 +426,7 @@ class RawTurtle(TPen, TNavigator):  # type: ignore[misc]  # Conflicting methods 
     def get_shapepoly(self) -> _PolygonCoords | None: ...
 
     if sys.version_info < (3, 13):
+        @deprecated("Deprecated since Python 3.1; removed in Python 3.13. Use `tiltangle()` instead.")
         def settiltangle(self, angle: float) -> None: ...
 
     @overload
@@ -707,6 +708,7 @@ def shapetransform(
 def get_shapepoly() -> _PolygonCoords | None: ...
 
 if sys.version_info < (3, 13):
+    @deprecated("Deprecated since Python 3.1; removed in Python 3.13. Use `tiltangle()` instead.")
     def settiltangle(angle: float) -> None: ...
 
 @overload

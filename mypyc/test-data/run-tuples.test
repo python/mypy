@@ -292,6 +292,89 @@ TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 def test_final_boxed_tuple() -> None:
     t = TUPLE
     assert t == ('x', 'y')
+    assert 'x' in TUPLE
+    assert 'y' in TUPLE
+    b: object = 'z' in TUPLE
+    assert not b
+    assert 'z' not in TUPLE
+    b2: object = 'x' not in TUPLE
+    assert not b2
+    b3: object = 'y' not in TUPLE
+    assert not b3
+
+TUP2: Final = ('x', 'y')
+TUP1: Final = ('x',)
+TUP0: Final = ()
+
+def test_final_tuple_in() -> None:
+    assert 'x' + str() in TUP2
+    assert 'y' + str() in TUP2
+    b: object = 'z' + str() in TUP2
+    assert not b
+
+    assert 'x' + str() in TUP1
+    b2: object = 'y' in TUP1
+    assert not b2
+
+    b3: object = 'x' in TUP0
+    assert not b3
+
+def test_final_tuple_not_in() -> None:
+    assert 'z' + str() not in TUP2
+    b: object = 'x' + str() not in TUP2
+    assert not b
+    b2: object = 'y' + str() not in TUP2
+    assert not b2
+
+    assert 'y' + str() not in TUP1
+    b3: object = 'x' not in TUP1
+    assert not b2
+
+    assert 'x' not in TUP0
+
+log = []
+
+def f_a() -> str:
+    log.append('f_a')
+    return 'a'
+
+def f_a2() -> str:
+    log.append('f_a2')
+    return 'a'
+
+def f_b() -> str:
+    log.append('f_b')
+    return 'b'
+
+def f_c() -> str:
+    log.append('f_c')
+    return 'c'
+
+def test_tuple_in_order_of_evaluation() -> None:
+    log.clear()
+    assert f_a() in (f_b(), f_a2())
+    assert log ==["f_a", "f_b", "f_a2"]
+
+    log.clear()
+    assert f_a() not in (f_b(), f_c())
+    assert log ==["f_a", "f_b", "f_c"]
+
+    log.clear()
+    assert f_a() in (f_b(), f_a2(), f_c())
+    assert log ==["f_a", "f_b", "f_a2", "f_c"]
+
+def f_t() -> tuple[str, ...]:
+    log.append('f_t')
+    return ('x', 'a')
+
+def test_tuple_in_non_specialized() -> None:
+    log.clear()
+    assert f_a() in f_t()
+    assert log == ["f_a", "f_t"]
+
+    log.clear()
+    assert f_b() not in f_t()
+    assert log == ["f_b", "f_t"]
 
 def test_add() -> None:
     res = (1, 2, 3, 4)

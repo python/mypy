@@ -245,9 +245,13 @@ class Path(PurePath):
         self, mode: str, buffering: int = -1, encoding: str | None = None, errors: str | None = None, newline: str | None = None
     ) -> IO[Any]: ...
 
-    # These methods do "exist" on Windows on <3.13, but they always raise NotImplementedError.
+    # These methods do "exist" on Windows, but they always raise NotImplementedError.
     if sys.platform == "win32":
-        if sys.version_info < (3, 13):
+        if sys.version_info >= (3, 13):
+            # raises UnsupportedOperation:
+            def owner(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
+            def group(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
+        else:
             def owner(self: Never) -> str: ...  # type: ignore[misc]
             def group(self: Never) -> str: ...  # type: ignore[misc]
     else:
@@ -297,7 +301,7 @@ class Path(PurePath):
         def write_text(self, data: str, encoding: str | None = None, errors: str | None = None) -> int: ...
     if sys.version_info < (3, 12):
         if sys.version_info >= (3, 10):
-            @deprecated("Deprecated as of Python 3.10 and removed in Python 3.12. Use hardlink_to() instead.")
+            @deprecated("Deprecated since Python 3.10; removed in Python 3.12. Use `hardlink_to()` instead.")
             def link_to(self, target: StrOrBytesPath) -> None: ...
         else:
             def link_to(self, target: StrOrBytesPath) -> None: ...

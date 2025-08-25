@@ -26,7 +26,7 @@ from types import (
     WrapperDescriptorType,
 )
 from typing import Any, ClassVar, Final, Literal, NamedTuple, Protocol, TypeVar, overload, type_check_only
-from typing_extensions import ParamSpec, Self, TypeAlias, TypeGuard, TypeIs
+from typing_extensions import ParamSpec, Self, TypeAlias, TypeGuard, TypeIs, deprecated
 
 if sys.version_info >= (3, 14):
     from annotationlib import Format
@@ -476,12 +476,14 @@ class Arguments(NamedTuple):
 def getargs(co: CodeType) -> Arguments: ...
 
 if sys.version_info < (3, 11):
+    @deprecated("Deprecated since Python 3.0; removed in Python 3.11.")
     class ArgSpec(NamedTuple):
         args: list[str]
         varargs: str | None
         keywords: str | None
         defaults: tuple[Any, ...]
 
+    @deprecated("Deprecated since Python 3.0; removed in Python 3.11. Use `inspect.signature()` instead.")
     def getargspec(func: object) -> ArgSpec: ...
 
 class FullArgSpec(NamedTuple):
@@ -512,6 +514,9 @@ else:
 def formatannotationrelativeto(object: object) -> Callable[[object], str]: ...
 
 if sys.version_info < (3, 11):
+    @deprecated(
+        "Deprecated since Python 3.5; removed in Python 3.11. Use `inspect.signature()` and the `Signature` class instead."
+    )
     def formatargspec(
         args: list[str],
         varargs: str | None = None,

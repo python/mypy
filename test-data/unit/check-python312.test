@@ -2095,3 +2095,19 @@ from dataclasses import dataclass
 class Test[*Ts, R]:
     a: Callable[[*Ts], R]
 [builtins fixtures/dict.pyi]
+
+[case testPEP695AliasDoesNotReferToFullname]
+# https://github.com/python/mypy/issues/19698
+from typing import TypeAliasType
+type D = dict
+type T = type
+type TA = TypeAliasType
+
+D()          # E: "TypeAliasType" not callable
+X = TA("Y")  # E: "TypeAliasType" not callable
+
+x: object
+if T(x) is str:     # E: "TypeAliasType" not callable
+    reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

@@ -58,7 +58,7 @@ dict_build_op = custom_op(
 )
 
 # Construct a dictionary from another dictionary.
-function_op(
+dict_copy_op = function_op(
     name="builtins.dict",
     arg_types=[exact_dict_rprimitive],
     return_type=exact_dict_rprimitive,

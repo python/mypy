@@ -1,0 +1,5 @@
+[case testTemplateString]
+x = 'mypy'
+t'Hello {x}'
+[out]
+main:2: error: PEP 750 template strings are not yet supported

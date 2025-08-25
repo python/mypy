@@ -140,6 +140,7 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
 }
 
 // Are we targeting Python 3.X or newer?
+#define CPY_3_11_FEATURES (PY_VERSION_HEX >= 0x030b0000)
 #define CPY_3_12_FEATURES (PY_VERSION_HEX >= 0x030c0000)
 #define CPY_3_14_FEATURES (PY_VERSION_HEX >= 0x030e0000)
 
