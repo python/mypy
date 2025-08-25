@@ -295,6 +295,7 @@ from mypy.types import (
     UnboundType,
     UnionType,
     UnpackType,
+    flatten_nested_tuples,
     get_proper_type,
     get_proper_types,
     has_type_vars,
@@ -6093,7 +6094,9 @@ class SemanticAnalyzer(
             types.append(analyzed)
 
         if allow_unpack:
-            types = self.type_analyzer().check_unpacks_in_list(types)
+            # need to flatten away harmless unpacks like Unpack[tuple[int]]
+            flattened_items = flatten_nested_tuples(types)
+            types = self.type_analyzer().check_unpacks_in_list(flattened_items)
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             single_any = len(types) == 1 and isinstance(first_arg, AnyType)
