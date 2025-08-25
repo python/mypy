@@ -79,7 +79,7 @@ async def f(x: T) -> T:
     return x
 [typing fixtures/typing-async.pyi]
 [out]
-main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
+main:5: error: Incompatible types in assignment (expression has type "T", variable has type "int")
 main:6: note: Revealed type is "builtins.int"
 
 [case testAwaitGeneratorError]
@@ -1102,3 +1102,5 @@ async def test_nested_await() -> str:
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+[out]
+main:2: error: Too many arguments for "str"
