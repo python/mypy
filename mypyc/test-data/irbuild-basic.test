@@ -1755,13 +1755,11 @@ L0:
     r7 = __main__.globals :: static
     r8 = 'f'
     r9 = CPyDict_GetItem(r7, r8)
-    r10 = PyDict_New()
-    r11 = CPyDict_UpdateInDisplay(r10, r6)
-    r12 = r11 >= 0 :: signed
-    r13 = _CPyTuple_LoadEmptyTupleConstant()
-    r14 = PyObject_Call(r9, r13, r10)
-    r15 = unbox(tuple[int, int, int], r14)
-    return r15
+    r10 = _CPyTuple_LoadEmptyTupleConstant()
+    r11 = PyDict_Copy(r6)
+    r12 = PyObject_Call(r9, r10, r11)
+    r13 = unbox(tuple[int, int, int], r12)
+    return r13
 def h():
     r0, r1 :: str
     r2, r3 :: object
