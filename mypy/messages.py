@@ -2137,10 +2137,6 @@ class MessageBuilder:
         }
         if supertype.type.fullname in exclusions.get(type(subtype), []):
             return
-        if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
-            # We don't want to add notes for failed inference (e.g. Iterable[Never]).
-            # This will be only confusing a user even more.
-            return
 
         class_obj = False
         is_module = False
@@ -2195,6 +2191,11 @@ class MessageBuilder:
                 self.note(", ".join(missing), context, offset=OFFSET, parent_error=parent_error)
         elif len(missing) > MAX_ITEMS or len(missing) == len(supertype.type.protocol_members):
             # This is an obviously wrong type: too many missing members
+            return
+
+        if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
+            # We don't want to add type conflict notes for failed inference (e.g. Iterable[Never]).
+            # This will be only confusing a user even more.
             return
 
         # Report member type conflicts
