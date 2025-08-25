@@ -50,7 +50,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
-    dict_rprimitive,
+    exact_dict_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
     is_optional_type,
@@ -271,7 +271,7 @@ class NonExtClassBuilder(ClassBuilder):
         )
 
         # Add the non-extension class to the dict
-        self.builder.call_c(
+        self.builder.primitive_op(
             exact_dict_set_item_op,
             [
                 self.builder.load_globals_dict(),
@@ -487,7 +487,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     builder.add(InitStatic(tp, cdef.name, builder.module_name, NAMESPACE_TYPE))
 
     # Add it to the dict
-    builder.call_c(
+    builder.primitive_op(
         exact_dict_set_item_op,
         [builder.load_globals_dict(), builder.load_str(cdef.name), tp],
         cdef.line,
@@ -611,7 +611,7 @@ def setup_non_ext_dict(
         py_hasattr_op, [metaclass, builder.load_str("__prepare__")], cdef.line
     )
 
-    non_ext_dict = Register(dict_rprimitive)
+    non_ext_dict = Register(exact_dict_rprimitive)
 
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
     builder.add_bool_branch(has_prepare, true_block, false_block)
@@ -674,7 +674,7 @@ def add_non_ext_class_attr_ann(
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
 
     key = builder.load_str(lvalue.name)
-    builder.call_c(exact_dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
+    builder.primitive_op(exact_dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
 
 def add_non_ext_class_attr(
