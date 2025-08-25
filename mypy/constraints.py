@@ -411,18 +411,15 @@ def _infer_constraints(
         # When the template is a union, we are okay with leaving some
         # type variables indeterminate. This helps with some special
         # cases, though this isn't very principled.
-        result = any_constraints(
+        if has_recursive_types(template) and not has_recursive_types(actual):
+            return handle_recursive_union(template, actual, direction)
+        return any_constraints(
             [
                 infer_constraints_if_possible(t_item, actual, direction)
                 for t_item in template.items
             ],
             eager=isinstance(actual, AnyType),
         )
-        if result:
-            return result
-        elif has_recursive_types(template) and not has_recursive_types(actual):
-            return handle_recursive_union(template, actual, direction)
-        return []
 
     # Remaining cases are handled by ConstraintBuilderVisitor.
     return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op))
@@ -535,13 +532,12 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
         # Multiple sets of constraints that are all the same. Just pick any one of them.
         return valid_options[0]
 
-    if all(is_similar_constraints(valid_options[0], c) for c in valid_options[1:]):
+    all_similar = all(is_similar_constraints(valid_options[0], c) for c in valid_options[1:])
+    if all_similar:
         # All options have same structure. In this case we can merge-in trivial
         # options (i.e. those that only have Any) and try again.
-        # TODO: More generally, if a given (variable, direction) pair appears in
-        # every option, combine the bounds with meet/join always, not just for Any.
         trivial_options = select_trivial(valid_options)
-        if trivial_options and len(trivial_options) < len(valid_options):
+        if 0 < len(trivial_options) < len(valid_options):
             merged_options = []
             for option in valid_options:
                 if option in trivial_options:
@@ -562,6 +558,13 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
     filtered_options = [exclude_non_meta_vars(o) for o in options]
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
+
+    if eager and all_similar:
+        # Now we know all constraints might be satisfiable and have similar structure.
+        # Solver will apply meets and joins as necessary, return everything we know.
+        # Just deduplicate to reduce the amount of work.
+        all_combined = sum(valid_options, [])
+        return list(dict.fromkeys(all_combined))
 
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
