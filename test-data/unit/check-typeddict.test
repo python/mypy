@@ -1000,23 +1000,32 @@ if int():
 [case testTypedDictGetMethod]
 from typing import TypedDict
 class A: pass
-D = TypedDict('D', {'x': int, 'y': str})
-d: D
-reveal_type(d.get('x')) # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
-reveal_type(d.get('x', A())) # N: Revealed type is "Union[builtins.int, __main__.A]"
-reveal_type(d.get('x', 1)) # N: Revealed type is "builtins.int"
-reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
+D_total = TypedDict('D_total', {'x': int, 'y': str}, total=True)
+D_not_total = TypedDict('D_not_total', {'x': int, 'y': str}, total=False)
+
+def test_total(d: D_total) -> None:
+    reveal_type(d.get('x'))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get('y'))  # N: Revealed type is "builtins.str"
+    reveal_type(d.get('x', A()))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get('x', 1))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get('y', None))  # N: Revealed type is "builtins.str"
+
+def test_not_total(d: D_not_total) -> None:
+    reveal_type(d.get('x')) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(d.get('x', A())) # N: Revealed type is "Union[builtins.int, __main__.A]"
+    reveal_type(d.get('x', 1)) # N: Revealed type is "builtins.int"
+    reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictGetMethodTypeContext]
 from typing import List, TypedDict
 class A: pass
-D = TypedDict('D', {'x': List[int], 'y': int})
+D = TypedDict('D', {'x': List[int], 'y': int}, total=False)
 d: D
 reveal_type(d.get('x', [])) # N: Revealed type is "builtins.list[builtins.int]"
-d.get('x', ['x']) # E: List item 0 has incompatible type "str"; expected "int"
+reveal_type(d.get('x', ['x']))  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
 a = ['']
 reveal_type(d.get('x', a)) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
 [builtins fixtures/dict.pyi]
@@ -1025,20 +1034,46 @@ reveal_type(d.get('x', a)) # N: Revealed type is "Union[builtins.list[builtins.i
 [case testTypedDictGetMethodInvalidArgs]
 from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
-d: D
-d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
-        # N: Possible overload variants: \
-        # N:     def get(self, k: str) -> object \
-        # N:     def [V] get(self, k: str, default: object) -> object
-d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
-                 # N: Possible overload variants: \
-                 # N:     def get(self, k: str) -> object \
-                 # N:     def [V] get(self, k: str, default: Union[int, V]) -> object
-x = d.get('z')
-reveal_type(x) # N: Revealed type is "builtins.object"
-s = ''
-y = d.get(s)
-reveal_type(y) # N: Revealed type is "builtins.object"
+D_total = TypedDict('D_total', {'x': int, 'y': str}, total=True)
+D_not_total = TypedDict('D_not_total', {'x': int, 'y': str}, total=False)
+
+def test_total(d: D_total) -> None:
+    d.get() # E: All overload variants of "get" require at least one argument \
+            # N: Possible overload variants: \
+            # N:     def get(Literal['x'], object = ..., /) -> int \
+            # N:     def get(Literal['y'], object = ..., /) -> str \
+            # N:     def get(str, object = ..., /) -> object
+    d.get('x', 1, 2) # E: No overload variant of "get" matches argument types "str", "int", "int" \
+                     # N: Possible overload variants: \
+                     # N:     def get(Literal['x'], object = ..., /) -> int \
+                     # N:     def get(Literal['y'], object = ..., /) -> str \
+                     # N:     def get(str, object = ..., /) -> object
+    reveal_type(d.get("z")) # N: Revealed type is "builtins.object"
+    s = ''
+    reveal_type(d.get(s)) # N: Revealed type is "builtins.object"
+
+def test_not_total(d: D_not_total) -> None:
+    d.get() # E: All overload variants of "get" require at least one argument \
+            # N: Possible overload variants: \
+            # N:     def get(Literal['x'], /) -> Optional[int] \
+            # N:     def get(Literal['x'], int, /) -> int \
+            # N:     def [T] get(Literal['x'], T = ..., /) -> Union[int, T] \
+            # N:     def get(Literal['y'], /) -> Optional[str] \
+            # N:     def get(Literal['y'], str, /) -> str \
+            # N:     def [T] get(Literal['y'], T = ..., /) -> Union[str, T] \
+            # N:     def get(str, object = ..., /) -> object
+    d.get('x', 1, 2) # E: No overload variant of "get" matches argument types "str", "int", "int" \
+                     # N: Possible overload variants: \
+                     # N:     def get(Literal['x'], /) -> Optional[int] \
+                     # N:     def get(Literal['x'], int, /) -> int \
+                     # N:     def [T] get(Literal['x'], T = ..., /) -> Union[int, T] \
+                     # N:     def get(Literal['y'], /) -> Optional[str] \
+                     # N:     def get(Literal['y'], str, /) -> str \
+                     # N:     def [T] get(Literal['y'], T = ..., /) -> Union[str, T] \
+                     # N:     def get(str, object = ..., /) -> object
+    reveal_type(d.get("z")) # N: Revealed type is "builtins.object"
+    s = ''
+    reveal_type(d.get(s)) # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1069,15 +1104,33 @@ p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
 
 [case testTypedDictChainedGetWithEmptyDictDefault]
 from typing import TypedDict
-C = TypedDict('C', {'a': int})
-D = TypedDict('D', {'x': C, 'y': str})
+C = TypedDict('C', {'a': int}, total=False)
+D = TypedDict('D', {'x': C, 'y': str}, total=False)
+def test(d: D) -> None:
+    reveal_type(d.get('x', {})) \
+        # N: Revealed type is "TypedDict('__main__.C', {'a'?: builtins.int})"
+    reveal_type(d.get('x', None)) \
+        # N: Revealed type is "Union[TypedDict('__main__.C', {'a'?: builtins.int}), None]"
+    reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictChainedGetWithEmptyDictDefault2]
+from typing import TypedDict
+C = TypedDict('C', {'a': int}, total=True)
+D = TypedDict('D', {'x': C, 'y': str}, total=False)
 d: D
-reveal_type(d.get('x', {})) \
-    # N: Revealed type is "TypedDict('__main__.C', {'a'?: builtins.int})"
-reveal_type(d.get('x', None)) \
-    # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), None]"
-reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int"
+# since C is total, an empty dict can not be coerced to C
+reveal_type(d.get('x', {})) # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), builtins.dict[Never, Never]]"
+reveal_type(d.get('x', None)) # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), None]"
+reveal_type(d.get('x', {}).get('a')) # E: No overload variant of "get" of "dict" matches argument type "str" \
+                                     # N: Possible overload variants: \
+                                     # N:     def get(self, k: Never) -> None \
+                                     # N:     def [T] get(self, k: Never, default: T) -> T \
+                                     # N: Revealed type is "Union[builtins.int, Any]"
+reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int" \
+                                 # E: Invalid index type "str" for "dict[Never, Never]"; expected type "Never"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1769,8 +1822,8 @@ class TDB(TypedDict):
 
 td: Union[TDA, TDB]
 
-reveal_type(td.get('a'))  # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(td.get('b'))  # N: Revealed type is "Union[builtins.str, None, builtins.int]"
+reveal_type(td.get('a'))  # N: Revealed type is "builtins.int"
+reveal_type(td.get('b'))  # N: Revealed type is "Union[builtins.str, builtins.int]"
 reveal_type(td.get('c'))  # N: Revealed type is "builtins.object"
 
 reveal_type(td['a'])  # N: Revealed type is "builtins.int"
