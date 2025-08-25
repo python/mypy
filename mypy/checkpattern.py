@@ -678,6 +678,8 @@ class PatternChecker(PatternVisitor[PatternType]):
                         ),
                         pattern,
                     )
+                elif keyword is not None:
+                    new_type = self.chk.add_any_attribute_to_type(new_type, keyword)
 
             inner_type, inner_rest_type, inner_captures = self.accept(pattern, key_type)
             if is_uninhabited(inner_type):
