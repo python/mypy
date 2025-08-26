@@ -260,6 +260,9 @@ def compile_scc_to_ir(
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
             # Perform optimizations.
+            # once to remove redundant ops
+            do_box_unbox_elimination(fn, compiler_options)
+            # once to cleanup
             do_box_unbox_elimination(fn, compiler_options)
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
