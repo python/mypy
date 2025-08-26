@@ -1,7 +1,21 @@
 from typing import Dict
 
 from mypyc.ir.func_ir import FuncIR
-from mypyc.ir.ops import Assign, AssignMulti, Box, Branch, Call, CallC, ComparisonOp, DecRef, IncRef, KeepAlive, Return, SetMem, Unbox, Value, Op
+from mypyc.ir.ops import (
+    Assign,
+    AssignMulti,
+    Box,
+    Call,
+    CallC,
+    ComparisonOp,
+    DecRef,
+    IncRef,
+    KeepAlive,
+    Op,
+    Return,
+    Unbox,
+    Value,
+)
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.options import CompilerOptions
 from mypyc.transform.ir_transform import IRTransform
@@ -13,6 +27,7 @@ def do_box_unbox_elimination(fn: FuncIR, options: CompilerOptions) -> None:
     transform = BoxUnboxEliminationTransform(builder, use_map)
     transform.transform_blocks(fn.blocks)
     fn.blocks = builder.blocks
+
 
 def build_use_map(fn: FuncIR) -> Dict[Value, list[Op]]:
     # Map each Value to a list of ops that use it
@@ -29,6 +44,7 @@ _unsupported = (Box, Unbox, IncRef, DecRef, KeepAlive)
 
 _supported_ops = (Assign, AssignMulti, Call, CallC, ComparisonOp, Return)
 
+
 class BoxUnboxEliminationTransform(IRTransform):
     def __init__(self, builder: LowLevelIRBuilder, use_map: Dict[Value, list[Op]]):
         super().__init__(builder)
@@ -39,7 +55,11 @@ class BoxUnboxEliminationTransform(IRTransform):
         if len(users) == 0:
             return None
         # Check for Unbox->Box
-        if isinstance(op.src, Unbox) and op.type == op.src.src.type and all(isinstance(user, _supported_ops) for user in users):
+        if (
+            isinstance(op.src, Unbox)
+            and op.type == op.src.src.type
+            and all(isinstance(user, _supported_ops) for user in users)
+        ):
             unbox = op.src
             for user in users:
                 user.set_sources([unbox.src if src is op else src for src in user.sources()])
@@ -51,7 +71,11 @@ class BoxUnboxEliminationTransform(IRTransform):
         if len(users) == 0:
             return None
         # Check for Box->Unbox
-        if isinstance(op.src, Box) and op.type == op.src.src.type and all(isinstance(user, _supported_ops) for user in users):
+        if (
+            isinstance(op.src, Box)
+            and op.type == op.src.src.type
+            and all(isinstance(user, _supported_ops) for user in users)
+        ):
             box = op.src
             for user in users:
                 user.set_sources([box.src if src is op else src for src in user.sources()])

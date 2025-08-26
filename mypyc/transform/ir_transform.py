@@ -102,13 +102,18 @@ class IRTransform(OpVisitor[Optional[Value]]):
         for block in block_map.values():
             for op in block.ops:
                 if isinstance(op, Branch):
-                    #raise ValueError(op.targets())
+                    # raise ValueError(op.targets())
                     branch_targets.update(op.targets())
 
         # Remove blocks that became empty (only Unreachable), are not branch targets, and were not empty before
         empties = set()
         for old_block, new_block in block_map.items():
-            if is_empty_block(new_block) and old_block not in originally_empty and old_block not in branch_targets and new_block not in branch_targets:
+            if (
+                is_empty_block(new_block)
+                and old_block not in originally_empty
+                and old_block not in branch_targets
+                and new_block not in branch_targets
+            ):
                 empties.add(new_block)
         self.builder.blocks = [block for block in self.builder.blocks if block not in empties]
 
