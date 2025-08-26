@@ -127,20 +127,38 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
-# bytes.rjust(width, fillbyte=b' ')
+# bytes.rjust(width)
+method_op(
+    name="rjust",
+    arg_types=[bytes_rprimitive, int_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyBytes_RjustDefaultFill",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.rjust(width, fillbyte)
 method_op(
     name="rjust",
     arg_types=[bytes_rprimitive, int_rprimitive, bytes_rprimitive],
     return_type=bytes_rprimitive,
-    c_function_name="CPyBytes_Rjust",
+    c_function_name="CPyBytes_RjustCustomFill",
     error_kind=ERR_MAGIC,
 )
 
-# bytes.ljust(width, fillbyte=b' ')
+# bytes.ljust(width)
+method_op(
+    name="ljust",
+    arg_types=[bytes_rprimitive, int_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyBytes_LjustDefaultFill",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.ljust(width, fillbyte)
 method_op(
     name="ljust",
     arg_types=[bytes_rprimitive, int_rprimitive, bytes_rprimitive],
     return_type=bytes_rprimitive,
-    c_function_name="CPyBytes_Ljust",
+    c_function_name="CPyBytes_LjustCustomFill",
     error_kind=ERR_MAGIC,
 )
