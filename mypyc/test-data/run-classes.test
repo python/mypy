@@ -3280,7 +3280,7 @@ class Dyn: pass
 
 [case testDunderNew]
 from __future__ import annotations
-from types import UnionType
+from typing import Union
 
 class Add:
     l: IntLike
@@ -3305,7 +3305,7 @@ class Add:
     def __add__(self, other: IntLike) -> IntLike:
         return Add(self, other)
 
-IntLike = int | Add
+IntLike = Union[int, Add]
 
 [file driver.py]
 from native import Add
