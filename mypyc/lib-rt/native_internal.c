@@ -1,10 +1,12 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <stdint.h>
 #include "CPy.h"
 #define NATIVE_INTERNAL_MODULE
 #include "native_internal.h"
 
 #define START_SIZE 512
+#define MAX_SHORT_INT_TAGGED (255 << 1)
 
 typedef struct {
     PyObject_HEAD
@@ -436,6 +438,71 @@ write_int(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
+static CPyTagged
+read_tag_internal(PyObject *data) {
+    if (_check_buffer(data) == 2)
+        return CPY_INT_TAG;
+
+    if (_check_read((BufferObject *)data, 1) == 2)
+        return CPY_INT_TAG;
+    char *buf = ((BufferObject *)data)->buf;
+
+    uint8_t ret = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += 1;
+    return ((CPyTagged)ret) << 1;
+}
+
+static PyObject*
+read_tag(PyObject *self, PyObject *args, PyObject *kwds) {
+    static char *kwlist[] = {"data", NULL};
+    PyObject *data = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
+        return NULL;
+    CPyTagged retval = read_tag_internal(data);
+    if (retval == CPY_INT_TAG) {
+        return NULL;
+    }
+    return CPyTagged_StealAsObject(retval);
+}
+
+static char
+write_tag_internal(PyObject *data, CPyTagged value) {
+    if (_check_buffer(data) == 2)
+        return 2;
+
+    if (value > MAX_SHORT_INT_TAGGED) {
+        PyErr_SetString(PyExc_OverflowError, "value must fit in single byte");
+        return 2;
+    }
+
+    if (_check_size((BufferObject *)data, 1) == 2)
+        return 2;
+    uint8_t *buf = (uint8_t *)((BufferObject *)data)->buf;
+    *(buf + ((BufferObject *)data)->pos) = (uint8_t)(value >> 1);
+    ((BufferObject *)data)->pos += 1;
+    ((BufferObject *)data)->end += 1;
+    return 1;
+}
+
+static PyObject*
+write_tag(PyObject *self, PyObject *args, PyObject *kwds) {
+    static char *kwlist[] = {"data", "value", NULL};
+    PyObject *data = NULL;
+    PyObject *value = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value))
+        return NULL;
+    if (!PyLong_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "value must be an int");
+        return NULL;
+    }
+    CPyTagged tagged_value = CPyTagged_BorrowFromObject(value);
+    if (write_tag_internal(data, tagged_value) == 2) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyMethodDef native_internal_module_methods[] = {
     // TODO: switch public wrappers to METH_FASTCALL.
     {"write_bool", (PyCFunction)write_bool, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a bool")},
@@ -446,6 +513,8 @@ static PyMethodDef native_internal_module_methods[] = {
     {"read_float", (PyCFunction)read_float, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a float")},
     {"write_int", (PyCFunction)write_int, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write an int")},
     {"read_int", (PyCFunction)read_int, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read an int")},
+    {"write_tag", (PyCFunction)write_tag, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a short int")},
+    {"read_tag", (PyCFunction)read_tag, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a short int")},
     {NULL, NULL, 0, NULL}
 };
 
@@ -465,7 +534,7 @@ native_internal_module_exec(PyObject *m)
     }
 
     // Export mypy internal C API, be careful with the order!
-    static void *NativeInternal_API[12] = {
+    static void *NativeInternal_API[14] = {
         (void *)Buffer_internal,
         (void *)Buffer_internal_empty,
         (void *)Buffer_getvalue_internal,
@@ -477,6 +546,8 @@ native_internal_module_exec(PyObject *m)
         (void *)read_float_internal,
         (void *)write_int_internal,
         (void *)read_int_internal,
+        (void *)write_tag_internal,
+        (void *)read_tag_internal,
         (void *)NativeInternal_ABI_Version,
     };
     PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "native_internal._C_API", NULL);

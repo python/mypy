@@ -16,6 +16,8 @@ static char write_float_internal(PyObject *data, double value);
 static double read_float_internal(PyObject *data);
 static char write_int_internal(PyObject *data, CPyTagged value);
 static CPyTagged read_int_internal(PyObject *data);
+static char write_tag_internal(PyObject *data, CPyTagged value);
+static CPyTagged read_tag_internal(PyObject *data);
 static int NativeInternal_ABI_Version(void);
 
 #else
@@ -33,7 +35,9 @@ static void **NativeInternal_API;
 #define read_float_internal (*(double (*)(PyObject *source)) NativeInternal_API[8])
 #define write_int_internal (*(char (*)(PyObject *source, CPyTagged value)) NativeInternal_API[9])
 #define read_int_internal (*(CPyTagged (*)(PyObject *source)) NativeInternal_API[10])
-#define NativeInternal_ABI_Version (*(int (*)(void)) NativeInternal_API[11])
+#define write_tag_internal (*(char (*)(PyObject *source, CPyTagged value)) NativeInternal_API[11])
+#define read_tag_internal (*(CPyTagged (*)(PyObject *source)) NativeInternal_API[12])
+#define NativeInternal_ABI_Version (*(int (*)(void)) NativeInternal_API[13])
 
 static int
 import_native_internal(void)
