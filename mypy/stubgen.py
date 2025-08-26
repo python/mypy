@@ -538,6 +538,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         self.processing_enum = False
         self.processing_dataclass = False
         self.dataclass_field_specifier: tuple[str, ...] = ()
+        self.processing_pydantic_model = False
 
     @property
     def _current_class(self) -> ClassDef | None:
@@ -860,6 +861,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         if self.analyzed and (spec := find_dataclass_transform_spec(o)):
             self.processing_dataclass = True
             self.dataclass_field_specifier = spec.field_specifiers
+        if self._inherits_from_pydantic_basemodel(o):
+            self.processing_pydantic_model = True
         super().visit_class_def(o)
         self.dedent()
         self._vars.pop()
@@ -877,6 +880,21 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         self.dataclass_field_specifier = ()
         self._class_stack.pop(-1)
         self.processing_enum = False
+        self.processing_pydantic_model = False
+
+    def _inherits_from_pydantic_basemodel(self, class_def: ClassDef) -> bool:
+        """Check if a class directly or indirectly inherits from pydantic.BaseModel"""
+        for base_type_expr in class_def.base_type_exprs:
+            if (
+                isinstance(base_type_expr, (NameExpr, MemberExpr))
+                and self.get_fullname(base_type_expr) == "pydantic.BaseModel"
+            ):
+                return True
+        if self.analyzed and class_def.info:
+            for base_class in class_def.info.mro:
+                if base_class.fullname == "pydantic.BaseModel":
+                    return True
+        return False
 
     def get_base_types(self, cdef: ClassDef) -> list[str]:
         """Get list of base classes for a class."""
@@ -1341,6 +1359,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             if not (isinstance(rvalue, TempNode) and rvalue.no_rhs):
                 return " = ..."
         # TODO: support other possible cases, where initializer is important
+        if self.processing_pydantic_model:
+            if not (isinstance(rvalue, TempNode) and rvalue.no_rhs):
+                return " = ..."
 
         # By default, no initializer is required:
         return ""
