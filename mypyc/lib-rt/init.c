@@ -18,8 +18,7 @@ void CPy_Init(void) {
     if (__mypyc_empty_tuple__ == NULL) {
         __mypyc_empty_tuple__ = PyTuple_New(0);
         if (!__mypyc_empty_tuple__) {
-            PyErr_SetString(PyExc_RuntimeError, "Failed to initialize __mypyc_empty_tuple__");
-            return;
+            CPyError_OutOfMemory();
         }
     }
 }
