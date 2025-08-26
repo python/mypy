@@ -1410,10 +1410,15 @@ class TestOverload:
         return x
 
 [case testNativeBufferFastPath]
+from typing import Final
+from mypy_extensions import u8
 from native_internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag
 )
+
+Tag = u8
+TAG: Final[Tag] = 1
 
 def foo() -> None:
     b = Buffer()
@@ -1421,7 +1426,7 @@ def foo() -> None:
     write_bool(b, True)
     write_float(b, 0.1)
     write_int(b, 1)
-    write_tag(b, 1)
+    write_tag(b, TAG)
 
     b = Buffer(b.getvalue())
     x = read_str(b)
@@ -1439,7 +1444,8 @@ def foo():
     r9, x :: str
     r10, y :: bool
     r11, z :: float
-    r12, t, r13, u :: int
+    r12, t :: int
+    r13, u :: u8
 L0:
     r0 = Buffer_internal_empty()
     b = r0
@@ -1448,7 +1454,7 @@ L0:
     r3 = write_bool_internal(b, 1)
     r4 = write_float_internal(b, 0.1)
     r5 = write_int_internal(b, 2)
-    r6 = write_tag_internal(b, 2)
+    r6 = write_tag_internal(b, 1)
     r7 = Buffer_getvalue_internal(b)
     r8 = Buffer_internal(r7)
     b = r8

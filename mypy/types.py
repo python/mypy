@@ -12,6 +12,7 @@ import mypy.nodes
 from mypy.bogus_type import Bogus
 from mypy.cache import (
     Buffer,
+    Tag,
     read_bool,
     read_int,
     read_int_list,
@@ -4120,25 +4121,25 @@ def type_vars_as_args(type_vars: Sequence[TypeVarLikeType]) -> tuple[Type, ...]:
     return tuple(args)
 
 
-TYPE_ALIAS_TYPE: Final = 1
-TYPE_VAR_TYPE: Final = 2
-PARAM_SPEC_TYPE: Final = 3
-TYPE_VAR_TUPLE_TYPE: Final = 4
-UNBOUND_TYPE: Final = 5
-UNPACK_TYPE: Final = 6
-ANY_TYPE: Final = 7
-UNINHABITED_TYPE: Final = 8
-NONE_TYPE: Final = 9
-DELETED_TYPE: Final = 10
-INSTANCE: Final = 11
-CALLABLE_TYPE: Final = 12
-OVERLOADED: Final = 13
-TUPLE_TYPE: Final = 14
-TYPED_DICT_TYPE: Final = 15
-LITERAL_TYPE: Final = 16
-UNION_TYPE: Final = 17
-TYPE_TYPE: Final = 18
-PARAMETERS: Final = 19
+TYPE_ALIAS_TYPE: Final[Tag] = 1
+TYPE_VAR_TYPE: Final[Tag] = 2
+PARAM_SPEC_TYPE: Final[Tag] = 3
+TYPE_VAR_TUPLE_TYPE: Final[Tag] = 4
+UNBOUND_TYPE: Final[Tag] = 5
+UNPACK_TYPE: Final[Tag] = 6
+ANY_TYPE: Final[Tag] = 7
+UNINHABITED_TYPE: Final[Tag] = 8
+NONE_TYPE: Final[Tag] = 9
+DELETED_TYPE: Final[Tag] = 10
+INSTANCE: Final[Tag] = 11
+CALLABLE_TYPE: Final[Tag] = 12
+OVERLOADED: Final[Tag] = 13
+TUPLE_TYPE: Final[Tag] = 14
+TYPED_DICT_TYPE: Final[Tag] = 15
+LITERAL_TYPE: Final[Tag] = 16
+UNION_TYPE: Final[Tag] = 17
+TYPE_TYPE: Final[Tag] = 18
+PARAMETERS: Final[Tag] = 19
 
 
 def read_type(data: Buffer) -> Type:

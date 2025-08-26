@@ -18,6 +18,7 @@ from mypy.cache import (
     LITERAL_COMPLEX,
     LITERAL_NONE,
     Buffer,
+    Tag,
     read_bool,
     read_float,
     read_int,
@@ -4877,17 +4878,17 @@ def local_definitions(
                 yield from local_definitions(node.names, fullname, node)
 
 
-MYPY_FILE: Final = 0
-OVERLOADED_FUNC_DEF: Final = 1
-FUNC_DEF: Final = 2
-DECORATOR: Final = 3
-VAR: Final = 4
-TYPE_VAR_EXPR: Final = 5
-PARAM_SPEC_EXPR: Final = 6
-TYPE_VAR_TUPLE_EXPR: Final = 7
-TYPE_INFO: Final = 8
-TYPE_ALIAS: Final = 9
-CLASS_DEF: Final = 10
+MYPY_FILE: Final[Tag] = 0
+OVERLOADED_FUNC_DEF: Final[Tag] = 1
+FUNC_DEF: Final[Tag] = 2
+DECORATOR: Final[Tag] = 3
+VAR: Final[Tag] = 4
+TYPE_VAR_EXPR: Final[Tag] = 5
+PARAM_SPEC_EXPR: Final[Tag] = 6
+TYPE_VAR_TUPLE_EXPR: Final[Tag] = 7
+TYPE_INFO: Final[Tag] = 8
+TYPE_ALIAS: Final[Tag] = 9
+CLASS_DEF: Final[Tag] = 10
 
 
 def read_symbol(data: Buffer) -> mypy.nodes.SymbolNode:
