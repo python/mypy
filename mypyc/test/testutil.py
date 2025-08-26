@@ -27,6 +27,7 @@ from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.options import CompilerOptions
 from mypyc.test.config import test_data_prefix
+from mypyc.transform.redundant_box_elimination import do_box_unbox_elimination
 
 # The builtins stub used during icode generation test cases.
 ICODE_GEN_BUILTINS = os.path.join(test_data_prefix, "fixtures/ir.py")
@@ -132,8 +133,11 @@ def build_ir_for_single_file2(
     if errors.num_errors:
         raise CompileError(errors.new_messages())
 
-    module = list(modules.values())[0]
+    module: ModuleIR = list(modules.values())[0]
     for fn in module.functions:
+        for _ in range(2):
+            assert_func_ir_valid(fn)
+            do_box_unbox_elimination(fn, compiler_options)
         assert_func_ir_valid(fn)
     tree = result.graph[module.fullname].tree
     assert tree is not None

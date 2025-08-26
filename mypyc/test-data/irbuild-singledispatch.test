@@ -188,11 +188,10 @@ def f_obj.__call__(__mypyc_self__, x):
     r17 :: ptr
     r18 :: object
     r19 :: bit
-    r20 :: int
-    r21 :: object[1]
-    r22 :: object_ptr
-    r23 :: object
-    r24 :: None
+    r20 :: object[1]
+    r21 :: object_ptr
+    r22 :: object
+    r23 :: None
 L0:
     r0 = get_element_ptr x ob_type :: PyObject
     r1 = borrow load_mem r0 :: builtins.object*
@@ -225,15 +224,14 @@ L3:
     r19 = r18 == r16
     if r19 goto L4 else goto L5 :: bool
 L4:
-    r20 = unbox(int, r6)
     unreachable
 L5:
-    r21 = [x]
-    r22 = load_address r21
-    r23 = PyObject_Vectorcall(r6, r22, 1, 0)
+    r20 = [x]
+    r21 = load_address r20
+    r22 = PyObject_Vectorcall(r6, r21, 1, 0)
     keep_alive x
-    r24 = unbox(None, r23)
-    return r24
+    r23 = unbox(None, r22)
+    return r23
 def f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
     r1 :: bit

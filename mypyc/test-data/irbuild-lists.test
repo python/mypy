@@ -724,13 +724,11 @@ def test():
     r0, source :: bytes
     r1 :: native_int
     r2 :: list
-    r3 :: native_int
-    r4, r5, r6 :: bit
-    r7, r8, r9, r10 :: int
-    r11 :: object
-    r12, x, r13 :: int
-    r14 :: object
-    r15 :: native_int
+    r3, r4 :: native_int
+    r5, r6, r7 :: bit
+    r8, r9, r10, r11, x, r12 :: int
+    r13 :: object
+    r14 :: native_int
     a :: list
 L0:
     r0 = b'abc'
@@ -755,16 +753,14 @@ L5:
     r9 = r3 << 1
     r8 = r9
 L6:
-    r10 = CPyBytes_GetItem(source, r8)
-    r11 = box(int, r10)
-    r12 = unbox(int, r11)
-    x = r12
-    r13 = f2(x)
-    r14 = box(int, r13)
-    CPyList_SetItemUnsafe(r2, r3, r14)
+    r11 = CPyBytes_GetItem(source, r9)
+    x = r11
+    r12 = f2(x)
+    r13 = box(int, r12)
+    CPyList_SetItemUnsafe(r2, r4, r13)
 L7:
-    r15 = r3 + 1
-    r3 = r15
+    r14 = r4 + 1
+    r4 = r14
     goto L1
 L8:
     a = r2
@@ -785,12 +781,11 @@ L0:
     return r0
 def test():
     r0 :: bytes
-    r1 :: list
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6, r7, r8, r9 :: int
-    r10 :: object
-    r11, x, r12 :: int
+    r1 :: native_int
+    r2 :: list
+    r3, r4 :: native_int
+    r5, r6, r7 :: bit
+    r8, r9, r10, r11, x, r12 :: int
     r13 :: object
     r14 :: native_int
     a :: list
@@ -815,16 +810,14 @@ L5:
     r8 = r2 << 1
     r7 = r8
 L6:
-    r9 = CPyBytes_GetItem(r0, r7)
-    r10 = box(int, r9)
-    r11 = unbox(int, r10)
+    r11 = CPyBytes_GetItem(r0, r9)
     x = r11
     r12 = f2(x)
     r13 = box(int, r12)
-    CPyList_SetItemUnsafe(r1, r2, r13)
+    CPyList_SetItemUnsafe(r2, r4, r13)
 L7:
-    r14 = r2 + 1
-    r2 = r14
+    r14 = r4 + 1
+    r4 = r14
     goto L1
 L8:
     a = r1
@@ -852,13 +845,11 @@ def test():
     r1 :: bool
     r2 :: native_int
     r3 :: list
-    r4 :: native_int
-    r5, r6, r7 :: bit
-    r8, r9, r10, r11 :: int
-    r12 :: object
-    r13, x, r14 :: int
-    r15 :: object
-    r16 :: native_int
+    r4, r5 :: native_int
+    r6, r7, r8 :: bit
+    r9, r10, r11, r12, x, r13 :: int
+    r14 :: object
+    r15 :: native_int
     a :: list
 L0:
     r0 = __main__.source :: static
@@ -887,16 +878,14 @@ L7:
     r10 = r4 << 1
     r9 = r10
 L8:
-    r11 = CPyBytes_GetItem(r0, r9)
-    r12 = box(int, r11)
-    r13 = unbox(int, r12)
-    x = r13
-    r14 = f2(x)
-    r15 = box(int, r14)
-    CPyList_SetItemUnsafe(r3, r4, r15)
+    r12 = CPyBytes_GetItem(r0, r10)
+    x = r12
+    r13 = f2(x)
+    r14 = box(int, r13)
+    CPyList_SetItemUnsafe(r3, r5, r14)
 L9:
-    r16 = r4 + 1
-    r4 = r16
+    r15 = r5 + 1
+    r5 = r15
     goto L3
 L10:
     a = r3

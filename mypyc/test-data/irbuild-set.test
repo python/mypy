@@ -649,29 +649,25 @@ def not_precomputed_non_final_name(i):
     r0 :: dict
     r1 :: str
     r2 :: object
-    r3 :: int
-    r4 :: set
-    r5 :: object
-    r6 :: i32
-    r7 :: bit
-    r8 :: object
-    r9 :: i32
-    r10 :: bit
-    r11 :: bool
+    r3 :: set
+    r4 :: i32
+    r5 :: bit
+    r6 :: object
+    r7 :: i32
+    r8 :: bit
+    r9 :: bool
 L0:
     r0 = __main__.globals :: static
     r1 = 'non_const'
     r2 = CPyDict_GetItem(r0, r1)
-    r3 = unbox(int, r2)
-    r4 = PySet_New(0)
-    r5 = box(int, r3)
-    r6 = PySet_Add(r4, r5)
-    r7 = r6 >= 0 :: signed
-    r8 = box(int, i)
-    r9 = PySet_Contains(r4, r8)
-    r10 = r9 >= 0 :: signed
-    r11 = truncate r9: i32 to builtins.bool
-    return r11
+    r3 = PySet_New(0)
+    r4 = PySet_Add(r3, r2)
+    r5 = r4 >= 0 :: signed
+    r6 = box(int, i)
+    r7 = PySet_Contains(r3, r6)
+    r8 = r7 >= 0 :: signed
+    r9 = truncate r7: i32 to builtins.bool
+    return r9
 def not_precomputed_nested_set(i):
     i :: int
     r0 :: set
@@ -769,33 +765,30 @@ def not_precomputed():
     r0 :: dict
     r1 :: str
     r2 :: object
-    r3 :: int
-    r4 :: set
-    r5 :: object
-    r6 :: i32
-    r7 :: bit
-    r8, r9 :: object
-    r10, not_optimized :: int
-    r11 :: bit
+    r3 :: set
+    r4 :: i32
+    r5 :: bit
+    r6, r7 :: object
+    r8, not_optimized :: int
+    r9 :: bit
 L0:
     r0 = __main__.globals :: static
     r1 = 'non_const'
     r2 = CPyDict_GetItem(r0, r1)
-    r3 = unbox(int, r2)
-    r4 = PySet_New(0)
-    r5 = box(int, r3)
-    r6 = PySet_Add(r4, r5)
-    r7 = r6 >= 0 :: signed
-    r8 = PyObject_GetIter(r4)
+    r3 = PySet_New(0)
+    r4 = PySet_Add(r3, r2)
+    r5 = r4 >= 0 :: signed
+    r6 = PyObject_GetIter(r3)
 L1:
-    r9 = PyIter_Next(r8)
-    if is_error(r9) goto L4 else goto L2
+    r7 = PyIter_Next(r6)
+    if is_error(r7) goto L4 else goto L2
 L2:
-    r10 = unbox(int, r9)
-    not_optimized = r10
+    r8 = unbox(int, r7)
+    not_optimized = r8
 L3:
     goto L1
 L4:
-    r11 = CPy_NoErrOccurred()
+    r9 = CPy_NoErrOccurred()
 L5:
     return 1
+
