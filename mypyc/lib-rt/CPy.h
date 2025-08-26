@@ -68,8 +68,9 @@ typedef struct tuple_T4CIOO {
 extern PyObject * __mypyc_empty_tuple__;
 
 static inline PyObject *CPyTuple_LoadEmptyTupleConstant() {
-    // do tests still pass if I comment this out? empty tuple singleton is not tracked by gc
-    // Py_INCREF(__mypyc_empty_tuple__);
+#if !CPY_3_12_FEATURES
+    Py_INCREF(__mypyc_empty_tuple__);
+#endif
     return __mypyc_empty_tuple__;
 }
 
