@@ -21,6 +21,5 @@ void CPy_Init(void) {
             PyErr_SetString(PyExc_RuntimeError, "Failed to initialize __mypyc_empty_tuple__");
             return;
         }
-        Py_INCREF(__mypyc_empty_tuple__);
     }
 }
