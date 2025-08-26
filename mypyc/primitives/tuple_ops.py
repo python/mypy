@@ -58,7 +58,7 @@ new_tuple_with_length_op = custom_op(
 load_empty_tuple_constant_op = custom_op(
     arg_types=[],
     return_type=tuple_rprimitive,
-    c_function_name="_CPyTuple_LoadEmptyTupleConstant",
+    c_function_name="CPyTuple_LoadEmptyTupleConstant",
     error_kind=ERR_NEVER,
 )
 
