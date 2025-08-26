@@ -20,6 +20,7 @@ from mypy.cache import (
     read_str_list,
     read_str_opt,
     read_str_opt_list,
+    read_tag,
     write_bool,
     write_int,
     write_int_list,
@@ -28,6 +29,7 @@ from mypy.cache import (
     write_str_list,
     write_str_opt,
     write_str_opt_list,
+    write_tag,
 )
 from mypy.nodes import ARG_KINDS, ARG_POS, ARG_STAR, ARG_STAR2, INVARIANT, ArgKind, SymbolNode
 from mypy.options import Options
@@ -456,7 +458,7 @@ class TypeAliasType(Type):
         return alias
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPE_ALIAS_TYPE)
+        write_tag(data, TYPE_ALIAS_TYPE)
         write_type_list(data, self.args)
         assert self.alias is not None
         write_str(data, self.alias.fullname)
@@ -735,7 +737,7 @@ class TypeVarType(TypeVarLikeType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPE_VAR_TYPE)
+        write_tag(data, TYPE_VAR_TYPE)
         write_str(data, self.name)
         write_str(data, self.fullname)
         write_int(data, self.id.raw_id)
@@ -887,7 +889,7 @@ class ParamSpecType(TypeVarLikeType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, PARAM_SPEC_TYPE)
+        write_tag(data, PARAM_SPEC_TYPE)
         self.prefix.write(data)
         write_str(data, self.name)
         write_str(data, self.fullname)
@@ -899,7 +901,7 @@ class ParamSpecType(TypeVarLikeType):
 
     @classmethod
     def read(cls, data: Buffer) -> ParamSpecType:
-        assert read_int(data) == PARAMETERS
+        assert read_tag(data) == PARAMETERS
         prefix = Parameters.read(data)
         return ParamSpecType(
             read_str(data),
@@ -967,7 +969,7 @@ class TypeVarTupleType(TypeVarLikeType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPE_VAR_TUPLE_TYPE)
+        write_tag(data, TYPE_VAR_TUPLE_TYPE)
         self.tuple_fallback.write(data)
         write_str(data, self.name)
         write_str(data, self.fullname)
@@ -979,7 +981,7 @@ class TypeVarTupleType(TypeVarLikeType):
 
     @classmethod
     def read(cls, data: Buffer) -> TypeVarTupleType:
-        assert read_int(data) == INSTANCE
+        assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         return TypeVarTupleType(
             read_str(data),
@@ -1123,7 +1125,7 @@ class UnboundType(ProperType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, UNBOUND_TYPE)
+        write_tag(data, UNBOUND_TYPE)
         write_str(data, self.name)
         write_type_list(data, self.args)
         write_str_opt(data, self.original_str_expr)
@@ -1233,7 +1235,7 @@ class UnpackType(ProperType):
         return {".class": "UnpackType", "type": self.type.serialize()}
 
     def write(self, data: Buffer) -> None:
-        write_int(data, UNPACK_TYPE)
+        write_tag(data, UNPACK_TYPE)
         self.type.write(data)
 
     @classmethod
@@ -1342,7 +1344,7 @@ class AnyType(ProperType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, ANY_TYPE)
+        write_tag(data, ANY_TYPE)
         write_type_opt(data, self.source_any)
         write_int(data, self.type_of_any)
         write_str_opt(data, self.missing_import_name)
@@ -1350,7 +1352,7 @@ class AnyType(ProperType):
     @classmethod
     def read(cls, data: Buffer) -> AnyType:
         if read_bool(data):
-            assert read_int(data) == ANY_TYPE
+            assert read_tag(data) == ANY_TYPE
             source_any = AnyType.read(data)
         else:
             source_any = None
@@ -1403,7 +1405,7 @@ class UninhabitedType(ProperType):
         return UninhabitedType()
 
     def write(self, data: Buffer) -> None:
-        write_int(data, UNINHABITED_TYPE)
+        write_tag(data, UNINHABITED_TYPE)
 
     @classmethod
     def read(cls, data: Buffer) -> UninhabitedType:
@@ -1442,7 +1444,7 @@ class NoneType(ProperType):
         return NoneType()
 
     def write(self, data: Buffer) -> None:
-        write_int(data, NONE_TYPE)
+        write_tag(data, NONE_TYPE)
 
     @classmethod
     def read(cls, data: Buffer) -> NoneType:
@@ -1496,7 +1498,7 @@ class DeletedType(ProperType):
         return DeletedType(data["source"])
 
     def write(self, data: Buffer) -> None:
-        write_int(data, DELETED_TYPE)
+        write_tag(data, DELETED_TYPE)
         write_str_opt(data, self.source)
 
     @classmethod
@@ -1704,7 +1706,7 @@ class Instance(ProperType):
         return inst
 
     def write(self, data: Buffer) -> None:
-        write_int(data, INSTANCE)
+        write_tag(data, INSTANCE)
         write_str(data, self.type.fullname)
         write_type_list(data, self.args)
         write_type_opt(data, self.last_known_value)
@@ -1720,7 +1722,7 @@ class Instance(ProperType):
         inst = Instance(NOT_READY, read_type_list(data))
         inst.type_ref = type_ref
         if read_bool(data):
-            assert read_int(data) == LITERAL_TYPE
+            assert read_tag(data) == LITERAL_TYPE
             inst.last_known_value = LiteralType.read(data)
         if read_bool(data):
             inst.extra_attrs = ExtraAttrs.read(data)
@@ -2003,7 +2005,7 @@ class Parameters(ProperType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, PARAMETERS)
+        write_tag(data, PARAMETERS)
         write_type_list(data, self.arg_types)
         write_int_list(data, [int(x.value) for x in self.arg_kinds])
         write_str_opt_list(data, self.arg_names)
@@ -2525,7 +2527,7 @@ class CallableType(FunctionLike):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, CALLABLE_TYPE)
+        write_tag(data, CALLABLE_TYPE)
         self.fallback.write(data)
         write_type_list(data, self.arg_types)
         write_int_list(data, [int(x.value) for x in self.arg_kinds])
@@ -2544,7 +2546,7 @@ class CallableType(FunctionLike):
 
     @classmethod
     def read(cls, data: Buffer) -> CallableType:
-        assert read_int(data) == INSTANCE
+        assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         return CallableType(
             read_type_list(data),
@@ -2640,15 +2642,14 @@ class Overloaded(FunctionLike):
         return Overloaded([CallableType.deserialize(t) for t in data["items"]])
 
     def write(self, data: Buffer) -> None:
-        write_int(data, OVERLOADED)
+        write_tag(data, OVERLOADED)
         write_type_list(data, self.items)
 
     @classmethod
     def read(cls, data: Buffer) -> Overloaded:
         items = []
-        num_overloads = read_int(data)
-        for _ in range(num_overloads):
-            assert read_int(data) == CALLABLE_TYPE
+        for _ in range(read_int(data)):
+            assert read_tag(data) == CALLABLE_TYPE
             items.append(CallableType.read(data))
         return Overloaded(items)
 
@@ -2749,14 +2750,14 @@ class TupleType(ProperType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TUPLE_TYPE)
+        write_tag(data, TUPLE_TYPE)
         self.partial_fallback.write(data)
         write_type_list(data, self.items)
         write_bool(data, self.implicit)
 
     @classmethod
     def read(cls, data: Buffer) -> TupleType:
-        assert read_int(data) == INSTANCE
+        assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         return TupleType(read_type_list(data), fallback, implicit=read_bool(data))
 
@@ -2931,7 +2932,7 @@ class TypedDictType(ProperType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPED_DICT_TYPE)
+        write_tag(data, TYPED_DICT_TYPE)
         self.fallback.write(data)
         write_type_map(data, self.items)
         write_str_list(data, sorted(self.required_keys))
@@ -2939,7 +2940,7 @@ class TypedDictType(ProperType):
 
     @classmethod
     def read(cls, data: Buffer) -> TypedDictType:
-        assert read_int(data) == INSTANCE
+        assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         return TypedDictType(
             read_type_map(data), set(read_str_list(data)), set(read_str_list(data)), fallback
@@ -3194,16 +3195,16 @@ class LiteralType(ProperType):
         return LiteralType(value=data["value"], fallback=Instance.deserialize(data["fallback"]))
 
     def write(self, data: Buffer) -> None:
-        write_int(data, LITERAL_TYPE)
+        write_tag(data, LITERAL_TYPE)
         self.fallback.write(data)
         write_literal(data, self.value)
 
     @classmethod
     def read(cls, data: Buffer) -> LiteralType:
-        assert read_int(data) == INSTANCE
+        assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
-        marker = read_int(data)
-        return LiteralType(read_literal(data, marker), fallback)
+        tag = read_tag(data)
+        return LiteralType(read_literal(data, tag), fallback)
 
     def is_singleton_type(self) -> bool:
         return self.is_enum_literal() or isinstance(self.value, bool)
@@ -3307,7 +3308,7 @@ class UnionType(ProperType):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, UNION_TYPE)
+        write_tag(data, UNION_TYPE)
         write_type_list(data, self.items)
         write_bool(data, self.uses_pep604_syntax)
 
@@ -3452,7 +3453,7 @@ class TypeType(ProperType):
         return TypeType.make_normalized(deserialize_type(data["item"]))
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPE_TYPE)
+        write_tag(data, TYPE_TYPE)
         self.item.write(data)
 
     @classmethod
@@ -4141,67 +4142,67 @@ PARAMETERS: Final = 19
 
 
 def read_type(data: Buffer) -> Type:
-    marker = read_int(data)
+    tag = read_tag(data)
     # The branches here are ordered manually by type "popularity".
-    if marker == INSTANCE:
+    if tag == INSTANCE:
         return Instance.read(data)
-    if marker == ANY_TYPE:
+    if tag == ANY_TYPE:
         return AnyType.read(data)
-    if marker == TYPE_VAR_TYPE:
+    if tag == TYPE_VAR_TYPE:
         return TypeVarType.read(data)
-    if marker == CALLABLE_TYPE:
+    if tag == CALLABLE_TYPE:
         return CallableType.read(data)
-    if marker == NONE_TYPE:
+    if tag == NONE_TYPE:
         return NoneType.read(data)
-    if marker == UNION_TYPE:
+    if tag == UNION_TYPE:
         return UnionType.read(data)
-    if marker == LITERAL_TYPE:
+    if tag == LITERAL_TYPE:
         return LiteralType.read(data)
-    if marker == TYPE_ALIAS_TYPE:
+    if tag == TYPE_ALIAS_TYPE:
         return TypeAliasType.read(data)
-    if marker == TUPLE_TYPE:
+    if tag == TUPLE_TYPE:
         return TupleType.read(data)
-    if marker == TYPED_DICT_TYPE:
+    if tag == TYPED_DICT_TYPE:
         return TypedDictType.read(data)
-    if marker == TYPE_TYPE:
+    if tag == TYPE_TYPE:
         return TypeType.read(data)
-    if marker == OVERLOADED:
+    if tag == OVERLOADED:
         return Overloaded.read(data)
-    if marker == PARAM_SPEC_TYPE:
+    if tag == PARAM_SPEC_TYPE:
         return ParamSpecType.read(data)
-    if marker == TYPE_VAR_TUPLE_TYPE:
+    if tag == TYPE_VAR_TUPLE_TYPE:
         return TypeVarTupleType.read(data)
-    if marker == UNPACK_TYPE:
+    if tag == UNPACK_TYPE:
         return UnpackType.read(data)
-    if marker == PARAMETERS:
+    if tag == PARAMETERS:
         return Parameters.read(data)
-    if marker == UNINHABITED_TYPE:
+    if tag == UNINHABITED_TYPE:
         return UninhabitedType.read(data)
-    if marker == UNBOUND_TYPE:
+    if tag == UNBOUND_TYPE:
         return UnboundType.read(data)
-    if marker == DELETED_TYPE:
+    if tag == DELETED_TYPE:
         return DeletedType.read(data)
-    assert False, f"Unknown type marker {marker}"
+    assert False, f"Unknown type tag {tag}"
 
 
 def read_function_like(data: Buffer) -> FunctionLike:
-    marker = read_int(data)
-    if marker == CALLABLE_TYPE:
+    tag = read_tag(data)
+    if tag == CALLABLE_TYPE:
         return CallableType.read(data)
-    if marker == OVERLOADED:
+    if tag == OVERLOADED:
         return Overloaded.read(data)
-    assert False, f"Invalid type marker for FunctionLike {marker}"
+    assert False, f"Invalid type tag for FunctionLike {tag}"
 
 
 def read_type_var_like(data: Buffer) -> TypeVarLikeType:
-    marker = read_int(data)
-    if marker == TYPE_VAR_TYPE:
+    tag = read_tag(data)
+    if tag == TYPE_VAR_TYPE:
         return TypeVarType.read(data)
-    if marker == PARAM_SPEC_TYPE:
+    if tag == PARAM_SPEC_TYPE:
         return ParamSpecType.read(data)
-    if marker == TYPE_VAR_TUPLE_TYPE:
+    if tag == TYPE_VAR_TUPLE_TYPE:
         return TypeVarTupleType.read(data)
-    assert False, f"Invalid type marker for TypeVarLikeType {marker}"
+    assert False, f"Invalid type tag for TypeVarLikeType {tag}"
 
 
 def read_type_opt(data: Buffer) -> Type | None:

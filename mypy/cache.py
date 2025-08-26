@@ -10,10 +10,12 @@ try:
         read_float as read_float,
         read_int as read_int,
         read_str as read_str,
+        read_tag as read_tag,
         write_bool as write_bool,
         write_float as write_float,
         write_int as write_int,
         write_str as write_str,
+        write_tag as write_tag,
     )
 except ImportError:
     # TODO: temporary, remove this after we publish mypy-native on PyPI.
@@ -30,6 +32,12 @@ except ImportError:
             raise NotImplementedError
 
         def write_int(data: Buffer, value: int) -> None:
+            raise NotImplementedError
+
+        def read_tag(data: Buffer) -> int:
+            raise NotImplementedError
+
+        def write_tag(data: Buffer, value: int) -> None:
             raise NotImplementedError
 
         def read_str(data: Buffer) -> str:
@@ -59,37 +67,37 @@ LITERAL_COMPLEX: Final = 5
 LITERAL_NONE: Final = 6
 
 
-def read_literal(data: Buffer, marker: int) -> int | str | bool | float:
-    if marker == LITERAL_INT:
+def read_literal(data: Buffer, tag: int) -> int | str | bool | float:
+    if tag == LITERAL_INT:
         return read_int(data)
-    elif marker == LITERAL_STR:
+    elif tag == LITERAL_STR:
         return read_str(data)
-    elif marker == LITERAL_BOOL:
+    elif tag == LITERAL_BOOL:
         return read_bool(data)
-    elif marker == LITERAL_FLOAT:
+    elif tag == LITERAL_FLOAT:
         return read_float(data)
-    assert False, f"Unknown literal marker {marker}"
+    assert False, f"Unknown literal tag {tag}"
 
 
 def write_literal(data: Buffer, value: int | str | bool | float | complex | None) -> None:
     if isinstance(value, bool):
-        write_int(data, LITERAL_BOOL)
+        write_tag(data, LITERAL_BOOL)
         write_bool(data, value)
     elif isinstance(value, int):
-        write_int(data, LITERAL_INT)
+        write_tag(data, LITERAL_INT)
         write_int(data, value)
     elif isinstance(value, str):
-        write_int(data, LITERAL_STR)
+        write_tag(data, LITERAL_STR)
         write_str(data, value)
     elif isinstance(value, float):
-        write_int(data, LITERAL_FLOAT)
+        write_tag(data, LITERAL_FLOAT)
         write_float(data, value)
     elif isinstance(value, complex):
-        write_int(data, LITERAL_COMPLEX)
+        write_tag(data, LITERAL_COMPLEX)
         write_float(data, value.real)
         write_float(data, value.imag)
     else:
-        write_int(data, LITERAL_NONE)
+        write_tag(data, LITERAL_NONE)
 
 
 def read_int_opt(data: Buffer) -> int | None:
