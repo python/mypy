@@ -173,7 +173,6 @@ PyObject *CPyBytes_Rjust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
         PyErr_SetString(PyExc_TypeError, "fillbyte must be a single byte");
         return NULL;
     }
-    width = width << 1;
     Py_ssize_t len = PyBytes_Size(self);
     if (width <= len) {
         return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
@@ -197,7 +196,6 @@ PyObject *CPyBytes_Ljust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
         PyErr_SetString(PyExc_TypeError, "fillbyte must be a single byte");
         return NULL;
     }
-    width = width << 1;
     Py_ssize_t len = PyBytes_Size(self);
     if (width <= len) {
         return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
