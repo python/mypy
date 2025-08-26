@@ -98,7 +98,7 @@ class IRTransform(OpVisitor[Optional[Value]]):
                     op_map[op] = new_op
 
         # Now, after all blocks are built, collect branch targets
-        branch_targets = set()
+        branch_targets: set[BasicBlock] = set()
         for block in block_map.values():
             for op in block.ops:
                 if isinstance(op, Branch):
