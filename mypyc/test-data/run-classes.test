@@ -3277,3 +3277,242 @@ def test_python_class() -> None:
 
 [file dynamic.py]
 class Dyn: pass
+
+[case testDunderNew]
+from __future__ import annotations
+from types import UnionType
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> IntLike:  # type: ignore[misc]
+        print(f'running __new__ with {l} and {r}')
+
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            super().__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+    def __repr__(self) -> str:
+        return f'({self.l} + {self.r})'
+
+    def __add__(self, other: IntLike) -> IntLike:
+        return Add(self, other)
+
+IntLike = int | Add
+
+[file driver.py]
+from native import Add
+
+print(f'{Add(1, 5)=}')
+print(f'{Add(0, 5)=}')
+print(f'{Add(1, 0)=}')
+
+[out]
+running __new__ with 1 and 5
+Add(1, 5)=(1 + 5)
+running __new__ with 0 and 5
+Add(0, 5)=5
+running __new__ with 1 and 0
+Add(1, 0)=1
+
+[case testInheritedDunderNew]
+from __future__ import annotations
+from mypy_extensions import mypyc_attr
+
+from m import interpreted_subclass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    val: int
+
+    def __new__(cls, val: int) -> Base:
+        obj = super().__new__(cls)
+        obj.val = val + 1
+        return obj
+
+    def __init__(self, val: int):
+        pass
+
+class Sub(Base):
+    def __new__(cls, val: int) -> Base:  # type: ignore[misc]
+        return super().__new__(cls, val + 1)
+
+    def __init__(self, val: int):
+        pass
+
+def test_inherited_dunder_new() -> None:
+    s = Sub(42)
+    assert s.val == 44
+
+def test_interpreted_subclass() -> None:
+    interpreted_subclass(Base)
+
+[file m.py]
+from __future__ import annotations
+
+def interpreted_subclass(base) -> None:
+    class InterpretedSub(base):
+        def __new__(cls, val: int) -> base:
+            return super().__new__(cls, val + 1)
+
+    s = InterpretedSub(42)
+    assert s.val == 44
+
+[case testDunderNewInitArgMismatch]
+from __future__ import annotations
+from testutil import assertRaises
+
+class Test0:
+    @classmethod
+    def __new__(cls, val: int = 42) -> Test0:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test1:
+    def __new__(cls, val: int) -> Test1:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test2:
+    def __new__(cls) -> Test2:
+        obj = super().__new__(cls)
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+def test_arg_mismatch() -> None:
+    t0 = Test0()
+    assert t0.val == 0
+    t0 = Test0.__new__(1)
+    assert t0.val == 1
+    with assertRaises(TypeError, "__new__() missing required argument 'val'"):
+        t1 = Test1()
+    t1 = Test1.__new__(Test1, 2)
+    assert t1.val == 2
+    with assertRaises(TypeError, "__new__() takes at most 0 arguments"):
+        t2 = Test2(42)
+    t2 = Test2.__new__(Test2)
+    with assertRaises(AttributeError, "attribute 'val' of 'Test2' undefined"):
+        print(t2.val)
+
+[case testDunderNewInitArgMismatchInInterpreted]
+from __future__ import annotations
+
+class Test0:
+    # TODO: It should be possible to annotate '@classmethod' here
+    # but when it's added calling __new__ in interpreted code
+    # without the explicit type param results in a TypeError.
+    def __new__(cls, val: int = 42) -> Test0:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test1:
+    def __new__(cls, val: int) -> Test1:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test2:
+    def __new__(cls) -> Test2:
+        obj = super().__new__(cls)
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+[file driver.py]
+from native import Test0, Test1, Test2
+from testutil import assertRaises
+
+t0 = Test0()
+assert t0.val == 0
+t0 = Test0.__new__(Test0, 1)
+assert t0.val == 1
+with assertRaises(TypeError, "__new__() missing required argument 'val'"):
+    t1 = Test1()
+t1 = Test1.__new__(Test1, 2)
+assert t1.val == 2
+with assertRaises(TypeError, "__new__() takes at most 0 arguments"):
+    t2 = Test2(42)
+t2 = Test2.__new__(Test2)
+with assertRaises(AttributeError, "attribute 'val' of 'Test2' undefined"):
+    print(t2.val)
+
+[case testDunderNewAttributeAccess]
+from __future__ import annotations
+from testutil import assertRaises
+
+class Test:
+    native: int
+    generic: object
+    def __new__(cls, native: int, generic: object) -> Test:
+        obj = super().__new__(cls)
+
+        with assertRaises(AttributeError, "attribute 'native' of 'Test' undefined"):
+            print(obj.native)
+        with assertRaises(AttributeError, "attribute 'generic' of 'Test' undefined"):
+            print(obj.generic)
+
+        obj.native = native
+        obj.generic = generic
+
+        obj.native = obj.native + 1
+        obj.generic = obj.generic.__str__()
+        return obj
+
+def test_attribute_access() -> None:
+    t = Test(42, {})
+    assert t.native == 43
+    assert t.generic == "{}"
+
+[case testDunderNewAttributeAccessInInterpreted]
+from __future__ import annotations
+from testutil import assertRaises
+
+class Test:
+    native: int
+    generic: object
+    def __new__(cls, native: int, generic: object) -> Test:
+        obj = super().__new__(cls)
+
+        with assertRaises(AttributeError, "attribute 'native' of 'Test' undefined"):
+            print(obj.native)
+        with assertRaises(AttributeError, "attribute 'generic' of 'Test' undefined"):
+            print(obj.generic)
+
+        obj.native = native
+        obj.generic = generic
+
+        obj.native = obj.native + 1
+        obj.generic = obj.generic.__str__()
+        return obj
+
+[file driver.py]
+from native import Test
+
+t = Test(42, {})
+assert t.native == 43
+assert t.generic == "{}"

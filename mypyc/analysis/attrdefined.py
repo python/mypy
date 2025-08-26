@@ -138,6 +138,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> No
         or cl.builtin_base is not None
         or cl.children is None
         or cl.is_serializable()
+        or cl.has_method("__new__")
     ):
         # Give up -- we can't enforce that attributes are always defined.
         return

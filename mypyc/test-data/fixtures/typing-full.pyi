@@ -175,3 +175,6 @@ class _TypedDict(Mapping[str, object]):
 
 class TypeAliasType:
     pass
+
+def Self(self, parameters):
+    raise TypeError(f"{self} is not subscriptable")
