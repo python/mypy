@@ -1,5 +1,3 @@
-from typing import Dict
-
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import (
     Assign,
@@ -46,7 +44,7 @@ _supported_ops = (Assign, AssignMulti, Call, CallC, ComparisonOp, Return)
 
 
 class BoxUnboxEliminationTransform(IRTransform):
-    def __init__(self, builder: LowLevelIRBuilder, use_map: Dict[Value, list[Op]]):
+    def __init__(self, builder: LowLevelIRBuilder, use_map: dict[Value, list[Op]]):
         super().__init__(builder)
         self.use_map = use_map
 
