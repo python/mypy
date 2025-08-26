@@ -273,6 +273,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
+    def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
     def is_defined_in_stub(self, typ: Instance, /) -> bool:
         raise NotImplementedError
 

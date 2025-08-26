@@ -1003,14 +1003,23 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternNonexistentKeyword]
+from typing import Any
 class A: ...
 
 m: object
+n: Any
 
 match m:
     case A(a=j):  # E: Class "__main__.A" has no attribute "a"
         reveal_type(m)  # N: Revealed type is "__main__.A"
         reveal_type(j)  # N: Revealed type is "Any"
+
+match n:
+    # Matching against object should not emit an error for non-existing keys
+    case object(a=k):
+        reveal_type(n)  # N: Revealed type is "builtins.object"
+        reveal_type(n.a)  # N: Revealed type is "Any"
+        reveal_type(k)  # N: Revealed type is "Any"
 
 [case testMatchClassPatternDuplicateKeyword]
 class A:
