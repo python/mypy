@@ -425,17 +425,17 @@ function_op(
 )
 
 function_op(
-    name="native_internal.write_native_internal",
+    name="native_internal.write_tag",
     arg_types=[object_rprimitive, int_rprimitive],
     return_type=none_rprimitive,
-    c_function_name="write_native_internal_internal",
+    c_function_name="write_tag_internal",
     error_kind=ERR_MAGIC,
 )
 
 function_op(
-    name="native_internal.read_native_internal",
+    name="native_internal.read_tag",
     arg_types=[object_rprimitive],
     return_type=int_rprimitive,
-    c_function_name="read_native_internal_internal",
+    c_function_name="read_tag_internal",
     error_kind=ERR_MAGIC,
 )
