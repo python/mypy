@@ -1411,7 +1411,8 @@ class TestOverload:
 
 [case testNativeBufferFastPath]
 from native_internal import (
-    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float, write_int, read_int
+    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
+    write_int, read_int, write_tag, read_tag
 )
 
 def foo() -> None:
@@ -1420,23 +1421,25 @@ def foo() -> None:
     write_bool(b, True)
     write_float(b, 0.1)
     write_int(b, 1)
+    write_tag(b, 1)
 
     b = Buffer(b.getvalue())
     x = read_str(b)
     y = read_bool(b)
     z = read_float(b)
     t = read_int(b)
+    u = read_tag(b)
 [out]
 def foo():
     r0, b :: native_internal.Buffer
     r1 :: str
-    r2, r3, r4, r5 :: None
-    r6 :: bytes
-    r7 :: native_internal.Buffer
-    r8, x :: str
-    r9, y :: bool
-    r10, z :: float
-    r11, t :: int
+    r2, r3, r4, r5, r6 :: None
+    r7 :: bytes
+    r8 :: native_internal.Buffer
+    r9, x :: str
+    r10, y :: bool
+    r11, z :: float
+    r12, t, r13, u :: int
 L0:
     r0 = Buffer_internal_empty()
     b = r0
@@ -1445,17 +1448,20 @@ L0:
     r3 = write_bool_internal(b, 1)
     r4 = write_float_internal(b, 0.1)
     r5 = write_int_internal(b, 2)
-    r6 = Buffer_getvalue_internal(b)
-    r7 = Buffer_internal(r6)
-    b = r7
-    r8 = read_str_internal(b)
-    x = r8
-    r9 = read_bool_internal(b)
-    y = r9
-    r10 = read_float_internal(b)
-    z = r10
-    r11 = read_int_internal(b)
-    t = r11
+    r6 = write_tag_internal(b, 2)
+    r7 = Buffer_getvalue_internal(b)
+    r8 = Buffer_internal(r7)
+    b = r8
+    r9 = read_str_internal(b)
+    x = r9
+    r10 = read_bool_internal(b)
+    y = r10
+    r11 = read_float_internal(b)
+    z = r11
+    r12 = read_int_internal(b)
+    t = r12
+    r13 = read_tag_internal(b)
+    u = r13
     return 1
 
 [case testEnumFastPath]
