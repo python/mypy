@@ -1145,4 +1145,3 @@ L4:
     r7 = PyObject_GetIter(r0)
     r8 = PySequence_List(r7)
     return r8
-
