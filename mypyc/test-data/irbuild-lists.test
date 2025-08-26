@@ -1070,20 +1070,20 @@ L0:
     abc = r6
     r7 = var_object_size abc
     r8 = PyList_New(r7)
-    r9 = 0
+    r9 = var_object_size abc
+    r10 = 0
 L1:
-    r10 = var_object_size abc
-    r11 = r9 < r10 :: signed
+    r11 = r10 < r9 :: signed
     if r11 goto L2 else goto L4 :: bool
 L2:
-    r12 = CPySequenceTuple_GetItemUnsafe(abc, r9)
+    r12 = CPySequenceTuple_GetItemUnsafe(abc, r10)
     r13 = unbox(int, r12)
     i = r13
     r14 = CPyTagged_Str(i)
-    CPyList_SetItemUnsafe(r8, r9, r14)
+    CPyList_SetItemUnsafe(r8, r10, r14)
 L3:
-    r15 = r9 + 1
-    r9 = r15
+    r15 = r10 + 1
+    r10 = r15
     goto L1
 L4:
     return r8
@@ -1121,20 +1121,20 @@ L0:
     abc = r7
     r8 = var_object_size abc
     r9 = PyList_New(r8)
-    r10 = 0
+    r10 = var_object_size abc
+    r11 = 0
 L1:
-    r11 = var_object_size abc
-    r12 = r10 < r11 :: signed
+    r12 = r11 < r10 :: signed
     if r12 goto L2 else goto L4 :: bool
 L2:
-    r13 = CPySequenceTuple_GetItemUnsafe(abc, r10)
+    r13 = CPySequenceTuple_GetItemUnsafe(abc, r11)
     r14 = unbox(int, r13)
     i = r14
     r15 = CPyTagged_Str(i)
-    CPyList_SetItemUnsafe(r9, r10, r15)
+    CPyList_SetItemUnsafe(r9, r11, r15)
 L3:
-    r16 = r10 + 1
-    r10 = r16
+    r16 = r11 + 1
+    r11 = r16
     goto L1
 L4:
     return r9
@@ -1173,20 +1173,20 @@ L0:
     abc = r8
     r9 = var_object_size abc
     r10 = PyList_New(r9)
-    r11 = 0
+    r11 = var_object_size abc
+    r12 = 0
 L1:
-    r12 = var_object_size abc
-    r13 = r11 < r12 :: signed
+    r13 = r12 < r11 :: signed
     if r13 goto L2 else goto L4 :: bool
 L2:
-    r14 = CPySequenceTuple_GetItemUnsafe(abc, r11)
+    r14 = CPySequenceTuple_GetItemUnsafe(abc, r12)
     r15 = unbox(int, r14)
     i = r15
     r16 = CPyTagged_Str(i)
-    CPyList_SetItemUnsafe(r10, r11, r16)
+    CPyList_SetItemUnsafe(r10, r12, r16)
 L3:
-    r17 = r11 + 1
-    r11 = r17
+    r17 = r12 + 1
+    r12 = r17
     goto L1
 L4:
     return r10
