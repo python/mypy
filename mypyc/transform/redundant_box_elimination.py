@@ -27,9 +27,9 @@ def do_box_unbox_elimination(fn: FuncIR, options: CompilerOptions) -> None:
     fn.blocks = builder.blocks
 
 
-def build_use_map(fn: FuncIR) -> Dict[Value, list[Op]]:
+def build_use_map(fn: FuncIR) -> dict[Value, list[Op]]:
     # Map each Value to a list of ops that use it
-    use_map: Dict[Value, list[Op]] = {}
+    use_map: dict[Value, list[Op]] = {}
     for block in fn.blocks:
         for op in block.ops:
             for src in op.sources():
