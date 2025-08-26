@@ -901,21 +901,21 @@ L0:
     r6 = PySequence_Tuple(r5)
     abc = r6
     r7 = PySet_New(0)
-    r8 = var_object_size abc
-    r9 = 0
+    r8 = 0
 L1:
-    r10 = r9 < r8 :: signed
+    r9 = var_object_size abc
+    r10 = r8 < r9 :: signed
     if r10 goto L2 else goto L4 :: bool
 L2:
-    r11 = CPySequenceTuple_GetItemUnsafe(abc, r9)
+    r11 = CPySequenceTuple_GetItemUnsafe(abc, r8)
     r12 = unbox(int, r11)
     i = r12
     r13 = CPyTagged_Str(i)
     r14 = PySet_Add(r7, r13)
     r15 = r14 >= 0 :: signed
 L3:
-    r16 = r9 + 1
-    r9 = r16
+    r16 = r8 + 1
+    r8 = r16
     goto L1
 L4:
     return r7
@@ -953,21 +953,21 @@ L0:
     r7 = PySequence_Tuple(r6)
     abc = r7
     r8 = PySet_New(0)
-    r9 = var_object_size abc
-    r10 = 0
+    r9 = 0
 L1:
-    r11 = r10 < r9 :: signed
+    r10 = var_object_size abc
+    r11 = r9 < r10 :: signed
     if r11 goto L2 else goto L4 :: bool
 L2:
-    r12 = CPySequenceTuple_GetItemUnsafe(abc, r10)
+    r12 = CPySequenceTuple_GetItemUnsafe(abc, r9)
     r13 = unbox(int, r12)
     i = r13
     r14 = CPyTagged_Str(i)
     r15 = PySet_Add(r8, r14)
     r16 = r15 >= 0 :: signed
 L3:
-    r17 = r10 + 1
-    r10 = r17
+    r17 = r9 + 1
+    r9 = r17
     goto L1
 L4:
     return r8
@@ -1006,21 +1006,21 @@ L0:
     r8 = PySequence_Tuple(r7)
     abc = r8
     r9 = PySet_New(0)
-    r10 = var_object_size abc
-    r11 = 0
+    r10 = 0
 L1:
-    r12 = r11 < r10 :: signed
+    r11 = var_object_size abc
+    r12 = r10 < r11 :: signed
     if r12 goto L2 else goto L4 :: bool
 L2:
-    r13 = CPySequenceTuple_GetItemUnsafe(abc, r11)
+    r13 = CPySequenceTuple_GetItemUnsafe(abc, r10)
     r14 = unbox(int, r13)
     i = r14
     r15 = CPyTagged_Str(i)
     r16 = PySet_Add(r9, r15)
     r17 = r16 >= 0 :: signed
 L3:
-    r18 = r11 + 1
-    r11 = r18
+    r18 = r10 + 1
+    r10 = r18
     goto L1
 L4:
     return r9
