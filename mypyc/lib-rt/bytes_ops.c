@@ -209,5 +209,3 @@ PyObject *CPyBytes_Ljust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
     memset(res_buf + len, fill, pad);
     return result;
 }
-
-// ... existing code ...
