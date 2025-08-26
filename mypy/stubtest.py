@@ -630,7 +630,11 @@ def verify_typeinfo(
         return
 
     yield from _verify_final(stub, runtime, object_path)
-    yield from _verify_disjoint_base(stub, runtime, object_path)
+
+    # TODO: Once PEP 800 gets accepted, remove the conditional (always verify)
+    if "--ignore-disjoint-bases" not in sys.argv[1:]:
+        yield from _verify_disjoint_base(stub, runtime, object_path)
+
     is_runtime_typeddict = stub.typeddict_type is not None and is_typeddict(runtime)
     yield from _verify_metaclass(
         stub, runtime, object_path, is_runtime_typeddict=is_runtime_typeddict
@@ -2363,6 +2367,12 @@ def parse_options(args: list[str]) -> _Arguments:
         "--ignore-positional-only",
         action="store_true",
         help="Ignore errors for whether an argument should or shouldn't be positional-only",
+    )
+    # TODO: Remove once PEP 800 is accepted
+    parser.add_argument(
+        "--ignore-disjoint-bases",
+        action="store_true",
+        help="Disable checks for PEP 800 @disjoint_base classes",
     )
     parser.add_argument(
         "--allowlist",
