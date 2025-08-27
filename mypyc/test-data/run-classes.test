@@ -2711,10 +2711,17 @@ from native import Player
 Player.MIN = <Player.MIN: 1>
 
 [case testBufferRoundTrip_native_libs]
+from typing import Final
+from mypy_extensions import u8
 from native_internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag
 )
+
+Tag = u8
+TAG_A: Final[Tag] = 33
+TAG_B: Final[Tag] = 255
+TAG_SPECIAL: Final[Tag] = 239
 
 def test_buffer_basic() -> None:
     b = Buffer(b"foo")
@@ -2729,8 +2736,9 @@ def test_buffer_roundtrip() -> None:
     write_float(b, 0.1)
     write_int(b, 0)
     write_int(b, 1)
-    write_tag(b, 33)
-    write_tag(b, 255)
+    write_tag(b, TAG_A)
+    write_tag(b, TAG_SPECIAL)
+    write_tag(b, TAG_B)
     write_int(b, 2)
     write_int(b, 2 ** 85)
     write_int(b, -1)
@@ -2743,8 +2751,9 @@ def test_buffer_roundtrip() -> None:
     assert read_float(b) == 0.1
     assert read_int(b) == 0
     assert read_int(b) == 1
-    assert read_tag(b) == 33
-    assert read_tag(b) == 255
+    assert read_tag(b) == TAG_A
+    assert read_tag(b) == TAG_SPECIAL
+    assert read_tag(b) == TAG_B
     assert read_int(b) == 2
     assert read_int(b) == 2 ** 85
     assert read_int(b) == -1
@@ -2769,6 +2778,7 @@ def test_buffer_roundtrip_interpreted() -> None:
     write_int(b, 0)
     write_int(b, 1)
     write_tag(b, 33)
+    write_tag(b, 239)
     write_tag(b, 255)
     write_int(b, 2)
     write_int(b, 2 ** 85)
@@ -2783,6 +2793,7 @@ def test_buffer_roundtrip_interpreted() -> None:
     assert read_int(b) == 0
     assert read_int(b) == 1
     assert read_tag(b) == 33
+    assert read_tag(b) == 239
     assert read_tag(b) == 255
     assert read_int(b) == 2
     assert read_int(b) == 2 ** 85

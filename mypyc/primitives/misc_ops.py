@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
     bit_rprimitive,
@@ -20,6 +20,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     pointer_rprimitive,
     str_rprimitive,
+    uint8_rprimitive,
     void_rtype,
 )
 from mypyc.primitives.registry import (
@@ -426,16 +427,16 @@ function_op(
 
 function_op(
     name="native_internal.write_tag",
-    arg_types=[object_rprimitive, int_rprimitive],
+    arg_types=[object_rprimitive, uint8_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_tag_internal",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
 function_op(
     name="native_internal.read_tag",
     arg_types=[object_rprimitive],
-    return_type=int_rprimitive,
+    return_type=uint8_rprimitive,
     c_function_name="read_tag_internal",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )

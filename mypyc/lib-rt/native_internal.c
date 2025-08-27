@@ -438,18 +438,18 @@ write_int(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
-static CPyTagged
+static uint8_t
 read_tag_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
-        return CPY_INT_TAG;
+        return CPY_LL_UINT_ERROR;
 
     if (_check_read((BufferObject *)data, 1) == 2)
-        return CPY_INT_TAG;
+        return CPY_LL_UINT_ERROR;
     char *buf = ((BufferObject *)data)->buf;
 
     uint8_t ret = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
     ((BufferObject *)data)->pos += 1;
-    return ((CPyTagged)ret) << 1;
+    return ret;
 }
 
 static PyObject*
@@ -458,27 +458,22 @@ read_tag(PyObject *self, PyObject *args, PyObject *kwds) {
     PyObject *data = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
         return NULL;
-    CPyTagged retval = read_tag_internal(data);
-    if (retval == CPY_INT_TAG) {
+    uint8_t retval = read_tag_internal(data);
+    if (retval == CPY_LL_UINT_ERROR && PyErr_Occurred()) {
         return NULL;
     }
-    return CPyTagged_StealAsObject(retval);
+    return PyLong_FromLong(retval);
 }
 
 static char
-write_tag_internal(PyObject *data, CPyTagged value) {
+write_tag_internal(PyObject *data, uint8_t value) {
     if (_check_buffer(data) == 2)
         return 2;
-
-    if (value > MAX_SHORT_INT_TAGGED) {
-        PyErr_SetString(PyExc_OverflowError, "value must fit in single byte");
-        return 2;
-    }
 
     if (_check_size((BufferObject *)data, 1) == 2)
         return 2;
     uint8_t *buf = (uint8_t *)((BufferObject *)data)->buf;
-    *(buf + ((BufferObject *)data)->pos) = (uint8_t)(value >> 1);
+    *(buf + ((BufferObject *)data)->pos) = value;
     ((BufferObject *)data)->pos += 1;
     ((BufferObject *)data)->end += 1;
     return 1;
@@ -491,12 +486,12 @@ write_tag(PyObject *self, PyObject *args, PyObject *kwds) {
     PyObject *value = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value))
         return NULL;
-    if (!PyLong_Check(value)) {
-        PyErr_SetString(PyExc_TypeError, "value must be an int");
+    uint8_t unboxed = CPyLong_AsUInt8(value);
+    if (unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred()) {
+        CPy_TypeError("u8", value);
         return NULL;
     }
-    CPyTagged tagged_value = CPyTagged_BorrowFromObject(value);
-    if (write_tag_internal(data, tagged_value) == 2) {
+    if (write_tag_internal(data, unboxed) == 2) {
         return NULL;
     }
     Py_INCREF(Py_None);
