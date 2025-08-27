@@ -180,6 +180,7 @@ b.m = 2
 b.b = 2
 b._two = 2
 [out]
+main:5: error: Class "B" has incompatible disjoint bases
 main:11: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
 main:16: error: "B" has no attribute "b"
 main:17: error: "B" has no attribute "_two"
