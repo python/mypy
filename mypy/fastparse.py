@@ -396,6 +396,7 @@ class ASTConverter:
         # 'C' for class, 'D' for function signature, 'F' for function, 'L' for lambda
         self.class_and_function_stack: list[Literal["C", "D", "F", "L"]] = []
         self.imports: list[ImportBase] = []
+        self.match_stmt_subject = False
 
         self.options = options
         self.is_stub = is_stub
@@ -1758,7 +1759,7 @@ class ASTConverter:
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> ListExpr | TupleExpr:
         expr_list: list[Expression] = [self.visit(e) for e in n.elts]
-        if isinstance(n.ctx, ast3.Store):
+        if isinstance(n.ctx, ast3.Store) or self.match_stmt_subject:
             # [x, y] = z and (x, y) = z means exactly the same thing
             e: ListExpr | TupleExpr = TupleExpr(expr_list)
         else:
@@ -1779,8 +1780,11 @@ class ASTConverter:
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
     def visit_Match(self, n: Match) -> MatchStmt:
+        self.match_stmt_subject = True
+        subject = self.visit(n.subject)
+        self.match_stmt_subject = False
         node = MatchStmt(
-            self.visit(n.subject),
+            subject,
             [self.visit(c.pattern) for c in n.cases],
             [self.visit(c.guard) for c in n.cases],
             [self.as_required_block(c.body) for c in n.cases],

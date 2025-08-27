@@ -318,6 +318,7 @@ match x:
         pass
 
 [case testMatchSequencePatternWithInvalidClassPattern]
+# flags: --warn-unreachable
 class Example:
     __match_args__ = ("value",)
     def __init__(self, value: str) -> None:
@@ -327,9 +328,30 @@ SubClass: type[Example]
 
 match [SubClass("a"), SubClass("b")]:
     case [SubClass(value), *rest]:  # E: Expected type in class pattern; found "type[__main__.Example]"
-        reveal_type(value)  # E: Cannot determine type of "value" \
-                            # N: Revealed type is "Any"
+        reveal_type(value)  # E: Statement is unreachable
+        reveal_type(rest)
+    case [Example(value), *rest]:
+        reveal_type(value)  # N: Revealed type is "builtins.str"
         reveal_type(rest)  # N: Revealed type is "builtins.list[__main__.Example]"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternSequenceSubject]
+a: int
+b: str
+match a, b:
+    case 1, "Hello":
+        reveal_type(a)  # N: Revealed type is "Literal[1]"
+        reveal_type(b)  # N: Revealed type is "Literal['Hello']"
+
+match (a, b):
+    case (1, "Hello"):
+        reveal_type(a)  # N: Revealed type is "Literal[1]"
+        reveal_type(b)  # N: Revealed type is "Literal['Hello']"
+
+match [a, b]:
+    case [1, "Hello"]:
+        reveal_type(a)  # N: Revealed type is "Literal[1]"
+        reveal_type(b)  # N: Revealed type is "Literal['Hello']"
 [builtins fixtures/tuple.pyi]
 
 # Narrowing union-based values via a literal pattern on an indexed/attribute subject
