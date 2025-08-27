@@ -3794,7 +3794,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # We suppress the error for equality and container checks if there is a custom __eq__()
         # method on either side. User defined (or even standard library) classes can define this
         # to return True for comparisons between non-overlapping types.
-        if (custom_special_method(left, "__eq__") or custom_special_method(right, "__eq__")) and not identity_check:
+        if (
+            custom_special_method(left, "__eq__") or custom_special_method(right, "__eq__")
+        ) and not identity_check:
             return False
 
         if prefer_literal:
