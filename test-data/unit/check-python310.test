@@ -1393,6 +1393,16 @@ match m:
         reveal_type(a)
 [builtins fixtures/isinstancelist.pyi]
 
+[case testMatchSubjectAssignExprWithGuard]
+from typing import Optional
+def func() -> Optional[str]: ...
+
+match m := func():
+    case _ if not m:
+        reveal_type(m)  # N: Revealed type is "Union[Literal[''], None]"
+    case _:
+        reveal_type(m)  # N: Revealed type is "builtins.str"
+
 -- Exhaustiveness --
 
 [case testMatchUnionNegativeNarrowing]
