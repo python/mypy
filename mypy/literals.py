@@ -228,7 +228,7 @@ class _Hasher(ExpressionVisitor[Key | None]):
         return self.seq_expr(e, "Set")
 
     def visit_index_expr(self, e: IndexExpr) -> Key | None:
-        if literal(e.index) == LITERAL_YES:
+        if literal(e.index) != LITERAL_NO:
             return ("Index", literal_hash(e.base), literal_hash(e.index))
         return None
 
