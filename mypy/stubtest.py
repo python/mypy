@@ -140,6 +140,11 @@ class Error:
         # TODO: This is hacky, use error codes or something more resilient
         return "should be positional" in self.message
 
+    def is_disjoint_base_related(self) -> bool:
+        """Whether or not the error is related to @disjoint_base."""
+        # TODO: This is hacky, use error codes or something more resilient
+        return "@disjoint_base" in self.message
+
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
 
@@ -630,11 +635,7 @@ def verify_typeinfo(
         return
 
     yield from _verify_final(stub, runtime, object_path)
-
-    # TODO: Once PEP 800 gets accepted, remove the conditional (always verify)
-    if "--ignore-disjoint-bases" not in sys.argv[1:]:
-        yield from _verify_disjoint_base(stub, runtime, object_path)
-
+    yield from _verify_disjoint_base(stub, runtime, object_path)
     is_runtime_typeddict = stub.typeddict_type is not None and is_typeddict(runtime)
     yield from _verify_metaclass(
         stub, runtime, object_path, is_runtime_typeddict=is_runtime_typeddict
@@ -2185,6 +2186,7 @@ class _Arguments:
     concise: bool
     ignore_missing_stub: bool
     ignore_positional_only: bool
+    ignore_disjoint_bases: bool
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
@@ -2277,6 +2279,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             if args.ignore_missing_stub and error.is_missing_stub():
                 continue
             if args.ignore_positional_only and error.is_positional_only_related():
+                continue
+            if args.ignore_disjoint_bases and error.is_disjoint_base_related():
                 continue
             if error.object_desc in allowlist:
                 allowlist[error.object_desc] = True
