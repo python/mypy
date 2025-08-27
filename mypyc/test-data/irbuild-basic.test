@@ -1750,7 +1750,7 @@ L0:
     r7 = __main__.globals :: static
     r8 = 'f'
     r9 = CPyDict_GetItem(r7, r8)
-    r10 = PyTuple_Pack(0)
+    r10 = CPyTuple_LoadEmptyTupleConstant()
     r11 = PyDict_Copy(r6)
     r12 = PyObject_Call(r9, r10, r11)
     r13 = unbox(tuple[int, int, int], r12)

@@ -189,6 +189,7 @@ from mypyc.primitives.str_ops import (
 )
 from mypyc.primitives.tuple_ops import (
     list_tuple_op,
+    load_empty_tuple_constant_op,
     new_tuple_op,
     new_tuple_with_length_op,
     sequence_tuple_op,
@@ -2362,8 +2363,11 @@ class LowLevelIRBuilder:
             return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
-        size: Value = Integer(len(items), c_pyssize_t_rprimitive)
-        return self.call_c(new_tuple_op, [size] + items, line)
+        if items:
+            size: Value = Integer(len(items), c_pyssize_t_rprimitive)
+            return self.call_c(new_tuple_op, [size] + items, line)
+        else:
+            return self.call_c(load_empty_tuple_constant_op, [], line)
 
     def new_tuple_with_length(self, length: Value, line: int) -> Value:
         """This function returns an uninitialized tuple.
