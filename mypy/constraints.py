@@ -565,12 +565,24 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
         and not any(isinstance(c.target, ErasedType) for group in valid_options for c in group)
     ):
         # Now we know all constraints might be satisfiable and have similar structure.
-        # Solver will apply meets and joins as necessary, return everything we know.
-        # Just deduplicate to reduce the amount of work.
+        # Solver will apply meets and joins as necessary, but Any should be forced into
+        # union to survive during meet.
         # If any targets are erased, fall back to empty, otherwise they will be discarded
         # by solver, causing false early matches.
-        all_combined = sum(valid_options, [])
-        return list(dict.fromkeys(all_combined))
+        cmap: dict[TypeVarId, list[Constraint]] = {}
+        for option in valid_options:
+            for c in option:
+                cmap.setdefault(c.type_var, []).append(c)
+        out: list[Constraint] = []
+        for group in cmap.values():
+            if any(isinstance(get_proper_type(c.target), AnyType) for c in group):
+                group = [
+                    merge_with_any(c)
+                    for c in group
+                    if not isinstance(get_proper_type(c.target), AnyType)
+                ]
+            out.extend(dict.fromkeys(group))
+        return out
 
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
