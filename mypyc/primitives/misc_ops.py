@@ -430,7 +430,7 @@ function_op(
     arg_types=[object_rprimitive, uint8_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_tag_internal",
-    error_kind=ERR_MAGIC_OVERLAPPING,
+    error_kind=ERR_MAGIC,
 )
 
 function_op(
