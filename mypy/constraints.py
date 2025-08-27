@@ -559,10 +559,16 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
 
-    if eager and all_similar:
+    if (
+        eager
+        and all_similar
+        and not any(isinstance(c.target, ErasedType) for group in valid_options for c in group)
+    ):
         # Now we know all constraints might be satisfiable and have similar structure.
         # Solver will apply meets and joins as necessary, return everything we know.
         # Just deduplicate to reduce the amount of work.
+        # If any targets are erased, fall back to empty, otherwise they will be discarded
+        # by solver, causing false early matches.
         all_combined = sum(valid_options, [])
         return list(dict.fromkeys(all_combined))
 
