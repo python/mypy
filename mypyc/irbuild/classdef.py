@@ -66,7 +66,7 @@ from mypyc.irbuild.function import (
 )
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
-from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
+from mypyc.primitives.dict_ops import dict_new_op, exact_dict_set_item_op
 from mypyc.primitives.generic_ops import (
     iter_op,
     next_op,
@@ -262,14 +262,17 @@ class NonExtClassBuilder(ClassBuilder):
         non_ext_class = load_non_ext_class(self.builder, ir, self.non_ext, self.cdef.line)
         non_ext_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
 
+        # Try to avoid contention when using free threading.
+        self.builder.set_immortal_if_free_threaded(non_ext_class, self.cdef.line)
+
         # Save the decorated class
         self.builder.add(
             InitStatic(non_ext_class, self.cdef.name, self.builder.module_name, NAMESPACE_TYPE)
         )
 
         # Add the non-extension class to the dict
-        self.builder.primitive_op(
-            dict_set_item_op,
+        self.builder.call_c(
+            exact_dict_set_item_op,
             [
                 self.builder.load_globals_dict(),
                 self.builder.load_str(self.cdef.name),
@@ -449,6 +452,11 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     )
     # Create the class
     tp = builder.call_c(pytype_from_template_op, [template, tp_bases, modname], cdef.line)
+
+    # Set type object to be immortal if free threaded, as otherwise reference count contention
+    # can cause a big performance hit.
+    builder.set_immortal_if_free_threaded(tp, cdef.line)
+
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
@@ -479,8 +487,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     builder.add(InitStatic(tp, cdef.name, builder.module_name, NAMESPACE_TYPE))
 
     # Add it to the dict
-    builder.primitive_op(
-        dict_set_item_op, [builder.load_globals_dict(), builder.load_str(cdef.name), tp], cdef.line
+    builder.call_c(
+        exact_dict_set_item_op,
+        [builder.load_globals_dict(), builder.load_str(cdef.name), tp],
+        cdef.line,
     )
 
     return tp
@@ -664,7 +674,7 @@ def add_non_ext_class_attr_ann(
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
 
     key = builder.load_str(lvalue.name)
-    builder.primitive_op(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
+    builder.call_c(exact_dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
 
 def add_non_ext_class_attr(

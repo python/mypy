@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_native_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
     is_optional_type,
@@ -704,7 +705,7 @@ class Emitter:
             self.emit_lines(f"    {dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
-        elif is_object_rprimitive(typ):
+        elif is_object_rprimitive(typ) or is_native_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f"PyObject *{dest};")
             self.emit_arg_check(src, dest, typ, "", optional)
@@ -1035,17 +1036,21 @@ class Emitter:
             self.emit_line(f"{declaration}{dest} = PyFloat_FromDouble({src});")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
-            self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
-            self.emit_line(f"if (unlikely({dest} == NULL))")
-            self.emit_line("    CPyError_OutOfMemory();")
-            # TODO: Fail if dest is None
-            for i in range(len(typ.types)):
-                if not typ.is_unboxed:
-                    self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {src}.f{i}")
-                else:
-                    inner_name = self.temp_name()
-                    self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
-                    self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
+            if not typ.types:
+                self.emit_line(f"{declaration}{dest} = CPyTuple_LoadEmptyTupleConstant();")
+            else:
+                self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
+                self.emit_line(f"if (unlikely({dest} == NULL))")
+                self.emit_line("    CPyError_OutOfMemory();")
+
+                # TODO: Fail if dest is None
+                for i in range(len(typ.types)):
+                    if not typ.is_unboxed:
+                        self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {src}.f{i}")
+                    else:
+                        inner_name = self.temp_name()
+                        self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
+                        self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.

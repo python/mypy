@@ -15,7 +15,7 @@ labels: "crash"
 
 **Traceback**
 
-```
+```python-traceback
 (Insert traceback and other messages from mypy here -- use `--show-traceback`.)
 ```
 
@@ -24,6 +24,11 @@ labels: "crash"
 (Write what you did to reproduce the crash.  Full source code is
 appreciated.  We also very much appreciate it if you try to narrow the
 source down to a small stand-alone example.)
+
+```python
+# Ideally, a small sample program that demonstrates the problem.
+# Or even better, a reproducible playground link https://mypy-play.net/ (use the "Gist" button)
+```
 
 **Your Environment**
 

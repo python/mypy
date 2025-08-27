@@ -1612,7 +1612,7 @@ t4: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3
 t5: Tuple[int, int] = (1, 2, "s", 4)  # E: Incompatible types in assignment (expression has type "tuple[int, int, str, int]", variable has type "tuple[int, int]")
 
 # long initializer assignment with mismatched pairs
-t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str", 1, 1, 1, 1, 1) # E: Incompatible types in assignment (expression has type tuple[int, int, ... <15 more items>], variable has type tuple[int, int, ... <10 more items>])
+t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str", 1, 1, 1, 1, 1) # E: Incompatible types in assignment (expression has type "tuple[int, int, ... <15 more items>]", variable has type "tuple[int, int, ... <10 more items>]")
 
 [builtins fixtures/tuple.pyi]
 

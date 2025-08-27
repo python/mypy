@@ -1110,7 +1110,10 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     # like U -> U, should be Callable[..., Any], but if U is a self-type, we can
                     # allow it to leak, to be later bound to self. A bunch of existing code
                     # depends on this old behaviour.
-                    and not any(tv.id.is_self() for tv in cactual.variables)
+                    and not (
+                        any(tv.id.is_self() for tv in cactual.variables)
+                        and template.is_ellipsis_args
+                    )
                 ):
                     # If the actual callable is generic, infer constraints in the opposite
                     # direction, and indicate to the solver there are extra type variables

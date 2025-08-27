@@ -462,24 +462,18 @@ class CapturableVersionAction(argparse.Action):
         parser.exit()
 
 
-def process_options(
-    args: list[str],
-    stdout: TextIO | None = None,
-    stderr: TextIO | None = None,
-    require_targets: bool = True,
-    server_options: bool = False,
-    fscache: FileSystemCache | None = None,
+def define_options(
     program: str = "mypy",
     header: str = HEADER,
-) -> tuple[list[BuildSource], Options]:
-    """Parse command line arguments.
-
-    If a FileSystemCache is passed in, and package_root options are given,
-    call fscache.set_package_root() to set the cache's package root.
-    """
-    stdout = stdout or sys.stdout
-    stderr = stderr or sys.stderr
-
+    stdout: TextIO = sys.stdout,
+    stderr: TextIO = sys.stderr,
+    server_options: bool = False,
+) -> tuple[CapturableArgumentParser, list[str], list[tuple[str, bool]]]:
+    """Define the options in the parser (by calling a bunch of methods that express/build our desired command-line flags).
+    Returns a tuple of:
+      a parser object, that can parse command line arguments to mypy (expected consumer: main's process_options),
+      a list of what flags are strict (expected consumer: docs' html_builder's _add_strict_list),
+      strict_flag_assignments (expected consumer: main's process_options)."""
     parser = CapturableArgumentParser(
         prog=program,
         usage=header,
@@ -491,8 +485,6 @@ def process_options(
         stdout=stdout,
         stderr=stderr,
     )
-    if sys.version_info >= (3, 14):
-        parser.color = True  # Set as init arg in 3.14
 
     strict_flag_names: list[str] = []
     strict_flag_assignments: list[tuple[str, bool]] = []
@@ -1063,6 +1055,9 @@ def process_options(
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
     incremental_group.add_argument(
+        "--fixed-format-cache", action="store_true", help=argparse.SUPPRESS
+    )
+    incremental_group.add_argument(
         "--skip-version-check",
         action="store_true",
         help="Allow using cache written by older mypy version",
@@ -1090,13 +1085,10 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--old-type-inference",
-        action="store_true",
-        help="Disable new experimental type inference algorithm",
+        "--old-type-inference", action="store_true", help=argparse.SUPPRESS
     )
-    # Deprecated reverse variant of the above.
     internals_group.add_argument(
-        "--new-type-inference", action="store_true", help=argparse.SUPPRESS
+        "--disable-expression-cache", action="store_true", help=argparse.SUPPRESS
     )
     parser.add_argument(
         "--enable-incomplete-feature",
@@ -1341,6 +1333,32 @@ def process_options(
         dest="special-opts:files",
         help="Type-check given files or directories",
     )
+    return parser, strict_flag_names, strict_flag_assignments
+
+
+def process_options(
+    args: list[str],
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
+    require_targets: bool = True,
+    server_options: bool = False,
+    fscache: FileSystemCache | None = None,
+    program: str = "mypy",
+    header: str = HEADER,
+) -> tuple[list[BuildSource], Options]:
+    """Parse command line arguments.
+
+    If a FileSystemCache is passed in, and package_root options are given,
+    call fscache.set_package_root() to set the cache's package root.
+
+    Returns a tuple of: a list of source files, an Options collected from flags.
+    """
+    stdout = stdout if stdout is not None else sys.stdout
+    stderr = stderr if stderr is not None else sys.stderr
+
+    parser, _, strict_flag_assignments = define_options(
+        program, header, stdout, stderr, server_options
+    )
 
     # Parse arguments once into a dummy namespace so we can get the
     # filename for the config file and know if the user requested all strict options.
@@ -1486,12 +1504,6 @@ def process_options(
     if options.logical_deps:
         options.cache_fine_grained = True
 
-    if options.new_type_inference:
-        print(
-            "Warning: --new-type-inference flag is deprecated;"
-            " new type inference algorithm is already enabled by default"
-        )
-
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
@@ -1525,11 +1537,9 @@ def process_options(
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
-        return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
         targets = [BuildSource(None, None, "\n".join(special_opts.command))]
-        return targets, options
     else:
         try:
             targets = create_source_list(special_opts.files, options, fscache)
@@ -1538,7 +1548,7 @@ def process_options(
         # exceptions of different types.
         except InvalidSourceList as e2:
             fail(str(e2), stderr, options)
-        return targets, options
+    return targets, options
 
 
 def process_package_roots(

@@ -210,8 +210,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     def visit_instance(self, t: Instance) -> Type:
         if len(t.args) == 0:
-            # TODO: Why do we need to create a copy here?
-            return t.copy_modified()
+            return t
 
         args = self.expand_type_tuple_with_unpack(t.args)
 
@@ -525,6 +524,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Target of the type alias cannot contain type variables (not bound by the type
         # alias itself), so we just expand the arguments.
+        if len(t.args) == 0:
+            return t
         args = self.expand_type_list_with_unpack(t.args)
         # TODO: normalize if target is Tuple, and args are [*tuple[X, ...]]?
         return t.copy_modified(args=args)

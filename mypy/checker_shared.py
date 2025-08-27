@@ -137,6 +137,7 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     module_refs: set[str]
     scope: CheckerScope
     checking_missing_await: bool
+    allow_constructor_cache: bool
 
     @property
     @abstractmethod
@@ -253,12 +254,6 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def warn_deprecated_overload_item(
-        self, node: Node | None, context: Context, *, target: Type, selftype: Type | None = None
-    ) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
     def type_is_iterable(self, type: Type) -> bool:
         raise NotImplementedError
 
@@ -275,6 +270,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
 
     @abstractmethod
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
         raise NotImplementedError
 
     @abstractmethod

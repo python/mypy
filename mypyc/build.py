@@ -36,7 +36,7 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import RUNTIME_C_FILES, shared_lib_name
+from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
@@ -176,9 +176,15 @@ def generate_c_extension_shim(
     cname = "%s.c" % full_module_name.replace(".", os.sep)
     cpath = os.path.join(dir_name, cname)
 
+    if IS_FREE_THREADED:
+        # We use multi-phase init in free-threaded builds to enable free threading.
+        shim_name = "module_shim_no_gil_multiphase.tmpl"
+    else:
+        shim_name = "module_shim.tmpl"
+
     # We load the C extension shim template from a file.
     # (So that the file could be reused as a bazel template also.)
-    with open(os.path.join(include_dir(), "module_shim.tmpl")) as f:
+    with open(os.path.join(include_dir(), shim_name)) as f:
         shim_template = f.read()
 
     write_file(
@@ -270,12 +276,12 @@ def build_using_shared_lib(
 ) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
-    This creates one shared library extension module that all of the
-    others import and then one shim extension module for each
-    module in the build, that simply calls an initialization function
+    This creates one shared library extension module that all the
+    others import, and one shim extension module for each
+    module in the build. Each shim simply calls an initialization function
     in the shared library.
 
-    The shared library (which lib_name is the name of) is a python
+    The shared library (which lib_name is the name of) is a Python
     extension module that exports the real initialization functions in
     Capsules stored in module attributes.
     """
@@ -486,6 +492,8 @@ def mypycify(
     strict_dunder_typing: bool = False,
     group_name: str | None = None,
     log_trace: bool = False,
+    depends_on_native_internal: bool = False,
+    install_native_libs: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -511,7 +519,7 @@ def mypycify(
         separate: Should compiled modules be placed in separate extension modules.
                   If False, all modules are placed in a single shared library.
                   If True, every module is placed in its own library.
-                  Otherwise separate should be a list of
+                  Otherwise, separate should be a list of
                   (file name list, optional shared library name) pairs specifying
                   groups of files that should be placed in the same shared library
                   (while all other modules will be placed in its own library).
@@ -536,6 +544,11 @@ def mypycify(
                    mypyc_trace.txt (derived from executed operations). This is
                    useful for performance analysis, such as analyzing which
                    primitive ops are used the most and on which lines.
+        depends_on_native_internal: This is True only for mypy itself.
+        install_native_libs: If True, also build the native extension modules. Normally,
+                             those are build and published on PyPI separately, but during
+                             tests, we want to use their development versions (i.e. from
+                             current commit).
     """
 
     # Figure out our configuration
@@ -549,6 +562,7 @@ def mypycify(
         strict_dunder_typing=strict_dunder_typing,
         group_name=group_name,
         log_trace=log_trace,
+        depends_on_native_internal=depends_on_native_internal,
     )
 
     # Generate all the actual important C code
@@ -646,5 +660,22 @@ def mypycify(
             extensions.extend(
                 build_single_module(group_sources, cfilenames + shared_cfilenames, cflags)
             )
+
+    if install_native_libs:
+        for name in ["native_internal.c"] + RUNTIME_C_FILES:
+            rt_file = os.path.join(build_dir, name)
+            with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
+                write_file(rt_file, f.read())
+        extensions.append(
+            get_extension()(
+                "native_internal",
+                sources=[
+                    os.path.join(build_dir, file)
+                    for file in ["native_internal.c"] + RUNTIME_C_FILES
+                ],
+                include_dirs=[include_dir()],
+                extra_compile_args=cflags,
+            )
+        )
 
     return extensions
