@@ -842,10 +842,15 @@ def generate_dealloc_for_class(
     emitter.emit_line("static void")
     emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
     emitter.emit_line("{")
+    emitter.emit_line("int finalize_error = 0;")
+    emitter.emit_line("PyObject *type, *value, *traceback;")
+    emitter.emit_line("PyErr_Fetch(&type, &value, &traceback);")
     if has_tp_finalize:
         emitter.emit_line("if (!PyObject_GC_IsFinalized((PyObject *)self)) {")
-        emitter.emit_line("Py_TYPE(self)->tp_finalize((PyObject *)self);")
+        emitter.emit_line("PyObject_CallFinalizerFromDealloc((PyObject *)self);")
         emitter.emit_line("}")
+    emitter.emit_line("if (PyErr_Occurred() != NULL) finalize_error = 1;")
+    emitter.emit_line("PyErr_Restore(type, value, traceback);")
     emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:
         emit_reuse_dealloc(cl, emitter)
@@ -854,6 +859,13 @@ def generate_dealloc_for_class(
     emitter.emit_line(f"{clear_func_name}(self);")
     emitter.emit_line("Py_TYPE(self)->tp_free((PyObject *)self);")
     emitter.emit_line("CPy_TRASHCAN_END(self)")
+    # # CPython interpreter uses PyErr_WriteUnraisable: https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable
+    # # However, the message is slightly different due to the way mypyc compiles classes.
+    # # CPython interpreter prints: Exception ignored in: <function F.__del__ at 0x100aed940>
+    # # mypyc prints: Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+    emitter.emit_line("if (finalize_error == 1) {")
+    emitter.emit_line("PyErr_WriteUnraisable((PyObject *)self);")
+    emitter.emit_line("}")
     emitter.emit_line("}")
 
 
@@ -884,8 +896,6 @@ def generate_finalize_for_class(
     emitter.emit_line("static void")
     emitter.emit_line(f"{finalize_func_name}(PyObject *self)")
     emitter.emit_line("{")
-    emitter.emit_line("PyObject *type, *value, *traceback;")
-    emitter.emit_line("PyErr_Fetch(&type, &value, &traceback);")
     emitter.emit_line(
         "{}{}{}(self);".format(
             emitter.get_group_prefix(del_method.decl),
@@ -893,21 +903,6 @@ def generate_finalize_for_class(
             del_method.cname(emitter.names),
         )
     )
-    emitter.emit_line("if (PyErr_Occurred() != NULL) {")
-    emitter.emit_line('PyObject *del_str = PyUnicode_FromString("__del__");')
-    emitter.emit_line(
-        "PyObject *del_method = (del_str == NULL) ? NULL : _PyType_Lookup(Py_TYPE(self), del_str);"
-    )
-    # CPython interpreter uses PyErr_WriteUnraisable: https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable
-    # However, the message is slightly different due to the way mypyc compiles classes.
-    # CPython interpreter prints: Exception ignored in: <function F.__del__ at 0x100aed940>
-    # mypyc prints: Exception ignored in: <slot wrapper '__del__' of 'F' objects>
-    emitter.emit_line("PyErr_WriteUnraisable(del_method);")
-    emitter.emit_line("Py_XDECREF(del_method);")
-    emitter.emit_line("Py_XDECREF(del_str);")
-    emitter.emit_line("}")
-    # PyErr_Restore also clears exception raised in __del__.
-    emitter.emit_line("PyErr_Restore(type, value, traceback);")
     emitter.emit_line("}")
 
 
