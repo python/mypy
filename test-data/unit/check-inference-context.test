@@ -1530,3 +1530,13 @@ def check3(use: bool, val: str) -> "str | Literal[False]":
 def check4(use: bool, val: str) -> "str | bool":
     return use and identity(val)
 [builtins fixtures/tuple.pyi]
+
+[case testDictAnyOrLiteralInContext]
+from typing import Union, Optional, Any
+
+def f(x: dict[str, Union[str, None, int]]) -> None:
+    pass
+
+def g(x: Optional[dict[str, Any]], s: Optional[str]) -> None:
+    f(x or {'x': s})
+[builtins fixtures/dict.pyi]
