@@ -17,6 +17,7 @@ from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
+    FAST_PREFIX,
     IS_FREE_THREADED,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
@@ -127,6 +128,8 @@ from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.dict_ops import (
     dict_build_op,
+    dict_copy,
+    dict_copy_op,
     dict_new_op,
     dict_ssize_t_size_op,
     dict_update_in_display_op,
@@ -138,6 +141,7 @@ from mypyc.primitives.generic_ops import (
     generic_ssize_t_len_op,
     py_call_op,
     py_call_with_kwargs_op,
+    py_call_with_posargs_op,
     py_getattr_op,
     py_method_call_op,
     py_vectorcall_method_op,
@@ -183,7 +187,13 @@ from mypyc.primitives.str_ops import (
     str_ssize_t_size_op,
     unicode_compare,
 )
-from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op, new_tuple_with_length_op
+from mypyc.primitives.tuple_ops import (
+    list_tuple_op,
+    load_empty_tuple_constant_op,
+    new_tuple_op,
+    new_tuple_with_length_op,
+    sequence_tuple_op,
+)
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
@@ -788,10 +798,52 @@ class LowLevelIRBuilder:
         for value, kind, name in args:
             if kind == ARG_STAR:
                 if star_result is None:
+                    # star args fastpath
+                    if len(args) == 1:
+                        # fn(*args)
+                        if is_list_rprimitive(value.type):
+                            value = self.primitive_op(list_tuple_op, [value], line)
+                        elif not is_tuple_rprimitive(value.type) and not isinstance(
+                            value.type, RTuple
+                        ):
+                            value = self.primitive_op(sequence_tuple_op, [value], line)
+                        return value, None
+                    elif len(args) == 2 and args[1][1] == ARG_STAR2:
+                        # fn(*args, **kwargs)
+                        # TODO: extend to cover(*args, **k, **w, **a, **r, **g, **s)
+                        if is_tuple_rprimitive(value.type) or isinstance(value.type, RTuple):
+                            star_result = value
+                        elif is_list_rprimitive(value.type):
+                            star_result = self.primitive_op(list_tuple_op, [value], line)
+                        else:
+                            star_result = self.primitive_op(sequence_tuple_op, [value], line)
+
+                        star2_arg = args[1]
+                        star2_value = star2_arg[0]
+                        if is_dict_rprimitive(star2_value.type):
+                            star2_fastpath_op = dict_copy_op
+                        else:
+                            star2_fastpath_op = dict_copy
+                        return star_result, self.primitive_op(
+                            star2_fastpath_op, [star2_value], line
+                        )
+                        # elif ...: TODO extend this to optimize fn(*args, k=1, **kwargs) case
+                    # TODO optimize this case using the length utils - currently in review
                     star_result = self.new_list_op(star_values, line)
                 self.primitive_op(list_extend_op, [star_result, value], line)
             elif kind == ARG_STAR2:
                 if star2_result is None:
+                    if len(args) == 1:
+                        # early exit with fastpath if the only arg is ARG_STAR2
+                        # TODO: can we maintain an empty tuple in memory and just reuse it again and again?
+                        if is_dict_rprimitive(value.type):
+                            star2_fastpath_op = dict_copy_op
+                        else:
+                            star2_fastpath_op = dict_copy
+                        return self.new_tuple([], line), self.primitive_op(
+                            star2_fastpath_op, [value], line
+                        )
+
                     star2_result = self._create_dict(star2_keys, star2_values, line)
 
                 self.call_c(dict_update_in_display_op, [star2_result, value], line=line)
@@ -885,9 +937,11 @@ class LowLevelIRBuilder:
             # tuple. Otherwise create the tuple from the list.
             if star_result is None:
                 star_result = self.new_tuple(star_values, line)
-            else:
+            elif not is_tuple_rprimitive(star_result.type):
+                # if star_result is a tuple we took the fast path
                 star_result = self.primitive_op(list_tuple_op, [star_result], line)
-        if has_star2 and star2_result is None:
+        if has_star2 and star2_result is None and len(star2_keys) > 0:
+            # TODO: use dict_copy_op for simple cases of **kwargs
             star2_result = self._create_dict(star2_keys, star2_values, line)
 
         return star_result, star2_result
@@ -912,13 +966,16 @@ class LowLevelIRBuilder:
         if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
             return self.call_c(py_call_op, [function] + arg_values, line)
 
-        # Otherwise fallback to py_call_with_kwargs_op.
+        # Otherwise fallback to py_call_with_posargs_op or py_call_with_kwargs_op.
         assert arg_names is not None
 
         pos_args_tuple, kw_args_dict = self._construct_varargs(
             list(zip(arg_values, arg_kinds, arg_names)), line, has_star=True, has_star2=True
         )
-        assert pos_args_tuple and kw_args_dict
+        assert pos_args_tuple
+
+        if kw_args_dict is None:
+            return self.call_c(py_call_with_posargs_op, [function, pos_args_tuple], line)
 
         return self.call_c(py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 
@@ -1117,8 +1174,7 @@ class LowLevelIRBuilder:
                 assert star_arg
                 output_arg = star_arg
             elif arg.kind == ARG_STAR2:
-                assert star2_arg
-                output_arg = star2_arg
+                output_arg = star2_arg or self._create_dict([], [], line)
             elif not lst:
                 if is_fixed_width_rtype(arg.type):
                     output_arg = Integer(0, arg.type)
@@ -1171,11 +1227,13 @@ class LowLevelIRBuilder:
             return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
+        fast_name = FAST_PREFIX + name
         if (
             isinstance(base.type, RInstance)
-            and base.type.class_ir.is_ext_class
+            and (base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name))
             and not base.type.class_ir.builtin_base
         ):
+            name = name if base.type.class_ir.is_ext_class else fast_name
             if base.type.class_ir.has_method(name):
                 decl = base.type.class_ir.method_decl(name)
                 if arg_kinds is None:
@@ -2305,8 +2363,11 @@ class LowLevelIRBuilder:
             return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
-        size: Value = Integer(len(items), c_pyssize_t_rprimitive)
-        return self.call_c(new_tuple_op, [size] + items, line)
+        if items:
+            size: Value = Integer(len(items), c_pyssize_t_rprimitive)
+            return self.call_c(new_tuple_op, [size] + items, line)
+        else:
+            return self.call_c(load_empty_tuple_constant_op, [], line)
 
     def new_tuple_with_length(self, length: Value, line: int) -> Value:
         """This function returns an uninitialized tuple.

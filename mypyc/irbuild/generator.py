@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Callable
 
 from mypy.nodes import ARG_OPT, FuncDef, Var
-from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME
+from mypyc.common import ENV_ATTR_NAME, GENERATOR_ATTRIBUTE_PREFIX, NEXT_LABEL_ATTR_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import (
@@ -68,14 +68,14 @@ def gen_generator_func(
 ) -> tuple[FuncIR, Value | None]:
     """Generate IR for generator function that returns generator object."""
     setup_generator_class(builder)
-    load_env_registers(builder)
+    load_env_registers(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
     gen_arg_defaults(builder)
     if builder.fn_info.can_merge_generator_and_env_classes():
         gen = instantiate_generator_class(builder)
         builder.fn_info._curr_env_reg = gen
-        finalize_env_class(builder)
+        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
     else:
-        finalize_env_class(builder)
+        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
         gen = instantiate_generator_class(builder)
     builder.add(Return(gen))
 
@@ -104,11 +104,13 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Val
         and top_level
         and top_level.add_nested_funcs_to_env
     ):
-        setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
+        setup_func_for_recursive_call(
+            builder, fitem, builder.fn_info.generator_class, prefix=GENERATOR_ATTRIBUTE_PREFIX
+        )
     create_switch_for_generator_class(builder)
     add_raise_exception_blocks_to_generator_class(builder, fitem.line)
 
-    add_vars_to_env(builder)
+    add_vars_to_env(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
 
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
@@ -429,7 +431,9 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
 
     # Add arguments from the original generator function to the
     # environment of the generator class.
-    add_args_to_env(builder, local=False, base=cls, reassign=False)
+    add_args_to_env(
+        builder, local=False, base=cls, reassign=False, prefix=GENERATOR_ATTRIBUTE_PREFIX
+    )
 
     # Set the next label register for the generator class.
     cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)
