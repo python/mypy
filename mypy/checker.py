@@ -171,6 +171,7 @@ from mypy.treetransform import TransformVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
     bind_self,
+    can_have_shared_disjoint_base,
     coerce_to_literal,
     custom_special_method,
     erase_def_to_union_or_bound,
@@ -2658,6 +2659,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
+        if not can_have_shared_disjoint_base(typ.bases):
+            self.fail(message_registry.INCOMPATIBLE_DISJOINT_BASES.format(typ.name), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder(self.options)
@@ -5549,10 +5552,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
-        named_subject = self._make_named_statement_for_match(s)
         # In sync with similar actions elsewhere, narrow the target if
         # we are matching an AssignmentExpr
         unwrapped_subject = collapse_walrus(s.subject)
+        named_subject = self._make_named_statement_for_match(s, unwrapped_subject)
         with self.binder.frame_context(can_skip=False, fall_through=0):
             subject_type = get_proper_type(self.expr_checker.accept(s.subject))
 
@@ -5643,9 +5646,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
 
-    def _make_named_statement_for_match(self, s: MatchStmt) -> Expression:
+    def _make_named_statement_for_match(self, s: MatchStmt, subject: Expression) -> Expression:
         """Construct a fake NameExpr for inference if a match clause is complex."""
-        subject = s.subject
         if self.binder.can_put_directly(subject):
             # Already named - we should infer type of it as given
             return subject
@@ -5825,6 +5827,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         pretty_names_list = pretty_seq(
             format_type_distinctly(*base_classes, options=self.options, bare=True), "and"
         )
+
+        if not can_have_shared_disjoint_base(base_classes):
+            errors.append((pretty_names_list, "have distinct disjoint bases"))
+            return None
 
         new_errors = []
         for base in base_classes:

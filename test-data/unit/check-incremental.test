@@ -3170,13 +3170,13 @@ C(5, 'foo', True)
 
 [file a.py]
 import attrs
-@attrs.define
+@attrs.define(slots=False)
 class A:
     a: int
 
 [file b.py]
 import attrs
-@attrs.define
+@attrs.define(slots=False)
 class B:
     b: str
 
@@ -3184,7 +3184,7 @@ class B:
 from a import A
 from b import B
 import attrs
-@attrs.define
+@attrs.define(slots=False)
 class C(A, B):
     c: bool
 

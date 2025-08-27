@@ -1045,6 +1045,20 @@ error:
     return NULL;
 }
 
+#if CPY_3_11_FEATURES
+
+// Return obj.__name__ (specialized to type objects, which are the most common target).
+PyObject *CPy_GetName(PyObject *obj) {
+    if (PyType_Check(obj)) {
+        return PyType_GetName((PyTypeObject *)obj);
+    }
+    _Py_IDENTIFIER(__name__);
+    PyObject *name = _PyUnicode_FromId(&PyId___name__); /* borrowed */
+    return PyObject_GetAttr(obj, name);
+}
+
+#endif
+
 #ifdef MYPYC_LOG_TRACE
 
 // This is only compiled in if trace logging is enabled by user

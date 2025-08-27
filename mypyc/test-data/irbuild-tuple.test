@@ -184,30 +184,102 @@ def f(i: int) -> bool:
 [out]
 def f(i):
     i :: int
-    r0 :: bit
-    r1 :: bool
-    r2 :: bit
+    r0, r1, r2 :: bit
     r3 :: bool
-    r4 :: bit
 L0:
     r0 = int_eq i, 2
-    if r0 goto L1 else goto L2 :: bool
+    if r0 goto L4 else goto L1 :: bool
 L1:
-    r1 = r0
-    goto L3
+    r1 = int_eq i, 4
+    if r1 goto L4 else goto L2 :: bool
 L2:
-    r2 = int_eq i, 4
-    r1 = r2
+    r2 = int_eq i, 6
+    if r2 goto L4 else goto L3 :: bool
 L3:
-    if r1 goto L4 else goto L5 :: bool
+    r3 = 0
+    goto L5
 L4:
-    r3 = r1
+    r3 = 1
+L5:
+    return r3
+
+[case testTupleOperatorNotIn]
+def x() -> int:
+    return 1
+def y() -> int:
+    return 2
+def z() -> int:
+    return 3
+
+def f() -> bool:
+    return z() not in (x(), y())
+[out]
+def x():
+L0:
+    return 2
+def y():
+L0:
+    return 4
+def z():
+L0:
+    return 6
+def f():
+    r0, r1, r2 :: int
+    r3, r4 :: bit
+    r5 :: bool
+L0:
+    r0 = z()
+    r1 = x()
+    r2 = y()
+    r3 = int_ne r0, r1
+    if r3 goto L1 else goto L3 :: bool
+L1:
+    r4 = int_ne r0, r2
+    if r4 goto L2 else goto L3 :: bool
+L2:
+    r5 = 1
+    goto L4
+L3:
+    r5 = 0
+L4:
+    return r5
+
+[case testTupleOperatorInFinalTuple]
+from typing import Final
+
+tt: Final = (1, 2)
+
+def f(x: int) -> bool:
+    return x in tt
+[out]
+def f(x):
+    x :: int
+    r0 :: tuple[int, int]
+    r1 :: bool
+    r2, r3 :: int
+    r4, r5 :: bit
+    r6 :: bool
+L0:
+    r0 = __main__.tt :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "tt" was not set')
+    unreachable
+L2:
+    r2 = r0[0]
+    r3 = r0[1]
+    r4 = int_eq x, r2
+    if r4 goto L5 else goto L3 :: bool
+L3:
+    r5 = int_eq x, r3
+    if r5 goto L5 else goto L4 :: bool
+L4:
+    r6 = 0
     goto L6
 L5:
-    r4 = int_eq i, 6
-    r3 = r4
+    r6 = 1
 L6:
-    return r3
+    return r6
 
 [case testTupleBuiltFromList]
 def f(val: int) -> bool:
