@@ -6507,6 +6507,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if operator in {"is", "is not"}:
             is_valid_target: Callable[[Type], bool] = is_singleton_type
             coerce_only_in_literal_context = False
+            no_custom_eq = True
             should_narrow_by_identity = True
         else:
 
@@ -6522,14 +6523,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             coerce_only_in_literal_context = True
 
             expr_types = [operand_types[i] for i in expr_indices]
-            should_narrow_by_identity = all(
-                map(has_no_custom_eq_checks, expr_types)
-            ) and not is_ambiguous_mix_of_enums(expr_types)
+            no_custom_eq = all(map(has_no_custom_eq_checks, expr_types))
+            should_narrow_by_identity = not is_ambiguous_mix_of_enums(expr_types)
 
         if_map: TypeMap = {}
         else_map: TypeMap = {}
-        if should_narrow_by_identity:
-            if_map, else_map = self.refine_identity_comparison_expression(
+        if no_custom_eq:
+            # Try to narrow the types or at least identify unreachable blocks.
+            # If there's some mix of enums and values, we do not want to narrow enums
+            # to literals, but still want to detect unreachable branches.
+            if_map_optimistic, else_map_optimistic = self.refine_identity_comparison_expression(
                 operands,
                 operand_types,
                 expr_indices,
@@ -6537,6 +6540,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 is_valid_target,
                 coerce_only_in_literal_context,
             )
+            if should_narrow_by_identity:
+                if_map = if_map_optimistic
+                else_map = else_map_optimistic
+            else:
+                if if_map_optimistic is None:
+                    if_map = None
+                if else_map_optimistic is None:
+                    else_map = None
 
         if if_map == {} and else_map == {}:
             if_map, else_map = self.refine_away_none_in_comparison(
@@ -9129,9 +9140,7 @@ def _ambiguous_enum_variants(types: list[Type]) -> set[str]:
                 # let's be conservative
                 result.add("<other>")
         elif isinstance(t, LiteralType):
-            if t.fallback.type.is_enum:
-                result.update(_ambiguous_enum_variants([t.fallback]))
-            # Other literals (str, int, bool) cannot introduce any surprises
+            result.update(_ambiguous_enum_variants([t.fallback]))
         elif isinstance(t, NoneType):
             pass
         else:

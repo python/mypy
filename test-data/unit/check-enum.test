@@ -2703,6 +2703,9 @@ if A.a == 0:  # E: Non-overlapping equality check (left operand type: "Literal[A
 
 if A.a == A.a:
     1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+
 if A.a == A.b:  # E: Non-overlapping equality check (left operand type: "Literal[A.a]", right operand type: "Literal[A.b]")
     1 + 'a'
 
