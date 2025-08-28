@@ -32,6 +32,7 @@ Final = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Self = 0
 Callable: _SpecialForm
 Union: _SpecialForm
 Literal: _SpecialForm
@@ -175,6 +176,3 @@ class _TypedDict(Mapping[str, object]):
 
 class TypeAliasType:
     pass
-
-def Self(self, parameters):
-    raise TypeError(f"{self} is not subscriptable")
