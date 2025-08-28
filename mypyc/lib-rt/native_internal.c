@@ -11,7 +11,7 @@
 #define MAX_SHORT_LEN 127
 #define LONG_STR_TAG 1
 
-#define MIN_SHORT_INT (-10)
+#define MIN_SHORT_INT -10
 #define MAX_SHORT_INT 117
 #define MEDIUM_INT_TAG 1
 #define LONG_INT_TAG 3
@@ -391,14 +391,21 @@ read_int_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return CPY_INT_TAG;
 
-    if (_check_read((BufferObject *)data, sizeof(CPyTagged)) == 2)
-        return CPY_INT_TAG;
     char *buf = ((BufferObject *)data)->buf;
+    if (_check_read((BufferObject *)data, 1) == 2)
+        return CPY_INT_TAG;
 
-    CPyTagged ret = *(CPyTagged *)(buf + ((BufferObject *)data)->pos);
-    ((BufferObject *)data)->pos += sizeof(CPyTagged);
-    if ((ret & CPY_INT_TAG) == 0)
+    uint8_t first = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += 1;
+    if ((first & MEDIUM_INT_TAG) == 0) {
+       return ((Py_ssize_t)(first >> 1) + MIN_SHORT_INT) << 1;
+    }
+    if (first == MEDIUM_INT_TAG) {
+        CPyTagged ret = *(CPyTagged *)(buf + ((BufferObject *)data)->pos);
+        ((BufferObject *)data)->pos += sizeof(CPyTagged);
         return ret;
+    }
+    // first == LONG_INT_TAG
     // People who have literal ints not fitting in size_t should be punished :-)
     PyObject *str_ret = read_str_internal(data);
     if (str_ret == NULL)
@@ -426,17 +433,34 @@ write_int_internal(PyObject *data, CPyTagged value) {
     if (_check_buffer(data) == 2)
         return 2;
 
-    if (_check_size((BufferObject *)data, sizeof(CPyTagged)) == 2)
-        return 2;
-    char *buf = ((BufferObject *)data)->buf;
+    char *buf;
     if ((value & CPY_INT_TAG) == 0) {
-        *(CPyTagged *)(buf + ((BufferObject *)data)->pos) = value;
+        Py_ssize_t real_value = CPyTagged_ShortAsSsize_t(value);
+        if (real_value >= MIN_SHORT_INT && real_value <= MAX_SHORT_INT) {
+            // Most common case: int that is small in absolute value.
+            if (_check_size((BufferObject *)data, 1) == 2)
+                return 2;
+            buf = ((BufferObject *)data)->buf;
+            *(uint8_t *)(buf + ((BufferObject *)data)->pos) = (uint8_t)(real_value - MIN_SHORT_INT) << 1;
+            ((BufferObject *)data)->pos += 1;
+            ((BufferObject *)data)->end += 1;
+        } else {
+            if (_check_size((BufferObject *)data, sizeof(CPyTagged) + 1) == 2)
+                return 2;
+            buf = ((BufferObject *)data)->buf;
+            *(uint8_t *)(buf + ((BufferObject *)data)->pos) = MEDIUM_INT_TAG;
+            ((BufferObject *)data)->pos += 1;
+            *(CPyTagged *)(buf + ((BufferObject *)data)->pos) = value;
+            ((BufferObject *)data)->pos += sizeof(CPyTagged);
+            ((BufferObject *)data)->end += sizeof(CPyTagged) + 1;
+        }
     } else {
-        *(CPyTagged *)(buf + ((BufferObject *)data)->pos) = CPY_INT_TAG;
-    }
-    ((BufferObject *)data)->pos += sizeof(CPyTagged);
-    ((BufferObject *)data)->end += sizeof(CPyTagged);
-    if ((value & CPY_INT_TAG) != 0) {
+        if (_check_size((BufferObject *)data, 1) == 2)
+            return 2;
+        buf = ((BufferObject *)data)->buf;
+        *(uint8_t *)(buf + ((BufferObject *)data)->pos) = LONG_INT_TAG;
+        ((BufferObject *)data)->pos += 1;
+        ((BufferObject *)data)->end += 1;
         PyObject *str_value = PyObject_Str(CPyTagged_LongAsObject(value));
         if (str_value == NULL)
             return 2;
