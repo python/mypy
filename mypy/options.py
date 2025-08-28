@@ -416,6 +416,8 @@ class Options:
         # preserving manual tweaks to generated C file)
         self.mypyc_skip_c_generation = False
 
+        self._on_plugins_loaded: Callable[[], None] | None = None
+
     def use_lowercase_names(self) -> bool:
         warnings.warn(
             "options.use_lowercase_names() is deprecated and will be removed in a future version",
