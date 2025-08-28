@@ -906,7 +906,7 @@ def define_options(
         default=False,
         strict_flag=True,
         help="Prohibit equality, identity, and container checks for non-overlapping types "
-             "(except `None`)",
+        "(except `None`)",
         group=strictness_group,
     )
 
