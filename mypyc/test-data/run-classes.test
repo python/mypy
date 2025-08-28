@@ -3282,7 +3282,7 @@ class Dyn: pass
 from __future__ import annotations
 from typing import Any, Union
 
-from testutil import assertRaises 
+from testutil import assertRaises
 
 class Add:
     l: IntLike
@@ -3306,7 +3306,7 @@ class RaisesException:
         if val == 0:
             raise RuntimeError("Invalid value!")
         return super().__new__(cls)
-    
+
     def __init__(self, val: int) -> None:
         self.val = val
 
@@ -3328,7 +3328,7 @@ def test_dunder_new() -> None:
 
     with assertRaises(RuntimeError, "Invalid value!"):
         raised = RaisesException(0)
-    
+
     not_raised = RaisesException(1)
     assert not_raised.val == 1
 
@@ -3364,7 +3364,7 @@ class RaisesException:
         if val == 0:
             raise RuntimeError("Invalid value!")
         return super().__new__(cls)
-    
+
     def __init__(self, val: int) -> None:
         self.val = val
 
@@ -3379,7 +3379,7 @@ print(f'{Add(1, 0)=}')
 
 with assertRaises(RuntimeError, "Invalid value!"):
     raised = RaisesException(0)
-    
+
 not_raised = RaisesException(1)
 assert not_raised.val == 1
 
@@ -3495,7 +3495,7 @@ def interpreted_subclass(base) -> None:
     class InterpretedSub(base):
         def __new__(cls, val: int) -> Self:
             return super().__new__(cls, val + 1)
-        
+
         def __init__(self, val: int) -> None:
             super().__init__(val)
             self.init_val : int = self.init_val * 2
@@ -3509,7 +3509,7 @@ def interpreted_subclass(base) -> None:
         def __init__(self, val: int) -> None:
             super().__init__(val)
             self.init_val : int = self.init_val * 2
-    
+
     s2 = InterpretedSubWithoutNew(42)
     assert type(s2) == InterpretedSubWithoutNew
     assert s2.val == 43
