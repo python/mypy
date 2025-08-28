@@ -1395,12 +1395,6 @@ class LowLevelIRBuilder:
         # Special case various ops
         if op in ("is", "is not"):
             return self.translate_is_op(lreg, rreg, op, line)
-        # TODO: modify 'str' to use same interface as 'compare_bytes' as it avoids
-        # call to PyErr_Occurred()
-        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and op in ("==", "!="):
-            return self.compare_strings(lreg, rreg, op, line)
-        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ("==", "!="):
-            return self.compare_bytes(lreg, rreg, op, line)
         if (
             is_bool_or_bit_rprimitive(ltype)
             and is_bool_or_bit_rprimitive(rtype)
@@ -1545,6 +1539,10 @@ class LowLevelIRBuilder:
         elif op == "!=":
             eq = self.primitive_op(str_eq, [lhs, rhs], line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
+
+        # TODO: modify 'str' to use same interface as 'compare_bytes' as it would avoid
+        # call to PyErr_Occurred() below
+
         compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
         error_constant = Integer(-1, c_int_rprimitive, line)
         compare_error_check = self.add(
@@ -2480,13 +2478,21 @@ class LowLevelIRBuilder:
         return primitive_op
 
     def translate_eq_cmp(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value | None:
-        """Add a equality comparison operation.
+        """Add an equality comparison operation.
+
+        Note that this doesn't cover all possible types.
 
         Args:
             expr_op: either '==' or '!='
         """
         ltype = lreg.type
         rtype = rreg.type
+
+        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype):
+            return self.compare_strings(lreg, rreg, expr_op, line)
+        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype):
+            return self.compare_bytes(lreg, rreg, expr_op, line)
+
         if not (isinstance(ltype, RInstance) and ltype == rtype):
             return None
 
