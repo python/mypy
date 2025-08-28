@@ -8,6 +8,14 @@
 #define START_SIZE 512
 #define MAX_SHORT_INT_TAGGED (255 << 1)
 
+#define MAX_SHORT_LEN 127
+#define LONG_STR_TAG 1
+
+#define MIN_SHORT_INT (-10)
+#define MAX_SHORT_INT 117
+#define MEDIUM_INT_TAG 1
+#define LONG_INT_TAG 3
+
 typedef struct {
     PyObject_HEAD
     Py_ssize_t pos;
@@ -230,15 +238,22 @@ read_str_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return NULL;
 
-    if (_check_read((BufferObject *)data, sizeof(Py_ssize_t)) == 2)
-        return NULL;
+    Py_ssize_t size;
     char *buf = ((BufferObject *)data)->buf;
     // Read string length.
-    Py_ssize_t size = *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos);
-    ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
+    if (_check_read((BufferObject *)data, 1) == 2)
+        return NULL;
+    uint8_t first = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += 1;
+    if (first != LONG_STR_TAG) {
+        size = (Py_ssize_t)(first >> 1);
+    } else {
+        size = *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos);
+        ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
+    }
+    // Read string content.
     if (_check_read((BufferObject *)data, size) == 2)
         return NULL;
-    // Read string content.
     PyObject *res = PyUnicode_FromStringAndSize(
         buf + ((BufferObject *)data)->pos, (Py_ssize_t)size
     );
@@ -266,14 +281,28 @@ write_str_internal(PyObject *data, PyObject *value) {
     const char *chunk = PyUnicode_AsUTF8AndSize(value, &size);
     if (!chunk)
         return 2;
-    Py_ssize_t need = size + sizeof(Py_ssize_t);
-    if (_check_size((BufferObject *)data, need) == 2)
-        return 2;
 
-    char *buf = ((BufferObject *)data)->buf;
+    Py_ssize_t need;
+    char *buf;
     // Write string length.
-    *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos) = size;
-    ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
+    if (size <= MAX_SHORT_LEN) {
+        // Common case: short string (len <= 127) store as single byte.
+        need = size + 1;
+        if (_check_size((BufferObject *)data, need) == 2)
+            return 2;
+        buf = ((BufferObject *)data)->buf;
+        *(uint8_t *)(buf + ((BufferObject *)data)->pos) = (uint8_t)size << 1;
+        ((BufferObject *)data)->pos += 1;
+    } else {
+        need = size + sizeof(Py_ssize_t) + 1;
+        if (_check_size((BufferObject *)data, need) == 2)
+            return 2;
+        buf = ((BufferObject *)data)->buf;
+        *(uint8_t *)(buf + ((BufferObject *)data)->pos) = LONG_STR_TAG;
+        ((BufferObject *)data)->pos += 1;
+        *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos) = size;
+        ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
+    }
     // Write string content.
     memcpy(buf + ((BufferObject *)data)->pos, chunk, size);
     ((BufferObject *)data)->pos += size;

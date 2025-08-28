@@ -1674,7 +1674,7 @@ class Instance(ProperType):
     def serialize(self) -> JsonDict | str:
         assert self.type is not None
         type_ref = self.type.fullname
-        if not self.args and not self.last_known_value:
+        if not self.args and not self.last_known_value and not self.extra_attrs:
             return type_ref
         data: JsonDict = {
             ".class": "Instance",
@@ -1745,7 +1745,6 @@ class Instance(ProperType):
             ),
             extra_attrs=self.extra_attrs,
         )
-        # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true
         new.can_be_false = self.can_be_false
         return new
