@@ -843,10 +843,9 @@ def generate_dealloc_for_class(
     emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
     emitter.emit_line("{")
     if has_tp_finalize:
-        emitter.emit_line("if (!PyObject_GC_IsFinalized((PyObject *)self)) {")
         emitter.emit_line("PyObject *type, *value, *traceback;")
         emitter.emit_line("PyErr_Fetch(&type, &value, &traceback);")
-        emitter.emit_line("PyObject_CallFinalizerFromDealloc((PyObject *)self);")
+        emitter.emit_line("int res = PyObject_CallFinalizerFromDealloc((PyObject *)self);")
         # CPython interpreter uses PyErr_WriteUnraisable: https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable
         # However, the message is slightly different due to the way mypyc compiles classes.
         # CPython interpreter prints: Exception ignored in: <function F.__del__ at 0x100aed940>
@@ -855,6 +854,8 @@ def generate_dealloc_for_class(
         emitter.emit_line("PyErr_WriteUnraisable((PyObject *)self);")
         emitter.emit_line("}")
         emitter.emit_line("PyErr_Restore(type, value, traceback);")
+        emitter.emit_line("if (res < 0) {")
+        emitter.emit_line("goto done;")
         emitter.emit_line("}")
     emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:
@@ -864,6 +865,7 @@ def generate_dealloc_for_class(
     emitter.emit_line(f"{clear_func_name}(self);")
     emitter.emit_line("Py_TYPE(self)->tp_free((PyObject *)self);")
     emitter.emit_line("CPy_TRASHCAN_END(self)")
+    emitter.emit_line("done: ;")
     emitter.emit_line("}")
 
 
