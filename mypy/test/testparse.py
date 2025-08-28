@@ -6,7 +6,6 @@ import sys
 
 from pytest import skip
 
-from mypy import defaults
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError, Errors
 from mypy.options import Options
@@ -51,7 +50,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     elif testcase.file.endswith("python314.test"):
         options.python_version = (3, 14)
     else:
-        options.python_version = defaults.PYTHON3_VERSION
+        options.python_version = sys.version_info[:2]
 
     source = "\n".join(testcase.input)
 
