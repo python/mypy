@@ -704,8 +704,8 @@ L3:
     r4 = 0
     goto L5
 L4:
-    r7 = borrow cast(str, x)
-    r8 = borrow cast(str, y)
+    r7 = unchecked borrow cast(str, x)
+    r8 = unchecked borrow cast(str, y)
     r9 = CPyStr_Equal(r7, r8)
     r4 = r9
 L5:
@@ -734,7 +734,7 @@ L1:
     r2 = 0
     goto L3
 L2:
-    r3 = borrow cast(str, x)
+    r3 = unchecked borrow cast(str, x)
     r4 = CPyStr_Equal(r3, y)
     r2 = r4
 L3:
@@ -763,7 +763,7 @@ L1:
     r2 = 0
     goto L3
 L2:
-    r3 = borrow cast(str, y)
+    r3 = unchecked borrow cast(str, y)
     r4 = CPyStr_Equal(r3, x)
     r2 = r4
 L3:

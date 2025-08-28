@@ -657,6 +657,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
 
     def visit_cast(self, op: Cast) -> None:
+        if op.is_unchecked and op.is_borrowed:
+            self.emit_line(f"{self.reg(op)} = {self.reg(op.src)};")
+            return
         branch = self.next_branch()
         handler = None
         if branch is not None:

@@ -336,14 +336,14 @@ class LowLevelIRBuilder:
             return src
 
     def unbox_or_cast(
-        self, src: Value, target_type: RType, line: int, *, can_borrow: bool = False
+        self, src: Value, target_type: RType, line: int, *, can_borrow: bool = False, unchecked: bool = False
     ) -> Value:
         if target_type.is_unboxed:
             return self.add(Unbox(src, target_type, line))
         else:
             if can_borrow:
                 self.keep_alives.append(src)
-            return self.add(Cast(src, target_type, line, borrow=can_borrow))
+            return self.add(Cast(src, target_type, line, borrow=can_borrow, unchecked=unchecked))
 
     def coerce(
         self,
@@ -2576,8 +2576,8 @@ class LowLevelIRBuilder:
         self.goto(out)
         self.activate_block(l_not_none)
         if not isinstance(rreg.type, RUnion):
-            z = self.compare_strings(self.coerce(lreg, str_rprimitive, line, can_borrow=True),
-                                     self.coerce(rreg, str_rprimitive, line, can_borrow=True), expr_op, line)
+            z = self.compare_strings(self.unbox_or_cast(lreg, str_rprimitive, line, can_borrow=True, unchecked=True),
+                                     rreg, expr_op, line)
             self.add(Assign(res, z))
         else:
             r_none = BasicBlock()
@@ -2588,8 +2588,8 @@ class LowLevelIRBuilder:
             self.add(Assign(res, self.false()))
             self.goto(out)
             self.activate_block(r_not_none)
-            z = self.compare_strings(self.coerce(lreg, str_rprimitive, line, can_borrow=True),
-                                     self.coerce(rreg, str_rprimitive, line, can_borrow=True), expr_op, line)
+            z = self.compare_strings(self.unbox_or_cast(lreg, str_rprimitive, line, can_borrow=True, unchecked=True),
+                                     self.unbox_or_cast(rreg, str_rprimitive, line, can_borrow=True, unchecked=True), expr_op, line)
             self.add(Assign(res, z))
         self.goto(out)
         self.activate_block(out)
