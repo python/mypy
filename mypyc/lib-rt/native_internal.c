@@ -174,6 +174,12 @@ _check_read(BufferObject *data, Py_ssize_t need) {
     return 1;
 }
 
+/*
+bool format: single byte
+    \x00 - False
+    \x01 - True
+*/
+
 static char
 read_bool_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
@@ -233,6 +239,12 @@ write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
+/*
+str format: size followed by UTF-8 bytes
+    short strings (len <= 127): single byte for size as `(uint8_t)size << 1`
+    long strings: \x01 followed by size as Py_ssize_t
+*/
+
 static PyObject*
 read_str_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
@@ -246,6 +258,7 @@ read_str_internal(PyObject *data) {
     uint8_t first = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
     ((BufferObject *)data)->pos += 1;
     if (first != LONG_STR_TAG) {
+        // Common case: short string (len <= 127).
         size = (Py_ssize_t)(first >> 1);
     } else {
         size = *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos);
@@ -328,6 +341,11 @@ write_str(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
+/*
+float format:
+    stored as a C double
+*/
+
 static double
 read_float_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
@@ -386,6 +404,13 @@ write_float(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
+/*
+int format:
+    most common values (-10 <= value <= 117): single byte as `(uint8_t)(value + 10) << 1`
+    medium values (fit in CPyTagged): \x01 followed by CPyTagged value
+    long values (very rare): \x03 followed by decimal string (see str format)
+*/
+
 static CPyTagged
 read_int_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
@@ -398,6 +423,7 @@ read_int_internal(PyObject *data) {
     uint8_t first = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
     ((BufferObject *)data)->pos += 1;
     if ((first & MEDIUM_INT_TAG) == 0) {
+       // Most common case: int that is small in absolute value.
        return ((Py_ssize_t)(first >> 1) + MIN_SHORT_INT) << 1;
     }
     if (first == MEDIUM_INT_TAG) {
@@ -405,7 +431,6 @@ read_int_internal(PyObject *data) {
         ((BufferObject *)data)->pos += sizeof(CPyTagged);
         return ret;
     }
-    // first == LONG_INT_TAG
     // People who have literal ints not fitting in size_t should be punished :-)
     PyObject *str_ret = read_str_internal(data);
     if (str_ret == NULL)
@@ -490,6 +515,11 @@ write_int(PyObject *self, PyObject *args, PyObject *kwds) {
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+/*
+integer tag format (0 <= t <= 255):
+    stored as a uint8_t
+*/
 
 static uint8_t
 read_tag_internal(PyObject *data) {
