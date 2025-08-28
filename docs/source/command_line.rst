@@ -728,7 +728,7 @@ of the above sections.
        if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 
-       assert text is not None  # OK, check against None is allowed for historical reasons.
+       assert text is not None  # OK, check against None is allowed
 
 
 .. option:: --strict-equality-for-none

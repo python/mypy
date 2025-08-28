@@ -146,7 +146,7 @@ literal:
         return x == b'magic'  # OK
 
 :option:`--strict-equality <mypy --strict-equality>` does not include comparisons with
-``None`` for historical reasons (support for type comments):
+``None``:
 
 .. code-block:: python
 
