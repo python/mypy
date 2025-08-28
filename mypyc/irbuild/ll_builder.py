@@ -2514,6 +2514,23 @@ class LowLevelIRBuilder:
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype):
             return self.compare_bytes(lreg, rreg, expr_op, line)
 
+        lopt = optional_value_type(ltype)
+        ropt = optional_value_type(rtype)
+        fast_opt_eq = False
+        if lopt is not None and ropt is not None:
+            # Can we do a quick comparison of two optional types?
+            if is_same_type(lopt, ropt) and is_str_rprimitive(lopt):
+                fast_opt_eq = True
+        elif lopt is not None:
+            if is_same_type(lopt, rtype) and is_str_rprimitive(lopt):
+                fast_opt_eq = True
+        elif ropt is not None:
+            if is_same_type(ropt, ltype) and is_str_rprimitive(ropt):
+                fast_opt_eq = True
+
+        if fast_opt_eq:
+            return self.translate_fast_optional_eq_cmp(lreg, rreg, expr_op, line)
+
         if not (isinstance(ltype, RInstance) and ltype == rtype):
             return None
 
@@ -2539,6 +2556,44 @@ class LowLevelIRBuilder:
             return self.translate_is_op(lreg, rreg, identity_ref_op, line)
 
         return self.gen_method_call(lreg, op_methods[expr_op], [rreg], ltype, line)
+
+    def translate_fast_optional_eq_cmp(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
+        if not isinstance(lreg.type, RUnion):
+            lreg, rreg = rreg, lreg
+        res = Register(bool_rprimitive)
+        x = self.add(ComparisonOp(lreg, self.none_object(), ComparisonOp.EQ, line))
+        l_none = BasicBlock()
+        l_not_none = BasicBlock()
+        out = BasicBlock()
+        self.add(Branch(x, l_none, l_not_none, Branch.BOOL))
+        self.activate_block(l_none)
+        if not isinstance(rreg.type, RUnion):
+            self.add(Assign(res, self.false()))
+        else:
+            op = ComparisonOp.EQ if expr_op == "==" else ComparisonOp.NEQ
+            y = self.add(ComparisonOp(rreg, self.none_object(), op, line))
+            self.add(Assign(res, y))
+        self.goto(out)
+        self.activate_block(l_not_none)
+        if not isinstance(rreg.type, RUnion):
+            z = self.compare_strings(self.coerce(lreg, str_rprimitive, line, can_borrow=True),
+                                     self.coerce(rreg, str_rprimitive, line, can_borrow=True), expr_op, line)
+            self.add(Assign(res, z))
+        else:
+            r_none = BasicBlock()
+            r_not_none = BasicBlock()
+            x = self.add(ComparisonOp(rreg, self.none_object(), ComparisonOp.EQ, line))
+            self.add(Branch(x, r_none, r_not_none, Branch.BOOL))
+            self.activate_block(r_none)
+            self.add(Assign(res, self.false()))
+            self.goto(out)
+            self.activate_block(r_not_none)
+            z = self.compare_strings(self.coerce(lreg, str_rprimitive, line, can_borrow=True),
+                                     self.coerce(rreg, str_rprimitive, line, can_borrow=True), expr_op, line)
+            self.add(Assign(res, z))
+        self.goto(out)
+        self.activate_block(out)
+        return res
 
     def translate_is_op(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
         """Create equality comparison operation between object identities
