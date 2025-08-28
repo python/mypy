@@ -3394,7 +3394,6 @@ Add(1, 0)=1
 [case testInheritedDunderNew]
 from __future__ import annotations
 from mypy_extensions import mypyc_attr
-from typing import Self
 
 from m import interpreted_subclass
 
@@ -3402,7 +3401,7 @@ from m import interpreted_subclass
 class Base:
     val: int
 
-    def __new__(cls, val: int) -> Self:
+    def __new__(cls, val: int):
         obj = super().__new__(cls)
         obj.val = val + 1
         return obj
@@ -3411,7 +3410,7 @@ class Base:
         self.init_val = val
 
 class Sub(Base):
-    def __new__(cls, val: int) -> Self:
+    def __new__(cls, val: int):
         return super().__new__(cls, val + 1)
 
     def __init__(self, val: int) -> None:
@@ -3426,7 +3425,7 @@ class SubWithoutNew(Base):
 class BaseWithoutInterpretedSubclasses:
     val: int
 
-    def __new__(cls, val: int) -> Self:
+    def __new__(cls, val: int):
         obj = super().__new__(cls)
         obj.val = val + 1
         return obj
@@ -3435,7 +3434,7 @@ class BaseWithoutInterpretedSubclasses:
         self.init_val = val
 
 class SubNoInterpreted(BaseWithoutInterpretedSubclasses):
-    def __new__(cls, val: int) -> Self:
+    def __new__(cls, val: int):
         return super().__new__(cls, val + 1)
 
     def __init__(self, val: int) -> None:
@@ -3513,6 +3512,8 @@ def interpreted_subclass(base) -> None:
     assert type(s2) == InterpretedSubWithoutNew
     assert s2.val == 43
     assert s2.init_val == 84
+
+[typing fixtures/typing-full.pyi]
 
 [case testDunderNewInitArgMismatch]
 from __future__ import annotations
