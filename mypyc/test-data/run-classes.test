@@ -3484,7 +3484,6 @@ def test_interpreted_subclass() -> None:
 
 [file m.py]
 from __future__ import annotations
-from typing import Self
 
 def interpreted_subclass(base) -> None:
     b = base(42)
@@ -3493,7 +3492,7 @@ def interpreted_subclass(base) -> None:
     assert b.init_val == 42
 
     class InterpretedSub(base):
-        def __new__(cls, val: int) -> Self:
+        def __new__(cls, val: int) -> base:
             return super().__new__(cls, val + 1)
 
         def __init__(self, val: int) -> None:
