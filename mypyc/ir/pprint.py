@@ -200,7 +200,9 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             prefix = "unchecked "
         else:
             prefix = ""
-        return self.format("%r = %s%scast(%s, %r)", op, prefix, self.borrow_prefix(op), op.type, op.src)
+        return self.format(
+            "%r = %s%scast(%s, %r)", op, prefix, self.borrow_prefix(op), op.type, op.src
+        )
 
     def visit_box(self, op: Box) -> str:
         return self.format("%r = box(%s, %r)", op, op.src.type, op.src)

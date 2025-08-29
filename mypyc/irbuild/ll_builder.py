@@ -336,7 +336,13 @@ class LowLevelIRBuilder:
             return src
 
     def unbox_or_cast(
-        self, src: Value, target_type: RType, line: int, *, can_borrow: bool = False, unchecked: bool = False
+        self,
+        src: Value,
+        target_type: RType,
+        line: int,
+        *,
+        can_borrow: bool = False,
+        unchecked: bool = False,
     ) -> Value:
         if target_type.is_unboxed:
             return self.add(Unbox(src, target_type, line))
@@ -2557,7 +2563,9 @@ class LowLevelIRBuilder:
 
         return self.gen_method_call(lreg, op_methods[expr_op], [rreg], ltype, line)
 
-    def translate_fast_optional_eq_cmp(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
+    def translate_fast_optional_eq_cmp(
+        self, lreg: Value, rreg: Value, expr_op: str, line: int
+    ) -> Value:
         if not isinstance(lreg.type, RUnion):
             lreg, rreg = rreg, lreg
         res = Register(bool_rprimitive)
@@ -2576,8 +2584,12 @@ class LowLevelIRBuilder:
         self.goto(out)
         self.activate_block(l_not_none)
         if not isinstance(rreg.type, RUnion):
-            z = self.compare_strings(self.unbox_or_cast(lreg, str_rprimitive, line, can_borrow=True, unchecked=True),
-                                     rreg, expr_op, line)
+            z = self.compare_strings(
+                self.unbox_or_cast(lreg, str_rprimitive, line, can_borrow=True, unchecked=True),
+                rreg,
+                expr_op,
+                line,
+            )
             self.add(Assign(res, z))
         else:
             r_none = BasicBlock()
@@ -2588,8 +2600,12 @@ class LowLevelIRBuilder:
             self.add(Assign(res, self.false()))
             self.goto(out)
             self.activate_block(r_not_none)
-            z = self.compare_strings(self.unbox_or_cast(lreg, str_rprimitive, line, can_borrow=True, unchecked=True),
-                                     self.unbox_or_cast(rreg, str_rprimitive, line, can_borrow=True, unchecked=True), expr_op, line)
+            z = self.compare_strings(
+                self.unbox_or_cast(lreg, str_rprimitive, line, can_borrow=True, unchecked=True),
+                self.unbox_or_cast(rreg, str_rprimitive, line, can_borrow=True, unchecked=True),
+                expr_op,
+                line,
+            )
             self.add(Assign(res, z))
         self.goto(out)
         self.activate_block(out)

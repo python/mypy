@@ -1073,7 +1073,9 @@ class Cast(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, src: Value, typ: RType, line: int, *, borrow: bool = False, unchecked: bool = False) -> None:
+    def __init__(
+        self, src: Value, typ: RType, line: int, *, borrow: bool = False, unchecked: bool = False
+    ) -> None:
         super().__init__(line)
         self.src = src
         self.type = typ
