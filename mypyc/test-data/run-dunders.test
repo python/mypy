@@ -965,3 +965,25 @@ def test_final() -> None:
     assert b + 3 == 9
     assert (a < A(5)) is False
     assert (b < A(5)) is True
+
+[case testDundersEq]
+class Eq:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Eq):
+            return NotImplemented
+        return self.x == other.x
+
+def eq(x: Eq, y: Eq) -> bool:
+    return x == y
+
+def ne(x: Eq, y: Eq) -> bool:
+    return x != y
+
+def test_equality_with_implicit_ne() -> None:
+    assert eq(Eq(1), Eq(1))
+    assert not eq(Eq(1), Eq(2))
+    assert ne(Eq(1), Eq(2))
+    assert not ne(Eq(1), Eq(1))

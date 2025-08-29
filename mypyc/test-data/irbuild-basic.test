@@ -2347,22 +2347,42 @@ def A.__ne__(__mypyc_self__, rhs):
     __mypyc_self__ :: __main__.A
     rhs, r0, r1 :: object
     r2 :: bit
-    r3 :: i32
-    r4 :: bit
-    r5 :: bool
+    r3 :: object
+    r4, r5 :: bit
     r6 :: object
+    r7 :: bit
+    r8 :: i32
+    r9 :: bit
+    r10 :: bool
+    r11 :: object
 L0:
     r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
-    if r2 goto L2 else goto L1 :: bool
+    if r2 goto L7 else goto L1 :: bool
 L1:
-    r3 = PyObject_Not(r0)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: i32 to builtins.bool
-    r6 = box(bool, r5)
-    return r6
+    r3 = load_global Py_True :: static
+    r4 = r0 == r3
+    if r4 goto L2 else goto L3 :: bool
 L2:
+    r5 = 0
+    goto L6
+L3:
+    r6 = load_global Py_False :: static
+    r7 = r0 == r6
+    if r7 goto L4 else goto L5 :: bool
+L4:
+    r5 = 1
+    goto L6
+L5:
+    r8 = PyObject_Not(r0)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: i32 to builtins.bool
+    r5 = r10
+L6:
+    r11 = box(bit, r5)
+    return r11
+L7:
     return r1
 
 [case testDecorators_toplevel]

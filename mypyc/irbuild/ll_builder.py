@@ -56,6 +56,7 @@ from mypyc.ir.ops import (
     KeepAlive,
     LoadAddress,
     LoadErrorValue,
+    LoadGlobal,
     LoadLiteral,
     LoadMem,
     LoadStatic,
@@ -108,6 +109,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
+    is_object_rprimitive,
     is_set_rprimitive,
     is_short_int_rprimitive,
     is_str_rprimitive,
@@ -1318,6 +1320,14 @@ class LowLevelIRBuilder:
         """Load Python None value (type: object_rprimitive)."""
         return self.add(LoadAddress(none_object_op.type, none_object_op.src, line=-1))
 
+    def true_object(self) -> Value:
+        """Load Python True object (type: object_rprimitive)."""
+        return self.add(LoadGlobal(object_rprimitive, "Py_True"))
+
+    def false_object(self) -> Value:
+        """Load Python False object (type: object_rprimitive)."""
+        return self.add(LoadGlobal(object_rprimitive, "Py_False"))
+
     def load_int(self, value: int) -> Value:
         """Load a tagged (Python) integer literal value."""
         if value > MAX_LITERAL_SHORT_INT or value < MIN_LITERAL_SHORT_INT:
@@ -1663,12 +1673,39 @@ class LowLevelIRBuilder:
         assert target, "Unsupported unary operation: %s" % op
         return target
 
-    def unary_not(self, value: Value, line: int) -> Value:
-        """Perform unary 'not'."""
+    def unary_not(self, value: Value, line: int, *, likely_bool: bool = False) -> Value:
+        """Perform unary 'not'.
+
+        Args:
+            likely_bool: The operand is likely a bool value, even if the type is something
+                more general, so specialize for bool values
+        """
         typ = value.type
         if is_bool_or_bit_rprimitive(typ):
             mask = Integer(1, typ, line)
             return self.int_op(typ, value, mask, IntOp.XOR, line)
+        if likely_bool and is_object_rprimitive(typ):
+            # First quickly check if it's a bool, and otherwise fall back to generic op.
+            res = Register(bit_rprimitive)
+            false, not_false, true, other = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+            out = BasicBlock()
+            cmp = self.add(ComparisonOp(value, self.true_object(), ComparisonOp.EQ, line))
+            self.add(Branch(cmp, false, not_false, Branch.BOOL))
+            self.activate_block(false)
+            self.add(Assign(res, self.false()))
+            self.goto(out)
+            self.activate_block(not_false)
+            cmp = self.add(ComparisonOp(value, self.false_object(), ComparisonOp.EQ, line))
+            self.add(Branch(cmp, true, other, Branch.BOOL))
+            self.activate_block(true)
+            self.add(Assign(res, self.true()))
+            self.goto(out)
+            self.activate_block(other)
+            val = self._non_specialized_unary_op(value, "not", line)
+            self.add(Assign(res, val))
+            self.goto(out)
+            self.activate_block(out)
+            return res
         return self._non_specialized_unary_op(value, "not", line)
 
     def unary_minus(self, value: Value, line: int) -> Value:
