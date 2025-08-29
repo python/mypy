@@ -578,9 +578,13 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
     init_node = cdef.info["__init__"].node
 
     new_node: SymbolNode | None = None
-    new_typeinfo = cdef.info.get("__new__")
-    if new_typeinfo and new_typeinfo.fullname and not new_typeinfo.fullname.startswith("builtins"):
-        new_node = new_typeinfo.node
+    new_symbol = cdef.info.get("__new__")
+    # We are only interested in __new__ method defined in a user-defined class,
+    # so we ignore it if it comes from a builtin type. It's usually builtins.object
+    # but could also be builtins.type for metaclasses so we detect the prefix which
+    # matches both.
+    if new_symbol and new_symbol.fullname and not new_symbol.fullname.startswith("builtins."):
+        new_node = new_symbol.node
     if isinstance(new_node, (Decorator, OverloadedFuncDef)):
         new_node = get_func_def(new_node)
     if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
