@@ -1491,6 +1491,7 @@ class LowLevelIRBuilder:
     def dunder_op(self, lreg: Value, rreg: Value | None, op: str, line: int) -> Value | None:
         """
         Dispatch a dunder method if applicable.
+
         For example for `a + b` it will use `a.__add__(b)` which can lead to higher performance
         due to the fact that the method could be already compiled and optimized instead of going
         all the way through `PyNumber_Add(a, b)` python api (making a jump into the python DL).
@@ -1647,24 +1648,40 @@ class LowLevelIRBuilder:
         op_id = ComparisonOp.signed_ops[op]
         return self.comparison_op(lreg, rreg, op_id, line)
 
+    def _non_specialized_unary_op(self, value: Value, op: str, line: int) -> Value:
+        if isinstance(value.type, RInstance):
+            result = self.dunder_op(value, None, op, line)
+            if result is not None:
+                return result
+        primitive_ops_candidates = unary_ops.get(op, [])
+        target = self.matching_primitive_op(primitive_ops_candidates, [value], line)
+        assert target, "Unsupported unary operation: %s" % op
+        return target
+
     def unary_not(self, value: Value, line: int) -> Value:
         typ = value.type
         if is_bool_or_bit_rprimitive(typ):
             mask = Integer(1, value.type, line)
             return self.int_op(value.type, value, mask, IntOp.XOR, line)
-        else:
-            primitive_ops_candidates = unary_ops.get("not", [])
-            target = self.matching_primitive_op(primitive_ops_candidates, [value], line)
-            assert target
-            return target
+        return self._non_specialized_unary_op(value, "not", line)
+
+    def unary_plus(self, value: Value, line: int) -> Value:
+        typ = value.type
+        if (
+            is_tagged(typ)
+            or is_float_rprimitive(typ)
+            or is_bool_or_bit_rprimitive(typ)
+            or is_fixed_width_rtype(typ)
+        ):
+            return value
+        return self._non_specialized_unary_op(value, "+", line)
 
     def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
         if expr_op == "not":
             return self.unary_not(value, line)
+        elif expr_op == "+":
+            return self.unary_plus(value, line)
         typ = value.type
-        if is_bool_or_bit_rprimitive(typ):
-            if expr_op == "+":
-                return value
         if is_fixed_width_rtype(typ):
             if expr_op == "-":
                 # Translate to '0 - x'
@@ -1677,13 +1694,9 @@ class LowLevelIRBuilder:
                     # Translate to 'x ^ 0xff...'
                     mask = (1 << (typ.size * 8)) - 1
                     return self.int_op(typ, value, Integer(mask, typ), IntOp.XOR, line)
-            elif expr_op == "+":
-                return value
         if is_float_rprimitive(typ):
             if expr_op == "-":
                 return self.add(FloatNeg(value, line))
-            elif expr_op == "+":
-                return value
 
         if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?
@@ -1691,8 +1704,6 @@ class LowLevelIRBuilder:
             if is_short_int_rprimitive(typ):
                 num >>= 1
             return Integer(-num, typ, value.line)
-        if is_tagged(typ) and expr_op == "+":
-            return value
         if isinstance(value, Float):
             return Float(-value.value, value.line)
         if isinstance(typ, RInstance):
