@@ -2570,11 +2570,17 @@ class LowLevelIRBuilder:
     def _translate_fast_optional_eq_cmp(
         self, lreg: Value, rreg: Value, expr_op: str, line: int
     ) -> Value:
+        """Generate eq/ne fast path between 'X | None' and ('X | None' or X).
+
+        Assume 'X' never compares equal to None.
+        """
         if not isinstance(lreg.type, RUnion):
             lreg, rreg = rreg, lreg
         value_typ = optional_value_type(lreg.type)
         assert value_typ
         res = Register(bool_rprimitive)
+
+        # Fast path: left value is None?
         cmp = self.add(ComparisonOp(lreg, self.none_object(), ComparisonOp.EQ, line))
         l_none = BasicBlock()
         l_not_none = BasicBlock()
@@ -2582,14 +2588,17 @@ class LowLevelIRBuilder:
         self.add(Branch(cmp, l_none, l_not_none, Branch.BOOL))
         self.activate_block(l_none)
         if not isinstance(rreg.type, RUnion):
-            self.add(Assign(res, self.false()))
+            val = self.false() if expr_op == "==" else self.true()
+            self.add(Assign(res, val))
         else:
             op = ComparisonOp.EQ if expr_op == "==" else ComparisonOp.NEQ
             cmp = self.add(ComparisonOp(rreg, self.none_object(), op, line))
             self.add(Assign(res, cmp))
         self.goto(out)
+
         self.activate_block(l_not_none)
         if not isinstance(rreg.type, RUnion):
+            # Both operands are known to be not None, perform specialized comparison
             eq = self.translate_eq_cmp(
                 self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
                 rreg,
@@ -2601,12 +2610,16 @@ class LowLevelIRBuilder:
         else:
             r_none = BasicBlock()
             r_not_none = BasicBlock()
+            # Fast path: eight value is None?
             cmp = self.add(ComparisonOp(rreg, self.none_object(), ComparisonOp.EQ, line))
             self.add(Branch(cmp, r_none, r_not_none, Branch.BOOL))
             self.activate_block(r_none)
+            # None vs not-None
+            val = self.false() if expr_op == "==" else self.true()
             self.add(Assign(res, self.false()))
             self.goto(out)
             self.activate_block(r_not_none)
+            # Both operands are known to be not None, perform specialized comparison
             eq = self.translate_eq_cmp(
                 self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
                 self.unbox_or_cast(rreg, value_typ, line, can_borrow=True, unchecked=True),

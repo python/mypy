@@ -745,7 +745,7 @@ L3:
 from typing import Optional
 
 def non_opt_opt(x: bytes, y: Optional[bytes]) -> bool:
-    return x == y
+    return x != y
 [out]
 def non_opt_opt(x, y):
     x :: bytes
@@ -761,13 +761,13 @@ L0:
     r1 = y == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 0
+    r2 = 1
     goto L3
 L2:
     r3 = unchecked borrow cast(bytes, y)
     r4 = CPyBytes_Compare(r3, x)
     r5 = r4 >= 0 :: signed
-    r6 = r4 == 1
+    r6 = r4 != 1
     r2 = r6
 L3:
     keep_alive y
