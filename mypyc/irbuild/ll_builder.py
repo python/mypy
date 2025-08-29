@@ -2610,7 +2610,7 @@ class LowLevelIRBuilder:
         else:
             r_none = BasicBlock()
             r_not_none = BasicBlock()
-            # Fast path: eight value is None?
+            # Fast path: right value is None?
             cmp = self.add(ComparisonOp(rreg, self.none_object(), ComparisonOp.EQ, line))
             self.add(Branch(cmp, r_none, r_not_none, Branch.BOOL))
             self.activate_block(r_none)
