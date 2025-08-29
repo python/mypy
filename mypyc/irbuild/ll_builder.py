@@ -1661,8 +1661,8 @@ class LowLevelIRBuilder:
         """Perform unary 'not'."""
         typ = value.type
         if is_bool_or_bit_rprimitive(typ):
-            mask = Integer(1, value.type, line)
-            return self.int_op(value.type, value, mask, IntOp.XOR, line)
+            mask = Integer(1, typ, line)
+            return self.int_op(typ, value, mask, IntOp.XOR, line)
         return self._non_specialized_unary_op(value, "not", line)
 
     def unary_minus(self, value: Value, line: int) -> Value:
