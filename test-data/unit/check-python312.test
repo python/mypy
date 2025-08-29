@@ -2112,3 +2112,12 @@ if T(x) is str:     # E: "TypeAliasType" not callable
     reveal_type(x)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasForwardReferenceInUnusedTypeVar]
+# https://discuss.python.org/t/103305
+type Alias1[T: "A"] = int
+type Alias2[T: ("A", int)] = int
+class A: ...
+
+x1: Alias1[A]  # ok
+x2: Alias2[A]  # ok

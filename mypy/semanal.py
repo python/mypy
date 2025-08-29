@@ -5598,7 +5598,8 @@ class SemanticAnalyzer(
             else:
                 incomplete_target = has_placeholder(res)
 
-            if self.found_incomplete_ref(tag) or incomplete_target:
+            incomplete_tv = any(has_placeholder(tv) for tv in alias_tvars)
+            if self.found_incomplete_ref(tag) or incomplete_target or incomplete_tv:
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 self.mark_incomplete(s.name.name, s.value, becomes_typeinfo=True)
