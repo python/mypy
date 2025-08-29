@@ -1690,6 +1690,18 @@ class LowLevelIRBuilder:
             return value
         return self._non_specialized_unary_op(value, "+", line)
 
+    def unary_invert(self, value: Value, line: int) -> Value:
+        typ = value.type
+        if is_fixed_width_rtype(typ):
+            if typ.is_signed:
+                # Translate to 'x ^ -1'
+                return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
+            else:
+                # Translate to 'x ^ 0xff...'
+                mask = (1 << (typ.size * 8)) - 1
+                return self.int_op(typ, value, Integer(mask, typ), IntOp.XOR, line)
+        return self._non_specialized_unary_op(value, "~", line)
+
     def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
         if expr_op == "not":
             return self.unary_not(value, line)
@@ -1697,25 +1709,9 @@ class LowLevelIRBuilder:
             return self.unary_minus(value, line)
         elif expr_op == "+":
             return self.unary_plus(value, line)
-        typ = value.type
-        if is_fixed_width_rtype(typ):
-            if expr_op == "~":
-                if typ.is_signed:
-                    # Translate to 'x ^ -1'
-                    return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
-                else:
-                    # Translate to 'x ^ 0xff...'
-                    mask = (1 << (typ.size * 8)) - 1
-                    return self.int_op(typ, value, Integer(mask, typ), IntOp.XOR, line)
-
-        if isinstance(typ, RInstance):
-            result = self.dunder_op(value, None, expr_op, line)
-            if result is not None:
-                return result
-        primitive_ops_candidates = unary_ops.get(expr_op, [])
-        target = self.matching_primitive_op(primitive_ops_candidates, [value], line)
-        assert target, "Unsupported unary operation: %s" % expr_op
-        return target
+        elif expr_op == "~":
+            return self.unary_invert(value, line)
+        raise RuntimeError("Unsupported unary operation: %s" % expr_op)
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         result: Value | None = None
