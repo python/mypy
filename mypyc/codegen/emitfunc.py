@@ -89,8 +89,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -634,11 +633,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_inc_ref(self, op: IncRef) -> None:
         if (
             isinstance(op.src, Box)
-            and (
-                is_none_rprimitive(op.src.src.type)
-                or is_bool_rprimitive(op.src.src.type)
-                or is_bit_rprimitive(op.src.src.type)
-            )
+            and (is_none_rprimitive(op.src.src.type) or is_bool_or_bit_rprimitive(op.src.src.type))
             and HAVE_IMMORTAL
         ):
             # On Python 3.12+, None/True/False are immortal, and we can skip inc ref

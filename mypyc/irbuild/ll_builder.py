@@ -1701,8 +1701,8 @@ class LowLevelIRBuilder:
             self.add(Assign(res, self.true()))
             self.goto(out)
             self.activate_block(other)
-            y = self._non_specialized_unary_op(value, "not", line)
-            self.add(Assign(res, y))
+            val = self._non_specialized_unary_op(value, "not", line)
+            self.add(Assign(res, val))
             self.goto(out)
             self.activate_block(out)
             return res
