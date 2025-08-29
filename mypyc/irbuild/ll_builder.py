@@ -139,6 +139,7 @@ from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     generic_len_op,
     generic_ssize_t_len_op,
+    not_op,
     py_call_op,
     py_call_with_kwargs_op,
     py_call_with_posargs_op,
@@ -1647,14 +1648,21 @@ class LowLevelIRBuilder:
         return self.comparison_op(lreg, rreg, op_id, line)
 
     def unary_not(self, value: Value, line: int) -> Value:
-        mask = Integer(1, value.type, line)
-        return self.int_op(value.type, value, mask, IntOp.XOR, line)
-
-    def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
         typ = value.type
         if is_bool_or_bit_rprimitive(typ):
-            if expr_op == "not":
-                return self.unary_not(value, line)
+            mask = Integer(1, value.type, line)
+            return self.int_op(value.type, value, mask, IntOp.XOR, line)
+        else:
+            primitive_ops_candidates = unary_ops.get("not", [])
+            target = self.matching_primitive_op(primitive_ops_candidates, [value], line)
+            assert target
+            return target
+
+    def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
+        if expr_op == "not":
+            return self.unary_not(value, line)
+        typ = value.type
+        if is_bool_or_bit_rprimitive(typ):
             if expr_op == "+":
                 return value
         if is_fixed_width_rtype(typ):
