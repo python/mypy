@@ -1687,14 +1687,14 @@ class LowLevelIRBuilder:
         if likely_bool and is_object_rprimitive(typ):
             # First quickly check if it's a bool, and otherwise fall back to generic op.
             res = Register(bit_rprimitive)
-            false, x, true, other = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+            false, not_false, true, other = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
             out = BasicBlock()
             cmp = self.add(ComparisonOp(value, self.true_object(), ComparisonOp.EQ, line))
-            self.add(Branch(cmp, false, x, Branch.BOOL))
+            self.add(Branch(cmp, false, not_false, Branch.BOOL))
             self.activate_block(false)
             self.add(Assign(res, self.false()))
             self.goto(out)
-            self.activate_block(x)
+            self.activate_block(not_false)
             cmp = self.add(ComparisonOp(value, self.false_object(), ComparisonOp.EQ, line))
             self.add(Branch(cmp, true, other, Branch.BOOL))
             self.activate_block(true)
