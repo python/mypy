@@ -48,5 +48,3 @@ def test_weakref_proxy_with_callback():
     with assertRaises(ReferenceError):
         p.some_meth()
     assert _callback_called_cache["proxy"] is True
-
-[builtins fixtures/test-weakref.pyi]
