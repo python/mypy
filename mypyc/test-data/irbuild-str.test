@@ -741,20 +741,21 @@ L3:
     keep_alive x
     return r2
 
-[case testOptionalStrEquality3]
+[case testOptionalBytesEquality]
 from typing import Optional
 
-def non_opt_opt(x: str, y: Optional[str]) -> bool:
+def non_opt_opt(x: bytes, y: Optional[bytes]) -> bool:
     return x == y
 [out]
 def non_opt_opt(x, y):
-    x :: str
-    y :: union[str, None]
+    x :: bytes
+    y :: union[bytes, None]
     r0 :: object
     r1 :: bit
     r2 :: bool
-    r3 :: str
-    r4 :: bool
+    r3 :: bytes
+    r4 :: i32
+    r5, r6 :: bit
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = y == r0
@@ -763,9 +764,11 @@ L1:
     r2 = 0
     goto L3
 L2:
-    r3 = unchecked borrow cast(str, y)
-    r4 = CPyStr_Equal(r3, x)
-    r2 = r4
+    r3 = unchecked borrow cast(bytes, y)
+    r4 = CPyBytes_Compare(r3, x)
+    r5 = r4 >= 0 :: signed
+    r6 = r4 == 1
+    r2 = r6
 L3:
     keep_alive y
     return r2

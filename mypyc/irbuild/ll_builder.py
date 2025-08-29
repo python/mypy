@@ -2522,20 +2522,19 @@ class LowLevelIRBuilder:
 
         lopt = optional_value_type(ltype)
         ropt = optional_value_type(rtype)
+
+        # Can we do a quick comparison of two optional types (special case None values)?
         fast_opt_eq = False
-        if lopt is not None and ropt is not None:
-            # Can we do a quick comparison of two optional types?
-            if is_same_type(lopt, ropt) and is_str_rprimitive(lopt):
+        if lopt is not None:
+            if ropt is not None and is_same_type(lopt, ropt) and self._never_equal_to_none(lopt):
                 fast_opt_eq = True
-        elif lopt is not None:
-            if is_same_type(lopt, rtype) and is_str_rprimitive(lopt):
+            if is_same_type(lopt, rtype) and self._never_equal_to_none(lopt):
                 fast_opt_eq = True
         elif ropt is not None:
-            if is_same_type(ropt, ltype) and is_str_rprimitive(ropt):
+            if is_same_type(ropt, ltype) and self._never_equal_to_none(ropt):
                 fast_opt_eq = True
-
         if fast_opt_eq:
-            return self.translate_fast_optional_eq_cmp(lreg, rreg, expr_op, line)
+            return self._translate_fast_optional_eq_cmp(lreg, rreg, expr_op, line)
 
         if not (isinstance(ltype, RInstance) and ltype == rtype):
             return None
@@ -2563,11 +2562,18 @@ class LowLevelIRBuilder:
 
         return self.gen_method_call(lreg, op_methods[expr_op], [rreg], ltype, line)
 
-    def translate_fast_optional_eq_cmp(
+    def _never_equal_to_none(self, typ: RType) -> bool:
+        """Are the values of type never equal to None?"""
+        # TODO: Support RInstance with no custom __eq__/__ne__ and other primitive types.
+        return is_str_rprimitive(typ) or is_bytes_rprimitive(typ)
+
+    def _translate_fast_optional_eq_cmp(
         self, lreg: Value, rreg: Value, expr_op: str, line: int
     ) -> Value:
         if not isinstance(lreg.type, RUnion):
             lreg, rreg = rreg, lreg
+        value_typ = optional_value_type(lreg.type)
+        assert value_typ
         res = Register(bool_rprimitive)
         x = self.add(ComparisonOp(lreg, self.none_object(), ComparisonOp.EQ, line))
         l_none = BasicBlock()
@@ -2584,12 +2590,13 @@ class LowLevelIRBuilder:
         self.goto(out)
         self.activate_block(l_not_none)
         if not isinstance(rreg.type, RUnion):
-            z = self.compare_strings(
-                self.unbox_or_cast(lreg, str_rprimitive, line, can_borrow=True, unchecked=True),
+            z = self.translate_eq_cmp(
+                self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
                 rreg,
                 expr_op,
                 line,
             )
+            assert z is not None
             self.add(Assign(res, z))
         else:
             r_none = BasicBlock()
@@ -2600,12 +2607,13 @@ class LowLevelIRBuilder:
             self.add(Assign(res, self.false()))
             self.goto(out)
             self.activate_block(r_not_none)
-            z = self.compare_strings(
-                self.unbox_or_cast(lreg, str_rprimitive, line, can_borrow=True, unchecked=True),
-                self.unbox_or_cast(rreg, str_rprimitive, line, can_borrow=True, unchecked=True),
+            z = self.translate_eq_cmp(
+                self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
+                self.unbox_or_cast(rreg, value_typ, line, can_borrow=True, unchecked=True),
                 expr_op,
                 line,
             )
+            assert z is not None
             self.add(Assign(res, z))
         self.goto(out)
         self.activate_block(out)
