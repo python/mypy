@@ -158,7 +158,7 @@ for op, funcname in [
         priority=0,
     )
 
-not_op = unary_op(
+unary_op(
     name="not",
     arg_type=object_rprimitive,
     return_type=c_int_rprimitive,

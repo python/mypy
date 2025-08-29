@@ -139,7 +139,6 @@ from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     generic_len_op,
     generic_ssize_t_len_op,
-    not_op,
     py_call_op,
     py_call_with_kwargs_op,
     py_call_with_posargs_op,
@@ -1659,6 +1658,7 @@ class LowLevelIRBuilder:
         return target
 
     def unary_not(self, value: Value, line: int) -> Value:
+        """Perform unary 'not'."""
         typ = value.type
         if is_bool_or_bit_rprimitive(typ):
             mask = Integer(1, value.type, line)
@@ -1666,6 +1666,7 @@ class LowLevelIRBuilder:
         return self._non_specialized_unary_op(value, "not", line)
 
     def unary_minus(self, value: Value, line: int) -> Value:
+        """Perform unary '-'."""
         typ = value.type
         if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?
@@ -1680,6 +1681,7 @@ class LowLevelIRBuilder:
         return self._non_specialized_unary_op(value, "-", line)
 
     def unary_plus(self, value: Value, line: int) -> Value:
+        """Perform unary '+'."""
         typ = value.type
         if (
             is_tagged(typ)
@@ -1691,6 +1693,7 @@ class LowLevelIRBuilder:
         return self._non_specialized_unary_op(value, "+", line)
 
     def unary_invert(self, value: Value, line: int) -> Value:
+        """Perform unary '~'."""
         typ = value.type
         if is_fixed_width_rtype(typ):
             if typ.is_signed:
@@ -1702,16 +1705,17 @@ class LowLevelIRBuilder:
                 return self.int_op(typ, value, Integer(mask, typ), IntOp.XOR, line)
         return self._non_specialized_unary_op(value, "~", line)
 
-    def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
-        if expr_op == "not":
+    def unary_op(self, value: Value, op: str, line: int) -> Value:
+        """Perform a unary operation."""
+        if op == "not":
             return self.unary_not(value, line)
-        elif expr_op == "-":
+        elif op == "-":
             return self.unary_minus(value, line)
-        elif expr_op == "+":
+        elif op == "+":
             return self.unary_plus(value, line)
-        elif expr_op == "~":
+        elif op == "~":
             return self.unary_invert(value, line)
-        raise RuntimeError("Unsupported unary operation: %s" % expr_op)
+        raise RuntimeError("Unsupported unary operation: %s" % op)
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         result: Value | None = None
