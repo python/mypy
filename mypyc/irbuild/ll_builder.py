@@ -1684,6 +1684,16 @@ class LowLevelIRBuilder:
         if is_bool_or_bit_rprimitive(typ):
             mask = Integer(1, typ, line)
             return self.int_op(typ, value, mask, IntOp.XOR, line)
+        if is_tagged(typ) or is_fixed_width_rtype(typ):
+            return self.binary_op(value, Integer(0), "==", line)
+        if (
+            is_str_rprimitive(typ)
+            or is_list_rprimitive(typ)
+            or is_dict_rprimitive(typ)
+            or isinstance(typ, RInstance)
+        ):
+            bool_val = self.bool_value(value)
+            return self.unary_not(bool_val, line)
         if likely_bool and is_object_rprimitive(typ):
             # First quickly check if it's a bool, and otherwise fall back to generic op.
             res = Register(bit_rprimitive)

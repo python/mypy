@@ -180,6 +180,8 @@ def is_true(x: Union[str, NewStr]) -> bool:
         return True
     else:
         return False
+def unary_not(x: Union[str, NewStr]) -> bool:
+    return not x
 [typing fixtures/typing-full.pyi]
 [out]
 def is_true(x):
@@ -194,6 +196,13 @@ L2:
     return 0
 L3:
     unreachable
+def unary_not(x):
+    x :: str
+    r0, r1 :: bit
+L0:
+    r0 = CPyStr_IsTrue(x)
+    r1 = r0 ^ 1
+    return r1
 
 [case testStringFormatMethod]
 from typing import NewType, Union

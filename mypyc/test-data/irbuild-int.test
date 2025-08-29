@@ -192,6 +192,8 @@ def unary_plus(n: int) -> int:
 def unary_invert(n: int) -> int:
     x = ~n
     return x
+def unary_not(n: int) -> bool:
+    return n
 [out]
 def unary_minus(n):
     n, r0, x :: int
@@ -210,3 +212,9 @@ L0:
     r0 = CPyTagged_Invert(n)
     x = r0
     return x
+def unary_not(n):
+    n :: int
+    r0 :: bit
+L0:
+    r0 = int_eq n, 0
+    return r0

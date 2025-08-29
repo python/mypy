@@ -473,3 +473,66 @@ L0:
     r0 = x == y
     r1 = r0 ^ 1
     return r1
+
+[case testUnaryNotWithPrimitiveTypes]
+def not_obj(x: object) -> bool:
+    return not x
+
+def not_list(x: list[int]) -> bool:
+    return not x
+
+def not_dict(x: dict[str, int]) -> bool:
+    return not x
+[out]
+def not_obj(x):
+    x :: object
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = PyObject_Not(x)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def not_list(x):
+    x :: list
+    r0 :: native_int
+    r1 :: short_int
+    r2, r3 :: bit
+L0:
+    r0 = var_object_size x
+    r1 = r0 << 1
+    r2 = int_ne r1, 0
+    r3 = r2 ^ 1
+    return r3
+def not_dict(x):
+    x :: dict
+    r0 :: native_int
+    r1 :: short_int
+    r2, r3 :: bit
+L0:
+    r0 = PyDict_Size(x)
+    r1 = r0 << 1
+    r2 = int_ne r1, 0
+    r3 = r2 ^ 1
+    return r3
+
+[case testUnaryNotWithNativeClass]
+class C:
+    def __bool__(self) -> bool:
+        return True
+
+def not_c(x: C) -> bool:
+    return not x
+[out]
+def C.__bool__(self):
+    self :: __main__.C
+L0:
+    return 1
+def not_c(x):
+    x :: __main__.C
+    r0, r1 :: bool
+L0:
+    r0 = x.__bool__()
+    r1 = r0 ^ 1
+    return r1
