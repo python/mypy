@@ -1027,7 +1027,7 @@ def flatten_nested_unions(types: list[RType]) -> list[RType]:
 def optional_value_type(rtype: RType) -> RType | None:
     """If rtype is the union of none_rprimitive and another type X, return X.
 
-    Otherwise return None.
+    Otherwise, return None.
     """
     if isinstance(rtype, RUnion) and len(rtype.items) == 2:
         if rtype.items[0] == none_rprimitive:

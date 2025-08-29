@@ -129,9 +129,7 @@ from mypy.util import bytes_to_human_readable_repr, unnamed_function
 PY_MINOR_VERSION: Final = sys.version_info[1]
 
 import ast as ast3
-
-# TODO: Index, ExtSlice are deprecated in 3.9.
-from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UAdd, UnaryOp, USub
+from ast import AST, Attribute, Call, FunctionType, Name, Starred, UAdd, UnaryOp, USub
 
 
 def ast3_parse(
@@ -1778,18 +1776,6 @@ class ASTConverter:
     def visit_Slice(self, n: ast3.Slice) -> SliceExpr:
         e = SliceExpr(self.visit(n.lower), self.visit(n.upper), self.visit(n.step))
         return self.set_line(e, n)
-
-    # ExtSlice(slice* dims)
-    def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
-        # cast for mypyc's benefit on Python 3.9
-        return TupleExpr(self.translate_expr_list(cast(Any, n).dims))
-
-    # Index(expr value)
-    def visit_Index(self, n: Index) -> Node:
-        # cast for mypyc's benefit on Python 3.9
-        value = self.visit(cast(Any, n).value)
-        assert isinstance(value, Node)
-        return value
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
     def visit_Match(self, n: Match) -> MatchStmt:

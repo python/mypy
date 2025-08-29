@@ -6004,6 +6004,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def _combined_context(self, ty: Type | None) -> Type | None:
         ctx_items = []
         if ty is not None:
+            if has_any_type(ty):
+                # HACK: Any should be contagious, `dict[str, Any] or <x>` should still
+                # infer Any in x.
+                return ty
             ctx_items.append(ty)
         if self.type_context and self.type_context[-1] is not None:
             ctx_items.append(self.type_context[-1])

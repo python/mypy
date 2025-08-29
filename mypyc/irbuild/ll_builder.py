@@ -56,6 +56,7 @@ from mypyc.ir.ops import (
     KeepAlive,
     LoadAddress,
     LoadErrorValue,
+    LoadGlobal,
     LoadLiteral,
     LoadMem,
     LoadStatic,
@@ -108,6 +109,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
+    is_object_rprimitive,
     is_set_rprimitive,
     is_short_int_rprimitive,
     is_str_rprimitive,
@@ -141,6 +143,7 @@ from mypyc.primitives.generic_ops import (
     generic_ssize_t_len_op,
     py_call_op,
     py_call_with_kwargs_op,
+    py_call_with_posargs_op,
     py_getattr_op,
     py_method_call_op,
     py_vectorcall_method_op,
@@ -188,6 +191,7 @@ from mypyc.primitives.str_ops import (
 )
 from mypyc.primitives.tuple_ops import (
     list_tuple_op,
+    load_empty_tuple_constant_op,
     new_tuple_op,
     new_tuple_with_length_op,
     sequence_tuple_op,
@@ -334,14 +338,20 @@ class LowLevelIRBuilder:
             return src
 
     def unbox_or_cast(
-        self, src: Value, target_type: RType, line: int, *, can_borrow: bool = False
+        self,
+        src: Value,
+        target_type: RType,
+        line: int,
+        *,
+        can_borrow: bool = False,
+        unchecked: bool = False,
     ) -> Value:
         if target_type.is_unboxed:
             return self.add(Unbox(src, target_type, line))
         else:
             if can_borrow:
                 self.keep_alives.append(src)
-            return self.add(Cast(src, target_type, line, borrow=can_borrow))
+            return self.add(Cast(src, target_type, line, borrow=can_borrow, unchecked=unchecked))
 
     def coerce(
         self,
@@ -805,7 +815,7 @@ class LowLevelIRBuilder:
                             value.type, RTuple
                         ):
                             value = self.primitive_op(sequence_tuple_op, [value], line)
-                        return value, self._create_dict([], [], line)
+                        return value, None
                     elif len(args) == 2 and args[1][1] == ARG_STAR2:
                         # fn(*args, **kwargs)
                         # TODO: extend to cover(*args, **k, **w, **a, **r, **g, **s)
@@ -938,7 +948,7 @@ class LowLevelIRBuilder:
             elif not is_tuple_rprimitive(star_result.type):
                 # if star_result is a tuple we took the fast path
                 star_result = self.primitive_op(list_tuple_op, [star_result], line)
-        if has_star2 and star2_result is None:
+        if has_star2 and star2_result is None and len(star2_keys) > 0:
             # TODO: use dict_copy_op for simple cases of **kwargs
             star2_result = self._create_dict(star2_keys, star2_values, line)
 
@@ -964,13 +974,16 @@ class LowLevelIRBuilder:
         if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
             return self.call_c(py_call_op, [function] + arg_values, line)
 
-        # Otherwise fallback to py_call_with_kwargs_op.
+        # Otherwise fallback to py_call_with_posargs_op or py_call_with_kwargs_op.
         assert arg_names is not None
 
         pos_args_tuple, kw_args_dict = self._construct_varargs(
             list(zip(arg_values, arg_kinds, arg_names)), line, has_star=True, has_star2=True
         )
-        assert pos_args_tuple and kw_args_dict
+        assert pos_args_tuple
+
+        if kw_args_dict is None:
+            return self.call_c(py_call_with_posargs_op, [function, pos_args_tuple], line)
 
         return self.call_c(py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 
@@ -1169,8 +1182,7 @@ class LowLevelIRBuilder:
                 assert star_arg
                 output_arg = star_arg
             elif arg.kind == ARG_STAR2:
-                assert star2_arg
-                output_arg = star2_arg
+                output_arg = star2_arg or self._create_dict([], [], line)
             elif not lst:
                 if is_fixed_width_rtype(arg.type):
                     output_arg = Integer(0, arg.type)
@@ -1308,6 +1320,14 @@ class LowLevelIRBuilder:
         """Load Python None value (type: object_rprimitive)."""
         return self.add(LoadAddress(none_object_op.type, none_object_op.src, line=-1))
 
+    def true_object(self) -> Value:
+        """Load Python True object (type: object_rprimitive)."""
+        return self.add(LoadGlobal(object_rprimitive, "Py_True"))
+
+    def false_object(self) -> Value:
+        """Load Python False object (type: object_rprimitive)."""
+        return self.add(LoadGlobal(object_rprimitive, "Py_False"))
+
     def load_int(self, value: int) -> Value:
         """Load a tagged (Python) integer literal value."""
         if value > MAX_LITERAL_SHORT_INT or value < MIN_LITERAL_SHORT_INT:
@@ -1391,12 +1411,6 @@ class LowLevelIRBuilder:
         # Special case various ops
         if op in ("is", "is not"):
             return self.translate_is_op(lreg, rreg, op, line)
-        # TODO: modify 'str' to use same interface as 'compare_bytes' as it avoids
-        # call to PyErr_Occurred()
-        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and op in ("==", "!="):
-            return self.compare_strings(lreg, rreg, op, line)
-        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ("==", "!="):
-            return self.compare_bytes(lreg, rreg, op, line)
         if (
             is_bool_or_bit_rprimitive(ltype)
             and is_bool_or_bit_rprimitive(rtype)
@@ -1492,6 +1506,7 @@ class LowLevelIRBuilder:
     def dunder_op(self, lreg: Value, rreg: Value | None, op: str, line: int) -> Value | None:
         """
         Dispatch a dunder method if applicable.
+
         For example for `a + b` it will use `a.__add__(b)` which can lead to higher performance
         due to the fact that the method could be already compiled and optimized instead of going
         all the way through `PyNumber_Add(a, b)` python api (making a jump into the python DL).
@@ -1541,6 +1556,10 @@ class LowLevelIRBuilder:
         elif op == "!=":
             eq = self.primitive_op(str_eq, [lhs, rhs], line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
+
+        # TODO: modify 'str' to use same interface as 'compare_bytes' as it would avoid
+        # call to PyErr_Occurred() below
+
         compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
         error_constant = Integer(-1, c_int_rprimitive, line)
         compare_error_check = self.add(
@@ -1644,55 +1663,102 @@ class LowLevelIRBuilder:
         op_id = ComparisonOp.signed_ops[op]
         return self.comparison_op(lreg, rreg, op_id, line)
 
-    def unary_not(self, value: Value, line: int) -> Value:
-        mask = Integer(1, value.type, line)
-        return self.int_op(value.type, value, mask, IntOp.XOR, line)
-
-    def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
-        typ = value.type
-        if is_bool_or_bit_rprimitive(typ):
-            if expr_op == "not":
-                return self.unary_not(value, line)
-            if expr_op == "+":
-                return value
-        if is_fixed_width_rtype(typ):
-            if expr_op == "-":
-                # Translate to '0 - x'
-                return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
-            elif expr_op == "~":
-                if typ.is_signed:
-                    # Translate to 'x ^ -1'
-                    return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
-                else:
-                    # Translate to 'x ^ 0xff...'
-                    mask = (1 << (typ.size * 8)) - 1
-                    return self.int_op(typ, value, Integer(mask, typ), IntOp.XOR, line)
-            elif expr_op == "+":
-                return value
-        if is_float_rprimitive(typ):
-            if expr_op == "-":
-                return self.add(FloatNeg(value, line))
-            elif expr_op == "+":
-                return value
-
-        if isinstance(value, Integer):
-            # TODO: Overflow? Unsigned?
-            num = value.value
-            if is_short_int_rprimitive(typ):
-                num >>= 1
-            return Integer(-num, typ, value.line)
-        if is_tagged(typ) and expr_op == "+":
-            return value
-        if isinstance(value, Float):
-            return Float(-value.value, value.line)
-        if isinstance(typ, RInstance):
-            result = self.dunder_op(value, None, expr_op, line)
+    def _non_specialized_unary_op(self, value: Value, op: str, line: int) -> Value:
+        if isinstance(value.type, RInstance):
+            result = self.dunder_op(value, None, op, line)
             if result is not None:
                 return result
-        primitive_ops_candidates = unary_ops.get(expr_op, [])
+        primitive_ops_candidates = unary_ops.get(op, [])
         target = self.matching_primitive_op(primitive_ops_candidates, [value], line)
-        assert target, "Unsupported unary operation: %s" % expr_op
+        assert target, "Unsupported unary operation: %s" % op
         return target
+
+    def unary_not(self, value: Value, line: int, *, likely_bool: bool = False) -> Value:
+        """Perform unary 'not'.
+
+        Args:
+            likely_bool: The operand is likely a bool value, even if the type is something
+                more general, so specialize for bool values
+        """
+        typ = value.type
+        if is_bool_or_bit_rprimitive(typ):
+            mask = Integer(1, typ, line)
+            return self.int_op(typ, value, mask, IntOp.XOR, line)
+        if likely_bool and is_object_rprimitive(typ):
+            # First quickly check if it's a bool, and otherwise fall back to generic op.
+            res = Register(bit_rprimitive)
+            false, not_false, true, other = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+            out = BasicBlock()
+            cmp = self.add(ComparisonOp(value, self.true_object(), ComparisonOp.EQ, line))
+            self.add(Branch(cmp, false, not_false, Branch.BOOL))
+            self.activate_block(false)
+            self.add(Assign(res, self.false()))
+            self.goto(out)
+            self.activate_block(not_false)
+            cmp = self.add(ComparisonOp(value, self.false_object(), ComparisonOp.EQ, line))
+            self.add(Branch(cmp, true, other, Branch.BOOL))
+            self.activate_block(true)
+            self.add(Assign(res, self.true()))
+            self.goto(out)
+            self.activate_block(other)
+            val = self._non_specialized_unary_op(value, "not", line)
+            self.add(Assign(res, val))
+            self.goto(out)
+            self.activate_block(out)
+            return res
+        return self._non_specialized_unary_op(value, "not", line)
+
+    def unary_minus(self, value: Value, line: int) -> Value:
+        """Perform unary '-'."""
+        typ = value.type
+        if isinstance(value, Integer):
+            # TODO: Overflow? Unsigned?
+            return Integer(-value.numeric_value(), typ, line)
+        elif isinstance(value, Float):
+            return Float(-value.value, line)
+        elif is_fixed_width_rtype(typ):
+            # Translate to '0 - x'
+            return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
+        elif is_float_rprimitive(typ):
+            return self.add(FloatNeg(value, line))
+        return self._non_specialized_unary_op(value, "-", line)
+
+    def unary_plus(self, value: Value, line: int) -> Value:
+        """Perform unary '+'."""
+        typ = value.type
+        if (
+            is_tagged(typ)
+            or is_float_rprimitive(typ)
+            or is_bool_or_bit_rprimitive(typ)
+            or is_fixed_width_rtype(typ)
+        ):
+            return value
+        return self._non_specialized_unary_op(value, "+", line)
+
+    def unary_invert(self, value: Value, line: int) -> Value:
+        """Perform unary '~'."""
+        typ = value.type
+        if is_fixed_width_rtype(typ):
+            if typ.is_signed:
+                # Translate to 'x ^ -1'
+                return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
+            else:
+                # Translate to 'x ^ 0xff...'
+                mask = (1 << (typ.size * 8)) - 1
+                return self.int_op(typ, value, Integer(mask, typ), IntOp.XOR, line)
+        return self._non_specialized_unary_op(value, "~", line)
+
+    def unary_op(self, value: Value, op: str, line: int) -> Value:
+        """Perform a unary operation."""
+        if op == "not":
+            return self.unary_not(value, line)
+        elif op == "-":
+            return self.unary_minus(value, line)
+        elif op == "+":
+            return self.unary_plus(value, line)
+        elif op == "~":
+            return self.unary_invert(value, line)
+        raise RuntimeError("Unsupported unary operation: %s" % op)
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         result: Value | None = None
@@ -2359,8 +2425,11 @@ class LowLevelIRBuilder:
             return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
-        size: Value = Integer(len(items), c_pyssize_t_rprimitive)
-        return self.call_c(new_tuple_op, [size] + items, line)
+        if items:
+            size: Value = Integer(len(items), c_pyssize_t_rprimitive)
+            return self.call_c(new_tuple_op, [size] + items, line)
+        else:
+            return self.call_c(load_empty_tuple_constant_op, [], line)
 
     def new_tuple_with_length(self, length: Value, line: int) -> Value:
         """This function returns an uninitialized tuple.
@@ -2473,13 +2542,37 @@ class LowLevelIRBuilder:
         return primitive_op
 
     def translate_eq_cmp(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value | None:
-        """Add a equality comparison operation.
+        """Add an equality comparison operation.
+
+        Note that this doesn't cover all possible types.
 
         Args:
             expr_op: either '==' or '!='
         """
         ltype = lreg.type
         rtype = rreg.type
+
+        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype):
+            return self.compare_strings(lreg, rreg, expr_op, line)
+        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype):
+            return self.compare_bytes(lreg, rreg, expr_op, line)
+
+        lopt = optional_value_type(ltype)
+        ropt = optional_value_type(rtype)
+
+        # Can we do a quick comparison of two optional types (special case None values)?
+        fast_opt_eq = False
+        if lopt is not None:
+            if ropt is not None and is_same_type(lopt, ropt) and self._never_equal_to_none(lopt):
+                fast_opt_eq = True
+            if is_same_type(lopt, rtype) and self._never_equal_to_none(lopt):
+                fast_opt_eq = True
+        elif ropt is not None:
+            if is_same_type(ropt, ltype) and self._never_equal_to_none(ropt):
+                fast_opt_eq = True
+        if fast_opt_eq:
+            return self._translate_fast_optional_eq_cmp(lreg, rreg, expr_op, line)
+
         if not (isinstance(ltype, RInstance) and ltype == rtype):
             return None
 
@@ -2505,6 +2598,76 @@ class LowLevelIRBuilder:
             return self.translate_is_op(lreg, rreg, identity_ref_op, line)
 
         return self.gen_method_call(lreg, op_methods[expr_op], [rreg], ltype, line)
+
+    def _never_equal_to_none(self, typ: RType) -> bool:
+        """Are the values of type never equal to None?"""
+        # TODO: Support RInstance with no custom __eq__/__ne__ and other primitive types.
+        return is_str_rprimitive(typ) or is_bytes_rprimitive(typ)
+
+    def _translate_fast_optional_eq_cmp(
+        self, lreg: Value, rreg: Value, expr_op: str, line: int
+    ) -> Value:
+        """Generate eq/ne fast path between 'X | None' and ('X | None' or X).
+
+        Assume 'X' never compares equal to None.
+        """
+        if not isinstance(lreg.type, RUnion):
+            lreg, rreg = rreg, lreg
+        value_typ = optional_value_type(lreg.type)
+        assert value_typ
+        res = Register(bool_rprimitive)
+
+        # Fast path: left value is None?
+        cmp = self.add(ComparisonOp(lreg, self.none_object(), ComparisonOp.EQ, line))
+        l_none = BasicBlock()
+        l_not_none = BasicBlock()
+        out = BasicBlock()
+        self.add(Branch(cmp, l_none, l_not_none, Branch.BOOL))
+        self.activate_block(l_none)
+        if not isinstance(rreg.type, RUnion):
+            val = self.false() if expr_op == "==" else self.true()
+            self.add(Assign(res, val))
+        else:
+            op = ComparisonOp.EQ if expr_op == "==" else ComparisonOp.NEQ
+            cmp = self.add(ComparisonOp(rreg, self.none_object(), op, line))
+            self.add(Assign(res, cmp))
+        self.goto(out)
+
+        self.activate_block(l_not_none)
+        if not isinstance(rreg.type, RUnion):
+            # Both operands are known to be not None, perform specialized comparison
+            eq = self.translate_eq_cmp(
+                self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
+                rreg,
+                expr_op,
+                line,
+            )
+            assert eq is not None
+            self.add(Assign(res, eq))
+        else:
+            r_none = BasicBlock()
+            r_not_none = BasicBlock()
+            # Fast path: right value is None?
+            cmp = self.add(ComparisonOp(rreg, self.none_object(), ComparisonOp.EQ, line))
+            self.add(Branch(cmp, r_none, r_not_none, Branch.BOOL))
+            self.activate_block(r_none)
+            # None vs not-None
+            val = self.false() if expr_op == "==" else self.true()
+            self.add(Assign(res, val))
+            self.goto(out)
+            self.activate_block(r_not_none)
+            # Both operands are known to be not None, perform specialized comparison
+            eq = self.translate_eq_cmp(
+                self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
+                self.unbox_or_cast(rreg, value_typ, line, can_borrow=True, unchecked=True),
+                expr_op,
+                line,
+            )
+            assert eq is not None
+            self.add(Assign(res, eq))
+        self.goto(out)
+        self.activate_block(out)
+        return res
 
     def translate_is_op(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
         """Create equality comparison operation between object identities

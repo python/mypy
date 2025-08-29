@@ -1,10 +1,20 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <stdint.h>
 #include "CPy.h"
 #define NATIVE_INTERNAL_MODULE
 #include "native_internal.h"
 
 #define START_SIZE 512
+#define MAX_SHORT_INT_TAGGED (255 << 1)
+
+#define MAX_SHORT_LEN 127
+#define LONG_STR_TAG 1
+
+#define MIN_SHORT_INT -10
+#define MAX_SHORT_INT 117
+#define MEDIUM_INT_TAG 1
+#define LONG_INT_TAG 3
 
 typedef struct {
     PyObject_HEAD
@@ -164,6 +174,12 @@ _check_read(BufferObject *data, Py_ssize_t need) {
     return 1;
 }
 
+/*
+bool format: single byte
+    \x00 - False
+    \x01 - True
+*/
+
 static char
 read_bool_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
@@ -223,20 +239,34 @@ write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
+/*
+str format: size followed by UTF-8 bytes
+    short strings (len <= 127): single byte for size as `(uint8_t)size << 1`
+    long strings: \x01 followed by size as Py_ssize_t
+*/
+
 static PyObject*
 read_str_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return NULL;
 
-    if (_check_read((BufferObject *)data, sizeof(Py_ssize_t)) == 2)
-        return NULL;
+    Py_ssize_t size;
     char *buf = ((BufferObject *)data)->buf;
     // Read string length.
-    Py_ssize_t size = *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos);
-    ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
+    if (_check_read((BufferObject *)data, 1) == 2)
+        return NULL;
+    uint8_t first = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += 1;
+    if (first != LONG_STR_TAG) {
+        // Common case: short string (len <= 127).
+        size = (Py_ssize_t)(first >> 1);
+    } else {
+        size = *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos);
+        ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
+    }
+    // Read string content.
     if (_check_read((BufferObject *)data, size) == 2)
         return NULL;
-    // Read string content.
     PyObject *res = PyUnicode_FromStringAndSize(
         buf + ((BufferObject *)data)->pos, (Py_ssize_t)size
     );
@@ -264,14 +294,28 @@ write_str_internal(PyObject *data, PyObject *value) {
     const char *chunk = PyUnicode_AsUTF8AndSize(value, &size);
     if (!chunk)
         return 2;
-    Py_ssize_t need = size + sizeof(Py_ssize_t);
-    if (_check_size((BufferObject *)data, need) == 2)
-        return 2;
 
-    char *buf = ((BufferObject *)data)->buf;
+    Py_ssize_t need;
+    char *buf;
     // Write string length.
-    *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos) = size;
-    ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
+    if (size <= MAX_SHORT_LEN) {
+        // Common case: short string (len <= 127) store as single byte.
+        need = size + 1;
+        if (_check_size((BufferObject *)data, need) == 2)
+            return 2;
+        buf = ((BufferObject *)data)->buf;
+        *(uint8_t *)(buf + ((BufferObject *)data)->pos) = (uint8_t)size << 1;
+        ((BufferObject *)data)->pos += 1;
+    } else {
+        need = size + sizeof(Py_ssize_t) + 1;
+        if (_check_size((BufferObject *)data, need) == 2)
+            return 2;
+        buf = ((BufferObject *)data)->buf;
+        *(uint8_t *)(buf + ((BufferObject *)data)->pos) = LONG_STR_TAG;
+        ((BufferObject *)data)->pos += 1;
+        *(Py_ssize_t *)(buf + ((BufferObject *)data)->pos) = size;
+        ((BufferObject *)data)->pos += sizeof(Py_ssize_t);
+    }
     // Write string content.
     memcpy(buf + ((BufferObject *)data)->pos, chunk, size);
     ((BufferObject *)data)->pos += size;
@@ -296,6 +340,11 @@ write_str(PyObject *self, PyObject *args, PyObject *kwds) {
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+/*
+float format:
+    stored as a C double
+*/
 
 static double
 read_float_internal(PyObject *data) {
@@ -355,19 +404,33 @@ write_float(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
+/*
+int format:
+    most common values (-10 <= value <= 117): single byte as `(uint8_t)(value + 10) << 1`
+    medium values (fit in CPyTagged): \x01 followed by CPyTagged value
+    long values (very rare): \x03 followed by decimal string (see str format)
+*/
+
 static CPyTagged
 read_int_internal(PyObject *data) {
     if (_check_buffer(data) == 2)
         return CPY_INT_TAG;
 
-    if (_check_read((BufferObject *)data, sizeof(CPyTagged)) == 2)
-        return CPY_INT_TAG;
     char *buf = ((BufferObject *)data)->buf;
+    if (_check_read((BufferObject *)data, 1) == 2)
+        return CPY_INT_TAG;
 
-    CPyTagged ret = *(CPyTagged *)(buf + ((BufferObject *)data)->pos);
-    ((BufferObject *)data)->pos += sizeof(CPyTagged);
-    if ((ret & CPY_INT_TAG) == 0)
+    uint8_t first = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += 1;
+    if ((first & MEDIUM_INT_TAG) == 0) {
+       // Most common case: int that is small in absolute value.
+       return ((Py_ssize_t)(first >> 1) + MIN_SHORT_INT) << 1;
+    }
+    if (first == MEDIUM_INT_TAG) {
+        CPyTagged ret = *(CPyTagged *)(buf + ((BufferObject *)data)->pos);
+        ((BufferObject *)data)->pos += sizeof(CPyTagged);
         return ret;
+    }
     // People who have literal ints not fitting in size_t should be punished :-)
     PyObject *str_ret = read_str_internal(data);
     if (str_ret == NULL)
@@ -395,17 +458,34 @@ write_int_internal(PyObject *data, CPyTagged value) {
     if (_check_buffer(data) == 2)
         return 2;
 
-    if (_check_size((BufferObject *)data, sizeof(CPyTagged)) == 2)
-        return 2;
-    char *buf = ((BufferObject *)data)->buf;
+    char *buf;
     if ((value & CPY_INT_TAG) == 0) {
-        *(CPyTagged *)(buf + ((BufferObject *)data)->pos) = value;
+        Py_ssize_t real_value = CPyTagged_ShortAsSsize_t(value);
+        if (real_value >= MIN_SHORT_INT && real_value <= MAX_SHORT_INT) {
+            // Most common case: int that is small in absolute value.
+            if (_check_size((BufferObject *)data, 1) == 2)
+                return 2;
+            buf = ((BufferObject *)data)->buf;
+            *(uint8_t *)(buf + ((BufferObject *)data)->pos) = (uint8_t)(real_value - MIN_SHORT_INT) << 1;
+            ((BufferObject *)data)->pos += 1;
+            ((BufferObject *)data)->end += 1;
+        } else {
+            if (_check_size((BufferObject *)data, sizeof(CPyTagged) + 1) == 2)
+                return 2;
+            buf = ((BufferObject *)data)->buf;
+            *(uint8_t *)(buf + ((BufferObject *)data)->pos) = MEDIUM_INT_TAG;
+            ((BufferObject *)data)->pos += 1;
+            *(CPyTagged *)(buf + ((BufferObject *)data)->pos) = value;
+            ((BufferObject *)data)->pos += sizeof(CPyTagged);
+            ((BufferObject *)data)->end += sizeof(CPyTagged) + 1;
+        }
     } else {
-        *(CPyTagged *)(buf + ((BufferObject *)data)->pos) = CPY_INT_TAG;
-    }
-    ((BufferObject *)data)->pos += sizeof(CPyTagged);
-    ((BufferObject *)data)->end += sizeof(CPyTagged);
-    if ((value & CPY_INT_TAG) != 0) {
+        if (_check_size((BufferObject *)data, 1) == 2)
+            return 2;
+        buf = ((BufferObject *)data)->buf;
+        *(uint8_t *)(buf + ((BufferObject *)data)->pos) = LONG_INT_TAG;
+        ((BufferObject *)data)->pos += 1;
+        ((BufferObject *)data)->end += 1;
         PyObject *str_value = PyObject_Str(CPyTagged_LongAsObject(value));
         if (str_value == NULL)
             return 2;
@@ -436,6 +516,71 @@ write_int(PyObject *self, PyObject *args, PyObject *kwds) {
     return Py_None;
 }
 
+/*
+integer tag format (0 <= t <= 255):
+    stored as a uint8_t
+*/
+
+static uint8_t
+read_tag_internal(PyObject *data) {
+    if (_check_buffer(data) == 2)
+        return CPY_LL_UINT_ERROR;
+
+    if (_check_read((BufferObject *)data, 1) == 2)
+        return CPY_LL_UINT_ERROR;
+    char *buf = ((BufferObject *)data)->buf;
+
+    uint8_t ret = *(uint8_t *)(buf + ((BufferObject *)data)->pos);
+    ((BufferObject *)data)->pos += 1;
+    return ret;
+}
+
+static PyObject*
+read_tag(PyObject *self, PyObject *args, PyObject *kwds) {
+    static char *kwlist[] = {"data", NULL};
+    PyObject *data = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data))
+        return NULL;
+    uint8_t retval = read_tag_internal(data);
+    if (retval == CPY_LL_UINT_ERROR && PyErr_Occurred()) {
+        return NULL;
+    }
+    return PyLong_FromLong(retval);
+}
+
+static char
+write_tag_internal(PyObject *data, uint8_t value) {
+    if (_check_buffer(data) == 2)
+        return 2;
+
+    if (_check_size((BufferObject *)data, 1) == 2)
+        return 2;
+    uint8_t *buf = (uint8_t *)((BufferObject *)data)->buf;
+    *(buf + ((BufferObject *)data)->pos) = value;
+    ((BufferObject *)data)->pos += 1;
+    ((BufferObject *)data)->end += 1;
+    return 1;
+}
+
+static PyObject*
+write_tag(PyObject *self, PyObject *args, PyObject *kwds) {
+    static char *kwlist[] = {"data", "value", NULL};
+    PyObject *data = NULL;
+    PyObject *value = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value))
+        return NULL;
+    uint8_t unboxed = CPyLong_AsUInt8(value);
+    if (unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred()) {
+        CPy_TypeError("u8", value);
+        return NULL;
+    }
+    if (write_tag_internal(data, unboxed) == 2) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyMethodDef native_internal_module_methods[] = {
     // TODO: switch public wrappers to METH_FASTCALL.
     {"write_bool", (PyCFunction)write_bool, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a bool")},
@@ -446,6 +591,8 @@ static PyMethodDef native_internal_module_methods[] = {
     {"read_float", (PyCFunction)read_float, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a float")},
     {"write_int", (PyCFunction)write_int, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write an int")},
     {"read_int", (PyCFunction)read_int, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read an int")},
+    {"write_tag", (PyCFunction)write_tag, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a short int")},
+    {"read_tag", (PyCFunction)read_tag, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a short int")},
     {NULL, NULL, 0, NULL}
 };
 
@@ -465,7 +612,7 @@ native_internal_module_exec(PyObject *m)
     }
 
     // Export mypy internal C API, be careful with the order!
-    static void *NativeInternal_API[12] = {
+    static void *NativeInternal_API[14] = {
         (void *)Buffer_internal,
         (void *)Buffer_internal_empty,
         (void *)Buffer_getvalue_internal,
@@ -477,6 +624,8 @@ native_internal_module_exec(PyObject *m)
         (void *)read_float_internal,
         (void *)write_int_internal,
         (void *)read_int_internal,
+        (void *)write_tag_internal,
+        (void *)read_tag_internal,
         (void *)NativeInternal_ABI_Version,
     };
     PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "native_internal._C_API", NULL);

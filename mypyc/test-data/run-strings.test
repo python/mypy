@@ -1063,3 +1063,34 @@ class subc(str):
 [file userdefinedstr.py]
 class str:
     pass
+
+[case testStrOptionalEquality]
+from __future__ import annotations
+
+def eq_s_opt_s_opt(x: str | None, y: str | None) -> bool:
+    return x == y
+
+def ne_s_opt_s_opt(x: str | None, y: str | None) -> bool:
+    return x != y
+
+def test_optional_eq() -> None:
+    s = 'x'
+    assert eq_s_opt_s_opt(s, s)
+    assert eq_s_opt_s_opt(s + str(int()), s + str(int()))
+    assert eq_s_opt_s_opt(None, None)
+
+    assert not eq_s_opt_s_opt('x', 'y')
+    assert not eq_s_opt_s_opt('y', 'x')
+    assert not eq_s_opt_s_opt(None, 'x')
+    assert not eq_s_opt_s_opt('x', None)
+
+def test_optional_ne() -> None:
+    s = 'x'
+    assert not ne_s_opt_s_opt(s, s)
+    assert not ne_s_opt_s_opt(s + str(int()), s+ str(int()))
+    assert not ne_s_opt_s_opt(None, None)
+
+    assert ne_s_opt_s_opt('x', 'y')
+    assert ne_s_opt_s_opt('y', 'x')
+    assert ne_s_opt_s_opt(None, 'x')
+    assert ne_s_opt_s_opt('x', None)

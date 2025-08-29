@@ -193,9 +193,9 @@ def prepare_func_def(
     create_generator_class_if_needed(module_name, class_name, fdef, mapper)
 
     kind = (
-        FUNC_STATICMETHOD
-        if fdef.is_static
-        else (FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
+        FUNC_CLASSMETHOD
+        if fdef.is_class
+        else (FUNC_STATICMETHOD if fdef.is_static else FUNC_NORMAL)
     )
     sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
     decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
@@ -555,21 +555,57 @@ def add_setter_declaration(
     ir.method_decls[setter_name] = decl
 
 
+def check_matching_args(init_sig: FuncSignature, new_sig: FuncSignature) -> bool:
+    num_init_args = len(init_sig.args) - init_sig.num_bitmap_args
+    num_new_args = len(new_sig.args) - new_sig.num_bitmap_args
+    if num_init_args != num_new_args:
+        return False
+
+    for idx in range(1, num_init_args):
+        init_arg = init_sig.args[idx]
+        new_arg = new_sig.args[idx]
+        if init_arg.type != new_arg.type:
+            return False
+
+        if init_arg.kind != new_arg.kind:
+            return False
+
+    return True
+
+
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
+
+    new_node: SymbolNode | None = None
+    new_symbol = cdef.info.get("__new__")
+    # We are only interested in __new__ method defined in a user-defined class,
+    # so we ignore it if it comes from a builtin type. It's usually builtins.object
+    # but could also be builtins.type for metaclasses so we detect the prefix which
+    # matches both.
+    if new_symbol and new_symbol.fullname and not new_symbol.fullname.startswith("builtins."):
+        new_node = new_symbol.node
+    if isinstance(new_node, (Decorator, OverloadedFuncDef)):
+        new_node = get_func_def(new_node)
     if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
         init_sig = mapper.fdef_to_sig(init_node, True)
+        args_match = True
+        if isinstance(new_node, FuncDef):
+            new_sig = mapper.fdef_to_sig(new_node, True)
+            args_match = check_matching_args(init_sig, new_sig)
 
         defining_ir = mapper.type_to_ir.get(init_node.info)
         # If there is a nontrivial __init__ that wasn't defined in an
         # extension class, we need to make the constructor take *args,
         # **kwargs so it can call tp_init.
         if (
-            defining_ir is None
-            or not defining_ir.is_ext_class
-            or cdef.info["__init__"].plugin_generated
-        ) and init_node.info.fullname != "builtins.object":
+            (
+                defining_ir is None
+                or not defining_ir.is_ext_class
+                or cdef.info["__init__"].plugin_generated
+            )
+            and init_node.info.fullname != "builtins.object"
+        ) or not args_match:
             init_sig = FuncSignature(
                 [
                     init_sig.args[0],

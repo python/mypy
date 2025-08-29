@@ -3,8 +3,8 @@
 
 import _typeshed
 from typing import (
-    TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
-    overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol,
+    Self, TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
+    overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
 )
 
 _T = TypeVar('_T')
@@ -40,9 +40,11 @@ __SupportsSomeKindOfPow = Union[
 
 class object:
     __class__: type
+    def __new__(cls) -> Self: pass
     def __init__(self) -> None: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
+    def __str__(self) -> str: pass
 
 class type:
     def __init__(self, o: object) -> None: ...
