@@ -343,6 +343,7 @@ class RuntimeError(Exception): pass
 class UnicodeEncodeError(RuntimeError): pass
 class UnicodeDecodeError(RuntimeError): pass
 class NotImplementedError(RuntimeError): pass
+class ReferenceError(Exception): pass
 
 class StopIteration(Exception):
     value: Any
