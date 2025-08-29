@@ -1665,6 +1665,20 @@ class LowLevelIRBuilder:
             return self.int_op(value.type, value, mask, IntOp.XOR, line)
         return self._non_specialized_unary_op(value, "not", line)
 
+    def unary_minus(self, value: Value, line: int) -> Value:
+        typ = value.type
+        if isinstance(value, Integer):
+            # TODO: Overflow? Unsigned?
+            return Integer(-value.numeric_value(), typ, line)
+        elif isinstance(value, Float):
+            return Float(-value.value, line)
+        elif is_fixed_width_rtype(typ):
+            # Translate to '0 - x'
+            return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
+        elif is_float_rprimitive(typ):
+            return self.add(FloatNeg(value, line))
+        return self._non_specialized_unary_op(value, "-", line)
+
     def unary_plus(self, value: Value, line: int) -> Value:
         typ = value.type
         if (
@@ -1679,14 +1693,13 @@ class LowLevelIRBuilder:
     def unary_op(self, value: Value, expr_op: str, line: int) -> Value:
         if expr_op == "not":
             return self.unary_not(value, line)
+        elif expr_op == "-":
+            return self.unary_minus(value, line)
         elif expr_op == "+":
             return self.unary_plus(value, line)
         typ = value.type
         if is_fixed_width_rtype(typ):
-            if expr_op == "-":
-                # Translate to '0 - x'
-                return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
-            elif expr_op == "~":
+            if expr_op == "~":
                 if typ.is_signed:
                     # Translate to 'x ^ -1'
                     return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
@@ -1694,18 +1707,7 @@ class LowLevelIRBuilder:
                     # Translate to 'x ^ 0xff...'
                     mask = (1 << (typ.size * 8)) - 1
                     return self.int_op(typ, value, Integer(mask, typ), IntOp.XOR, line)
-        if is_float_rprimitive(typ):
-            if expr_op == "-":
-                return self.add(FloatNeg(value, line))
 
-        if isinstance(value, Integer):
-            # TODO: Overflow? Unsigned?
-            num = value.value
-            if is_short_int_rprimitive(typ):
-                num >>= 1
-            return Integer(-num, typ, value.line)
-        if isinstance(value, Float):
-            return Float(-value.value, value.line)
         if isinstance(typ, RInstance):
             result = self.dunder_op(value, None, expr_op, line)
             if result is not None:
