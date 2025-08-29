@@ -9208,7 +9208,8 @@ def _ambiguous_enum_variants(types: list[Type]) -> set[str]:
             if t.last_known_value:
                 result.update(_ambiguous_enum_variants([t.last_known_value]))
             elif t.type.is_enum and any(
-                base.fullname in ("enum.IntEnum", "enum.StrEnum") for base in t.type.mro
+                base.fullname in ("enum.IntEnum", "enum.StrEnum", "builtins.str", "builtins.int")
+                for base in t.type.mro
             ):
                 result.add(t.type.fullname)
             elif not t.type.is_enum:

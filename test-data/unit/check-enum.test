@@ -2881,3 +2881,108 @@ class B(IntEnum):
 if B.a == B.b:
     1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/dict.pyi]
+
+
+[case testEnumNarrowingByEqualityToLiterals]
+# flags: --python-version=3.11 --strict-equality
+from enum import Enum, StrEnum, IntEnum
+
+# Every `if` block in this test should either reveal or report non-overlapping.
+
+class A(str, Enum):
+    a = "b"
+    b = "a"
+class B(StrEnum):
+    a = "b"
+    b = "a"
+class C(int, Enum):
+    a = 0
+    b = 1
+class D(IntEnum):
+    a = 0
+    b = 1
+
+a: A
+if a == A.a:
+    reveal_type(a)  # N: Revealed type is "Literal[__main__.A.a]"
+else:
+    reveal_type(a)  # N: Revealed type is "Literal[__main__.A.b]"
+
+if a == "a":
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+else:
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+
+if a == "c":
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+else:
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+
+if a == 0:  # E: Non-overlapping equality check (left operand type: "A", right operand type: "Literal[0]")
+    reveal_type(a)
+else:
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+
+b: B
+if b == B.a:
+    reveal_type(b)  # N: Revealed type is "Literal[__main__.B.a]"
+else:
+    reveal_type(b)  # N: Revealed type is "Literal[__main__.B.b]"
+
+if b == "a":
+    reveal_type(b)  # N: Revealed type is "__main__.B"
+else:
+    reveal_type(b)  # N: Revealed type is "__main__.B"
+
+if b == "c":
+    reveal_type(b)  # N: Revealed type is "__main__.B"
+else:
+    reveal_type(b)  # N: Revealed type is "__main__.B"
+
+if b == 0:  # E: Non-overlapping equality check (left operand type: "B", right operand type: "Literal[0]")
+    reveal_type(b)
+else:
+    reveal_type(b)  # N: Revealed type is "__main__.B"
+
+c: C
+if c == C.a:
+    reveal_type(c)  # N: Revealed type is "Literal[__main__.C.a]"
+else:
+    reveal_type(c)  # N: Revealed type is "Literal[__main__.C.b]"
+
+if c == 0:
+    reveal_type(c)  # N: Revealed type is "__main__.C"
+else:
+    reveal_type(c)  # N: Revealed type is "__main__.C"
+
+if c == 2:
+    reveal_type(c)  # N: Revealed type is "__main__.C"
+else:
+    reveal_type(c)  # N: Revealed type is "__main__.C"
+
+if c == "a":  # E: Non-overlapping equality check (left operand type: "C", right operand type: "Literal['a']")
+    reveal_type(c)
+else:
+    reveal_type(c)  # N: Revealed type is "__main__.C"
+
+d: D
+if d == D.a:
+    reveal_type(d)  # N: Revealed type is "Literal[__main__.D.a]"
+else:
+    reveal_type(d)  # N: Revealed type is "Literal[__main__.D.b]"
+
+if d == 0:
+    reveal_type(d)  # N: Revealed type is "__main__.D"
+else:
+    reveal_type(d)  # N: Revealed type is "__main__.D"
+
+if d == 2:
+    reveal_type(d)  # N: Revealed type is "__main__.D"
+else:
+    reveal_type(d)  # N: Revealed type is "__main__.D"
+
+if d == "a":  # E: Non-overlapping equality check (left operand type: "D", right operand type: "Literal['a']")
+    reveal_type(d)
+else:
+    reveal_type(d)  # N: Revealed type is "__main__.D"
+[builtins fixtures/dict.pyi]
