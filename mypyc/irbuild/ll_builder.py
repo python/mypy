@@ -2616,7 +2616,7 @@ class LowLevelIRBuilder:
             self.activate_block(r_none)
             # None vs not-None
             val = self.false() if expr_op == "==" else self.true()
-            self.add(Assign(res, self.false()))
+            self.add(Assign(res, val))
             self.goto(out)
             self.activate_block(r_not_none)
             # Both operands are known to be not None, perform specialized comparison
