@@ -2575,46 +2575,46 @@ class LowLevelIRBuilder:
         value_typ = optional_value_type(lreg.type)
         assert value_typ
         res = Register(bool_rprimitive)
-        x = self.add(ComparisonOp(lreg, self.none_object(), ComparisonOp.EQ, line))
+        cmp = self.add(ComparisonOp(lreg, self.none_object(), ComparisonOp.EQ, line))
         l_none = BasicBlock()
         l_not_none = BasicBlock()
         out = BasicBlock()
-        self.add(Branch(x, l_none, l_not_none, Branch.BOOL))
+        self.add(Branch(cmp, l_none, l_not_none, Branch.BOOL))
         self.activate_block(l_none)
         if not isinstance(rreg.type, RUnion):
             self.add(Assign(res, self.false()))
         else:
             op = ComparisonOp.EQ if expr_op == "==" else ComparisonOp.NEQ
-            y = self.add(ComparisonOp(rreg, self.none_object(), op, line))
-            self.add(Assign(res, y))
+            cmp = self.add(ComparisonOp(rreg, self.none_object(), op, line))
+            self.add(Assign(res, cmp))
         self.goto(out)
         self.activate_block(l_not_none)
         if not isinstance(rreg.type, RUnion):
-            z = self.translate_eq_cmp(
+            eq = self.translate_eq_cmp(
                 self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
                 rreg,
                 expr_op,
                 line,
             )
-            assert z is not None
-            self.add(Assign(res, z))
+            assert eq is not None
+            self.add(Assign(res, eq))
         else:
             r_none = BasicBlock()
             r_not_none = BasicBlock()
-            x = self.add(ComparisonOp(rreg, self.none_object(), ComparisonOp.EQ, line))
-            self.add(Branch(x, r_none, r_not_none, Branch.BOOL))
+            cmp = self.add(ComparisonOp(rreg, self.none_object(), ComparisonOp.EQ, line))
+            self.add(Branch(cmp, r_none, r_not_none, Branch.BOOL))
             self.activate_block(r_none)
             self.add(Assign(res, self.false()))
             self.goto(out)
             self.activate_block(r_not_none)
-            z = self.translate_eq_cmp(
+            eq = self.translate_eq_cmp(
                 self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
                 self.unbox_or_cast(rreg, value_typ, line, can_borrow=True, unchecked=True),
                 expr_op,
                 line,
             )
-            assert z is not None
-            self.add(Assign(res, z))
+            assert eq is not None
+            self.add(Assign(res, eq))
         self.goto(out)
         self.activate_block(out)
         return res
