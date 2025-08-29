@@ -182,6 +182,8 @@ def is_true(x: Union[str, NewStr]) -> bool:
         return False
 def unary_not(x: Union[str, NewStr]) -> bool:
     return not x
+def unary_not_optional(x: Union[str, None]) -> bool:
+    return not x
 [typing fixtures/typing-full.pyi]
 [out]
 def is_true(x):
@@ -203,6 +205,27 @@ L0:
     r0 = CPyStr_IsTrue(x)
     r1 = r0 ^ 1
     return r1
+def unary_not_optional(x):
+    x :: union[str, None]
+    r0 :: object
+    r1, r2 :: bit
+    r3 :: str
+    r4, r5 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = x == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    goto L3
+L2:
+    r3 = unchecked borrow cast(str, x)
+    r4 = CPyStr_IsTrue(r3)
+    r5 = r4 ^ 1
+    r2 = r5
+L3:
+    keep_alive x
+    return r2
 
 [case testStringFormatMethod]
 from typing import NewType, Union

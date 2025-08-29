@@ -110,6 +110,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_optional_type,
     is_set_rprimitive,
     is_short_int_rprimitive,
     is_str_rprimitive,
@@ -1689,11 +1690,38 @@ class LowLevelIRBuilder:
         if (
             is_str_rprimitive(typ)
             or is_list_rprimitive(typ)
+            or is_tuple_rprimitive(typ)
             or is_dict_rprimitive(typ)
             or isinstance(typ, RInstance)
         ):
             bool_val = self.bool_value(value)
             return self.unary_not(bool_val, line)
+        if is_optional_type(typ):
+            value_typ = optional_value_type(typ)
+            assert value_typ
+            if (
+                is_str_rprimitive(value_typ)
+                or is_list_rprimitive(value_typ)
+                or is_tuple_rprimitive(value_typ)
+                or is_dict_rprimitive(value_typ)
+                or isinstance(value_typ, RInstance)
+            ):
+                res = Register(bit_rprimitive)
+                cmp = self.add(ComparisonOp(value, self.none_object(), ComparisonOp.EQ, line))
+                none, not_none, out = BasicBlock(), BasicBlock(), BasicBlock()
+                self.add(Branch(cmp, none, not_none, Branch.BOOL))
+                self.activate_block(none)
+                self.add(Assign(res, self.true()))
+                self.goto(out)
+                self.activate_block(not_none)
+                val = self.unary_not(
+                    self.unbox_or_cast(value, value_typ, line, can_borrow=True, unchecked=True),
+                    line,
+                )
+                self.add(Assign(res, val))
+                self.goto(out)
+                self.activate_block(out)
+                return res
         if likely_bool and is_object_rprimitive(typ):
             # First quickly check if it's a bool, and otherwise fall back to generic op.
             res = Register(bit_rprimitive)
