@@ -91,7 +91,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
 from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
-from mypy.types import Type
+from mypy.types import Type, instance_cache
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
 from mypy.version import __version__
@@ -179,6 +179,9 @@ def build(
     # If we were not given a flush_errors, we use one that will populate those
     # fields for callers that want the traditional API.
     messages = []
+
+    # This is mostly for the benefit of tests that use builtins fixtures.
+    instance_cache.reset()
 
     def default_flush_errors(
         filename: str | None, new_messages: list[str], is_serious: bool

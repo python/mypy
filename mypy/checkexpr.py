@@ -496,7 +496,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # In test cases might 'types' may not be available.
             # Fall back to a dummy 'object' type instead to
             # avoid a crash.
-            result = self.named_type("builtins.object")
+            # Make a copy so that we don't set extra_attrs (below) on a shared instance.
+            result = self.named_type("builtins.object").copy_modified()
         module_attrs: dict[str, Type] = {}
         immutable = set()
         for name, n in node.names.items():
