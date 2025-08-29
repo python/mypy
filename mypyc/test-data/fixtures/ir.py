@@ -39,6 +39,7 @@ __SupportsSomeKindOfPow = Union[
 ]
 
 class object:
+    __class__: type
     def __init__(self) -> None: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
@@ -171,7 +172,7 @@ class bytes:
     @overload
     def __getitem__(self, i: slice) -> bytes: ...
     def join(self, x: Iterable[object]) -> bytes: ...
-    def decode(self, x: str=..., y: str=...) -> str: ...
+    def decode(self, encoding: str=..., errors: str=...) -> str: ...
     def __iter__(self) -> Iterator[int]: ...
 
 class bytearray:

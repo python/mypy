@@ -485,8 +485,6 @@ def define_options(
         stdout=stdout,
         stderr=stderr,
     )
-    if sys.version_info >= (3, 14):
-        parser.color = True  # Set as init arg in 3.14
 
     strict_flag_names: list[str] = []
     strict_flag_assignments: list[tuple[str, bool]] = []
@@ -1055,6 +1053,9 @@ def define_options(
         "--cache-fine-grained",
         action="store_true",
         help="Include fine-grained dependency information in the cache for the mypy daemon",
+    )
+    incremental_group.add_argument(
+        "--fixed-format-cache", action="store_true", help=argparse.SUPPRESS
     )
     incremental_group.add_argument(
         "--skip-version-check",

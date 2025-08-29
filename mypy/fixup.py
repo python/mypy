@@ -97,6 +97,8 @@ class NodeFixer(NodeVisitor[None]):
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
+            if info.self_type:
+                info.self_type.accept(self.type_fixer)
             if info.alt_promote:
                 info.alt_promote.accept(self.type_fixer)
                 instance = Instance(info, [])
