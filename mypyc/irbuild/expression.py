@@ -483,8 +483,15 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
                 assert (
                     len(expr.args) == 1
                 ), f"Expected object.__new__() call to have exactly 1 argument, got {len(expr.args)}"
-                subtype = builder.accept(expr.args[0])
-                return builder.add(Call(ir.setup, [subtype], expr.line))
+                typ_arg = expr.args[0]
+                method_args = builder.fn_info.fitem.arg_names
+                if (
+                    isinstance(typ_arg, NameExpr)
+                    and len(method_args) > 0
+                    and method_args[0] == typ_arg.name
+                ):
+                    subtype = builder.accept(expr.args[0])
+                    return builder.add(Call(ir.setup, [subtype], expr.line))
 
         if callee.name == "__new__":
             call = "super().__new__()"

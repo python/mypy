@@ -678,8 +678,10 @@ def emit_setup_or_dunder_new_call(
         emit_null_check()
         return
     prefix = emitter.get_group_prefix(new_fn.decl) + NATIVE_PREFIX if native_prefix else PREFIX
-    new_args = ", ".join([type_arg, new_args])
-    emitter.emit_line(f"PyObject *self = {prefix}{new_fn.cname(emitter.names)}({new_args});")
+    all_args = type_arg
+    if new_args != "":
+        all_args += ", " + new_args
+    emitter.emit_line(f"PyObject *self = {prefix}{new_fn.cname(emitter.names)}({all_args});")
     emit_null_check()
 
     # skip __init__ if __new__ returns some other type

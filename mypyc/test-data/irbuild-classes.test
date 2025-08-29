@@ -1619,6 +1619,21 @@ class Test:
         obj.val = val
         return obj
 
+def fn() -> Test:
+    return Test.__new__(Test, 42)
+
+class NewClassMethod:
+    val: int
+
+    @classmethod
+    def __new__(cls, val: int) -> NewClassMethod:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+def fn2() -> NewClassMethod:
+    return NewClassMethod.__new__(42)
+
 [out]
 def Test.__new__(cls, val):
     cls :: object
@@ -1630,6 +1645,30 @@ L0:
     obj = r0
     obj.val = val; r1 = is_error
     return obj
+def fn():
+    r0 :: object
+    r1 :: __main__.Test
+L0:
+    r0 = __main__.Test :: type
+    r1 = Test.__new__(r0, 84)
+    return r1
+def NewClassMethod.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.NewClassMethod
+    r1 :: bool
+L0:
+    r0 = __mypyc__NewClassMethod_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn2():
+    r0 :: object
+    r1 :: __main__.NewClassMethod
+L0:
+    r0 = __main__.NewClassMethod :: type
+    r1 = NewClassMethod.__new__(r0, 84)
+    return r1
 
 [case testUnsupportedDunderNew]
 from __future__ import annotations

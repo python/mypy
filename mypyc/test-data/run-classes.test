@@ -3310,6 +3310,10 @@ class RaisesException:
     def __init__(self, val: int) -> None:
         self.val = val
 
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return super().__new__(str)
+
 def test_dunder_new() -> None:
     add_instance: Any = Add(1, 5)
     assert type(add_instance) == Add
@@ -3331,6 +3335,9 @@ def test_dunder_new() -> None:
 
     not_raised = RaisesException(1)
     assert not_raised.val == 1
+
+    with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+        str_as_cls = ClsArgNotPassed()
 
 
 [case testDunderNewInInterpreted]
@@ -3368,8 +3375,12 @@ class RaisesException:
     def __init__(self, val: int) -> None:
         self.val = val
 
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return super().__new__(str)
+
 [file driver.py]
-from native import Add, RaisesException
+from native import Add, ClsArgNotPassed, RaisesException
 
 from testutil import assertRaises
 
@@ -3383,6 +3394,9 @@ with assertRaises(RuntimeError, "Invalid value!"):
 not_raised = RaisesException(1)
 assert not_raised.val == 1
 
+with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+    str_as_cls = ClsArgNotPassed()
+
 [out]
 running __new__ with 1 and 5
 Add(1, 5)=(1 + 5)
@@ -3394,6 +3408,7 @@ Add(1, 0)=1
 [case testInheritedDunderNew]
 from __future__ import annotations
 from mypy_extensions import mypyc_attr
+from typing_extensions import Self
 
 from m import interpreted_subclass
 
@@ -3401,7 +3416,7 @@ from m import interpreted_subclass
 class Base:
     val: int
 
-    def __new__(cls, val: int):
+    def __new__(cls, val: int) -> Self:
         obj = super().__new__(cls)
         obj.val = val + 1
         return obj
@@ -3410,7 +3425,7 @@ class Base:
         self.init_val = val
 
 class Sub(Base):
-    def __new__(cls, val: int):
+    def __new__(cls, val: int) -> Self:
         return super().__new__(cls, val + 1)
 
     def __init__(self, val: int) -> None:
@@ -3425,7 +3440,7 @@ class SubWithoutNew(Base):
 class BaseWithoutInterpretedSubclasses:
     val: int
 
-    def __new__(cls, val: int):
+    def __new__(cls, val: int) -> Self:
         obj = super().__new__(cls)
         obj.val = val + 1
         return obj
@@ -3434,7 +3449,7 @@ class BaseWithoutInterpretedSubclasses:
         self.init_val = val
 
 class SubNoInterpreted(BaseWithoutInterpretedSubclasses):
-    def __new__(cls, val: int):
+    def __new__(cls, val: int) -> Self:
         return super().__new__(cls, val + 1)
 
     def __init__(self, val: int) -> None:
@@ -3483,6 +3498,7 @@ def test_interpreted_subclass() -> None:
 
 [file m.py]
 from __future__ import annotations
+from typing_extensions import Self
 
 def interpreted_subclass(base) -> None:
     b = base(42)
@@ -3491,7 +3507,7 @@ def interpreted_subclass(base) -> None:
     assert b.init_val == 42
 
     class InterpretedSub(base):
-        def __new__(cls, val: int) -> base:
+        def __new__(cls, val: int) -> Self:
             return super().__new__(cls, val + 1)
 
         def __init__(self, val: int) -> None:
