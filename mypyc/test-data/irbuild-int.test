@@ -193,7 +193,7 @@ def unary_invert(n: int) -> int:
     x = ~n
     return x
 def unary_not(n: int) -> bool:
-    return n
+    return not n
 [out]
 def unary_minus(n):
     n, r0, x :: int
