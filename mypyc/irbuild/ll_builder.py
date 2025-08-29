@@ -336,14 +336,20 @@ class LowLevelIRBuilder:
             return src
 
     def unbox_or_cast(
-        self, src: Value, target_type: RType, line: int, *, can_borrow: bool = False
+        self,
+        src: Value,
+        target_type: RType,
+        line: int,
+        *,
+        can_borrow: bool = False,
+        unchecked: bool = False,
     ) -> Value:
         if target_type.is_unboxed:
             return self.add(Unbox(src, target_type, line))
         else:
             if can_borrow:
                 self.keep_alives.append(src)
-            return self.add(Cast(src, target_type, line, borrow=can_borrow))
+            return self.add(Cast(src, target_type, line, borrow=can_borrow, unchecked=unchecked))
 
     def coerce(
         self,
@@ -2514,6 +2520,22 @@ class LowLevelIRBuilder:
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype):
             return self.compare_bytes(lreg, rreg, expr_op, line)
 
+        lopt = optional_value_type(ltype)
+        ropt = optional_value_type(rtype)
+
+        # Can we do a quick comparison of two optional types (special case None values)?
+        fast_opt_eq = False
+        if lopt is not None:
+            if ropt is not None and is_same_type(lopt, ropt) and self._never_equal_to_none(lopt):
+                fast_opt_eq = True
+            if is_same_type(lopt, rtype) and self._never_equal_to_none(lopt):
+                fast_opt_eq = True
+        elif ropt is not None:
+            if is_same_type(ropt, ltype) and self._never_equal_to_none(ropt):
+                fast_opt_eq = True
+        if fast_opt_eq:
+            return self._translate_fast_optional_eq_cmp(lreg, rreg, expr_op, line)
+
         if not (isinstance(ltype, RInstance) and ltype == rtype):
             return None
 
@@ -2539,6 +2561,76 @@ class LowLevelIRBuilder:
             return self.translate_is_op(lreg, rreg, identity_ref_op, line)
 
         return self.gen_method_call(lreg, op_methods[expr_op], [rreg], ltype, line)
+
+    def _never_equal_to_none(self, typ: RType) -> bool:
+        """Are the values of type never equal to None?"""
+        # TODO: Support RInstance with no custom __eq__/__ne__ and other primitive types.
+        return is_str_rprimitive(typ) or is_bytes_rprimitive(typ)
+
+    def _translate_fast_optional_eq_cmp(
+        self, lreg: Value, rreg: Value, expr_op: str, line: int
+    ) -> Value:
+        """Generate eq/ne fast path between 'X | None' and ('X | None' or X).
+
+        Assume 'X' never compares equal to None.
+        """
+        if not isinstance(lreg.type, RUnion):
+            lreg, rreg = rreg, lreg
+        value_typ = optional_value_type(lreg.type)
+        assert value_typ
+        res = Register(bool_rprimitive)
+
+        # Fast path: left value is None?
+        cmp = self.add(ComparisonOp(lreg, self.none_object(), ComparisonOp.EQ, line))
+        l_none = BasicBlock()
+        l_not_none = BasicBlock()
+        out = BasicBlock()
+        self.add(Branch(cmp, l_none, l_not_none, Branch.BOOL))
+        self.activate_block(l_none)
+        if not isinstance(rreg.type, RUnion):
+            val = self.false() if expr_op == "==" else self.true()
+            self.add(Assign(res, val))
+        else:
+            op = ComparisonOp.EQ if expr_op == "==" else ComparisonOp.NEQ
+            cmp = self.add(ComparisonOp(rreg, self.none_object(), op, line))
+            self.add(Assign(res, cmp))
+        self.goto(out)
+
+        self.activate_block(l_not_none)
+        if not isinstance(rreg.type, RUnion):
+            # Both operands are known to be not None, perform specialized comparison
+            eq = self.translate_eq_cmp(
+                self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
+                rreg,
+                expr_op,
+                line,
+            )
+            assert eq is not None
+            self.add(Assign(res, eq))
+        else:
+            r_none = BasicBlock()
+            r_not_none = BasicBlock()
+            # Fast path: right value is None?
+            cmp = self.add(ComparisonOp(rreg, self.none_object(), ComparisonOp.EQ, line))
+            self.add(Branch(cmp, r_none, r_not_none, Branch.BOOL))
+            self.activate_block(r_none)
+            # None vs not-None
+            val = self.false() if expr_op == "==" else self.true()
+            self.add(Assign(res, val))
+            self.goto(out)
+            self.activate_block(r_not_none)
+            # Both operands are known to be not None, perform specialized comparison
+            eq = self.translate_eq_cmp(
+                self.unbox_or_cast(lreg, value_typ, line, can_borrow=True, unchecked=True),
+                self.unbox_or_cast(rreg, value_typ, line, can_borrow=True, unchecked=True),
+                expr_op,
+                line,
+            )
+            assert eq is not None
+            self.add(Assign(res, eq))
+        self.goto(out)
+        self.activate_block(out)
+        return res
 
     def translate_is_op(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
         """Create equality comparison operation between object identities
