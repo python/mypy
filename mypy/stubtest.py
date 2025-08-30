@@ -140,6 +140,11 @@ class Error:
         # TODO: This is hacky, use error codes or something more resilient
         return "should be positional" in self.message
 
+    def is_disjoint_base_related(self) -> bool:
+        """Whether or not the error is related to @disjoint_base."""
+        # TODO: This is hacky, use error codes or something more resilient
+        return "@disjoint_base" in self.message
+
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
 
@@ -2181,6 +2186,7 @@ class _Arguments:
     concise: bool
     ignore_missing_stub: bool
     ignore_positional_only: bool
+    ignore_disjoint_bases: bool
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
@@ -2274,6 +2280,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
                 continue
             if args.ignore_positional_only and error.is_positional_only_related():
                 continue
+            if args.ignore_disjoint_bases and error.is_disjoint_base_related():
+                continue
             if error.object_desc in allowlist:
                 allowlist[error.object_desc] = True
                 continue
@@ -2363,6 +2371,12 @@ def parse_options(args: list[str]) -> _Arguments:
         "--ignore-positional-only",
         action="store_true",
         help="Ignore errors for whether an argument should or shouldn't be positional-only",
+    )
+    # TODO: Remove once PEP 800 is accepted
+    parser.add_argument(
+        "--ignore-disjoint-bases",
+        action="store_true",
+        help="Disable checks for PEP 800 @disjoint_base classes",
     )
     parser.add_argument(
         "--allowlist",
