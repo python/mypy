@@ -6888,3 +6888,12 @@ class A:
 [out]
 [out2]
 main:3: error: Too few arguments
+
+[case testUnreachableAfterToplevelAssertImportThirdParty]
+# flags: --platform unknown
+import sys
+assert sys.platform == 'linux'
+import does_not_exist
+[builtins fixtures/ops.pyi]
+[out]
+[out2]
