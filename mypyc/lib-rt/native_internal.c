@@ -206,11 +206,13 @@ read_bool_internal(PyObject *data) {
 }
 
 static PyObject*
-read_bool(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", NULL};
-    PyObject *data = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data)))
+read_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", 0};
+    static CPyArg_Parser parser = {"O:read_bool", kwlist, 0};
+    PyObject *data;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
+    }
     char res = read_bool_internal(data);
     if (unlikely(res == CPY_BOOL_ERROR))
         return NULL;
@@ -229,12 +231,14 @@ write_bool_internal(PyObject *data, char value) {
 }
 
 static PyObject*
-write_bool(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", "value", NULL};
-    PyObject *data = NULL;
-    PyObject *value = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value)))
+write_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", "value", 0};
+    static CPyArg_Parser parser = {"OO:write_bool", kwlist, 0};
+    PyObject *data;
+    PyObject *value;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
+    }
     if (unlikely(!PyBool_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bool");
         return NULL;
@@ -280,11 +284,13 @@ read_str_internal(PyObject *data) {
 }
 
 static PyObject*
-read_str(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", NULL};
-    PyObject *data = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data)))
+read_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", 0};
+    static CPyArg_Parser parser = {"O:read_str", kwlist, 0};
+    PyObject *data;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
+    }
     return read_str_internal(data);
 }
 
@@ -319,12 +325,14 @@ write_str_internal(PyObject *data, PyObject *value) {
 }
 
 static PyObject*
-write_str(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", "value", NULL};
-    PyObject *data = NULL;
-    PyObject *value = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value)))
+write_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", "value", 0};
+    static CPyArg_Parser parser = {"OO:write_str", kwlist, 0};
+    PyObject *data;
+    PyObject *value;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
+    }
     if (unlikely(!PyUnicode_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a str");
         return NULL;
@@ -350,11 +358,13 @@ read_float_internal(PyObject *data) {
 }
 
 static PyObject*
-read_float(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", NULL};
-    PyObject *data = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data)))
+read_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", 0};
+    static CPyArg_Parser parser = {"O:read_float", kwlist, 0};
+    PyObject *data;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
+    }
     double retval = read_float_internal(data);
     if (unlikely(retval == CPY_FLOAT_ERROR && PyErr_Occurred())) {
         return NULL;
@@ -372,12 +382,14 @@ write_float_internal(PyObject *data, double value) {
 }
 
 static PyObject*
-write_float(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", "value", NULL};
-    PyObject *data = NULL;
-    PyObject *value = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value)))
+write_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", "value", 0};
+    static CPyArg_Parser parser = {"OO:write_float", kwlist, 0};
+    PyObject *data;
+    PyObject *value;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
+    }
     if (unlikely(!PyFloat_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a float");
         return NULL;
@@ -421,11 +433,13 @@ read_int_internal(PyObject *data) {
 }
 
 static PyObject*
-read_int(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", NULL};
-    PyObject *data = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data)))
+read_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", 0};
+    static CPyArg_Parser parser = {"O:read_int", kwlist, 0};
+    PyObject *data;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
+    }
     CPyTagged retval = read_int_internal(data);
     if (unlikely(retval == CPY_INT_TAG)) {
         return NULL;
@@ -466,12 +480,14 @@ write_int_internal(PyObject *data, CPyTagged value) {
 }
 
 static PyObject*
-write_int(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", "value", NULL};
-    PyObject *data = NULL;
-    PyObject *value = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value)))
+write_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", "value", 0};
+    static CPyArg_Parser parser = {"OO:write_int", kwlist, 0};
+    PyObject *data;
+    PyObject *value;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
+    }
     if (unlikely(!PyLong_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be an int");
         return NULL;
@@ -498,11 +514,13 @@ read_tag_internal(PyObject *data) {
 }
 
 static PyObject*
-read_tag(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", NULL};
-    PyObject *data = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist, &data)))
+read_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", 0};
+    static CPyArg_Parser parser = {"O:read_tag", kwlist, 0};
+    PyObject *data;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
+    }
     uint8_t retval = read_tag_internal(data);
     if (unlikely(retval == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         return NULL;
@@ -520,12 +538,14 @@ write_tag_internal(PyObject *data, uint8_t value) {
 }
 
 static PyObject*
-write_tag(PyObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"data", "value", NULL};
-    PyObject *data = NULL;
-    PyObject *value = NULL;
-    if (unlikely(!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &data, &value)))
+write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", "value", 0};
+    static CPyArg_Parser parser = {"OO:write_tag", kwlist, 0};
+    PyObject *data;
+    PyObject *value;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
+    }
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
@@ -539,17 +559,16 @@ write_tag(PyObject *self, PyObject *args, PyObject *kwds) {
 }
 
 static PyMethodDef native_internal_module_methods[] = {
-    // TODO: switch public wrappers to METH_FASTCALL.
-    {"write_bool", (PyCFunction)write_bool, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a bool")},
-    {"read_bool", (PyCFunction)read_bool, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a bool")},
-    {"write_str", (PyCFunction)write_str, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a string")},
-    {"read_str", (PyCFunction)read_str, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a string")},
-    {"write_float", (PyCFunction)write_float, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a float")},
-    {"read_float", (PyCFunction)read_float, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a float")},
-    {"write_int", (PyCFunction)write_int, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write an int")},
-    {"read_int", (PyCFunction)read_int, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read an int")},
-    {"write_tag", (PyCFunction)write_tag, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("write a short int")},
-    {"read_tag", (PyCFunction)read_tag, METH_VARARGS | METH_KEYWORDS, PyDoc_STR("read a short int")},
+    {"write_bool", (PyCFunction)write_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a bool")},
+    {"read_bool", (PyCFunction)read_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a bool")},
+    {"write_str", (PyCFunction)write_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a string")},
+    {"read_str", (PyCFunction)read_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a string")},
+    {"write_float", (PyCFunction)write_float, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a float")},
+    {"read_float", (PyCFunction)read_float, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a float")},
+    {"write_int", (PyCFunction)write_int, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write an int")},
+    {"read_int", (PyCFunction)read_int, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read an int")},
+    {"write_tag", (PyCFunction)write_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a short int")},
+    {"read_tag", (PyCFunction)read_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a short int")},
     {NULL, NULL, 0, NULL}
 };
 
