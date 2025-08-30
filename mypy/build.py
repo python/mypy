@@ -3364,7 +3364,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
                 if (
-                    platform.python_implementation() == "CPython"
+                    not manager.options.test_env
+                    and platform.python_implementation() == "CPython"
                     and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
                 ):
                     # When deserializing cache we create huge amount of new objects, so even
@@ -3379,7 +3380,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 for prev_scc in fresh_scc_queue:
                     process_fresh_modules(graph, prev_scc, manager)
                 if (
-                    platform.python_implementation() == "CPython"
+                    not manager.options.test_env
+                    and platform.python_implementation() == "CPython"
                     and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
                 ):
                     manager.gc_freeze_cycles += 1
