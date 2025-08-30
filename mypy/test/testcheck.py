@@ -133,6 +133,7 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.test_env = True
 
         # Enable some options automatically based on test file name.
         if "columns" in testcase.file:
