@@ -671,12 +671,15 @@ class PatternChecker(PatternVisitor[PatternType]):
                 has_local_errors = local_errors.has_new_errors()
             if has_local_errors or key_type is None:
                 key_type = AnyType(TypeOfAny.from_error)
-                self.msg.fail(
-                    message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(
-                        typ.str_with_options(self.options), keyword
-                    ),
-                    pattern,
-                )
+                if not (type_info and type_info.fullname == "builtins.object"):
+                    self.msg.fail(
+                        message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(
+                            typ.str_with_options(self.options), keyword
+                        ),
+                        pattern,
+                    )
+                elif keyword is not None:
+                    new_type = self.chk.add_any_attribute_to_type(new_type, keyword)
 
             inner_type, inner_rest_type, inner_captures = self.accept(pattern, key_type)
             if is_uninhabited(inner_type):

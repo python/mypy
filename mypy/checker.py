@@ -5552,10 +5552,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
-        named_subject = self._make_named_statement_for_match(s)
         # In sync with similar actions elsewhere, narrow the target if
         # we are matching an AssignmentExpr
         unwrapped_subject = collapse_walrus(s.subject)
+        named_subject = self._make_named_statement_for_match(s, unwrapped_subject)
         with self.binder.frame_context(can_skip=False, fall_through=0):
             subject_type = get_proper_type(self.expr_checker.accept(s.subject))
 
@@ -5646,9 +5646,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
 
-    def _make_named_statement_for_match(self, s: MatchStmt) -> Expression:
+    def _make_named_statement_for_match(self, s: MatchStmt, subject: Expression) -> Expression:
         """Construct a fake NameExpr for inference if a match clause is complex."""
-        subject = s.subject
         if self.binder.can_put_directly(subject):
             # Already named - we should infer type of it as given
             return subject
