@@ -903,7 +903,16 @@ def define_options(
         "--strict-equality",
         default=False,
         strict_flag=True,
-        help="Prohibit equality, identity, and container checks for non-overlapping types",
+        help="Prohibit equality, identity, and container checks for non-overlapping types "
+        "(except `None`)",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--strict-equality-for-none",
+        default=False,
+        strict_flag=False,
+        help="Extend `--strict-equality` for `None` checks",
         group=strictness_group,
     )
 
