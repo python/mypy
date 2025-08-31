@@ -4884,7 +4884,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 alt_typ = get_proper_type(
                     self.expr_checker.accept(expr, None, allow_none_return=allow_none_func_call)
                 )
-        if not msg.has_new_errors() and is_proper_subtype(alt_typ, typ):
+        if not msg.has_new_errors() and is_subtype(alt_typ, type_ctx):
             self.store_types(type_map)
             return alt_typ
 
