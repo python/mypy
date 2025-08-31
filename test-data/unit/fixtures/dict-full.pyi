@@ -1,5 +1,6 @@
 # Builtins stub used in dictionary-related test cases (more complete).
 
+import collections
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
