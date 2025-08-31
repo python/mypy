@@ -2104,14 +2104,12 @@ class CallableType(FunctionLike):
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
-        for t, k in zip(arg_types, arg_kinds):
+        self.arg_types = list(arg_types)
+        for t in self.arg_types:
             if isinstance(t, ParamSpecType):
                 assert not t.prefix.arg_types
                 # TODO: should we assert that only ARG_STAR contain ParamSpecType?
                 # See testParamSpecJoin, that relies on passing e.g `P.args` as plain argument.
-        if variables is None:
-            variables = []
-        self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
@@ -2123,7 +2121,11 @@ class CallableType(FunctionLike):
         #   * If it is a non-decorated function, FuncDef is the definition
         #   * If it is a decorated function, enclosing Decorator is the definition
         self.definition = definition
-        self.variables = variables
+        self.variables: tuple[TypeVarLikeType, ...]
+        if variables is None:
+            self.variables = ()
+        else:
+            self.variables = tuple(variables)
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
         self.special_sig = special_sig

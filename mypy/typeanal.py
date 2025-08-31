@@ -1820,7 +1820,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def bind_function_type_variables(
         self, fun_type: CallableType, defn: Context
-    ) -> tuple[Sequence[TypeVarLikeType], bool]:
+    ) -> tuple[tuple[TypeVarLikeType, ...], bool]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
         has_self_type = False
         if fun_type.variables:
@@ -1835,7 +1835,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 assert isinstance(var_expr, TypeVarLikeExpr)
                 binding = self.tvar_scope.bind_new(var.name, var_expr)
                 defs.append(binding)
-            return defs, has_self_type
+            return tuple(defs), has_self_type
         typevars, has_self_type = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
         typevars = [
@@ -1849,7 +1849,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             binding = self.tvar_scope.bind_new(name, tvar)
             defs.append(binding)
 
-        return defs, has_self_type
+        return tuple(defs), has_self_type
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
         tvar_node = self.lookup_qualified(tvar, context)
