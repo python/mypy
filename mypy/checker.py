@@ -4865,7 +4865,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self, expr: Expression, type_ctx: Type, allow_none_func_call: bool
     ) -> ProperType:
         """Infer type of an expression with fallback to empty type context."""
-        with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as msg:
+        with self.msg.filter_errors(
+            filter_errors=True, filter_deprecated=True, save_filtered_errors=True
+        ) as msg:
             with self.local_type_map as type_map:
                 typ = get_proper_type(
                     self.expr_checker.accept(
@@ -4879,7 +4881,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # If there are errors with the original type context, try re-inferring in empty context.
         original_messages = msg.filtered_errors()
         original_type_map = type_map
-        with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as msg:
+        with self.msg.filter_errors(
+            filter_errors=True, filter_deprecated=True, save_filtered_errors=True
+        ) as msg:
             with self.local_type_map as type_map:
                 alt_typ = get_proper_type(
                     self.expr_checker.accept(expr, None, allow_none_return=allow_none_func_call)
