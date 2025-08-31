@@ -63,6 +63,7 @@ from typing import (  # noqa: Y022,UP035
 from typing_extensions import (  # noqa: Y023
     Concatenate,
     Literal,
+    LiteralString,
     ParamSpec,
     Self,
     TypeAlias,
@@ -70,6 +71,7 @@ from typing_extensions import (  # noqa: Y023
     TypeIs,
     TypeVarTuple,
     deprecated,
+    disjoint_base,
 )
 
 if sys.version_info >= (3, 14):
@@ -102,6 +104,7 @@ _StopT_co = TypeVar("_StopT_co", covariant=True, default=_StartT_co)  #  slice[A
 # FIXME: https://github.com/python/typing/issues/213 (replace step=start|stop with step=start&stop)
 _StepT_co = TypeVar("_StepT_co", covariant=True, default=_StartT_co | _StopT_co)  #  slice[A,B] -> slice[A, B, A|B]
 
+@disjoint_base
 class object:
     __doc__: str | None
     __dict__: dict[str, Any]
@@ -137,6 +140,7 @@ class object:
     @classmethod
     def __subclasshook__(cls, subclass: type, /) -> bool: ...
 
+@disjoint_base
 class staticmethod(Generic[_P, _R_co]):
     @property
     def __func__(self) -> Callable[_P, _R_co]: ...
@@ -157,6 +161,7 @@ class staticmethod(Generic[_P, _R_co]):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
         __annotate__: AnnotateFunc | None
 
+@disjoint_base
 class classmethod(Generic[_T, _P, _R_co]):
     @property
     def __func__(self) -> Callable[Concatenate[type[_T], _P], _R_co]: ...
@@ -176,6 +181,7 @@ class classmethod(Generic[_T, _P, _R_co]):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
         __annotate__: AnnotateFunc | None
 
+@disjoint_base
 class type:
     # object.__base__ is None. Otherwise, it would be a type.
     @property
@@ -228,6 +234,7 @@ class type:
     if sys.version_info >= (3, 14):
         __annotate__: AnnotateFunc | None
 
+@disjoint_base
 class super:
     @overload
     def __init__(self, t: Any, obj: Any, /) -> None: ...
@@ -240,6 +247,7 @@ _PositiveInteger: TypeAlias = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
 _NegativeInteger: TypeAlias = Literal[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20]
 _LiteralInteger = _PositiveInteger | _NegativeInteger | Literal[0]  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
 
+@disjoint_base
 class int:
     @overload
     def __new__(cls, x: ConvertibleToInt = ..., /) -> Self: ...
@@ -350,6 +358,7 @@ class int:
     def __index__(self) -> int: ...
     def __format__(self, format_spec: str, /) -> str: ...
 
+@disjoint_base
 class float:
     def __new__(cls, x: ConvertibleToFloat = ..., /) -> Self: ...
     def as_integer_ratio(self) -> tuple[int, int]: ...
@@ -415,6 +424,7 @@ class float:
         @classmethod
         def from_number(cls, number: float | SupportsIndex | SupportsFloat, /) -> Self: ...
 
+@disjoint_base
 class complex:
     # Python doesn't currently accept SupportsComplex for the second argument
     @overload
@@ -462,21 +472,37 @@ class _FormatMapMapping(Protocol):
 class _TranslateTable(Protocol):
     def __getitem__(self, key: int, /) -> str | int | None: ...
 
+@disjoint_base
 class str(Sequence[str]):
     @overload
     def __new__(cls, object: object = ...) -> Self: ...
     @overload
     def __new__(cls, object: ReadableBuffer, encoding: str = ..., errors: str = ...) -> Self: ...
+    @overload
+    def capitalize(self: LiteralString) -> LiteralString: ...
+    @overload
     def capitalize(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def casefold(self: LiteralString) -> LiteralString: ...
+    @overload
     def casefold(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def center(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def center(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
     def count(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
     def encode(self, encoding: str = "utf-8", errors: str = "strict") -> bytes: ...
     def endswith(
         self, suffix: str | tuple[str, ...], start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /
     ) -> bool: ...
+    @overload
+    def expandtabs(self: LiteralString, tabsize: SupportsIndex = 8) -> LiteralString: ...
+    @overload
     def expandtabs(self, tabsize: SupportsIndex = 8) -> str: ...  # type: ignore[misc]
     def find(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
+    @overload
+    def format(self: LiteralString, *args: LiteralString, **kwargs: LiteralString) -> LiteralString: ...
+    @overload
     def format(self, *args: object, **kwargs: object) -> str: ...
     def format_map(self, mapping: _FormatMapMapping, /) -> str: ...
     def index(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
@@ -492,34 +518,98 @@ class str(Sequence[str]):
     def isspace(self) -> bool: ...
     def istitle(self) -> bool: ...
     def isupper(self) -> bool: ...
+    @overload
+    def join(self: LiteralString, iterable: Iterable[LiteralString], /) -> LiteralString: ...
+    @overload
     def join(self, iterable: Iterable[str], /) -> str: ...  # type: ignore[misc]
+    @overload
+    def ljust(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def ljust(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
+    @overload
+    def lower(self: LiteralString) -> LiteralString: ...
+    @overload
     def lower(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def lstrip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def lstrip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+    @overload
+    def partition(self: LiteralString, sep: LiteralString, /) -> tuple[LiteralString, LiteralString, LiteralString]: ...
+    @overload
     def partition(self, sep: str, /) -> tuple[str, str, str]: ...  # type: ignore[misc]
     if sys.version_info >= (3, 13):
+        @overload
+        def replace(
+            self: LiteralString, old: LiteralString, new: LiteralString, /, count: SupportsIndex = -1
+        ) -> LiteralString: ...
+        @overload
         def replace(self, old: str, new: str, /, count: SupportsIndex = -1) -> str: ...  # type: ignore[misc]
     else:
+        @overload
+        def replace(
+            self: LiteralString, old: LiteralString, new: LiteralString, count: SupportsIndex = -1, /
+        ) -> LiteralString: ...
+        @overload
         def replace(self, old: str, new: str, count: SupportsIndex = -1, /) -> str: ...  # type: ignore[misc]
 
+    @overload
+    def removeprefix(self: LiteralString, prefix: LiteralString, /) -> LiteralString: ...
+    @overload
     def removeprefix(self, prefix: str, /) -> str: ...  # type: ignore[misc]
+    @overload
+    def removesuffix(self: LiteralString, suffix: LiteralString, /) -> LiteralString: ...
+    @overload
     def removesuffix(self, suffix: str, /) -> str: ...  # type: ignore[misc]
     def rfind(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
     def rindex(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
+    @overload
+    def rjust(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def rjust(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
+    @overload
+    def rpartition(self: LiteralString, sep: LiteralString, /) -> tuple[LiteralString, LiteralString, LiteralString]: ...
+    @overload
     def rpartition(self, sep: str, /) -> tuple[str, str, str]: ...  # type: ignore[misc]
+    @overload
+    def rsplit(self: LiteralString, sep: LiteralString | None = None, maxsplit: SupportsIndex = -1) -> list[LiteralString]: ...
+    @overload
     def rsplit(self, sep: str | None = None, maxsplit: SupportsIndex = -1) -> list[str]: ...  # type: ignore[misc]
+    @overload
+    def rstrip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def rstrip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+    @overload
+    def split(self: LiteralString, sep: LiteralString | None = None, maxsplit: SupportsIndex = -1) -> list[LiteralString]: ...
+    @overload
     def split(self, sep: str | None = None, maxsplit: SupportsIndex = -1) -> list[str]: ...  # type: ignore[misc]
+    @overload
+    def splitlines(self: LiteralString, keepends: bool = False) -> list[LiteralString]: ...
+    @overload
     def splitlines(self, keepends: bool = False) -> list[str]: ...  # type: ignore[misc]
     def startswith(
         self, prefix: str | tuple[str, ...], start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /
     ) -> bool: ...
+    @overload
+    def strip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def strip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+    @overload
+    def swapcase(self: LiteralString) -> LiteralString: ...
+    @overload
     def swapcase(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def title(self: LiteralString) -> LiteralString: ...
+    @overload
     def title(self) -> str: ...  # type: ignore[misc]
     def translate(self, table: _TranslateTable, /) -> str: ...
+    @overload
+    def upper(self: LiteralString) -> LiteralString: ...
+    @overload
     def upper(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def zfill(self: LiteralString, width: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def zfill(self, width: SupportsIndex, /) -> str: ...  # type: ignore[misc]
     @staticmethod
     @overload
@@ -530,25 +620,44 @@ class str(Sequence[str]):
     @staticmethod
     @overload
     def maketrans(x: str, y: str, z: str, /) -> dict[int, int | None]: ...
+    @overload
+    def __add__(self: LiteralString, value: LiteralString, /) -> LiteralString: ...
+    @overload
     def __add__(self, value: str, /) -> str: ...  # type: ignore[misc]
     # Incompatible with Sequence.__contains__
     def __contains__(self, key: str, /) -> bool: ...  # type: ignore[override]
     def __eq__(self, value: object, /) -> bool: ...
     def __ge__(self, value: str, /) -> bool: ...
-    def __getitem__(self, key: SupportsIndex | slice, /) -> str: ...
+    @overload
+    def __getitem__(self: LiteralString, key: SupportsIndex | slice, /) -> LiteralString: ...
+    @overload
+    def __getitem__(self, key: SupportsIndex | slice, /) -> str: ...  # type: ignore[misc]
     def __gt__(self, value: str, /) -> bool: ...
     def __hash__(self) -> int: ...
+    @overload
+    def __iter__(self: LiteralString) -> Iterator[LiteralString]: ...
+    @overload
     def __iter__(self) -> Iterator[str]: ...  # type: ignore[misc]
     def __le__(self, value: str, /) -> bool: ...
     def __len__(self) -> int: ...
     def __lt__(self, value: str, /) -> bool: ...
+    @overload
+    def __mod__(self: LiteralString, value: LiteralString | tuple[LiteralString, ...], /) -> LiteralString: ...
+    @overload
     def __mod__(self, value: Any, /) -> str: ...
+    @overload
+    def __mul__(self: LiteralString, value: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def __mul__(self, value: SupportsIndex, /) -> str: ...  # type: ignore[misc]
     def __ne__(self, value: object, /) -> bool: ...
+    @overload
+    def __rmul__(self: LiteralString, value: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def __rmul__(self, value: SupportsIndex, /) -> str: ...  # type: ignore[misc]
     def __getnewargs__(self) -> tuple[str]: ...
     def __format__(self, format_spec: str, /) -> str: ...
 
+@disjoint_base
 class bytes(Sequence[int]):
     @overload
     def __new__(cls, o: Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer, /) -> Self: ...
@@ -647,6 +756,7 @@ class bytes(Sequence[int]):
 
     def __buffer__(self, flags: int, /) -> memoryview: ...
 
+@disjoint_base
 class bytearray(MutableSequence[int]):
     @overload
     def __init__(self) -> None: ...
@@ -911,6 +1021,8 @@ class slice(Generic[_StartT_co, _StopT_co, _StepT_co]):
 
     def indices(self, len: SupportsIndex, /) -> tuple[int, int, int]: ...
 
+# Making this a disjoint_base upsets pyright
+# @disjoint_base
 class tuple(Sequence[_T_co]):
     def __new__(cls, iterable: Iterable[_T_co] = ..., /) -> Self: ...
     def __len__(self) -> int: ...
@@ -987,6 +1099,7 @@ class function:
     # mypy uses `builtins.function.__get__` to represent methods, properties, and getset_descriptors so we type the return as Any.
     def __get__(self, instance: object, owner: type | None = None, /) -> Any: ...
 
+@disjoint_base
 class list(MutableSequence[_T]):
     @overload
     def __init__(self) -> None: ...
@@ -1041,6 +1154,7 @@ class list(MutableSequence[_T]):
     def __eq__(self, value: object, /) -> bool: ...
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
+@disjoint_base
 class dict(MutableMapping[_KT, _VT]):
     # __init__ should be kept roughly in line with `collections.UserDict.__init__`, which has similar semantics
     # Also multiprocessing.managers.SyncManager.dict()
@@ -1123,6 +1237,7 @@ class dict(MutableMapping[_KT, _VT]):
     @overload
     def __ior__(self, value: Iterable[tuple[_KT, _VT]], /) -> Self: ...
 
+@disjoint_base
 class set(MutableSet[_T]):
     @overload
     def __init__(self) -> None: ...
@@ -1162,6 +1277,7 @@ class set(MutableSet[_T]):
     __hash__: ClassVar[None]  # type: ignore[assignment]
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
+@disjoint_base
 class frozenset(AbstractSet[_T_co]):
     @overload
     def __new__(cls) -> Self: ...
@@ -1190,7 +1306,8 @@ class frozenset(AbstractSet[_T_co]):
     def __hash__(self) -> int: ...
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class enumerate(Iterator[tuple[int, _T]]):
+@disjoint_base
+class enumerate(Generic[_T]):
     def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> tuple[int, _T]: ...
@@ -1221,6 +1338,7 @@ class range(Sequence[int]):
     def __getitem__(self, key: slice, /) -> range: ...
     def __reversed__(self) -> Iterator[int]: ...
 
+@disjoint_base
 class property:
     fget: Callable[[Any], Any] | None
     fset: Callable[[Any, Any], None] | None
@@ -1384,7 +1502,8 @@ else:
 
 exit: _sitebuiltins.Quitter
 
-class filter(Iterator[_T]):
+@disjoint_base
+class filter(Generic[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
     @overload
@@ -1447,8 +1566,8 @@ def len(obj: Sized, /) -> int: ...
 license: _sitebuiltins._Printer
 
 def locals() -> dict[str, Any]: ...
-
-class map(Iterator[_S]):
+@disjoint_base
+class map(Generic[_S]):
     # 3.14 adds `strict` argument.
     if sys.version_info >= (3, 14):
         @overload
@@ -1754,7 +1873,8 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
 
 quit: _sitebuiltins.Quitter
 
-class reversed(Iterator[_T]):
+@disjoint_base
+class reversed(Generic[_T]):
     @overload
     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
     @overload
@@ -1805,7 +1925,7 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 # without creating many false-positive errors (see #7578).
 # Instead, we special-case the most common examples of this: bool and literal integers.
 @overload
-def sum(iterable: Iterable[bool], /, start: int = 0) -> int: ...
+def sum(iterable: Iterable[bool | _LiteralInteger], /, start: int = 0) -> int: ...
 @overload
 def sum(iterable: Iterable[_SupportsSumNoDefaultT], /) -> _SupportsSumNoDefaultT | Literal[0]: ...
 @overload
@@ -1817,8 +1937,8 @@ def sum(iterable: Iterable[_AddableT1], /, start: _AddableT2) -> _AddableT1 | _A
 def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
 @overload
 def vars(object: Any = ..., /) -> dict[str, Any]: ...
-
-class zip(Iterator[_T_co]):
+@disjoint_base
+class zip(Generic[_T_co]):
     if sys.version_info >= (3, 10):
         @overload
         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...
@@ -1921,6 +2041,7 @@ else:
 
     Ellipsis: ellipsis
 
+@disjoint_base
 class BaseException:
     args: tuple[Any, ...]
     __cause__: BaseException | None
@@ -1939,14 +2060,17 @@ class BaseException:
 class GeneratorExit(BaseException): ...
 class KeyboardInterrupt(BaseException): ...
 
+@disjoint_base
 class SystemExit(BaseException):
     code: sys._ExitCode
 
 class Exception(BaseException): ...
 
+@disjoint_base
 class StopIteration(Exception):
     value: Any
 
+@disjoint_base
 class OSError(Exception):
     errno: int | None
     strerror: str | None
@@ -1964,15 +2088,20 @@ if sys.platform == "win32":
 class ArithmeticError(Exception): ...
 class AssertionError(Exception): ...
 
-class AttributeError(Exception):
-    if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 10):
+    @disjoint_base
+    class AttributeError(Exception):
         def __init__(self, *args: object, name: str | None = ..., obj: object = ...) -> None: ...
         name: str
         obj: object
 
+else:
+    class AttributeError(Exception): ...
+
 class BufferError(Exception): ...
 class EOFError(Exception): ...
 
+@disjoint_base
 class ImportError(Exception):
     def __init__(self, *args: object, name: str | None = ..., path: str | None = ...) -> None: ...
     name: str | None
@@ -1984,15 +2113,20 @@ class ImportError(Exception):
 class LookupError(Exception): ...
 class MemoryError(Exception): ...
 
-class NameError(Exception):
-    if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 10):
+    @disjoint_base
+    class NameError(Exception):
         def __init__(self, *args: object, name: str | None = ...) -> None: ...
         name: str
+
+else:
+    class NameError(Exception): ...
 
 class ReferenceError(Exception): ...
 class RuntimeError(Exception): ...
 class StopAsyncIteration(Exception): ...
 
+@disjoint_base
 class SyntaxError(Exception):
     msg: str
     filename: str | None
@@ -2056,6 +2190,7 @@ class IndentationError(SyntaxError): ...
 class TabError(IndentationError): ...
 class UnicodeError(ValueError): ...
 
+@disjoint_base
 class UnicodeDecodeError(UnicodeError):
     encoding: str
     object: bytes
@@ -2064,6 +2199,7 @@ class UnicodeDecodeError(UnicodeError):
     reason: str
     def __init__(self, encoding: str, object: ReadableBuffer, start: int, end: int, reason: str, /) -> None: ...
 
+@disjoint_base
 class UnicodeEncodeError(UnicodeError):
     encoding: str
     object: str
@@ -2072,6 +2208,7 @@ class UnicodeEncodeError(UnicodeError):
     reason: str
     def __init__(self, encoding: str, object: str, start: int, end: int, reason: str, /) -> None: ...
 
+@disjoint_base
 class UnicodeTranslateError(UnicodeError):
     encoding: None
     object: str
@@ -2102,6 +2239,7 @@ if sys.version_info >= (3, 11):
     _ExceptionT = TypeVar("_ExceptionT", bound=Exception)
 
     # See `check_exception_group.py` for use-cases and comments.
+    @disjoint_base
     class BaseExceptionGroup(BaseException, Generic[_BaseExceptionT_co]):
         def __new__(cls, message: str, exceptions: Sequence[_BaseExceptionT_co], /) -> Self: ...
         def __init__(self, message: str, exceptions: Sequence[_BaseExceptionT_co], /) -> None: ...

@@ -656,7 +656,7 @@ class TarFile:
         members: Iterable[TarInfo] | None = None,
         *,
         numeric_owner: bool = False,
-        filter: _TarfileFilter | None = ...,
+        filter: _TarfileFilter | None = None,
     ) -> None: ...
     # Same situation as for `extractall`.
     def extract(
@@ -666,7 +666,7 @@ class TarFile:
         set_attrs: bool = True,
         *,
         numeric_owner: bool = False,
-        filter: _TarfileFilter | None = ...,
+        filter: _TarfileFilter | None = None,
     ) -> None: ...
     def _extract_member(
         self,
@@ -744,6 +744,28 @@ def tar_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
 def data_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
 
 class TarInfo:
+    __slots__ = (
+        "name",
+        "mode",
+        "uid",
+        "gid",
+        "size",
+        "mtime",
+        "chksum",
+        "type",
+        "linkname",
+        "uname",
+        "gname",
+        "devmajor",
+        "devminor",
+        "offset",
+        "offset_data",
+        "pax_headers",
+        "sparse",
+        "_tarfile",
+        "_sparse_structs",
+        "_link_target",
+    )
     name: str
     path: str
     size: int
@@ -765,10 +787,10 @@ class TarInfo:
     def __init__(self, name: str = "") -> None: ...
     if sys.version_info >= (3, 13):
         @property
-        @deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.16")
+        @deprecated("Deprecated since Python 3.13; will be removed in Python 3.16.")
         def tarfile(self) -> TarFile | None: ...
         @tarfile.setter
-        @deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.16")
+        @deprecated("Deprecated since Python 3.13; will be removed in Python 3.16.")
         def tarfile(self, tarfile: TarFile | None) -> None: ...
     else:
         tarfile: TarFile | None

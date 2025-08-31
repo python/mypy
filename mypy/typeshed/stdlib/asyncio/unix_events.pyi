@@ -48,7 +48,7 @@ if sys.platform != "win32":
 # So, it is special cased.
 if sys.version_info < (3, 14):
     if sys.version_info >= (3, 12):
-        @deprecated("Deprecated as of Python 3.12; will be removed in Python 3.14")
+        @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
         class AbstractChildWatcher:
             @abstractmethod
             def add_child_handler(
@@ -100,7 +100,7 @@ if sys.platform != "win32":
                 def is_active(self) -> bool: ...
                 def attach_loop(self, loop: events.AbstractEventLoop | None) -> None: ...
 
-            @deprecated("Deprecated as of Python 3.12; will be removed in Python 3.14")
+            @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
             class SafeChildWatcher(BaseChildWatcher):
                 def __enter__(self) -> Self: ...
                 def __exit__(
@@ -111,7 +111,7 @@ if sys.platform != "win32":
                 ) -> None: ...
                 def remove_child_handler(self, pid: int) -> bool: ...
 
-            @deprecated("Deprecated as of Python 3.12; will be removed in Python 3.14")
+            @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
             class FastChildWatcher(BaseChildWatcher):
                 def __enter__(self) -> Self: ...
                 def __exit__(
@@ -171,9 +171,9 @@ if sys.platform != "win32":
     else:
         class _UnixDefaultEventLoopPolicy(events.BaseDefaultEventLoopPolicy):
             if sys.version_info >= (3, 12):
-                @deprecated("Deprecated as of Python 3.12; will be removed in Python 3.14")
+                @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
                 def get_child_watcher(self) -> AbstractChildWatcher: ...
-                @deprecated("Deprecated as of Python 3.12; will be removed in Python 3.14")
+                @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
                 def set_child_watcher(self, watcher: AbstractChildWatcher | None) -> None: ...
             else:
                 def get_child_watcher(self) -> AbstractChildWatcher: ...
@@ -191,7 +191,7 @@ if sys.platform != "win32":
 
     if sys.version_info < (3, 14):
         if sys.version_info >= (3, 12):
-            @deprecated("Deprecated as of Python 3.12; will be removed in Python 3.14")
+            @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
             class MultiLoopChildWatcher(AbstractChildWatcher):
                 def is_active(self) -> bool: ...
                 def close(self) -> None: ...
