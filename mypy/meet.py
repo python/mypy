@@ -329,7 +329,7 @@ def is_overlapping_types(
 
     if seen_types is None:
         seen_types = set()
-    if (left, right) in seen_types:
+    elif (left, right) in seen_types:
         return True
     if isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType):
         seen_types.add((left, right))
