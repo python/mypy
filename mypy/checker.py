@@ -90,6 +90,7 @@ from mypy.nodes import (
     ContinueStmt,
     Decorator,
     DelStmt,
+    DictExpr,
     EllipsisExpr,
     Expression,
     ExpressionStmt,
@@ -124,6 +125,7 @@ from mypy.nodes import (
     RaiseStmt,
     RefExpr,
     ReturnStmt,
+    SetExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -4859,6 +4861,38 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.check_return_stmt(s)
         self.binder.unreachable()
 
+    def infer_context_dependent(
+        self, expr: Expression, type_ctx: Type, allow_none_func_call: bool
+    ) -> ProperType:
+        """Infer type of an expression with fallback to empty type context."""
+        with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as msg:
+            with self.local_type_map as type_map:
+                typ = get_proper_type(
+                    self.expr_checker.accept(
+                        expr, type_ctx, allow_none_return=allow_none_func_call
+                    )
+                )
+        if not msg.has_new_errors():
+            self.store_types(type_map)
+            return typ
+
+        # If there are errors with the original type context, try re-inferring in empty context.
+        original_messages = msg.filtered_errors()
+        original_type_map = type_map
+        with self.msg.filter_errors(filter_errors=True, save_filtered_errors=True) as msg:
+            with self.local_type_map as type_map:
+                alt_typ = get_proper_type(
+                    self.expr_checker.accept(expr, None, allow_none_return=allow_none_func_call)
+                )
+        if not msg.has_new_errors() and is_proper_subtype(alt_typ, typ):
+            self.store_types(type_map)
+            return alt_typ
+
+        # If empty fallback didn't work, use results from the original type context.
+        self.msg.add_errors(original_messages)
+        self.store_types(original_type_map)
+        return typ
+
     def check_return_stmt(self, s: ReturnStmt) -> None:
         defn = self.scope.current_function()
         if defn is not None:
@@ -4891,11 +4925,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 allow_none_func_call = is_lambda or declared_none_return or declared_any_return
 
                 # Return with a value.
-                typ = get_proper_type(
-                    self.expr_checker.accept(
-                        s.expr, return_type, allow_none_return=allow_none_func_call
+                if isinstance(s.expr, (CallExpr, ListExpr, TupleExpr, DictExpr, SetExpr, OpExpr)):
+                    # For expressions that (strongly) depend on type context (i.e. those that
+                    # are handled like a function call), we allow fallback to empty type context
+                    # in case of errors, this improves user experience in some cases,
+                    # see e.g. testReturnFallbackInference.
+                    typ = self.infer_context_dependent(s.expr, return_type, allow_none_func_call)
+                else:
+                    typ = get_proper_type(
+                        self.expr_checker.accept(
+                            s.expr, return_type, allow_none_return=allow_none_func_call
+                        )
                     )
-                )
                 # Treat NotImplemented as having type Any, consistent with its
                 # definition in typeshed prior to python/typeshed#4222.
                 if (
