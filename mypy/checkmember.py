@@ -75,7 +75,6 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
-from mypy.typetraverser import TypeTraverserVisitor
 from mypy.util import is_dunder, maybe_mangled
 
 
