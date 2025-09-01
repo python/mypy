@@ -228,7 +228,7 @@ class TypeTranslator(TypeVisitor[Type]):
             last_known_value = raw_last_known_value
         return Instance(
             typ=t.type,
-            args=self.translate_types(t.args),
+            args=self.translate_type_tuple(t.args),
             line=t.line,
             column=t.column,
             last_known_value=last_known_value,
@@ -242,7 +242,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_parameters(self, t: Parameters, /) -> Type:
-        return t.copy_modified(arg_types=self.translate_types(t.arg_types))
+        return t.copy_modified(arg_types=self.translate_type_list(t.arg_types))
 
     def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> Type:
         return t
@@ -255,14 +255,14 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType, /) -> Type:
         return t.copy_modified(
-            arg_types=self.translate_types(t.arg_types),
+            arg_types=self.translate_type_list(t.arg_types),
             ret_type=t.ret_type.accept(self),
             variables=self.translate_variables(t.variables),
         )
 
     def visit_tuple_type(self, t: TupleType, /) -> Type:
         return TupleType(
-            self.translate_types(t.items),
+            self.translate_type_list(t.items),
             # TODO: This appears to be unsafe.
             cast(Any, t.partial_fallback.accept(self)),
             t.line,
@@ -299,7 +299,7 @@ class TypeTranslator(TypeVisitor[Type]):
             return cached
 
         result = UnionType(
-            self.translate_types(t.items),
+            self.translate_type_list(t.items),
             t.line,
             t.column,
             uses_pep604_syntax=t.uses_pep604_syntax,
@@ -308,8 +308,11 @@ class TypeTranslator(TypeVisitor[Type]):
             self.set_cached(t, result)
         return result
 
-    def translate_types(self, types: Iterable[Type]) -> list[Type]:
+    def translate_type_list(self, types: list[Type]) -> list[Type]:
         return [t.accept(self) for t in types]
+
+    def translate_type_tuple(self, types: tuple[Type, ...]) -> tuple[Type, ...]:
+        return tuple(t.accept(self) for t in types)
 
     def translate_variables(
         self, variables: Sequence[TypeVarLikeType]

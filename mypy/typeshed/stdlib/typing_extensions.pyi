@@ -120,6 +120,7 @@ __all__ = [
     "clear_overloads",
     "dataclass_transform",
     "deprecated",
+    "disjoint_base",
     "Doc",
     "evaluate_forward_ref",
     "get_overloads",
@@ -150,6 +151,7 @@ __all__ = [
     "TypeGuard",
     "TypeIs",
     "TYPE_CHECKING",
+    "type_repr",
     "Never",
     "NoReturn",
     "ReadOnly",
@@ -219,6 +221,7 @@ runtime = runtime_checkable
 Final: _SpecialForm
 
 def final(f: _F) -> _F: ...
+def disjoint_base(cls: _TC) -> _TC: ...
 
 Literal: _SpecialForm
 
@@ -405,36 +408,43 @@ else:
 
     @runtime_checkable
     class SupportsInt(Protocol, metaclass=abc.ABCMeta):
+        __slots__ = ()
         @abc.abstractmethod
         def __int__(self) -> int: ...
 
     @runtime_checkable
     class SupportsFloat(Protocol, metaclass=abc.ABCMeta):
+        __slots__ = ()
         @abc.abstractmethod
         def __float__(self) -> float: ...
 
     @runtime_checkable
     class SupportsComplex(Protocol, metaclass=abc.ABCMeta):
+        __slots__ = ()
         @abc.abstractmethod
         def __complex__(self) -> complex: ...
 
     @runtime_checkable
     class SupportsBytes(Protocol, metaclass=abc.ABCMeta):
+        __slots__ = ()
         @abc.abstractmethod
         def __bytes__(self) -> bytes: ...
 
     @runtime_checkable
     class SupportsIndex(Protocol, metaclass=abc.ABCMeta):
+        __slots__ = ()
         @abc.abstractmethod
         def __index__(self) -> int: ...
 
     @runtime_checkable
     class SupportsAbs(Protocol[_T_co]):
+        __slots__ = ()
         @abc.abstractmethod
         def __abs__(self) -> _T_co: ...
 
     @runtime_checkable
     class SupportsRound(Protocol[_T_co]):
+        __slots__ = ()
         @overload
         @abc.abstractmethod
         def __round__(self) -> int: ...
@@ -447,11 +457,13 @@ if sys.version_info >= (3, 14):
 else:
     @runtime_checkable
     class Reader(Protocol[_T_co]):
+        __slots__ = ()
         @abc.abstractmethod
         def read(self, size: int = ..., /) -> _T_co: ...
 
     @runtime_checkable
     class Writer(Protocol[_T_contra]):
+        __slots__ = ()
         @abc.abstractmethod
         def write(self, data: _T_contra, /) -> int: ...
 
@@ -616,7 +628,7 @@ TypeForm: _SpecialForm
 if sys.version_info >= (3, 14):
     from typing import evaluate_forward_ref as evaluate_forward_ref
 
-    from annotationlib import Format as Format, get_annotations as get_annotations
+    from annotationlib import Format as Format, get_annotations as get_annotations, type_repr as type_repr
 else:
     class Format(enum.IntEnum):
         VALUE = 1
@@ -684,6 +696,7 @@ else:
         format: Format | None = None,
         _recursive_guard: Container[str] = ...,
     ) -> AnnotationForm: ...
+    def type_repr(value: object) -> str: ...
 
 # PEP 661
 class Sentinel:

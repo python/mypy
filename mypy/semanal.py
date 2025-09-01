@@ -995,7 +995,7 @@ class SemanticAnalyzer(
                     if has_self_type and self.type is not None:
                         info = self.type
                         if info.self_type is not None:
-                            result.variables = [info.self_type] + list(result.variables)
+                            result.variables = (info.self_type,) + result.variables
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
