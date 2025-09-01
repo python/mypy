@@ -90,6 +90,8 @@ def apply_generic_arguments(
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool = False,
+    *,
+    prefer_defaults: bool = False,
 ) -> CallableType:
     """Apply generic type arguments to a callable type.
 
@@ -100,6 +102,9 @@ def apply_generic_arguments(
 
     If `skip_unsatisfied` is True, then just skip the types that don't satisfy type variable
     bound or constraints, instead of giving an error.
+
+    If `prefer_defaults` is True, we will use defaults of all variables that have one
+    instead of making the result generic in those.
     """
     tvars = callable.variables
     assert len(orig_types) <= len(tvars)
@@ -140,10 +145,6 @@ def apply_generic_arguments(
         callable = expand_type(callable, id_to_type)
         assert isinstance(callable, CallableType)
         return callable.copy_modified(variables=[tv for tv in tvars if tv.id not in id_to_type])
-    else:
-        callable = callable.copy_modified(
-            arg_types=[expand_type(at, id_to_type) for at in callable.arg_types]
-        )
 
     # Apply arguments to TypeGuard and TypeIs if any.
     if callable.type_guard is not None:
@@ -167,12 +168,16 @@ def apply_generic_arguments(
             remaining_tvars.append(tv)
             continue
         # TypeVarLike isn't in id_to_type mapping.
-        # Only expand the TypeVar default here.
-        typ = expand_type(tv, id_to_type)
-        assert isinstance(typ, TypeVarLikeType)
-        remaining_tvars.append(typ)
+        if prefer_defaults:
+            # We were asked to avoid polymorphic results as much as possible.
+            id_to_type[tv.id] = expand_type(tv.default, id_to_type)
+        else:
+            # Only expand the TypeVar default here.
+            typ = tv.copy_modified(id=tv.id, default=expand_type(tv.default, id_to_type))
+            remaining_tvars.append(typ)
 
     return callable.copy_modified(
+        arg_types=[expand_type(at, id_to_type) for at in callable.arg_types],
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
