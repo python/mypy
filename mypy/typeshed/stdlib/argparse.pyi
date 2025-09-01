@@ -156,7 +156,7 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
             exit_on_error: bool = True,
             *,
             suggest_on_error: bool = False,
-            color: bool = False,
+            color: bool = True,
         ) -> None: ...
     else:
         def __init__(
@@ -470,7 +470,7 @@ class Namespace(_AttributeHolder):
     __hash__: ClassVar[None]  # type: ignore[assignment]
 
 if sys.version_info >= (3, 14):
-    @deprecated("Deprecated in Python 3.14; Simply open files after parsing arguments")
+    @deprecated("Deprecated since Python 3.14. Open files after parsing arguments instead.")
     class FileType:
         # undocumented
         _mode: str
