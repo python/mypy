@@ -2346,3 +2346,15 @@ gc: G[D2]
 reveal_type(gb.test())  # N: Revealed type is "typing.Sequence[__main__.D1]"
 reveal_type(gc.test())  # N: Revealed type is "builtins.list[__main__.D2]"
 [builtins fixtures/list.pyi]
+
+[case testEnumImplicitlyFinalForSelfType]
+from enum import Enum
+from typing import Self
+
+class Foo(Enum):
+    A = 1
+
+    @classmethod
+    def foo(self) -> Self:
+        return Foo.A
+[builtins fixtures/classmethod.pyi]
