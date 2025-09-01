@@ -1982,6 +1982,7 @@ replace(b, x="egg", y=42)
 replace(b, x=42, y="egg", q=42)
 [out]
 _testDataclassReplace.py:4: note: "replace" of "A" defined here
+_testDataclassReplace.py:8: note: "replace" of "B" defined here
 _testDataclassReplace.py:13: note: Revealed type is "_testDataclassReplace.A"
 _testDataclassReplace.py:14: error: Too few arguments for "replace"
 _testDataclassReplace.py:15: error: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"

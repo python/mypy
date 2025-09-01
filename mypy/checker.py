@@ -2817,10 +2817,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.check_enum_new(defn)
 
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
-        for sym in base.names.values():
-            if self.is_final_enum_value(sym):
-                self.fail(f'Cannot extend enum with existing members: "{base.name}"', defn)
-                break
+        if base.enum_members:
+            self.fail(f'Cannot extend enum with existing members: "{base.name}"', defn)
 
     def is_final_enum_value(self, sym: SymbolTableNode, base: TypeInfo) -> bool:
         if isinstance(sym.node, (FuncBase, Decorator)):
@@ -3547,10 +3545,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 ):
                     continue
 
-                if is_private(lvalue_node.name):
-                    continue
-
-                base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
+                base_type, base_node = self.node_type_from_base(lvalue_node.name, base, lvalue)
+                # TODO: if the r.h.s. is a descriptor, we should check setter override as well.
                 custom_setter = is_custom_settable_property(base_node)
                 if isinstance(base_type, PartialType):
                     base_type = None
