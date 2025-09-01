@@ -306,6 +306,19 @@ def is_none_object_overlap(t1: ProperType, t2: ProperType) -> bool:
     )
 
 
+def are_related_types(
+    left: Type, right: Type, *, proper_subtype: bool, ignore_promotions: bool
+) -> bool:
+    if proper_subtype:
+        return is_proper_subtype(
+            left, right, ignore_promotions=ignore_promotions
+        ) or is_proper_subtype(right, left, ignore_promotions=ignore_promotions)
+    else:
+        return is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
+            right, left, ignore_promotions=ignore_promotions
+        )
+
+
 def is_overlapping_types(
     left: Type,
     right: Type,
@@ -385,16 +398,10 @@ def is_overlapping_types(
         if is_none_object_overlap(left, right) or is_none_object_overlap(right, left):
             return False
 
-    if overlap_for_overloads:
-        if is_proper_subtype(
-            left, right, ignore_promotions=ignore_promotions
-        ) or is_proper_subtype(right, left, ignore_promotions=ignore_promotions):
-            return True
-    else:
-        if is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
-            right, left, ignore_promotions=ignore_promotions
-        ):
-            return True
+    if are_related_types(
+        left, right, proper_subtype=overlap_for_overloads, ignore_promotions=ignore_promotions
+    ):
+        return True
 
     # See the docstring for 'get_possible_variants' for more info on what the
     # following lines are doing.
@@ -567,16 +574,10 @@ def is_overlapping_types(
     if isinstance(left, Instance) and isinstance(right, Instance):
         # First we need to handle promotions and structural compatibility for instances
         # that came as fallbacks, so simply call is_subtype() to avoid code duplication.
-        if overlap_for_overloads:
-            if is_proper_subtype(
-                left, right, ignore_promotions=ignore_promotions
-            ) or is_proper_subtype(right, left, ignore_promotions=ignore_promotions):
-                return True
-        else:
-            if is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
-                right, left, ignore_promotions=ignore_promotions
-            ):
-                return True
+        if are_related_types(
+            left, right, proper_subtype=overlap_for_overloads, ignore_promotions=ignore_promotions
+        ):
+            return True
 
         if right.type.fullname == "builtins.int" and left.type.fullname in MYPYC_NATIVE_INT_NAMES:
             return True
