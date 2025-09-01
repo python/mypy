@@ -1704,6 +1704,7 @@ class LowLevelIRBuilder:
                 or is_dict_rprimitive(value_typ)
                 or isinstance(value_typ, RInstance)
             ):
+                # 'X | None' type: Check for None first and then specialize for X.
                 res = Register(bit_rprimitive)
                 cmp = self.add(ComparisonOp(value, self.none_object(), ComparisonOp.EQ, line))
                 none, not_none, out = BasicBlock(), BasicBlock(), BasicBlock()
