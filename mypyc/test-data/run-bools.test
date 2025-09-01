@@ -117,6 +117,29 @@ def test_optional_to_bool() -> None:
     assert not optional_to_bool3(F(False))
     assert optional_to_bool3(F(True))
 
+def not_c(c: C) -> bool:
+    return not c
+
+def not_c_opt(c: C | None) -> bool:
+    return not c
+
+def not_d(d: D) -> bool:
+    return not d
+
+def not_d_opt(d: D | None) -> bool:
+    return not d
+
+def test_not_instance() -> None:
+    assert not not_c(C())
+    assert not_c_opt(None)
+    assert not not_c_opt(C())
+
+    assert not_d(D(False))
+    assert not not_d(D(True))
+    assert not_d_opt(D(False))
+    assert not_d_opt(None)
+    assert not not_d_opt(D(True))
+
 def test_any_to_bool() -> None:
     a: Any = int()
     b: Any = a + 1
