@@ -12,12 +12,14 @@ class GenericMeta(type): pass
 
 class _SpecialForm:
     def __getitem__(self, index): ...
+class TypeVar:
+    def __init__(self, name, *args, bound=None): ...
+    def __or__(self, other): ...
 
 cast = 0
 overload = 0
 Any = object()
 Optional = 0
-TypeVar = 0
 Generic = 0
 Protocol = 0
 Tuple = 0
@@ -30,6 +32,7 @@ Final = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Self = 0
 Callable: _SpecialForm
 Union: _SpecialForm
 Literal: _SpecialForm

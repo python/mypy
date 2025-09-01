@@ -17,6 +17,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    DecRef,
     Extend,
     Float,
     FloatComparisonOp,
@@ -25,6 +26,7 @@ from mypyc.ir.ops import (
     GetAttr,
     GetElementPtr,
     Goto,
+    IncRef,
     InitStatic,
     Integer,
     IntOp,
@@ -43,12 +45,14 @@ from mypyc.ir.ops import (
     RegisterOp,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -77,12 +81,11 @@ class CFG:
         return f"exits: {exits}\nsucc: {self.succ}\npred: {self.pred}"
 
 
-def get_cfg(blocks: list[BasicBlock]) -> CFG:
+def get_cfg(blocks: list[BasicBlock], *, use_yields: bool = False) -> CFG:
     """Calculate basic block control-flow graph.
 
-    The result is a dictionary like this:
-
-         basic block index -> (successors blocks, predecesssor blocks)
+    If use_yields is set, then we treat returns inserted by yields as gotos
+    instead of exits.
     """
     succ_map = {}
     pred_map: dict[BasicBlock, list[BasicBlock]] = {}
@@ -92,7 +95,10 @@ def get_cfg(blocks: list[BasicBlock]) -> CFG:
             isinstance(op, ControlOp) for op in block.ops[:-1]
         ), "Control-flow ops must be at the end of blocks"
 
-        succ = list(block.terminator.targets())
+        if use_yields and isinstance(block.terminator, Return) and block.terminator.yield_target:
+            succ = [block.terminator.yield_target]
+        else:
+            succ = list(block.terminator.targets())
         if not succ:
             exits.add(block)
 
@@ -268,6 +274,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
+    def visit_set_element(self, op: SetElement) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
     def visit_load_address(self, op: LoadAddress) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
@@ -440,7 +449,7 @@ class UndefinedVisitor(BaseAnalysisVisitor[Value]):
 def non_trivial_sources(op: Op) -> set[Value]:
     result = set()
     for source in op.sources():
-        if not isinstance(source, (Integer, Float)):
+        if not isinstance(source, (Integer, Float, Undef)):
             result.add(source)
     return result
 
@@ -473,6 +482,12 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
         return non_trivial_sources(op), set()
+
+    def visit_inc_ref(self, op: IncRef) -> GenAndKill[Value]:
+        return set(), set()
+
+    def visit_dec_ref(self, op: DecRef) -> GenAndKill[Value]:
+        return set(), set()
 
 
 def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Value]:
@@ -542,7 +557,7 @@ def run_analysis(
     # Set up initial state for worklist algorithm.
     worklist = list(blocks)
     if not backward:
-        worklist = worklist[::-1]  # Reverse for a small performance improvement
+        worklist.reverse()  # Reverse for a small performance improvement
     workset = set(worklist)
     before: dict[BasicBlock, set[T]] = {}
     after: dict[BasicBlock, set[T]] = {}

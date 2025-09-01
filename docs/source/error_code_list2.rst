@@ -145,6 +145,29 @@ literal:
     def is_magic(x: bytes) -> bool:
         return x == b'magic'  # OK
 
+:option:`--strict-equality <mypy --strict-equality>` does not include comparisons with
+``None``:
+
+.. code-block:: python
+
+    # mypy: strict-equality
+
+    def is_none(x: str) -> bool:
+        return x is None  # OK
+
+If you want such checks, you must also activate
+:option:`--strict-equality-for-none <mypy --strict-equality-for-none>` (we might merge
+these two options later).
+
+.. code-block:: python
+
+    # mypy: strict-equality strict-equality-for-none
+
+    def is_none(x: str) -> bool:
+        # Error: Non-overlapping identity check
+        #        (left operand type: "str", right operand type: "None")
+        return x is None
+
 .. _code-no-untyped-call:
 
 Check that no untyped functions are called [no-untyped-call]
@@ -612,3 +635,44 @@ Example:
     # mypy: disallow-any-explicit
     from typing import Any
     x: Any = 1  # Error: Explicit "Any" type annotation  [explicit-any]
+
+
+.. _code-exhaustive-match:
+
+Check that match statements match exhaustively [exhaustive-match]
+-----------------------------------------------------------------------
+
+If enabled with :option:`--enable-error-code exhaustive-match <mypy --enable-error-code>`,
+mypy generates an error if a match statement does not match all possible cases/types.
+
+
+Example:
+
+.. code-block:: python
+
+        import enum
+
+
+        class Color(enum.Enum):
+            RED = 1
+            BLUE = 2
+
+        val: Color = Color.RED
+
+        # OK without --enable-error-code exhaustive-match
+        match val:
+            case Color.RED:
+                print("red")
+
+        # With --enable-error-code exhaustive-match
+        # Error: Match statement has unhandled case for values of type "Literal[Color.BLUE]"
+        match val:
+            case Color.RED:
+                print("red")
+
+        # OK with or without --enable-error-code exhaustive-match, since all cases are handled
+        match val:
+            case Color.RED:
+                print("red")
+            case _:
+                print("other")

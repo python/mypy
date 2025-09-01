@@ -40,6 +40,7 @@ from typing import (
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.semanal_main
+from mypy.cache import Buffer
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -90,7 +91,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
 from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
-from mypy.types import Type
+from mypy.types import Type, instance_cache
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
 from mypy.version import __version__
@@ -116,6 +117,8 @@ CORE_BUILTIN_MODULES: Final = {
     "abc",
 }
 
+# We are careful now, we can increase this in future if safe/useful.
+MAX_GC_FREEZE_CYCLES = 1
 
 Graph: _TypeAlias = dict[str, "State"]
 
@@ -177,6 +180,9 @@ def build(
     # fields for callers that want the traditional API.
     messages = []
 
+    # This is mostly for the benefit of tests that use builtins fixtures.
+    instance_cache.reset()
+
     def default_flush_errors(
         filename: str | None, new_messages: list[str], is_serious: bool
     ) -> None:
@@ -194,7 +200,7 @@ def build(
         result.errors = messages
         return result
     except CompileError as e:
-        # CompileErrors raised from an errors object carry all of the
+        # CompileErrors raised from an errors object carry all the
         # messages that have not been reported out by error streaming.
         # Patch it up to contain either none or all none of the messages,
         # depending on whether we are flushing errors.
@@ -707,6 +713,8 @@ class BuildManager:
         # new file can be processed O(n**2) times. This cache
         # avoids most of this redundant work.
         self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo]]] = {}
+        # Number of times we used GC optimization hack for fresh SCCs.
+        self.gc_freeze_cycles = 0
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -802,11 +810,11 @@ class BuildManager:
                             res.append((pri, sub_id, imp.line))
                         else:
                             all_are_submodules = False
-                    # Add cur_id as a dependency, even if all of the
+                    # Add cur_id as a dependency, even if all the
                     # imports are submodules. Processing import from will try
                     # to look through cur_id, so we should depend on it.
-                    # As a workaround for for some bugs in cycle handling (#4498),
-                    # if all of the imports are submodules, do the import at a lower
+                    # As a workaround for some bugs in cycle handling (#4498),
+                    # if all the imports are submodules, do the import at a lower
                     # priority.
                     pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
                     res.append((pri, cur_id, imp.line))
@@ -929,7 +937,7 @@ def write_deps_cache(
 ) -> None:
     """Write cache files for fine-grained dependencies.
 
-    Serialize fine-grained dependencies map for fine grained mode.
+    Serialize fine-grained dependencies map for fine-grained mode.
 
     Dependencies on some module 'm' is stored in the dependency cache
     file m.deps.json.  This entails some spooky action at a distance:
@@ -943,7 +951,7 @@ def write_deps_cache(
     fine-grained dependencies in a global cache file:
      * We take a snapshot of current sources to later check consistency
        between the fine-grained dependency cache and module cache metadata
-     * We store the mtime of all of the dependency files to verify they
+     * We store the mtime of all the dependency files to verify they
        haven't changed
     """
     metastore = manager.metastore
@@ -1111,7 +1119,7 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
     if deps_meta is None:
         return None
     meta_snapshot = deps_meta["snapshot"]
-    # Take a snapshot of the source hashes from all of the metas we found.
+    # Take a snapshot of the source hashes from all the metas we found.
     # (Including the ones we rejected because they were out of date.)
     # We use this to verify that they match up with the proto_deps.
     current_meta_snapshot = {
@@ -1137,6 +1145,17 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
                 return None
 
     return module_deps_metas
+
+
+def _load_ff_file(file: str, manager: BuildManager, log_error: str) -> bytes | None:
+    t0 = time.time()
+    try:
+        data = manager.metastore.read(file)
+    except OSError:
+        manager.log(log_error + file)
+        return None
+    manager.add_stats(metastore_read_time=time.time() - t0)
+    return data
 
 
 def _load_json_file(
@@ -1259,7 +1278,11 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
     deps_json = None
     if options.cache_fine_grained:
         deps_json = prefix + ".deps.json"
-    return (prefix + ".meta.json", prefix + ".data.json", deps_json)
+    if options.fixed_format_cache:
+        data_suffix = ".data.ff"
+    else:
+        data_suffix = ".data.json"
+    return (prefix + ".meta.json", prefix + data_suffix, deps_json)
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | None:
@@ -1559,8 +1582,13 @@ def write_cache(
         tree.path = path
 
     # Serialize data and analyze interface
-    data = tree.serialize()
-    data_bytes = json_dumps(data, manager.options.debug_cache)
+    if manager.options.fixed_format_cache:
+        data_io = Buffer()
+        tree.write(data_io)
+        data_bytes = data_io.getvalue()
+    else:
+        data = tree.serialize()
+        data_bytes = json_dumps(data, manager.options.debug_cache)
     interface_hash = hash_digest(data_bytes)
 
     plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
@@ -2085,15 +2113,23 @@ class State:
             self.meta is not None
         ), "Internal error: this method must be called only for cached modules"
 
-        data = _load_json_file(
-            self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
-        )
+        data: bytes | dict[str, Any] | None
+        if self.options.fixed_format_cache:
+            data = _load_ff_file(self.meta.data_json, self.manager, "Could not load tree: ")
+        else:
+            data = _load_json_file(
+                self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
+            )
         if data is None:
             return
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
-        self.tree = MypyFile.deserialize(data)
+        if isinstance(data, bytes):
+            data_io = Buffer(data)
+            self.tree = MypyFile.read(data_io)
+        else:
+            self.tree = MypyFile.deserialize(data)
         t1 = time.time()
         self.manager.add_stats(deserialize_time=t1 - t0)
         if not temporary:
@@ -2240,8 +2276,10 @@ class State:
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
-            # Always perform some low-key variable renaming
-            self.tree.accept(LimitedVariableRenameVisitor())
+            if not self.options.allow_redefinition_new:
+                # Perform some low-key variable renaming when assignments can't
+                # widen inferred types
+                self.tree.accept(LimitedVariableRenameVisitor())
             if options.allow_redefinition:
                 # Perform more renaming across the AST to allow variable redefinitions
                 self.tree.accept(VariableRenameVisitor())
@@ -2479,7 +2517,11 @@ class State:
         ):
             if self.options.debug_serialize:
                 try:
-                    self.tree.serialize()
+                    if self.manager.options.fixed_format_cache:
+                        data = Buffer()
+                        self.tree.write(data)
+                    else:
+                        self.tree.serialize()
                 except Exception:
                     print(f"Error serializing {self.id}", file=self.manager.stdout)
                     raise  # Propagate to display traceback
@@ -3324,8 +3366,31 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 #
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
+                if (
+                    not manager.options.test_env
+                    and platform.python_implementation() == "CPython"
+                    and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
+                ):
+                    # When deserializing cache we create huge amount of new objects, so even
+                    # with our generous GC thresholds, GC is still doing a lot of pointless
+                    # work searching for garbage. So, we temporarily disable it when
+                    # processing fresh SCCs, and then move all the new objects to the oldest
+                    # generation with the freeze()/unfreeze() trick below. This is arguably
+                    # a hack, but it gives huge performance wins for large third-party
+                    # libraries, like torch.
+                    gc.collect()
+                    gc.disable()
                 for prev_scc in fresh_scc_queue:
                     process_fresh_modules(graph, prev_scc, manager)
+                if (
+                    not manager.options.test_env
+                    and platform.python_implementation() == "CPython"
+                    and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
+                ):
+                    manager.gc_freeze_cycles += 1
+                    gc.freeze()
+                    gc.unfreeze()
+                    gc.enable()
                 fresh_scc_queue = []
             size = len(scc)
             if size == 1:

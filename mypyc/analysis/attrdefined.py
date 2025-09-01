@@ -138,6 +138,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> No
         or cl.builtin_base is not None
         or cl.children is None
         or cl.is_serializable()
+        or cl.has_method("__new__")
     ):
         # Give up -- we can't enforce that attributes are always defined.
         return
@@ -285,7 +286,7 @@ GenAndKill = tuple[set[str], set[str]]
 def attributes_initialized_by_init_call(op: Call) -> set[str]:
     """Calculate attributes that are always initialized by a super().__init__ call."""
     self_type = op.fn.sig.args[0].type
-    assert isinstance(self_type, RInstance)
+    assert isinstance(self_type, RInstance), self_type
     cl = self_type.class_ir
     return {a for base in cl.mro for a in base.attributes if base.is_always_defined(a)}
 
@@ -293,7 +294,7 @@ def attributes_initialized_by_init_call(op: Call) -> set[str]:
 def attributes_maybe_initialized_by_init_call(op: Call) -> set[str]:
     """Calculate attributes that may be initialized by a super().__init__ call."""
     self_type = op.fn.sig.args[0].type
-    assert isinstance(self_type, RInstance)
+    assert isinstance(self_type, RInstance), self_type
     cl = self_type.class_ir
     return attributes_initialized_by_init_call(op) | cl._sometimes_initialized_attrs
 

@@ -1,9 +1,10 @@
+import os
 from _typeshed import SupportsContainsAndGetItem, SupportsGetItem, SupportsItemAccess, Unused
 from builtins import list as _list, type as _type
 from collections.abc import Iterable, Iterator, Mapping
 from email.message import Message
 from types import TracebackType
-from typing import IO, Any, Protocol
+from typing import IO, Any, Protocol, type_check_only
 from typing_extensions import Self
 
 __all__ = [
@@ -23,7 +24,7 @@ __all__ = [
 
 def parse(
     fp: IO[Any] | None = None,
-    environ: SupportsItemAccess[str, str] = ...,
+    environ: SupportsItemAccess[str, str] = os.environ,
     keep_blank_values: bool = ...,
     strict_parsing: bool = ...,
     separator: str = "&",
@@ -31,14 +32,14 @@ def parse(
 def parse_multipart(
     fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = "utf-8", errors: str = "replace", separator: str = "&"
 ) -> dict[str, list[Any]]: ...
-
+@type_check_only
 class _Environ(Protocol):
     def __getitem__(self, k: str, /) -> str: ...
     def keys(self) -> Iterable[str]: ...
 
 def parse_header(line: str) -> tuple[str, dict[str, str]]: ...
-def test(environ: _Environ = ...) -> None: ...
-def print_environ(environ: _Environ = ...) -> None: ...
+def test(environ: _Environ = os.environ) -> None: ...
+def print_environ(environ: _Environ = os.environ) -> None: ...
 def print_form(form: dict[str, Any]) -> None: ...
 def print_directory() -> None: ...
 def print_environ_usage() -> None: ...
@@ -85,7 +86,7 @@ class FieldStorage:
         fp: IO[Any] | None = None,
         headers: Mapping[str, str] | Message | None = None,
         outerboundary: bytes = b"",
-        environ: SupportsContainsAndGetItem[str, str] = ...,
+        environ: SupportsContainsAndGetItem[str, str] = os.environ,
         keep_blank_values: int = 0,
         strict_parsing: int = 0,
         limit: int | None = None,

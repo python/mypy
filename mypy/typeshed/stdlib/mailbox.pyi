@@ -4,12 +4,10 @@ import sys
 from _typeshed import StrPath, SupportsNoArgReadline, SupportsRead
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Literal, Protocol, TypeVar, overload
+from email._policybase import _MessageT
+from types import GenericAlias, TracebackType
+from typing import IO, Any, AnyStr, Generic, Literal, Protocol, TypeVar, overload, type_check_only
 from typing_extensions import Self, TypeAlias
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 __all__ = [
     "Mailbox",
@@ -32,15 +30,17 @@ __all__ = [
 ]
 
 _T = TypeVar("_T")
-_MessageT = TypeVar("_MessageT", bound=Message)
 
+@type_check_only
 class _SupportsReadAndReadline(SupportsRead[bytes], SupportsNoArgReadline[bytes], Protocol): ...
 
 _MessageData: TypeAlias = email.message.Message | bytes | str | io.StringIO | _SupportsReadAndReadline
 
+@type_check_only
 class _HasIteritems(Protocol):
     def iteritems(self) -> Iterator[tuple[str, _MessageData]]: ...
 
+@type_check_only
 class _HasItems(Protocol):
     def items(self) -> Iterator[tuple[str, _MessageData]]: ...
 
@@ -101,8 +101,7 @@ class Mailbox(Generic[_MessageT]):
     def unlock(self) -> None: ...
     @abstractmethod
     def close(self) -> None: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class Maildir(Mailbox[MaildirMessage]):
     colon: str
@@ -251,8 +250,7 @@ class _ProxyFile(Generic[AnyStr]):
     def flush(self) -> None: ...
     @property
     def closed(self) -> bool: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class _PartialFile(_ProxyFile[AnyStr]):
     def __init__(self, f: IO[AnyStr], start: int | None = None, stop: int | None = None) -> None: ...

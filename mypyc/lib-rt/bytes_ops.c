@@ -102,7 +102,11 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
         return PyBytes_Join(sep, iter);
     } else {
         _Py_IDENTIFIER(join);
-        return _PyObject_CallMethodIdOneArg(sep, &PyId_join, iter);
+        PyObject *name = _PyUnicode_FromId(&PyId_join); /* borrowed */
+        if (name == NULL) {
+            return NULL;
+        }
+        return PyObject_CallMethodOneArg(sep, name, iter);
     }
 }
 

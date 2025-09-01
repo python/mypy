@@ -12,102 +12,102 @@
 def f()
   pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testUnexpectedIndent]
 1
  2
 [out]
-file:2: error: unexpected indent
+file:2: error: Unexpected indent
 
 [case testInconsistentIndent]
 if x:
   1
    1
 [out]
-file:3: error: unexpected indent
+file:3: error: Unexpected indent
 
 [case testInconsistentIndent2]
 if x:
    1
   1
 [out]
-file:3: error: unindent does not match any outer indentation level
+file:3: error: Unindent does not match any outer indentation level
 
 [case testInvalidBinaryOp]
 1>
 a*
 a+1*
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testDoubleStar]
 **a
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testMissingSuperClass]
 class A(:
   pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testUnexpectedEof]
 if 1:
 [out]
-file:1: error: expected an indented block
+file:1: error: Expected an indented block
 
 [case testInvalidKeywordArguments1]
 f(x=y, z)
 [out]
-file:1: error: positional argument follows keyword argument
+file:1: error: Positional argument follows keyword argument
 
 [case testInvalidKeywordArguments2]
 f(**x, y)
 [out]
-file:1: error: positional argument follows keyword argument unpacking
+file:1: error: Positional argument follows keyword argument unpacking
 
 [case testInvalidBareAsteriskAndVarArgs2]
 def f(*x: A, *) -> None: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidBareAsteriskAndVarArgs3]
 def f(*, *x: A) -> None: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidBareAsteriskAndVarArgs4]
 def f(*, **x: A) -> None: pass
 [out]
-file:1: error: named arguments must follow bare *
+file:1: error: Named arguments must follow bare *
 
 [case testInvalidBareAsterisk1]
 def f(*) -> None: pass
 [out]
-file:1: error: named arguments must follow bare *
+file:1: error: Named arguments must follow bare *
 
 [case testInvalidBareAsterisk2]
 def f(x, *) -> None: pass
 [out]
-file:1: error: named arguments must follow bare *
+file:1: error: Named arguments must follow bare *
 
 [case testInvalidFuncDefArgs1]
 def f(x = y, x): pass
 [out]
-file:1: error: non-default argument follows default argument
+file:1: error: Non-default argument follows default argument
 
 [case testInvalidFuncDefArgs3]
 def f(**x, y):
    pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidFuncDefArgs4]
 def f(**x, y=x):
     pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidTypeComment]
 0
@@ -154,7 +154,7 @@ file:2: error: Syntax error in type comment "A B"
 [case testMissingBracket]
 def foo(
 [out]
-file:1: error: unexpected EOF while parsing
+file:1: error: Unexpected EOF while parsing
 [out version>=3.10]
 file:1: error: '(' was never closed
 
@@ -288,153 +288,153 @@ file:1: error: Missing parentheses in call to 'print'. Did you mean print(1)?
 [case testInvalidConditionInConditionalExpression]
 1 if 2, 3 else 4
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidConditionInConditionalExpression2]
 1 if x for y in z else 4
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidConditionInConditionalExpression3]
 1 if x else for y in z
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testYieldFromNotRightParameter]
 def f():
     yield from
 [out]
-file:2: error: invalid syntax
+file:2: error: Invalid syntax
 
 [case testYieldFromAfterReturn]
 def f():
     return yield from h()
 [out]
-file:2: error: invalid syntax
+file:2: error: Invalid syntax
 
 [case testImportDotModule]
 import .x
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testImportDot]
 import .
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidFunctionName]
 def while(): pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidEllipsis1]
 ...0
 ..._
 ...a
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testBlockStatementInSingleLineIf]
 if 1: if 2: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testBlockStatementInSingleLineIf2]
 if 1: while 2: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testBlockStatementInSingleLineIf3]
 if 1: for x in y: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testUnexpectedEllipsis]
 a = a...
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testParseErrorBeforeUnicodeLiteral]
 x u'y'
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testParseErrorInExtendedSlicing]
 x[:,
 [out]
-file:1: error: unexpected EOF while parsing
+file:1: error: Unexpected EOF while parsing
 
 [case testParseErrorInExtendedSlicing2]
 x[:,::
 [out]
-file:1: error: unexpected EOF while parsing
+file:1: error: Unexpected EOF while parsing
 
 [case testParseErrorInExtendedSlicing3]
 x[:,:
 [out]
-file:1: error: unexpected EOF while parsing
+file:1: error: Unexpected EOF while parsing
 
 [case testInvalidEncoding]
 # foo
 # coding: uft-8
 [out]
-file:0: error: unknown encoding: uft-8
+file:0: error: Unknown encoding: uft-8
 
 [case testInvalidEncoding2]
 # coding=Uft.8
 [out]
-file:0: error: unknown encoding: Uft.8
+file:0: error: Unknown encoding: Uft.8
 
 [case testInvalidEncoding3]
 #!/usr/bin python
 # vim: set fileencoding=uft8 :
 [out]
-file:0: error: unknown encoding: uft8
+file:0: error: Unknown encoding: uft8
 
 [case testDoubleEncoding]
 # coding: uft8
 # coding: utf8
 # The first coding cookie should be used and fail.
 [out]
-file:0: error: unknown encoding: uft8
+file:0: error: Unknown encoding: uft8
 
 [case testDoubleEncoding2]
 # Again the first cookie should be used and fail.
 # coding: uft8
 # coding: utf8
 [out]
-file:0: error: unknown encoding: uft8
+file:0: error: Unknown encoding: uft8
 
 [case testLongLiteralInPython3]
 2L
 0x2L
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testPython2LegacyInequalityInPython3]
 1 <> 2
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testLambdaInListComprehensionInPython3]
 ([ 0 for x in 1, 2 if 3 ])
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testTupleArgListInPython3]
 def f(x, (y, z)): pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testBackquoteInPython3]
 `1 + 2`
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testSmartQuotes]
 foo = ‘bar’
 [out]
-file:1: error: invalid character '‘' (U+2018)
+file:1: error: Invalid character '‘' (U+2018)
 
 [case testExceptCommaInPython3]
 try:
@@ -442,4 +442,4 @@ try:
 except KeyError, IndexError:
     pass
 [out]
-file:3: error: invalid syntax
+file:3: error: Invalid syntax

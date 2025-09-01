@@ -58,7 +58,7 @@ def main() -> None:
     print("Consider removing the following packages no longer in typeshed:")
     print("=" * 40)
     for p in sorted(mypy_p - typeshed_p_to_d.keys()):
-        if p in {"lxml", "pandas"}:  # never in typeshed
+        if p in {"lxml", "pandas", "scipy"}:  # never in typeshed
             continue
         print(p)
 

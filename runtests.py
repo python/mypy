@@ -65,6 +65,15 @@ cmds = {
         "-p",
         "mypyc",
     ],
+    # Type check setup.py as well
+    "self-packaging": [
+        executable,
+        "-m",
+        "mypy",
+        "--config-file",
+        "mypy_self_check.ini",
+        "setup.py",
+    ],
     # Lint
     "lint": ["pre-commit", "run", "--all-files"],
     # Fast test cases only (this is the bulk of the test suite)
@@ -102,7 +111,13 @@ assert all(cmd in cmds for cmd in FAST_FAIL)
 
 def run_cmd(name: str) -> int:
     status = 0
-    cmd = cmds[name]
+    if name in cmds:
+        cmd = cmds[name]
+    else:
+        if name.endswith(".test"):
+            cmd = ["pytest", f"mypy/test/testcheck.py::TypeCheckSuite::{name}"]
+        else:
+            cmd = ["pytest", "-n0", "-k", name]
     print(f"run {name}: {cmd}")
     proc = subprocess.run(cmd, stderr=subprocess.STDOUT)
     if proc.returncode:
@@ -135,13 +150,22 @@ def main() -> None:
     prog, *args = argv
 
     if not set(args).issubset(cmds):
-        print("usage:", prog, " ".join(f"[{k}]" for k in cmds))
+        print(
+            "usage:",
+            prog,
+            " ".join(f"[{k}]" for k in cmds),
+            "[names of individual tests and files...]",
+        )
         print()
         print(
             "Run the given tests. If given no arguments, run everything except"
-            + " pytest-extra and mypyc-extra."
+            + " pytest-extra and mypyc-extra. Unrecognized arguments will be"
+            + " interpreted as individual test names / substring expressions"
+            + " (or, if they end in .test, individual test files)"
+            + " and this script will try to run them."
         )
-        exit(1)
+        if "-h" in args or "--help" in args:
+            exit(1)
 
     if not args:
         args = DEFAULT_COMMANDS.copy()

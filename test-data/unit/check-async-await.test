@@ -163,7 +163,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 [out]
-main:4: error: "List[int]" has no attribute "__aiter__" (not async iterable)
+main:4: error: "list[int]" has no attribute "__aiter__" (not async iterable)
 
 [case testAsyncForErrorNote]
 
@@ -502,7 +502,7 @@ async def gen() -> AsyncGenerator[int, str]:
 
 async def h() -> None:
     g = gen()
-    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[()]"; expected "str"
+    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "tuple[()]"; expected "str"
     reveal_type(await g.asend('hello'))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/dict.pyi]
@@ -913,9 +913,9 @@ async def test(x: Sub[D], tx: Type[Sub[D]]) -> None:
     unknown2: Awaitable[Any]
     d: C = unknown2  # E: Incompatible types in assignment (expression has type "Awaitable[Any]", variable has type "C")
 
-    # The notes are not show for Type[...] (because awaiting them will not work)
-    tx.x  # E: "Type[Sub[D]]" has no attribute "x"
-    a2: C = tx  # E: Incompatible types in assignment (expression has type "Type[Sub[D]]", variable has type "C")
+    # The notes are not show for type[...] (because awaiting them will not work)
+    tx.x  # E: "type[Sub[D]]" has no attribute "x"
+    a2: C = tx  # E: Incompatible types in assignment (expression has type "type[Sub[D]]", variable has type "C")
 
 class F:
     def __await__(self: T) -> Generator[Any, Any, T]: ...

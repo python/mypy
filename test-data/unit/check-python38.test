@@ -404,9 +404,9 @@ else:
 def get_things() -> Union[Tuple[Good], Tuple[Bad]]: ...
 
 if (things := get_things())[0].is_good:
-    reveal_type(things)  # N: Revealed type is "Tuple[__main__.Good]"
+    reveal_type(things)  # N: Revealed type is "tuple[__main__.Good]"
 else:
-    reveal_type(things)  # N: Revealed type is "Tuple[__main__.Bad]"
+    reveal_type(things)  # N: Revealed type is "tuple[__main__.Bad]"
 [builtins fixtures/list.pyi]
 
 [case testWalrusConditionalTypeCheck]
@@ -443,7 +443,7 @@ reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
 from typing import List
 
 def check_partial_list() -> None:
-    if (x := []):  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+    if (x := []):  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
         pass
 
     y: List[str]
@@ -790,7 +790,7 @@ dct: Dict[str, int] = {"a": "b", **other}
 main:5: error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
     dct: Dict[str, int] = {"a": "b", **other}
                            ^~~~~~~~
-main:5: error: Unpacked dict entry 1 has incompatible type "Dict[str, str]"; expected "SupportsKeysAndGetItem[str, int]"
+main:5: error: Unpacked dict entry 1 has incompatible type "dict[str, str]"; expected "SupportsKeysAndGetItem[str, int]"
     dct: Dict[str, int] = {"a": "b", **other}
                                        ^~~~~
 
