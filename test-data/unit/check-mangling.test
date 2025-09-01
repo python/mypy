@@ -346,3 +346,46 @@ a = {"_A__a": 1}  # E: Missing key "__a" for TypedDict "A" \
                   # E: Extra key "_A__a" for TypedDict "A"
 
 [typing fixtures/typing-typeddict.pyi]
+
+[case testNameManglingAttrs]
+import attr
+
+@attr.define(kw_only=True)
+class X:
+    a: int
+    _b: int
+    __c: int
+    __d__: int
+
+X(a=1, b=2, X__c=3, d__=4)
+X(a=1, b=2, c=3, d__=4)   # E: Unexpected keyword argument "c" for "X"
+
+x: X
+reveal_type(x.a)  # N: Revealed type is "builtins.int"
+reveal_type(x._b)  # N: Revealed type is "builtins.int"
+reveal_type(x._X__c)  # N: Revealed type is "builtins.int"
+reveal_type(x.__d__)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/list.pyi]
+
+[case testNameManglingDataclasses]
+from dataclasses import dataclass
+
+@dataclass(kw_only=True)
+class X:
+    a: int
+    _b: int
+    __c: int
+    __d__: int
+
+X(a=1, _b=2, _X__c=3, __d__=4)
+X(a=1, _b=2, __c=3, __d__=4)   # E: Unexpected keyword argument "__c" for "X"
+
+x: X
+reveal_type(x.a)  # N: Revealed type is "builtins.int"
+reveal_type(x._b)  # N: Revealed type is "builtins.int"
+reveal_type(x._X__c)  # N: Revealed type is "builtins.int"
+reveal_type(x.__d__)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
