@@ -94,7 +94,6 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     check_native_int_range,
-    dict_rprimitive,
     float_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
@@ -117,7 +116,6 @@ from mypyc.ir.rtypes import (
     is_tagged,
     is_tuple_rprimitive,
     is_uint8_rprimitive,
-    list_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -1920,10 +1918,12 @@ class LowLevelIRBuilder:
         elif is_fixed_width_rtype(value.type):
             zero = Integer(0, value.type)
             result = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
-        elif is_same_type(value.type, str_rprimitive):
+        elif is_str_rprimitive(value.type):
             result = self.call_c(str_check_if_true, [value], value.line)
-        elif is_same_type(value.type, list_rprimitive) or is_same_type(
-            value.type, dict_rprimitive
+        elif (
+            is_list_rprimitive(value.type)
+            or is_dict_rprimitive(value.type)
+            or is_tuple_rprimitive(value.type)
         ):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
