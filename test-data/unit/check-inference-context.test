@@ -1540,3 +1540,45 @@ def f(x: dict[str, Union[str, None, int]]) -> None:
 def g(x: Optional[dict[str, Any]], s: Optional[str]) -> None:
     f(x or {'x': s})
 [builtins fixtures/dict.pyi]
+
+[case testReturnFallbackInferenceTuple]
+from typing import TypeVar, Union
+
+T = TypeVar("T")
+def foo(x: list[T]) -> tuple[T, ...]: ...
+
+def bar(x: list[int]) -> tuple[Union[str, int], ...]:
+    return foo(x)
+
+def bar2(x: list[int]) -> tuple[Union[str, int], ...]:
+    y = foo(x)
+    return y
+[builtins fixtures/tuple.pyi]
+
+[case testReturnFallbackInferenceUnion]
+from typing import Generic, TypeVar, Union
+
+T = TypeVar("T")
+
+class Cls(Generic[T]):
+    pass
+
+def inner(c: Cls[T]) -> Union[T, int]:
+    return 1
+
+def outer(c: Cls[T]) -> Union[T, int]:
+    return inner(c)
+
+[case testReturnFallbackInferenceAsync]
+from typing import Generic, TypeVar, Optional
+
+T = TypeVar("T")
+
+class Cls(Generic[T]):
+    pass
+
+async def inner(c: Cls[T]) -> Optional[T]:
+    return None
+
+async def outer(c: Cls[T]) -> Optional[T]:
+    return await inner(c)

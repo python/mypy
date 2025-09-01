@@ -206,7 +206,8 @@ class ErrorWatcher:
         """
         if info.code == codes.DEPRECATED:
             # Deprecated is not a type error, so it is handled on opt-in basis here.
-            return self._filter_deprecated
+            if not self._filter_deprecated:
+                return False
 
         self._has_new_errors = True
         if isinstance(self._filter, bool):

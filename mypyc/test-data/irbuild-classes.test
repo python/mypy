@@ -854,22 +854,42 @@ def Base.__ne__(__mypyc_self__, rhs):
     __mypyc_self__ :: __main__.Base
     rhs, r0, r1 :: object
     r2 :: bit
-    r3 :: i32
-    r4 :: bit
-    r5 :: bool
+    r3 :: object
+    r4, r5 :: bit
     r6 :: object
+    r7 :: bit
+    r8 :: i32
+    r9 :: bit
+    r10 :: bool
+    r11 :: object
 L0:
     r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
-    if r2 goto L2 else goto L1 :: bool
+    if r2 goto L7 else goto L1 :: bool
 L1:
-    r3 = PyObject_Not(r0)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: i32 to builtins.bool
-    r6 = box(bool, r5)
-    return r6
+    r3 = load_global Py_True :: static
+    r4 = r0 == r3
+    if r4 goto L2 else goto L3 :: bool
 L2:
+    r5 = 0
+    goto L6
+L3:
+    r6 = load_global Py_False :: static
+    r7 = r0 == r6
+    if r7 goto L4 else goto L5 :: bool
+L4:
+    r5 = 1
+    goto L6
+L5:
+    r8 = PyObject_Not(r0)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: i32 to builtins.bool
+    r5 = r10
+L6:
+    r11 = box(bit, r5)
+    return r11
+L7:
     return r1
 def Derived.__eq__(self, other):
     self :: __main__.Derived
@@ -979,22 +999,42 @@ def Derived.__ne__(__mypyc_self__, rhs):
     __mypyc_self__ :: __main__.Derived
     rhs, r0, r1 :: object
     r2 :: bit
-    r3 :: i32
-    r4 :: bit
-    r5 :: bool
+    r3 :: object
+    r4, r5 :: bit
     r6 :: object
+    r7 :: bit
+    r8 :: i32
+    r9 :: bit
+    r10 :: bool
+    r11 :: object
 L0:
     r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
-    if r2 goto L2 else goto L1 :: bool
+    if r2 goto L7 else goto L1 :: bool
 L1:
-    r3 = PyObject_Not(r0)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: i32 to builtins.bool
-    r6 = box(bool, r5)
-    return r6
+    r3 = load_global Py_True :: static
+    r4 = r0 == r3
+    if r4 goto L2 else goto L3 :: bool
 L2:
+    r5 = 0
+    goto L6
+L3:
+    r6 = load_global Py_False :: static
+    r7 = r0 == r6
+    if r7 goto L4 else goto L5 :: bool
+L4:
+    r5 = 1
+    goto L6
+L5:
+    r8 = PyObject_Not(r0)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: i32 to builtins.bool
+    r5 = r10
+L6:
+    r11 = box(bit, r5)
+    return r11
+L7:
     return r1
 
 [case testDefaultVars]
@@ -1619,3 +1659,78 @@ def native_class(x):
 L0:
     r0 = CPy_TYPE(x)
     return r0
+
+[case testDunderNew]
+from __future__ import annotations
+
+class Test:
+    val: int
+
+    def __new__(cls, val: int) -> Test:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+def fn() -> Test:
+    return Test.__new__(Test, 42)
+
+class NewClassMethod:
+    val: int
+
+    @classmethod
+    def __new__(cls, val: int) -> NewClassMethod:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+def fn2() -> NewClassMethod:
+    return NewClassMethod.__new__(42)
+
+[out]
+def Test.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.Test
+    r1 :: bool
+L0:
+    r0 = __mypyc__Test_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn():
+    r0 :: object
+    r1 :: __main__.Test
+L0:
+    r0 = __main__.Test :: type
+    r1 = Test.__new__(r0, 84)
+    return r1
+def NewClassMethod.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.NewClassMethod
+    r1 :: bool
+L0:
+    r0 = __mypyc__NewClassMethod_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn2():
+    r0 :: object
+    r1 :: __main__.NewClassMethod
+L0:
+    r0 = __main__.NewClassMethod :: type
+    r1 = NewClassMethod.__new__(r0, 84)
+    return r1
+
+[case testUnsupportedDunderNew]
+from __future__ import annotations
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __new__(cls) -> NonNative:
+        return super().__new__(cls)  # E: super().__new__() not supported for non-extension classes
+
+class InheritsPython(dict):
+    def __new__(cls) -> InheritsPython:
+        return super().__new__(cls)  # E: super().__new__() not supported for classes inheriting from non-native classes

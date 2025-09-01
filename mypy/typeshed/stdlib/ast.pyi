@@ -11,7 +11,7 @@ from _ast import (
 from _typeshed import ReadableBuffer, Unused
 from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar as _TypeVar, overload, type_check_only
-from typing_extensions import Self, Unpack, deprecated
+from typing_extensions import Self, Unpack, deprecated, disjoint_base
 
 if sys.version_info >= (3, 13):
     from _ast import PyCF_OPTIMIZED_AST as PyCF_OPTIMIZED_AST
@@ -30,16 +30,24 @@ class _Attributes(TypedDict, Generic[_EndPositionT], total=False):
 # The various AST classes are implemented in C, and imported from _ast at runtime,
 # but they consider themselves to live in the ast module,
 # so we'll define the stubs in this file.
-class AST:
-    if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 12):
+    @disjoint_base
+    class AST:
         __match_args__ = ()
-    _attributes: ClassVar[tuple[str, ...]]
-    _fields: ClassVar[tuple[str, ...]]
-    if sys.version_info >= (3, 13):
-        _field_types: ClassVar[dict[str, Any]]
+        _attributes: ClassVar[tuple[str, ...]]
+        _fields: ClassVar[tuple[str, ...]]
+        if sys.version_info >= (3, 13):
+            _field_types: ClassVar[dict[str, Any]]
 
-    if sys.version_info >= (3, 14):
-        def __replace__(self) -> Self: ...
+        if sys.version_info >= (3, 14):
+            def __replace__(self) -> Self: ...
+
+else:
+    class AST:
+        if sys.version_info >= (3, 10):
+            __match_args__ = ()
+        _attributes: ClassVar[tuple[str, ...]]
+        _fields: ClassVar[tuple[str, ...]]
 
 class mod(AST): ...
 
@@ -1098,16 +1106,16 @@ class Constant(expr):
     if sys.version_info < (3, 14):
         # Aliases for value, for backwards compatibility
         @property
-        @deprecated("Will be removed in Python 3.14. Use `value` instead.")
+        @deprecated("Removed in Python 3.14. Use `value` instead.")
         def n(self) -> _ConstantValue: ...
         @n.setter
-        @deprecated("Will be removed in Python 3.14. Use `value` instead.")
+        @deprecated("Removed in Python 3.14. Use `value` instead.")
         def n(self, value: _ConstantValue) -> None: ...
         @property
-        @deprecated("Will be removed in Python 3.14. Use `value` instead.")
+        @deprecated("Removed in Python 3.14. Use `value` instead.")
         def s(self) -> _ConstantValue: ...
         @s.setter
-        @deprecated("Will be removed in Python 3.14. Use `value` instead.")
+        @deprecated("Removed in Python 3.14. Use `value` instead.")
         def s(self, value: _ConstantValue) -> None: ...
 
     def __init__(self, value: _ConstantValue, kind: str | None = None, **kwargs: Unpack[_Attributes]) -> None: ...
@@ -1206,7 +1214,7 @@ class Slice(expr):
             self, *, lower: expr | None = ..., upper: expr | None = ..., step: expr | None = ..., **kwargs: Unpack[_Attributes]
         ) -> Self: ...
 
-@deprecated("Deprecated since Python 3.9. Use ast.Tuple instead.")
+@deprecated("Deprecated since Python 3.9. Use `ast.Tuple` instead.")
 class ExtSlice(slice):
     def __new__(cls, dims: Iterable[slice] = (), **kwargs: Unpack[_Attributes]) -> Tuple: ...  # type: ignore[misc]
 
@@ -1711,23 +1719,23 @@ else:
         def __init__(cls, *args: Unused) -> None: ...
 
 if sys.version_info < (3, 14):
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Num(Constant, metaclass=_ABC):
         def __new__(cls, n: complex, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Str(Constant, metaclass=_ABC):
         def __new__(cls, s: str, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Bytes(Constant, metaclass=_ABC):
         def __new__(cls, s: bytes, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class NameConstant(Constant, metaclass=_ABC):
         def __new__(cls, value: _ConstantValue, kind: str | None, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
-    @deprecated("Replaced by ast.Constant; removed in Python 3.14")
+    @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Ellipsis(Constant, metaclass=_ABC):
         def __new__(cls, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
@@ -2046,15 +2054,15 @@ class NodeVisitor:
     def visit_Param(self, node: Param) -> Any: ...
 
     if sys.version_info < (3, 14):
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_Num(self, node: Num) -> Any: ...  # type: ignore[deprecated]
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_Str(self, node: Str) -> Any: ...  # type: ignore[deprecated]
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_Bytes(self, node: Bytes) -> Any: ...  # type: ignore[deprecated]
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_NameConstant(self, node: NameConstant) -> Any: ...  # type: ignore[deprecated]
-        @deprecated("Replaced by visit_Constant; removed in Python 3.14")
+        @deprecated("Removed in Python 3.14. Use `visit_Constant` instead.")
         def visit_Ellipsis(self, node: Ellipsis) -> Any: ...  # type: ignore[deprecated]
 
 class NodeTransformer(NodeVisitor):

@@ -606,7 +606,7 @@ class NamedTupleAnalyzer:
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
             signature = CallableType(cast(list[Type], types), arg_kinds, items, ret, function_type)
-            signature.variables = [self_type]
+            signature.variables = (self_type,)
             func = FuncDef(funcname, args, Block([]))
             func.info = info
             func.is_class = is_classmethod
