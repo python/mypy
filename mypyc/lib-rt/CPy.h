@@ -67,7 +67,7 @@ typedef struct tuple_T4CIOO {
 // System-wide empty tuple constant
 extern PyObject * __mypyc_empty_tuple__;
 
-static inline PyObject *CPyTuple_LoadEmptyTupleConstant() {
+static inline PyObject *CPyTuple_LoadEmptyTupleConstant(void) {
 #if !CPY_3_12_FEATURES
     Py_INCREF(__mypyc_empty_tuple__);
 #endif
