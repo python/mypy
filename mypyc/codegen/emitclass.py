@@ -851,7 +851,9 @@ def generate_dealloc_for_class(
         # CPython interpreter prints: Exception ignored in: <function F.__del__ at 0x100aed940>
         # mypyc prints: Exception ignored in: <slot wrapper '__del__' of 'F' objects>
         emitter.emit_line("if (PyErr_Occurred() != NULL) {")
+        # Don't untrack instance if error occurred
         emitter.emit_line("PyErr_WriteUnraisable((PyObject *)self);")
+        emitter.emit_line("res = -1;")
         emitter.emit_line("}")
         emitter.emit_line("PyErr_Restore(type, value, traceback);")
         emitter.emit_line("if (res < 0) {")
