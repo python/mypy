@@ -1734,3 +1734,23 @@ class NonNative:
 class InheritsPython(dict):
     def __new__(cls) -> InheritsPython:
         return super().__new__(cls)  # E: super().__new__() not supported for classes inheriting from non-native classes
+
+[case testClassWithFreeList]
+from mypy_extensions import mypyc_attr, trait
+
+@mypyc_attr(free_list_len=1)
+class UsesFreeList:
+    pass
+
+@mypyc_attr(free_list_len=None)
+class NoFreeList:
+    pass
+
+@mypyc_attr(free_list_len=2)  # E: Unsupported value for "free_list_len": 2
+class FreeListError:
+    pass
+
+@trait
+@mypyc_attr(free_list_len=1)  # E: "free_list_len" can't be used with traits
+class NonNative:
+    pass

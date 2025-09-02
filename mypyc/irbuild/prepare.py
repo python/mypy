@@ -351,12 +351,22 @@ def prepare_class_def(
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    attrs = get_mypyc_attrs(cdef)
+    attrs, attrs_lines = get_mypyc_attrs(cdef)
     if attrs.get("allow_interpreted_subclasses") is True:
         ir.allow_interpreted_subclasses = True
     if attrs.get("serializable") is True:
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
+
+    free_list_len = attrs.get("free_list_len")
+    if free_list_len is not None:
+        line = attrs_lines["free_list_len"]
+        if ir.is_trait:
+            errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if free_list_len == 1:
+            ir.reuse_freed_instance = True
+        else:
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Check for subclassing from builtin types
     for cls in info.mro:

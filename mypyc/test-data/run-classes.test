@@ -3794,3 +3794,39 @@ assert t.native == 43
 assert t.generic == "{}"
 assert t.bitfield == 0x0C
 assert t.default == 10
+
+[case testPerTypeFreeList]
+from __future__ import annotations
+
+from mypy_extensions import mypyc_attr
+
+a = []
+
+@mypyc_attr(free_list=1)
+class Foo:
+    def __init__(self, x: int) -> None:
+        self.x = x
+        a.append(x)
+
+def test_alloc() -> None:
+    x: Foo | None
+    y: Foo | None
+
+    x = Foo(1)
+    assert x.x == 1
+    x = None
+
+    x = Foo(2)
+    assert x.x == 2
+    y = Foo(3)
+    assert x.x == 2
+    assert y.x == 3
+    x = None
+    y = None
+    assert a == [1, 2, 3]
+
+    x = Foo(4)
+    assert x.x == 4
+    y = Foo(5)
+    assert x.x == 4
+    assert y.x == 5
