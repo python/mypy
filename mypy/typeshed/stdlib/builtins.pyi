@@ -70,6 +70,7 @@ from typing_extensions import (  # noqa: Y023
     TypeIs,
     TypeVarTuple,
     deprecated,
+    disjoint_base,
 )
 
 if sys.version_info >= (3, 14):
@@ -102,6 +103,7 @@ _StopT_co = TypeVar("_StopT_co", covariant=True, default=_StartT_co)  #  slice[A
 # FIXME: https://github.com/python/typing/issues/213 (replace step=start|stop with step=start&stop)
 _StepT_co = TypeVar("_StepT_co", covariant=True, default=_StartT_co | _StopT_co)  #  slice[A,B] -> slice[A, B, A|B]
 
+@disjoint_base
 class object:
     __doc__: str | None
     __dict__: dict[str, Any]
@@ -137,6 +139,7 @@ class object:
     @classmethod
     def __subclasshook__(cls, subclass: type, /) -> bool: ...
 
+@disjoint_base
 class staticmethod(Generic[_P, _R_co]):
     @property
     def __func__(self) -> Callable[_P, _R_co]: ...
@@ -157,6 +160,7 @@ class staticmethod(Generic[_P, _R_co]):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
         __annotate__: AnnotateFunc | None
 
+@disjoint_base
 class classmethod(Generic[_T, _P, _R_co]):
     @property
     def __func__(self) -> Callable[Concatenate[type[_T], _P], _R_co]: ...
@@ -176,6 +180,7 @@ class classmethod(Generic[_T, _P, _R_co]):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
         __annotate__: AnnotateFunc | None
 
+@disjoint_base
 class type:
     # object.__base__ is None. Otherwise, it would be a type.
     @property
@@ -228,6 +233,7 @@ class type:
     if sys.version_info >= (3, 14):
         __annotate__: AnnotateFunc | None
 
+@disjoint_base
 class super:
     @overload
     def __init__(self, t: Any, obj: Any, /) -> None: ...
@@ -240,6 +246,7 @@ _PositiveInteger: TypeAlias = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
 _NegativeInteger: TypeAlias = Literal[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20]
 _LiteralInteger = _PositiveInteger | _NegativeInteger | Literal[0]  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
 
+@disjoint_base
 class int:
     @overload
     def __new__(cls, x: ConvertibleToInt = ..., /) -> Self: ...
@@ -350,6 +357,7 @@ class int:
     def __index__(self) -> int: ...
     def __format__(self, format_spec: str, /) -> str: ...
 
+@disjoint_base
 class float:
     def __new__(cls, x: ConvertibleToFloat = ..., /) -> Self: ...
     def as_integer_ratio(self) -> tuple[int, int]: ...
@@ -415,6 +423,7 @@ class float:
         @classmethod
         def from_number(cls, number: float | SupportsIndex | SupportsFloat, /) -> Self: ...
 
+@disjoint_base
 class complex:
     # Python doesn't currently accept SupportsComplex for the second argument
     @overload
@@ -462,6 +471,7 @@ class _FormatMapMapping(Protocol):
 class _TranslateTable(Protocol):
     def __getitem__(self, key: int, /) -> str | int | None: ...
 
+@disjoint_base
 class str(Sequence[str]):
     @overload
     def __new__(cls, object: object = ...) -> Self: ...
@@ -549,6 +559,7 @@ class str(Sequence[str]):
     def __getnewargs__(self) -> tuple[str]: ...
     def __format__(self, format_spec: str, /) -> str: ...
 
+@disjoint_base
 class bytes(Sequence[int]):
     @overload
     def __new__(cls, o: Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer, /) -> Self: ...
@@ -647,6 +658,7 @@ class bytes(Sequence[int]):
 
     def __buffer__(self, flags: int, /) -> memoryview: ...
 
+@disjoint_base
 class bytearray(MutableSequence[int]):
     @overload
     def __init__(self) -> None: ...
@@ -911,6 +923,8 @@ class slice(Generic[_StartT_co, _StopT_co, _StepT_co]):
 
     def indices(self, len: SupportsIndex, /) -> tuple[int, int, int]: ...
 
+# Making this a disjoint_base upsets pyright
+# @disjoint_base
 class tuple(Sequence[_T_co]):
     def __new__(cls, iterable: Iterable[_T_co] = ..., /) -> Self: ...
     def __len__(self) -> int: ...
@@ -987,6 +1001,7 @@ class function:
     # mypy uses `builtins.function.__get__` to represent methods, properties, and getset_descriptors so we type the return as Any.
     def __get__(self, instance: object, owner: type | None = None, /) -> Any: ...
 
+@disjoint_base
 class list(MutableSequence[_T]):
     @overload
     def __init__(self) -> None: ...
@@ -1041,6 +1056,7 @@ class list(MutableSequence[_T]):
     def __eq__(self, value: object, /) -> bool: ...
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
+@disjoint_base
 class dict(MutableMapping[_KT, _VT]):
     # __init__ should be kept roughly in line with `collections.UserDict.__init__`, which has similar semantics
     # Also multiprocessing.managers.SyncManager.dict()
@@ -1123,6 +1139,7 @@ class dict(MutableMapping[_KT, _VT]):
     @overload
     def __ior__(self, value: Iterable[tuple[_KT, _VT]], /) -> Self: ...
 
+@disjoint_base
 class set(MutableSet[_T]):
     @overload
     def __init__(self) -> None: ...
@@ -1162,6 +1179,7 @@ class set(MutableSet[_T]):
     __hash__: ClassVar[None]  # type: ignore[assignment]
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
+@disjoint_base
 class frozenset(AbstractSet[_T_co]):
     @overload
     def __new__(cls) -> Self: ...
@@ -1190,6 +1208,7 @@ class frozenset(AbstractSet[_T_co]):
     def __hash__(self) -> int: ...
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
+@disjoint_base
 class enumerate(Iterator[tuple[int, _T]]):
     def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
     def __iter__(self) -> Self: ...
@@ -1221,6 +1240,7 @@ class range(Sequence[int]):
     def __getitem__(self, key: slice, /) -> range: ...
     def __reversed__(self) -> Iterator[int]: ...
 
+@disjoint_base
 class property:
     fget: Callable[[Any], Any] | None
     fset: Callable[[Any, Any], None] | None
@@ -1384,6 +1404,7 @@ else:
 
 exit: _sitebuiltins.Quitter
 
+@disjoint_base
 class filter(Iterator[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
@@ -1447,7 +1468,7 @@ def len(obj: Sized, /) -> int: ...
 license: _sitebuiltins._Printer
 
 def locals() -> dict[str, Any]: ...
-
+@disjoint_base
 class map(Iterator[_S]):
     # 3.14 adds `strict` argument.
     if sys.version_info >= (3, 14):
@@ -1754,6 +1775,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
 
 quit: _sitebuiltins.Quitter
 
+@disjoint_base
 class reversed(Iterator[_T]):
     @overload
     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
@@ -1817,7 +1839,7 @@ def sum(iterable: Iterable[_AddableT1], /, start: _AddableT2) -> _AddableT1 | _A
 def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
 @overload
 def vars(object: Any = ..., /) -> dict[str, Any]: ...
-
+@disjoint_base
 class zip(Iterator[_T_co]):
     if sys.version_info >= (3, 10):
         @overload
@@ -1921,6 +1943,7 @@ else:
 
     Ellipsis: ellipsis
 
+@disjoint_base
 class BaseException:
     args: tuple[Any, ...]
     __cause__: BaseException | None
@@ -1939,14 +1962,17 @@ class BaseException:
 class GeneratorExit(BaseException): ...
 class KeyboardInterrupt(BaseException): ...
 
+@disjoint_base
 class SystemExit(BaseException):
     code: sys._ExitCode
 
 class Exception(BaseException): ...
 
+@disjoint_base
 class StopIteration(Exception):
     value: Any
 
+@disjoint_base
 class OSError(Exception):
     errno: int | None
     strerror: str | None
@@ -1964,15 +1990,20 @@ if sys.platform == "win32":
 class ArithmeticError(Exception): ...
 class AssertionError(Exception): ...
 
-class AttributeError(Exception):
-    if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 10):
+    @disjoint_base
+    class AttributeError(Exception):
         def __init__(self, *args: object, name: str | None = ..., obj: object = ...) -> None: ...
         name: str
         obj: object
 
+else:
+    class AttributeError(Exception): ...
+
 class BufferError(Exception): ...
 class EOFError(Exception): ...
 
+@disjoint_base
 class ImportError(Exception):
     def __init__(self, *args: object, name: str | None = ..., path: str | None = ...) -> None: ...
     name: str | None
@@ -1984,15 +2015,20 @@ class ImportError(Exception):
 class LookupError(Exception): ...
 class MemoryError(Exception): ...
 
-class NameError(Exception):
-    if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 10):
+    @disjoint_base
+    class NameError(Exception):
         def __init__(self, *args: object, name: str | None = ...) -> None: ...
         name: str
+
+else:
+    class NameError(Exception): ...
 
 class ReferenceError(Exception): ...
 class RuntimeError(Exception): ...
 class StopAsyncIteration(Exception): ...
 
+@disjoint_base
 class SyntaxError(Exception):
     msg: str
     filename: str | None
@@ -2056,6 +2092,7 @@ class IndentationError(SyntaxError): ...
 class TabError(IndentationError): ...
 class UnicodeError(ValueError): ...
 
+@disjoint_base
 class UnicodeDecodeError(UnicodeError):
     encoding: str
     object: bytes
@@ -2064,6 +2101,7 @@ class UnicodeDecodeError(UnicodeError):
     reason: str
     def __init__(self, encoding: str, object: ReadableBuffer, start: int, end: int, reason: str, /) -> None: ...
 
+@disjoint_base
 class UnicodeEncodeError(UnicodeError):
     encoding: str
     object: str
@@ -2072,6 +2110,7 @@ class UnicodeEncodeError(UnicodeError):
     reason: str
     def __init__(self, encoding: str, object: str, start: int, end: int, reason: str, /) -> None: ...
 
+@disjoint_base
 class UnicodeTranslateError(UnicodeError):
     encoding: None
     object: str
@@ -2102,6 +2141,7 @@ if sys.version_info >= (3, 11):
     _ExceptionT = TypeVar("_ExceptionT", bound=Exception)
 
     # See `check_exception_group.py` for use-cases and comments.
+    @disjoint_base
     class BaseExceptionGroup(BaseException, Generic[_BaseExceptionT_co]):
         def __new__(cls, message: str, exceptions: Sequence[_BaseExceptionT_co], /) -> Self: ...
         def __init__(self, message: str, exceptions: Sequence[_BaseExceptionT_co], /) -> None: ...

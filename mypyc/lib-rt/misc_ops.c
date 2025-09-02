@@ -227,6 +227,17 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     if (!name)
         goto error;
 
+    if (template_->tp_doc) {
+        // cpython expects tp_doc to be heap-allocated so convert it here to
+        // avoid segfaults on deallocation.
+        Py_ssize_t size = strlen(template_->tp_doc) + 1;
+        char *doc = (char *)PyMem_Malloc(size);
+        if (!doc)
+            goto error;
+        memcpy(doc, template_->tp_doc, size);
+        template_->tp_doc = doc;
+    }
+
     // Allocate the type and then copy the main stuff in.
     t = (PyHeapTypeObject*)PyType_GenericAlloc(&PyType_Type, 0);
     if (!t)
