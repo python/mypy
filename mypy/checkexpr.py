@@ -1935,7 +1935,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 ret_type=NoneType(),
                 fallback=self.named_type("builtins.function"),
                 name=None,
-                from_type_type=True
+                from_type_type=True,
             )
 
         self.msg.unsupported_type_type(item, context)
