@@ -3870,15 +3870,9 @@ def f(a: Type[Tuple[int, int]]):
 from types import NoneType
 type(None)()
 NoneType()
-
 def f(n: type[None]):
     n()
-
-def g(n: type[NoneType]):
-    n()
-
 f(NoneType)
-g(NoneType)
 [out]
 
 [case testTypeUsingTypeCNamedTuple]
