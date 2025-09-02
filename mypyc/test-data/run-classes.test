@@ -3110,7 +3110,7 @@ f = native.F()
 del f
 
 [out]
-Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+Exception ignored in: <native.F object at 0x000000000000>
 Traceback (most recent call last):
   File "native.py", line 5, in __del__
     raise Exception("e2")
