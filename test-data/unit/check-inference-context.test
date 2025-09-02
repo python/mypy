@@ -1582,3 +1582,5 @@ async def inner(c: Cls[T]) -> Optional[T]:
 
 async def outer(c: Cls[T]) -> Optional[T]:
     return await inner(c)
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
