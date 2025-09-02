@@ -366,11 +366,7 @@ def prepare_class_def(
         if free_list_len == 1:
             ir.reuse_freed_instance = True
         else:
-            errors.error(
-                f'Unsupported value for "free_list_len": {free_list_len}',
-                path,
-                line,
-            )
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Check for subclassing from builtin types
     for cls in info.mro:
