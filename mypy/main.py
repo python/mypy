@@ -993,8 +993,9 @@ def define_options(
         group=error_group,
     )
     add_invertible_flag(
-        "--pretty",
-        default=False,
+        "--no-pretty",
+        dest="pretty",
+        default=True,
         help="Use visually nicer output in error messages:"
         " Use soft word wrap, show source code snippets,"
         " and show error location markers",
