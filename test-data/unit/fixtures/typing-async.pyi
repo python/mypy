@@ -34,7 +34,6 @@ S_contra = TypeVar('S_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
-S_contra = TypeVar('S_contra', contravariant=True)
 
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
