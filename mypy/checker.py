@@ -80,6 +80,7 @@ from mypy.nodes import (
     AssertStmt,
     AssignmentExpr,
     AssignmentStmt,
+    AwaitExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -4924,7 +4925,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 allow_none_func_call = is_lambda or declared_none_return or declared_any_return
 
                 # Return with a value.
-                if isinstance(s.expr, (CallExpr, ListExpr, TupleExpr, DictExpr, SetExpr, OpExpr)):
+                if (
+                    isinstance(s.expr, (CallExpr, ListExpr, TupleExpr, DictExpr, SetExpr, OpExpr))
+                    or isinstance(s.expr, AwaitExpr)
+                    and isinstance(s.expr.expr, CallExpr)
+                ):
                     # For expressions that (strongly) depend on type context (i.e. those that
                     # are handled like a function call), we allow fallback to empty type context
                     # in case of errors, this improves user experience in some cases,

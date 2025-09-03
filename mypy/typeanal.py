@@ -779,7 +779,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if self.api.type.has_base("builtins.type"):
                 self.fail("Self type cannot be used in a metaclass", t)
             if self.api.type.self_type is not None:
-                if self.api.type.is_final:
+                if self.api.type.is_final or self.api.type.is_enum and self.api.type.enum_members:
                     return fill_typevars(self.api.type)
                 return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
             # TODO: verify this is unreachable and replace with an assert?

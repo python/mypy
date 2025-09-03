@@ -96,6 +96,8 @@ def get_mypyc_attr_literal(e: Expression) -> Any:
         return False
     elif isinstance(e, RefExpr) and e.fullname == "builtins.None":
         return None
+    elif isinstance(e, IntExpr):
+        return e.value
     return NotImplemented
 
 
@@ -110,9 +112,10 @@ def get_mypyc_attr_call(d: Expression) -> CallExpr | None:
     return None
 
 
-def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
+def get_mypyc_attrs(stmt: ClassDef | Decorator) -> tuple[dict[str, Any], dict[str, int]]:
     """Collect all the mypyc_attr attributes on a class definition or a function."""
     attrs: dict[str, Any] = {}
+    lines: dict[str, int] = {}
     for dec in stmt.decorators:
         d = get_mypyc_attr_call(dec)
         if d:
@@ -120,10 +123,12 @@ def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
                 if name is None:
                     if isinstance(arg, StrExpr):
                         attrs[arg.value] = True
+                        lines[arg.value] = d.line
                 else:
                     attrs[name] = get_mypyc_attr_literal(arg)
+                    lines[name] = d.line
 
-    return attrs
+    return attrs, lines
 
 
 def is_extension_class(path: str, cdef: ClassDef, errors: Errors) -> bool:
