@@ -6171,6 +6171,37 @@ class Base:
 [out2]
 main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
+[case testNoCrashDoubleReexportFunctionUpdated]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+reveal_type(f.foo)
+
+[file f.py]
+import c
+def foo(arg: c.C) -> None: pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py]
+class C: ...
+[out]
+[out2]
+[out3]
+
 [case testNoCrashDoubleReexportFunctionEmpty]
 import m
 
