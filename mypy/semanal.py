@@ -809,6 +809,7 @@ class SemanticAnalyzer(
                 alias_node = TypeAlias(
                     target,
                     alias,
+                    tree.fullname,
                     line=-1,
                     column=-1,  # there is no context
                     no_args=True,
@@ -4106,6 +4107,7 @@ class SemanticAnalyzer(
         alias_node = TypeAlias(
             res,
             self.qualified_name(lvalue.name),
+            self.cur_mod_id,
             s.line,
             s.column,
             alias_tvars=alias_tvars,
@@ -5627,6 +5629,7 @@ class SemanticAnalyzer(
             alias_node = TypeAlias(
                 res,
                 self.qualified_name(s.name.name),
+                self.cur_mod_id,
                 s.line,
                 s.column,
                 alias_tvars=alias_tvars,

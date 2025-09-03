@@ -4121,7 +4121,8 @@ class TypeAlias(SymbolNode):
     target: The target type. For generic aliases contains bound type variables
         as nested types (currently TypeVar and ParamSpec are supported).
     _fullname: Qualified name of this type alias. This is used in particular
-        to track fine grained dependencies from aliases.
+        to track fine-grained dependencies from aliases.
+    module: Module where the alias was defined.
     alias_tvars: Type variables used to define this alias.
     normalized: Used to distinguish between `A = List`, and `A = list`. Both
         are internally stored using `builtins.list` (because `typing.List` is
@@ -4135,6 +4136,7 @@ class TypeAlias(SymbolNode):
     __slots__ = (
         "target",
         "_fullname",
+        "module",
         "alias_tvars",
         "no_args",
         "normalized",
@@ -4144,12 +4146,13 @@ class TypeAlias(SymbolNode):
         "python_3_12_type_alias",
     )
 
-    __match_args__ = ("name", "target", "alias_tvars", "no_args")
+    __match_args__ = ("_fullname", "target", "alias_tvars", "no_args")
 
     def __init__(
         self,
         target: mypy.types.Type,
         fullname: str,
+        module: str,
         line: int,
         column: int,
         *,
@@ -4160,6 +4163,7 @@ class TypeAlias(SymbolNode):
         python_3_12_type_alias: bool = False,
     ) -> None:
         self._fullname = fullname
+        self.module = module
         self.target = target
         if alias_tvars is None:
             alias_tvars = []
@@ -4194,6 +4198,7 @@ class TypeAlias(SymbolNode):
                 )
             ),
             info.fullname,
+            info.module_name,
             info.line,
             info.column,
         )
@@ -4215,6 +4220,7 @@ class TypeAlias(SymbolNode):
                 )
             ),
             info.fullname,
+            info.module_name,
             info.line,
             info.column,
         )
@@ -4238,6 +4244,7 @@ class TypeAlias(SymbolNode):
         data: JsonDict = {
             ".class": "TypeAlias",
             "fullname": self._fullname,
+            "module": self.module,
             "target": self.target.serialize(),
             "alias_tvars": [v.serialize() for v in self.alias_tvars],
             "no_args": self.no_args,
@@ -4252,6 +4259,7 @@ class TypeAlias(SymbolNode):
     def deserialize(cls, data: JsonDict) -> TypeAlias:
         assert data[".class"] == "TypeAlias"
         fullname = data["fullname"]
+        module = data["module"]
         alias_tvars = [mypy.types.deserialize_type(v) for v in data["alias_tvars"]]
         assert all(isinstance(t, mypy.types.TypeVarLikeType) for t in alias_tvars)
         target = mypy.types.deserialize_type(data["target"])
@@ -4263,6 +4271,7 @@ class TypeAlias(SymbolNode):
         return cls(
             target,
             fullname,
+            module,
             line,
             column,
             alias_tvars=cast(list[mypy.types.TypeVarLikeType], alias_tvars),
@@ -4274,6 +4283,7 @@ class TypeAlias(SymbolNode):
     def write(self, data: Buffer) -> None:
         write_tag(data, TYPE_ALIAS)
         write_str(data, self._fullname)
+        write_str(data, self.module)
         self.target.write(data)
         mypy.types.write_type_list(data, self.alias_tvars)
         write_int(data, self.line)
@@ -4285,11 +4295,13 @@ class TypeAlias(SymbolNode):
     @classmethod
     def read(cls, data: Buffer) -> TypeAlias:
         fullname = read_str(data)
+        module = read_str(data)
         target = mypy.types.read_type(data)
         alias_tvars = [mypy.types.read_type_var_like(data) for _ in range(read_int(data))]
         return TypeAlias(
             target,
             fullname,
+            module,
             read_int(data),
             read_int(data),
             alias_tvars=alias_tvars,

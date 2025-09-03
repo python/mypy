@@ -47,7 +47,7 @@ from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable, TypeInfo
+from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable, TypeInfo, TypeAlias
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
@@ -2415,6 +2415,8 @@ class State:
             for _, sym, _ in self.tree.local_definitions():
                 if sym.type is not None:
                     all_types.append(sym.type)
+                if isinstance(sym.node, TypeAlias):
+                    all_types.append(sym.node.target)
                 if isinstance(sym.node, TypeInfo):
                     # TypeInfo symbols have some extra relevant types.
                     all_types.extend(sym.node.bases)

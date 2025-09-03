@@ -6203,6 +6203,38 @@ class C: ...
 [out2]
 [out3]
 
+[case testNoCrashDoubleReexportAliasEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+D = list[c.C]
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
 [case testNoCrashDoubleReexportBaseEmpty]
 import m
 
@@ -6223,7 +6255,7 @@ from types import C
 import pb1
 C = pb1.C
 [file types.py.2]
-import pb1, pb2
+import pb2
 C = pb2.C
 
 [file pb1.py]
