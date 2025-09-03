@@ -678,84 +678,83 @@ def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     r0 :: __main__.deco_env
     r1 :: native_int
     r2 :: list
-    r3, r4 :: native_int
-    r5 :: bit
-    r6, x :: object
-    r7 :: native_int
+    r3 :: native_int
+    r4 :: bit
+    r5, x :: object
+    r6 :: native_int
     can_listcomp :: list
-    r8 :: dict
-    r9 :: short_int
-    r10 :: native_int
-    r11 :: object
-    r12 :: tuple[bool, short_int, object, object]
-    r13 :: short_int
-    r14 :: bool
-    r15, r16 :: object
-    r17, k :: str
+    r7 :: dict
+    r8 :: short_int
+    r9 :: native_int
+    r10 :: object
+    r11 :: tuple[bool, short_int, object, object]
+    r12 :: short_int
+    r13 :: bool
+    r14, r15 :: object
+    r16, k :: str
     v :: object
-    r18 :: i32
-    r19, r20, r21 :: bit
+    r17 :: i32
+    r18, r19, r20 :: bit
     can_dictcomp :: dict
-    r22, can_iter, r23, can_use_keys, r24, can_use_values :: list
-    r25 :: object
-    r26 :: dict
-    r27 :: object
-    r28 :: int
+    r21, can_iter, r22, can_use_keys, r23, can_use_values :: list
+    r24 :: object
+    r25 :: dict
+    r26 :: object
+    r27 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = var_object_size args
     r2 = PyList_New(r1)
-    r3 = var_object_size args
-    r4 = 0
+    r3 = 0
 L1:
-    r5 = r4 < r3 :: signed
-    if r5 goto L2 else goto L4 :: bool
+    r4 = r3 < r1 :: signed
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r6 = CPySequenceTuple_GetItemUnsafe(args, r4)
-    x = r6
-    CPyList_SetItemUnsafe(r2, r4, x)
+    r5 = CPySequenceTuple_GetItemUnsafe(args, r3)
+    x = r5
+    CPyList_SetItemUnsafe(r2, r3, x)
 L3:
-    r7 = r4 + 1
-    r4 = r7
+    r6 = r3 + 1
+    r3 = r6
     goto L1
 L4:
     can_listcomp = r2
-    r8 = PyDict_New()
-    r9 = 0
-    r10 = PyDict_Size(kwargs)
-    r11 = CPyDict_GetItemsIter(kwargs)
+    r7 = PyDict_New()
+    r8 = 0
+    r9 = PyDict_Size(kwargs)
+    r10 = CPyDict_GetItemsIter(kwargs)
 L5:
-    r12 = CPyDict_NextItem(r11, r9)
-    r13 = r12[1]
-    r9 = r13
-    r14 = r12[0]
-    if r14 goto L6 else goto L8 :: bool
+    r11 = CPyDict_NextItem(r10, r8)
+    r12 = r11[1]
+    r8 = r12
+    r13 = r11[0]
+    if r13 goto L6 else goto L8 :: bool
 L6:
-    r15 = r12[2]
-    r16 = r12[3]
-    r17 = cast(str, r15)
-    k = r17
-    v = r16
-    r18 = PyDict_SetItem(r8, k, v)
-    r19 = r18 >= 0 :: signed
+    r14 = r11[2]
+    r15 = r11[3]
+    r16 = cast(str, r14)
+    k = r16
+    v = r15
+    r17 = PyDict_SetItem(r7, k, v)
+    r18 = r17 >= 0 :: signed
 L7:
-    r20 = CPyDict_CheckSize(kwargs, r10)
+    r19 = CPyDict_CheckSize(kwargs, r9)
     goto L5
 L8:
-    r21 = CPy_NoErrOccurred()
+    r20 = CPy_NoErrOccurred()
 L9:
-    can_dictcomp = r8
-    r22 = PySequence_List(kwargs)
-    can_iter = r22
-    r23 = CPyDict_Keys(kwargs)
-    can_use_keys = r23
-    r24 = CPyDict_Values(kwargs)
-    can_use_values = r24
-    r25 = r0.func
-    r26 = PyDict_Copy(kwargs)
-    r27 = PyObject_Call(r25, args, r26)
-    r28 = unbox(int, r27)
-    return r28
+    can_dictcomp = r7
+    r21 = PySequence_List(kwargs)
+    can_iter = r21
+    r22 = CPyDict_Keys(kwargs)
+    can_use_keys = r22
+    r23 = CPyDict_Values(kwargs)
+    can_use_values = r23
+    r24 = r0.func
+    r25 = PyDict_Copy(kwargs)
+    r26 = PyObject_Call(r24, args, r25)
+    r27 = unbox(int, r26)
+    return r27
 def deco(func):
     func :: object
     r0 :: __main__.deco_env
