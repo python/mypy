@@ -1754,3 +1754,7 @@ class FreeListError:
 @mypyc_attr(free_list_len=1)  # E: "free_list_len" can't be used with traits
 class NonNative:
     pass
+
+@mypyc_attr(free_list_len=1, allow_interpreted_subclasses=True)  # E: "free_list_len" can't be used in a class that allows interpreted subclasses
+class InterpSub:
+    pass
