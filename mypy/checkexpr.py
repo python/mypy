@@ -248,12 +248,11 @@ def allow_fast_container_literal(t: Type) -> bool:
     )
 
 
-def extract_refexpr_names(expr: RefExpr) -> set[str]:
+def extract_refexpr_names(expr: RefExpr, output: set[str]) -> None:
     """Recursively extracts all module references from a reference expression.
 
     Note that currently, the only two subclasses of RefExpr are NameExpr and
     MemberExpr."""
-    output: set[str] = set()
     while isinstance(expr.node, MypyFile) or expr.fullname:
         if isinstance(expr.node, MypyFile) and expr.fullname:
             # If it's None, something's wrong (perhaps due to an
@@ -277,7 +276,6 @@ def extract_refexpr_names(expr: RefExpr) -> set[str]:
                 break
         else:
             raise AssertionError(f"Unknown RefExpr subclass: {type(expr)}")
-    return output
 
 
 class Finished(Exception):
@@ -372,7 +370,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         It can be of any kind: local, member or global.
         """
-        self.chk.module_refs.update(extract_refexpr_names(e))
+        extract_refexpr_names(e, self.chk.module_refs)
         result = self.analyze_ref_expr(e)
         narrowed = self.narrow_type_from_binder(e, result)
         self.chk.check_deprecated(e.node, e)
@@ -496,7 +494,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # In test cases might 'types' may not be available.
             # Fall back to a dummy 'object' type instead to
             # avoid a crash.
-            result = self.named_type("builtins.object")
+            # Make a copy so that we don't set extra_attrs (below) on a shared instance.
+            result = self.named_type("builtins.object").copy_modified()
         module_attrs: dict[str, Type] = {}
         immutable = set()
         for name, n in node.names.items():
@@ -3345,7 +3344,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
-        self.chk.module_refs.update(extract_refexpr_names(e))
+        extract_refexpr_names(e, self.chk.module_refs)
         result = self.analyze_ordinary_member_access(e, is_lvalue)
         narrowed = self.narrow_type_from_binder(e, result)
         self.chk.warn_deprecated(e.node, e)
@@ -3721,7 +3720,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             elif operator == "is" or operator == "is not":
                 right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
-                if self.dangerous_comparison(left_type, right_type):
+                if self.dangerous_comparison(left_type, right_type, identity_check=True):
                     # Show the most specific literal types possible
                     left_type = try_getting_literal(left_type)
                     right_type = try_getting_literal(right_type)
@@ -3763,6 +3762,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         original_container: Type | None = None,
         seen_types: set[tuple[Type, Type]] | None = None,
         prefer_literal: bool = True,
+        identity_check: bool = False,
     ) -> bool:
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
 
@@ -3790,10 +3790,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         left, right = get_proper_types((left, right))
 
-        # We suppress the error if there is a custom __eq__() method on either
-        # side. User defined (or even standard library) classes can define this
+        # We suppress the error for equality and container checks if there is a custom __eq__()
+        # method on either side. User defined (or even standard library) classes can define this
         # to return True for comparisons between non-overlapping types.
-        if custom_special_method(left, "__eq__") or custom_special_method(right, "__eq__"):
+        if (
+            custom_special_method(left, "__eq__") or custom_special_method(right, "__eq__")
+        ) and not identity_check:
             return False
 
         if prefer_literal:
@@ -3817,7 +3819,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             #
             # TODO: find a way of disabling the check only for types resulted from the expansion.
             return False
-        if isinstance(left, NoneType) or isinstance(right, NoneType):
+        if self.chk.options.strict_equality_for_none:
+            if isinstance(left, NoneType) and isinstance(right, NoneType):
+                return False
+        elif isinstance(left, NoneType) or isinstance(right, NoneType):
             return False
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
@@ -6004,6 +6009,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def _combined_context(self, ty: Type | None) -> Type | None:
         ctx_items = []
         if ty is not None:
+            if has_any_type(ty):
+                # HACK: Any should be contagious, `dict[str, Any] or <x>` should still
+                # infer Any in x.
+                return ty
             ctx_items.append(ty)
         if self.type_context and self.type_context[-1] is not None:
             ctx_items.append(self.type_context[-1])

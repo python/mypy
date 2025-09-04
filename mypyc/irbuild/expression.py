@@ -57,6 +57,7 @@ from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
     Assign,
     BasicBlock,
+    Call,
     ComparisonOp,
     Integer,
     LoadAddress,
@@ -472,23 +473,42 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         if callee.name in base.method_decls:
             break
     else:
-        if (
-            ir.is_ext_class
-            and ir.builtin_base is None
-            and not ir.inherits_python
-            and callee.name == "__init__"
-            and len(expr.args) == 0
-        ):
-            # Call translates to object.__init__(self), which is a
-            # no-op, so omit the call.
-            return builder.none()
+        if ir.is_ext_class and ir.builtin_base is None and not ir.inherits_python:
+            if callee.name == "__init__" and len(expr.args) == 0:
+                # Call translates to object.__init__(self), which is a
+                # no-op, so omit the call.
+                return builder.none()
+            elif callee.name == "__new__":
+                # object.__new__(cls)
+                assert (
+                    len(expr.args) == 1
+                ), f"Expected object.__new__() call to have exactly 1 argument, got {len(expr.args)}"
+                typ_arg = expr.args[0]
+                method_args = builder.fn_info.fitem.arg_names
+                if (
+                    isinstance(typ_arg, NameExpr)
+                    and len(method_args) > 0
+                    and method_args[0] == typ_arg.name
+                ):
+                    subtype = builder.accept(expr.args[0])
+                    return builder.add(Call(ir.setup, [subtype], expr.line))
+
+        if callee.name == "__new__":
+            call = "super().__new__()"
+            if not ir.is_ext_class:
+                builder.error(f"{call} not supported for non-extension classes", expr.line)
+            if ir.inherits_python:
+                builder.error(
+                    f"{call} not supported for classes inheriting from non-native classes",
+                    expr.line,
+                )
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)
     arg_values = [builder.accept(arg) for arg in expr.args]
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
-    if decl.kind != FUNC_STATICMETHOD:
+    if decl.kind != FUNC_STATICMETHOD and decl.name != "__new__":
         # Grab first argument
         vself: Value = builder.self()
         if decl.kind == FUNC_CLASSMETHOD:

@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Final
 
+from mypy_extensions import u8
+
 try:
     from native_internal import (
         Buffer as Buffer,
@@ -34,10 +36,10 @@ except ImportError:
         def write_int(data: Buffer, value: int) -> None:
             raise NotImplementedError
 
-        def read_tag(data: Buffer) -> int:
+        def read_tag(data: Buffer) -> u8:
             raise NotImplementedError
 
-        def write_tag(data: Buffer, value: int) -> None:
+        def write_tag(data: Buffer, value: u8) -> None:
             raise NotImplementedError
 
         def read_str(data: Buffer) -> str:
@@ -59,15 +61,18 @@ except ImportError:
             raise NotImplementedError
 
 
-LITERAL_INT: Final = 1
-LITERAL_STR: Final = 2
-LITERAL_BOOL: Final = 3
-LITERAL_FLOAT: Final = 4
-LITERAL_COMPLEX: Final = 5
-LITERAL_NONE: Final = 6
+# Always use this type alias to refer to type tags.
+Tag = u8
+
+LITERAL_INT: Final[Tag] = 1
+LITERAL_STR: Final[Tag] = 2
+LITERAL_BOOL: Final[Tag] = 3
+LITERAL_FLOAT: Final[Tag] = 4
+LITERAL_COMPLEX: Final[Tag] = 5
+LITERAL_NONE: Final[Tag] = 6
 
 
-def read_literal(data: Buffer, tag: int) -> int | str | bool | float:
+def read_literal(data: Buffer, tag: Tag) -> int | str | bool | float:
     if tag == LITERAL_INT:
         return read_int(data)
     elif tag == LITERAL_STR:
