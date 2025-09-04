@@ -4,9 +4,10 @@
 
 [case testSpecializedImplementationUsed]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     return False
 
 @fun.register
@@ -19,11 +20,13 @@ def test_specialize() -> None:
 
 [case testSubclassesOfExpectedTypeUseSpecialized]
 from functools import singledispatch
+from typing import Any
+
 class A: pass
 class B(A): pass
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     return False
 
 @fun.register
@@ -36,11 +39,13 @@ def test_specialize() -> None:
 
 [case testSuperclassImplementationNotUsedWhenSubclassHasImplementation]
 from functools import singledispatch
+from typing import Any
+
 class A: pass
 class B(A): pass
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     # shouldn't be using this
     assert False
 
@@ -58,9 +63,10 @@ def test_specialize() -> None:
 
 [case testMultipleUnderscoreFunctionsIsntError]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def fun(arg) -> str:
+def fun(arg: Any) -> str:
     return 'default'
 
 @fun.register
@@ -72,7 +78,7 @@ def _(arg: int) -> str:
     return 'int'
 
 # extra function to make sure all 3 underscore functions aren't treated as one OverloadedFuncDef
-def a(b): pass
+def a(b: Any) -> Any: pass
 
 @fun.register
 def _(arg: list) -> str:
@@ -86,10 +92,12 @@ def test_singledispatch() -> None:
 
 [case testCanRegisterCompiledClasses]
 from functools import singledispatch
+from typing import Any
+
 class A: pass
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     return False
 @fun.register
 def fun_specialized(arg: A) -> bool:
@@ -101,13 +109,14 @@ def test_singledispatch() -> None:
 
 [case testTypeUsedAsArgumentToRegister]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     return False
 
 @fun.register(int)
-def fun_specialized(arg) -> bool:
+def fun_specialized(arg: Any) -> bool:
     return True
 
 def test_singledispatch() -> None:
@@ -116,12 +125,13 @@ def test_singledispatch() -> None:
 
 [case testUseRegisterAsAFunction]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     return False
 
-def fun_specialized_impl(arg) -> bool:
+def fun_specialized_impl(arg: Any) -> bool:
     return True
 
 fun.register(int, fun_specialized_impl)
@@ -132,13 +142,14 @@ def test_singledispatch() -> None:
 
 [case testRegisterDoesntChangeFunction]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     return False
 
 @fun.register(int)
-def fun_specialized(arg) -> bool:
+def fun_specialized(arg: Any) -> bool:
     return True
 
 def test_singledispatch() -> None:
@@ -147,9 +158,10 @@ def test_singledispatch() -> None:
 # TODO: turn this into a mypy error
 [case testNoneIsntATypeWhenUsedAsArgumentToRegister]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     return False
 
 def test_argument() -> None:
@@ -163,14 +175,15 @@ def test_argument() -> None:
 
 [case testRegisteringTheSameFunctionSeveralTimes]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def fun(arg) -> bool:
+def fun(arg: Any) -> bool:
     return False
 
 @fun.register(int)
 @fun.register(str)
-def fun_specialized(arg) -> bool:
+def fun_specialized(arg: Any) -> bool:
     return True
 
 def test_singledispatch() -> None:
@@ -179,11 +192,13 @@ def test_singledispatch() -> None:
     assert not fun([1, 2])
 
 [case testTypeIsAnABC]
+# mypy: allow-untyped-defs
 from functools import singledispatch
 from collections.abc import Mapping
 
 @singledispatch
 def fun(arg) -> bool:
+    # TODO: Adding an Any parameter annotation breaks the test case
     return False
 
 @fun.register
@@ -241,6 +256,7 @@ def test_singledispatchmethod() -> None:
 
 [case testSingledispatchTreeSumAndEqual]
 from functools import singledispatch
+from typing import cast
 
 class Tree:
     pass
@@ -286,10 +302,10 @@ def build(n: int) -> Tree:
         return Leaf()
     return Node(n, build(n - 1), build(n - 1))
 
-def test_sum_and_equal():
+def test_sum_and_equal() -> None:
     tree = build(5)
     tree2 = build(5)
-    tree2.right.right.right.value = 10
+    cast(Node, cast(Node, cast(Node, cast(Node, tree2).right).right).right).value = 10
     assert calc_sum(tree) == 57
     assert calc_sum(tree2) == 65
     assert equal(tree, tree)
@@ -354,7 +370,7 @@ def verify_typevarexpr(stub: TypeVarExpr, a: MaybeMissing[Any], b: List[str]) ->
     if False:
         yield None
 
-def verify_list(stub, a, b) -> List[str]:
+def verify_list(stub: Any, a: Any, b: Any) -> List[str]:
     """Helper function that converts iterator of errors to list of messages"""
     return list(err.msg for err in verify(stub, a, b))
 
@@ -368,31 +384,33 @@ def test_verify() -> None:
 
 [case testArgsInRegisteredImplNamedDifferentlyFromMainFunction]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def f(a) -> bool:
+def f(a: Any) -> bool:
     return False
 
 @f.register
 def g(b: int) -> bool:
     return True
 
-def test_singledispatch():
+def test_singledispatch() -> None:
     assert f(5)
     assert not f('a')
 
 [case testKeywordArguments]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def f(arg, *, kwarg: int = 0) -> int:
+def f(arg: Any, *, kwarg: int = 0) -> int:
     return kwarg + 10
 
 @f.register
 def g(arg: int, *, kwarg: int = 5) -> int:
     return kwarg - 10
 
-def test_keywords():
+def test_keywords() -> None:
     assert f('a') == 10
     assert f('a', kwarg=3) == 13
     assert f('a', kwarg=7) == 17
@@ -413,14 +431,14 @@ def f(arg: Any) -> Iterable[int]:
 def g(arg: str) -> Iterable[int]:
     return [0]
 
-def test_iterables():
+def test_iterables() -> None:
     assert f(1) != [1]
     assert list(f(1)) == [1]
     assert f('a') == [0]
 
 [case testRegisterUsedAtSameTimeAsOtherDecorators]
 from functools import singledispatch
-from typing import TypeVar
+from typing import TypeVar, Any
 
 class A: pass
 class B: pass
@@ -431,7 +449,7 @@ def decorator(f: T) -> T:
     return f
 
 @singledispatch
-def f(arg) -> int:
+def f(arg: Any) -> int:
     return 0
 
 @f.register
@@ -439,7 +457,7 @@ def f(arg) -> int:
 def h(arg: str) -> int:
     return 2
 
-def test_singledispatch():
+def test_singledispatch() -> None:
     assert f(1) == 0
     assert f('a') == 2
 
@@ -450,12 +468,12 @@ from typing import Callable, Any
 class A: pass
 
 def decorator(f: Callable[[Any], int]) -> Callable[[Any], int]:
-    def wrapper(x) -> int:
+    def wrapper(x: Any) -> int:
         return f(x) * 7
     return wrapper
 
 @singledispatch
-def f(arg) -> int:
+def f(arg: Any) -> int:
     return 10
 
 @f.register
@@ -464,17 +482,19 @@ def h(arg: str) -> int:
     return 5
 
 
-def test_singledispatch():
+def test_singledispatch() -> None:
     assert f('a') == 35
     assert f(A()) == 10
 
 [case testMoreSpecificTypeBeforeLessSpecificType]
 from functools import singledispatch
+from typing import Any
+
 class A: pass
 class B(A): pass
 
 @singledispatch
-def f(arg) -> str:
+def f(arg: Any) -> str:
     return 'default'
 
 @f.register
@@ -485,20 +505,21 @@ def g(arg: B) -> str:
 def h(arg: A) -> str:
     return 'a'
 
-def test_singledispatch():
+def test_singledispatch() -> None:
     assert f(B()) == 'b'
     assert f(A()) == 'a'
     assert f(5) == 'default'
 
 [case testMultipleRelatedClassesBeingRegistered]
 from functools import singledispatch
+from typing import Any
 
 class A: pass
 class B(A): pass
 class C(B): pass
 
 @singledispatch
-def f(arg) -> str: return 'default'
+def f(arg: Any) -> str: return 'default'
 
 @f.register
 def _(arg: A) -> str: return 'a'
@@ -509,7 +530,7 @@ def _(arg: C) -> str: return 'c'
 @f.register
 def _(arg: B) -> str: return 'b'
 
-def test_singledispatch():
+def test_singledispatch() -> None:
     assert f(A()) == 'a'
     assert f(B()) == 'b'
     assert f(C()) == 'c'
@@ -525,7 +546,7 @@ def a(arg: A) -> int:
 def _(arg: C) -> int:
     return 3
 
-def test_singledispatch():
+def test_singledispatch() -> None:
     assert f(B()) == 1
     assert f(A()) == 2
     assert f(C()) == 3
@@ -539,7 +560,7 @@ class B(A): pass
 class C(B): pass
 
 @singledispatch
-def f(arg) -> int:
+def f(arg: object) -> int:
     return 0
 
 @f.register
@@ -549,6 +570,7 @@ def g(arg: B) -> int:
 [case testOrderCanOnlyBeDeterminedFromMRONotIsinstanceChecks]
 from mypy_extensions import trait
 from functools import singledispatch
+from typing import Any
 
 @trait
 class A: pass
@@ -558,9 +580,8 @@ class AB(A, B): pass
 class BA(B, A): pass
 
 @singledispatch
-def f(arg) -> str:
+def f(arg: Any) -> str:
     return "default"
-    pass
 
 @f.register
 def fa(arg: A) -> str:
@@ -570,18 +591,19 @@ def fa(arg: A) -> str:
 def fb(arg: B) -> str:
     return "b"
 
-def test_singledispatch():
+def test_singledispatch() -> None:
     assert f(AB()) == "a"
     assert f(BA()) == "b"
 
 [case testCallingFunctionBeforeAllImplementationsRegistered]
 from functools import singledispatch
+from typing import Any
 
 class A: pass
 class B(A): pass
 
 @singledispatch
-def f(arg) -> str:
+def f(arg: Any) -> str:
     return 'default'
 
 assert f(A()) == 'default'
@@ -609,6 +631,7 @@ def test_final() -> None:
 
 [case testDynamicallyRegisteringFunctionFromInterpretedCode]
 from functools import singledispatch
+from typing import Any
 
 class A: pass
 class B(A): pass
@@ -616,7 +639,7 @@ class C(B): pass
 class D(C): pass
 
 @singledispatch
-def f(arg) -> str:
+def f(arg: Any) -> str:
     return "default"
 
 @f.register
@@ -647,9 +670,10 @@ assert c(A()) == 'c'
 
 [case testMalformedDynamicRegisterCall]
 from functools import singledispatch
+from typing import Any
 
 @singledispatch
-def f(arg) -> None:
+def f(arg: Any) -> None:
     pass
 [file register.py]
 from native import f
@@ -667,7 +691,7 @@ import register
 from functools import singledispatch
 
 @singledispatch
-def f(arg) -> str:
+def f(arg: object) -> str:
     return 'default'
 
 [file register.py]
