@@ -47,7 +47,16 @@ from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable, TypeInfo, TypeAlias
+from mypy.nodes import (
+    Import,
+    ImportAll,
+    ImportBase,
+    ImportFrom,
+    MypyFile,
+    SymbolTable,
+    TypeAlias,
+    TypeInfo,
+)
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
@@ -3168,7 +3177,7 @@ def load_graph(
         # - In this case A's cached *direct* dependencies are still valid
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
-        dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT or True]
+        dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
         if not manager.use_fine_grained_cache():
             # TODO: Ideally we could skip here modules that appeared in st.suppressed
             # because they are not in build with `follow-imports=skip`.

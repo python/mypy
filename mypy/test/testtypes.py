@@ -227,13 +227,13 @@ class TypesSuite(Suite):
         visitor = TypeIndirectionVisitor()
         A.accept(visitor)
         modules = visitor.modules
-        assert modules == {"__main__"}
+        assert modules == {"__main__", "builtins"}
 
         A, _ = self.fx.def_alias_2(self.fx.a)
         visitor = TypeIndirectionVisitor()
         A.accept(visitor)
         modules = visitor.modules
-        assert modules == {"__main__"}
+        assert modules == {"__main__", "builtins"}
 
 
 class TypeOpsSuite(Suite):

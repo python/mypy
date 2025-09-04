@@ -23,24 +23,44 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
     def __init__(self) -> None:
         # Module references are collected here
         self.modules: set[str] = set()
+        # User to avoid infinite recursion with recursive type aliases
+        self.seen_aliases: set[types.TypeAliasType] = set()
         # Used to avoid redundant work
         self.seen_fullnames: set[str] = set()
 
     def find_modules(self, typs: Iterable[types.Type]) -> set[str]:
         self.modules = set()
         self.seen_fullnames = set()
+        self.seen_aliases = set()
         for typ in typs:
-            typ.accept(self)
+            self._visit(typ)
         return self.modules
 
+    def _visit(self, typ: types.Type) -> None:
+        if isinstance(typ, types.TypeAliasType):
+            # Avoid infinite recursion for recursive type aliases.
+            if typ not in self.seen_aliases:
+                self.seen_aliases.add(typ)
+        typ.accept(self)
+
     def _visit_type_tuple(self, typs: tuple[types.Type, ...]) -> None:
-        # Micro-optimization: Specialized version for lists
+        # Micro-optimization: Specialized version of _visit for lists
         for typ in typs:
+            if isinstance(typ, types.TypeAliasType):
+                # Avoid infinite recursion for recursive type aliases.
+                if typ in self.seen_aliases:
+                    continue
+                self.seen_aliases.add(typ)
             typ.accept(self)
 
     def _visit_type_list(self, typs: list[types.Type]) -> None:
-        # Micro-optimization: Specialized version for tuples
+        # Micro-optimization: Specialized version of _visit for tuples
         for typ in typs:
+            if isinstance(typ, types.TypeAliasType):
+                # Avoid infinite recursion for recursive type aliases.
+                if typ in self.seen_aliases:
+                    continue
+                self.seen_aliases.add(typ)
             typ.accept(self)
 
     def _visit_module_name(self, module_name: str) -> None:
@@ -67,16 +87,16 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
 
     def visit_type_var(self, t: types.TypeVarType) -> None:
         self._visit_type_list(t.values)
-        t.upper_bound.accept(self)
-        t.default.accept(self)
+        self._visit(t.upper_bound)
+        self._visit(t.default)
 
     def visit_param_spec(self, t: types.ParamSpecType) -> None:
-        t.upper_bound.accept(self)
-        t.default.accept(self)
+        self._visit(t.upper_bound)
+        self._visit(t.default)
 
     def visit_type_var_tuple(self, t: types.TypeVarTupleType) -> None:
-        t.upper_bound.accept(self)
-        t.default.accept(self)
+        self._visit(t.upper_bound)
+        self._visit(t.default)
 
     def visit_unpack_type(self, t: types.UnpackType) -> None:
         t.type.accept(self)
@@ -97,7 +117,7 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
 
     def visit_callable_type(self, t: types.CallableType) -> None:
         self._visit_type_list(t.arg_types)
-        t.ret_type.accept(self)
+        self._visit(t.ret_type)
         if t.definition is not None:
             fullname = t.definition.fullname
             if fullname not in self.seen_fullnames:
@@ -105,20 +125,19 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
                 self.seen_fullnames.add(fullname)
 
     def visit_overloaded(self, t: types.Overloaded) -> None:
-        for typ in t.items:
-            typ.accept(self)
-        t.fallback.accept(self)
+        self._visit_type_list(list(t.items))
+        self._visit(t.fallback)
 
     def visit_tuple_type(self, t: types.TupleType) -> None:
         self._visit_type_list(t.items)
-        t.partial_fallback.accept(self)
+        self._visit(t.partial_fallback)
 
     def visit_typeddict_type(self, t: types.TypedDictType) -> None:
         self._visit_type_list(list(t.items.values()))
-        t.fallback.accept(self)
+        self._visit(t.fallback)
 
     def visit_literal_type(self, t: types.LiteralType) -> None:
-        t.fallback.accept(self)
+        self._visit(t.fallback)
 
     def visit_union_type(self, t: types.UnionType) -> None:
         self._visit_type_list(t.items)
@@ -127,9 +146,10 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
         pass
 
     def visit_type_type(self, t: types.TypeType) -> None:
-        t.item.accept(self)
+        self._visit(t.item)
 
     def visit_type_alias_type(self, t: types.TypeAliasType) -> None:
         if t.alias:
             self._visit_module_name(t.alias.module)
+            self._visit(t.alias.target)
         self._visit_type_list(t.args)
