@@ -5,6 +5,7 @@
 from weakref import proxy, ref
 from mypy_extensions import mypyc_attr
 from testutil import assertRaises
+from typing import Optional
 
 @mypyc_attr(native_class=False)
 class Object:
@@ -15,14 +16,14 @@ class Object:
 _callback_called_cache = {"ref": False, "proxy": False}
 
 def test_weakref_ref() -> None:
-    obj: Object | None = Object()
+    obj: Optional[Object] = Object()
     r = ref(obj)
     assert r() is obj
     obj = None
     assert r() is None, r()
 
 def test_weakref_ref_with_callback() -> None:
-    obj: Object | None = Object()
+    obj: Optional[Object] = Object()
     r = ref(obj, lambda x: _callback_called_cache.__setitem__("ref", True))
     assert r() is obj
     obj = None
@@ -30,7 +31,7 @@ def test_weakref_ref_with_callback() -> None:
     assert _callback_called_cache["ref"] is True
 
 def test_weakref_proxy() -> None:
-    obj: Object | None = Object()
+    obj: Optional[Object] = Object()
     p = proxy(obj)
     assert obj.some_meth() == 1
     assert p.some_meth() == 1
@@ -40,7 +41,7 @@ def test_weakref_proxy() -> None:
         p.some_meth()
 
 def test_weakref_proxy_with_callback() -> None:
-    obj: Object | None = Object()
+    obj: Optional[Object] = Object()
     p = proxy(obj, lambda x: _callback_called_cache.__setitem__("proxy", True))
     assert obj.some_meth() == 1
     assert p.some_meth() == 1
