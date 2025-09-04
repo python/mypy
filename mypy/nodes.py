@@ -4146,7 +4146,7 @@ class TypeAlias(SymbolNode):
         "python_3_12_type_alias",
     )
 
-    __match_args__ = ("_fullname", "target", "alias_tvars", "no_args")
+    __match_args__ = ("name", "target", "alias_tvars", "no_args")
 
     def __init__(
         self,
