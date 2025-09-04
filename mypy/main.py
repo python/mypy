@@ -886,7 +886,7 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help=argparse.SUPPRESS,  # This is still very experimental
+        help="Allow more flexible variable redefinition semantics (experimental)",
         group=strictness_group,
     )
 
