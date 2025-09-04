@@ -6171,7 +6171,30 @@ class Base:
 [out2]
 main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
-[case testNoCrashDoubleReexportFunctionUpdated]
+[case testLiteralCoarseGrainedChainedAliases]
+from mod1 import Alias1
+from typing import Literal
+x: Alias1
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(x)
+[file mod1.py]
+from mod2 import Alias2
+Alias1 = Alias2
+[file mod2.py]
+from mod3 import Alias3
+Alias2 = Alias3
+[file mod3.py]
+from typing import Literal
+Alias3 = Literal[3]
+[file mod3.py.2]
+from typing import Literal
+Alias3 = Literal[4]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
+
+[case testDoubleReexportFunctionUpdated]
 import m
 
 [file m.py]
