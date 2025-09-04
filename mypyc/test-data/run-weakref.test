@@ -1,6 +1,7 @@
 # Test cases for weakrefs (compile and run)
 
 [case testWeakrefRef]
+# mypy: disable-error-code="union-attr"
 from weakref import proxy, ref
 from mypy_extensions import mypyc_attr
 from testutil import assertRaises
