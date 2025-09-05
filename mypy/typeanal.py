@@ -155,11 +155,11 @@ def analyze_type_alias(
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
     alias_type_params_names: list[str] | None = None,
     python_3_12_type_alias: bool = False,
-) -> tuple[Type, set[str]]:
+) -> tuple[Type, set[tuple[str, str]]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
     If `node` is valid as a type alias rvalue, return the resulting type and a set of
-    full names of type aliases it depends on (directly or indirectly).
+    module and full names of type aliases it depends on (directly or indirectly).
     'node' must have been semantically analyzed.
     """
     analyzer = TypeAnalyser(
@@ -263,8 +263,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.options = options
         self.cur_mod_node = cur_mod_node
         self.is_typeshed_stub = is_typeshed_stub
-        # Names of type aliases encountered while analysing a type will be collected here.
-        self.aliases_used: set[str] = set()
+        # Names of type aliases encountered while analysing a type will be collected here
+        # (each tuple in the set is (module_name, fullname)).
+        self.aliases_used: set[tuple[str, str]] = set()
         self.prohibit_self_type = prohibit_self_type
         # Set when we analyze TypedDicts or NamedTuples, since they are special:
         self.prohibit_special_class_field_types = prohibit_special_class_field_types
@@ -457,7 +458,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if special is not None:
                 return special
             if isinstance(node, TypeAlias):
-                self.aliases_used.add(fullname)
+                self.aliases_used.add((node.module, fullname))
                 an_args = self.anal_array(
                     t.args,
                     allow_param_spec=True,

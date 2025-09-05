@@ -6214,7 +6214,7 @@ from types import C
 import pb1
 C = pb1.C
 [file types.py.2]
-import pb2
+import pb1, pb2
 C = pb2.C
 
 [file pb1.py]
@@ -6225,6 +6225,40 @@ class C: ...
 [out2]
 [out3]
 tmp/m.py:2: note: Revealed type is "def (arg: pb2.C)"
+
+[case testDoubleReexportGenericUpdated]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+x: f.F
+reveal_type(x[0])
+
+[file f.py]
+import c
+class FB(list[c.C]): ...
+class F(FB): ...
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py]
+class C: ...
+[out]
+[out2]
+[out3]
+tmp/m.py:3: note: Revealed type is "pb2.C"
 
 [case testNoCrashDoubleReexportFunctionEmpty]
 import m

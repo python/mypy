@@ -2808,6 +2808,7 @@ class SemanticAnalyzer(
                 and not sym.node.alias_tvars
             ):
                 target = get_proper_type(sym.node.target)
+                self.add_type_alias_deps({(sym.node.module, sym.node.fullname)})
                 if isinstance(target, Instance):
                     metaclass_info = target.type
 
@@ -3886,16 +3887,15 @@ class SemanticAnalyzer(
         declared_type_vars: TypeVarLikeList | None = None,
         all_declared_type_params_names: list[str] | None = None,
         python_3_12_type_alias: bool = False,
-    ) -> tuple[Type | None, list[TypeVarLikeType], set[str], list[str], bool]:
+    ) -> tuple[Type | None, list[TypeVarLikeType], set[tuple[str, str]], bool]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
-        If yes, return the corresponding type, a list of
-        qualified type variable names for generic aliases, a set of names the alias depends on,
-        and a list of type variables if the alias is generic.
-        A schematic example for the dependencies:
+        If yes, return the corresponding type, a list of type variables for generic aliases,
+        a set of names the alias depends on, and True if the original type has empty tuple index.
+        An example for the dependencies:
             A = int
             B = str
-            analyze_alias(Dict[A, B])[2] == {'__main__.A', '__main__.B'}
+            analyze_alias(dict[A, B])[2] == {('mod', 'mod.A'), ('mod', 'mod.B')}
         """
         dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         global_scope = not self.type and not self.function_stack
@@ -3907,10 +3907,9 @@ class SemanticAnalyzer(
             self.fail(
                 "Invalid type alias: expression is not a valid type", rvalue, code=codes.VALID_TYPE
             )
-            return None, [], set(), [], False
+            return None, [], set(), False
 
         found_type_vars = self.find_type_var_likes(typ)
-        tvar_defs: list[TypeVarLikeType] = []
         namespace = self.qualified_name(name)
         alias_type_vars = found_type_vars if declared_type_vars is None else declared_type_vars
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
@@ -3946,9 +3945,8 @@ class SemanticAnalyzer(
                 variadic = True
             new_tvar_defs.append(td)
 
-        qualified_tvars = [node.fullname for _name, node in alias_type_vars]
         empty_tuple_index = typ.empty_tuple_index if isinstance(typ, UnboundType) else False
-        return analyzed, new_tvar_defs, depends_on, qualified_tvars, empty_tuple_index
+        return analyzed, new_tvar_defs, depends_on, empty_tuple_index
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
@@ -4042,12 +4040,11 @@ class SemanticAnalyzer(
         if self.is_none_alias(rvalue):
             res = NoneType()
             alias_tvars: list[TypeVarLikeType] = []
-            depends_on: set[str] = set()
-            qualified_tvars: list[str] = []
+            depends_on: set[tuple[str, str]] = set()
             empty_tuple_index = False
         else:
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
+            res, alias_tvars, depends_on, empty_tuple_index = self.analyze_alias(
                 lvalue.name,
                 rvalue,
                 allow_placeholder=True,
@@ -4071,12 +4068,6 @@ class SemanticAnalyzer(
                 self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
                 return True
         self.add_type_alias_deps(depends_on)
-        # In addition to the aliases used, we add deps on unbound
-        # type variables, since they are erased from target type.
-        self.add_type_alias_deps(qualified_tvars)
-        # The above are only direct deps on other aliases.
-        # For subscripted aliases, type deps from expansion are added in deps.py
-        # (because the type is stored).
         check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg, context=s)
         # When this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys.
@@ -5579,7 +5570,7 @@ class SemanticAnalyzer(
                 return
 
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
+            res, alias_tvars, depends_on, empty_tuple_index = self.analyze_alias(
                 s.name.name,
                 s.value.expr(),
                 allow_placeholder=True,
@@ -5608,12 +5599,6 @@ class SemanticAnalyzer(
                 return
 
             self.add_type_alias_deps(depends_on)
-            # In addition to the aliases used, we add deps on unbound
-            # type variables, since they are erased from target type.
-            self.add_type_alias_deps(qualified_tvars)
-            # The above are only direct deps on other aliases.
-            # For subscripted aliases, type deps from expansion are added in deps.py
-            # (because the type is stored).
             check_for_explicit_any(
                 res, self.options, self.is_typeshed_stub_file, self.msg, context=s
             )
@@ -7541,20 +7526,21 @@ class SemanticAnalyzer(
         self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
 
     def add_type_alias_deps(
-        self, aliases_used: Collection[str], target: str | None = None
+        self, aliases_used: Collection[tuple[str, str]], target: str | None = None
     ) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.
-        If `target` is None, then the target node used will be the current scope.
+        If `target` is None, then the target node used will be the current scope. For
+        coarse-grained mode, add just the module names where aliases are defined.
         """
         if not aliases_used:
-            # A basic optimization to avoid adding targets with no dependencies to
-            # the `alias_deps` dict.
             return
         if target is None:
             target = self.scope.current_target()
-        self.cur_mod_node.alias_deps[target].update(aliases_used)
+        for mod, fn in aliases_used:
+            self.cur_mod_node.alias_deps[target].add(fn)
+            self.cur_mod_node.mod_alias_deps.add(mod)
 
     def is_mangled_global(self, name: str) -> bool:
         # A global is mangled if there exists at least one renamed variant.
