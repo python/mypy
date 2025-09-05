@@ -286,17 +286,16 @@ def build(n: int) -> Tree:
         return Leaf()
     return Node(n, build(n - 1), build(n - 1))
 
-[file driver.py]
-from native import build, calc_sum, equal
-tree = build(5)
-tree2 = build(5)
-tree2.right.right.right.value = 10
-assert calc_sum(tree) == 57
-assert calc_sum(tree2) == 65
-assert equal(tree, tree)
-assert not equal(tree, tree2)
-tree3 = build(4)
-assert not equal(tree, tree3)
+def test_sum_and_equal():
+    tree = build(5)
+    tree2 = build(5)
+    tree2.right.right.right.value = 10
+    assert calc_sum(tree) == 57
+    assert calc_sum(tree2) == 65
+    assert equal(tree, tree)
+    assert not equal(tree, tree2)
+    tree3 = build(4)
+    assert not equal(tree, tree3)
 
 [case testSimulateMypySingledispatch]
 from functools import singledispatch
