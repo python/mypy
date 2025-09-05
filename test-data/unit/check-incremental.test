@@ -6175,6 +6175,29 @@ main:5: error: Call to abstract method "meth" of "Base" with trivial body via su
 from mod1 import Alias1
 from typing import Literal
 x: Alias1
+def expect_int(x: int) -> None: pass
+expect_int(x)
+[file mod1.py]
+from mod2 import Alias2
+Alias1 = Alias2
+[file mod2.py]
+from mod3 import Alias3
+Alias2 = Alias3
+[file mod3.py]
+from typing import Literal
+Alias3 = int
+[file mod3.py.2]
+from typing import Literal
+Alias3 = str
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+main:5: error: Argument 1 to "expect_int" has incompatible type "str"; expected "int"
+
+[case testLiteralCoarseGrainedChainedAliases2]
+from mod1 import Alias1
+from typing import Literal
+x: Alias1
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(x)
 [file mod1.py]
