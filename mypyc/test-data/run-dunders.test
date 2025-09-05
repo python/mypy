@@ -185,7 +185,7 @@ class SeqError:
     def __contains__(self, x: int) -> bool:
         raise RuntimeError()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return -5
 
 def any_seq_error() -> Any:
@@ -545,6 +545,7 @@ def test_type_mismatch_fall_back_to_reverse() -> None:
     assert F()**G() == -6
 
 [case testDundersBinaryNotImplemented]
+# mypy: allow-untyped-defs
 from typing import Any, Union
 from testutil import assertRaises
 
@@ -617,14 +618,27 @@ def test_unannotated_add() -> None:
     with assertRaises(TypeError, "unsupported operand type(s) for +: 'F' and 'str'"):
         o + 'x'
 
+    o2: Any = F(4)
+    assert o2 + 5 == 9
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'F' and 'str'"):
+        o2 + 'x'
+
 def test_unannotated_add_and_radd_1() -> None:
     o = F(4)
     assert o + G() == 5
+
+    o2: Any = F(4)
+    assert o2 + G() == 5
 
 def test_unannotated_radd() -> None:
     assert 'x' + G() == 'a'
     with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'G'"):
         1 + G()
+
+    o: Any = G()
+    assert 'x' + o == 'a'
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'G'"):
+        1 + o
 
 class H:
     def __add__(self, x):
@@ -644,40 +658,48 @@ def test_unannotated_add_and_radd_2() -> None:
     with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'H'"):
         1 + h
 
+    h2: Any = H()
+    assert h + 5 == 6
+    assert 'x' + h == 22
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'H'"):
+        1 + h
+
 # TODO: Inheritance
 
 [case testDifferentReverseDunders]
+from typing import Any
+
 class C:
     # __radd__ and __rsub__ are tested elsewhere
 
-    def __rmul__(self, x):
+    def __rmul__(self, x: Any) -> int:
         return 1
 
-    def __rtruediv__(self, x):
+    def __rtruediv__(self, x: Any) -> int:
         return 2
 
-    def __rmod__(self, x):
+    def __rmod__(self, x: Any) -> int:
         return 3
 
-    def __rfloordiv__(self, x):
+    def __rfloordiv__(self, x: Any) -> int:
         return 4
 
-    def __rlshift__(self, x):
+    def __rlshift__(self, x: Any) -> int:
         return 5
 
-    def __rrshift__(self, x):
+    def __rrshift__(self, x: Any) -> int:
         return 6
 
-    def __rand__(self, x):
+    def __rand__(self, x: Any) -> int:
         return 7
 
-    def __ror__(self, x):
+    def __ror__(self, x: Any) -> int:
         return 8
 
-    def __rxor__(self, x):
+    def __rxor__(self, x: Any) -> int:
         return 9
 
-    def __rmatmul__(self, x):
+    def __rmatmul__(self, x: Any) -> int:
         return 10
 
 def test_reverse_dunders() -> None:
@@ -803,10 +825,10 @@ def test_error() -> None:
         c += 'x'
 
 class BadInplaceAdd:
-    def __init__(self):
+    def __init__(self) -> None:
         self.x = 0
 
-    def __iadd__(self, x):
+    def __iadd__(self, x: int) -> Any:
         self.x += x
 
 def test_in_place_operator_returns_none() -> None:
