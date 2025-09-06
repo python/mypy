@@ -305,7 +305,14 @@ from mypy.types import (
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
-from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
+from mypy.util import (
+    correct_relative_import,
+    is_dunder,
+    module_prefix,
+    split_module_names,
+    unmangle,
+    unnamed_function,
+)
 from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")
@@ -2808,7 +2815,6 @@ class SemanticAnalyzer(
                 and not sym.node.alias_tvars
             ):
                 target = get_proper_type(sym.node.target)
-                self.add_type_alias_deps({(sym.node.module, sym.node.fullname)})
                 if isinstance(target, Instance):
                     metaclass_info = target.type
 
@@ -3887,7 +3893,7 @@ class SemanticAnalyzer(
         declared_type_vars: TypeVarLikeList | None = None,
         all_declared_type_params_names: list[str] | None = None,
         python_3_12_type_alias: bool = False,
-    ) -> tuple[Type | None, list[TypeVarLikeType], set[tuple[str, str]], bool]:
+    ) -> tuple[Type | None, list[TypeVarLikeType], set[str], bool]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
         If yes, return the corresponding type, a list of type variables for generic aliases,
@@ -3895,7 +3901,7 @@ class SemanticAnalyzer(
         An example for the dependencies:
             A = int
             B = str
-            analyze_alias(dict[A, B])[2] == {('mod', 'mod.A'), ('mod', 'mod.B')}
+            analyze_alias(dict[A, B])[2] == {'__main__.A', '__main__.B'}
         """
         dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         global_scope = not self.type and not self.function_stack
@@ -4040,7 +4046,7 @@ class SemanticAnalyzer(
         if self.is_none_alias(rvalue):
             res = NoneType()
             alias_tvars: list[TypeVarLikeType] = []
-            depends_on: set[tuple[str, str]] = set()
+            depends_on: set[str] = set()
             empty_tuple_index = False
         else:
             tag = self.track_incomplete_refs()
@@ -5929,6 +5935,8 @@ class SemanticAnalyzer(
                 if isinstance(sym.node, PlaceholderNode):
                     self.process_placeholder(expr.name, "attribute", expr)
                     return
+                if sym.node is not None:
+                    self.record_imported_symbol(sym.node)
                 expr.kind = sym.kind
                 expr.fullname = sym.fullname or ""
                 expr.node = sym.node
@@ -5959,8 +5967,7 @@ class SemanticAnalyzer(
             if type_info:
                 n = type_info.names.get(expr.name)
                 if n is not None and isinstance(n.node, (MypyFile, TypeInfo, TypeAlias)):
-                    if not n:
-                        return
+                    self.record_imported_symbol(n.node)
                     expr.kind = n.kind
                     expr.fullname = n.fullname or ""
                     expr.node = n.node
@@ -6281,6 +6288,24 @@ class SemanticAnalyzer(
     def lookup(
         self, name: str, ctx: Context, suppress_errors: bool = False
     ) -> SymbolTableNode | None:
+        node = self._lookup(name, ctx, suppress_errors)
+        if node is not None and node.node is not None:
+            # This call is unfortunate from performance point of view, but
+            # needed for rare cases like e.g. testIncrementalChangingAlias.
+            self.record_imported_symbol(node.node)
+        return node
+
+    def record_imported_symbol(self, node: SymbolNode) -> None:
+        fullname = node.fullname
+        if not isinstance(node, MypyFile):
+            while fullname not in self.modules and "." in fullname:
+                fullname = fullname.rsplit(".")[0]
+        if fullname != self.cur_mod_id and fullname not in self.cur_mod_node.module_refs:
+            self.cur_mod_node.module_refs.update(split_module_names(fullname))
+
+    def _lookup(
+        self, name: str, ctx: Context, suppress_errors: bool = False
+    ) -> SymbolTableNode | None:
         """Look up an unqualified (no dots) name in all active namespaces.
 
         Note that the result may contain a PlaceholderNode. The caller may
@@ -6488,6 +6513,8 @@ class SemanticAnalyzer(
                         self.name_not_defined(name, ctx, namespace=namespace)
                     return None
                 sym = nextsym
+        if sym is not None and sym.node is not None:
+            self.record_imported_symbol(sym.node)
         return sym
 
     def lookup_type_node(self, expr: Expression) -> SymbolTableNode | None:
@@ -7526,21 +7553,18 @@ class SemanticAnalyzer(
         self.cur_mod_node.plugin_deps.setdefault(trigger, set()).add(target)
 
     def add_type_alias_deps(
-        self, aliases_used: Collection[tuple[str, str]], target: str | None = None
+        self, aliases_used: Collection[str], target: str | None = None
     ) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.
-        If `target` is None, then the target node used will be the current scope. For
-        coarse-grained mode, add just the module names where aliases are defined.
+        If `target` is None, then the target node used will be the current scope.
         """
         if not aliases_used:
             return
         if target is None:
             target = self.scope.current_target()
-        for mod, fn in aliases_used:
-            self.cur_mod_node.alias_deps[target].add(fn)
-            self.cur_mod_node.mod_alias_deps.add(mod)
+        self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def is_mangled_global(self, name: str) -> bool:
         # A global is mangled if there exists at least one renamed variant.

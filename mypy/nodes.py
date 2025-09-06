@@ -288,7 +288,7 @@ class MypyFile(SymbolNode):
         "path",
         "defs",
         "alias_deps",
-        "mod_alias_deps",
+        "module_refs",
         "is_bom",
         "names",
         "imports",
@@ -312,8 +312,9 @@ class MypyFile(SymbolNode):
     defs: list[Statement]
     # Type alias dependencies as mapping from target to set of alias full names
     alias_deps: defaultdict[str, set[str]]
-    # Same as above but for coarse-grained dependencies (i.e. modules instead of full names)
-    mod_alias_deps: set[str]
+    # The set of all dependencies (suppressed or not) that this module accesses, either
+    # directly or indirectly.
+    module_refs: set[str]
     # Is there a UTF-8 BOM at the start?
     is_bom: bool
     names: SymbolTable
@@ -354,7 +355,7 @@ class MypyFile(SymbolNode):
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
-        self.mod_alias_deps = set()
+        self.module_refs = set()
         self.plugin_deps = {}
         if ignored_lines:
             self.ignored_lines = ignored_lines

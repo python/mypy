@@ -6411,6 +6411,37 @@ class C: ...
 [out2]
 [out3]
 
+[case testDoubleReexportMetaUpdated]
+import m
+class C(metaclass=m.M): ...
+
+[file m.py]
+from types import M
+
+[file types.py]
+class M(type): ...
+[file types.py.2]
+class M: ...
+[out]
+[out2]
+main:2: error: Metaclasses not inheriting from "type" are not supported
+
+[case testIncrementalOkChangeWithSave2]
+import mod1
+x: int = mod1.x
+
+[file mod1.py]
+from mod2 import x
+
+[file mod2.py]
+x = 1
+
+[file mod2.py.2]
+x = "no way"
+[out]
+[out2]
+main:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testNoCrashDoubleReexportMetaEmpty]
 import m
 

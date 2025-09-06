@@ -47,16 +47,7 @@ from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
-from mypy.nodes import (
-    Decorator,
-    Import,
-    ImportAll,
-    ImportBase,
-    ImportFrom,
-    MypyFile,
-    OverloadedFuncDef,
-    SymbolTable,
-)
+from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
@@ -1773,12 +1764,13 @@ an SCC we check whether its interface (symbol table) is still fresh
 stale so that they need to be re-parsed as well.
 
 Note on indirect dependencies: normally dependencies are determined from
-imports, but since our type interfaces are "opaque" (i.e. symbol tables can
-contain types identified by name), these are not enough.  We *must* also
-add "indirect" dependencies from types to their definitions.  For this
-purpose, after we finished processing a module, we travers its type map and
-symbol tables, and for each type we find (transitively) on which opaque/named
-types it depends.
+imports, but since our interfaces are "opaque" (i.e. symbol tables can
+contain cross-references as well as types identified by name), these are not
+enough.  We *must* also add "indirect" dependencies from symbols and types to
+their definitions.  For this purpose, we record all accessed symbols during
+semantic analysis, and after we finished processing a module, we traverse its
+type map, and for each type we find (transitively) on which named types it
+depends.
 
 Import cycles
 -------------
@@ -2416,22 +2408,14 @@ class State:
 
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
-            all_types = set(self.type_map().values())
-            for _, sym, _ in self.tree.local_definitions():
-                if sym.type is not None:
-                    all_types.add(sym.type)
-                # Special case: settable properties may have two types.
-                if isinstance(sym.node, OverloadedFuncDef) and sym.node.is_property:
-                    assert isinstance(first_node := sym.node.items[0], Decorator)
-                    if first_node.var.setter_type:
-                        all_types.add(first_node.var.setter_type)
-            # Using mod_alias_deps is unfortunate but needed, since it is highly impractical
-            # (and practically impossible) to avoid all get_proper_type() calls. For example,
-            # TypeInfo.bases and metaclass, *args and **kwargs, Overloaded.items, and trivial
-            # aliases like Text = str, etc. all currently forced to proper types. Thus, we need
-            # to record the original definitions as they are first seen in semanal.py.
             self._patch_indirect_dependencies(
-                self.type_checker().module_refs | self.tree.mod_alias_deps, all_types
+                # Two possible sources of indirect dependencies:
+                # * Symbols not directly imported in this module but accessed via an attribute
+                #   or via a re-export (vast majority of these recorded in semantic analysis).
+                # * For each expression type we need to record definitions of type components
+                #   since "meaning" of the type may be updated when definitions are updated.
+                self.tree.module_refs | self.type_checker().module_refs,
+                set(self.type_map().values()),
             )
 
             if self.options.dump_inference_stats:

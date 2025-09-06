@@ -7,16 +7,6 @@ from mypy.types import TypeVisitor
 from mypy.util import split_module_names
 
 
-def extract_module_names(type_name: str | None) -> list[str]:
-    """Returns the module names of a fully qualified type name."""
-    if type_name is not None:
-        # Discard the first one, which is just the qualified name of the type
-        possible_module_names = split_module_names(type_name)
-        return possible_module_names[1:]
-    else:
-        return []
-
-
 class TypeIndirectionVisitor(TypeVisitor[None]):
     """Returns all module references within a particular type."""
 
@@ -25,12 +15,9 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
         self.modules: set[str] = set()
         # User to avoid infinite recursion with recursive types
         self.seen_types: set[types.TypeAliasType | types.Instance] = set()
-        # Used to avoid redundant work
-        self.seen_fullnames: set[str] = set()
 
     def find_modules(self, typs: Iterable[types.Type]) -> set[str]:
         self.modules = set()
-        self.seen_fullnames = set()
         self.seen_types = set()
         for typ in typs:
             self._visit(typ)
@@ -145,11 +132,7 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
     def visit_callable_type(self, t: types.CallableType) -> None:
         self._visit_type_list(t.arg_types)
         self._visit(t.ret_type)
-        if t.definition is not None:
-            fullname = t.definition.fullname
-            if fullname not in self.seen_fullnames:
-                self.modules.update(extract_module_names(t.definition.fullname))
-                self.seen_fullnames.add(fullname)
+        self._visit_type_tuple(t.variables)
 
     def visit_overloaded(self, t: types.Overloaded) -> None:
         for item in t.items:
