@@ -6296,6 +6296,7 @@ class SemanticAnalyzer(
         return node
 
     def record_imported_symbol(self, node: SymbolNode) -> None:
+        """If the symbol was not defined in current module, add its module to module_refs."""
         if isinstance(node, MypyFile):
             fullname = node.fullname
         elif isinstance(node, TypeInfo):
