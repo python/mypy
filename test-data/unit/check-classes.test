@@ -3866,6 +3866,18 @@ def f(a: Type[Tuple[int, int]]):
     a()  # E: Cannot instantiate type "type[tuple[int, int]]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeUsingTypeCNoneType]
+NoneType = type(None)
+type(None)()
+NoneType()
+def f(n: type[None]):
+    n()
+def g(n: type[NoneType]):
+    n()
+f(NoneType)
+g(NoneType)
+[out]
+
 [case testTypeUsingTypeCNamedTuple]
 from typing import Type, NamedTuple
 N = NamedTuple('N', [('x', int), ('y', int)])
