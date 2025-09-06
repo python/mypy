@@ -6296,8 +6296,16 @@ class SemanticAnalyzer(
         return node
 
     def record_imported_symbol(self, node: SymbolNode) -> None:
-        fullname = node.fullname
-        if not isinstance(node, MypyFile):
+        if isinstance(node, MypyFile):
+            fullname = node.fullname
+        elif isinstance(node, TypeInfo):
+            fullname = node.module_name
+        elif isinstance(node, TypeAlias):
+            fullname = node.module
+        elif isinstance(node, (Var, FuncDef, OverloadedFuncDef)) and node.info:
+            fullname = node.info.module_name
+        else:
+            fullname = node.fullname.rsplit(".")[0]
             while fullname not in self.modules and "." in fullname:
                 fullname = fullname.rsplit(".")[0]
         if fullname != self.cur_mod_id and fullname not in self.cur_mod_node.module_refs:
