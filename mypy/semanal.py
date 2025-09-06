@@ -254,6 +254,7 @@ from mypy.types import (
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
     DEPRECATED_TYPE_NAMES,
+    DISJOINT_BASE_DECORATOR_NAMES,
     FINAL_DECORATOR_NAMES,
     FINAL_TYPE_NAMES,
     IMPORTED_REVEAL_TYPE_NAMES,
@@ -294,6 +295,7 @@ from mypy.types import (
     UnboundType,
     UnionType,
     UnpackType,
+    flatten_nested_tuples,
     get_proper_type,
     get_proper_types,
     has_type_vars,
@@ -993,7 +995,7 @@ class SemanticAnalyzer(
                     if has_self_type and self.type is not None:
                         info = self.type
                         if info.self_type is not None:
-                            result.variables = [info.self_type] + list(result.variables)
+                            result.variables = (info.self_type,) + result.variables
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
@@ -2188,6 +2190,8 @@ class SemanticAnalyzer(
         """
         if refers_to_fullname(decorator, FINAL_DECORATOR_NAMES):
             info.is_final = True
+        elif refers_to_fullname(decorator, DISJOINT_BASE_DECORATOR_NAMES):
+            info.is_disjoint_base = True
         elif refers_to_fullname(decorator, TYPE_CHECK_ONLY_NAMES):
             info.is_type_check_only = True
         elif (deprecated := self.get_deprecated(decorator)) is not None:
@@ -5594,7 +5598,8 @@ class SemanticAnalyzer(
             else:
                 incomplete_target = has_placeholder(res)
 
-            if self.found_incomplete_ref(tag) or incomplete_target:
+            incomplete_tv = any(has_placeholder(tv) for tv in alias_tvars)
+            if self.found_incomplete_ref(tag) or incomplete_target or incomplete_tv:
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 self.mark_incomplete(s.name.name, s.value, becomes_typeinfo=True)
@@ -6090,7 +6095,9 @@ class SemanticAnalyzer(
             types.append(analyzed)
 
         if allow_unpack:
-            types = self.type_analyzer().check_unpacks_in_list(types)
+            # need to flatten away harmless unpacks like Unpack[tuple[int]]
+            flattened_items = flatten_nested_tuples(types)
+            types = self.type_analyzer().check_unpacks_in_list(flattened_items)
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             single_any = len(types) == 1 and isinstance(first_arg, AnyType)
@@ -7675,7 +7682,7 @@ def refers_to_fullname(node: Expression, fullnames: str | tuple[str, ...]) -> bo
         return False
     if node.fullname in fullnames:
         return True
-    if isinstance(node.node, TypeAlias):
+    if isinstance(node.node, TypeAlias) and not node.node.python_3_12_type_alias:
         return is_named_instance(node.node.target, fullnames)
     return False
 

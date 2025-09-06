@@ -1073,11 +1073,19 @@ class Cast(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, src: Value, typ: RType, line: int, *, borrow: bool = False) -> None:
+    def __init__(
+        self, src: Value, typ: RType, line: int, *, borrow: bool = False, unchecked: bool = False
+    ) -> None:
         super().__init__(line)
         self.src = src
         self.type = typ
+        # If true, don't incref the result.
         self.is_borrowed = borrow
+        # If true, don't perform a runtime type check (only changes the static type of
+        # the operand). Used when we know that the cast will always succeed.
+        self.is_unchecked = unchecked
+        if unchecked:
+            self.error_kind = ERR_NEVER
 
     def sources(self) -> list[Value]:
         return [self.src]

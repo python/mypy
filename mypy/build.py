@@ -40,6 +40,7 @@ from typing import (
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.semanal_main
+from mypy.cache import Buffer
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -90,7 +91,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
 from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
-from mypy.types import Type
+from mypy.types import Type, instance_cache
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
 from mypy.version import __version__
@@ -178,6 +179,9 @@ def build(
     # If we were not given a flush_errors, we use one that will populate those
     # fields for callers that want the traditional API.
     messages = []
+
+    # This is mostly for the benefit of tests that use builtins fixtures.
+    instance_cache.reset()
 
     def default_flush_errors(
         filename: str | None, new_messages: list[str], is_serious: bool
@@ -1143,6 +1147,17 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
     return module_deps_metas
 
 
+def _load_ff_file(file: str, manager: BuildManager, log_error: str) -> bytes | None:
+    t0 = time.time()
+    try:
+        data = manager.metastore.read(file)
+    except OSError:
+        manager.log(log_error + file)
+        return None
+    manager.add_stats(metastore_read_time=time.time() - t0)
+    return data
+
+
 def _load_json_file(
     file: str, manager: BuildManager, log_success: str, log_error: str
 ) -> dict[str, Any] | None:
@@ -1263,7 +1278,11 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
     deps_json = None
     if options.cache_fine_grained:
         deps_json = prefix + ".deps.json"
-    return (prefix + ".meta.json", prefix + ".data.json", deps_json)
+    if options.fixed_format_cache:
+        data_suffix = ".data.ff"
+    else:
+        data_suffix = ".data.json"
+    return (prefix + ".meta.json", prefix + data_suffix, deps_json)
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | None:
@@ -1563,8 +1582,13 @@ def write_cache(
         tree.path = path
 
     # Serialize data and analyze interface
-    data = tree.serialize()
-    data_bytes = json_dumps(data, manager.options.debug_cache)
+    if manager.options.fixed_format_cache:
+        data_io = Buffer()
+        tree.write(data_io)
+        data_bytes = data_io.getvalue()
+    else:
+        data = tree.serialize()
+        data_bytes = json_dumps(data, manager.options.debug_cache)
     interface_hash = hash_digest(data_bytes)
 
     plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
@@ -2089,15 +2113,23 @@ class State:
             self.meta is not None
         ), "Internal error: this method must be called only for cached modules"
 
-        data = _load_json_file(
-            self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
-        )
+        data: bytes | dict[str, Any] | None
+        if self.options.fixed_format_cache:
+            data = _load_ff_file(self.meta.data_json, self.manager, "Could not load tree: ")
+        else:
+            data = _load_json_file(
+                self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
+            )
         if data is None:
             return
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
-        self.tree = MypyFile.deserialize(data)
+        if isinstance(data, bytes):
+            data_io = Buffer(data)
+            self.tree = MypyFile.read(data_io)
+        else:
+            self.tree = MypyFile.deserialize(data)
         t1 = time.time()
         self.manager.add_stats(deserialize_time=t1 - t0)
         if not temporary:
@@ -2485,7 +2517,11 @@ class State:
         ):
             if self.options.debug_serialize:
                 try:
-                    self.tree.serialize()
+                    if self.manager.options.fixed_format_cache:
+                        data = Buffer()
+                        self.tree.write(data)
+                    else:
+                        self.tree.serialize()
                 except Exception:
                     print(f"Error serializing {self.id}", file=self.manager.stdout)
                     raise  # Propagate to display traceback
@@ -3331,7 +3367,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
                 if (
-                    platform.python_implementation() == "CPython"
+                    not manager.options.test_env
+                    and platform.python_implementation() == "CPython"
                     and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
                 ):
                     # When deserializing cache we create huge amount of new objects, so even
@@ -3346,7 +3383,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 for prev_scc in fresh_scc_queue:
                     process_fresh_modules(graph, prev_scc, manager)
                 if (
-                    platform.python_implementation() == "CPython"
+                    not manager.options.test_env
+                    and platform.python_implementation() == "CPython"
                     and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
                 ):
                     manager.gc_freeze_cycles += 1
