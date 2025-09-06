@@ -809,6 +809,7 @@ class SemanticAnalyzer(
                 alias_node = TypeAlias(
                     target,
                     alias,
+                    tree.fullname,
                     line=-1,
                     column=-1,  # there is no context
                     no_args=True,
@@ -3885,16 +3886,15 @@ class SemanticAnalyzer(
         declared_type_vars: TypeVarLikeList | None = None,
         all_declared_type_params_names: list[str] | None = None,
         python_3_12_type_alias: bool = False,
-    ) -> tuple[Type | None, list[TypeVarLikeType], set[str], list[str], bool]:
+    ) -> tuple[Type | None, list[TypeVarLikeType], set[str], bool]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
-        If yes, return the corresponding type, a list of
-        qualified type variable names for generic aliases, a set of names the alias depends on,
-        and a list of type variables if the alias is generic.
-        A schematic example for the dependencies:
+        If yes, return the corresponding type, a list of type variables for generic aliases,
+        a set of names the alias depends on, and True if the original type has empty tuple index.
+        An example for the dependencies:
             A = int
             B = str
-            analyze_alias(Dict[A, B])[2] == {'__main__.A', '__main__.B'}
+            analyze_alias(dict[A, B])[2] == {'__main__.A', '__main__.B'}
         """
         dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         global_scope = not self.type and not self.function_stack
@@ -3906,10 +3906,9 @@ class SemanticAnalyzer(
             self.fail(
                 "Invalid type alias: expression is not a valid type", rvalue, code=codes.VALID_TYPE
             )
-            return None, [], set(), [], False
+            return None, [], set(), False
 
         found_type_vars = self.find_type_var_likes(typ)
-        tvar_defs: list[TypeVarLikeType] = []
         namespace = self.qualified_name(name)
         alias_type_vars = found_type_vars if declared_type_vars is None else declared_type_vars
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
@@ -3945,9 +3944,8 @@ class SemanticAnalyzer(
                 variadic = True
             new_tvar_defs.append(td)
 
-        qualified_tvars = [node.fullname for _name, node in alias_type_vars]
         empty_tuple_index = typ.empty_tuple_index if isinstance(typ, UnboundType) else False
-        return analyzed, new_tvar_defs, depends_on, qualified_tvars, empty_tuple_index
+        return analyzed, new_tvar_defs, depends_on, empty_tuple_index
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
@@ -4042,11 +4040,10 @@ class SemanticAnalyzer(
             res = NoneType()
             alias_tvars: list[TypeVarLikeType] = []
             depends_on: set[str] = set()
-            qualified_tvars: list[str] = []
             empty_tuple_index = False
         else:
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
+            res, alias_tvars, depends_on, empty_tuple_index = self.analyze_alias(
                 lvalue.name,
                 rvalue,
                 allow_placeholder=True,
@@ -4070,12 +4067,6 @@ class SemanticAnalyzer(
                 self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
                 return True
         self.add_type_alias_deps(depends_on)
-        # In addition to the aliases used, we add deps on unbound
-        # type variables, since they are erased from target type.
-        self.add_type_alias_deps(qualified_tvars)
-        # The above are only direct deps on other aliases.
-        # For subscripted aliases, type deps from expansion are added in deps.py
-        # (because the type is stored).
         check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg, context=s)
         # When this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys.
@@ -4106,6 +4097,7 @@ class SemanticAnalyzer(
         alias_node = TypeAlias(
             res,
             self.qualified_name(lvalue.name),
+            self.cur_mod_id,
             s.line,
             s.column,
             alias_tvars=alias_tvars,
@@ -5577,7 +5569,7 @@ class SemanticAnalyzer(
                 return
 
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
+            res, alias_tvars, depends_on, empty_tuple_index = self.analyze_alias(
                 s.name.name,
                 s.value.expr(),
                 allow_placeholder=True,
@@ -5606,12 +5598,6 @@ class SemanticAnalyzer(
                 return
 
             self.add_type_alias_deps(depends_on)
-            # In addition to the aliases used, we add deps on unbound
-            # type variables, since they are erased from target type.
-            self.add_type_alias_deps(qualified_tvars)
-            # The above are only direct deps on other aliases.
-            # For subscripted aliases, type deps from expansion are added in deps.py
-            # (because the type is stored).
             check_for_explicit_any(
                 res, self.options, self.is_typeshed_stub_file, self.msg, context=s
             )
@@ -5627,6 +5613,7 @@ class SemanticAnalyzer(
             alias_node = TypeAlias(
                 res,
                 self.qualified_name(s.name.name),
+                self.cur_mod_id,
                 s.line,
                 s.column,
                 alias_tvars=alias_tvars,
@@ -5941,6 +5928,8 @@ class SemanticAnalyzer(
                 if isinstance(sym.node, PlaceholderNode):
                     self.process_placeholder(expr.name, "attribute", expr)
                     return
+                if sym.node is not None:
+                    self.record_imported_symbol(sym.node)
                 expr.kind = sym.kind
                 expr.fullname = sym.fullname or ""
                 expr.node = sym.node
@@ -5971,8 +5960,7 @@ class SemanticAnalyzer(
             if type_info:
                 n = type_info.names.get(expr.name)
                 if n is not None and isinstance(n.node, (MypyFile, TypeInfo, TypeAlias)):
-                    if not n:
-                        return
+                    self.record_imported_symbol(n.node)
                     expr.kind = n.kind
                     expr.fullname = n.fullname or ""
                     expr.node = n.node
@@ -6293,6 +6281,37 @@ class SemanticAnalyzer(
     def lookup(
         self, name: str, ctx: Context, suppress_errors: bool = False
     ) -> SymbolTableNode | None:
+        node = self._lookup(name, ctx, suppress_errors)
+        if node is not None and node.node is not None:
+            # This call is unfortunate from performance point of view, but
+            # needed for rare cases like e.g. testIncrementalChangingAlias.
+            self.record_imported_symbol(node.node)
+        return node
+
+    def record_imported_symbol(self, node: SymbolNode) -> None:
+        """If the symbol was not defined in current module, add its module to module_refs."""
+        if not node.fullname:
+            return
+        if isinstance(node, MypyFile):
+            fullname = node.fullname
+        elif isinstance(node, TypeInfo):
+            fullname = node.module_name
+        elif isinstance(node, TypeAlias):
+            fullname = node.module
+        elif isinstance(node, (Var, FuncDef, OverloadedFuncDef)) and node.info:
+            fullname = node.info.module_name
+        else:
+            fullname = node.fullname.rsplit(".")[0]
+            if fullname == self.cur_mod_id:
+                return
+            while "." in fullname and fullname not in self.modules:
+                fullname = fullname.rsplit(".")[0]
+        if fullname != self.cur_mod_id:
+            self.cur_mod_node.module_refs.add(fullname)
+
+    def _lookup(
+        self, name: str, ctx: Context, suppress_errors: bool = False
+    ) -> SymbolTableNode | None:
         """Look up an unqualified (no dots) name in all active namespaces.
 
         Note that the result may contain a PlaceholderNode. The caller may
@@ -6500,6 +6519,8 @@ class SemanticAnalyzer(
                         self.name_not_defined(name, ctx, namespace=namespace)
                     return None
                 sym = nextsym
+        if sym is not None and sym.node is not None:
+            self.record_imported_symbol(sym.node)
         return sym
 
     def lookup_type_node(self, expr: Expression) -> SymbolTableNode | None:
@@ -7546,8 +7567,6 @@ class SemanticAnalyzer(
         If `target` is None, then the target node used will be the current scope.
         """
         if not aliases_used:
-            # A basic optimization to avoid adding targets with no dependencies to
-            # the `alias_deps` dict.
             return
         if target is None:
             target = self.scope.current_target()

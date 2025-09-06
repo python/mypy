@@ -198,7 +198,6 @@ from mypy.types_utils import (
 )
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
-from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
 
 # Type of callback user for checking individual function arguments. See
@@ -246,36 +245,6 @@ def allow_fast_container_literal(t: Type) -> bool:
     return isinstance(t, Instance) or (
         isinstance(t, TupleType) and all(allow_fast_container_literal(it) for it in t.items)
     )
-
-
-def extract_refexpr_names(expr: RefExpr, output: set[str]) -> None:
-    """Recursively extracts all module references from a reference expression.
-
-    Note that currently, the only two subclasses of RefExpr are NameExpr and
-    MemberExpr."""
-    while isinstance(expr.node, MypyFile) or expr.fullname:
-        if isinstance(expr.node, MypyFile) and expr.fullname:
-            # If it's None, something's wrong (perhaps due to an
-            # import cycle or a suppressed error).  For now we just
-            # skip it.
-            output.add(expr.fullname)
-
-        if isinstance(expr, NameExpr):
-            is_suppressed_import = isinstance(expr.node, Var) and expr.node.is_suppressed_import
-            if isinstance(expr.node, TypeInfo):
-                # Reference to a class or a nested class
-                output.update(split_module_names(expr.node.module_name))
-            elif "." in expr.fullname and not is_suppressed_import:
-                # Everything else (that is not a silenced import within a class)
-                output.add(expr.fullname.rsplit(".", 1)[0])
-            break
-        elif isinstance(expr, MemberExpr):
-            if isinstance(expr.expr, RefExpr):
-                expr = expr.expr
-            else:
-                break
-        else:
-            raise AssertionError(f"Unknown RefExpr subclass: {type(expr)}")
 
 
 class Finished(Exception):
@@ -370,7 +339,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         It can be of any kind: local, member or global.
         """
-        extract_refexpr_names(e, self.chk.module_refs)
         result = self.analyze_ref_expr(e)
         narrowed = self.narrow_type_from_binder(e, result)
         self.chk.check_deprecated(e.node, e)
@@ -3344,7 +3312,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
-        extract_refexpr_names(e, self.chk.module_refs)
         result = self.analyze_ordinary_member_access(e, is_lvalue)
         narrowed = self.narrow_type_from_binder(e, result)
         self.chk.warn_deprecated(e.node, e)

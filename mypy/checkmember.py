@@ -543,6 +543,8 @@ def analyze_member_var_access(
     if isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     if isinstance(v, MypyFile):
+        # Special case: accessing module on instances is allowed, but will not
+        # be recorded by semantic analyzer.
         mx.chk.module_refs.add(v.fullname)
 
     if isinstance(vv, (TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
