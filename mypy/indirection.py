@@ -4,7 +4,6 @@ from collections.abc import Iterable
 
 import mypy.types as types
 from mypy.types import TypeVisitor
-from mypy.util import split_module_names
 
 
 class TypeIndirectionVisitor(TypeVisitor[None]):
@@ -64,10 +63,6 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
                 self.seen_types.add(typ)
             typ.accept(self)
 
-    def _visit_module_name(self, module_name: str) -> None:
-        if module_name not in self.modules:
-            self.modules.update(split_module_names(module_name))
-
     def visit_unbound_type(self, t: types.UnboundType) -> None:
         self._visit_type_tuple(t.args)
 
@@ -118,7 +113,7 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
             # Important optimization: instead of simply recording the definition and
             # recursing into bases, record the MRO and only traverse generic bases.
             for s in t.type.mro:
-                self._visit_module_name(s.module_name)
+                self.modules.add(s.module_name)
                 for base in s.bases:
                     if base.args:
                         self._visit_type_tuple(base.args)
@@ -163,6 +158,6 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
         # Type alias is named, record its definition and continue digging into
         # components that constitute semantic meaning of this type: target and args.
         if t.alias:
-            self._visit_module_name(t.alias.module)
+            self.modules.add(t.alias.module)
             self._visit(t.alias.target)
         self._visit_type_list(t.args)

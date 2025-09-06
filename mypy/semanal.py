@@ -305,14 +305,7 @@ from mypy.types import (
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
-from mypy.util import (
-    correct_relative_import,
-    is_dunder,
-    module_prefix,
-    split_module_names,
-    unmangle,
-    unnamed_function,
-)
+from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")
@@ -6313,8 +6306,8 @@ class SemanticAnalyzer(
                 return
             while "." in fullname and fullname not in self.modules:
                 fullname = fullname.rsplit(".")[0]
-        if fullname != self.cur_mod_id and fullname not in self.cur_mod_node.module_refs:
-            self.cur_mod_node.module_refs.update(split_module_names(fullname))
+        if fullname != self.cur_mod_id:
+            self.cur_mod_node.module_refs.add(fullname)
 
     def _lookup(
         self, name: str, ctx: Context, suppress_errors: bool = False
