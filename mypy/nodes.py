@@ -989,6 +989,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             ),
             "deprecated": self.deprecated,
             "original_first_arg": self.original_first_arg,
+            "line": self.line,
+            "column": self.column,
         }
 
     @classmethod
@@ -1018,6 +1020,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             else None
         )
         ret.deprecated = data["deprecated"]
+        ret.line = data["line"]
+        ret.column = data["column"]
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -1040,6 +1044,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             self.dataclass_transform_spec.write(data)
         write_str_opt(data, self.deprecated)
         write_str_opt(data, self.original_first_arg)
+        write_int(data, self.line)
+        write_int(data, self.column)
 
     @classmethod
     def read(cls, data: Buffer) -> FuncDef:
@@ -1058,6 +1064,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             ret.dataclass_transform_spec = DataclassTransformSpec.read(data)
         ret.deprecated = read_str_opt(data)
         ret.original_first_arg = read_str_opt(data)
+        ret.line = read_int(data)
+        ret.column = read_int(data)
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos

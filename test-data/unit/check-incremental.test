@@ -210,6 +210,7 @@ def foo() -> int:
 [out2]
 tmp/mod2.py:4: error: Incompatible return value type (got "str", expected "int")
 
+-- Function line numbers can affect error messages, so should be part of public interface.
 [case testIncrementalInternalScramble]
 import mod1
 
@@ -236,8 +237,8 @@ def bar() -> int:
 
 def baz() -> int:
     return 42
-[rechecked mod2]
-[stale]
+[rechecked mod1, mod2]
+[stale mod2]
 
 [case testIncrementalMethodInterfaceChange]
 import mod1
@@ -6897,3 +6898,20 @@ import does_not_exist
 [builtins fixtures/ops.pyi]
 [out]
 [out2]
+
+[case testCachedUnexpectedKeywordArgument]
+import a
+[file a.py]
+import b
+b.lol(uhhhh=12) # tweak
+[file a.py.2]
+import b
+b.lol(uhhhh=12)
+[file b.py]
+def lol() -> None: pass
+[out]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:1: note: "lol" defined here
+[out2]
+tmp/a.py:2: error: Unexpected keyword argument "uhhhh" for "lol"
+tmp/b.py:1: note: "lol" defined here
