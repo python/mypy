@@ -11485,3 +11485,36 @@ class A:
 [out]
 ==
 main:3: error: Too few arguments
+
+[case testFineGrainedParamSpecPrefixUpdateMethod]
+import impl
+[file impl.py]
+from typing_extensions import ParamSpec
+from lib import Sub
+
+P = ParamSpec("P")
+class Impl(Sub[P]):
+    def test(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.meth(1, *args, **kwargs)
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+class Base(Generic[P]):
+    def meth(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+class Sub(Base[Concatenate[int, P]]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+class Base(Generic[P]):
+    def meth(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+class Sub(Base[Concatenate[str, P]]): ...
+[builtins fixtures/paramspec.pyi]
+[out]
+==
+impl.py:7: error: Argument 1 to "meth" of "Base" has incompatible type "int"; expected "str"

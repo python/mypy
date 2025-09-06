@@ -93,6 +93,7 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
     def visit_param_spec(self, t: types.ParamSpecType) -> None:
         self._visit(t.upper_bound)
         self._visit(t.default)
+        self._visit(t.prefix)
 
     def visit_type_var_tuple(self, t: types.TypeVarTupleType) -> None:
         self._visit(t.upper_bound)
