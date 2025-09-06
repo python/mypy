@@ -27,6 +27,7 @@ dmypy.json
 # IDEs
 .idea
 .vscode
+cline_docs/
 
 # vim temporary files
 .*.sw?
