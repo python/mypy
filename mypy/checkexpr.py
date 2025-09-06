@@ -6435,7 +6435,7 @@ class HasAnyType(types.BoolTypeQuery):
 
     def visit_param_spec(self, t: ParamSpecType) -> bool:
         default = [t.default] if t.has_default() else []
-        return self.query_types([t.upper_bound, *default])
+        return self.query_types([t.upper_bound, *default, t.prefix])
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
         default = [t.default] if t.has_default() else []

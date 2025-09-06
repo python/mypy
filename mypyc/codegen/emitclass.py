@@ -205,10 +205,6 @@ def generate_class_reuse(
     TODO: Generalize to support a free list with up to N objects.
     """
     assert cl.reuse_freed_instance
-
-    # The free list implementation doesn't support class hierarchies
-    assert cl.is_final_class or cl.children == []
-
     context = c_emitter.context
     name = cl.name_prefix(c_emitter.names) + "_free_instance"
     struct_name = cl.struct_name(c_emitter.names)

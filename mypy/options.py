@@ -74,6 +74,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "disable_memoryview_promotion",
         "strict_bytes",
         "fixed_format_cache",
+        "untyped_calls_exclude",
     }
 ) - {"debug_cache"}
 

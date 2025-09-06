@@ -363,6 +363,12 @@ def prepare_class_def(
         line = attrs_lines["free_list_len"]
         if ir.is_trait:
             errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if ir.allow_interpreted_subclasses:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
+                path,
+                line,
+            )
         if free_list_len == 1:
             ir.reuse_freed_instance = True
         else:
