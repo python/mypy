@@ -9289,3 +9289,34 @@ from typ import NT
 def f() -> NT:
     return NT(x='')
 [builtins fixtures/tuple.pyi]
+
+[case testDecoratedConstructorDeferral]
+from typing import Any, Callable, TypeVar
+
+Tc = TypeVar('Tc', bound=Callable[..., Any])
+
+def any_decorator_factory() -> Callable[[Tc], Tc]:
+    def inner(func: Tc) -> Tc:
+        return func
+    return inner
+
+
+def function_pre() -> None:
+    reveal_type(GoodClass())  # N: Revealed type is "__main__.GoodClass"
+    reveal_type(BadClass())  # N: Revealed type is "Any"
+
+
+class GoodClass:
+    @any_decorator_factory()
+    def __init__(self):
+        pass
+
+class BadClass:
+    @unknown()  # E: Name "unknown" is not defined
+    def __init__(self):
+        pass
+
+
+def function_post() -> None:
+    reveal_type(GoodClass())  # N: Revealed type is "__main__.GoodClass"
+    reveal_type(BadClass())  # N: Revealed type is "Any"

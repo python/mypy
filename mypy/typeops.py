@@ -237,6 +237,21 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     return result
 
 
+def has_deferred_constructor(info: TypeInfo) -> bool:
+    init_method = info.get("__init__")
+    new_method = info.get("__new__") or init_method
+    return (
+        init_method is not None
+        and _is_deferred_decorator(init_method.node)
+        or new_method is not None
+        and _is_deferred_decorator(new_method.node)
+    )
+
+
+def _is_deferred_decorator(n: SymbolNode | None) -> bool:
+    return isinstance(n, Decorator) and n.type is None
+
+
 def is_valid_constructor(n: SymbolNode | None) -> bool:
     """Does this node represents a valid constructor method?
 
