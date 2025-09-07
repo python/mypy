@@ -249,7 +249,7 @@ def has_deferred_constructor(info: TypeInfo) -> bool:
 
 
 def _is_deferred_decorator(n: SymbolNode | None) -> bool:
-    return isinstance(n, Decorator) and n.type is None
+    return isinstance(n, Decorator) and n.type is None and not n.var.is_ready
 
 
 def is_valid_constructor(n: SymbolNode | None) -> bool:
