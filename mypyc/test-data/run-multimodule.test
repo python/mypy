@@ -816,7 +816,7 @@ def foo() -> int: return 10
 [file driver.py]
 import native
 
-[rechecked native, other_a]
+[rechecked other_a]
 
 [case testSeparateCompilationWithUndefinedAttribute]
 from other_a import A

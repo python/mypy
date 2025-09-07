@@ -335,6 +335,7 @@ class CacheMeta(NamedTuple):
     # dep_prios and dep_lines are in parallel with dependencies + suppressed
     dep_prios: list[int]
     dep_lines: list[int]
+    dep_hashes: dict[str, str]
     interface_hash: str  # hash representing the public interface
     version_id: str  # mypy version for cache invalidation
     ignore_all: bool  # if errors were ignored
@@ -373,6 +374,7 @@ def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
         meta.get("options"),
         meta.get("dep_prios", []),
         meta.get("dep_lines", []),
+        meta.get("dep_hashes", {}),
         meta.get("interface_hash", ""),
         meta.get("version_id", sentinel),
         meta.get("ignore_all", True),
@@ -890,8 +892,6 @@ class BuildManager:
             self.stderr.flush()
 
     def log_fine_grained(self, *message: str) -> None:
-        import mypy.build
-
         if self.verbosity() >= 1:
             self.log("fine-grained:", *message)
         elif mypy.build.DEBUG_FINE_GRAINED:
@@ -1500,6 +1500,7 @@ def validate_meta(
                 "options": (manager.options.clone_for_module(id).select_options_affecting_cache()),
                 "dep_prios": meta.dep_prios,
                 "dep_lines": meta.dep_lines,
+                "dep_hashes": meta.dep_hashes,
                 "interface_hash": meta.interface_hash,
                 "version_id": manager.version_id,
                 "ignore_all": meta.ignore_all,
@@ -1543,7 +1544,7 @@ def write_cache(
     source_hash: str,
     ignore_all: bool,
     manager: BuildManager,
-) -> tuple[str, CacheMeta | None]:
+) -> tuple[str, tuple[dict[str, Any], str, str] | None]:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -1564,9 +1565,9 @@ def write_cache(
       manager: the build manager (for pyversion, log/trace)
 
     Returns:
-      A tuple containing the interface hash and CacheMeta
-      corresponding to the metadata that was written (the latter may
-      be None if the cache could not be written).
+      A tuple containing the interface hash and inner tuple with cache meta JSON
+      that should be written and paths to cache files (inner tuple may be None,
+      if the cache data could not be written).
     """
     metastore = manager.metastore
     # For Bazel we use relative paths and zero mtimes.
@@ -1581,6 +1582,8 @@ def write_cache(
     if bazel:
         tree.path = path
 
+    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
+
     # Serialize data and analyze interface
     if manager.options.fixed_format_cache:
         data_io = Buffer()
@@ -1589,9 +1592,7 @@ def write_cache(
     else:
         data = tree.serialize()
         data_bytes = json_dumps(data, manager.options.debug_cache)
-    interface_hash = hash_digest(data_bytes)
-
-    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
+    interface_hash = hash_digest(data_bytes + json_dumps(plugin_data))
 
     # Obtain and set up metadata
     st = manager.get_stat(path)
@@ -1659,8 +1660,14 @@ def write_cache(
         "ignore_all": ignore_all,
         "plugin_data": plugin_data,
     }
+    return interface_hash, (meta, meta_json, data_json)
 
+
+def write_cache_meta(
+    meta: dict[str, Any], manager: BuildManager, meta_json: str, data_json: str
+) -> CacheMeta:
     # Write meta cache file
+    metastore = manager.metastore
     meta_str = json_dumps(meta, manager.options.debug_cache)
     if not metastore.write(meta_json, meta_str):
         # Most likely the error is the replace() call
@@ -1668,7 +1675,7 @@ def write_cache(
         # The next run will simply find the cache entry out of date.
         manager.log(f"Error writing meta JSON file {meta_json}")
 
-    return interface_hash, cache_meta_from_dict(meta, data_json)
+    return cache_meta_from_dict(meta, data_json)
 
 
 def delete_cache(id: str, path: str, manager: BuildManager) -> None:
@@ -1867,6 +1874,9 @@ class State:
     # Map each dependency to the line number where it is first imported
     dep_line_map: dict[str, int]
 
+    # Map from dependency id to its last observed interface hash
+    dep_hashes: dict[str, str] = {}
+
     # Parent package, its parent, etc.
     ancestors: list[str] | None = None
 
@@ -1878,9 +1888,6 @@ class State:
 
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
-
-    # If True, indicate that the public interface of this module is unchanged
-    externally_same = True
 
     # Contains a hash of the public interface in incremental mode
     interface_hash: str = ""
@@ -1994,6 +2001,7 @@ class State:
             self.priorities = {id: pri for id, pri in zip(all_deps, self.meta.dep_prios)}
             assert len(all_deps) == len(self.meta.dep_lines)
             self.dep_line_map = {id: line for id, line in zip(all_deps, self.meta.dep_lines)}
+            self.dep_hashes = self.meta.dep_hashes
             if temporary:
                 self.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():
@@ -2046,26 +2054,17 @@ class State:
         """Return whether the cache data for this file is fresh."""
         # NOTE: self.dependencies may differ from
         # self.meta.dependencies when a dependency is dropped due to
-        # suppression by silent mode.  However when a suppressed
+        # suppression by silent mode.  However, when a suppressed
         # dependency is added back we find out later in the process.
-        return (
-            self.meta is not None
-            and self.is_interface_fresh()
-            and self.dependencies == self.meta.dependencies
-        )
-
-    def is_interface_fresh(self) -> bool:
-        return self.externally_same
+        return self.meta is not None and self.dependencies == self.meta.dependencies
 
     def mark_as_rechecked(self) -> None:
         """Marks this module as having been fully re-analyzed by the type-checker."""
         self.manager.rechecked_modules.add(self.id)
 
-    def mark_interface_stale(self, *, on_errors: bool = False) -> None:
+    def mark_interface_stale(self) -> None:
         """Marks this module as having a stale public interface, and discards the cache data."""
-        self.externally_same = False
-        if not on_errors:
-            self.manager.stale_modules.add(self.id)
+        self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
         """Raise CompileError if a blocking error is detected."""
@@ -2507,7 +2506,7 @@ class State:
 
         return valid_refs
 
-    def write_cache(self) -> None:
+    def write_cache(self) -> tuple[dict[str, Any], str, str] | None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # We don't support writing cache files in fine-grained incremental mode.
         if (
@@ -2525,20 +2524,19 @@ class State:
                 except Exception:
                     print(f"Error serializing {self.id}", file=self.manager.stdout)
                     raise  # Propagate to display traceback
-            return
+            return None
         is_errors = self.transitive_error
         if is_errors:
             delete_cache(self.id, self.path, self.manager)
             self.meta = None
-            self.mark_interface_stale(on_errors=True)
-            return
+            return None
         dep_prios = self.dependency_priorities()
         dep_lines = self.dependency_lines()
         assert self.source_hash is not None
         assert len(set(self.dependencies)) == len(
             self.dependencies
         ), f"Duplicates in dependencies list for {self.id} ({self.dependencies})"
-        new_interface_hash, self.meta = write_cache(
+        new_interface_hash, meta_tuple = write_cache(
             self.id,
             self.path,
             self.tree,
@@ -2557,6 +2555,7 @@ class State:
             self.manager.log(f"Cached module {self.id} has changed interface")
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
+        return meta_tuple
 
     def verify_dependencies(self, suppressed_only: bool = False) -> None:
         """Report errors for import targets in modules that don't exist.
@@ -3287,7 +3286,19 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         for id in scc:
             deps.update(graph[id].dependencies)
         deps -= ascc
-        stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
+
+        # Verify that interfaces of dependencies still present in graph are up-to-date (fresh).
+        # Note: if a dependency is not in graph anymore, it should be considered interface-stale.
+        # This is important to trigger any relevant updates from indirect dependencies that were
+        # removed in load_graph().
+        stale_deps = set()
+        for id in ascc:
+            for dep in graph[id].dep_hashes:
+                if dep not in graph:
+                    stale_deps.add(dep)
+                    continue
+                if graph[dep].interface_hash != graph[id].dep_hashes[dep]:
+                    stale_deps.add(dep)
         fresh = fresh and not stale_deps
         undeps = set()
         if fresh:
@@ -3518,14 +3529,25 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
+    meta_tuples = {}
     for id in stale:
         if graph[id].xpath not in manager.errors.ignored_files:
             errors = manager.errors.file_messages(
                 graph[id].xpath, formatter=manager.error_formatter
             )
             manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
-        graph[id].write_cache()
+        meta_tuples[id] = graph[id].write_cache()
         graph[id].mark_as_rechecked()
+    for id in stale:
+        meta_tuple = meta_tuples[id]
+        if meta_tuple is None:
+            graph[id].meta = None
+            continue
+        meta, meta_json, data_json = meta_tuple
+        meta["dep_hashes"] = {
+            dep: graph[dep].interface_hash for dep in graph[id].dependencies if dep in graph
+        }
+        graph[id].meta = write_cache_meta(meta, manager, meta_json, data_json)
 
 
 def sorted_components(
