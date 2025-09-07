@@ -347,6 +347,7 @@ class TypeFixer(TypeVisitor[None]):
     def visit_param_spec(self, p: ParamSpecType) -> None:
         p.upper_bound.accept(self)
         p.default.accept(self)
+        p.prefix.accept(self)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
         t.tuple_fallback.accept(self)

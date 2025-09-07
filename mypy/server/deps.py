@@ -1037,10 +1037,8 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
-        if typ.upper_bound:
-            triggers.extend(self.get_type_triggers(typ.upper_bound))
-        if typ.default:
-            triggers.extend(self.get_type_triggers(typ.default))
+        triggers.extend(self.get_type_triggers(typ.upper_bound))
+        triggers.extend(self.get_type_triggers(typ.default))
         for val in typ.values:
             triggers.extend(self.get_type_triggers(val))
         return triggers
@@ -1049,22 +1047,17 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
-        if typ.upper_bound:
-            triggers.extend(self.get_type_triggers(typ.upper_bound))
-        if typ.default:
-            triggers.extend(self.get_type_triggers(typ.default))
         triggers.extend(self.get_type_triggers(typ.upper_bound))
+        triggers.extend(self.get_type_triggers(typ.default))
+        triggers.extend(self.get_type_triggers(typ.prefix))
         return triggers
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> list[str]:
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
-        if typ.upper_bound:
-            triggers.extend(self.get_type_triggers(typ.upper_bound))
-        if typ.default:
-            triggers.extend(self.get_type_triggers(typ.default))
         triggers.extend(self.get_type_triggers(typ.upper_bound))
+        triggers.extend(self.get_type_triggers(typ.default))
         return triggers
 
     def visit_unpack_type(self, typ: UnpackType) -> list[str]:

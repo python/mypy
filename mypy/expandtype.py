@@ -182,7 +182,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         super().__init__()
         self.variables = variables
-        self.recursive_tvar_guard: dict[TypeVarId, Type | None] = {}
+        self.recursive_tvar_guard: dict[TypeVarId, Type | None] | None = None
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -246,6 +246,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # If I try to remove this special-casing ~40 tests fail on reveal_type().
             return repl.copy_modified(last_known_value=None)
         if isinstance(repl, TypeVarType) and repl.has_default():
+            if self.recursive_tvar_guard is None:
+                self.recursive_tvar_guard = {}
             if (tvar_id := repl.id) in self.recursive_tvar_guard:
                 return self.recursive_tvar_guard[tvar_id] or repl
             self.recursive_tvar_guard[tvar_id] = None
