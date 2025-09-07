@@ -6084,7 +6084,7 @@ class B(A):
     __slots__ = ('a', 'b')
 class C:
     __slots__ = ('x',)
-class D(B, C):
+class D(B, C):  # E: Class "D" has incompatible disjoint bases
     __slots__ = ('aa', 'bb', 'cc')
 [builtins fixtures/tuple.pyi]
 
@@ -9258,3 +9258,34 @@ main:5: note:     def __eq__(self, other: object) -> bool:
 main:5: note:         if not isinstance(other, C):
 main:5: note:             return NotImplemented
 main:5: note:         return <logic to compare two C instances>
+
+[case testLambdaInAttributeCallValue]
+# https://github.com/python/mypy/issues/19632
+import foo
+
+def nop(fn: object) -> foo.Bar:
+    return foo.Bar()
+
+class Bar:
+    foo: foo.Bar = nop(
+        lambda: 0
+    )
+[file foo.py]
+class Bar:
+    ...
+
+[case testConstructorWithoutStrictOptionalNoCache]
+import mod
+a = mod.NT(x=None)  # OK
+
+[file typ.py]
+from typing import NamedTuple, Optional
+NT = NamedTuple("NT", [("x", Optional[str])])
+
+[file mod.py]
+# mypy: no-strict-optional
+from typ import NT
+
+def f() -> NT:
+    return NT(x='')
+[builtins fixtures/tuple.pyi]

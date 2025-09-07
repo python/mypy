@@ -512,6 +512,15 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 # Python range object.
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
+KNOWN_NATIVE_TYPES: Final = {
+    name: RPrimitive(name, is_unboxed=False, is_refcounted=True)
+    for name in ["native_internal.Buffer"]
+}
+
+
+def is_native_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name in KNOWN_NATIVE_TYPES
+
 
 def is_tagged(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int_rprimitive or rtype is short_int_rprimitive
@@ -1018,7 +1027,7 @@ def flatten_nested_unions(types: list[RType]) -> list[RType]:
 def optional_value_type(rtype: RType) -> RType | None:
     """If rtype is the union of none_rprimitive and another type X, return X.
 
-    Otherwise return None.
+    Otherwise, return None.
     """
     if isinstance(rtype, RUnion) and len(rtype.items) == 2:
         if rtype.items[0] == none_rprimitive:
