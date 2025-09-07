@@ -401,7 +401,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 result = node.type
         elif isinstance(node, (FuncDef, TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
             result = self.analyze_static_reference(node, e, e.is_alias_rvalue or lvalue)
-            if isinstance(node, TypeInfo) and has_deferred_constructor(node):
+            if (
+                isinstance(node, TypeInfo)
+                and isinstance(result, ProperType)
+                and isinstance(result, AnyType)
+                and has_deferred_constructor(node)
+            ):
                 # When __init__ or __new__ is wrapped in a custom decorator, we need to defer.
                 # analyze_static_reference guarantees that it never defers, so play along.
                 self.chk.handle_cannot_determine_type(node.name, e)
