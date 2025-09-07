@@ -578,74 +578,39 @@ def f(a: list[int]) -> int:
     for x in filter(lambda x: x % 2 == 0, a):
         s += x
     return s
-
-[file driver.py]
-from native import f
-print(f([1, 2, 3, 4, 5, 6]))
-print(f([1, 3, 5]))
-print(f([]))
-
-[out]
-12
-0
-0
-
-[case testRunForFilterNone]
-def f(a: list[int]) -> int:
+def g(a: list[int]) -> int:
+    s = 0
+    for x in filter(lambda x: x > 10, a):
+        s += x
+    return s
+def with_none(a: list[int]) -> int:
     c = 0
     for x in filter(None, a):
         c += 1
     return c
-
-[file driver.py]
-from native import f
-print(f([0, 1, 2, 3, 4, 5, 6]))
-
-[out]
-6
-
-[case testRunForFilterNative]
-def f(x: int) -> int:
+def native_func(x: int) -> int:
     return x % 2
-def g(a: list[int]) -> int:
+def with_native_func(a: list[int]) -> int:
     c = 0
-    for x in filter(f, a):
+    for x in filter(native_func, a):
         c += 1
     return c
-
-[file driver.py]
-from native import g
-print(g([0, 1, 2, 3, 4, 5, 6]))
-
-[out]
-3
-
-[case testRunForFilterPrimitiveOp]
-def f(a: list[list[int]]) -> int:
+def with_primitive(a: list[list[int]]) -> int:
     c = 0
     for x in filter(len, a):
         c += 1
     return c
 
-[file driver.py]
-from native import f
-print(f([[], [0, 1], [], [], [2, 3, 4], [5, 6]]))
-
-[out]
-3
-
-[case testRunForFilterEdgeCases]
-def f(a: list[int]) -> int:
-    s = 0
-    for x in filter(lambda x: x > 10, a):
-        s += x
-    return s
-
-[file driver.py]
-from native import f
-print(f([5, 15, 25]))
-print(f([]))
-
-[out]
-40
-0
+def test_run_for_filter() -> None:
+    assert f([1, 2, 3, 4, 5, 6]) == 12
+    assert f([1, 3, 5]) == 0
+    assert f([]) == 0
+def test_run_for_filter_with_none() -> None:
+    assert with_none([0, 1, 2, 3, 4, 5, 6]) == 6
+def test_run_for_filter_with_native_func() -> None:
+    assert with_native_func([0, 1, 2, 3, 4, 5, 6]) == 3
+def test_run_for_filter_with_primitive() -> None:
+    assert with_primitive([[], [0, 1], [], [], [2, 3, 4], [5, 6]]) == 3
+def test_run_for_filter_edge_cases() -> None:
+    assert g([5, 15, 25]) == 40
+    assert g([]) == 0
