@@ -413,9 +413,6 @@ class staticmethod: pass
 
 NotImplemented: Any = ...
 
-_T1 = TypeVar("_T1")
-_T2 = TypeVar("_T2")
-
 class filter(Generic[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
