@@ -55,4 +55,3 @@ These variants of statements have custom implementations:
 * ``for ... in enumerate(...):``
 * ``for ... in zip(...):``
 * ``for ... in filter(...):``
-* ``for ... in itertools.filterfalse(...):``
