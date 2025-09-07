@@ -55,6 +55,7 @@ PER_MODULE_OPTIONS: Final = {
     "mypyc",
     "strict_concatenate",
     "strict_equality",
+    "strict_equality_for_none",
     "strict_optional",
     "warn_no_return",
     "warn_return_any",
@@ -73,6 +74,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "disable_memoryview_promotion",
         "strict_bytes",
         "fixed_format_cache",
+        "untyped_calls_exclude",
     }
 ) - {"debug_cache"}
 
@@ -229,6 +231,9 @@ class Options:
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Extend the logic of `scrict_equality` for comparisons with `None`.
+        self.strict_equality_for_none = False
 
         # Disable treating bytearray and memoryview as subtypes of bytes
         self.strict_bytes = False

@@ -208,7 +208,7 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     fallback=named_type("builtins.function"),
                 )
                 result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
-                if allow_cache:
+                if allow_cache and state.strict_optional:
                     info.type_object_type = result
                 return result
 
@@ -230,7 +230,9 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
     result = type_object_type_from_function(t, info, method.info, fallback, is_new)
-    if allow_cache:
+    # Only write cached result is strict_optional=True, otherwise we may get
+    # inconsistent behaviour because of union simplification.
+    if allow_cache and state.strict_optional:
         info.type_object_type = result
     return result
 
