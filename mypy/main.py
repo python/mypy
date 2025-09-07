@@ -485,8 +485,6 @@ def define_options(
         stdout=stdout,
         stderr=stderr,
     )
-    if sys.version_info >= (3, 14):
-        parser.color = True  # Set as init arg in 3.14
 
     strict_flag_names: list[str] = []
     strict_flag_assignments: list[tuple[str, bool]] = []
@@ -888,7 +886,7 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help=argparse.SUPPRESS,  # This is still very experimental
+        help="Allow more flexible variable redefinition semantics (experimental)",
         group=strictness_group,
     )
 
@@ -905,7 +903,16 @@ def define_options(
         "--strict-equality",
         default=False,
         strict_flag=True,
-        help="Prohibit equality, identity, and container checks for non-overlapping types",
+        help="Prohibit equality, identity, and container checks for non-overlapping types "
+        "(except `None`)",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--strict-equality-for-none",
+        default=False,
+        strict_flag=False,
+        help="Extend `--strict-equality` for `None` checks",
         group=strictness_group,
     )
 

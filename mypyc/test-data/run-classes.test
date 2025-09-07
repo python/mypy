@@ -2711,9 +2711,17 @@ from native import Player
 Player.MIN = <Player.MIN: 1>
 
 [case testBufferRoundTrip_native_libs]
+from typing import Final
+from mypy_extensions import u8
 from native_internal import (
-    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float, write_int, read_int
+    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
+    write_int, read_int, write_tag, read_tag
 )
+
+Tag = u8
+TAG_A: Final[Tag] = 33
+TAG_B: Final[Tag] = 255
+TAG_SPECIAL: Final[Tag] = 239
 
 def test_buffer_basic() -> None:
     b = Buffer(b"foo")
@@ -2728,8 +2736,16 @@ def test_buffer_roundtrip() -> None:
     write_float(b, 0.1)
     write_int(b, 0)
     write_int(b, 1)
+    write_tag(b, TAG_A)
+    write_tag(b, TAG_SPECIAL)
+    write_tag(b, TAG_B)
     write_int(b, 2)
     write_int(b, 2 ** 85)
+    write_int(b, 255)
+    write_int(b, -1)
+    write_int(b, -255)
+    write_int(b, 1234512344)
+    write_int(b, 1234512345)
 
     b = Buffer(b.getvalue())
     assert read_str(b) == "foo"
@@ -2739,14 +2755,46 @@ def test_buffer_roundtrip() -> None:
     assert read_float(b) == 0.1
     assert read_int(b) == 0
     assert read_int(b) == 1
+    assert read_tag(b) == TAG_A
+    assert read_tag(b) == TAG_SPECIAL
+    assert read_tag(b) == TAG_B
     assert read_int(b) == 2
     assert read_int(b) == 2 ** 85
+    assert read_int(b) == 255
+    assert read_int(b) == -1
+    assert read_int(b) == -255
+    assert read_int(b) == 1234512344
+    assert read_int(b) == 1234512345
+
+def test_buffer_int_size() -> None:
+    for i in (-10, -9, 0, 116, 117):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) == 1
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+    for i in (-12345, -12344, -11, 118, 12344, 12345):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) <= 9  # sizeof(size_t) + 1
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+
+def test_buffer_str_size() -> None:
+    for s in ("", "a", "a" * 127):
+        b = Buffer()
+        write_str(b, s)
+        assert len(b.getvalue()) == len(s) + 1
+        b = Buffer(b.getvalue())
+        assert read_str(b) == s
 
 [file driver.py]
 from native import *
 
 test_buffer_basic()
 test_buffer_roundtrip()
+test_buffer_int_size()
+test_buffer_str_size()
 
 def test_buffer_basic_interpreted() -> None:
     b = Buffer(b"foo")
@@ -2761,8 +2809,16 @@ def test_buffer_roundtrip_interpreted() -> None:
     write_float(b, 0.1)
     write_int(b, 0)
     write_int(b, 1)
+    write_tag(b, 33)
+    write_tag(b, 239)
+    write_tag(b, 255)
     write_int(b, 2)
     write_int(b, 2 ** 85)
+    write_int(b, 255)
+    write_int(b, -1)
+    write_int(b, -255)
+    write_int(b, 1234512344)
+    write_int(b, 1234512345)
 
     b = Buffer(b.getvalue())
     assert read_str(b) == "foo"
@@ -2772,11 +2828,43 @@ def test_buffer_roundtrip_interpreted() -> None:
     assert read_float(b) == 0.1
     assert read_int(b) == 0
     assert read_int(b) == 1
+    assert read_tag(b) == 33
+    assert read_tag(b) == 239
+    assert read_tag(b) == 255
     assert read_int(b) == 2
     assert read_int(b) == 2 ** 85
+    assert read_int(b) == 255
+    assert read_int(b) == -1
+    assert read_int(b) == -255
+    assert read_int(b) == 1234512344
+    assert read_int(b) == 1234512345
+
+def test_buffer_int_size_interpreted() -> None:
+    for i in (-10, -9, 0, 116, 117):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) == 1
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+    for i in (-12345, -12344, -11, 118, 12344, 12345):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) <= 9  # sizeof(size_t) + 1
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+
+def test_buffer_str_size_interpreted() -> None:
+    for s in ("", "a", "a" * 127):
+        b = Buffer()
+        write_str(b, s)
+        assert len(b.getvalue()) == len(s) + 1
+        b = Buffer(b.getvalue())
+        assert read_str(b) == s
 
 test_buffer_basic_interpreted()
 test_buffer_roundtrip_interpreted()
+test_buffer_int_size_interpreted()
+test_buffer_str_size_interpreted()
 
 [case testEnumMethodCalls]
 from enum import Enum
@@ -3022,7 +3110,7 @@ f = native.F()
 del f
 
 [out]
-Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+Exception ignored in: <native.F object at 0x000000000000>
 Traceback (most recent call last):
   File "native.py", line 5, in __del__
     raise Exception("e2")
@@ -3277,3 +3365,529 @@ def test_python_class() -> None:
 
 [file dynamic.py]
 class Dyn: pass
+
+[case testDunderNew]
+from __future__ import annotations
+from typing import Any, Union
+
+from testutil import assertRaises
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> Any:
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            super().__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+IntLike = Union[int, Add]
+
+class RaisesException:
+    def __new__(cls, val: int) -> RaisesException:
+        if val == 0:
+            raise RuntimeError("Invalid value!")
+        return super().__new__(cls)
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return super().__new__(str)
+
+def test_dunder_new() -> None:
+    add_instance: Any = Add(1, 5)
+    assert type(add_instance) == Add
+    assert add_instance.l == 1
+    assert add_instance.r == 5
+
+    # TODO: explicit types should not be needed but mypy does not use
+    # the return type of __new__ which makes mypyc add casts to Add.
+    right_int: Any = Add(0, 5)
+    assert type(right_int) == int
+    assert right_int == 5
+
+    left_int: Any = Add(1, 0)
+    assert type(left_int) == int
+    assert left_int == 1
+
+    with assertRaises(RuntimeError, "Invalid value!"):
+        raised = RaisesException(0)
+
+    not_raised = RaisesException(1)
+    assert not_raised.val == 1
+
+    with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+        str_as_cls = ClsArgNotPassed()
+
+
+[case testDunderNewInInterpreted]
+from __future__ import annotations
+from typing import Any, Union
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> Any:
+        print(f'running __new__ with {l} and {r}')
+
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            super().__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+    def __repr__(self) -> str:
+        return f'({self.l} + {self.r})'
+
+IntLike = Union[int, Add]
+
+class RaisesException:
+    def __new__(cls, val: int) -> RaisesException:
+        if val == 0:
+            raise RuntimeError("Invalid value!")
+        return super().__new__(cls)
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return super().__new__(str)
+
+[file driver.py]
+from native import Add, ClsArgNotPassed, RaisesException
+
+from testutil import assertRaises
+
+print(f'{Add(1, 5)=}')
+print(f'{Add(0, 5)=}')
+print(f'{Add(1, 0)=}')
+
+with assertRaises(RuntimeError, "Invalid value!"):
+    raised = RaisesException(0)
+
+not_raised = RaisesException(1)
+assert not_raised.val == 1
+
+with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+    str_as_cls = ClsArgNotPassed()
+
+[out]
+running __new__ with 1 and 5
+Add(1, 5)=(1 + 5)
+running __new__ with 0 and 5
+Add(0, 5)=5
+running __new__ with 1 and 0
+Add(1, 0)=1
+
+[case testInheritedDunderNew]
+from __future__ import annotations
+from mypy_extensions import mypyc_attr
+from typing_extensions import Self
+
+from m import interpreted_subclass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    val: int
+
+    def __new__(cls, val: int) -> Self:
+        obj = super().__new__(cls)
+        obj.val = val + 1
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.init_val = val
+
+class Sub(Base):
+    def __new__(cls, val: int) -> Self:
+        return super().__new__(cls, val + 1)
+
+    def __init__(self, val: int) -> None:
+        super().__init__(val)
+        self.init_val = self.init_val * 2
+
+class SubWithoutNew(Base):
+    def __init__(self, val: int) -> None:
+        super().__init__(val)
+        self.init_val = self.init_val * 2
+
+class BaseWithoutInterpretedSubclasses:
+    val: int
+
+    def __new__(cls, val: int) -> Self:
+        obj = super().__new__(cls)
+        obj.val = val + 1
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.init_val = val
+
+class SubNoInterpreted(BaseWithoutInterpretedSubclasses):
+    def __new__(cls, val: int) -> Self:
+        return super().__new__(cls, val + 1)
+
+    def __init__(self, val: int) -> None:
+        super().__init__(val)
+        self.init_val = self.init_val * 2
+
+class SubNoInterpretedWithoutNew(BaseWithoutInterpretedSubclasses):
+    def __init__(self, val: int) -> None:
+        super().__init__(val)
+        self.init_val = self.init_val * 2
+
+def test_inherited_dunder_new() -> None:
+    b = Base(42)
+    assert type(b) == Base
+    assert b.val == 43
+    assert b.init_val == 42
+
+    s = Sub(42)
+    assert type(s) == Sub
+    assert s.val == 44
+    assert s.init_val == 84
+
+    s2 = SubWithoutNew(42)
+    assert type(s2) == SubWithoutNew
+    assert s2.val == 43
+    assert s2.init_val == 84
+
+def test_inherited_dunder_new_without_interpreted_subclasses() -> None:
+    b = BaseWithoutInterpretedSubclasses(42)
+    assert type(b) == BaseWithoutInterpretedSubclasses
+    assert b.val == 43
+    assert b.init_val == 42
+
+    s = SubNoInterpreted(42)
+    assert type(s) == SubNoInterpreted
+    assert s.val == 44
+    assert s.init_val == 84
+
+    s2 = SubNoInterpretedWithoutNew(42)
+    assert type(s2) == SubNoInterpretedWithoutNew
+    assert s2.val == 43
+    assert s2.init_val == 84
+
+def test_interpreted_subclass() -> None:
+    interpreted_subclass(Base)
+
+[file m.py]
+from __future__ import annotations
+from typing_extensions import Self
+
+def interpreted_subclass(base) -> None:
+    b = base(42)
+    assert type(b) == base
+    assert b.val == 43
+    assert b.init_val == 42
+
+    class InterpretedSub(base):
+        def __new__(cls, val: int) -> Self:
+            return super().__new__(cls, val + 1)
+
+        def __init__(self, val: int) -> None:
+            super().__init__(val)
+            self.init_val : int = self.init_val * 2
+
+    s = InterpretedSub(42)
+    assert type(s) == InterpretedSub
+    assert s.val == 44
+    assert s.init_val == 84
+
+    class InterpretedSubWithoutNew(base):
+        def __init__(self, val: int) -> None:
+            super().__init__(val)
+            self.init_val : int = self.init_val * 2
+
+    s2 = InterpretedSubWithoutNew(42)
+    assert type(s2) == InterpretedSubWithoutNew
+    assert s2.val == 43
+    assert s2.init_val == 84
+
+[typing fixtures/typing-full.pyi]
+
+[case testDunderNewInitArgMismatch]
+from __future__ import annotations
+from testutil import assertRaises
+
+class Test0:
+    @classmethod
+    def __new__(cls, val: int = 42) -> Test0:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test1:
+    def __new__(cls, val: int) -> Test1:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test2:
+    def __new__(cls) -> Test2:
+        obj = super().__new__(cls)
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+def test_arg_mismatch() -> None:
+    t0 = Test0()
+    assert t0.val == 0
+    t0 = Test0.__new__(1)
+    assert t0.val == 1
+    with assertRaises(TypeError, "__new__() missing required argument 'val'"):
+        t1 = Test1()
+    t1 = Test1.__new__(Test1, 2)
+    assert t1.val == 2
+    with assertRaises(TypeError, "__new__() takes at most 0 arguments"):
+        t2 = Test2(42)
+    t2 = Test2.__new__(Test2)
+    with assertRaises(AttributeError, "attribute 'val' of 'Test2' undefined"):
+        print(t2.val)
+
+[case testDunderNewInitArgMismatchInInterpreted]
+from __future__ import annotations
+
+class Test0:
+    # TODO: It should be possible to annotate '@classmethod' here
+    # but when it's added calling __new__ in interpreted code
+    # without the explicit type param results in a TypeError.
+    def __new__(cls, val: int = 42) -> Test0:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test1:
+    def __new__(cls, val: int) -> Test1:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test2:
+    def __new__(cls) -> Test2:
+        obj = super().__new__(cls)
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+[file driver.py]
+from native import Test0, Test1, Test2
+from testutil import assertRaises
+
+t0 = Test0()
+assert t0.val == 0
+t0 = Test0.__new__(Test0, 1)
+assert t0.val == 1
+with assertRaises(TypeError, "__new__() missing required argument 'val'"):
+    t1 = Test1()
+t1 = Test1.__new__(Test1, 2)
+assert t1.val == 2
+with assertRaises(TypeError, "__new__() takes at most 0 arguments"):
+    t2 = Test2(42)
+t2 = Test2.__new__(Test2)
+with assertRaises(AttributeError, "attribute 'val' of 'Test2' undefined"):
+    print(t2.val)
+
+[case testDunderNewAttributeAccess]
+from __future__ import annotations
+
+from mypy_extensions import u8
+from testutil import assertRaises
+
+class Test:
+    native: int
+    generic: object
+    bitfield: u8
+    default: int = 5
+
+    def __new__(cls, native: int, generic: object, bitfield: u8) -> Test:
+        obj = super().__new__(cls)
+
+        with assertRaises(AttributeError, "attribute 'native' of 'Test' undefined"):
+            print(obj.native)
+        with assertRaises(AttributeError, "attribute 'generic' of 'Test' undefined"):
+            print(obj.generic)
+        with assertRaises(AttributeError, "attribute 'bitfield' of 'Test' undefined"):
+            print(obj.bitfield)
+
+        obj.native = native
+        obj.generic = generic
+        obj.bitfield = bitfield
+
+        obj.native = obj.native + 1
+        obj.generic = obj.generic.__str__()
+        obj.bitfield = obj.bitfield & 0x0F
+        obj.default = obj.default * 2
+        return obj
+
+def test_attribute_access() -> None:
+    t = Test(42, {}, 0xCC)
+    assert t.native == 43
+    assert t.generic == "{}"
+    assert t.bitfield == 0x0C
+    assert t.default == 10
+
+[case testDunderNewAttributeAccessInInterpreted]
+from __future__ import annotations
+
+from mypy_extensions import u8
+from testutil import assertRaises
+
+class Test:
+    native: int
+    generic: object
+    bitfield: u8
+    default: int = 5
+
+    def __new__(cls, native: int, generic: object, bitfield: u8) -> Test:
+        obj = super().__new__(cls)
+
+        with assertRaises(AttributeError, "attribute 'native' of 'Test' undefined"):
+            print(obj.native)
+        with assertRaises(AttributeError, "attribute 'generic' of 'Test' undefined"):
+            print(obj.generic)
+        with assertRaises(AttributeError, "attribute 'bitfield' of 'Test' undefined"):
+            print(obj.bitfield)
+
+        obj.native = native
+        obj.generic = generic
+        obj.bitfield = bitfield
+
+        obj.native = obj.native + 1
+        obj.generic = obj.generic.__str__()
+        obj.bitfield = obj.bitfield & 0x0F
+        obj.default = obj.default * 2
+        return obj
+
+[file driver.py]
+from native import Test
+
+t = Test(42, {}, 0xCC)
+assert t.native == 43
+assert t.generic == "{}"
+assert t.bitfield == 0x0C
+assert t.default == 10
+
+[case testPerTypeFreeList]
+from __future__ import annotations
+
+from mypy_extensions import mypyc_attr
+
+a = []
+
+@mypyc_attr(free_list_len=1)
+class Foo:
+    def __init__(self, x: int) -> None:
+        self.x = x
+        a.append(x)
+
+def test_alloc() -> None:
+    x: Foo | None
+    y: Foo | None
+
+    x = Foo(1)
+    assert x.x == 1
+    x = None
+
+    x = Foo(2)
+    assert x.x == 2
+    y = Foo(3)
+    assert x.x == 2
+    assert y.x == 3
+    x = None
+    y = None
+    assert a == [1, 2, 3]
+
+    x = Foo(4)
+    assert x.x == 4
+    y = Foo(5)
+    assert x.x == 4
+    assert y.x == 5
+
+@mypyc_attr(free_list_len=1)
+class Base:
+    def __init__(self, x: str) -> None:
+        self.x = x
+
+class Deriv(Base):
+    def __init__(self, x: str, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+@mypyc_attr(free_list_len=1)
+class Deriv2(Base):
+    def __init__(self, x: str, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+def test_inheritance() -> None:
+    x: Base | None
+    y: Base | None
+    x = Base('x' + str())
+    y = Base('y' + str())
+    y = None
+    d = Deriv('a' + str(), 'b' + str())
+    assert type(d) is Deriv
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert x.x == 'x'
+    y = Base('z' + str())
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert y.x == 'z'
+    x = None
+    y = None
+
+def test_inheritance_2() -> None:
+    x: Base | None
+    y: Base | None
+    d: Deriv2 | None
+    x = Base('x' + str())
+    y = Base('y' + str())
+    y = None
+    d = Deriv2('a' + str(), 'b' + str())
+    assert type(d) is Deriv2
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert x.x == 'x'
+    d = None
+    d = Deriv2('c' + str(), 'd' + str())
+    assert type(d) is Deriv2
+    assert d.x == 'c'
+    assert d.y == 'd'
+    assert x.x == 'x'
+    y = Base('z' + str())
+    assert type(y) is Base
+    assert d.x == 'c'
+    assert d.y == 'd'
+    assert y.x == 'z'
+    x = None
+    y = None
+    d = None

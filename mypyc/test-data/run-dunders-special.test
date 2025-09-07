@@ -8,3 +8,5 @@ class UsesNotImplemented:
 
 def test_not_implemented() -> None:
     assert UsesNotImplemented() != object()
+    x = UsesNotImplemented() == object()
+    assert not x
