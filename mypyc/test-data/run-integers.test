@@ -574,9 +574,10 @@ class int:
     pass
 
 [case testBitLength]
+from typing import Any
 def bit_length(n: int) -> int:
     return n.bit_length()
-def bit_length_python(n: int) -> int:
+def bit_length_python(n: Any) -> int:
     return getattr(n, "bit_length")()
 def test_bit_length() -> None:
     assert bit_length(0) == bit_length_python(0)
