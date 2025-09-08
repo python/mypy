@@ -127,6 +127,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    tuple_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.options import CompilerOptions
@@ -1943,8 +1944,10 @@ class LowLevelIRBuilder:
             result = self.call_c(str_check_if_true, [value], value.line)
         elif is_same_type(value.type, exact_dict_rprimitive):
             result = self.primitive_op(dict_is_true_op, [value], line=value.line)
-        elif is_same_type(value.type, list_rprimitive) or is_same_type(
-            value.type, dict_rprimitive of is_same_type(value.type, tuple_rprimitive)
+        elif (
+            is_same_type(value.type, list_rprimitive)
+            or is_same_type(value.type, dict_rprimitive)
+            or is_same_type(value.type, tuple_rprimitive)
         ):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
