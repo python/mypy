@@ -582,6 +582,34 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
     return 1.0;
 }
 
+static PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder, int signed_flag) {
+    // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
+    int little_endian;
+    if (strcmp(byteorder, "big") == 0) {
+        little_endian = 0;
+    } else if (strcmp(byteorder, "little") == 0) {
+        little_endian = 1;
+    } else {
+        PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
+        return NULL;
+    }
+    PyObject *result = PyBytes_FromStringAndSize(NULL, length);
+    if (!result) {
+        return NULL;
+    }
+    unsigned char *bytes = (unsigned char *)PyBytes_AS_STRING(result);
+#if PY_VERSION_HEX >= 0x030D0000  // 3.13.0
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag, 1);
+#else
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
+#endif
+    if (res < 0) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    return result;
+}
+
 // int.to_bytes(length, byteorder, signed=False)
 PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag) {
     PyObject *pyint = CPyTagged_AsObject(self);
@@ -597,37 +625,5 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
     }
     PyObject *result = CPyLong_ToBytes(pyint, length, order, signed_flag);
     Py_DECREF(pyint);
-    return result;
-}
-
-
-static PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder, int signed_flag) {
-    // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
-    unsigned char *bytes = (unsigned char *)PyMem_Malloc(length);
-    if (!bytes) {
-        PyErr_NoMemory();
-        return NULL;
-    }
-    int little_endian;
-    if (strcmp(byteorder, "big") == 0) {
-        little_endian = 0;
-    } else if (strcmp(byteorder, "little") == 0) {
-        little_endian = 1;
-    } else {
-        PyMem_Free(bytes);
-        PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
-        return NULL;
-    }
-#if PY_VERSION_HEX >= 0x030D0000  // 3.13.0
-    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag, 1);
-#else
-    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
-#endif
-    if (res < 0) {
-        PyMem_Free(bytes);
-        return NULL;
-    }
-    PyObject *result = PyBytes_FromStringAndSize((const char *)bytes, length);
-    PyMem_Free(bytes);
     return result;
 }
