@@ -189,7 +189,7 @@ class A(NamedTuple('A', [('attr', List[Exp])])): pass
 class B(NamedTuple('B', [('val', object)])): pass
 
 def my_eval(exp: Exp) -> int:
-    reveal_type(exp) # N: Revealed type is "Union[tuple[builtins.list[...], fallback=__main__.A], tuple[builtins.object, fallback=__main__.B]]"
+    reveal_type(exp) # N: Revealed type is "Union[tuple[builtins.list[Union[..., tuple[builtins.object, fallback=__main__.B]]], fallback=__main__.A], tuple[builtins.object, fallback=__main__.B]]"
     if isinstance(exp, A):
         my_eval(exp[0][0])
         return my_eval(exp.attr[0])
@@ -578,7 +578,7 @@ B = NamedTuple('B', [('x', A), ('y', int)])
 A = NamedTuple('A', [('x', str), ('y', 'B')])
 n: A
 def f(m: B) -> None: pass
-reveal_type(n) # N: Revealed type is "tuple[builtins.str, tuple[..., builtins.int, fallback=__main__.B], fallback=__main__.A]"
+reveal_type(n) # N: Revealed type is "tuple[builtins.str, tuple[tuple[builtins.str, ..., fallback=__main__.A], builtins.int, fallback=__main__.B], fallback=__main__.A]"
 reveal_type(f) # N: Revealed type is "def (m: tuple[tuple[builtins.str, ..., fallback=__main__.A], builtins.int, fallback=__main__.B])"
 f(n)  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
 [builtins fixtures/tuple.pyi]
@@ -1013,4 +1013,4 @@ from typing import Callable
 from bogus import Foo  # type: ignore
 
 A = Callable[[Foo, "B"], Foo]  # E: Type alias target becomes "Callable[[Any, B], Any]" due to an unfollowed import
-B = Callable[[Foo, A], Foo]  # E: Type alias target becomes "Callable[[Any, A], Any]" due to an unfollowed import
+B = Callable[[Foo, A], Foo]  # E: Type alias target becomes "Callable[[Any, Callable[[Any, B], Any]], Any]" due to an unfollowed import
