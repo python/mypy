@@ -292,7 +292,7 @@ def test_sequence_generator() -> None:
     b = tuple('s:' + x for x in source_str)
     assert b == ('s:a', 's:b', 's:b', 's:c')
 
-    assert known_length() == ['a', 'b', 'c', 'd', 'e', 'f', '103', '104', '105', "('j', 'k')", 'l', 'm', 'n']
+    assert known_length() == ('a', 'b', 'c', 'd', 'e', 'f', '103', '104', '105', "('j', 'k')", 'l', 'm', 'n')
 
 TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 
