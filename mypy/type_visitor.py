@@ -445,13 +445,13 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_type_alias_type(self, t: TypeAliasType, /) -> T:
         if self.skip_alias_target:
             return self.query_types(t.args)
-        # Skip type aliases already visited types to avoid infinite recursion.
-        if t.is_recursive:
-            if self.seen_aliases is None:
-                self.seen_aliases = set()
-            elif t in self.seen_aliases:
-                return self.strategy([])
-            self.seen_aliases.add(t)
+        # Skip type aliases already visited types to avoid infinite recursion
+        # (also use this as a simple-minded cache).
+        if self.seen_aliases is None:
+            self.seen_aliases = set()
+        elif t in self.seen_aliases:
+            return self.strategy([])
+        self.seen_aliases.add(t)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:
@@ -586,13 +586,13 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
     def visit_type_alias_type(self, t: TypeAliasType, /) -> bool:
         if self.skip_alias_target:
             return self.query_types(t.args)
-        # Skip type aliases already visited types to avoid infinite recursion.
-        if t.is_recursive:
-            if self.seen_aliases is None:
-                self.seen_aliases = set()
-            elif t in self.seen_aliases:
-                return self.default
-            self.seen_aliases.add(t)
+        # Skip type aliases already visited types to avoid infinite recursion
+        # (also use this as a simple-minded cache).
+        if self.seen_aliases is None:
+            self.seen_aliases = set()
+        elif t in self.seen_aliases:
+            return self.default
+        self.seen_aliases.add(t)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:

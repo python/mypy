@@ -100,9 +100,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
             # the expansion, most likely it will result in the same kind of error.
-            get_proper_type(t).accept(self)
             if t.alias is not None:
                 t.alias.accept(self)
+            if t.args:
+                # Since we always allow unbounded type variables in alias definitions, we need
+                # to verify the arguments satisfy the upper bounds of the expansion as well.
+                get_proper_type(t).accept(self)
+        if t.is_recursive:
+            self.seen_aliases.discard(t)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         t.items = flatten_nested_tuples(t.items)
