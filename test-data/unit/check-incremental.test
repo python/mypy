@@ -6171,6 +6171,118 @@ class Base:
 [out2]
 main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
+[case testLiteralCoarseGrainedChainedAliases]
+from mod1 import Alias1
+from typing import Literal
+x: Alias1
+def expect_int(x: int) -> None: pass
+expect_int(x)
+[file mod1.py]
+from mod2 import Alias2
+Alias1 = Alias2
+[file mod2.py]
+from mod3 import Alias3
+Alias2 = Alias3
+[file mod3.py]
+from typing import Literal
+Alias3 = int
+[file mod3.py.2]
+from typing import Literal
+Alias3 = str
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+main:5: error: Argument 1 to "expect_int" has incompatible type "str"; expected "int"
+
+[case testLiteralCoarseGrainedChainedAliases2]
+from mod1 import Alias1
+from typing import Literal
+x: Alias1
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(x)
+[file mod1.py]
+from mod2 import Alias2
+Alias1 = Alias2
+[file mod2.py]
+from mod3 import Alias3
+Alias2 = Alias3
+[file mod3.py]
+from typing import Literal
+Alias3 = Literal[3]
+[file mod3.py.2]
+from typing import Literal
+Alias3 = Literal[4]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
+
+[case testDoubleReexportFunctionUpdated]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+reveal_type(f.foo)
+
+[file f.py]
+import c
+def foo(arg: c.C) -> None: pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py]
+class C: ...
+[out]
+[out2]
+[out3]
+tmp/m.py:2: note: Revealed type is "def (arg: pb2.C)"
+
+[case testDoubleReexportGenericUpdated]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+x: f.F
+reveal_type(x[0])
+
+[file f.py]
+import c
+class FB(list[c.C]): ...
+class F(FB): ...
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py]
+class C: ...
+[out]
+[out2]
+[out3]
+tmp/m.py:3: note: Revealed type is "pb2.C"
+
 [case testNoCrashDoubleReexportFunctionEmpty]
 import m
 
@@ -6192,6 +6304,38 @@ import pb1
 C = pb1.C
 [file types.py.2]
 import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportAliasEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+D = list[c.C]
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb2
 C = pb2.C
 
 [file pb1.py]
@@ -6235,6 +6379,69 @@ class C: ...
 [out2]
 [out3]
 
+[case testNoCrashDoubleReexportBaseEmpty2]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+class D(c.C): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testDoubleReexportMetaUpdated]
+import m
+class C(metaclass=m.M): ...
+
+[file m.py]
+from types import M
+
+[file types.py]
+class M(type): ...
+[file types.py.2]
+class M: ...
+[out]
+[out2]
+main:2: error: Metaclasses not inheriting from "type" are not supported
+
+[case testIncrementalOkChangeWithSave2]
+import mod1
+x: int = mod1.x
+
+[file mod1.py]
+from mod2 import x
+
+[file mod2.py]
+x = 1
+
+[file mod2.py.2]
+x = "no way"
+[out]
+[out2]
+main:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testNoCrashDoubleReexportMetaEmpty]
 import m
 
@@ -6256,6 +6463,38 @@ import pb1
 C = pb1.C
 [file types.py.2]
 import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C(type): ...
+[file pb2.py.2]
+class C(type): ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportMetaEmpty2]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+class D(metaclass=c.C): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb2
 C = pb2.C
 
 [file pb1.py]
