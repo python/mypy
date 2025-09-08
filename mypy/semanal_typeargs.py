@@ -100,8 +100,6 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
             # the expansion, most likely it will result in the same kind of error.
-            if t.alias is not None:
-                t.alias.accept(self)
             if t.args:
                 # Since we always allow unbounded type variables in alias definitions, we need
                 # to verify the arguments satisfy the upper bounds of the expansion as well.
