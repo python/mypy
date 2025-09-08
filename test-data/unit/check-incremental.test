@@ -205,7 +205,7 @@ def foo() -> int:
         return "foo"
     return inner2()
 
-[rechecked mod1, mod2]
+[rechecked mod2]
 [stale]
 [out2]
 tmp/mod2.py:4: error: Incompatible return value type (got "str", expected "int")
@@ -6982,3 +6982,19 @@ class Sub(Base[Concatenate[int, P]]): ...
 [out]
 [out2]
 tmp/impl.py:7: error: Argument 1 has incompatible type "str"; expected "int"
+
+[case testIncrementalDifferentSourcesFreshnessCorrect]
+# cmd: mypy -m foo bar
+# cmd2: mypy -m foo
+# cmd3: mypy -m foo bar
+[file foo.py]
+foo = 5
+[file foo.py.2]
+foo = None
+[file bar.py]
+from foo import foo
+bar: int = foo
+[out]
+[out2]
+[out3]
+tmp/bar.py:2: error: Incompatible types in assignment (expression has type "None", variable has type "int")
