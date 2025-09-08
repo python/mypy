@@ -7,8 +7,6 @@ from typing import (
     overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
 )
 
-from typing_extensions import Self
-
 _T = TypeVar('_T')
 T_co = TypeVar('T_co', covariant=True)
 T_contra = TypeVar('T_contra', contravariant=True)
