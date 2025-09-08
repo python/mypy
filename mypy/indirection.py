@@ -39,8 +39,7 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
     def _visit(self, typ: types.Type) -> None:
         if isinstance(typ, types.TypeAliasType):
             # Avoid infinite recursion for recursive type aliases.
-            if typ not in self.seen_aliases:
-                self.seen_aliases.add(typ)
+            self.seen_aliases.add(typ)
         typ.accept(self)
 
     def _visit_type_tuple(self, typs: tuple[types.Type, ...]) -> None:

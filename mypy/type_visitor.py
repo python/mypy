@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import Any, Callable, Final, Generic, TypeVar, cast
+from typing import Any, Final, Generic, TypeVar, cast
 
 from mypy_extensions import mypyc_attr, trait
 
@@ -353,15 +353,18 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     # TODO: check that we don't have existing violations of this rule.
     """
 
-    def __init__(self, strategy: Callable[[list[T]], T]) -> None:
-        self.strategy = strategy
+    def __init__(self) -> None:
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases: set[TypeAliasType] = set()
+        self.seen_aliases: set[TypeAliasType] | None = None
         # By default, we eagerly expand type aliases, and query also types in the
         # alias target. In most cases this is a desired behavior, but we may want
         # to skip targets in some cases (e.g. when collecting type variables).
         self.skip_alias_target = False
+
+    @abstractmethod
+    def strategy(self, items: list[T]) -> T:
+        raise NotImplementedError
 
     def visit_unbound_type(self, t: UnboundType, /) -> T:
         return self.query_types(t.args)
@@ -440,14 +443,15 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType, /) -> T:
-        # Skip type aliases already visited types to avoid infinite recursion.
-        # TODO: Ideally we should fire subvisitors here (or use caching) if we care
-        #       about duplicates.
-        if t in self.seen_aliases:
-            return self.strategy([])
-        self.seen_aliases.add(t)
         if self.skip_alias_target:
             return self.query_types(t.args)
+        # Skip type aliases already visited types to avoid infinite recursion
+        # (also use this as a simple-minded cache).
+        if self.seen_aliases is None:
+            self.seen_aliases = set()
+        elif t in self.seen_aliases:
+            return self.strategy([])
+        self.seen_aliases.add(t)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:
@@ -580,16 +584,15 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType, /) -> bool:
-        # Skip type aliases already visited types to avoid infinite recursion.
-        # TODO: Ideally we should fire subvisitors here (or use caching) if we care
-        #       about duplicates.
+        if self.skip_alias_target:
+            return self.query_types(t.args)
+        # Skip type aliases already visited types to avoid infinite recursion
+        # (also use this as a simple-minded cache).
         if self.seen_aliases is None:
             self.seen_aliases = set()
         elif t in self.seen_aliases:
             return self.default
         self.seen_aliases.add(t)
-        if self.skip_alias_target:
-            return self.query_types(t.args)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:

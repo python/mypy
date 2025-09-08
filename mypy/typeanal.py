@@ -2377,9 +2377,9 @@ def has_explicit_any(t: Type) -> bool:
     return t.accept(HasExplicitAny())
 
 
-class HasExplicitAny(TypeQuery[bool]):
+class HasExplicitAny(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_any(self, t: AnyType) -> bool:
         return t.type_of_any == TypeOfAny.explicit
@@ -2418,15 +2418,11 @@ def collect_all_inner_types(t: Type) -> list[Type]:
 
 
 class CollectAllInnerTypesQuery(TypeQuery[list[Type]]):
-    def __init__(self) -> None:
-        super().__init__(self.combine_lists_strategy)
-
     def query_types(self, types: Iterable[Type]) -> list[Type]:
         return self.strategy([t.accept(self) for t in types]) + list(types)
 
-    @classmethod
-    def combine_lists_strategy(cls, it: Iterable[list[Type]]) -> list[Type]:
-        return list(itertools.chain.from_iterable(it))
+    def strategy(self, items: Iterable[list[Type]]) -> list[Type]:
+        return list(itertools.chain.from_iterable(items))
 
 
 def make_optional_type(t: Type) -> Type:
@@ -2556,7 +2552,6 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.scope = scope
         self.type_var_likes: list[tuple[str, TypeVarLikeExpr]] = []
         self.has_self_type = False
-        self.seen_aliases: set[TypeAliasType] | None = None
         self.include_callables = True
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
@@ -2653,7 +2648,8 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.process_types(t.items)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        self.process_types(t.items)  # type: ignore[arg-type]
+        for it in t.items:
+            it.accept(self)
 
     def visit_type_type(self, t: TypeType) -> None:
         t.item.accept(self)
@@ -2665,12 +2661,6 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         return self.process_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
-        # Skip type aliases in already visited types to avoid infinite recursion.
-        if self.seen_aliases is None:
-            self.seen_aliases = set()
-        elif t in self.seen_aliases:
-            return
-        self.seen_aliases.add(t)
         self.process_types(t.args)
 
     def process_types(self, types: list[Type] | tuple[Type, ...]) -> None:
