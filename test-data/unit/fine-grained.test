@@ -3528,9 +3528,9 @@ reveal_type(a.n)
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:4: note: Revealed type is "tuple[Union[tuple[Union[tuple[Union[..., None], builtins.int, fallback=a.N], None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
-c.py:7: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:7: note: Revealed type is "tuple[Union[tuple[Union[tuple[Union[..., None], builtins.int, fallback=a.N], None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveFine]
 import c
