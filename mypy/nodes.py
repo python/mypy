@@ -18,6 +18,7 @@ from mypy.cache import (
     LITERAL_COMPLEX,
     LITERAL_NONE,
     Buffer,
+    Tag,
     read_bool,
     read_float,
     read_int,
@@ -28,6 +29,7 @@ from mypy.cache import (
     read_str_list,
     read_str_opt,
     read_str_opt_list,
+    read_tag,
     write_bool,
     write_int,
     write_int_list,
@@ -37,6 +39,7 @@ from mypy.cache import (
     write_str_list,
     write_str_opt,
     write_str_opt_list,
+    write_tag,
 )
 from mypy.options import Options
 from mypy.util import is_sunder, is_typeshed_file, short_type
@@ -285,6 +288,7 @@ class MypyFile(SymbolNode):
         "path",
         "defs",
         "alias_deps",
+        "module_refs",
         "is_bom",
         "names",
         "imports",
@@ -308,6 +312,9 @@ class MypyFile(SymbolNode):
     defs: list[Statement]
     # Type alias dependencies as mapping from target to set of alias full names
     alias_deps: defaultdict[str, set[str]]
+    # The set of all dependencies (suppressed or not) that this module accesses, either
+    # directly or indirectly.
+    module_refs: set[str]
     # Is there a UTF-8 BOM at the start?
     is_bom: bool
     names: SymbolTable
@@ -348,6 +355,7 @@ class MypyFile(SymbolNode):
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
+        self.module_refs = set()
         self.plugin_deps = {}
         if ignored_lines:
             self.ignored_lines = ignored_lines
@@ -417,7 +425,7 @@ class MypyFile(SymbolNode):
         return tree
 
     def write(self, data: Buffer) -> None:
-        write_int(data, MYPY_FILE)
+        write_tag(data, MYPY_FILE)
         write_str(data, self._fullname)
         self.names.write(data, self._fullname)
         write_bool(data, self.is_stub)
@@ -427,7 +435,7 @@ class MypyFile(SymbolNode):
 
     @classmethod
     def read(cls, data: Buffer) -> MypyFile:
-        assert read_int(data) == MYPY_FILE
+        assert read_tag(data) == MYPY_FILE
         tree = MypyFile([], [])
         tree._fullname = read_str(data)
         tree.names = SymbolTable.read(data)
@@ -711,7 +719,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         return res
 
     def write(self, data: Buffer) -> None:
-        write_int(data, OVERLOADED_FUNC_DEF)
+        write_tag(data, OVERLOADED_FUNC_DEF)
         write_int(data, len(self.items))
         for item in self.items:
             item.write(data)
@@ -1022,7 +1030,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         return ret
 
     def write(self, data: Buffer) -> None:
-        write_int(data, FUNC_DEF)
+        write_tag(data, FUNC_DEF)
         write_str(data, self._name)
         mypy.types.write_type_opt(data, self.type)
         write_str(data, self._fullname)
@@ -1134,16 +1142,16 @@ class Decorator(SymbolNode, Statement):
         return dec
 
     def write(self, data: Buffer) -> None:
-        write_int(data, DECORATOR)
+        write_tag(data, DECORATOR)
         self.func.write(data)
         self.var.write(data)
         write_bool(data, self.is_overload)
 
     @classmethod
     def read(cls, data: Buffer) -> Decorator:
-        assert read_int(data) == FUNC_DEF
+        assert read_tag(data) == FUNC_DEF
         func = FuncDef.read(data)
-        assert read_int(data) == VAR
+        assert read_tag(data) == VAR
         var = Var.read(data)
         dec = Decorator(func, [], var)
         dec.is_overload = read_bool(data)
@@ -1326,7 +1334,7 @@ class Var(SymbolNode):
         return v
 
     def write(self, data: Buffer) -> None:
-        write_int(data, VAR)
+        write_tag(data, VAR)
         write_str(data, self._name)
         mypy.types.write_type_opt(data, self.type)
         mypy.types.write_type_opt(data, self.setter_type)
@@ -1341,13 +1349,13 @@ class Var(SymbolNode):
         v = Var(name, typ)
         setter_type: mypy.types.CallableType | None = None
         if read_bool(data):
-            assert read_int(data) == mypy.types.CALLABLE_TYPE
+            assert read_tag(data) == mypy.types.CALLABLE_TYPE
             setter_type = mypy.types.CallableType.read(data)
         v.setter_type = setter_type
         v.is_ready = False  # Override True default set in __init__
         v._fullname = read_str(data)
         read_flags(data, v, VAR_FLAGS)
-        marker = read_int(data)
+        marker = read_tag(data)
         if marker == LITERAL_COMPLEX:
             v.final_value = complex(read_float(data), read_float(data))
         elif marker != LITERAL_NONE:
@@ -1465,7 +1473,7 @@ class ClassDef(Statement):
         return res
 
     def write(self, data: Buffer) -> None:
-        write_int(data, CLASS_DEF)
+        write_tag(data, CLASS_DEF)
         write_str(data, self.name)
         mypy.types.write_type_list(data, self.type_vars)
         write_str(data, self.fullname)
@@ -2898,7 +2906,7 @@ class TypeVarExpr(TypeVarLikeExpr):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPE_VAR_EXPR)
+        write_tag(data, TYPE_VAR_EXPR)
         write_str(data, self._name)
         write_str(data, self._fullname)
         mypy.types.write_type_list(data, self.values)
@@ -2948,7 +2956,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, PARAM_SPEC_EXPR)
+        write_tag(data, PARAM_SPEC_EXPR)
         write_str(data, self._name)
         write_str(data, self._fullname)
         self.upper_bound.write(data)
@@ -3016,7 +3024,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPE_VAR_TUPLE_EXPR)
+        write_tag(data, TYPE_VAR_TUPLE_EXPR)
         self.tuple_fallback.write(data)
         write_str(data, self._name)
         write_str(data, self._fullname)
@@ -3026,7 +3034,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
 
     @classmethod
     def read(cls, data: Buffer) -> TypeVarTupleExpr:
-        assert read_int(data) == mypy.types.INSTANCE
+        assert read_tag(data) == mypy.types.INSTANCE
         fallback = mypy.types.Instance.read(data)
         return TypeVarTupleExpr(
             read_str(data),
@@ -3908,7 +3916,7 @@ class TypeInfo(SymbolNode):
         return ti
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPE_INFO)
+        write_tag(data, TYPE_INFO)
         self.names.write(data, self.fullname)
         self.defn.write(data)
         write_str(data, self.module_name)
@@ -3944,7 +3952,7 @@ class TypeInfo(SymbolNode):
     @classmethod
     def read(cls, data: Buffer) -> TypeInfo:
         names = SymbolTable.read(data)
-        assert read_int(data) == CLASS_DEF
+        assert read_tag(data) == CLASS_DEF
         defn = ClassDef.read(data)
         module_name = read_str(data)
         ti = TypeInfo(names, defn, module_name)
@@ -3954,10 +3962,9 @@ class TypeInfo(SymbolNode):
         ti.abstract_attributes = list(zip(attrs, statuses))
         ti.type_vars = read_str_list(data)
         ti.has_param_spec_type = read_bool(data)
-        num_bases = read_int(data)
         ti.bases = []
-        for _ in range(num_bases):
-            assert read_int(data) == mypy.types.INSTANCE
+        for _ in range(read_int(data)):
+            assert read_tag(data) == mypy.types.INSTANCE
             ti.bases.append(mypy.types.Instance.read(data))
         # NOTE: ti.mro will be set in the fixup phase based on these
         # names.  The reason we need to store the mro instead of just
@@ -3972,19 +3979,19 @@ class TypeInfo(SymbolNode):
         ti._mro_refs = read_str_list(data)
         ti._promote = cast(list[mypy.types.ProperType], mypy.types.read_type_list(data))
         if read_bool(data):
-            assert read_int(data) == mypy.types.INSTANCE
+            assert read_tag(data) == mypy.types.INSTANCE
             ti.alt_promote = mypy.types.Instance.read(data)
         if read_bool(data):
-            assert read_int(data) == mypy.types.INSTANCE
+            assert read_tag(data) == mypy.types.INSTANCE
             ti.declared_metaclass = mypy.types.Instance.read(data)
         if read_bool(data):
-            assert read_int(data) == mypy.types.INSTANCE
+            assert read_tag(data) == mypy.types.INSTANCE
             ti.metaclass_type = mypy.types.Instance.read(data)
         if read_bool(data):
-            assert read_int(data) == mypy.types.TUPLE_TYPE
+            assert read_tag(data) == mypy.types.TUPLE_TYPE
             ti.tuple_type = mypy.types.TupleType.read(data)
         if read_bool(data):
-            assert read_int(data) == mypy.types.TYPED_DICT_TYPE
+            assert read_tag(data) == mypy.types.TYPED_DICT_TYPE
             ti.typeddict_type = mypy.types.TypedDictType.read(data)
         read_flags(data, ti, TypeInfo.FLAGS)
         metadata = read_str(data)
@@ -3994,7 +4001,7 @@ class TypeInfo(SymbolNode):
             ti.slots = set(read_str_list(data))
         ti.deletable_attributes = read_str_list(data)
         if read_bool(data):
-            assert read_int(data) == mypy.types.TYPE_VAR_TYPE
+            assert read_tag(data) == mypy.types.TYPE_VAR_TYPE
             ti.self_type = mypy.types.TypeVarType.read(data)
         if read_bool(data):
             ti.dataclass_transform_spec = DataclassTransformSpec.read(data)
@@ -4119,7 +4126,8 @@ class TypeAlias(SymbolNode):
     target: The target type. For generic aliases contains bound type variables
         as nested types (currently TypeVar and ParamSpec are supported).
     _fullname: Qualified name of this type alias. This is used in particular
-        to track fine grained dependencies from aliases.
+        to track fine-grained dependencies from aliases.
+    module: Module where the alias was defined.
     alias_tvars: Type variables used to define this alias.
     normalized: Used to distinguish between `A = List`, and `A = list`. Both
         are internally stored using `builtins.list` (because `typing.List` is
@@ -4133,6 +4141,7 @@ class TypeAlias(SymbolNode):
     __slots__ = (
         "target",
         "_fullname",
+        "module",
         "alias_tvars",
         "no_args",
         "normalized",
@@ -4148,6 +4157,7 @@ class TypeAlias(SymbolNode):
         self,
         target: mypy.types.Type,
         fullname: str,
+        module: str,
         line: int,
         column: int,
         *,
@@ -4158,6 +4168,7 @@ class TypeAlias(SymbolNode):
         python_3_12_type_alias: bool = False,
     ) -> None:
         self._fullname = fullname
+        self.module = module
         self.target = target
         if alias_tvars is None:
             alias_tvars = []
@@ -4192,6 +4203,7 @@ class TypeAlias(SymbolNode):
                 )
             ),
             info.fullname,
+            info.module_name,
             info.line,
             info.column,
         )
@@ -4213,6 +4225,7 @@ class TypeAlias(SymbolNode):
                 )
             ),
             info.fullname,
+            info.module_name,
             info.line,
             info.column,
         )
@@ -4236,6 +4249,7 @@ class TypeAlias(SymbolNode):
         data: JsonDict = {
             ".class": "TypeAlias",
             "fullname": self._fullname,
+            "module": self.module,
             "target": self.target.serialize(),
             "alias_tvars": [v.serialize() for v in self.alias_tvars],
             "no_args": self.no_args,
@@ -4250,6 +4264,7 @@ class TypeAlias(SymbolNode):
     def deserialize(cls, data: JsonDict) -> TypeAlias:
         assert data[".class"] == "TypeAlias"
         fullname = data["fullname"]
+        module = data["module"]
         alias_tvars = [mypy.types.deserialize_type(v) for v in data["alias_tvars"]]
         assert all(isinstance(t, mypy.types.TypeVarLikeType) for t in alias_tvars)
         target = mypy.types.deserialize_type(data["target"])
@@ -4261,6 +4276,7 @@ class TypeAlias(SymbolNode):
         return cls(
             target,
             fullname,
+            module,
             line,
             column,
             alias_tvars=cast(list[mypy.types.TypeVarLikeType], alias_tvars),
@@ -4270,8 +4286,9 @@ class TypeAlias(SymbolNode):
         )
 
     def write(self, data: Buffer) -> None:
-        write_int(data, TYPE_ALIAS)
+        write_tag(data, TYPE_ALIAS)
         write_str(data, self._fullname)
+        write_str(data, self.module)
         self.target.write(data)
         mypy.types.write_type_list(data, self.alias_tvars)
         write_int(data, self.line)
@@ -4283,11 +4300,13 @@ class TypeAlias(SymbolNode):
     @classmethod
     def read(cls, data: Buffer) -> TypeAlias:
         fullname = read_str(data)
+        module = read_str(data)
         target = mypy.types.read_type(data)
         alias_tvars = [mypy.types.read_type_var_like(data) for _ in range(read_int(data))]
         return TypeAlias(
             target,
             fullname,
+            module,
             read_int(data),
             read_int(data),
             alias_tvars=alias_tvars,
@@ -4876,47 +4895,47 @@ def local_definitions(
                 yield from local_definitions(node.names, fullname, node)
 
 
-MYPY_FILE: Final = 0
-OVERLOADED_FUNC_DEF: Final = 1
-FUNC_DEF: Final = 2
-DECORATOR: Final = 3
-VAR: Final = 4
-TYPE_VAR_EXPR: Final = 5
-PARAM_SPEC_EXPR: Final = 6
-TYPE_VAR_TUPLE_EXPR: Final = 7
-TYPE_INFO: Final = 8
-TYPE_ALIAS: Final = 9
-CLASS_DEF: Final = 10
+MYPY_FILE: Final[Tag] = 0
+OVERLOADED_FUNC_DEF: Final[Tag] = 1
+FUNC_DEF: Final[Tag] = 2
+DECORATOR: Final[Tag] = 3
+VAR: Final[Tag] = 4
+TYPE_VAR_EXPR: Final[Tag] = 5
+PARAM_SPEC_EXPR: Final[Tag] = 6
+TYPE_VAR_TUPLE_EXPR: Final[Tag] = 7
+TYPE_INFO: Final[Tag] = 8
+TYPE_ALIAS: Final[Tag] = 9
+CLASS_DEF: Final[Tag] = 10
 
 
 def read_symbol(data: Buffer) -> mypy.nodes.SymbolNode:
-    marker = read_int(data)
+    tag = read_tag(data)
     # The branches here are ordered manually by type "popularity".
-    if marker == VAR:
+    if tag == VAR:
         return mypy.nodes.Var.read(data)
-    if marker == FUNC_DEF:
+    if tag == FUNC_DEF:
         return mypy.nodes.FuncDef.read(data)
-    if marker == DECORATOR:
+    if tag == DECORATOR:
         return mypy.nodes.Decorator.read(data)
-    if marker == TYPE_INFO:
+    if tag == TYPE_INFO:
         return mypy.nodes.TypeInfo.read(data)
-    if marker == OVERLOADED_FUNC_DEF:
+    if tag == OVERLOADED_FUNC_DEF:
         return mypy.nodes.OverloadedFuncDef.read(data)
-    if marker == TYPE_VAR_EXPR:
+    if tag == TYPE_VAR_EXPR:
         return mypy.nodes.TypeVarExpr.read(data)
-    if marker == TYPE_ALIAS:
+    if tag == TYPE_ALIAS:
         return mypy.nodes.TypeAlias.read(data)
-    if marker == PARAM_SPEC_EXPR:
+    if tag == PARAM_SPEC_EXPR:
         return mypy.nodes.ParamSpecExpr.read(data)
-    if marker == TYPE_VAR_TUPLE_EXPR:
+    if tag == TYPE_VAR_TUPLE_EXPR:
         return mypy.nodes.TypeVarTupleExpr.read(data)
-    assert False, f"Unknown symbol marker {marker}"
+    assert False, f"Unknown symbol tag {tag}"
 
 
 def read_overload_part(data: Buffer) -> OverloadPart:
-    marker = read_int(data)
-    if marker == DECORATOR:
+    tag = read_tag(data)
+    if tag == DECORATOR:
         return Decorator.read(data)
-    if marker == FUNC_DEF:
+    if tag == FUNC_DEF:
         return FuncDef.read(data)
-    assert False, f"Invalid marker for an OverloadPart {marker}"
+    assert False, f"Invalid tag for an OverloadPart {tag}"

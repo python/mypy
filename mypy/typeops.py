@@ -208,7 +208,7 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     fallback=named_type("builtins.function"),
                 )
                 result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
-                if allow_cache:
+                if allow_cache and state.strict_optional:
                     info.type_object_type = result
                 return result
 
@@ -230,7 +230,9 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
     result = type_object_type_from_function(t, info, method.info, fallback, is_new)
-    if allow_cache:
+    # Only write cached result is strict_optional=True, otherwise we may get
+    # inconsistent behaviour because of union simplification.
+    if allow_cache and state.strict_optional:
         info.type_object_type = result
     return result
 
@@ -1112,12 +1114,12 @@ def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
 
 class TypeVarExtractor(TypeQuery[list[TypeVarLikeType]]):
     def __init__(self, include_all: bool = False) -> None:
-        super().__init__(self._merge)
+        super().__init__()
         self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
+    def strategy(self, items: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
-        for item in iter:
+        for item in items:
             out.extend(item)
         return out
 
