@@ -583,5 +583,6 @@ def test_bit_length() -> None:
         i = 1 << n
         assert bit_length(i) == bit_length_python(i)
         assert bit_length(-(i)) == bit_length_python(-(i))
-        assert bit_length(i-1) == bit_length_python(i-1)
-        assert bit_length(-(i) + 1) == bit_length_python(-(i) + 1)
+        i -= 1
+        assert bit_length(i) == bit_length_python(i)
+        assert bit_length(-(i)) == bit_length_python(-(i))
