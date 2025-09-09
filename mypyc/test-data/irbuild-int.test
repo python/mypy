@@ -215,7 +215,7 @@ L0:
 def f(x: int) -> bytes:
     return x.to_bytes(2, "big")
 def g(x: int) -> bytes:
-    return x.to_bytes(4, "little", True)
+    return x.to_bytes(4, "little", signed=True)
 [out]
 def f(x):
     x :: int
