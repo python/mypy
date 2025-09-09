@@ -338,6 +338,8 @@ def infer_python_executable(options: Options, special_opts: argparse.Namespace) 
     options.python_executable = python_executable
 
 
+compilation_status: Final = "no" if __file__.endswith(".py") else "yes"
+
 HEADER: Final = """%(prog)s [-h] [-v] [-V] [more options; see below]
             [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""
 
@@ -557,7 +559,6 @@ def define_options(
         "-v", "--verbose", action="count", dest="verbosity", help="More verbose messages"
     )
 
-    compilation_status = "no" if __file__.endswith(".py") else "yes"
     general_group.add_argument(
         "-V",
         "--version",
@@ -1064,7 +1065,13 @@ def define_options(
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
     incremental_group.add_argument(
-        "--fixed-format-cache", action="store_true", help=argparse.SUPPRESS
+        "--fixed-format-cache",
+        action="store_true",
+        help=(
+            "Use experimental fast and compact fixed format cache"
+            if compilation_status == "yes"
+            else argparse.SUPPRESS
+        ),
     )
     incremental_group.add_argument(
         "--skip-version-check",
