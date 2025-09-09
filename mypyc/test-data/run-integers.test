@@ -580,5 +580,8 @@ def bit_length_python(n: int) -> int:
     return getattr(n, "bit_length")()
 def test_bit_length() -> None:
     for n in range(256):
-        assert bit_length(1 << n) == bit_length_python(1 << n)
-        assert bit_length(-(1 << n)) == bit_length_python(-(1 << n))
+        i = 1 << n
+        assert bit_length(i) == bit_length_python(i)
+        assert bit_length(-(i)) == bit_length_python(-(i))
+        assert bit_length(i-1) == bit_length_python(i-1)
+        assert bit_length(-(i) + 1) == bit_length_python(-(i) + 1)
