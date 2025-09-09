@@ -481,9 +481,12 @@ Example:
         # Error: unused "type: ignore" comment
         return a + b  # type: ignore
 
-Note that due to a specific nature of this comment, the only way to selectively
-silence it, is to include the error code explicitly. Also note that this error is
-not shown if the ``# type: ignore`` is not used due to code being statically
+Mypy errors can typically be silenced by putting a ``# type: ignore`` comment after them,
+but because this is *already* a ``# type: ignore`` comment, the only way to selectively
+silence it is to include the error code explicitly, making the comment
+``# type: ignore[unused-ignore]``.
+
+This error is not shown if the ``# type: ignore`` is not used due to code being statically
 unreachable (e.g. due to platform or version checks).
 
 Example:
