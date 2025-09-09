@@ -338,8 +338,6 @@ def infer_python_executable(options: Options, special_opts: argparse.Namespace) 
     options.python_executable = python_executable
 
 
-compilation_status: Final = "no" if __file__.endswith(".py") else "yes"
-
 HEADER: Final = """%(prog)s [-h] [-v] [-V] [more options; see below]
             [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""
 
@@ -559,6 +557,7 @@ def define_options(
         "-v", "--verbose", action="count", dest="verbosity", help="More verbose messages"
     )
 
+    compilation_status = "no" if __file__.endswith(".py") else "yes"
     general_group.add_argument(
         "-V",
         "--version",
