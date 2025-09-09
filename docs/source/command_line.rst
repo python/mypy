@@ -811,10 +811,7 @@ of the above sections.
     :option:`mypy --help` output.
 
     Note: the exact list of flags enabled by running :option:`--strict` may change
-    over time. For this version of mypy, the list is:
-
-    .. include:: strict_list.rst
-
+    over time.
 
     .. include:: strict_list.rst
     ..
