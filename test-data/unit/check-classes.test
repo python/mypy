@@ -3879,7 +3879,7 @@ def f(n: type[None]):
     assert_type(n(), None)
 def g(n: type[NoneType]):  # type: ignore[valid-type]
     assert_type(n(), None)
-    
+
 f(NoneType)
 g(NoneType)
 [out]
