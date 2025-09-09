@@ -3867,13 +3867,16 @@ def f(a: Type[Tuple[int, int]]):
 [builtins fixtures/tuple.pyi]
 
 [case testTypeUsingTypeCNoneType]
+from typing_extensions import assert_type
 NoneType = type(None)
-type(None)()
-NoneType()
+assert_type(type(None)(), None)
+assert_type(NoneType(), None)
+
 def f(n: type[None]):
-    n()
-def g(n: type[NoneType]):
-    n()
+    assert_type(n(), None)
+def g(n: type[NoneType]):  # type: ignore[valid-type]
+    assert_type(n(), None)
+    
 f(NoneType)
 g(NoneType)
 [out]
