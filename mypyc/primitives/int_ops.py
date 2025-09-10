@@ -37,7 +37,6 @@ from mypyc.primitives.registry import (
     custom_op,
     function_op,
     load_address_op,
-    method_op,
     unary_op,
 )
 
