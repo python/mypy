@@ -14,20 +14,12 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### `--allow-redefinition-new`
 
-Exposes an (experimental) command‑line flag to control whether subclass `__new__` redefinitions are accepted. This was previously an internal toggle; it’s now publicly documented via --allow-redefinition-new so advanced projects can fine‑tune behavior without internal flags
 
-This feature was contributed by Ivan Levkivskyi (PR [19796](https://github.com/python/mypy/pull/19796)).
+
+This feature was contributed by Jukka Lehtosalo.
 
 ### Fixed‑Format Cache (experimental)
 
-Introduces an optional binary fixed‑format cache that’s both smaller and notably faster to load than the JSON/orjson cache. Local measurements on the PR show ~2.5× faster deserialization than orjson and reviewer benchmarks report a ~35% cached import speedup on a large workload; the flag is currently hidden/opt‑in while we iterate. Follow‑ups further shrink/optimize the format and reduce GC overhead during loads.
-
-- Initial implementation and flag (hidden): --fixed-format-cache
-- Tag packing and compaction: 1‑byte type/symbol tags and u8 storage
-- Denser representation for common scalars (int, str)
-- Lower GC pressure when reading caches
-- Guardrails around constructor cache emission (compatibility)
-- Expose --fixed-format-cache if compiled
 
 This feature was contributed by Ivan Levkivskyi (PR [19668](https://github.com/python/mypy/pull/19668), [19735](https://github.com/python/mypy/pull/19735), [19750](https://github.com/python/mypy/pull/19750), [19681](https://github.com/python/mypy/pull/19681), [19752](https://github.com/python/mypy/pull/19752), [19815](https://github.com/python/mypy/pull/19815))
 
@@ -37,7 +29,7 @@ Mypy now implements PEP 800 Disjoint bases: it understands the @disjoint_base 
 
 This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/python/mypy/pull/19678)).
 
-### Mypy Improvements
+### Mypy Performance Improvements
 
 - Improve self check performance by 1.8% (Jukka Lehtosalo, PR [19768](https://github.com/python/mypy/pull/19768), [19769](https://github.com/python/mypy/pull/19769), [19770](https://github.com/python/mypy/pull/19770))
 - Use fast Python wrappers in native_internal (Ivan Levkivskyi, PR [19765](https://github.com/python/mypy/pull/19765))
@@ -78,23 +70,6 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 - Allow runtime‑existing aliases of @type_check_only types (Brian Schubert, PR [19568](https://github.com/python/mypy/pull/19568))
 - More detailed checking of type objects in stubtest (Stephen Morton, PR [18251](https://github.com/python/mypy/pull/18251))
 - Support running stubtest in non-UTF8 terminals (Stanislav Terliakovm, PR [19085](https://github.com/python/mypy/pull/19085))
-
-### Bug Fixes
-
-- Fix crash with variadic tuple arguments to a generic type (Randolf Scholz, PR [19705](https://github.com/python/mypy/pull/19705))
-- Fix crash when enable_error_code in pyproject.toml has wrong type (wyattscarpenter, PR [19494](https://github.com/python/mypy/pull/19494))
-- Fix dict assignment to a wider context when an incompatible same‑shape TypedDict exists (Stanislav Terliakov, PR [19592](https://github.com/python/mypy/pull/19592))
-- Prevent crash for dataclass with PEP 695 TypeVarTuple on Python 3.13+ (Stanislav Terliakov, PR [19565](https://github.com/python/mypy/pull/19565))
-- Fix constructor type for subclasses of Any (Ivan Levkivskyi, PR [19295](https://github.com/python/mypy/pull/19295))
-- Fix TypeGuard/TypeIs being forgotten when semanal defers (Brian Schubert, PR [19325](https://github.com/python/mypy/pull/19325))
-- Fix TypeIs negative narrowing for unions of generics (Brian Schubert, PR [18193](https://github.com/python/mypy/pull/18193))
-- dmypy suggest: fix incorrect signature suggestion when a type matches a module name (Brian Schubert, PR [18937](https://github.com/python/mypy/pull/18937))
-- dmypy suggest: fix interaction with `__new__` (Stanislav Terliakov, PR [18966](https://github.com/python/mypy/pull/18966))
-- dmypy suggest: support Callable / callable Protocols in decorator unwrapping (Anthony Sottile, PR [19072](https://github.com/python/mypy/pull/19072))
-- Fix missing error when redeclaring a type variable in a nested generic class (Brian Schubert, PR [18883](https://github.com/python/mypy/pull/18883))
-- Fix for overloaded type object erasure (Shantanu, PR [19338](https://github.com/python/mypy/pull/19338))
-- Fix TypeGuard with call on temporary object (Saul Shanabrook, PR [19577](https://github.com/python/mypy/pull/19577))
-- Fix crash on settable property alias (Ivan Levkivskyi, PR [19615](https://github.com/python/mypy/pull/19615))
 
 ### Mypyc Improvements
 
@@ -153,7 +128,6 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 ### Documentation Updates
 
 - Add idlemypyextension to IDE integrations (CoolCat467, PR [18615](https://github.com/python/mypy/pull/18615))
-- Update stubinfo for latest typeshed (Shantanu, PR [19771](https://github.com/python/mypy/pull/19771))
 - Document that object is often preferable to Any in APIs (wyattscarpenter, PR [19103](https://github.com/python/mypy/pull/19103))
 - Include a detailed listing of flags enabled by --strict (wyattscarpenter, PR [19062](https://github.com/python/mypy/pull/19062))
 - Update “common issues” (reveal_type/reveal_locals; note on orjson) (wyattscarpenter, PR [19059](https://github.com/python/mypy/pull/19059), [19058](https://github.com/python/mypy/pull/19058))
@@ -209,6 +183,21 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 - Fix C compiler flags in the profile self‑check script (Jukka Lehtosalo, PR [19326](https://github.com/python/mypy/pull/19326))
 - Add a script for profiling self‑check (Linux only) (Jukka Lehtosalo, PR [19322](https://github.com/python/mypy/pull/19322))
 - Retry PyPI upload script: skip existing files on retry (Jukka Lehtosalo, PR [19305](https://github.com/python/mypy/pull/19305))
+- Update stubinfo for latest typeshed (Shantanu, PR [19771](https://github.com/python/mypy/pull/19771))
+- Fix crash with variadic tuple arguments to a generic type (Randolf Scholz, PR [19705](https://github.com/python/mypy/pull/19705))
+- Fix crash when enable_error_code in pyproject.toml has wrong type (wyattscarpenter, PR [19494](https://github.com/python/mypy/pull/19494))
+- Fix dict assignment to a wider context when an incompatible same‑shape TypedDict exists (Stanislav Terliakov, PR [19592](https://github.com/python/mypy/pull/19592))
+- Prevent crash for dataclass with PEP 695 TypeVarTuple on Python 3.13+ (Stanislav Terliakov, PR [19565](https://github.com/python/mypy/pull/19565))
+- Fix constructor type for subclasses of Any (Ivan Levkivskyi, PR [19295](https://github.com/python/mypy/pull/19295))
+- Fix TypeGuard/TypeIs being forgotten when semanal defers (Brian Schubert, PR [19325](https://github.com/python/mypy/pull/19325))
+- Fix TypeIs negative narrowing for unions of generics (Brian Schubert, PR [18193](https://github.com/python/mypy/pull/18193))
+- dmypy suggest: fix incorrect signature suggestion when a type matches a module name (Brian Schubert, PR [18937](https://github.com/python/mypy/pull/18937))
+- dmypy suggest: fix interaction with `__new__` (Stanislav Terliakov, PR [18966](https://github.com/python/mypy/pull/18966))
+- dmypy suggest: support Callable / callable Protocols in decorator unwrapping (Anthony Sottile, PR [19072](https://github.com/python/mypy/pull/19072))
+- Fix missing error when redeclaring a type variable in a nested generic class (Brian Schubert, PR [18883](https://github.com/python/mypy/pull/18883))
+- Fix for overloaded type object erasure (Shantanu, PR [19338](https://github.com/python/mypy/pull/19338))
+- Fix TypeGuard with call on temporary object (Saul Shanabrook, PR [19577](https://github.com/python/mypy/pull/19577))
+- Fix crash on settable property alias (Ivan Levkivskyi, PR [19615](https://github.com/python/mypy/pull/19615))
 
 ### Typeshed Updates
 
