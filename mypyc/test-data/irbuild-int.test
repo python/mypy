@@ -232,7 +232,7 @@ def g(x):
 L0:
     r0 = CPyTagged_ToLittleEndianBytes(x, 8, 1)
     return r0
-def h(x):
+def h(x, byteorder):
     x :: int
     byteorder :: str
     r0 :: bytes
