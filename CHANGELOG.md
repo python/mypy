@@ -20,7 +20,7 @@ This feature was contributed by Jukka Lehtosalo.
 
 ### Fixed‑Format Cache (experimental)
 
-TODO by Jukka.
+TODO by Jukka
 
 This feature was contributed by Ivan Levkivskyi (PR [19668](https://github.com/python/mypy/pull/19668), [19735](https://github.com/python/mypy/pull/19735), [19750](https://github.com/python/mypy/pull/19750), [19681](https://github.com/python/mypy/pull/19681), [19752](https://github.com/python/mypy/pull/19752), [19815](https://github.com/python/mypy/pull/19815))
 
@@ -31,6 +31,8 @@ Mypy now implements PEP 800 Disjoint bases: it understands the @disjoint_base 
 This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/python/mypy/pull/19678)).
 
 ### Mypy Performance Improvements
+
+Mypy 1.18 includes numerous performance improvements, resulting in a 38% overall speedup compared to 1.17
 
 - Improve self check performance by 1.8% (Jukka Lehtosalo, PR [19768](https://github.com/python/mypy/pull/19768), [19769](https://github.com/python/mypy/pull/19769), [19770](https://github.com/python/mypy/pull/19770))
 - Use fast Python wrappers in native_internal (Ivan Levkivskyi, PR [19765](https://github.com/python/mypy/pull/19765))
