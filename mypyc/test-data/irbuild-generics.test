@@ -773,3 +773,18 @@ def f(x):
     x :: int
 L0:
     return x
+
+[case testTypePreservingDecoratorGenerator]
+from typing import Callable, TypeVar, Iterator
+
+T = TypeVar("T", bound=Callable)
+def identity_decorator(f: T) -> T:
+    return f
+
+@identity_decorator
+def gen() -> Iterator[int]:
+    yield 1
+[out]
+def gen():
+    r0 = CPyGen_Create(...)
+    return r0

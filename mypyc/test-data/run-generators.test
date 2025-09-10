@@ -907,3 +907,41 @@ def test_same_names() -> None:
         # matches the variable name in the input code, since internally it's generated
         # with a prefix.
         list(undefined())
+
+[case testStaticMethodGeneratorRuntime]
+class C:
+    @staticmethod
+    def staticgen():
+        yield 42
+
+from testutil import run_generator
+assert run_generator(C.staticgen()) == ((42,), None)
+[out]
+42
+
+[case testClassMethodGeneratorRuntime]
+class C:
+    @classmethod
+    def classgen(cls):
+        yield 99
+
+from testutil import run_generator
+assert run_generator(C.classgen()) == ((99,), None)
+[out]
+99
+
+[case testTypePreservingDecoratorGeneratorRuntime]
+from typing import Callable, TypeVar
+
+T = TypeVar("T", bound=Callable)
+def identity_decorator(f: T) -> T:
+    return f
+
+@identity_decorator
+def gen():
+    yield 7
+
+from testutil import run_generator
+assert run_generator(gen()) == ((7,), None)
+[out]
+7

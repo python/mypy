@@ -3799,3 +3799,21 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     wrapper = r2
     return wrapper
+
+[case testStaticMethodGenerator]
+from typing import Iterator
+class C:
+    @staticmethod
+    def staticgen() -> Iterator[int]:
+        yield 1
+    @classmethod
+    def classgen(cls) -> Iterator[int]:
+        yield 1
+[out]
+def C.staticgen():
+    r0 = CPyGen_Create(...)
+    return r0
+def C.classgen(cls):
+    cls :: object
+    r0 = CPyGen_Create(...)
+    return r0
