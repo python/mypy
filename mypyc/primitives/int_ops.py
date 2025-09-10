@@ -324,11 +324,31 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
-# int.to_bytes(length, byteorder, signed)
-method_op(
+# int.to_bytes(length, byteorder, signed=...)
+int_to_bytes_op = method_op(
     name="to_bytes",
     arg_types=[int_rprimitive, int_rprimitive, str_rprimitive, bool_rprimitive],
     return_type=bytes_rprimitive,
     c_function_name="CPyTagged_ToBytes",
+    error_kind=ERR_MAGIC,
+)
+
+# specialized custom_op cases for int.to_bytes:
+
+# int.to_bytes(length, "big")
+# int.to_bytes(length, "big", signed=...)
+int_to_big_endian_op = custom_op(
+    arg_types=[int_rprimitive, int_rprimitive, bool_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyTagged_ToBigEndianBytes",
+    error_kind=ERR_MAGIC,
+)
+
+# int.to_bytes(length, "little")
+# int.to_bytes(length, "little", signed=...)
+int_to_little_endian_op = custom_op(
+    arg_types=[int_rprimitive, int_rprimitive, bool_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyTagged_ToLittleEndianBytes",
     error_kind=ERR_MAGIC,
 )

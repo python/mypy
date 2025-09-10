@@ -582,17 +582,8 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
     return 1.0;
 }
 
-static PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, const char *byteorder, int signed_flag) {
+static PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, int little_endian, int signed_flag) {
     // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
-    int little_endian;
-    if (strcmp(byteorder, "big") == 0) {
-        little_endian = 0;
-    } else if (strcmp(byteorder, "little") == 0) {
-        little_endian = 1;
-    } else {
-        PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
-        return NULL;
-    }
     PyObject *result = PyBytes_FromStringAndSize(NULL, length);
     if (!result) {
         return NULL;
@@ -623,7 +614,31 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
         Py_DECREF(pyint);
         return NULL;
     }
-    PyObject *result = CPyLong_ToBytes(pyint, length, order, signed_flag);
+    int little_endian;
+    if (strcmp(order, "big") == 0) {
+        little_endian = 0;
+    } else if (strcmp(order, "little") == 0) {
+        little_endian = 1;
+    } else {
+        PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
+        return NULL;
+    }
+    PyObject *result = CPyLong_ToBytes(pyint, length, little_endian, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+
+// int.to_bytes(length, byteorder="little", signed=False)
+PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    PyObject *result = CPyLong_ToBytes(pyint, length, 1, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// int.to_bytes(length, "big", signed=False)
+PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    PyObject *result = CPyLong_ToBytes(pyint, length, 0, signed_flag);
     Py_DECREF(pyint);
     return result;
 }
