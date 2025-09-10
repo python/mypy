@@ -927,4 +927,3 @@ L0:
     r0 = gen_gen()
     r0.__mypyc_next_label__ = 0; r1 = is_error
     return r0
-
