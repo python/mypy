@@ -33,7 +33,7 @@ This feature was contributed by Ivan Levkivskyi (PR [19668](https://github.com/p
 
 ### Disjoint Base Classes (@disjoint_base, PEP 800)
 
-Mypy now implements PEP 800 Disjoint bases: it understands the @disjoint_base marker, rejects class definitions that combine incompatible disjoint bases, and exploits the fact that such classes cannot exist in reachability and narrowing logic 
+Mypy now implements PEP 800 Disjoint bases: it understands the @disjoint_base marker, rejects class definitions that combine incompatible disjoint bases, and exploits the fact that such classes cannot exist in reachability and narrowing logic
 
 This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/python/mypy/pull/19678)).
 
