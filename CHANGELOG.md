@@ -14,7 +14,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### `--allow-redefinition-new`
 
-Exposes an (experimental) command‑line flag to control whether subclass __new__ redefinitions are accepted. This was previously an internal toggle; it’s now publicly documented via --allow-redefinition-new so advanced projects can fine‑tune behavior without internal flags
+Exposes an (experimental) command‑line flag to control whether subclass `__new__` redefinitions are accepted. This was previously an internal toggle; it’s now publicly documented via --allow-redefinition-new so advanced projects can fine‑tune behavior without internal flags
 
 This feature was contributed by Ivan Levkivskyi (PR [19796](https://github.com/python/mypy/pull/19796)).
 
@@ -71,10 +71,10 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 ### Stubtest Improvements
 - Add temporary --ignore-disjoint-bases flag to ease PEP 800 migration (Joren Hammudoglu, PR [19740](https://github.com/python/mypy/pull/19740))
 - Flag redundant uses of @disjoint_base (Jelle Zijlstra, PR [19715](https://github.com/python/mypy/pull/19715))
-- Improve signatures for __init__ of C classes (Stephen Morton, PR [18259](https://github.com/python/mypy/pull/18259))
+- Improve signatures for `__init__` of C classes (Stephen Morton, PR [18259](https://github.com/python/mypy/pull/18259))
 - Handle overloads with mixed pos‑only parameters (Stephen Morton, PR [18287](https://github.com/python/mypy/pull/18287))
 - Use “parameter” (not “argument”) in error messages (PrinceNaroliya, PR [19707](https://github.com/python/mypy/pull/19707))
-- Don’t require @disjoint_base when __slots__ imply finality (Jelle Zijlstra, PR [19701](https://github.com/python/mypy/pull/19701))
+- Don’t require @disjoint_base when `__slots__` imply finality (Jelle Zijlstra, PR [19701](https://github.com/python/mypy/pull/19701))
 - Allow runtime‑existing aliases of @type_check_only types (Brian Schubert, PR [19568](https://github.com/python/mypy/pull/19568))
 
 ### Bug Fixes
@@ -87,7 +87,7 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 - Fix TypeGuard/TypeIs being forgotten when semanal defers (Brian Schubert, [PR #19325](https://github.com/python/mypy/pull/19325))
 - Fix TypeIs negative narrowing for unions of generics (Brian Schubert, [PR #18193](https://github.com/python/mypy/pull/18193))
 - dmypy suggest: fix incorrect signature suggestion when a type matches a module name (Brian Schubert, [PR #18937](https://github.com/python/mypy/pull/18937))
-- dmypy suggest: fix interaction with __new__ (Stanislav Terliakov, [PR #18966](https://github.com/python/mypy/pull/18966))
+- dmypy suggest: fix interaction with `__new__` (Stanislav Terliakov, [PR #18966](https://github.com/python/mypy/pull/18966))
 - dmypy suggest: support Callable / callable Protocols in decorator unwrapping (Anthony Sottile, [PR #19072](https://github.com/python/mypy/pull/19072))
 - Fix missing error when redeclaring a type variable in a nested generic class (Brian Schubert, [PR #18883](https://github.com/python/mypy/pull/18883))
 - Fix for overloaded type object erasure (Shantanu, [PR #19338](https://github.com/python/mypy/pull/19338))
@@ -96,13 +96,13 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 
 - Fix subclass processing in detect_undefined_bitmap (Chainfire, [PR #19787](https://github.com/python/mypy/pull/19787))
 - Fix C function signature emission (Jukka Lehtosalo, [PR #19773](https://github.com/python/mypy/pull/19773))
-- Use defined __new__ in tp_new and constructor (Piotr Sawicki, [PR #19739](https://github.com/python/mypy/pull/19739))
-- Speed up implicit __ne__ (Jukka Lehtosalo, [PR #19759](https://github.com/python/mypy/pull/19759))
+- Use defined `__new__` in tp_new and constructor (Piotr Sawicki, [PR #19739](https://github.com/python/mypy/pull/19739))
+- Speed up implicit `__ne__` (Jukka Lehtosalo, [PR #19759](https://github.com/python/mypy/pull/19759))
 - Speed up equality with optional str/bytes (Jukka Lehtosalo, [PR #19758](https://github.com/python/mypy/pull/19758))
-- Add __mypyc_empty_tuple__ constant (BobTheBuidler, [PR #19654](https://github.com/python/mypy/pull/19654))
+- Add `__mypyc_empty_tuple__` constant (BobTheBuidler, [PR #19654](https://github.com/python/mypy/pull/19654))
 - Add PyObject_CallObject fast‑path op for fn(*args) (BobTheBuidler, [PR #19631](https://github.com/python/mypy/pull/19631))
 - Add **kwargs star2 fast‑path (follow‑up to starargs) (BobTheBuidler, [PR #19630](https://github.com/python/mypy/pull/19630))
-- Optimize type(x), x.__class__, and <type>.__name__ (Jukka Lehtosalo, [PR #19691](https://github.com/python/mypy/pull/19691), [PR #19683](https://github.com/python/mypy/pull/19683))
+- Optimize type(x), x.`__class__`, and `<type>.__name__` (Jukka Lehtosalo, [PR #19691](https://github.com/python/mypy/pull/19691), [PR #19683](https://github.com/python/mypy/pull/19683))
 - Specialize bytes.decode for common encodings (Jukka Lehtosalo, [PR #19688](https://github.com/python/mypy/pull/19688))
 - Speed up in against final fixed‑length tuples (Jukka Lehtosalo, [PR #19682](https://github.com/python/mypy/pull/19682))
 - Optimize f‑string building from Final values (BobTheBuidler, [PR #19611](https://github.com/python/mypy/pull/19611))
@@ -167,9 +167,9 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 - Recognize buffer protocol special methods (Brian Schubert, [PR #19581](https://github.com/python/mypy/pull/19581))
 - Add temporary named expressions for match subjects (Stanislav Terliakov, [PR #18446](https://github.com/python/mypy/pull/18446))
 - Support attribute access on enum members correctly (Stanislav Terliakov, [PR #19422](https://github.com/python/mypy/pull/19422))
-- Check __slots__ assignments on self types (Stanislav Terliakov, [PR #19332](https://github.com/python/mypy/pull/19332))
+- Check `__slots__` assignments on self types (Stanislav Terliakov, [PR #19332](https://github.com/python/mypy/pull/19332))
 - Move self‑argument checks after decorator application (Stanislav Terliakov, [PR #19490](https://github.com/python/mypy/pull/19490))
-- Infer empty list for __slots__ and module __all__ (Stanislav Terliakov, [PR #19348](https://github.com/python/mypy/pull/19348))
+- Infer empty list for `__slots__` and module `__all__` (Stanislav Terliakov, [PR #19348](https://github.com/python/mypy/pull/19348))
 - Use normalized tuples for fallback calculation (Stanislav Terliakov, [PR #19111](https://github.com/python/mypy/pull/19111))
 - Preserve literals when joining Literal with Instance that has matching last_known_value (Stanislav Terliakov, [PR #19279](https://github.com/python/mypy/pull/19279))
 - Allow adjacent conditionally‑defined overloads (Stanislav Terliakov, [PR #19042](https://github.com/python/mypy/pull/19042))
@@ -186,7 +186,7 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 - Metaclass resolution algorithm fixes (Robsdedude, [PR #17713](https://github.com/python/mypy/pull/17713))
 - PEP 702 @deprecated: handle “combined” overloads (Christoph Tyralla, [PR #19626](https://github.com/python/mypy/pull/19626))
 - PEP 702 @deprecated: include overloads in snapshot descriptions (Christoph Tyralla, [PR #19613](https://github.com/python/mypy/pull/19613))
-- Ignore overload implementation when checking __OP__ / __rOP__ compatibility (Stanislav Terliakov, [PR #18502](https://github.com/python/mypy/pull/18502))
+- Ignore overload implementation when checking `__OP__` / `__rOP__` compatibility (Stanislav Terliakov, [PR #18502](https://github.com/python/mypy/pull/18502))
 - Fix unwrapping of assignment expressions in match subject (Marc Mueller, [PR #19742](https://github.com/python/mypy/pull/19742))
 - Omit errors for class patterns against object (Marc Mueller, [PR #19709](https://github.com/python/mypy/pull/19709))
 - Remove unnecessary error for certain match class patterns (Marc Mueller, [PR #19708](https://github.com/python/mypy/pull/19708))
