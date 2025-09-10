@@ -915,9 +915,8 @@ class C:
         yield 42
 
 from testutil import run_generator
-assert run_generator(C.staticgen()) == ((42,), None)
-[out]
-42
+def test_staticmethod_generator() -> None:
+    assert run_generator(C.staticgen()) == ((42,), None)
 
 [case testClassMethodGeneratorRuntime]
 class C:
@@ -926,9 +925,8 @@ class C:
         yield 99
 
 from testutil import run_generator
-assert run_generator(C.classgen()) == ((99,), None)
-[out]
-99
+def test_classmethod_generator() -> None:
+    assert run_generator(C.classgen()) == ((99,), None)
 
 [case testTypePreservingDecoratorGeneratorRuntime]
 from typing import Callable, TypeVar
@@ -942,6 +940,5 @@ def gen():
     yield 7
 
 from testutil import run_generator
-assert run_generator(gen()) == ((7,), None)
-[out]
-7
+def test_type_preserving_decorator() -> None:
+    assert run_generator(gen()) == ((7,), None)

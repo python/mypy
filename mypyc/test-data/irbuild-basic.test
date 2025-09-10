@@ -3800,7 +3800,7 @@ L0:
     wrapper = r2
     return wrapper
 
-[case testStaticMethodGenerator]
+[case testDecoratedGenerator]
 from typing import Iterator
 class C:
     @staticmethod
@@ -3810,10 +3810,282 @@ class C:
     def classgen(cls) -> Iterator[int]:
         yield 1
 [out]
+def staticgen_C_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, arg, stop_iter_ptr):
+    __mypyc_self__ :: __main__.staticgen_C_gen
+    type, value, traceback, arg :: object
+    stop_iter_ptr :: object_ptr
+    r0 :: i32
+    r1 :: object
+    r2 :: bit
+    r3 :: object
+    r4 :: bool
+    r5 :: object
+    r6 :: bit
+    r7 :: object
+    r8 :: bool
+    r9, r10 :: bit
+    r11 :: bool
+L0:
+    r0 = __mypyc_self__.__mypyc_next_label__
+    goto L10
+L1:
+    r1 = load_address _Py_NoneStruct
+    r2 = type != r1
+    if r2 goto L2 else goto L3 :: bool
+L2:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L3:
+    r3 = object 1
+    __mypyc_self__.__mypyc_next_label__ = 1; r4 = is_error
+    return r3
+L4:
+    r5 = load_address _Py_NoneStruct
+    r6 = type != r5
+    if r6 goto L5 else goto L6 :: bool
+L5:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L6:
+    r7 = box(None, 1)
+    __mypyc_self__.__mypyc_next_label__ = -1; r8 = is_error
+L7:
+    if is_error(stop_iter_ptr) goto L8 else goto L9
+L8:
+    CPyGen_SetStopIterationValue(r7)
+    unreachable
+L9:
+    set_mem stop_iter_ptr, r7 :: builtins.object*
+    return 0
+L10:
+    r9 = r0 == 0
+    if r9 goto L1 else goto L11 :: bool
+L11:
+    r10 = r0 == 1
+    if r10 goto L4 else goto L12 :: bool
+L12:
+    r11 = raise StopIteration
+    unreachable
+def staticgen_C_gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: __main__.staticgen_C_gen
+    r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = staticgen_C_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, r0, 0)
+    return r1
+def staticgen_C_gen.send(__mypyc_self__, arg):
+    __mypyc_self__ :: __main__.staticgen_C_gen
+    arg, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = staticgen_C_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, arg, 0)
+    return r1
+def staticgen_C_gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: __main__.staticgen_C_gen
+L0:
+    return __mypyc_self__
+def staticgen_C_gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: __main__.staticgen_C_gen
+    type, value, traceback, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    if is_error(value) goto L1 else goto L2
+L1:
+    value = r0
+L2:
+    if is_error(traceback) goto L3 else goto L4
+L3:
+    traceback = r0
+L4:
+    r1 = staticgen_C_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, r0, 0)
+    return r1
+def staticgen_C_gen.close(__mypyc_self__):
+    __mypyc_self__ :: __main__.staticgen_C_gen
+    r0 :: object
+    r1 :: str
+    r2, r3, r4, r5 :: object
+    r6 :: tuple[object, object, object]
+    r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: tuple[object, object]
+    r11 :: object
+    r12 :: bit
+    r13 :: object
+    r14 :: bool
+L0:
+L1:
+    r0 = builtins :: module
+    r1 = 'GeneratorExit'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = load_address _Py_NoneStruct
+    r5 = __mypyc_self__.throw(r2, r3, r4)
+    goto L5
+L2: (handler for L1)
+    r6 = CPy_CatchError()
+    r7 = builtins :: module
+    r8 = 'StopIteration'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = (r2, r9)
+    r11 = box(tuple[object, object], r10)
+    r12 = CPy_ExceptionMatches(r11)
+    if r12 goto L3 else goto L4 :: bool
+L3:
+    CPy_RestoreExcInfo(r6)
+    r13 = load_address _Py_NoneStruct
+    return r13
+L4:
+    CPy_Reraise()
+    unreachable
+L5:
+    r14 = raise RuntimeError('generator ignored GeneratorExit')
+    unreachable
 def C.staticgen():
-    r0 = CPyGen_Create(...)
+    r0 :: __main__.staticgen_C_gen
+    r1 :: bool
+L0:
+    r0 = staticgen_C_gen()
+    r0.__mypyc_next_label__ = 0; r1 = is_error
     return r0
+def classgen_C_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, arg, stop_iter_ptr):
+    __mypyc_self__ :: __main__.classgen_C_gen
+    type, value, traceback, arg :: object
+    stop_iter_ptr :: object_ptr
+    r0 :: i32
+    r1 :: object
+    r2 :: bit
+    r3 :: object
+    r4 :: bool
+    r5 :: object
+    r6 :: bit
+    r7 :: object
+    r8 :: bool
+    r9, r10 :: bit
+    r11 :: bool
+L0:
+    r0 = __mypyc_self__.__mypyc_next_label__
+    goto L10
+L1:
+    r1 = load_address _Py_NoneStruct
+    r2 = type != r1
+    if r2 goto L2 else goto L3 :: bool
+L2:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L3:
+    r3 = object 1
+    __mypyc_self__.__mypyc_next_label__ = 1; r4 = is_error
+    return r3
+L4:
+    r5 = load_address _Py_NoneStruct
+    r6 = type != r5
+    if r6 goto L5 else goto L6 :: bool
+L5:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L6:
+    r7 = box(None, 1)
+    __mypyc_self__.__mypyc_next_label__ = -1; r8 = is_error
+L7:
+    if is_error(stop_iter_ptr) goto L8 else goto L9
+L8:
+    CPyGen_SetStopIterationValue(r7)
+    unreachable
+L9:
+    set_mem stop_iter_ptr, r7 :: builtins.object*
+    return 0
+L10:
+    r9 = r0 == 0
+    if r9 goto L1 else goto L11 :: bool
+L11:
+    r10 = r0 == 1
+    if r10 goto L4 else goto L12 :: bool
+L12:
+    r11 = raise StopIteration
+    unreachable
+def classgen_C_gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: __main__.classgen_C_gen
+    r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = classgen_C_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, r0, 0)
+    return r1
+def classgen_C_gen.send(__mypyc_self__, arg):
+    __mypyc_self__ :: __main__.classgen_C_gen
+    arg, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = classgen_C_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, arg, 0)
+    return r1
+def classgen_C_gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: __main__.classgen_C_gen
+L0:
+    return __mypyc_self__
+def classgen_C_gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: __main__.classgen_C_gen
+    type, value, traceback, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    if is_error(value) goto L1 else goto L2
+L1:
+    value = r0
+L2:
+    if is_error(traceback) goto L3 else goto L4
+L3:
+    traceback = r0
+L4:
+    r1 = classgen_C_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, r0, 0)
+    return r1
+def classgen_C_gen.close(__mypyc_self__):
+    __mypyc_self__ :: __main__.classgen_C_gen
+    r0 :: object
+    r1 :: str
+    r2, r3, r4, r5 :: object
+    r6 :: tuple[object, object, object]
+    r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: tuple[object, object]
+    r11 :: object
+    r12 :: bit
+    r13 :: object
+    r14 :: bool
+L0:
+L1:
+    r0 = builtins :: module
+    r1 = 'GeneratorExit'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = load_address _Py_NoneStruct
+    r5 = __mypyc_self__.throw(r2, r3, r4)
+    goto L5
+L2: (handler for L1)
+    r6 = CPy_CatchError()
+    r7 = builtins :: module
+    r8 = 'StopIteration'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = (r2, r9)
+    r11 = box(tuple[object, object], r10)
+    r12 = CPy_ExceptionMatches(r11)
+    if r12 goto L3 else goto L4 :: bool
+L3:
+    CPy_RestoreExcInfo(r6)
+    r13 = load_address _Py_NoneStruct
+    return r13
+L4:
+    CPy_Reraise()
+    unreachable
+L5:
+    r14 = raise RuntimeError('generator ignored GeneratorExit')
+    unreachable
 def C.classgen(cls):
     cls :: object
-    r0 = CPyGen_Create(...)
+    r0 :: __main__.classgen_C_gen
+    r1, r2 :: bool
+L0:
+    r0 = classgen_C_gen()
+    r0.__mypyc_next_label__ = 0; r1 = is_error
+    r0.__mypyc_generator_attribute__cls = cls; r2 = is_error
     return r0
+
