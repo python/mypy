@@ -1021,7 +1021,9 @@ def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr)
     self_arg = builder.accept(callee.expr)
     length_arg = builder.accept(expr.args[0])
     byteorder_expr = expr.args[1]
-    if not isinstance(callee, MemberExpr) or not is_str_rprimitive(builder.node_type(byteorder_expr)):
+    if not isinstance(callee, MemberExpr) or not is_str_rprimitive(
+        builder.node_type(byteorder_expr)
+    ):
         return None
     if isinstance(byteorder_expr, StrExpr):
         if byteorder_expr.value == "little":
