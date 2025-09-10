@@ -224,15 +224,15 @@ def f(x):
     x :: int
     r0 :: bytes
 L0:
-    r0 = CPyTagged_ToBigEndianBytes(x, 4, 0)
+    r0 = CPyTagged_ToBigEndianBytes(x, 2, 0)
     return r0
 def g(x):
     x :: int
     r0 :: bytes
 L0:
-    r0 = CPyTagged_ToLittleEndianBytes(x, 8, 1)
+    r0 = CPyTagged_ToLittleEndianBytes(x, 4, 1)
     return r0
-def h(x):
+def h(x, byteorder):
     x :: int
     byteorder :: str
     r0 :: bytes
