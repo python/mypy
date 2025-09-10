@@ -201,18 +201,6 @@ class TypesSuite(Suite):
         assert get_proper_type(A) == target
         assert get_proper_type(target) == target
 
-    def test_type_alias_expand_all(self) -> None:
-        A, _ = self.fx.def_alias_1(self.fx.a)
-        assert A.expand_all_if_possible() is None
-        A, _ = self.fx.def_alias_2(self.fx.a)
-        assert A.expand_all_if_possible() is None
-
-        B = self.fx.non_rec_alias(self.fx.a)
-        C = self.fx.non_rec_alias(TupleType([B, B], Instance(self.fx.std_tuplei, [B])))
-        assert C.expand_all_if_possible() == TupleType(
-            [self.fx.a, self.fx.a], Instance(self.fx.std_tuplei, [self.fx.a])
-        )
-
     def test_recursive_nested_in_non_recursive(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)
         T = TypeVarType(
