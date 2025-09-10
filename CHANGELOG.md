@@ -14,12 +14,13 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### `--allow-redefinition-new`
 
-
+TODO by Jukka
 
 This feature was contributed by Jukka Lehtosalo.
 
 ### Fixed‑Format Cache (experimental)
 
+TODO by Jukka. 
 
 This feature was contributed by Ivan Levkivskyi (PR [19668](https://github.com/python/mypy/pull/19668), [19735](https://github.com/python/mypy/pull/19735), [19750](https://github.com/python/mypy/pull/19750), [19681](https://github.com/python/mypy/pull/19681), [19752](https://github.com/python/mypy/pull/19752), [19815](https://github.com/python/mypy/pull/19815))
 
