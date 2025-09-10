@@ -95,10 +95,10 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.int_ops import (
-    isinstance_int,
     int_to_big_endian_op,
     int_to_bytes_op,
     int_to_little_endian_op,
+    isinstance_int,
 )
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
@@ -1006,6 +1006,7 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return Integer(ord(arg.value))
     return None
 
+
 @specialize_function("to_bytes", int_rprimitive)
 def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     # int.to_bytes(length, byteorder, signed=False)
@@ -1018,9 +1019,13 @@ def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr)
     signed_arg = builder.accept(expr.args[3]) if len(expr.args) == 4 else builder.false()
     if isinstance(byteorder_expr, StrExpr):
         if byteorder_expr.value == "little":
-            return builder.call_c(int_to_little_endian_op, [self_arg, length_arg, signed_arg], expr.line)
+            return builder.call_c(
+                int_to_little_endian_op, [self_arg, length_arg, signed_arg], expr.line
+            )
         elif byteorder_expr.value == "big":
-            return builder.call_c(int_to_big_endian_op, [self_arg, length_arg, signed_arg], expr.line)
+            return builder.call_c(
+                int_to_big_endian_op, [self_arg, length_arg, signed_arg], expr.line
+            )
     # Fallback to generic primitive op
     byteorder_arg = builder.accept(byteorder_expr)
     return builder.primitive_op(
