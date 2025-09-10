@@ -66,6 +66,7 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_str_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
     set_rprimitive,
@@ -1011,12 +1012,18 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
 def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     # int.to_bytes(length, byteorder, signed=False)
     # args: [self, length, byteorder, (optional) signed]
-    if len(expr.args) < 3 or len(expr.args) > 4:
+    if len(expr.args) == 2:
+        signed_arg = builder.false()
+    elif len(expr.args) == 3:
+        signed_arg = builder.accept(expr.args[2])
+    else:
         return None
-    self_arg = builder.accept(expr.args[0])
-    length_arg = builder.accept(expr.args[1])
-    byteorder_expr = expr.args[2]
-    signed_arg = builder.accept(expr.args[3]) if len(expr.args) == 4 else builder.false()
+    if not isinstance(callee, MemberExpr) or not is_str_rprimitive(builder.node_type(byteorder_expr)):
+        return None
+    
+    self_arg = builder.accept(callee.expr)
+    length_arg = builder.accept(expr.args[0])
+    byteorder_expr = expr.args[1]
     if isinstance(byteorder_expr, StrExpr):
         if byteorder_expr.value == "little":
             return builder.call_c(
