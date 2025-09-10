@@ -94,7 +94,7 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 - Fix missing error when redeclaring a type variable in a nested generic class (Brian Schubert, PR [18883](https://github.com/python/mypy/pull/18883))
 - Fix for overloaded type object erasure (Shantanu, PR [19338](https://github.com/python/mypy/pull/19338))
 - Fix TypeGuard with call on temporary object (Saul Shanabrook, PR [19577](https://github.com/python/mypy/pull/19577))
-- Fix crash on settable property alias (Ivan Levkivskyi, PR [19615](https://github.com/python/mypy/pull/19577))
+- Fix crash on settable property alias (Ivan Levkivskyi, PR [19615](https://github.com/python/mypy/pull/19615))
 
 ### Mypyc Improvements
 
