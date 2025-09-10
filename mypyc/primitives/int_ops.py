@@ -307,16 +307,7 @@ isinstance_int = function_op(
     error_kind=ERR_NEVER,
 )
 
-
-# int.to_bytes(length, byteorder, signed=...)
-int_to_bytes_op = custom_op(
-    arg_types=[int_rprimitive, c_pyssize_t_rprimitive, str_rprimitive, bool_rprimitive],
-    return_type=bytes_rprimitive,
-    c_function_name="CPyTagged_ToBytes",
-    error_kind=ERR_MAGIC,
-)
-
-# specialized custom_op cases for int.to_bytes:
+# specialized custom_op cases for int.to_bytes
 
 # int.to_bytes(length, "big")
 # int.to_bytes(length, "big", signed=...)
@@ -333,5 +324,13 @@ int_to_little_endian_op = custom_op(
     arg_types=[int_rprimitive, c_pyssize_t_rprimitive, bool_rprimitive],
     return_type=bytes_rprimitive,
     c_function_name="CPyTagged_ToLittleEndianBytes",
+    error_kind=ERR_MAGIC,
+)
+
+# int.to_bytes(length, byteorder, signed=...)
+int_to_bytes_op = custom_op(
+    arg_types=[int_rprimitive, c_pyssize_t_rprimitive, str_rprimitive, bool_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyTagged_ToBytes",
     error_kind=ERR_MAGIC,
 )
