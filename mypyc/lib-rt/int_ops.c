@@ -626,6 +626,7 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
     PyObject *result = CPyLong_ToBytes(pyint, length, little_endian, signed_flag);
     Py_DECREF(pyint);
     return result;
+}
 
 // int.to_bytes(length, byteorder="little", signed=False)
 PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
