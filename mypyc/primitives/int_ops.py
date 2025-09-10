@@ -314,19 +314,9 @@ isinstance_int = function_op(
     error_kind=ERR_NEVER,
 )
 
-# int.to_bytes(length, byteorder)
-method_op(
-    name="to_bytes",
-    arg_types=[int_rprimitive, int_rprimitive, str_rprimitive],
-    extra_int_constants=[(0, bool_rprimitive)],
-    return_type=bytes_rprimitive,
-    c_function_name="CPyTagged_ToBytes",
-    error_kind=ERR_MAGIC,
-)
 
 # int.to_bytes(length, byteorder, signed=...)
-int_to_bytes_op = method_op(
-    name="to_bytes",
+int_to_bytes_op = custom_op(
     arg_types=[int_rprimitive, int_rprimitive, str_rprimitive, bool_rprimitive],
     return_type=bytes_rprimitive,
     c_function_name="CPyTagged_ToBytes",

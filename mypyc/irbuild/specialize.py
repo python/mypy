@@ -1028,6 +1028,6 @@ def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr)
             )
     # Fallback to generic primitive op
     byteorder_arg = builder.accept(byteorder_expr)
-    return builder.primitive_op(
+    return builder.call_c(
         int_to_bytes_op, [self_arg, length_arg, byteorder_arg, signed_arg], expr.line
     )

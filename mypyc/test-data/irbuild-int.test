@@ -216,20 +216,26 @@ def f(x: int) -> bytes:
     return x.to_bytes(2, "big")
 def g(x: int) -> bytes:
     return x.to_bytes(4, "little", signed=True)
+def h(x: int, byteorder: str) -> bytes:
+    return x.to_bytes(8, byteorder)
+
 [out]
 def f(x):
     x :: int
-    r0 :: str
-    r1 :: bytes
+    r0 :: bytes
 L0:
-    r0 = 'big'
-    r1 = CPyTagged_ToBytes(x, 4, r0, 0)
-    return r1
+    r0 = CPyTagged_ToBigEndianBytes(x, 4, 0)
+    return r0
 def g(x):
     x :: int
-    r0 :: str
-    r1 :: bytes
+    r0 :: bytes
 L0:
-    r0 = 'little'
-    r1 = CPyTagged_ToBytes(x, 8, r0, 1)
-    return r1
+    r0 = CPyTagged_ToLittleEndianBytes(x, 8, 1)
+    return r0
+def h(x):
+    x :: int
+    byteorder :: str
+    r0 :: bytes
+L0:
+    r0 = CPyTagged_ToBytes(x, 8, byteorder, 0)
+    return r0
