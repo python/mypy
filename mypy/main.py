@@ -256,10 +256,14 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
         if "\n" in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
-        else:
-            # Assume we want argparse to manage wrapping, indenting, and
-            # formatting the text for us.
-            return argparse.HelpFormatter._fill_text(self, text, width, indent)
+        # Format the text like argparse, but overflow rather than
+        # breaking long words (like URLs)
+        text = self._whitespace_matcher.sub(' ', text).strip()
+        import textwrap
+        return textwrap.fill(
+            text, width,
+            initial_indent=indent, subsequent_indent=indent,
+            break_on_hyphens=False, break_long_words=False)
 
 
 # Define pairs of flag prefixes with inverse meaning.
