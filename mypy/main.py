@@ -1038,7 +1038,7 @@ def define_options(
         "Mypy caches type information about modules into a cache to "
         "let you speed up future invocations of mypy. Also see "
         "mypy's daemon mode: "
-        "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
+        "https://mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
     )
     incremental_group.add_argument(
         "-i", "--incremental", action="store_true", help=argparse.SUPPRESS
@@ -1289,7 +1289,7 @@ def define_options(
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
-        "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
+        "https://mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
     )
     add_invertible_flag(
         "--explicit-package-bases",
