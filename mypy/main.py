@@ -553,10 +553,15 @@ def define_options(
     #     Feel free to add subsequent sentences that add additional details.
     # 3.  If you cannot think of a meaningful description for a new group, omit it entirely.
     #     (E.g. see the "miscellaneous" sections).
-    # 4.  The group description should end with a period (unless the last line is a link). If you
-    #     do end the group description with a link, omit the 'http://' prefix. (Some links are too
-    #     long and will break up into multiple lines if we include that prefix, so for consistency
-    #     we omit the prefix on all links.)
+    # 4.  The text of the group description should end with a period, optionally followed
+    #     by a documentation reference (URL).
+    # 5.  If you want to include a documentation reference, place it at the end of the
+    #     description. Feel free to open with a brief reference ("See also:", "For more
+    #     information:", etc.), followed by a space, then the entire URL including
+    #     "https://" scheme identifier and fragment ("#some-target-heading"), if any.
+    #     Do not end with a period (or any other characters not part of the URL).
+    #     URLs longer than the available terminal width will overflow without being
+    #     broken apart. This facilitates both URL detection, and manual copy-pasting.
 
     general_group = parser.add_argument_group(title="Optional arguments")
     general_group.add_argument(
