@@ -2,7 +2,7 @@
 
 ## Next Release
 
-## Mypy 1.18 (Unreleased)
+## Mypy 1.18
 
 We’ve just uploaded mypy 1.18 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
 Mypy is a static type checker for Python. This release includes new features, performance
