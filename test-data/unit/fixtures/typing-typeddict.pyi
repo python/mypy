@@ -61,7 +61,7 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def __len__(self) -> int: ...
     def __contains__(self, arg: object) -> int: pass
 
-class MutableMapping(Mapping[T, T_co], Generic[T, T_co], metaclass=ABCMeta):
+class MutableMapping(Mapping[T, V], Generic[T, V], metaclass=ABCMeta):
     # Other methods are not used in tests.
     def clear(self) -> None: ...
 

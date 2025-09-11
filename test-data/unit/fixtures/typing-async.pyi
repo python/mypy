@@ -123,13 +123,13 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     @overload
     def get(self, k: T, default: Union[T_co, V]) -> Union[T_co, V]: pass
 
-class ContextManager(Generic[T]):
-    def __enter__(self) -> T: pass
+class ContextManager(Generic[T_co]):
+    def __enter__(self) -> T_co: pass
     # Use Any because not all the precise types are in the fixtures.
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
 
-class AsyncContextManager(Generic[T]):
-    def __aenter__(self) -> Awaitable[T]: pass
+class AsyncContextManager(Generic[T_co]):
+    def __aenter__(self) -> Awaitable[T_co]: pass
     # Use Any because not all the precise types are in the fixtures.
     def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Awaitable[Any]: pass
 
