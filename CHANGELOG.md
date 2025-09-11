@@ -12,25 +12,6 @@ improvements and bug fixes. You can install it as follows:
 
 You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
 
-### Fixed‑Format Cache (Experimental)
-
-Mypy now supports a new cache format used for faster incremental builds. It makes
-incremental builds up to twice as fast. The feature is experimental and
-currently only supported when using a compiled version of mypy. Use `--fixed-format-cache`
-to enable the new format, or `fixed_format_cache = True` in a configuration file.
-
-We plan to enable this by default in a future mypy release, and we'll eventually
-deprecate and remove support for the original JSON-based format.
-
-Unlike the JSON-based cache format, the new binary format is currently
-not easy to parse and inspect by mypy users. We are planning to provide a tool to
-convert fixed-format cache files to JSON, but details of the output JSON may be
-different from the current JSON format. If you rely on being able to inspect
-mypy cache files, we recommend creating a GitHub issue and explaining your use
-case, so that we can more likely provide support for it.
-
-This feature was contributed by Ivan Levkivskyi (PR [19668](https://github.com/python/mypy/pull/19668), [19735](https://github.com/python/mypy/pull/19735), [19750](https://github.com/python/mypy/pull/19750), [19681](https://github.com/python/mypy/pull/19681), [19752](https://github.com/python/mypy/pull/19752), [19815](https://github.com/python/mypy/pull/19815)).
-
 ### Mypy Performance Improvements
 
 Mypy 1.18 includes numerous performance improvements, resulting in about 38% speedup
@@ -65,6 +46,25 @@ Many mypyc improvements (discussed in a separate section below) also improve per
 - Speed up type checking by caching argument inference context (Jukka Lehtosalo, PR [19323](https://github.com/python/mypy/pull/19323))
 - Optimize binding method self argument type and deprecation checks (Ivan Levkivskyi, PR [19556](https://github.com/python/mypy/pull/19556))
 - Keep trivial instance types/aliases during expansion (Ivan Levkivskyi, PR [19543](https://github.com/python/mypy/pull/19543))
+
+### Fixed‑Format Cache (Experimental)
+
+Mypy now supports a new cache format used for faster incremental builds. It makes
+incremental builds up to twice as fast. The feature is experimental and
+currently only supported when using a compiled version of mypy. Use `--fixed-format-cache`
+to enable the new format, or `fixed_format_cache = True` in a configuration file.
+
+We plan to enable this by default in a future mypy release, and we'll eventually
+deprecate and remove support for the original JSON-based format.
+
+Unlike the JSON-based cache format, the new binary format is currently
+not easy to parse and inspect by mypy users. We are planning to provide a tool to
+convert fixed-format cache files to JSON, but details of the output JSON may be
+different from the current JSON format. If you rely on being able to inspect
+mypy cache files, we recommend creating a GitHub issue and explaining your use
+case, so that we can more likely provide support for it.
+
+This feature was contributed by Ivan Levkivskyi (PR [19668](https://github.com/python/mypy/pull/19668), [19735](https://github.com/python/mypy/pull/19735), [19750](https://github.com/python/mypy/pull/19750), [19681](https://github.com/python/mypy/pull/19681), [19752](https://github.com/python/mypy/pull/19752), [19815](https://github.com/python/mypy/pull/19815)).
 
 ### Flexible Variable Definitions: Update
 
