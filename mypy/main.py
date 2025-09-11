@@ -258,12 +258,17 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
             return super()._fill_text(text, width, indent)
         # Format the text like argparse, but overflow rather than
         # breaking long words (like URLs)
-        text = self._whitespace_matcher.sub(' ', text).strip()
+        text = self._whitespace_matcher.sub(" ", text).strip()
         import textwrap
+
         return textwrap.fill(
-            text, width,
-            initial_indent=indent, subsequent_indent=indent,
-            break_on_hyphens=False, break_long_words=False)
+            text,
+            width,
+            initial_indent=indent,
+            subsequent_indent=indent,
+            break_on_hyphens=False,
+            break_long_words=False,
+        )
 
 
 # Define pairs of flag prefixes with inverse meaning.
