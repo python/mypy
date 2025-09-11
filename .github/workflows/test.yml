@@ -73,8 +73,8 @@ jobs:
           # allow_failure: true
           test_mypyc: true
 
-        - name: Test suite with py314t-dev-ubuntu
-          python: '3.14t-dev'
+        - name: Test suite with py314t-ubuntu
+          python: '3.14t'
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
@@ -166,6 +166,8 @@ jobs:
       if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
       with:
         python-version: ${{ matrix.python }}
+        # allow pre-release builds to install without -dev suffix
+        allow-prereleases: true
 
     - name: Install tox
       run: |
