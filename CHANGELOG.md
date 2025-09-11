@@ -16,7 +16,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 Mypy now supports a new cache format used for faster incremental builds. It makes
 incremental builds up to twice as fast. The feature is experimental and
-currently only supported when using a compiled mypy. Use `--fixed-format-cache`
+currently only supported when using a compiled version of mypy. Use `--fixed-format-cache`
 to enable the new format, or `fixed_format_cache = True` in a configuration file.
 
 We plan to enable this by default in a future mypy release, and we'll eventually
@@ -36,17 +36,17 @@ This feature was contributed by Ivan Levkivskyi (PR [19668](https://github.com/p
 Mypy 1.18 includes numerous performance improvements, resulting in about 38% speedup
 compared to 1.17 when type checking mypy itself. In extreme cases, the improvement
 can be 10x or higher. The list below is an overview of the various mypy optimizations.
-Many mypyc improvements (discussed in a separate secion below) also improve performance.
+Many mypyc improvements (discussed in a separate section below) also improve performance.
 
 - Improve self check performance by 1.8% (Jukka Lehtosalo, PR [19768](https://github.com/python/mypy/pull/19768), [19769](https://github.com/python/mypy/pull/19769), [19770](https://github.com/python/mypy/pull/19770))
-- Optimize fixed format deserialization (Ivan Levkivskyi, PR [19765](https://github.com/python/mypy/pull/19765))
-- Use macros to optimize fixed format deserialization (Ivan Levkivskyi, PR [19757](https://github.com/python/mypy/pull/19757))
+- Optimize fixed-format deserialization (Ivan Levkivskyi, PR [19765](https://github.com/python/mypy/pull/19765))
+- Use macros to optimize fixed-format deserialization (Ivan Levkivskyi, PR [19757](https://github.com/python/mypy/pull/19757))
 - Two additional micro‑optimizations (Ivan Levkivskyi, PR [19627](https://github.com/python/mypy/pull/19627))
 - Another set of micro‑optimizations (Ivan Levkivskyi, PR [19633](https://github.com/python/mypy/pull/19633))
 - Cache common types (Ivan Levkivskyi, PR [19621](https://github.com/python/mypy/pull/19621))
 - Skip more method bodies in third‑party libraries for speed (Ivan Levkivskyi, PR [19586](https://github.com/python/mypy/pull/19586))
 - Simplify the representation of callable types (Ivan Levkivskyi, PR [19580](https://github.com/python/mypy/pull/19580))
-- Add cache for types of call expressions cache (Ivan Levkivskyi, PR [19505](https://github.com/python/mypy/pull/19505))
+- Add cache for types of some expressions (Ivan Levkivskyi, PR [19505](https://github.com/python/mypy/pull/19505))
 - Use cache for dictionary expressions (Ivan Levkivskyi, PR [19536](https://github.com/python/mypy/pull/19536))
 - Use cache for binary operations (Ivan Levkivskyi, PR [19523](https://github.com/python/mypy/pull/19523))
 - Cache types of type objects (Ivan Levkivskyi, PR [19514](https://github.com/python/mypy/pull/19514))
@@ -70,7 +70,7 @@ Many mypyc improvements (discussed in a separate secion below) also improve perf
 
 Mypy 1.16.0 introduced `--allow-redefinition-new`, which allows redefining variables
 with different types, and inferring union types for variables from multiple assignments.
-The feature is now documented in `--help` output, but the feature is still experimental.
+The feature is now documented in the `--help` output, but the feature is still experimental.
 
 We are planning to enable this by default in mypy 2.0, and we will also deprecate the
 older `--allow-redefinition` flag. Since the new behavior differs significantly from
@@ -100,9 +100,10 @@ This feature was contributed by Ivan Levkivskyi (PR [19573](https://github.com/p
 
 ### Disjoint Base Classes (@disjoint_base, PEP 800)
 
-Mypy now implements PEP 800 Disjoint bases: it understands the `@disjoint_base`
-decorator, and rejects class definitions that combine mutually incompatible base classess,
-and exploits the fact that such classes cannot exist in reachability and narrowing logic.
+Mypy now understands disjoint bases (PEP 800): it recognizes the `@disjoint_base`
+decorator, and rejects class definitions that combine mutually incompatible base classes,
+and takes advantage of the fact that such classes cannot exist in reachability and
+narrowing logic.
 
 This class definition will now generate an error:
 
@@ -138,11 +139,12 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 ### Experimental Free-threading Support for Mypyc
 
 All mypyc tests now pass on free-threading 3.14 release candidate builds. The performance
-of various micro-benchmarks scale well when using multiple threads.
+of various micro-benchmarks scale well across multiple threads.
 
-Free-threading support is still experimental. Note that native attribute get and set
-operations, list item access and certain other operations are still unsafe when there are
-race conditions. This will likely change in the future. You can follow the
+Free-threading support is still experimental. Note that native attribute access
+(get and set), list item access and certain other operations are still
+unsafe when there are race conditions. This will likely change in the future.
+You can follow the
 [area-free-threading label](https://github.com/mypyc/mypyc/issues?q=is%3Aissue%20state%3Aopen%20label%3Aarea-free-threading)
 in the mypyc issues tracker to follow progress.
 
@@ -175,8 +177,8 @@ Related PRs:
 - Speed up implicit `__ne__` (Jukka Lehtosalo, PR [19759](https://github.com/python/mypy/pull/19759))
 - Speed up equality with optional str/bytes types (Jukka Lehtosalo, PR [19758](https://github.com/python/mypy/pull/19758))
 - Speed up access to empty tuples (BobTheBuidler, PR [19654](https://github.com/python/mypy/pull/19654))
-- Speed up calls with `*args` (BobTheBuidler, PR [19631](https://github.com/python/mypy/pull/19631))
 - Speed up calls with `*args` (BobTheBuidler, PR [19623](https://github.com/python/mypy/pull/19623))
+- Further speed up calls with `*args` (BobTheBuidler, PR [19631](https://github.com/python/mypy/pull/19631))
 - Speed up calls with `**kwargs` (BobTheBuidler, PR [19630](https://github.com/python/mypy/pull/19630))
 - Optimize `type(x)`, `x.__class__`, and `<type>.__name__` (Jukka Lehtosalo, PR [19691](https://github.com/python/mypy/pull/19691), [19683](https://github.com/python/mypy/pull/19683))
 - Specialize `bytes.decode` for common encodings (Jukka Lehtosalo, PR [19688](https://github.com/python/mypy/pull/19688))
@@ -185,7 +187,7 @@ Related PRs:
 - Add dictionary set item for exact dict instances (BobTheBuidler, PR [19657](https://github.com/python/mypy/pull/19657))
 - Cache length when iterating over immutable types (BobTheBuidler, PR [19656](https://github.com/python/mypy/pull/19656))
 - Fix name conflict related to attributes of generator classes (Piotr Sawicki, PR [19535](https://github.com/python/mypy/pull/19535))
-- Fix segfault from heap type objects with static doc string (Brian Schubert, PR [19636](https://github.com/python/mypy/pull/19636))
+- Fix segfault from heap type objects with a static docstring (Brian Schubert, PR [19636](https://github.com/python/mypy/pull/19636))
 - Unwrap NewType to its base type for additional optimizations (BobTheBuidler, PR [19497](https://github.com/python/mypy/pull/19497))
 - Generate an export table only for separate compilation (Jukka Lehtosalo, PR [19521](https://github.com/python/mypy/pull/19521))
 - Speed up `isinstance` with built‑in types (Piotr Sawicki, PR [19435](https://github.com/python/mypy/pull/19435))
@@ -197,7 +199,7 @@ Related PRs:
 - Use per‑type freelists for nested functions (Jukka Lehtosalo, PR [19390](https://github.com/python/mypy/pull/19390))
 - Simplify comparison of tuple elements (Piotr Sawicki, PR [19396](https://github.com/python/mypy/pull/19396))
 - Generate introspection signatures for compiled functions (Brian Schubert, PR [19307](https://github.com/python/mypy/pull/19307))
-- Fix to undefined attribute checking (Jukka Lehtosalo, PR [19378](https://github.com/python/mypy/pull/19378))
+- Fix undefined attribute checking special case (Jukka Lehtosalo, PR [19378](https://github.com/python/mypy/pull/19378))
 - Fix comparison of tuples with different lengths (Piotr Sawicki, PR [19372](https://github.com/python/mypy/pull/19372))
 - Speed up `list.clear` (Jahongir Qurbonov, PR [19344](https://github.com/python/mypy/pull/19344))
 - Speed up `weakref.proxy` (BobTheBuidler, PR [19217](https://github.com/python/mypy/pull/19217))
@@ -254,7 +256,7 @@ Related PRs:
 - Support `_value_` as a fallback for ellipsis Enum members (Stanislav Terliakov, PR [19352](https://github.com/python/mypy/pull/19352))
 - Sort arguments in TypedDict overlap messages (Marc Mueller, PR [19666](https://github.com/python/mypy/pull/19666))
 - Fix handling of implicit return in lambda (Stanislav Terliakov, PR [19642](https://github.com/python/mypy/pull/19642))
-- Add ambiguous to uninhabited type identity for better messaging (Stanislav Terliakov, PR [19648](https://github.com/python/mypy/pull/19648))
+- Improve behavior of uninhabited types (Stanislav Terliakov, PR [19648](https://github.com/python/mypy/pull/19648))
 - Fix overload diagnostics when `*args` and `**kwargs` both match (Shantanu, PR [19614](https://github.com/python/mypy/pull/19614))
 - Further fix overload diagnostics for `*args`/`**kwargs` (Shantanu, PR [19619](https://github.com/python/mypy/pull/19619))
 - Show type variable name in "Cannot infer type argument" (Brian Schubert, PR [19290](https://github.com/python/mypy/pull/19290))
