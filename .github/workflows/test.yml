@@ -73,6 +73,14 @@ jobs:
           # allow_failure: true
           test_mypyc: true
 
+        - name: Test suite with py314t-dev-ubuntu
+          python: '3.14t-dev'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4"
+          # allow_failure: true
+          test_mypyc: true
+
         - name: mypyc runtime tests with py39-macos
           python: '3.9.21'
           # TODO: macos-13 is the last one to support Python 3.9, change it to macos-latest when updating the Python version
