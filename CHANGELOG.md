@@ -14,10 +14,15 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### Mypy Performance Improvements
 
-Mypy 1.18 includes numerous performance improvements, resulting in about 38% speedup
+Mypy 1.18 includes numerous performance improvements, resulting in about 40% speedup
 compared to 1.17 when type checking mypy itself. In extreme cases, the improvement
 can be 10x or higher. The list below is an overview of the various mypy optimizations.
 Many mypyc improvements (discussed in a separate section below) also improve performance.
+
+Type caching optimizations have a small risk of causing regressions. When
+reporting issues with unexpected inferred types, please also check if
+`--disable-expression-cache` will work around the issue, as it turns off some of
+these optimizations.
 
 - Improve self check performance by 1.8% (Jukka Lehtosalo, PR [19768](https://github.com/python/mypy/pull/19768), [19769](https://github.com/python/mypy/pull/19769), [19770](https://github.com/python/mypy/pull/19770))
 - Optimize fixed-format deserialization (Ivan Levkivskyi, PR [19765](https://github.com/python/mypy/pull/19765))
@@ -33,8 +38,7 @@ Many mypyc improvements (discussed in a separate section below) also improve per
 - Cache types of type objects (Ivan Levkivskyi, PR [19514](https://github.com/python/mypy/pull/19514))
 - Avoid duplicate work when checking boolean operations (Ivan Levkivskyi, PR [19515](https://github.com/python/mypy/pull/19515))
 - Optimize generic inference passes (Ivan Levkivskyi, PR [19501](https://github.com/python/mypy/pull/19501))
-- Speed up the default plugin (Jukka Lehtosalo, PR [19462](https://github.com/python/mypy/pull/19462))
-- Speed up the default plugin (Jukka Lehtosalo, PR [19385](https://github.com/python/mypy/pull/19385))
+- Speed up the default plugin (Jukka Lehtosalo, PRs [19385](https://github.com/python/mypy/pull/19385) and [19462](https://github.com/python/mypy/pull/19462))
 - Remove nested imports from the default plugin (Ivan Levkivskyi, PR [19388](https://github.com/python/mypy/pull/19388))
 - Micro‑optimize type expansion (Jukka Lehtosalo, PR [19461](https://github.com/python/mypy/pull/19461))
 - Micro‑optimize type indirection (Jukka Lehtosalo, PR [19460](https://github.com/python/mypy/pull/19460))
@@ -62,7 +66,9 @@ not easy to parse and inspect by mypy users. We are planning to provide a tool t
 convert fixed-format cache files to JSON, but details of the output JSON may be
 different from the current JSON format. If you rely on being able to inspect
 mypy cache files, we recommend creating a GitHub issue and explaining your use
-case, so that we can more likely provide support for it.
+case, so that we can more likely provide support for it. (Using
+`MypyFile.read(binary_data)` to inspect cache data may be sufficient to support
+some use cases.)
 
 This feature was contributed by Ivan Levkivskyi (PR [19668](https://github.com/python/mypy/pull/19668), [19735](https://github.com/python/mypy/pull/19735), [19750](https://github.com/python/mypy/pull/19750), [19681](https://github.com/python/mypy/pull/19681), [19752](https://github.com/python/mypy/pull/19752), [19815](https://github.com/python/mypy/pull/19815)).
 
@@ -118,7 +124,7 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 ### Miscellaneous New Mypy Features
 
 - Add `--strict-equality-for-none` to flag non-overlapping comparisons involving None (Christoph Tyralla, PR [19718](https://github.com/python/mypy/pull/19718))
-- Don’t show import‑related errors after a module‑level `assert False` (Stanislav Terliakov, PR [19347](https://github.com/python/mypy/pull/19347))
+- Don’t show import‑related errors after a module‑level assert such as `assert sys.platform == "linux"` that is always false (Stanislav Terliakov, PR [19347](https://github.com/python/mypy/pull/19347))
 
 ### Improvements to Match Statements
 
@@ -138,7 +144,7 @@ This feature was contributed by Jelle Zijlstra (PR [19678](https://github.com/py
 
 ### Experimental Free-threading Support for Mypyc
 
-All mypyc tests now pass on free-threading 3.14 release candidate builds. The performance
+All mypyc tests now pass on free-threading Python 3.14 release candidate builds. The performance
 of various micro-benchmarks scale well across multiple threads.
 
 Free-threading support is still experimental. Note that native attribute access
@@ -155,7 +161,7 @@ Related PRs:
 
 ### Mypyc: Support `__new__`
 
-Mypyc now has rudimentary support for `__new__` methods.
+Mypyc now has rudimentary support for user-defined `__new__` methods.
 
 This feature was contributed by Piotr Sawicki (PR [19739](https://github.com/python/mypy/pull/19739)).
 
@@ -177,8 +183,7 @@ Related PRs:
 - Speed up implicit `__ne__` (Jukka Lehtosalo, PR [19759](https://github.com/python/mypy/pull/19759))
 - Speed up equality with optional str/bytes types (Jukka Lehtosalo, PR [19758](https://github.com/python/mypy/pull/19758))
 - Speed up access to empty tuples (BobTheBuidler, PR [19654](https://github.com/python/mypy/pull/19654))
-- Speed up calls with `*args` (BobTheBuidler, PR [19623](https://github.com/python/mypy/pull/19623))
-- Further speed up calls with `*args` (BobTheBuidler, PR [19631](https://github.com/python/mypy/pull/19631))
+- Speed up calls with `*args` (BobTheBuidler, PRs [19623](https://github.com/python/mypy/pull/19623) and [19631](https://github.com/python/mypy/pull/19631))
 - Speed up calls with `**kwargs` (BobTheBuidler, PR [19630](https://github.com/python/mypy/pull/19630))
 - Optimize `type(x)`, `x.__class__`, and `<type>.__name__` (Jukka Lehtosalo, PR [19691](https://github.com/python/mypy/pull/19691), [19683](https://github.com/python/mypy/pull/19683))
 - Specialize `bytes.decode` for common encodings (Jukka Lehtosalo, PR [19688](https://github.com/python/mypy/pull/19688))
