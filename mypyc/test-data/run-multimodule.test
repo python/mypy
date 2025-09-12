@@ -902,3 +902,31 @@ import native
 [out2]
 0
 None
+
+[case testIncrementalCompilationWithNewType]
+import other_a
+[file other_a.py]
+from other_b import MyInt
+[file other_a.py.2]
+from other_b import MyInt
+i = MyInt(42)
+
+def f(x: MyInt) -> int:
+    return x + 1
+
+def g(x: int) -> MyInt:
+    return MyInt(x + 2)
+
+print(i)
+print(f(i))
+print(g(13))
+[file other_b.py]
+from typing import NewType
+MyInt = NewType("MyInt", int)
+[file driver.py]
+import native
+[out]
+[out2]
+42
+43
+15
