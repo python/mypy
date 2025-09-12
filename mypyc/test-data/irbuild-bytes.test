@@ -223,8 +223,7 @@ def f(b: bytes) -> bytes:
     return b.rjust(6)
 [out]
 def f(b):
-    b :: bytes
-    r0 :: bytes
+    b, r0 :: bytes
 L0:
     r0 = CPyBytes_RjustDefaultFill(b, 12)
     return r0
@@ -245,8 +244,7 @@ def f(b: bytes) -> bytes:
     return b.ljust(7)
 [out]
 def f(b):
-    b :: bytes
-    r0 :: bytes
+    b, r0 :: bytes
 L0:
     r0 = CPyBytes_LjustDefaultFill(b, 14)
     return r0
