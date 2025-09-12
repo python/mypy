@@ -401,3 +401,41 @@ def test_optional_ne() -> None:
     assert ne_b_b_opt(b'x', b'y')
     assert ne_b_b_opt(b'y', b'x')
     assert ne_b_b_opt(b'x', None)
+
+[case testBytesRjustLjust]
+def rjust_bytes(b: bytes, width: int, fill: bytes = b' ') -> bytes:
+    return b.rjust(width, fill)
+
+def ljust_bytes(b: bytes, width: int, fill: bytes = b' ') -> bytes:
+    return b.ljust(width, fill)
+
+def test_rjust_with_default_fill() -> None:
+    assert rjust_bytes(b'abc', 6) == b'   abc'
+    assert rjust_bytes(b'abc', 3) == b'abc'
+    assert rjust_bytes(b'abc', 2) == b'abc'
+    assert rjust_bytes(b'', 4) == b'    '
+
+def test_rjust_with_custom_fill() -> None:
+    assert rjust_bytes(b'abc', 6, b'0') == b'000abc'
+    assert rjust_bytes(b'abc', 5, b'_') == b'__abc'
+    assert rjust_bytes(b'abc', 3, b'X') == b'abc'
+
+def test_ljust_with_default_fill() -> None:
+    assert ljust_bytes(b'abc', 6) == b'abc   '
+    assert ljust_bytes(b'abc', 3) == b'abc'
+    assert ljust_bytes(b'abc', 2) == b'abc'
+    assert ljust_bytes(b'', 4) == b'    '
+
+def test_ljust_with_custom_fill() -> None:
+    assert ljust_bytes(b'abc', 6, b'0') == b'abc000'
+    assert ljust_bytes(b'abc', 5, b'_') == b'abc__'
+    assert ljust_bytes(b'abc', 3, b'X') == b'abc'
+
+def test_edge_cases() -> None:
+    assert rjust_bytes(b'abc', 0) == b'abc'
+    assert ljust_bytes(b'abc', 0) == b'abc'
+    # fillbyte must be length 1
+    with assertRaises(TypeError):
+        rjust_bytes(b'abc', 5, b'')
+    with assertRaises(TypeError):
+        ljust_bytes(b'abc', 5, b'12')
