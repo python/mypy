@@ -1,3 +1,4 @@
+
 """Subtype check for RTypes."""
 
 from __future__ import annotations
@@ -14,6 +15,8 @@ from mypyc.ir.rtypes import (
     RVoid,
     is_bit_rprimitive,
     is_bool_rprimitive,
+    is_dict_rprimitive,
+    is_exact_dict_rprimitive,
     is_fixed_width_rtype,
     is_int_rprimitive,
     is_object_rprimitive,
@@ -66,6 +69,9 @@ class SubtypeVisitor(RTypeVisitor[bool]):
                 return True
         elif is_fixed_width_rtype(left):
             if is_int_rprimitive(right):
+                return True
+        elif is_exact_dict_rprimitive(left):
+            if is_dict_rprimitive(right):
                 return True
         return left is right
 
