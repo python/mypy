@@ -7237,3 +7237,49 @@ bar: int = foo
 [out2]
 [out3]
 tmp/bar.py:2: error: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+[case testIncrementalBlockingErrorRepeatAndUndo]
+import m
+[file m.py]
+import f
+reveal_type(f.x)
+[file m.py.3]
+import f
+reveal_type(f.x)
+# touch
+[file f.py]
+x = 1
+[file f.py.2]
+no way
+[file f.py.4]
+x = 1
+[out]
+tmp/m.py:2: note: Revealed type is "builtins.int"
+[out2]
+tmp/f.py:1: error: Invalid syntax
+[out3]
+tmp/f.py:1: error: Invalid syntax
+[out4]
+tmp/m.py:2: note: Revealed type is "builtins.int"
+
+[case testIncrementalSameErrorOrder]
+import m
+[file m.py]
+import n
+def accept_int(x: int) -> None: pass
+accept_int(n.foo)
+[file n.py]
+import other
+foo = "hello"
+reveal_type(foo)
+[file other.py]
+[file other.py.2]
+# touch
+[rechecked other]
+[stale]
+[out]
+tmp/n.py:3: note: Revealed type is "builtins.str"
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+[out2]
+tmp/n.py:3: note: Revealed type is "builtins.str"
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"

@@ -234,7 +234,7 @@ class TypeCheckSuite(DataSuite):
     ) -> None:
         if not blocker:
             # There should be valid cache metadata for each module except
-            # for those that had an error in themselves or one of their
+            # in case of a blocking error in themselves or one of their
             # dependencies.
             modules = self.find_module_files(manager)
             modules.update({module_name: path for module_name, path, text in module_data})
