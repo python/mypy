@@ -234,10 +234,10 @@ def f(b: bytes) -> bytes:
     return b.rjust(8, b'0')
 [out]
 def f(b):
-    b, r0 :: bytes
+    b, r0, r1 :: bytes
 L0:
-    r0 = b'_'
-    r1 = CPyBytes_Rjust(b, 20, r0)
+    r0 = b'0'
+    r1 = CPyBytes_Rjust(b, 16, r0)
     return r1
 
 [case testBytesLjustDefault]
@@ -256,7 +256,7 @@ def f(b: bytes) -> bytes:
     return b.ljust(10, b'_')
 [out]
 def f(b):
-    b, r0 :: bytes
+    b, r0, r1 :: bytes
 L0:
     r0 = b'_'
     r1 = CPyBytes_Ljust(b, 20, r0)
