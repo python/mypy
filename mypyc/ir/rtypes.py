@@ -489,7 +489,7 @@ list_rprimitive: Final = RPrimitive(
 
 # Python dict object.
 exact_dict_rprimitive: Final = RPrimitive(
-    "builtins.dict[exact]", is_unboxed=False, is_refcounted=True)
+    "builtins.dict[exact]", is_unboxed=False, is_refcounted=True
 )
 
 # An instance of a subclass of dict.
