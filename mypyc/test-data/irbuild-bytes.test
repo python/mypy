@@ -226,7 +226,7 @@ def f(b):
     b :: bytes
     r0 :: bytes
 L0:
-    r0 = b.rjust(6, b' ')
+    r0 = CPyBytes_RjustDefaultFill(b, 12)
     return r0
 
 [case testBytesRjustCustom]
@@ -237,7 +237,7 @@ def f(b):
     b, r0, r1 :: bytes
 L0:
     r0 = b'0'
-    r1 = CPyBytes_Rjust(b, 16, r0)
+    r1 = CPyBytes_RjustCustomFill(b, 16, r0)
     return r1
 
 [case testBytesLjustDefault]
@@ -248,7 +248,7 @@ def f(b):
     b :: bytes
     r0 :: bytes
 L0:
-    r0 = b.ljust(7, b' ')
+    r0 = CPyBytes_LjustDefaultFill(b, 14)
     return r0
 
 [case testBytesLjustCustom]
@@ -259,5 +259,5 @@ def f(b):
     b, r0, r1 :: bytes
 L0:
     r0 = b'_'
-    r1 = CPyBytes_Ljust(b, 20, r0)
+    r1 = CPyBytes_LjustCustomFill(b, 20, r0)
     return r1
