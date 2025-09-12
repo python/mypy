@@ -3303,34 +3303,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             if undeps:
                 fresh = False
         if fresh:
-            # All cache files are fresh.  Check that no dependency's
-            # cache file is newer than any scc node's cache file.
-            oldest_in_scc = min(graph[id].xmeta.data_mtime for id in scc)
-            viable = {id for id in stale_deps if graph[id].meta is not None}
-            newest_in_deps = (
-                0 if not viable else max(graph[dep].xmeta.data_mtime for dep in viable)
-            )
-            if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | viable, key=lambda id: graph[id].xmeta.data_mtime)
-                for id in all_ids:
-                    if id in scc:
-                        if graph[id].xmeta.data_mtime < newest_in_deps:
-                            key = "*id:"
-                        else:
-                            key = "id:"
-                    else:
-                        if graph[id].xmeta.data_mtime > oldest_in_scc:
-                            key = "+dep:"
-                        else:
-                            key = "dep:"
-                    manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
-            # If equal, give the benefit of the doubt, due to 1-sec time granularity
-            # (on some platforms).
-            if oldest_in_scc < newest_in_deps:
-                fresh = False
-                fresh_msg = f"out of date by {newest_in_deps - oldest_in_scc:.0f} seconds"
-            else:
-                fresh_msg = "fresh"
+            fresh_msg = "fresh"
         elif undeps:
             fresh_msg = f"stale due to changed suppression ({' '.join(sorted(undeps))})"
         elif stale_scc:

@@ -4254,8 +4254,6 @@ class TypeAlias(SymbolNode):
             "alias_tvars": [v.serialize() for v in self.alias_tvars],
             "no_args": self.no_args,
             "normalized": self.normalized,
-            "line": self.line,
-            "column": self.column,
             "python_3_12_type_alias": self.python_3_12_type_alias,
         }
         return data
@@ -4270,15 +4268,13 @@ class TypeAlias(SymbolNode):
         target = mypy.types.deserialize_type(data["target"])
         no_args = data["no_args"]
         normalized = data["normalized"]
-        line = data["line"]
-        column = data["column"]
         python_3_12_type_alias = data["python_3_12_type_alias"]
         return cls(
             target,
             fullname,
             module,
-            line,
-            column,
+            -1,
+            -1,
             alias_tvars=cast(list[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
@@ -4291,8 +4287,6 @@ class TypeAlias(SymbolNode):
         write_str(data, self.module)
         self.target.write(data)
         mypy.types.write_type_list(data, self.alias_tvars)
-        write_int(data, self.line)
-        write_int(data, self.column)
         write_bool(data, self.no_args)
         write_bool(data, self.normalized)
         write_bool(data, self.python_3_12_type_alias)
@@ -4307,8 +4301,8 @@ class TypeAlias(SymbolNode):
             target,
             fullname,
             module,
-            read_int(data),
-            read_int(data),
+            -1,
+            -1,
             alias_tvars=alias_tvars,
             no_args=read_bool(data),
             normalized=read_bool(data),
