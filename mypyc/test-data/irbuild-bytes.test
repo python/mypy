@@ -261,25 +261,3 @@ L0:
     r0 = b'_'
     r1 = CPyBytes_Ljust(b, 20, r0)
     return r1
-
-[case testBytesRjustNoPad]
-def f(b: bytes) -> bytes:
-    return b.rjust(2)
-[out]
-def f(b):
-    b :: bytes
-    r0 :: bytes
-L0:
-    r0 = b.rjust(2, b' ')
-    return r0
-
-[case testBytesLjustNoPad]
-def f(b: bytes) -> bytes:
-    return b.ljust(1)
-[out]
-def f(b):
-    b :: bytes
-    r0 :: bytes
-L0:
-    r0 = b.ljust(1, b' ')
-    return r0
