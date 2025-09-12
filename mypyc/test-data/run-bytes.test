@@ -412,30 +412,30 @@ def ljust_bytes(b: bytes, width: int, fill: bytes = b' ') -> bytes:
     return b.ljust(width, fill)
 
 def test_rjust_with_default_fill() -> None:
-    assert rjust_bytes(b'abc', 6) == b'   abc'
-    assert rjust_bytes(b'abc', 3) == b'abc'
-    assert rjust_bytes(b'abc', 2) == b'abc'
-    assert rjust_bytes(b'', 4) == b'    '
+    assert rjust_bytes(b'abc', 6) == b'   abc', rjust_bytes(b'abc', 6)
+    assert rjust_bytes(b'abc', 3) == b'abc', rjust_bytes(b'abc', 3)
+    assert rjust_bytes(b'abc', 2) == b'abc', rjust_bytes(b'abc', 2)
+    assert rjust_bytes(b'', 4) == b'    ', rjust_bytes(b'', 4)
 
 def test_rjust_with_custom_fill() -> None:
-    assert rjust_bytes(b'abc', 6, b'0') == b'000abc'
-    assert rjust_bytes(b'abc', 5, b'_') == b'__abc'
-    assert rjust_bytes(b'abc', 3, b'X') == b'abc'
+    assert rjust_bytes(b'abc', 6, b'0') == b'000abc', rjust_bytes(b'abc', 6, b'0')
+    assert rjust_bytes(b'abc', 5, b'_') == b'__abc', rjust_bytes(b'abc', 5, b'_')
+    assert rjust_bytes(b'abc', 3, b'X') == b'abc', rjust_bytes(b'abc', 3, b'X')
 
 def test_ljust_with_default_fill() -> None:
-    assert ljust_bytes(b'abc', 6) == b'abc   '
-    assert ljust_bytes(b'abc', 3) == b'abc'
-    assert ljust_bytes(b'abc', 2) == b'abc'
-    assert ljust_bytes(b'', 4) == b'    '
+    assert ljust_bytes(b'abc', 6) == b'abc   ', ljust_bytes(b'abc', 6)
+    assert ljust_bytes(b'abc', 3) == b'abc', ljust_bytes(b'abc', 3)
+    assert ljust_bytes(b'abc', 2) == b'abc', ljust_bytes(b'abc', 2)
+    assert ljust_bytes(b'', 4) == b'    ', ljust_bytes(b'', 4)
 
 def test_ljust_with_custom_fill() -> None:
-    assert ljust_bytes(b'abc', 6, b'0') == b'abc000'
-    assert ljust_bytes(b'abc', 5, b'_') == b'abc__'
-    assert ljust_bytes(b'abc', 3, b'X') == b'abc'
+    assert ljust_bytes(b'abc', 6, b'0') == b'abc000', ljust_bytes(b'abc', 6, b'0')
+    assert ljust_bytes(b'abc', 5, b'_') == b'abc__', ljust_bytes(b'abc', 5, b'_')
+    assert ljust_bytes(b'abc', 3, b'X') == b'abc', ljust_bytes(b'abc', 3, b'X')
 
 def test_edge_cases() -> None:
-    assert rjust_bytes(b'abc', 0) == b'abc'
-    assert ljust_bytes(b'abc', 0) == b'abc'
+    assert rjust_bytes(b'abc', 0) == b'abc', rjust_bytes(b'abc', 0)
+    assert ljust_bytes(b'abc', 0) == b'abc', ljust_bytes(b'abc', 0)
     # fillbyte must be length 1
     with assertRaises(TypeError):
         rjust_bytes(b'abc', 5, b'')
