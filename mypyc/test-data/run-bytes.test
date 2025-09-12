@@ -403,6 +403,8 @@ def test_optional_ne() -> None:
     assert ne_b_b_opt(b'x', None)
 
 [case testBytesRjustLjust]
+from testutil import assertRaises
+
 def rjust_bytes(b: bytes, width: int, fill: bytes = b' ') -> bytes:
     return b.rjust(width, fill)
 
