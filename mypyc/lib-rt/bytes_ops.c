@@ -164,7 +164,7 @@ CPyTagged CPyBytes_Ord(PyObject *obj) {
     return CPY_INT_TAG;
 }
 
-PyObject *CPyBytes_Rjust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
+PyObject *CPyBytes_Rjust(PyObject *self, CPyTagged width, PyObject *fillbyte) {
     if (!PyBytes_Check(self)) {
         PyErr_SetString(PyExc_TypeError, "self must be bytes");
         return NULL;
@@ -173,13 +173,14 @@ PyObject *CPyBytes_Rjust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
         PyErr_SetString(PyExc_TypeError, "fillbyte must be a single byte");
         return NULL;
     }
+    Py_ssize_t width_size_t = CPyTagged_AsSsize_t(width)
     Py_ssize_t len = PyBytes_Size(self);
-    if (width <= len) {
+    if (width_size_t <= len) {
         return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
     }
     char fill = PyBytes_AsString(fillbyte)[0];
-    Py_ssize_t pad = width - len;
-    PyObject *result = PyBytes_FromStringAndSize(NULL, width);
+    Py_ssize_t pad = width_size_t - len;
+    PyObject *result = PyBytes_FromStringAndSize(NULL, width_size_t);
     if (!result) return NULL;
     char *res_buf = PyBytes_AsString(result);
     memset(res_buf, fill, pad);
@@ -187,7 +188,7 @@ PyObject *CPyBytes_Rjust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
     return result;
 }
 
-PyObject *CPyBytes_Ljust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
+PyObject *CPyBytes_Ljust(PyObject *self, CPyTagged width, PyObject *fillbyte) {
     if (!PyBytes_Check(self)) {
         PyErr_SetString(PyExc_TypeError, "self must be bytes");
         return NULL;
@@ -196,13 +197,14 @@ PyObject *CPyBytes_Ljust(PyObject *self, Py_ssize_t width, PyObject *fillbyte) {
         PyErr_SetString(PyExc_TypeError, "fillbyte must be a single byte");
         return NULL;
     }
+    Py_ssize_t width_size_t = CPyTagged_AsSsize_t(width)
     Py_ssize_t len = PyBytes_Size(self);
-    if (width <= len) {
+    if (width_size_t <= len) {
         return PyBytes_FromStringAndSize(PyBytes_AsString(self), len);
     }
     char fill = PyBytes_AsString(fillbyte)[0];
-    Py_ssize_t pad = width - len;
-    PyObject *result = PyBytes_FromStringAndSize(NULL, width);
+    Py_ssize_t pad = width_size_t - len;
+    PyObject *result = PyBytes_FromStringAndSize(NULL, width_size_t);
     if (!result) return NULL;
     char *res_buf = PyBytes_AsString(result);
     memcpy(res_buf, PyBytes_AsString(self), len);

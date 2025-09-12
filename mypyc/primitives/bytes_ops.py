@@ -130,7 +130,7 @@ function_op(
 # bytes.rjust(width, fillbyte=b' ')
 method_op(
     name="rjust",
-    arg_types=[bytes_rprimitive, c_pyssize_t_rprimitive, bytes_rprimitive],
+    arg_types=[bytes_rprimitive, int_rprimitive, bytes_rprimitive],
     return_type=bytes_rprimitive,
     c_function_name="CPyBytes_Rjust",
     error_kind=ERR_MAGIC,
@@ -139,7 +139,7 @@ method_op(
 # bytes.ljust(width, fillbyte=b' ')
 method_op(
     name="ljust",
-    arg_types=[bytes_rprimitive, c_pyssize_t_rprimitive, bytes_rprimitive],
+    arg_types=[bytes_rprimitive, int_rprimitive, bytes_rprimitive],
     return_type=bytes_rprimitive,
     c_function_name="CPyBytes_Ljust",
     error_kind=ERR_MAGIC,
