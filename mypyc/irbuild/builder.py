@@ -620,10 +620,8 @@ class IRBuilder:
         elif isinstance(val, complex):
             return self.builder.load_complex(val)
         elif isinstance(val, tuple):
-            # TODO: validate this code path
             return self.builder.load_tuple(val)
         elif isinstance(val, dict):
-            # TODO: validate this code path
             return self.builder.load_dict(val)
         else:
             assert False, "Unsupported literal value"
