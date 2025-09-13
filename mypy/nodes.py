@@ -8,7 +8,7 @@ from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from enum import Enum, unique
-from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Final, List, Optional, TypeVar, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
@@ -1971,6 +1971,7 @@ class IntExpr(Expression):
         return visitor.visit_int_expr(self)
 
 
+def is_IntExpr_list(items: List[Expression]) -> TypeGuard[List[IntExpr]]:
 # How mypy uses StrExpr and BytesExpr:
 #
 # b'x' -> BytesExpr
