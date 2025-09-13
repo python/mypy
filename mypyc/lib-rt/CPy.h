@@ -711,6 +711,17 @@ tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset);
 tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
 int CPyMapping_Check(PyObject *obj);
 
+// Unsafe dict operations (assume PyDict_CheckExact(dict) is always true)
+int CPyDict_UpdateFromAnyUnsafe(PyObject *dict, PyObject *stuff);
+PyObject *CPyDict_GetItemUnsafe(PyObject *dict, PyObject *key);
+tuple_T3CIO CPyDict_NextKeyUnsafe(PyObject *dict_or_iter, CPyTagged offset);
+tuple_T3CIO CPyDict_NextValueUnsafe(PyObject *dict_or_iter, CPyTagged offset);
+tuple_T4CIOO CPyDict_NextItemUnsafe(PyObject *dict_or_iter, CPyTagged offset);
+PyObject *CPyDict_KeysViewUnsafe(PyObject *dict);
+PyObject *CPyDict_ValuesViewUnsafe(PyObject *dict);
+PyObject *CPyDict_ItemsViewUnsafe(PyObject *dict);
+PyObject *_CPyDict_GetIterUnsafe(PyObject *dict);
+
 // Check that dictionary didn't change size during iteration.
 static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
     if (!PyDict_CheckExact(dict)) {
@@ -723,6 +734,25 @@ static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
         return 0;
     }
     return 1;
+}
+
+// Unsafe because it assumes dict is actually a dict.
+static inline char CPyDict_CheckSizeUnsafe(PyObject *dict, Py_ssize_t size) {
+    Py_ssize_t dict_size = PyDict_Size(dict);
+    if (size != dict_size) {
+        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
+        return 0;
+    }
+    return 1;
+}
+
+
+static inline char CPyDict_IsTrue(PyObject *dict) {
+    Py_ssize_t size = PyDict_Size(dict);
+    if (size != 0) {
+        return 1;
+    }
+    return 0;
 }
 
 

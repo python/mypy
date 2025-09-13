@@ -10,6 +10,7 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -30,7 +31,7 @@ load_address_op(name="builtins.bytes", type=object_rprimitive, src="PyBytes_Type
 # bytes(obj)
 function_op(
     name="builtins.bytes",
-    arg_types=[RUnion([list_rprimitive, dict_rprimitive, str_rprimitive])],
+    arg_types=[RUnion([list_rprimitive, dict_rprimitive, exact_dict_rprimitive, str_rprimitive])],
     return_type=bytes_rprimitive,
     c_function_name="PyBytes_FromObject",
     error_kind=ERR_MAGIC,
