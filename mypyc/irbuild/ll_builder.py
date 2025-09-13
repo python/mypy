@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
-from typing import Callable, Final, Optional
+from typing import Any, Callable, Final, Optional
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
@@ -123,6 +123,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    tuple_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.options import CompilerOptions
@@ -1353,6 +1354,12 @@ class LowLevelIRBuilder:
     def load_complex(self, value: complex) -> Value:
         """Load a complex literal value."""
         return self.add(LoadLiteral(value, object_rprimitive))
+
+    def load_tuple(self, value: tuple[Any, ...]) -> Value:  # should this be RTuple? conditional RTuple when length is known?
+        return self.add(LoadLiteral(value, tuple_rprimitive))
+
+    def load_dict(self, value: dict[Any, Any]) -> Value:
+        return self.add(LoadLiteral(value, dict_rprimitive))
 
     def load_static_checked(
         self,
