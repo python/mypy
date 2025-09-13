@@ -4476,7 +4476,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def static_index_range_check(self, left_type: Type, e: IndexExpr, index: Expression):
         if isinstance(left_type, Instance) and left_type.type.fullname in (
-            "builtins.list", "builtins.set", "builtins.dict", "builtins.str", "builtins.bytes"
+            "builtins.list",
+            "builtins.set",
+            "builtins.dict",
+            "builtins.str",
+            "builtins.bytes",
         ):
             idx_val = None
             # Try to extract integer literal index

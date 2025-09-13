@@ -372,6 +372,5 @@ TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
 )
 
 SEQUENCE_INDEX_OUT_OF_RANGE = ErrorMessage(
-    "Sequence index out of range: {name!r} only has {length} items",
-    code=codes.INDEX_RANGE,
+    "Sequence index out of range: {name!r} only has {length} items", code=codes.INDEX_RANGE
 )
