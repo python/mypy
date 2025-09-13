@@ -5,7 +5,7 @@ from collections.abc import Callable
 from threading import Thread
 from types import TracebackType
 from typing import Any, Final, NoReturn, final, overload
-from typing_extensions import TypeVarTuple, Unpack
+from typing_extensions import TypeVarTuple, Unpack, disjoint_base
 
 _Ts = TypeVarTuple("_Ts")
 
@@ -73,7 +73,7 @@ def start_new(function: Callable[[Unpack[_Ts]], object], args: tuple[Unpack[_Ts]
 def start_new(function: Callable[..., object], args: tuple[Any, ...], kwargs: dict[str, Any], /) -> int: ...
 
 if sys.version_info >= (3, 10):
-    def interrupt_main(signum: signal.Signals = ..., /) -> None: ...
+    def interrupt_main(signum: signal.Signals = signal.SIGINT, /) -> None: ...
 
 else:
     def interrupt_main() -> None: ...
@@ -85,7 +85,7 @@ def allocate() -> LockType: ...  # Obsolete synonym for allocate_lock()
 def get_ident() -> int: ...
 def stack_size(size: int = 0, /) -> int: ...
 
-TIMEOUT_MAX: float
+TIMEOUT_MAX: Final[float]
 
 def get_native_id() -> int: ...  # only available on some platforms
 @final
@@ -110,6 +110,7 @@ if sys.version_info >= (3, 12):
 if sys.version_info >= (3, 14):
     def set_name(name: str) -> None: ...
 
+@disjoint_base
 class _local:
     def __getattribute__(self, name: str, /) -> Any: ...
     def __setattr__(self, name: str, value: Any, /) -> None: ...

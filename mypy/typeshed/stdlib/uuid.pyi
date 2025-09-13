@@ -12,6 +12,7 @@ class SafeUUID(Enum):
     unknown = None
 
 class UUID:
+    __slots__ = ("int", "is_safe", "__weakref__")
     def __init__(
         self,
         hex: str | None = None,
@@ -21,7 +22,7 @@ class UUID:
         int: builtins.int | None = None,
         version: builtins.int | None = None,
         *,
-        is_safe: SafeUUID = ...,
+        is_safe: SafeUUID = SafeUUID.unknown,
     ) -> None: ...
     @property
     def is_safe(self) -> SafeUUID: ...

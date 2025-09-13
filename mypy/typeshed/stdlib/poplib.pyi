@@ -17,7 +17,7 @@ POP3_SSL_PORT: Final = 995
 CR: Final = b"\r"
 LF: Final = b"\n"
 CRLF: Final = b"\r\n"
-HAVE_SSL: bool
+HAVE_SSL: Final[bool]
 
 class POP3:
     encoding: str
