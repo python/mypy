@@ -326,7 +326,7 @@ DEPRECATED: Final = ErrorCode(
     default_enabled=False,
 )
 
-INDEX_RANGE = ErrorCode("index-range", "index out of statically known range", "Index Range", True)
+INDEX_RANGE: Final[ErrorCode] = ErrorCode("index-range", "index out of statically known range", "Index Range", True)
 
 # This copy will not include any error codes defined later in the plugins.
 mypy_error_codes = error_codes.copy()
