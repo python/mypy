@@ -263,7 +263,7 @@ Traceback (most recent call last):
   File "native.py", line 44, in i
     r(0)
   File "native.py", line 15, in r
-    [0][1]
+    [0][1]  #  type: ignore [index-range]
 IndexError: list index out of range
 == k ==
 Traceback (most recent call last):
@@ -281,7 +281,7 @@ Traceback (most recent call last):
   File "native.py", line 61, in k
     r(0)
   File "native.py", line 15, in r
-    [0][1]
+    [0][1]  #  type: ignore [index-range]
 IndexError: list index out of range
 == g ==
 caught!
@@ -330,7 +330,7 @@ Traceback (most recent call last):
   File "native.py", line 61, in k
     r(0)
   File "native.py", line 15, in r
-    [0][1]
+    [0][1]  #  type: ignore [index-range]
 IndexError: list index out of range
 == g ==
 caught!
