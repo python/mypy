@@ -1,10 +1,12 @@
-b1_set: set[int]
-b3_exceptions: dict[int, str]
-c22_specials: set[int]
-c6_set: set[int]
-c7_set: set[int]
-c8_set: set[int]
-c9_set: set[int]
+from typing import Final
+
+b1_set: Final[set[int]]
+b3_exceptions: Final[dict[int, str]]
+c22_specials: Final[set[int]]
+c6_set: Final[set[int]]
+c7_set: Final[set[int]]
+c8_set: Final[set[int]]
+c9_set: Final[set[int]]
 
 def in_table_a1(code: str) -> bool: ...
 def in_table_b1(code: str) -> bool: ...
