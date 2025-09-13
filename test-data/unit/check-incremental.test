@@ -124,7 +124,7 @@ class A: pass
 def func1() -> A: pass
 
 [rechecked mod1]
-[stale]
+[stale mod1]
 [out2]
 tmp/mod1.py:1: error: Name "A" is not defined
 
@@ -428,7 +428,7 @@ class CustomType:
     def foo(self) -> str: return "a"
 
 [rechecked mod1, mod2, mod2.mod3]
-[stale mod2, mod2.mod3]
+[stale mod1, mod2, mod2.mod3]
 [builtins fixtures/module.pyi]
 [out1]
 [out2]
@@ -466,7 +466,7 @@ class CustomType:
     def foo(self) -> str: return "a"
 
 [rechecked mod1, mod2, mod2.mod3]
-[stale mod2.mod3]
+[stale mod1, mod2.mod3]
 [builtins fixtures/module.pyi]
 [out1]
 [out2]
@@ -541,7 +541,7 @@ def func2() -> str:
     return "foo"
 
 [rechecked mod0, mod1, mod2]
-[stale mod2]
+[stale mod0, mod2]
 [out2]
 tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
 
@@ -952,7 +952,7 @@ reveal_type(b.x)
 [file parent/b.py.2]
 x = 10
 
-[stale parent.b]
+[stale parent.a, parent.b]
 [rechecked parent.a, parent.b]
 [out2]
 tmp/parent/a.py:2: note: Revealed type is "builtins.int"
@@ -1080,7 +1080,7 @@ class Class: pass
 
 [builtins fixtures/args.pyi]
 [rechecked collections, main, package.subpackage.mod1]
-[stale collections, package.subpackage.mod1]
+[stale collections, main, package.subpackage.mod1]
 [out2]
 tmp/main.py:4: error: "Class" has no attribute "some_attribute"
 
@@ -1120,7 +1120,7 @@ if int():
 
 [builtins fixtures/module_all.pyi]
 [rechecked main, c, c.submodule]
-[stale c]
+[stale main, c, c.submodule]
 [out2]
 tmp/c/submodule.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/main.py:7: error: "C" has no attribute "foo"
@@ -1174,7 +1174,7 @@ reveal_type(foo)
 foo = 3.14
 reveal_type(foo)
 [rechecked m, n]
-[stale]
+[stale n]
 [out1]
 tmp/n.py:2: note: Revealed type is "builtins.str"
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
@@ -1204,7 +1204,7 @@ from bad import foo
 foo(3)
 
 [rechecked client]
-[stale]
+[stale client]
 [out2]
 tmp/client.py:4: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 
@@ -1316,7 +1316,7 @@ reveal_type(bar)
 bar = "str"
 
 [rechecked main]
-[stale]
+[stale main]
 [out1]
 tmp/main.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 tmp/main.py:4: note: Revealed type is "builtins.str"
@@ -1354,8 +1354,8 @@ class B:
 class C:
     def foo(self) -> int: return 1
 
-[rechecked mod3, mod2, mod1]
-[stale mod3, mod2]
+[rechecked mod3]
+[stale]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: note: Revealed type is "builtins.int"
@@ -1393,8 +1393,8 @@ class C:
 class C:
     def foo(self) -> str: return 'a'
 
-[rechecked mod4, mod3, mod2, mod1]
-[stale mod4]
+[rechecked mod4, mod3, mod1]
+[stale mod1, mod4]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: note: Revealed type is "builtins.int"
@@ -1438,8 +1438,8 @@ class C:
 class C:
     def foo(self) -> str: return 'a'
 
-[rechecked mod4, mod3, mod2, mod1]
-[stale mod4, mod3, mod2]
+[rechecked mod4, mod3, mod1]
+[stale mod1, mod4]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: note: Revealed type is "builtins.int"
@@ -2173,7 +2173,7 @@ import m
 x = 1
 [delete m.py.2]
 [rechecked n]
-[stale]
+[stale n]
 [out2]
 tmp/n.py:1: error: Cannot find implementation or library stub for module named "m"
 tmp/n.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -2224,7 +2224,7 @@ def foo() -> int:
 [rechecked m]
 [stale m]
 [rechecked2 m]
-[stale2]
+[stale2 m]
 [out3]
 tmp/m.py:2: error: Incompatible return value type (got "str", expected "int")
 
@@ -2243,7 +2243,7 @@ def foo() -> str:
 def foo(x) -> int:
     pass
 [rechecked m, n]
-[stale m]
+[stale m, n]
 [rechecked2 m, n]
 [stale2 m, n]
 [out2]
@@ -2894,7 +2894,7 @@ extra = 1
 import m.a  # Depends on module with error
 [file m/c.py]
 import m  # No error here
-[rechecked m.a, m.b]
+[rechecked]
 [out1]
 tmp/m/a.py:1: error: Unsupported operand types for + ("int" and "str")
 [out2]
@@ -3091,10 +3091,10 @@ class A:
 [stale]
 [out2]
 main:2: note: Revealed type is "def (a: builtins.int) -> a.A"
-main:3: note: Revealed type is "def [_AT] (self: _AT`1, other: _AT`1) -> builtins.bool"
-main:4: note: Revealed type is "def [_AT] (self: _AT`2, other: _AT`2) -> builtins.bool"
-main:5: note: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
-main:6: note: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
+main:3: note: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
+main:4: note: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
+main:5: note: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
+main:6: note: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
 main:15: error: Unsupported operand types for < ("A" and "int")
 main:16: error: Unsupported operand types for <= ("A" and "int")
 main:17: error: Unsupported operand types for > ("A" and "int")
@@ -7237,3 +7237,49 @@ bar: int = foo
 [out2]
 [out3]
 tmp/bar.py:2: error: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+[case testIncrementalBlockingErrorRepeatAndUndo]
+import m
+[file m.py]
+import f
+reveal_type(f.x)
+[file m.py.3]
+import f
+reveal_type(f.x)
+# touch
+[file f.py]
+x = 1
+[file f.py.2]
+no way
+[file f.py.4]
+x = 1
+[out]
+tmp/m.py:2: note: Revealed type is "builtins.int"
+[out2]
+tmp/f.py:1: error: Invalid syntax
+[out3]
+tmp/f.py:1: error: Invalid syntax
+[out4]
+tmp/m.py:2: note: Revealed type is "builtins.int"
+
+[case testIncrementalSameErrorOrder]
+import m
+[file m.py]
+import n
+def accept_int(x: int) -> None: pass
+accept_int(n.foo)
+[file n.py]
+import other
+foo = "hello"
+reveal_type(foo)
+[file other.py]
+[file other.py.2]
+# touch
+[rechecked other]
+[stale]
+[out]
+tmp/n.py:3: note: Revealed type is "builtins.str"
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+[out2]
+tmp/n.py:3: note: Revealed type is "builtins.str"
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
