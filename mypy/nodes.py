@@ -2125,7 +2125,7 @@ class RefExpr(Expression):
         self.type_is: mypy.types.Type | None = None
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__} fullname={self.fullname} of {self.node} object at {hex(id(self))}>"
+        return f"<{type(self).__name__} fullname={self.fullname} type={self.type_is} of {self.node} object at {hex(id(self))}>"
 
     @property
     def fullname(self) -> str:
@@ -2153,7 +2153,7 @@ class NameExpr(RefExpr):
         self.is_special_form = False
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__} fullname={self.fullname} special_form={self.is_special_form} of {self.node} object at {hex(id(self))}>"
+        return f"<{type(self).__name__} fullname={self.fullname} type={self.type_is} special_form={self.is_special_form} of {self.node} object at {hex(id(self))}>"
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
