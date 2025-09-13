@@ -4474,7 +4474,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return left.length() - 1 + unpack.type.min_len
         return left.length() - 1
 
-    def static_index_range_check(self, left_type: Type, e: IndexExpr, index: Expression):
+    def static_index_range_check(self, left_type: Type, e: IndexExpr, index: Expression) -> None:
         if isinstance(left_type, Instance) and left_type.type.fullname in (
             "builtins.list",
             "builtins.tuple",
