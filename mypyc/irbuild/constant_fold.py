@@ -81,7 +81,10 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
     elif isinstance(expr, DictExpr):
         # NOTE: the builder can't simply use a dict constant like it can with other constants, since dicts are mutable.
         # TODO: make the builder load the dict 'constant' by calling copy on a prebuilt constant template instead of building from scratch each time
-        folded = {constant_fold_expr(builder, key_expr): constant_fold_expr(builder, value_expr) for key_expr, value_expr in expr.items}
+        folded = {
+            constant_fold_expr(builder, key_expr): constant_fold_expr(builder, value_expr)
+            for key_expr, value_expr in expr.items
+        }
         if (
             len(folded) == len(expr.items)
             and None not in folded.keys()
