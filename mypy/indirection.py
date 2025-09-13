@@ -4,17 +4,6 @@ from collections.abc import Iterable
 
 import mypy.types as types
 from mypy.types import TypeVisitor
-from mypy.util import split_module_names
-
-
-def extract_module_names(type_name: str | None) -> list[str]:
-    """Returns the module names of a fully qualified type name."""
-    if type_name is not None:
-        # Discard the first one, which is just the qualified name of the type
-        possible_module_names = split_module_names(type_name)
-        return possible_module_names[1:]
-    else:
-        return []
 
 
 class TypeIndirectionVisitor(TypeVisitor[None]):
@@ -23,49 +12,56 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
     def __init__(self) -> None:
         # Module references are collected here
         self.modules: set[str] = set()
-        # User to avoid infinite recursion with recursive type aliases
-        self.seen_aliases: set[types.TypeAliasType] = set()
-        # Used to avoid redundant work
-        self.seen_fullnames: set[str] = set()
+        # User to avoid infinite recursion with recursive types
+        self.seen_types: set[types.TypeAliasType | types.Instance] = set()
 
     def find_modules(self, typs: Iterable[types.Type]) -> set[str]:
         self.modules = set()
-        self.seen_fullnames = set()
-        self.seen_aliases = set()
+        self.seen_types = set()
         for typ in typs:
             self._visit(typ)
         return self.modules
 
     def _visit(self, typ: types.Type) -> None:
-        if isinstance(typ, types.TypeAliasType):
-            # Avoid infinite recursion for recursive type aliases.
-            if typ not in self.seen_aliases:
-                self.seen_aliases.add(typ)
+        # Note: instances are needed for `class str(Sequence[str]): ...`
+        if (
+            isinstance(typ, types.TypeAliasType)
+            or isinstance(typ, types.ProperType)
+            and isinstance(typ, types.Instance)
+        ):
+            # Avoid infinite recursion for recursive types.
+            if typ in self.seen_types:
+                return
+            self.seen_types.add(typ)
         typ.accept(self)
 
     def _visit_type_tuple(self, typs: tuple[types.Type, ...]) -> None:
         # Micro-optimization: Specialized version of _visit for lists
         for typ in typs:
-            if isinstance(typ, types.TypeAliasType):
-                # Avoid infinite recursion for recursive type aliases.
-                if typ in self.seen_aliases:
+            if (
+                isinstance(typ, types.TypeAliasType)
+                or isinstance(typ, types.ProperType)
+                and isinstance(typ, types.Instance)
+            ):
+                # Avoid infinite recursion for recursive types.
+                if typ in self.seen_types:
                     continue
-                self.seen_aliases.add(typ)
+                self.seen_types.add(typ)
             typ.accept(self)
 
     def _visit_type_list(self, typs: list[types.Type]) -> None:
         # Micro-optimization: Specialized version of _visit for tuples
         for typ in typs:
-            if isinstance(typ, types.TypeAliasType):
-                # Avoid infinite recursion for recursive type aliases.
-                if typ in self.seen_aliases:
+            if (
+                isinstance(typ, types.TypeAliasType)
+                or isinstance(typ, types.ProperType)
+                and isinstance(typ, types.Instance)
+            ):
+                # Avoid infinite recursion for recursive types.
+                if typ in self.seen_types:
                     continue
-                self.seen_aliases.add(typ)
+                self.seen_types.add(typ)
             typ.accept(self)
-
-    def _visit_module_name(self, module_name: str) -> None:
-        if module_name not in self.modules:
-            self.modules.update(split_module_names(module_name))
 
     def visit_unbound_type(self, t: types.UnboundType) -> None:
         self._visit_type_tuple(t.args)
@@ -106,27 +102,36 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
         self._visit_type_list(t.arg_types)
 
     def visit_instance(self, t: types.Instance) -> None:
+        # Instance is named, record its definition and continue digging into
+        # components that constitute semantic meaning of this type: bases, metaclass,
+        # tuple type, and typeddict type.
+        # Note: we cannot simply record the MRO, in case an intermediate base contains
+        # a reference to type alias, this affects meaning of map_instance_to_supertype(),
+        # see e.g. testDoubleReexportGenericUpdated.
         self._visit_type_tuple(t.args)
         if t.type:
-            # Uses of a class depend on everything in the MRO,
-            # as changes to classes in the MRO can add types to methods,
-            # change property types, change the MRO itself, etc.
+            # Important optimization: instead of simply recording the definition and
+            # recursing into bases, record the MRO and only traverse generic bases.
             for s in t.type.mro:
-                self._visit_module_name(s.module_name)
-            if t.type.metaclass_type is not None:
-                self._visit_module_name(t.type.metaclass_type.type.module_name)
+                self.modules.add(s.module_name)
+                for base in s.bases:
+                    if base.args:
+                        self._visit_type_tuple(base.args)
+            if t.type.metaclass_type:
+                self._visit(t.type.metaclass_type)
+            if t.type.typeddict_type:
+                self._visit(t.type.typeddict_type)
+            if t.type.tuple_type:
+                self._visit(t.type.tuple_type)
 
     def visit_callable_type(self, t: types.CallableType) -> None:
         self._visit_type_list(t.arg_types)
         self._visit(t.ret_type)
-        if t.definition is not None:
-            fullname = t.definition.fullname
-            if fullname not in self.seen_fullnames:
-                self.modules.update(extract_module_names(t.definition.fullname))
-                self.seen_fullnames.add(fullname)
+        self._visit_type_tuple(t.variables)
 
     def visit_overloaded(self, t: types.Overloaded) -> None:
-        self._visit_type_list(list(t.items))
+        for item in t.items:
+            self._visit(item)
         self._visit(t.fallback)
 
     def visit_tuple_type(self, t: types.TupleType) -> None:
@@ -150,4 +155,9 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
         self._visit(t.item)
 
     def visit_type_alias_type(self, t: types.TypeAliasType) -> None:
-        self._visit(types.get_proper_type(t))
+        # Type alias is named, record its definition and continue digging into
+        # components that constitute semantic meaning of this type: target and args.
+        if t.alias:
+            self.modules.add(t.alias.module)
+            self._visit(t.alias.target)
+        self._visit_type_list(t.args)

@@ -11,17 +11,22 @@ from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
+    BytesExpr,
     CallExpr,
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
+    ListExpr,
     Lvalue,
     MemberExpr,
     NameExpr,
     RefExpr,
     SetExpr,
+    StarExpr,
+    StrExpr,
     TupleExpr,
     TypeAlias,
+    Var,
 )
 from mypyc.ir.ops import (
     ERR_NEVER,
@@ -152,6 +157,7 @@ def for_loop_helper_with_index(
     expr_reg: Value,
     body_insts: Callable[[Value], None],
     line: int,
+    length: Value,
 ) -> None:
     """Generate IR for a sequence iteration.
 
@@ -173,7 +179,7 @@ def for_loop_helper_with_index(
     condition_block = BasicBlock()
 
     for_gen = ForSequence(builder, index, body_block, exit_block, line, False)
-    for_gen.init(expr_reg, target_type, reverse=False)
+    for_gen.init(expr_reg, target_type, reverse=False, length=length)
 
     builder.push_loop_stack(step_block, exit_block)
 
@@ -227,7 +233,9 @@ def sequence_from_generator_preallocate_helper(
         rtype = builder.node_type(gen.sequences[0])
         if is_sequence_rprimitive(rtype):
             sequence = builder.accept(gen.sequences[0])
-            length = builder.builder.builtin_len(sequence, gen.line, use_pyssize_t=True)
+            length = get_expr_length_value(
+                builder, gen.sequences[0], sequence, gen.line, use_pyssize_t=True
+            )
             target_op = empty_op_llbuilder(length, gen.line)
 
             def set_item(item_index: Value) -> None:
@@ -235,7 +243,7 @@ def sequence_from_generator_preallocate_helper(
                 builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
 
             for_loop_helper_with_index(
-                builder, gen.indices[0], gen.sequences[0], sequence, set_item, gen.line
+                builder, gen.indices[0], gen.sequences[0], sequence, set_item, gen.line, length
             )
 
             return target_op
@@ -788,9 +796,13 @@ class ForSequence(ForGenerator):
 
     length_reg: Value | AssignmentTarget | None
 
-    def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
+    def init(
+        self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None
+    ) -> None:
         assert is_sequence_rprimitive(expr_reg.type), expr_reg
         builder = self.builder
+        # Record a Value indicating the length of the sequence, if known at compile time.
+        self.length = length
         self.reverse = reverse
         # Define target to contain the expression, along with the index that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
@@ -798,7 +810,7 @@ class ForSequence(ForGenerator):
         self.expr_target = builder.maybe_spill(expr_reg)
         if is_immutable_rprimitive(expr_reg.type):
             # If the expression is an immutable type, we can load the length just once.
-            self.length_reg = builder.maybe_spill(self.load_len(self.expr_target))
+            self.length_reg = builder.maybe_spill(self.length or self.load_len(self.expr_target))
         else:
             # Otherwise, even if the length is known, we must recalculate the length
             # at every iteration for compatibility with python semantics.
@@ -1166,3 +1178,43 @@ class ForZip(ForGenerator):
     def gen_cleanup(self) -> None:
         for gen in self.gens:
             gen.gen_cleanup()
+
+
+def get_expr_length(expr: Expression) -> int | None:
+    if isinstance(expr, (StrExpr, BytesExpr)):
+        return len(expr.value)
+    elif isinstance(expr, (ListExpr, TupleExpr)):
+        # if there are no star expressions, or we know the length of them,
+        # we know the length of the expression
+        stars = [get_expr_length(i) for i in expr.items if isinstance(i, StarExpr)]
+        if None not in stars:
+            other = sum(not isinstance(i, StarExpr) for i in expr.items)
+            return other + sum(stars)  # type: ignore [arg-type]
+    elif isinstance(expr, StarExpr):
+        return get_expr_length(expr.expr)
+    elif (
+        isinstance(expr, RefExpr)
+        and isinstance(expr.node, Var)
+        and expr.node.is_final
+        and isinstance(expr.node.final_value, str)
+        and expr.node.has_explicit_value
+    ):
+        return len(expr.node.final_value)
+    # TODO: extend this, passing length of listcomp and genexp should have worthwhile
+    # performance boost and can be (sometimes) figured out pretty easily. set and dict
+    # comps *can* be done as well but will need special logic to consider the possibility
+    # of key conflicts. Range, enumerate, zip are all simple logic.
+    return None
+
+
+def get_expr_length_value(
+    builder: IRBuilder, expr: Expression, expr_reg: Value, line: int, use_pyssize_t: bool
+) -> Value:
+    rtype = builder.node_type(expr)
+    assert is_sequence_rprimitive(rtype), rtype
+    length = get_expr_length(expr)
+    if length is None:
+        # We cannot compute the length at compile time, so we will fetch it.
+        return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
+    # The expression result is known at compile time, so we can use a constant.
+    return Integer(length, c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive)
