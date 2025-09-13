@@ -2124,6 +2124,9 @@ class RefExpr(Expression):
         # And same for TypeIs
         self.type_is: mypy.types.Type | None = None
 
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__} fullname={self.fullname} of {self.node} object at {hex(id(self))}>"
+
     @property
     def fullname(self) -> str:
         return self._fullname
@@ -2148,6 +2151,9 @@ class NameExpr(RefExpr):
         self.name = name  # Name referred to
         # Is this a l.h.s. of a special form assignment like typed dict or type variable?
         self.is_special_form = False
+
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__} fullname={self.fullname} special_form={self.is_special_form} of {self.node} object at {hex(id(self))}>"
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
