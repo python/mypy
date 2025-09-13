@@ -602,7 +602,7 @@ class IRBuilder:
             )
         )
 
-    def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
+    def load_literal_value(self, val: int | str | bytes | float | complex | bool | tuple[Any, ...], dict[Any, Any]) -> Value:
         """Load value of a final name, class-level attribute, or constant folded expression."""
         if isinstance(val, bool):
             if val:
@@ -619,6 +619,12 @@ class IRBuilder:
             return self.builder.load_bytes(val)
         elif isinstance(val, complex):
             return self.builder.load_complex(val)
+        elif isinstance(val, tuple):
+            # TODO: validate this code path
+            return self.builder.load_tuple(val)
+        elif isinstance(val, dict):
+            # TODO: validate this code path
+            return self.builder.load_dict(val)
         else:
             assert False, "Unsupported literal value"
 
