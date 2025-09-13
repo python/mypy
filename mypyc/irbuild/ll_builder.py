@@ -1355,7 +1355,9 @@ class LowLevelIRBuilder:
         """Load a complex literal value."""
         return self.add(LoadLiteral(value, object_rprimitive))
 
-    def load_tuple(self, value: tuple[Any, ...]) -> Value:  # should this be RTuple? conditional RTuple when length is known?
+    def load_tuple(
+        self, value: tuple[Any, ...]
+    ) -> Value:  # should this be RTuple? conditional RTuple when length is known?
         return self.add(LoadLiteral(value, tuple_rprimitive))
 
     def load_dict(self, value: dict[Any, Any]) -> Value:
