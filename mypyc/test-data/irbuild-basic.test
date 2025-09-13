@@ -3884,7 +3884,6 @@ def f(s):
     r3, r4 :: bit
     r5, c, r6 :: str
     r7 :: native_int
-    out, c :: str
 L0:
     r0 = ''
     out = r0
@@ -3893,7 +3892,6 @@ L1:
     r2 = CPyStr_Size_size_t(s)
     r3 = r2 >= 0 :: signed
     r4 = r1 < r2 :: signed
-    if r4 goto L2 else goto L2 :: bool
 L2:
     r5 = CPyStr_GetItemUnsafe(s, r1)
     c = r5
