@@ -103,7 +103,7 @@ def constant_fold_binary_op_extended(
 
     mypy cannot use constant folded bytes easily so it's simpler to only support them in mypyc.
     """
-    if not isinstance(left, bytes) and not isinstance(right, bytes):
+    if not isinstance(left, (bytes, tuple, dict)) and not isinstance(right, (bytes, tuple, dict)):
         return constant_fold_binary_op(op, left, right)
 
     if op == "+" and isinstance(left, bytes) and isinstance(right, bytes):
