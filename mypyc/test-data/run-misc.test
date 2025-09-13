@@ -25,7 +25,7 @@ def f(a: bool, b: bool) -> None:
 
 def g() -> None:
     try:
-        [0][1]
+        [0][1]  # type: ignore [index-range]
         y = 1
     except Exception:
         pass
