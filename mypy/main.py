@@ -1204,13 +1204,6 @@ def define_options(
     )
 
     if server_options:
-        # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
-        misc_group.add_argument(
-            "--experimental",
-            action="store_true",
-            dest="fine_grained_incremental",
-            help="Enable fine-grained incremental mode",
-        )
         misc_group.add_argument(
             "--use-fine-grained-cache",
             action="store_true",
