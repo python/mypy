@@ -628,7 +628,7 @@ def f1() -> None:
 def f2() -> None:
     x = None
     while int():
-        reveal_type(x) # N: Revealed type is "Union[builtins.str, None]"
+        reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
         if int():
             x = ""
     reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
@@ -791,8 +791,7 @@ def f3() -> None:
             x = ""
             return
     finally:
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]" \
-            # N: Revealed type is "builtins.int"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
     reveal_type(x) # N: Revealed type is "builtins.int"
 
 def f4() -> None:
@@ -924,7 +923,7 @@ class X(TypedDict):
 
 x: X
 for a in ("hourly", "daily"):
-    reveal_type(a)  # N: Revealed type is "Union[Literal['daily']?, Literal['hourly']?]"
+    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
     reveal_type(x[a])  # N: Revealed type is "builtins.int"
     reveal_type(a.upper())  # N: Revealed type is "builtins.str"
     c = a
@@ -1074,7 +1073,7 @@ def f() -> None:
         while int():
             x = [x]
 
-    reveal_type(x) # N: Revealed type is "Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]]]]]]]"
+    reveal_type(x) # N: Revealed type is "Union[Any, builtins.list[Any]]"
 
 [case testNewRedefinePartialNoneEmptyList]
 # flags: --allow-redefinition-new --local-partial-types

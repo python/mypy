@@ -1311,3 +1311,10 @@ class Bar(Generic[T]):
 x: Bar[int]
 reveal_type(x.var.bar)  # N: Revealed type is "__main__.Bar[builtins.int]"
 [builtins fixtures/tuple.pyi]
+
+[case testExplicitTypeAliasClassVarProhibited]
+from typing import ClassVar
+from typing_extensions import TypeAlias
+
+Foo: TypeAlias = ClassVar[int]  # E: ClassVar[...] can't be used inside a type alias
+[builtins fixtures/tuple.pyi]

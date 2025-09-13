@@ -4,9 +4,9 @@ from _typeshed import Incomplete, MaybeNone, StrOrBytesPath
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from tkinter.constants import *
 from tkinter.font import _FontDescription
-from types import TracebackType
-from typing import Any, ClassVar, Generic, Literal, NamedTuple, Protocol, TypedDict, TypeVar, overload, type_check_only
-from typing_extensions import TypeAlias, TypeVarTuple, Unpack, deprecated
+from types import GenericAlias, TracebackType
+from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, Protocol, TypedDict, TypeVar, overload, type_check_only
+from typing_extensions import TypeAlias, TypeVarTuple, Unpack, deprecated, disjoint_base
 
 if sys.version_info >= (3, 11):
     from enum import StrEnum
@@ -153,11 +153,11 @@ __all__ = [
 
 TclError = _tkinter.TclError
 wantobjects: int
-TkVersion: float
-TclVersion: float
-READABLE = _tkinter.READABLE
-WRITABLE = _tkinter.WRITABLE
-EXCEPTION = _tkinter.EXCEPTION
+TkVersion: Final[float]
+TclVersion: Final[float]
+READABLE: Final = _tkinter.READABLE
+WRITABLE: Final = _tkinter.WRITABLE
+EXCEPTION: Final = _tkinter.EXCEPTION
 
 # Quick guide for figuring out which widget class to choose:
 #   - Misc: any widget (don't use BaseWidget because Tk doesn't inherit from BaseWidget)
@@ -198,7 +198,11 @@ if sys.version_info >= (3, 11):
         releaselevel: str
         serial: int
 
-    class _VersionInfoType(_VersionInfoTypeBase): ...
+    if sys.version_info >= (3, 12):
+        class _VersionInfoType(_VersionInfoTypeBase): ...
+    else:
+        @disjoint_base
+        class _VersionInfoType(_VersionInfoTypeBase): ...
 
 if sys.version_info >= (3, 11):
     class EventType(StrEnum):
@@ -308,6 +312,8 @@ class Event(Generic[_W_co]):
     type: EventType
     widget: _W_co
     delta: int
+    if sys.version_info >= (3, 14):
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 def NoDefaultRoot() -> None: ...
 
@@ -319,14 +325,21 @@ class Variable:
     def trace_add(self, mode: Literal["array", "read", "write", "unset"], callback: Callable[[str, str, str], object]) -> str: ...
     def trace_remove(self, mode: Literal["array", "read", "write", "unset"], cbname: str) -> None: ...
     def trace_info(self) -> list[tuple[tuple[Literal["array", "read", "write", "unset"], ...], str]]: ...
-    @deprecated("use trace_add() instead of trace()")
-    def trace(self, mode, callback): ...
-    @deprecated("use trace_add() instead of trace_variable()")
-    def trace_variable(self, mode, callback): ...
-    @deprecated("use trace_remove() instead of trace_vdelete()")
-    def trace_vdelete(self, mode, cbname) -> None: ...
-    @deprecated("use trace_info() instead of trace_vinfo()")
-    def trace_vinfo(self): ...
+    if sys.version_info >= (3, 14):
+        @deprecated("Deprecated since Python 3.14. Use `trace_add()` instead.")
+        def trace(self, mode, callback) -> str: ...
+        @deprecated("Deprecated since Python 3.14. Use `trace_add()` instead.")
+        def trace_variable(self, mode, callback) -> str: ...
+        @deprecated("Deprecated since Python 3.14. Use `trace_remove()` instead.")
+        def trace_vdelete(self, mode, cbname) -> None: ...
+        @deprecated("Deprecated since Python 3.14. Use `trace_info()` instead.")
+        def trace_vinfo(self): ...
+    else:
+        def trace(self, mode, callback) -> str: ...
+        def trace_variable(self, mode, callback) -> str: ...
+        def trace_vdelete(self, mode, cbname) -> None: ...
+        def trace_vinfo(self): ...
+
     def __eq__(self, other: object) -> bool: ...
     def __del__(self) -> None: ...
     __hash__: ClassVar[None]  # type: ignore[assignment]
@@ -357,19 +370,21 @@ class BooleanVar(Variable):
 
 def mainloop(n: int = 0) -> None: ...
 
-getint: Incomplete
-getdouble: Incomplete
+getint = int
+getdouble = float
 
 def getboolean(s): ...
 
 _Ts = TypeVarTuple("_Ts")
 
+@type_check_only
 class _GridIndexInfo(TypedDict, total=False):
     minsize: _ScreenUnits
     pad: _ScreenUnits
     uniform: str | None
     weight: int
 
+@type_check_only
 class _BusyInfo(TypedDict):
     cursor: _Cursor
 
@@ -1025,6 +1040,7 @@ class Tk(Misc, Wm):
     def loadtk(self) -> None: ...
     def record(self, script, /): ...
     if sys.version_info < (3, 11):
+        @deprecated("Deprecated since Python 3.9; removed in Python 3.11. Use `splitlist()` instead.")
         def split(self, arg, /): ...
 
     def splitlist(self, arg, /): ...
@@ -1037,6 +1053,7 @@ def Tcl(screenName: str | None = None, baseName: str | None = None, className: s
 _InMiscTotal = TypedDict("_InMiscTotal", {"in": Misc})
 _InMiscNonTotal = TypedDict("_InMiscNonTotal", {"in": Misc}, total=False)
 
+@type_check_only
 class _PackInfo(_InMiscTotal):
     # 'before' and 'after' never appear in _PackInfo
     anchor: _Anchor
@@ -1078,6 +1095,7 @@ class Pack:
     forget = pack_forget
     propagate = Misc.pack_propagate
 
+@type_check_only
 class _PlaceInfo(_InMiscNonTotal):  # empty dict if widget hasn't been placed
     anchor: _Anchor
     bordermode: Literal["inside", "outside", "ignore"]
@@ -1114,6 +1132,7 @@ class Place:
     place = place_configure
     info = place_info
 
+@type_check_only
 class _GridInfo(_InMiscNonTotal):  # empty dict if widget hasn't been gridded
     column: int
     columnspan: int
@@ -3460,7 +3479,7 @@ class Text(Widget, XView, YView):
     def image_configure(
         self,
         index: _TextIndex,
-        cnf: dict[str, Any] | None = {},
+        cnf: dict[str, Any] | None = None,
         *,
         align: Literal["baseline", "bottom", "center", "top"] = ...,
         image: _ImageSpec = ...,

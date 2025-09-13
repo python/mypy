@@ -30,6 +30,31 @@ if sys.version_info >= (3, 13):
 
 class PurePath(PathLike[str]):
     if sys.version_info >= (3, 13):
+        __slots__ = (
+            "_raw_paths",
+            "_drv",
+            "_root",
+            "_tail_cached",
+            "_str",
+            "_str_normcase_cached",
+            "_parts_normcase_cached",
+            "_hash",
+        )
+    elif sys.version_info >= (3, 12):
+        __slots__ = (
+            "_raw_paths",
+            "_drv",
+            "_root",
+            "_tail_cached",
+            "_str",
+            "_str_normcase_cached",
+            "_parts_normcase_cached",
+            "_lines_cached",
+            "_hash",
+        )
+    else:
+        __slots__ = ("_drv", "_root", "_parts", "_str", "_hash", "_pparts", "_cached_cparts")
+    if sys.version_info >= (3, 13):
         parser: ClassVar[types.ModuleType]
         def full_match(self, pattern: StrPath, *, case_sensitive: bool | None = None) -> bool: ...
 
@@ -67,7 +92,14 @@ class PurePath(PathLike[str]):
     def as_posix(self) -> str: ...
     def as_uri(self) -> str: ...
     def is_absolute(self) -> bool: ...
-    def is_reserved(self) -> bool: ...
+    if sys.version_info >= (3, 13):
+        @deprecated(
+            "Deprecated since Python 3.13; will be removed in Python 3.15. "
+            "Use `os.path.isreserved()` to detect reserved paths on Windows."
+        )
+        def is_reserved(self) -> bool: ...
+    else:
+        def is_reserved(self) -> bool: ...
     if sys.version_info >= (3, 14):
         def is_relative_to(self, other: StrPath) -> bool: ...
     elif sys.version_info >= (3, 12):
@@ -101,10 +133,20 @@ class PurePath(PathLike[str]):
     if sys.version_info >= (3, 12):
         def with_segments(self, *args: StrPath) -> Self: ...
 
-class PurePosixPath(PurePath): ...
-class PureWindowsPath(PurePath): ...
+class PurePosixPath(PurePath):
+    __slots__ = ()
+
+class PureWindowsPath(PurePath):
+    __slots__ = ()
 
 class Path(PurePath):
+    if sys.version_info >= (3, 14):
+        __slots__ = ("_info",)
+    elif sys.version_info >= (3, 10):
+        __slots__ = ()
+    else:
+        __slots__ = ("_accessor",)
+
     if sys.version_info >= (3, 12):
         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
     else:
@@ -163,7 +205,6 @@ class Path(PurePath):
     def mkdir(self, mode: int = 0o777, parents: bool = False, exist_ok: bool = False) -> None: ...
 
     if sys.version_info >= (3, 14):
-
         @property
         def info(self) -> PathInfo: ...
         @overload
@@ -239,9 +280,13 @@ class Path(PurePath):
         self, mode: str, buffering: int = -1, encoding: str | None = None, errors: str | None = None, newline: str | None = None
     ) -> IO[Any]: ...
 
-    # These methods do "exist" on Windows on <3.13, but they always raise NotImplementedError.
+    # These methods do "exist" on Windows, but they always raise NotImplementedError.
     if sys.platform == "win32":
-        if sys.version_info < (3, 13):
+        if sys.version_info >= (3, 13):
+            # raises UnsupportedOperation:
+            def owner(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
+            def group(self: Never, *, follow_symlinks: bool = True) -> str: ...  # type: ignore[misc]
+        else:
             def owner(self: Never) -> str: ...  # type: ignore[misc]
             def group(self: Never) -> str: ...  # type: ignore[misc]
     else:
@@ -291,17 +336,20 @@ class Path(PurePath):
         def write_text(self, data: str, encoding: str | None = None, errors: str | None = None) -> int: ...
     if sys.version_info < (3, 12):
         if sys.version_info >= (3, 10):
-            @deprecated("Deprecated as of Python 3.10 and removed in Python 3.12. Use hardlink_to() instead.")
+            @deprecated("Deprecated since Python 3.10; removed in Python 3.12. Use `hardlink_to()` instead.")
             def link_to(self, target: StrOrBytesPath) -> None: ...
         else:
             def link_to(self, target: StrOrBytesPath) -> None: ...
     if sys.version_info >= (3, 12):
         def walk(
-            self, top_down: bool = ..., on_error: Callable[[OSError], object] | None = ..., follow_symlinks: bool = ...
+            self, top_down: bool = True, on_error: Callable[[OSError], object] | None = None, follow_symlinks: bool = False
         ) -> Iterator[tuple[Self, list[str], list[str]]]: ...
 
-class PosixPath(Path, PurePosixPath): ...
-class WindowsPath(Path, PureWindowsPath): ...
+class PosixPath(Path, PurePosixPath):
+    __slots__ = ()
+
+class WindowsPath(Path, PureWindowsPath):
+    __slots__ = ()
 
 if sys.version_info >= (3, 13):
     class UnsupportedOperation(NotImplementedError): ...

@@ -9,6 +9,7 @@ from typing import Callable, Final, Protocol, TypeVar
 
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
+from mypy.errors import ErrorInfo
 from mypy.expandtype import expand_type
 from mypy.message_registry import (
     INVALID_PARAM_SPEC_LOCATION,
@@ -675,6 +676,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     t,
                     code=codes.VALID_TYPE,
                 )
+            if self.defining_alias:
+                self.fail(
+                    "ClassVar[...] can't be used inside a type alias", t, code=codes.VALID_TYPE
+                )
             if len(t.args) == 0:
                 return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)
             if len(t.args) != 1:
@@ -774,7 +779,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if self.api.type.has_base("builtins.type"):
                 self.fail("Self type cannot be used in a metaclass", t)
             if self.api.type.self_type is not None:
-                if self.api.type.is_final:
+                if self.api.type.is_final or self.api.type.is_enum and self.api.type.enum_members:
                     return fill_typevars(self.api.type)
                 return self.api.type.self_type.copy_modified(line=t.line, column=t.column)
             # TODO: verify this is unreachable and replace with an assert?
@@ -1104,8 +1109,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 variables = t.variables
             else:
                 variables, _ = self.bind_function_type_variables(t, t)
-            type_guard = self.anal_type_guard(t.ret_type)
-            type_is = self.anal_type_is(t.ret_type)
+            type_guard = self.anal_type_guard(t.ret_type) if t.type_guard is None else t.type_guard
+            type_is = self.anal_type_is(t.ret_type) if t.type_is is None else t.type_is
 
             arg_kinds = t.arg_kinds
             arg_types = []
@@ -1815,7 +1820,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def bind_function_type_variables(
         self, fun_type: CallableType, defn: Context
-    ) -> tuple[Sequence[TypeVarLikeType], bool]:
+    ) -> tuple[tuple[TypeVarLikeType, ...], bool]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
         has_self_type = False
         if fun_type.variables:
@@ -1830,7 +1835,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 assert isinstance(var_expr, TypeVarLikeExpr)
                 binding = self.tvar_scope.bind_new(var.name, var_expr)
                 defs.append(binding)
-            return defs, has_self_type
+            return tuple(defs), has_self_type
         typevars, has_self_type = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
         typevars = [
@@ -1839,15 +1844,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         defs = []
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
-                self.fail(
-                    f'Type variable "{name}" is bound by an outer class',
-                    defn,
-                    code=codes.VALID_TYPE,
-                )
+                err_msg = message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name)
+                self.fail(err_msg.value, defn, code=err_msg.code)
             binding = self.tvar_scope.bind_new(name, tvar)
             defs.append(binding)
 
-        return defs, has_self_type
+        return tuple(defs), has_self_type
 
     def is_defined_type_var(self, tvar: str, context: Context) -> bool:
         tvar_node = self.lookup_qualified(tvar, context)
@@ -1976,7 +1978,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         if num_unpacks > 1:
             assert final_unpack is not None
-            self.fail("More than one Unpack in a type is not allowed", final_unpack.type)
+            self.fail("More than one variadic Unpack in a type is not allowed", final_unpack.type)
         return new_items
 
     def tuple_type(self, items: list[Type], line: int, column: int) -> TupleType:
@@ -1990,7 +1992,9 @@ TypeVarLikeList = list[tuple[str, TypeVarLikeExpr]]
 
 
 class MsgCallback(Protocol):
-    def __call__(self, __msg: str, __ctx: Context, *, code: ErrorCode | None = None) -> None: ...
+    def __call__(
+        self, __msg: str, __ctx: Context, *, code: ErrorCode | None = None
+    ) -> ErrorInfo | None: ...
 
 
 def get_omitted_any(
@@ -2373,9 +2377,9 @@ def has_explicit_any(t: Type) -> bool:
     return t.accept(HasExplicitAny())
 
 
-class HasExplicitAny(TypeQuery[bool]):
+class HasExplicitAny(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_any(self, t: AnyType) -> bool:
         return t.type_of_any == TypeOfAny.explicit
@@ -2414,15 +2418,11 @@ def collect_all_inner_types(t: Type) -> list[Type]:
 
 
 class CollectAllInnerTypesQuery(TypeQuery[list[Type]]):
-    def __init__(self) -> None:
-        super().__init__(self.combine_lists_strategy)
-
     def query_types(self, types: Iterable[Type]) -> list[Type]:
         return self.strategy([t.accept(self) for t in types]) + list(types)
 
-    @classmethod
-    def combine_lists_strategy(cls, it: Iterable[list[Type]]) -> list[Type]:
-        return list(itertools.chain.from_iterable(it))
+    def strategy(self, items: Iterable[list[Type]]) -> list[Type]:
+        return list(itertools.chain.from_iterable(items))
 
 
 def make_optional_type(t: Type) -> Type:
@@ -2552,7 +2552,6 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.scope = scope
         self.type_var_likes: list[tuple[str, TypeVarLikeExpr]] = []
         self.has_self_type = False
-        self.seen_aliases: set[TypeAliasType] | None = None
         self.include_callables = True
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
@@ -2611,7 +2610,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.process_types([t.upper_bound, t.default] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType) -> None:
-        self.process_types([t.upper_bound, t.default])
+        self.process_types([t.upper_bound, t.default, t.prefix])
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
         self.process_types([t.upper_bound, t.default])
@@ -2649,7 +2648,8 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.process_types(t.items)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        self.process_types(t.items)  # type: ignore[arg-type]
+        for it in t.items:
+            it.accept(self)
 
     def visit_type_type(self, t: TypeType) -> None:
         t.item.accept(self)
@@ -2661,12 +2661,6 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         return self.process_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
-        # Skip type aliases in already visited types to avoid infinite recursion.
-        if self.seen_aliases is None:
-            self.seen_aliases = set()
-        elif t in self.seen_aliases:
-            return
-        self.seen_aliases.add(t)
         self.process_types(t.args)
 
     def process_types(self, types: list[Type] | tuple[Type, ...]) -> None:

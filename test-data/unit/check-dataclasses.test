@@ -705,7 +705,7 @@ class A(Generic[T]):
     return self.z  # E: Incompatible return value type (got "list[T]", expected "T")
 
 reveal_type(A)  # N: Revealed type is "def [T] (x: T`1, y: T`1, z: builtins.list[T`1]) -> __main__.A[T`1]"
-A(1, 2, ["a", "b"])  # E: Cannot infer type argument 1 of "A"
+A(1, 2, ["a", "b"])  # E: Cannot infer value of type parameter "T" of "A"
 a = A(1, 2, [1, 2])
 reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
 reveal_type(a.x)  # N: Revealed type is "builtins.int"
@@ -2055,7 +2055,7 @@ from dataclasses import dataclass, replace, InitVar
 from typing import ClassVar
 
 @dataclass
-class A:
+class A:  # N: "replace" of "A" defined here
     x: int
     q: InitVar[int]
     q2: InitVar[int] = 0
@@ -2647,3 +2647,38 @@ User("", 0)  # E: Too many positional arguments for "User"
 User("", id=0)
 User("", name="")  # E: "User" gets multiple values for keyword argument "name"
 [builtins fixtures/tuple.pyi]
+
+[case testDataclassDefaultFactoryTypedDict]
+from dataclasses import dataclass, field
+from mypy_extensions import TypedDict
+
+class Person(TypedDict, total=False):
+    name: str
+
+@dataclass
+class Job:
+    person: Person = field(default_factory=Person)
+
+class PersonBad(TypedDict):
+    name: str
+
+@dataclass
+class JobBad:
+    person: PersonBad = field(default_factory=PersonBad)  # E: Argument "default_factory" to "field" has incompatible type "type[PersonBad]"; expected "Callable[[], PersonBad]"
+[builtins fixtures/dict.pyi]
+
+[case testDataclassInitVarRedefinitionNoCrash]
+# https://github.com/python/mypy/issues/19443
+from dataclasses import InitVar, dataclass
+
+class ClassA:
+    def value(self) -> int:
+        return 0
+
+@dataclass
+class ClassB(ClassA):
+    value: InitVar[int]
+
+    def value(self) -> int:  # E: Name "value" already defined on line 10
+        return 0
+[builtins fixtures/dict.pyi]

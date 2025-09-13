@@ -2,6 +2,7 @@
 
 [case testRunAsyncBasics]
 import asyncio
+from typing import Callable, Awaitable
 
 from testutil import assertRaises
 
@@ -21,12 +22,12 @@ async def f2() -> int:
         x += i + await f() + await g()
     return x
 
-def test_simple_call() -> None:
-    result = asyncio.run(f())
+async def test_simple_call() -> None:
+    result = await f()
     assert result == 3
 
-def test_multiple_awaits_in_expression() -> None:
-    result = asyncio.run(f2())
+async def test_multiple_awaits_in_expression() -> None:
+    result = await f2()
     assert result == 9
 
 class MyError(Exception):
@@ -60,22 +61,77 @@ async def exc6() -> int:
         return 3
     return 4
 
-def test_exception() -> None:
+async def test_exception() -> None:
     with assertRaises(MyError):
-        asyncio.run(exc1())
+        await exc1()
     with assertRaises(MyError):
-        asyncio.run(exc2())
+        await exc2()
     with assertRaises(MyError):
-        asyncio.run(exc3())
+        await exc3()
     with assertRaises(MyError):
-        asyncio.run(exc4())
-    assert asyncio.run(exc5()) == 3
-    assert asyncio.run(exc6()) == 3
+        await exc4()
+    assert await exc5() == 3
+    assert await exc6() == 3
+
+async def indirect_call(x: int, c: Callable[[int], Awaitable[int]]) -> int:
+    return await c(x)
+
+async def indirect_call_2(a: Awaitable[None]) -> None:
+    await a
+
+async def indirect_call_3(a: Awaitable[float]) -> float:
+    return (await a) + 1.0
+
+async def inc(x: int) -> int:
+    await asyncio.sleep(0)
+    return x + 1
+
+async def ident(x: float, err: bool = False) -> float:
+    await asyncio.sleep(0.0)
+    if err:
+        raise MyError()
+    return x + float("0.0")
+
+async def test_indirect_call() -> None:
+    assert await indirect_call(3, inc) == 4
+
+    with assertRaises(MyError):
+        await indirect_call_2(exc1())
+
+    assert await indirect_call_3(ident(2.0)) == 3.0
+    assert await indirect_call_3(ident(-113.0)) == -112.0
+    assert await indirect_call_3(ident(-114.0)) == -113.0
+
+    with assertRaises(MyError):
+        await indirect_call_3(ident(1.0, True))
+    with assertRaises(MyError):
+        await indirect_call_3(ident(-113.0, True))
+
+class C:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    async def add(self, x: int, err: bool = False) -> int:
+        await asyncio.sleep(0)
+        if err:
+            raise MyError()
+        return x + self.n
+
+async def method_call(x: int) -> int:
+    c = C(5)
+    return await c.add(x)
+
+async def method_call_exception() -> int:
+    c = C(5)
+    return await c.add(3, err=True)
+
+async def test_async_method_call() -> None:
+    assert await method_call(3) == 8
+    with assertRaises(MyError):
+        await method_call_exception()
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
-# eh, we could use the real type but it doesn't seem important
-def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
 
@@ -101,16 +157,16 @@ async def branch_await_not() -> int:
         return 3
     return 2
 
-def test_branch() -> None:
-    assert asyncio.run(branch_await()) == 3
-    assert asyncio.run(branch_await_not()) == 2
+async def test_branch() -> None:
+    assert await branch_await() == 3
+    assert await branch_await_not() == 2
 
 async def assign_multi() -> int:
     _, x = int(), await one()
     return x + 1
 
-def test_assign_multi() -> None:
-    assert asyncio.run(assign_multi()) == 2
+async def test_assign_multi() -> None:
+    assert await assign_multi() == 2
 
 class C:
     def __init__(self, s: str) -> None:
@@ -130,8 +186,8 @@ async def concat(s: str, t: str) -> str:
 async def set_attr(s: str) -> None:
     (await make_c("xyz")).s = await concat(s, "!")
 
-def test_set_attr() -> None:
-    asyncio.run(set_attr("foo"))  # Just check that it compiles and runs
+async def test_set_attr() -> None:
+    await set_attr("foo")  # Just check that it compiles and runs
 
 def concat2(x: str, y: str) -> str:
     return x + y
@@ -142,15 +198,15 @@ async def call1(s: str) -> str:
 async def call2(s: str) -> str:
     return await concat(str(int()), await concat(s, "b"))
 
-def test_call() -> None:
-    assert asyncio.run(call1("foo")) == "0fooa"
-    assert asyncio.run(call2("foo")) == "0foob"
+async def test_call() -> None:
+    assert await call1("foo") == "0fooa"
+    assert await call2("foo") == "0foob"
 
 async def method_call(s: str) -> str:
     return C("<").concat(await concat(s, ">"))
 
-def test_method_call() -> None:
-    assert asyncio.run(method_call("foo")) == "<foo>"
+async def test_method_call() -> None:
+    assert await method_call("foo") == "<foo>"
 
 class D:
     def __init__(self, a: str, b: str) -> None:
@@ -161,13 +217,11 @@ async def construct(s: str) -> str:
     c = D(await concat(s, "!"), await concat(s, "?"))
     return c.a + c.b
 
-def test_construct() -> None:
-    assert asyncio.run(construct("foo")) == "foo!foo?"
+async def test_construct() -> None:
+    assert await construct("foo") == "foo!foo?"
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
-# eh, we could use the real type but it doesn't seem important
-def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
 
@@ -303,7 +357,7 @@ class ConManB:
     async def __aexit__(self, *exc: object):
         pass
 
-async def x() -> None:
+async def test_x() -> None:
     value = 2
     async with ConMan() as f:
         value += f
@@ -311,12 +365,6 @@ async def x() -> None:
     async with ConManB() as f:
         value += f
     assert value == 5, value
-
-[typing fixtures/typing-full.pyi]
-[file driver.py]
-import asyncio
-import native
-asyncio.run(native.x())
 
 [case testRunAsyncSpecialCases]
 import asyncio
@@ -327,8 +375,8 @@ async def t() -> tuple[int, str, str]:
 async def f() -> tuple[int, str, str]:
     return await t()
 
-def test_tuple_return() -> None:
-    result = asyncio.run(f())
+async def test_tuple_return() -> None:
+    result = await f()
     assert result == (1, "x", "y")
 
 async def e() -> ValueError:
@@ -337,14 +385,12 @@ async def e() -> ValueError:
 async def g() -> ValueError:
     return await e()
 
-def test_exception_return() -> None:
-    result = asyncio.run(g())
+async def test_exception_return() -> None:
+    result = await g()
     assert isinstance(result, ValueError)
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
-# eh, we could use the real type but it doesn't seem important
-def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
 
@@ -352,15 +398,15 @@ def run(x: object) -> object: ...
 import asyncio
 import gc
 
-def assert_no_leaks(fn, max_new):
+async def assert_no_leaks(fn, max_new):
     # Warm-up, in case asyncio allocates something on first use
-    asyncio.run(fn())
+    await fn()
 
     gc.collect()
     old_objs = gc.get_objects()
 
     for i in range(10):
-        asyncio.run(fn())
+        await fn()
 
     gc.collect()
     new_objs = gc.get_objects()
@@ -380,8 +426,8 @@ async def foo(n: int) -> str:
         s = await concat_one(s)
     return s
 
-def test_trivial() -> None:
-    assert_no_leaks(lambda: foo(1000), 5)
+async def test_trivial() -> None:
+    await assert_no_leaks(lambda: foo(1000), 5)
 
 async def make_list(a: list[int]) -> list[int]:
     await concat_one("foobar")
@@ -398,8 +444,8 @@ async def bar(n: int) -> None:
     for i in range(n):
         await spill()
 
-def test_spilled() -> None:
-    assert_no_leaks(lambda: bar(40), 2)
+async def test_spilled() -> None:
+    await assert_no_leaks(lambda: bar(80), 2)
 
 async def raise_deep(n: int) -> str:
     if n == 0:
@@ -426,8 +472,8 @@ async def exc(n: int) -> list[str]:
             a.append(str(int() + 5))
     return a
 
-def test_exception() -> None:
-    assert_no_leaks(lambda: exc(50), 2)
+async def test_exception() -> None:
+    await assert_no_leaks(lambda: exc(50), 2)
 
 class C:
     def __init__(self, s: str) -> None:
@@ -449,11 +495,10 @@ async def stolen(n: int) -> int:
         assert s == str(i + 2) + "1"
     return n
 
-def test_stolen() -> None:
-    assert_no_leaks(lambda: stolen(100), 2)
+async def test_stolen() -> None:
+    await assert_no_leaks(lambda: stolen(200), 2)
 
 [file asyncio/__init__.pyi]
-def run(x: object) -> object: ...
 async def sleep(t: float) -> None: ...
 
 [case testRunAsyncMiscTypesInEnvironment]
@@ -501,8 +546,8 @@ async def float_ops(x: float) -> float:
     n = float("0.5") + await inc_float(n)
     return n
 
-def test_float() -> None:
-    assert asyncio.run(float_ops(2.5)) == 5.0
+async def test_float() -> None:
+    assert await float_ops(2.5) == 5.0
 
 async def i64_ops(x: i64) -> i64:
     n = x
@@ -510,8 +555,8 @@ async def i64_ops(x: i64) -> i64:
     n = i64("1") + await inc_i64(n)
     return n
 
-def test_i64() -> None:
-    assert asyncio.run(i64_ops(2)) == 5
+async def test_i64() -> None:
+    assert await i64_ops(2) == 5
 
 async def i32_ops(x: i32) -> i32:
     n = x
@@ -519,8 +564,8 @@ async def i32_ops(x: i32) -> i32:
     n = i32("1") + await inc_i32(n)
     return n
 
-def test_i32() -> None:
-    assert asyncio.run(i32_ops(3)) == 6
+async def test_i32() -> None:
+    assert await i32_ops(3) == 6
 
 async def i16_ops(x: i16) -> i16:
     n = x
@@ -528,8 +573,8 @@ async def i16_ops(x: i16) -> i16:
     n = i16("1") + await inc_i16(n)
     return n
 
-def test_i16() -> None:
-    assert asyncio.run(i16_ops(4)) == 7
+async def test_i16() -> None:
+    assert await i16_ops(4) == 7
 
 async def u8_ops(x: u8) -> u8:
     n = x
@@ -537,8 +582,8 @@ async def u8_ops(x: u8) -> u8:
     n = u8("1") + await inc_u8(n)
     return n
 
-def test_u8() -> None:
-    assert asyncio.run(u8_ops(5)) == 8
+async def test_u8() -> None:
+    assert await u8_ops(5) == 8
 
 async def tuple_ops(x: tuple[i64, float]) -> tuple[i64, float]:
     n = x
@@ -546,8 +591,8 @@ async def tuple_ops(x: tuple[i64, float]) -> tuple[i64, float]:
     m = ((i64("1"), float("0.5")), await inc_tuple(n))
     return m[1]
 
-def test_tuple() -> None:
-    assert asyncio.run(tuple_ops((1, 2.5))) == (3, 5.5)
+async def test_tuple() -> None:
+    assert await tuple_ops((1, 2.5)) == (3, 5.5)
 
 async def bool_ops(x: bool) -> bool:
     n = x
@@ -555,16 +600,18 @@ async def bool_ops(x: bool) -> bool:
     m = (bool("1"), await neg_bool(n))
     return m[0] and m[1]
 
-def test_bool() -> None:
-    assert asyncio.run(bool_ops(True)) is True
-    assert asyncio.run(bool_ops(False)) is False
+async def test_bool() -> None:
+    assert await bool_ops(True) is True
+    assert await bool_ops(False) is False
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 
 [case testRunAsyncNestedFunctions]
+from __future__ import annotations
+
 import asyncio
-from typing import cast, Iterator
+from typing import cast, Iterator, overload, Awaitable, Any, TypeVar
 
 from testutil import assertRaises
 
@@ -588,8 +635,8 @@ async def async_def_contains_normal(x: int) -> int:
     a += nested((await inc(3)), (await inc(4)))
     return a
 
-def test_async_def_contains_normal() -> None:
-    assert normal_contains_async_def(2) == (2 + 2 + 4 + 5)
+async def test_async_def_contains_normal() -> None:
+    assert await async_def_contains_normal(2) == (2 + 2 + 4 + 5)
 
 async def async_def_contains_async_def(x: int) -> int:
     async def f(y: int) -> int:
@@ -597,8 +644,8 @@ async def async_def_contains_async_def(x: int) -> int:
 
     return (await f(1)) + (await f(2))
 
-def test_async_def_contains_async_def() -> None:
-    assert asyncio.run(async_def_contains_async_def(3)) == (3 + 1 + 1 + 1) + (3 + 1 + 2 + 1)
+async def test_async_def_contains_async_def() -> None:
+    assert await async_def_contains_async_def(3) == (3 + 1 + 1 + 1) + (3 + 1 + 2 + 1)
 
 async def async_def_contains_generator(x: int) -> tuple[int, int, int]:
     def gen(y: int) -> Iterator[int]:
@@ -613,8 +660,8 @@ async def async_def_contains_generator(x: int) -> tuple[int, int, int]:
 
     return res
 
-def test_async_def_contains_generator() -> None:
-    assert asyncio.run(async_def_contains_generator(3)) == (13, 4, 7)
+async def test_async_def_contains_generator() -> None:
+    assert await async_def_contains_generator(3) == (13, 4, 7)
 
 def generator_contains_async_def(x: int) -> Iterator[int]:
     async def f(y: int) -> int:
@@ -636,10 +683,554 @@ async def async_def_contains_two_nested_functions(x: int, y: int) -> tuple[int, 
 
     return (await inc(f(3))), (await inc(g(4, 10)))
 
-def test_async_def_contains_two_nested_functions() -> None:
-    assert asyncio.run(async_def_contains_two_nested_functions(5, 7)) == (
+async def test_async_def_contains_two_nested_functions() -> None:
+    assert await async_def_contains_two_nested_functions(5, 7) == (
         (5 + 3 + 1), (7 + 4 + 10 + 1)
     )
+
+async def async_def_contains_overloaded_async_def(n: int) -> int:
+    @overload
+    async def f(x: int) -> int: ...
+
+    @overload
+    async def f(x: str) -> str: ...
+
+    async def f(x: int | str) -> Any:
+        return x
+
+    return (await f(n)) + 1
+
+
+async def test_async_def_contains_overloaded_async_def() -> None:
+    assert await async_def_contains_overloaded_async_def(5) == 6
+
+T = TypeVar("T")
+
+def deco(f: T) -> T:
+    return f
+
+async def async_def_contains_decorated_async_def(n: int) -> int:
+    @deco
+    async def f(x: int) -> int:
+        return x + 2
+
+    return (await f(n)) + 1
+
+
+async def test_async_def_contains_decorated_async_def() -> None:
+    assert await async_def_contains_decorated_async_def(7) == 10
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+
+[case testAsyncTryFinallyMixedReturn]
+# This used to raise an AttributeError, when:
+# - the try block contains multiple paths
+# - at least one of those explicitly returns
+# - at least one of those does not explicitly return
+# - the non-returning path is taken at runtime
+
+async def mixed_return(b: bool) -> bool:
+  try:
+      if b:
+          return b
+  finally:
+      pass
+  return b
+
+
+async def test_async_try_finally_mixed_return() -> None:
+  # Test return path
+  result1 = await mixed_return(True)
+  assert result1 == True
+
+  # Test non-return path
+  result2 = await mixed_return(False)
+  assert result2 == False
+
+[case testAsyncWithMixedReturn]
+# This used to raise an AttributeError, related to
+# testAsyncTryFinallyMixedReturn, this is essentially
+# a far more extensive version of that test surfacing
+# more edge cases
+
+from typing import Optional, Type, Literal
+
+
+class AsyncContextManager:
+    async def __aenter__(self) -> "AsyncContextManager":
+        return self
+
+    async def __aexit__(
+        self,
+        t: Optional[Type[BaseException]],
+        v: Optional[BaseException],
+        tb: object,
+    ) -> Literal[False]:
+        return False
+
+
+# Simple async functions (generator class)
+async def gen_1(b: bool) -> bool:
+    async with AsyncContextManager():
+        if b:
+            return b
+    return b
+
+
+async def gen_2(b: bool) -> bool:
+    async with AsyncContextManager():
+        if b:
+            return b
+        else:
+            return b
+
+
+async def gen_3(b: bool) -> bool:
+    async with AsyncContextManager():
+        if b:
+            return b
+        else:
+            pass
+    return b
+
+
+async def gen_4(b: bool) -> bool:
+    ret: bool
+    async with AsyncContextManager():
+        if b:
+            ret = b
+        else:
+            ret = b
+    return ret
+
+
+async def gen_5(i: int) -> int:
+    async with AsyncContextManager():
+        if i == 1:
+            return i
+        elif i == 2:
+            pass
+        elif i == 3:
+            return i
+    return i
+
+
+async def gen_6(i: int) -> int:
+    async with AsyncContextManager():
+        if i == 1:
+            return i
+        elif i == 2:
+            return i
+        elif i == 3:
+            return i
+    return i
+
+
+async def gen_7(i: int) -> int:
+    async with AsyncContextManager():
+        if i == 1:
+            return i
+        elif i == 2:
+            return i
+        elif i == 3:
+            return i
+        else:
+            return i
+
+
+# Async functions with nested functions (environment class)
+async def env_1(b: bool) -> bool:
+    def helper() -> bool:
+        return True
+
+    async with AsyncContextManager():
+        if b:
+            return helper()
+    return b
+
+
+async def env_2(b: bool) -> bool:
+    def helper() -> bool:
+        return True
+
+    async with AsyncContextManager():
+        if b:
+            return helper()
+        else:
+            return b
+
+
+async def env_3(b: bool) -> bool:
+    def helper() -> bool:
+        return True
+
+    async with AsyncContextManager():
+        if b:
+            return helper()
+        else:
+            pass
+    return b
+
+
+async def env_4(b: bool) -> bool:
+    def helper() -> bool:
+        return True
+
+    ret: bool
+    async with AsyncContextManager():
+        if b:
+            ret = helper()
+        else:
+            ret = b
+    return ret
+
+
+async def env_5(i: int) -> int:
+    def helper() -> int:
+        return 1
+
+    async with AsyncContextManager():
+        if i == 1:
+            return helper()
+        elif i == 2:
+            pass
+        elif i == 3:
+            return i
+    return i
+
+
+async def env_6(i: int) -> int:
+    def helper() -> int:
+        return 1
+
+    async with AsyncContextManager():
+        if i == 1:
+            return helper()
+        elif i == 2:
+            return i
+        elif i == 3:
+            return i
+    return i
+
+
+async def env_7(i: int) -> int:
+    def helper() -> int:
+        return 1
+
+    async with AsyncContextManager():
+        if i == 1:
+            return helper()
+        elif i == 2:
+            return i
+        elif i == 3:
+            return i
+        else:
+            return i
+
+
+async def test_async_with_mixed_return() -> None:
+    # Test simple async functions (generator class)
+    # env_1: mixed return/no-return
+    assert await gen_1(True) is True
+    assert await gen_1(False) is False
+
+    # gen_2: all branches return
+    assert await gen_2(True) is True
+    assert await gen_2(False) is False
+
+    # gen_3: mixed return/pass
+    assert await gen_3(True) is True
+    assert await gen_3(False) is False
+
+    # gen_4: no returns in async with
+    assert await gen_4(True) is True
+    assert await gen_4(False) is False
+
+    # gen_5: multiple branches, some return
+    assert await gen_5(0) == 0
+    assert await gen_5(1) == 1
+    assert await gen_5(2) == 2
+    assert await gen_5(3) == 3
+
+    # gen_6: all explicit branches return, implicit fallthrough
+    assert await gen_6(0) == 0
+    assert await gen_6(1) == 1
+    assert await gen_6(2) == 2
+    assert await gen_6(3) == 3
+
+    # gen_7: all branches return including else
+    assert await gen_7(0) == 0
+    assert await gen_7(1) == 1
+    assert await gen_7(2) == 2
+    assert await gen_7(3) == 3
+
+    # Test async functions with nested functions (environment class)
+    # env_1: mixed return/no-return
+    assert await env_1(True) is True
+    assert await env_1(False) is False
+
+    # env_2: all branches return
+    assert await env_2(True) is True
+    assert await env_2(False) is False
+
+    # env_3: mixed return/pass
+    assert await env_3(True) is True
+    assert await env_3(False) is False
+
+    # env_4: no returns in async with
+    assert await env_4(True) is True
+    assert await env_4(False) is False
+
+    # env_5: multiple branches, some return
+    assert await env_5(0) == 0
+    assert await env_5(1) == 1
+    assert await env_5(2) == 2
+    assert await env_5(3) == 3
+
+    # env_6: all explicit branches return, implicit fallthrough
+    assert await env_6(0) == 0
+    assert await env_6(1) == 1
+    assert await env_6(2) == 2
+    assert await env_6(3) == 3
+
+    # env_7: all branches return including else
+    assert await env_7(0) == 0
+    assert await env_7(1) == 1
+    assert await env_7(2) == 2
+    assert await env_7(3) == 3
+
+[case testAsyncTryExceptFinallyAwait]
+import asyncio
+from testutil import assertRaises
+
+class TestError(Exception):
+    pass
+
+# Test 0: Simplest case - just try/finally with raise and await
+async def simple_try_finally_await() -> None:
+    try:
+        raise ValueError("simple error")
+    finally:
+        await asyncio.sleep(0)
+
+# Test 1: Raise inside try, catch in except, don't re-raise
+async def async_try_except_no_reraise() -> int:
+    try:
+        raise ValueError("test error")
+        return 1  # Never reached
+    except ValueError:
+        return 2  # Should return this
+    finally:
+        await asyncio.sleep(0)
+    return 3  # Should not reach this
+
+# Test 2: Raise inside try, catch in except, re-raise
+async def async_try_except_reraise() -> int:
+    try:
+        raise ValueError("test error")
+        return 1  # Never reached
+    except ValueError:
+        raise  # Re-raise the exception
+    finally:
+        await asyncio.sleep(0)
+    return 2  # Should not reach this
+
+# Test 3: Raise inside try, catch in except, raise different error
+async def async_try_except_raise_different() -> int:
+    try:
+        raise ValueError("original error")
+        return 1  # Never reached
+    except ValueError:
+        raise RuntimeError("different error")
+    finally:
+        await asyncio.sleep(0)
+    return 2  # Should not reach this
+
+# Test 4: Another try/except block inside finally
+async def async_try_except_inside_finally() -> int:
+    try:
+        raise ValueError("outer error")
+        return 1  # Never reached
+    finally:
+        await asyncio.sleep(0)
+        try:
+            raise RuntimeError("inner error")
+        except RuntimeError:
+            pass  # Catch inner error
+    return 2  # What happens after finally with inner exception handled?
+
+# Test 5: Another try/finally block inside finally
+async def async_try_finally_inside_finally() -> int:
+    try:
+        raise ValueError("outer error")
+        return 1  # Never reached
+    finally:
+        await asyncio.sleep(0)
+        try:
+            raise RuntimeError("inner error")
+        finally:
+            await asyncio.sleep(0)
+    return 2  # Should not reach this
+
+# Control case: No await in finally - should work correctly
+async def async_exception_no_await_in_finally() -> None:
+    """Control case: This works correctly - exception propagates"""
+    try:
+        raise TestError("This exception will propagate!")
+    finally:
+        pass  # No await here
+
+# Test function with no exception to check normal flow
+async def async_no_exception_with_await_in_finally() -> int:
+    try:
+        return 1  # Normal return
+    finally:
+        await asyncio.sleep(0)
+    return 2  # Should not reach this
+
+async def test_async_try_except_finally_await() -> None:
+    # Test 0: Simplest case - just try/finally with exception
+    # Expected: ValueError propagates
+    with assertRaises(ValueError):
+        await simple_try_finally_await()
+
+    # Test 1: Exception caught, not re-raised
+    # Expected: return 2 (from except block)
+    result = await async_try_except_no_reraise()
+    assert result == 2, f"Expected 2, got {result}"
+
+    # Test 2: Exception caught and re-raised
+    # Expected: ValueError propagates
+    with assertRaises(ValueError):
+        await async_try_except_reraise()
+
+    # Test 3: Exception caught, different exception raised
+    # Expected: RuntimeError propagates
+    with assertRaises(RuntimeError):
+        await async_try_except_raise_different()
+
+    # Test 4: Try/except inside finally
+    # Expected: ValueError propagates (outer exception)
+    with assertRaises(ValueError):
+        await async_try_except_inside_finally()
+
+    # Test 5: Try/finally inside finally
+    # Expected: RuntimeError propagates (inner error)
+    with assertRaises(RuntimeError):
+        await async_try_finally_inside_finally()
+
+    # Control case: No await in finally (should work correctly)
+    with assertRaises(TestError):
+        await async_exception_no_await_in_finally()
+
+    # Test normal flow (no exception)
+    # Expected: return 1
+    result = await async_no_exception_with_await_in_finally()
+    assert result == 1, f"Expected 1, got {result}"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
+[case testAsyncContextManagerExceptionHandling]
+import asyncio
+from typing import Optional, Type
+from testutil import assertRaises
+
+# Test 1: Basic async context manager that doesn't suppress exceptions
+class AsyncContextManager:
+    async def __aenter__(self) -> 'AsyncContextManager':
+        return self
+
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                       exc_val: Optional[BaseException],
+                       exc_tb: object) -> None:
+        # This await in __aexit__ is like await in finally
+        await asyncio.sleep(0)
+        # Don't suppress the exception (return None/False)
+
+async def func_with_async_context_manager() -> str:
+    async with AsyncContextManager():
+        raise ValueError("Exception inside async with")
+        return "should not reach"  # Never reached
+    return "should not reach either"  # Never reached
+
+async def test_basic_exception() -> str:
+    try:
+        await func_with_async_context_manager()
+        return "func_a returned normally - bug!"
+    except ValueError:
+        return "caught ValueError - correct!"
+    except Exception as e:
+        return f"caught different exception: {type(e).__name__}"
+
+# Test 2: Async context manager that raises a different exception in __aexit__
+class AsyncContextManagerRaisesInExit:
+    async def __aenter__(self) -> 'AsyncContextManagerRaisesInExit':
+        return self
+
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                       exc_val: Optional[BaseException],
+                       exc_tb: object) -> None:
+        # This await in __aexit__ is like await in finally
+        await asyncio.sleep(0)
+        # Raise a different exception - this should replace the original exception
+        raise RuntimeError("Exception in __aexit__")
+
+async def func_with_raising_context_manager() -> str:
+    async with AsyncContextManagerRaisesInExit():
+        raise ValueError("Original exception")
+        return "should not reach"  # Never reached
+    return "should not reach either"  # Never reached
+
+async def test_exception_in_aexit() -> str:
+    try:
+        await func_with_raising_context_manager()
+        return "func returned normally - unexpected!"
+    except RuntimeError:
+        return "caught RuntimeError - correct!"
+    except ValueError:
+        return "caught ValueError - original exception not replaced!"
+    except Exception as e:
+        return f"caught different exception: {type(e).__name__}"
+
+async def test_async_context_manager_exception_handling() -> None:
+    # Test 1: Basic exception propagation
+    result = await test_basic_exception()
+    # Expected: "caught ValueError - correct!"
+    assert result == "caught ValueError - correct!", f"Expected exception to propagate, got: {result}"
+
+    # Test 2: Exception raised in __aexit__ replaces original exception
+    result = await test_exception_in_aexit()
+    # Expected: "caught RuntimeError - correct!"
+    # (The RuntimeError from __aexit__ should replace the ValueError)
+    assert result == "caught RuntimeError - correct!", f"Expected RuntimeError from __aexit__, got: {result}"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
+[case testCallableArgWithSameNameAsHelperMethod]
+import asyncio
+from typing import Awaitable, Callable
+
+
+MyCallable = Callable[[int, int], Awaitable[int]]
+
+async def add(a: int, b: int) -> int:
+    return a + b
+
+async def await_send(send: MyCallable) -> int:
+    return await send(1, 2)
+
+async def await_throw(throw: MyCallable) -> int:
+    return await throw(3, 4)
+
+async def tests() -> None:
+    assert await await_send(add) == 3
+    assert await await_throw(add) == 7
+
+def test_callable_arg_same_name_as_helper() -> None:
+    asyncio.run(tests())
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
