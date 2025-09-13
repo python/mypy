@@ -370,3 +370,8 @@ TYPE_ALIAS_WITH_NAMED_EXPRESSION: Final = ErrorMessage(
 TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
     "Await expression cannot be used within a type alias", codes.SYNTAX
 )
+
+SEQUENCE_INDEX_OUT_OF_RANGE = ErrorMessage(
+    "Sequence index out of range: {name!r} only has {length} items",
+    code=codes.INDEX_RANGE,
+)
