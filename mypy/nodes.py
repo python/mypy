@@ -1972,6 +1972,9 @@ class IntExpr(Expression):
 
 
 def is_IntExpr_list(items: List[Expression]) -> TypeGuard[List[IntExpr]]:
+    return all(isinstance(item, IntExpr) for item in items)
+
+
 # How mypy uses StrExpr and BytesExpr:
 #
 # b'x' -> BytesExpr
