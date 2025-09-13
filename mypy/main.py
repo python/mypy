@@ -1064,7 +1064,13 @@ def define_options(
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
     incremental_group.add_argument(
-        "--fixed-format-cache", action="store_true", help=argparse.SUPPRESS
+        "--fixed-format-cache",
+        action="store_true",
+        help=(
+            "Use experimental fast and compact fixed format cache"
+            if compilation_status == "yes"
+            else argparse.SUPPRESS
+        ),
     )
     incremental_group.add_argument(
         "--skip-version-check",
@@ -1198,13 +1204,6 @@ def define_options(
     )
 
     if server_options:
-        # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
-        other_group.add_argument(
-            "--experimental",
-            action="store_true",
-            dest="fine_grained_incremental",
-            help="Enable fine-grained incremental mode",
-        )
         other_group.add_argument(
             "--use-fine-grained-cache",
             action="store_true",
