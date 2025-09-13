@@ -51,11 +51,12 @@ def get_static_expr_length(expr: Expression, context: Optional[Block] = None) ->
 
     # List, tuple literals (with possible star expressions)
     if isinstance(expr, (ListExpr, TupleExpr)):
-        # if there are no star expressions, or we know the length of them,
-        # we know the length of the expression
         stars = [get_static_expr_length(i, context) for i in expr.items if isinstance(i, StarExpr)]
-        other = sum(not isinstance(i, StarExpr) for i in expr.items)
-        return other + sum(star for star in stars if star is not None)
+        if None not in stars:
+            # if there are no star expressions, or we know the
+            # length of them, we know the length of the expression
+            other = sum(not isinstance(i, StarExpr) for i in expr.items)
+            return other + sum(star for star in stars if star is not None)
     elif isinstance(expr, SetExpr):
         # TODO: set expressions are more complicated, you need to know the
         # actual value of each item in order to confidently state its length
