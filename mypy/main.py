@@ -389,7 +389,7 @@ class ArgumentGroup(argparse._ArgumentGroup):
                 ValueError(
                     "Mypy-internal CLI documentation style error: help description for the Report generation flag"
                     + f" {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
-                    + " This check is in the code because we assume there's nothing help to say about the report flags."
+                    + " This check is in the code because we assume there's nothing helpful to say about the report flags."
                     + " If you're improving that situation, feel free to remove this check."
                 )
         else:
