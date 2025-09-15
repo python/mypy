@@ -2577,6 +2577,13 @@ C(1)[0]
 [builtins fixtures/list.pyi]
 [out]
 
+[case testSerializeRecursiveAlias]
+from typing import Callable, Union
+
+Node = Union[str, int, Callable[[], "Node"]]
+n: Node
+[out]
+
 [case testSerializeRecursiveAliases1]
 
 from typing import Type, Callable, Union
