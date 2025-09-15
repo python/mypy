@@ -923,8 +923,7 @@ class slice(Generic[_StartT_co, _StopT_co, _StepT_co]):
 
     def indices(self, len: SupportsIndex, /) -> tuple[int, int, int]: ...
 
-# Making this a disjoint_base upsets pyright
-# @disjoint_base
+@disjoint_base
 class tuple(Sequence[_T_co]):
     def __new__(cls, iterable: Iterable[_T_co] = ..., /) -> Self: ...
     def __len__(self) -> int: ...
@@ -1266,10 +1265,8 @@ class property:
     def __set__(self, instance: Any, value: Any, /) -> None: ...
     def __delete__(self, instance: Any, /) -> None: ...
 
-# This class does not exist at runtime, but stubtest complains if it's marked as
-# @type_check_only because it has an alias that does exist at runtime. See mypy#19568.
-# @type_check_only
 @final
+@type_check_only
 class _NotImplementedType(Any):
     __call__: None
 
