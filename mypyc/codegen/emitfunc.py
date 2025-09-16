@@ -8,6 +8,7 @@ from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import (
+    GENERATOR_ATTRIBUTE_PREFIX,
     HAVE_IMMORTAL,
     MODULE_PREFIX,
     NATIVE_PREFIX,
@@ -88,7 +89,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -436,7 +437,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     exc_class = "PyExc_AttributeError"
                     self.emitter.emit_line(
                         'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                            exc_class, repr(op.attr), repr(cl.name)
+                            exc_class,
+                            repr(op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)),
+                            repr(cl.name),
                         )
                     )
 
@@ -630,7 +633,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_inc_ref(self, op: IncRef) -> None:
         if (
             isinstance(op.src, Box)
-            and (is_none_rprimitive(op.src.src.type) or is_bool_rprimitive(op.src.src.type))
+            and (is_none_rprimitive(op.src.src.type) or is_bool_or_bit_rprimitive(op.src.src.type))
             and HAVE_IMMORTAL
         ):
             # On Python 3.12+, None/True/False are immortal, and we can skip inc ref
@@ -654,6 +657,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
 
     def visit_cast(self, op: Cast) -> None:
+        if op.is_unchecked and op.is_borrowed:
+            self.emit_line(f"{self.reg(op)} = {self.reg(op.src)};")
+            return
         branch = self.next_branch()
         handler = None
         if branch is not None:
@@ -938,7 +944,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.source_path.replace("\\", "\\\\"),
                 op.traceback_entry[0],
                 class_name,
-                attr,
+                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
                 op.traceback_entry[1],
                 globals_static,
             )

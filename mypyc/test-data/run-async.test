@@ -1208,3 +1208,29 @@ async def test_async_context_manager_exception_handling() -> None:
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
+
+[case testCallableArgWithSameNameAsHelperMethod]
+import asyncio
+from typing import Awaitable, Callable
+
+
+MyCallable = Callable[[int, int], Awaitable[int]]
+
+async def add(a: int, b: int) -> int:
+    return a + b
+
+async def await_send(send: MyCallable) -> int:
+    return await send(1, 2)
+
+async def await_throw(throw: MyCallable) -> int:
+    return await throw(3, 4)
+
+async def tests() -> None:
+    assert await await_send(add) == 3
+    assert await await_throw(add) == 7
+
+def test_callable_arg_same_name_as_helper() -> None:
+    asyncio.run(tests())
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...

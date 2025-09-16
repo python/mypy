@@ -2419,6 +2419,35 @@ assert a == c
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testStrictEqualityForNone]
+# flags: --strict-equality --strict-equality-for-none
+
+class A: ...
+
+def a1(x: A) -> None:
+    assert x is None  # E: Non-overlapping identity check (left operand type: "A", right operand type: "None")
+def a2(x: A) -> None:
+    x is not None  # E: Non-overlapping identity check (left operand type: "A", right operand type: "None")
+def a3(x: A) -> None:
+    None == x  # E: Non-overlapping equality check (left operand type: "None", right operand type: "A")
+def a4(x: list[A]) -> None:
+    None in x  # E: Non-overlapping container check (element type: "None", container item type: "A")
+
+class B:
+    def __eq__(self, x: object) -> bool: ...
+
+def b1(x: B) -> None:
+    assert x is None  # E: Non-overlapping identity check (left operand type: "B", right operand type: "None")
+def b2(x: B) -> None:
+    x is not None  # E: Non-overlapping identity check (left operand type: "B", right operand type: "None")
+def b3(x: B) -> None:
+    x == None
+def b4(x: list[B]) -> None:
+    None in x
+
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")

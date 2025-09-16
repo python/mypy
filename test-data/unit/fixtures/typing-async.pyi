@@ -28,7 +28,9 @@ Self = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
+R_co = TypeVar('R_co', covariant=True)
 T_contra = TypeVar('T_contra', contravariant=True)
+S_contra = TypeVar('S_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
@@ -49,9 +51,9 @@ class Iterator(Iterable[T_co], Protocol):
     @abstractmethod
     def __next__(self) -> T_co: pass
 
-class Generator(Iterator[T], Generic[T, U, V]):
+class Generator(Iterator[T_co], Generic[T_co, S_contra, R_co]):
     @abstractmethod
-    def send(self, value: U) -> T: pass
+    def send(self, value: S_contra) -> T_co: pass
 
     @abstractmethod
     def throw(self, typ: Any, val: Any=None, tb: Any=None) -> None: pass
@@ -60,34 +62,39 @@ class Generator(Iterator[T], Generic[T, U, V]):
     def close(self) -> None: pass
 
     @abstractmethod
-    def __iter__(self) -> 'Generator[T, U, V]': pass
+    def __iter__(self) -> 'Generator[T_co, S_contra, R_co]': pass
 
-class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
+class AsyncGenerator(AsyncIterator[T_co], Generic[T_co, S_contra]):
     @abstractmethod
-    def __anext__(self) -> Awaitable[T]: pass
-
-    @abstractmethod
-    def asend(self, value: U) -> Awaitable[T]: pass
+    def __anext__(self) -> Awaitable[T_co]: pass
 
     @abstractmethod
-    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T]: pass
+    def asend(self, value: S_contra) -> Awaitable[T_co]: pass
 
     @abstractmethod
-    def aclose(self) -> Awaitable[T]: pass
+    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T_co]: pass
 
     @abstractmethod
-    def __aiter__(self) -> 'AsyncGenerator[T, U]': pass
+    def aclose(self) -> Awaitable[T_co]: pass
 
-class Awaitable(Protocol[T]):
     @abstractmethod
-    def __await__(self) -> Generator[Any, Any, T]: pass
+    def __aiter__(self) -> 'AsyncGenerator[T_co, S_contra]': pass
 
-class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S], metaclass=ABCMeta):
+class Awaitable(Protocol[T_co]):
+    @abstractmethod
+    def __await__(self) -> Generator[Any, Any, T_co]: pass
+
+class AwaitableGenerator(
+    Awaitable[R_co],
+    Generator[T_co, S_contra, R_co],
+    Generic[T_co, S_contra, R_co, S],
+    metaclass=ABCMeta
+):
     pass
 
-class Coroutine(Awaitable[V], Generic[T, U, V]):
+class Coroutine(Awaitable[R_co], Generic[T_co, S_contra, R_co]):
     @abstractmethod
-    def send(self, value: U) -> T: pass
+    def send(self, value: S_contra) -> T_co: pass
 
     @abstractmethod
     def throw(self, typ: Any, val: Any=None, tb: Any=None) -> None: pass
@@ -95,14 +102,14 @@ class Coroutine(Awaitable[V], Generic[T, U, V]):
     @abstractmethod
     def close(self) -> None: pass
 
-class AsyncIterable(Protocol[T]):
+class AsyncIterable(Protocol[T_co]):
     @abstractmethod
-    def __aiter__(self) -> 'AsyncIterator[T]': pass
+    def __aiter__(self) -> 'AsyncIterator[T_co]': pass
 
-class AsyncIterator(AsyncIterable[T], Protocol):
-    def __aiter__(self) -> 'AsyncIterator[T]': return self
+class AsyncIterator(AsyncIterable[T_co], Protocol):
+    def __aiter__(self) -> 'AsyncIterator[T_co]': return self
     @abstractmethod
-    def __anext__(self) -> Awaitable[T]: pass
+    def __anext__(self) -> Awaitable[T_co]: pass
 
 class Sequence(Iterable[T_co], Container[T_co]):
     @abstractmethod
