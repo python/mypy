@@ -465,6 +465,21 @@ class Contra[T]:
 contra_pos: Contra[object] = Contra[int]()  # E: Incompatible types in assignment (expression has type "Contra[int]", variable has type "Contra[object]")
 contra_neg: Contra[int] = Contra[object]()
 
+
+[case testPEP695SelfAttribute]
+# https://github.com/python/mypy/issues/18334
+from typing import Self
+
+class Foo[T]:
+    instance: Self
+    def foo(self) -> T: ... # type:ignore[empty-body]
+
+class Bar(Foo[int]): ...
+
+# OK
+foo: Foo[object] = Bar()
+
+
 [case testPEP695InheritInvariant]
 class Invariant[T]:
     x: T
