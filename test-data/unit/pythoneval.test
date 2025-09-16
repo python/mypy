@@ -1479,9 +1479,9 @@ y: str
 if isinstance(x, int):
     reveal_type(x)
 [out]
-_testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: have distinct disjoint bases
 _testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: error: Statement is unreachable
-_testIsInstanceAdHocIntersectionWithStrAndBytes.py:6: error: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:6: error: Subclass of "str" and "int" cannot exist: have distinct disjoint bases
 _testIsInstanceAdHocIntersectionWithStrAndBytes.py:7: error: Statement is unreachable
 
 [case testAsyncioFutureWait]
@@ -2188,3 +2188,19 @@ reveal_type([*map(str, x)])
 [out]
 _testUnpackIteratorBuiltins.py:4: note: Revealed type is "builtins.list[builtins.int]"
 _testUnpackIteratorBuiltins.py:5: note: Revealed type is "builtins.list[builtins.str]"
+
+[case testReturnFallbackInferenceDict]
+# Requires full dict stubs.
+from typing import Dict, Mapping, TypeVar, Union
+
+K = TypeVar("K")
+V = TypeVar("V")
+K2 = TypeVar("K2")
+V2 = TypeVar("V2")
+
+def func(one: Dict[K, V], two: Mapping[K2, V2]) -> Dict[Union[K, K2], Union[V, V2]]:
+    ...
+
+def caller(arg1: Mapping[K, V], arg2: Mapping[K2, V2]) -> Dict[Union[K, K2], Union[V, V2]]:
+    _arg1 = arg1 if isinstance(arg1, dict) else dict(arg1)
+    return func(_arg1, arg2)

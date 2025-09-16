@@ -123,7 +123,7 @@ reveal_type(empty)  # N: Revealed type is "__main__.Variadic[()]"
 omitted: Variadic
 reveal_type(omitted)  # N: Revealed type is "__main__.Variadic[Unpack[builtins.tuple[Any, ...]]]"
 
-bad: Variadic[Unpack[Tuple[int, ...]], str, Unpack[Tuple[bool, ...]]]  # E: More than one Unpack in a type is not allowed
+bad: Variadic[Unpack[Tuple[int, ...]], str, Unpack[Tuple[bool, ...]]]  # E: More than one variadic Unpack in a type is not allowed
 reveal_type(bad)  # N: Revealed type is "__main__.Variadic[Unpack[builtins.tuple[builtins.int, ...]], builtins.str]"
 
 bad2: Unpack[Tuple[int, ...]]  # E: Unpack is only valid in a variadic position
@@ -353,12 +353,12 @@ expect_variadic_array_2(u)
 Ts = TypeVarTuple("Ts")
 Ts2 = TypeVarTuple("Ts2")
 
-def bad(x: Tuple[int, Unpack[Ts], str, Unpack[Ts2]]) -> None: # E: More than one Unpack in a type is not allowed
+def bad(x: Tuple[int, Unpack[Ts], str, Unpack[Ts2]]) -> None: # E: More than one variadic Unpack in a type is not allowed
 
     ...
 reveal_type(bad)  # N: Revealed type is "def [Ts, Ts2] (x: tuple[builtins.int, Unpack[Ts`-1], builtins.str])"
 
-def bad2(x: Tuple[int, Unpack[Tuple[int, ...]], str, Unpack[Tuple[str, ...]]]) -> None:  # E: More than one Unpack in a type is not allowed
+def bad2(x: Tuple[int, Unpack[Tuple[int, ...]], str, Unpack[Tuple[str, ...]]]) -> None:  # E: More than one variadic Unpack in a type is not allowed
     ...
 reveal_type(bad2)  # N: Revealed type is "def (x: tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]], builtins.str])"
 [builtins fixtures/tuple.pyi]
@@ -571,7 +571,7 @@ from typing_extensions import Unpack, TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
 Us = TypeVarTuple("Us")
-a: Callable[[Unpack[Ts], Unpack[Us]], int]  # E: More than one Unpack in a type is not allowed
+a: Callable[[Unpack[Ts], Unpack[Us]], int]  # E: More than one variadic Unpack in a type is not allowed
 reveal_type(a)  # N: Revealed type is "def [Ts, Us] (*Unpack[Ts`-1]) -> builtins.int"
 b: Callable[[Unpack], int]  # E: Unpack[...] requires exactly one type argument
 reveal_type(b)  # N: Revealed type is "def (*Any) -> builtins.int"
@@ -725,15 +725,15 @@ Ts = TypeVarTuple("Ts")
 Us = TypeVarTuple("Us")
 class G(Generic[Unpack[Ts]]): ...
 
-A = Tuple[Unpack[Ts], Unpack[Us]]  # E: More than one Unpack in a type is not allowed
+A = Tuple[Unpack[Ts], Unpack[Us]]  # E: More than one variadic Unpack in a type is not allowed
 x: A[int, str]
 reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 
-B = Callable[[Unpack[Ts], Unpack[Us]], int]  # E: More than one Unpack in a type is not allowed
+B = Callable[[Unpack[Ts], Unpack[Us]], int]  # E: More than one variadic Unpack in a type is not allowed
 y: B[int, str]
 reveal_type(y)  # N: Revealed type is "def (builtins.int, builtins.str) -> builtins.int"
 
-C = G[Unpack[Ts], Unpack[Us]]  # E: More than one Unpack in a type is not allowed
+C = G[Unpack[Ts], Unpack[Us]]  # E: More than one variadic Unpack in a type is not allowed
 z: C[int, str]
 reveal_type(z)  # N: Revealed type is "__main__.G[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
@@ -2223,12 +2223,12 @@ cb2(1, 2, 3, a="a", b="b")
 cb2(1, a="a", b="b")  # E: Too few arguments
 cb2(1, 2, 3, a="a")  # E: Missing named argument "b"
 
-bad1: Callable[[Unpack[Ints], Unpack[Ints]], None]  # E: More than one Unpack in a type is not allowed
+bad1: Callable[[Unpack[Ints], Unpack[Ints]], None]  # E: More than one variadic Unpack in a type is not allowed
 reveal_type(bad1)  # N: Revealed type is "def (*builtins.int)"
 bad2: Callable[[Unpack[Keywords], Unpack[Keywords]], None]  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple)
 reveal_type(bad2)  # N: Revealed type is "def (*Any, **Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
 bad3: Callable[[Unpack[Keywords], Unpack[Ints]], None]  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple) \
-                                                        # E: More than one Unpack in a type is not allowed
+                                                        # E: More than one variadic Unpack in a type is not allowed
 reveal_type(bad3)  # N: Revealed type is "def (*Any)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

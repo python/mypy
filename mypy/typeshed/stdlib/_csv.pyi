@@ -3,7 +3,7 @@ import sys
 from _typeshed import SupportsWrite
 from collections.abc import Iterable
 from typing import Any, Final, Literal, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, disjoint_base
 
 __version__: Final[str]
 
@@ -24,6 +24,7 @@ class Error(Exception): ...
 
 _DialectLike: TypeAlias = str | Dialect | csv.Dialect | type[Dialect | csv.Dialect]
 
+@disjoint_base
 class Dialect:
     delimiter: str
     quotechar: str | None
@@ -35,7 +36,7 @@ class Dialect:
     strict: bool
     def __new__(
         cls,
-        dialect: _DialectLike | None = ...,
+        dialect: _DialectLike | None = None,
         delimiter: str = ",",
         doublequote: bool = True,
         escapechar: str | None = None,
@@ -48,6 +49,7 @@ class Dialect:
 
 if sys.version_info >= (3, 10):
     # This class calls itself _csv.reader.
+    @disjoint_base
     class Reader:
         @property
         def dialect(self) -> Dialect: ...
@@ -56,6 +58,7 @@ if sys.version_info >= (3, 10):
         def __next__(self) -> list[str]: ...
 
     # This class calls itself _csv.writer.
+    @disjoint_base
     class Writer:
         @property
         def dialect(self) -> Dialect: ...

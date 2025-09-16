@@ -2346,3 +2346,35 @@ gc: G[D2]
 reveal_type(gb.test())  # N: Revealed type is "typing.Sequence[__main__.D1]"
 reveal_type(gc.test())  # N: Revealed type is "builtins.list[__main__.D2]"
 [builtins fixtures/list.pyi]
+
+[case testEnumImplicitlyFinalForSelfType]
+from enum import Enum
+from typing import Self
+
+# This enum has members and so is implicitly final.
+# Foo and Self are interchangeable within the class.
+class Foo(Enum):
+    A = 1
+
+    @classmethod
+    def foo(cls) -> Self:
+        return Foo.A
+
+    @classmethod
+    def foo2(cls) -> Self:
+        return cls.bar()
+
+    @classmethod
+    def bar(cls) -> Foo:
+        ...
+
+# This enum is empty and should not be assignable to Self
+class Bar(Enum):
+    @classmethod
+    def foo(cls) -> Self:
+        return cls.bar()  # E: Incompatible return value type (got "Bar", expected "Self")
+
+    @classmethod
+    def bar(cls) -> Bar:
+        ...
+[builtins fixtures/classmethod.pyi]

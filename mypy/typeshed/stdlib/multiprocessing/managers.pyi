@@ -38,6 +38,7 @@ class Namespace:
 _Namespace: TypeAlias = Namespace
 
 class Token:
+    __slots__ = ("typeid", "address", "id")
     typeid: str | bytes | None
     address: _Address | None
     id: str | bytes | int | None

@@ -47,6 +47,8 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
         if info:
             for base in info.bases:
                 base.accept(self)
+            if info.special_alias:
+                info.special_alias.accept(self)
 
     def visit_type_alias_expr(self, o: TypeAliasExpr, /) -> None:
         super().visit_type_alias_expr(o)

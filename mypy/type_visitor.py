@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import Any, Callable, Final, Generic, TypeVar, cast
+from typing import Any, Final, Generic, TypeVar, cast
 
 from mypy_extensions import mypyc_attr, trait
 
@@ -228,7 +228,7 @@ class TypeTranslator(TypeVisitor[Type]):
             last_known_value = raw_last_known_value
         return Instance(
             typ=t.type,
-            args=self.translate_types(t.args),
+            args=self.translate_type_tuple(t.args),
             line=t.line,
             column=t.column,
             last_known_value=last_known_value,
@@ -242,7 +242,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_parameters(self, t: Parameters, /) -> Type:
-        return t.copy_modified(arg_types=self.translate_types(t.arg_types))
+        return t.copy_modified(arg_types=self.translate_type_list(t.arg_types))
 
     def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> Type:
         return t
@@ -255,14 +255,14 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType, /) -> Type:
         return t.copy_modified(
-            arg_types=self.translate_types(t.arg_types),
+            arg_types=self.translate_type_list(t.arg_types),
             ret_type=t.ret_type.accept(self),
             variables=self.translate_variables(t.variables),
         )
 
     def visit_tuple_type(self, t: TupleType, /) -> Type:
         return TupleType(
-            self.translate_types(t.items),
+            self.translate_type_list(t.items),
             # TODO: This appears to be unsafe.
             cast(Any, t.partial_fallback.accept(self)),
             t.line,
@@ -299,7 +299,7 @@ class TypeTranslator(TypeVisitor[Type]):
             return cached
 
         result = UnionType(
-            self.translate_types(t.items),
+            self.translate_type_list(t.items),
             t.line,
             t.column,
             uses_pep604_syntax=t.uses_pep604_syntax,
@@ -308,8 +308,11 @@ class TypeTranslator(TypeVisitor[Type]):
             self.set_cached(t, result)
         return result
 
-    def translate_types(self, types: Iterable[Type]) -> list[Type]:
+    def translate_type_list(self, types: list[Type]) -> list[Type]:
         return [t.accept(self) for t in types]
+
+    def translate_type_tuple(self, types: tuple[Type, ...]) -> tuple[Type, ...]:
+        return tuple(t.accept(self) for t in types)
 
     def translate_variables(
         self, variables: Sequence[TypeVarLikeType]
@@ -350,15 +353,18 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     # TODO: check that we don't have existing violations of this rule.
     """
 
-    def __init__(self, strategy: Callable[[list[T]], T]) -> None:
-        self.strategy = strategy
+    def __init__(self) -> None:
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases: set[TypeAliasType] = set()
+        self.seen_aliases: set[TypeAliasType] | None = None
         # By default, we eagerly expand type aliases, and query also types in the
         # alias target. In most cases this is a desired behavior, but we may want
         # to skip targets in some cases (e.g. when collecting type variables).
         self.skip_alias_target = False
+
+    @abstractmethod
+    def strategy(self, items: list[T]) -> T:
+        raise NotImplementedError
 
     def visit_unbound_type(self, t: UnboundType, /) -> T:
         return self.query_types(t.args)
@@ -437,14 +443,15 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType, /) -> T:
-        # Skip type aliases already visited types to avoid infinite recursion.
-        # TODO: Ideally we should fire subvisitors here (or use caching) if we care
-        #       about duplicates.
-        if t in self.seen_aliases:
-            return self.strategy([])
-        self.seen_aliases.add(t)
         if self.skip_alias_target:
             return self.query_types(t.args)
+        # Skip type aliases already visited types to avoid infinite recursion
+        # (also use this as a simple-minded cache).
+        if self.seen_aliases is None:
+            self.seen_aliases = set()
+        elif t in self.seen_aliases:
+            return self.strategy([])
+        self.seen_aliases.add(t)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:
@@ -522,7 +529,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return self.query_types([t.upper_bound, t.default] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType, /) -> bool:
-        return self.query_types([t.upper_bound, t.default])
+        return self.query_types([t.upper_bound, t.default, t.prefix])
 
     def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> bool:
         return self.query_types([t.upper_bound, t.default])
@@ -577,16 +584,15 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType, /) -> bool:
-        # Skip type aliases already visited types to avoid infinite recursion.
-        # TODO: Ideally we should fire subvisitors here (or use caching) if we care
-        #       about duplicates.
+        if self.skip_alias_target:
+            return self.query_types(t.args)
+        # Skip type aliases already visited types to avoid infinite recursion
+        # (also use this as a simple-minded cache).
         if self.seen_aliases is None:
             self.seen_aliases = set()
         elif t in self.seen_aliases:
             return self.default
         self.seen_aliases.add(t)
-        if self.skip_alias_target:
-            return self.query_types(t.args)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:

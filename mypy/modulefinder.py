@@ -796,6 +796,7 @@ def default_lib_path(
         custom_typeshed_dir = os.path.abspath(custom_typeshed_dir)
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
         mypy_extensions_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-extensions")
+        mypy_native_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-native")
         versions_file = os.path.join(typeshed_dir, "VERSIONS")
         if not os.path.isdir(typeshed_dir) or not os.path.isfile(versions_file):
             print(
@@ -811,11 +812,13 @@ def default_lib_path(
             data_dir = auto
         typeshed_dir = os.path.join(data_dir, "typeshed", "stdlib")
         mypy_extensions_dir = os.path.join(data_dir, "typeshed", "stubs", "mypy-extensions")
+        mypy_native_dir = os.path.join(data_dir, "typeshed", "stubs", "mypy-native")
     path.append(typeshed_dir)
 
-    # Get mypy-extensions stubs from typeshed, since we treat it as an
-    # "internal" library, similar to typing and typing-extensions.
+    # Get mypy-extensions and mypy-native stubs from typeshed, since we treat them as
+    # "internal" libraries, similar to typing and typing-extensions.
     path.append(mypy_extensions_dir)
+    path.append(mypy_native_dir)
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != "win32":

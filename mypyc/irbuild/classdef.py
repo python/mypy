@@ -66,7 +66,7 @@ from mypyc.irbuild.function import (
 )
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
-from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
+from mypyc.primitives.dict_ops import dict_new_op, exact_dict_set_item_op
 from mypyc.primitives.generic_ops import (
     iter_op,
     next_op,
@@ -271,8 +271,8 @@ class NonExtClassBuilder(ClassBuilder):
         )
 
         # Add the non-extension class to the dict
-        self.builder.primitive_op(
-            dict_set_item_op,
+        self.builder.call_c(
+            exact_dict_set_item_op,
             [
                 self.builder.load_globals_dict(),
                 self.builder.load_str(self.cdef.name),
@@ -487,8 +487,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     builder.add(InitStatic(tp, cdef.name, builder.module_name, NAMESPACE_TYPE))
 
     # Add it to the dict
-    builder.primitive_op(
-        dict_set_item_op, [builder.load_globals_dict(), builder.load_str(cdef.name), tp], cdef.line
+    builder.call_c(
+        exact_dict_set_item_op,
+        [builder.load_globals_dict(), builder.load_str(cdef.name), tp],
+        cdef.line,
     )
 
     return tp
@@ -672,7 +674,7 @@ def add_non_ext_class_attr_ann(
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
 
     key = builder.load_str(lvalue.name)
-    builder.primitive_op(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
+    builder.call_c(exact_dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
 
 def add_non_ext_class_attr(
@@ -843,7 +845,9 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
             )
             builder.activate_block(regular_block)
             rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
-            retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
+            retval = builder.coerce(
+                builder.builder.unary_not(eqval, line, likely_bool=True), rettype, line
+            )
             builder.add(Return(retval))
             builder.activate_block(not_implemented_block)
             builder.add(Return(not_implemented))
