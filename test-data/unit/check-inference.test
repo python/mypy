@@ -3781,10 +3781,18 @@ from typing import Any, Dict, NoReturn, NoReturn, Union
 
 def foo() -> Union[Dict[str, Any], Dict[int, Any]]:
     return {}
+[builtins fixtures/dict.pyi]
+
+[case testExistingEmptyCollectionDoesNotUpcast]
+from typing import Any, Dict, NoReturn, NoReturn, Union
 
 empty: Dict[NoReturn, NoReturn]
+
+def foo() -> Dict[str, Any]:
+    return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "dict[str, Any]")
+
 def bar() -> Union[Dict[str, Any], Dict[int, Any]]:
-    return empty
+    return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "Union[dict[str, Any], dict[int, Any]]")
 [builtins fixtures/dict.pyi]
 
 [case testUpperBoundInferenceFallbackNotOverused]

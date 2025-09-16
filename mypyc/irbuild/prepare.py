@@ -38,7 +38,7 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import PROPSET_PREFIX, SELF_NAME, get_id_from_name
+from mypyc.common import FAST_PREFIX, PROPSET_PREFIX, SELF_NAME, get_id_from_name
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -106,6 +106,7 @@ def build_type_map(
             class_ir.children = None
         mapper.type_to_ir[cdef.info] = class_ir
         mapper.symbol_fullnames.add(class_ir.fullname)
+        class_ir.is_enum = cdef.info.is_enum and len(cdef.info.enum_members) > 0
 
     # Populate structural information in class IR for extension classes.
     for module, cdef in classes:
@@ -158,7 +159,13 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
         for node in module.names.values():
-            if isinstance(node.node, TypeInfo) and is_from_module(node.node, module):
+            if (
+                isinstance(node.node, TypeInfo)
+                and is_from_module(node.node, module)
+                and not node.node.is_newtype
+                and not node.node.is_named_tuple
+                and node.node.typeddict_type is None
+            ):
                 ir = deser_ctx.classes[node.node.fullname]
                 mapper.type_to_ir[node.node] = ir
                 mapper.symbol_fullnames.add(node.node.fullname)
@@ -192,9 +199,9 @@ def prepare_func_def(
     create_generator_class_if_needed(module_name, class_name, fdef, mapper)
 
     kind = (
-        FUNC_STATICMETHOD
-        if fdef.is_static
-        else (FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
+        FUNC_CLASSMETHOD
+        if fdef.is_class
+        else (FUNC_STATICMETHOD if fdef.is_static else FUNC_NORMAL)
     )
     sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
     decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
@@ -270,6 +277,36 @@ def prepare_method_def(
             ir.property_types[node.name] = decl.sig.ret_type
 
 
+def prepare_fast_path(
+    ir: ClassIR,
+    module_name: str,
+    cdef: ClassDef,
+    mapper: Mapper,
+    node: SymbolNode | None,
+    options: CompilerOptions,
+) -> None:
+    """Add fast (direct) variants of methods in non-extension classes."""
+    if ir.is_enum:
+        # We check that non-empty enums are implicitly final in mypy, so we
+        # can generate direct calls to enum methods.
+        if isinstance(node, OverloadedFuncDef):
+            if node.is_property:
+                return
+            node = node.impl
+        if not isinstance(node, FuncDef):
+            # TODO: support decorated methods (at least @classmethod and @staticmethod).
+            return
+        # The simplest case is a regular or overloaded method without decorators. In this
+        # case we can generate practically identical IR method body, but with a signature
+        # suitable for direct calls (usual non-extension class methods are converted to
+        # callable classes, and thus have an extra __mypyc_self__ argument).
+        name = FAST_PREFIX + node.name
+        sig = mapper.fdef_to_sig(node, options.strict_dunders_typing)
+        decl = FuncDecl(name, cdef.name, module_name, sig, FUNC_NORMAL)
+        ir.method_decls[name] = decl
+    return
+
+
 def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
     # Checks to ensure supported property decorator semantics
     if len(prop.items) != 2:
@@ -320,12 +357,28 @@ def prepare_class_def(
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    attrs = get_mypyc_attrs(cdef)
+    attrs, attrs_lines = get_mypyc_attrs(cdef)
     if attrs.get("allow_interpreted_subclasses") is True:
         ir.allow_interpreted_subclasses = True
     if attrs.get("serializable") is True:
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
+
+    free_list_len = attrs.get("free_list_len")
+    if free_list_len is not None:
+        line = attrs_lines["free_list_len"]
+        if ir.is_trait:
+            errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if ir.allow_interpreted_subclasses:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
+                path,
+                line,
+            )
+        if free_list_len == 1:
+            ir.reuse_freed_instance = True
+        else:
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Check for subclassing from builtin types
     for cls in info.mro:
@@ -524,21 +577,57 @@ def add_setter_declaration(
     ir.method_decls[setter_name] = decl
 
 
+def check_matching_args(init_sig: FuncSignature, new_sig: FuncSignature) -> bool:
+    num_init_args = len(init_sig.args) - init_sig.num_bitmap_args
+    num_new_args = len(new_sig.args) - new_sig.num_bitmap_args
+    if num_init_args != num_new_args:
+        return False
+
+    for idx in range(1, num_init_args):
+        init_arg = init_sig.args[idx]
+        new_arg = new_sig.args[idx]
+        if init_arg.type != new_arg.type:
+            return False
+
+        if init_arg.kind != new_arg.kind:
+            return False
+
+    return True
+
+
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
+
+    new_node: SymbolNode | None = None
+    new_symbol = cdef.info.get("__new__")
+    # We are only interested in __new__ method defined in a user-defined class,
+    # so we ignore it if it comes from a builtin type. It's usually builtins.object
+    # but could also be builtins.type for metaclasses so we detect the prefix which
+    # matches both.
+    if new_symbol and new_symbol.fullname and not new_symbol.fullname.startswith("builtins."):
+        new_node = new_symbol.node
+    if isinstance(new_node, (Decorator, OverloadedFuncDef)):
+        new_node = get_func_def(new_node)
     if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
         init_sig = mapper.fdef_to_sig(init_node, True)
+        args_match = True
+        if isinstance(new_node, FuncDef):
+            new_sig = mapper.fdef_to_sig(new_node, True)
+            args_match = check_matching_args(init_sig, new_sig)
 
         defining_ir = mapper.type_to_ir.get(init_node.info)
         # If there is a nontrivial __init__ that wasn't defined in an
         # extension class, we need to make the constructor take *args,
         # **kwargs so it can call tp_init.
         if (
-            defining_ir is None
-            or not defining_ir.is_ext_class
-            or cdef.info["__init__"].plugin_generated
-        ) and init_node.info.fullname != "builtins.object":
+            (
+                defining_ir is None
+                or not defining_ir.is_ext_class
+                or cdef.info["__init__"].plugin_generated
+            )
+            and init_node.info.fullname != "builtins.object"
+        ) or not args_match:
             init_sig = FuncSignature(
                 [
                     init_sig.args[0],
@@ -578,6 +667,8 @@ def prepare_non_ext_class_def(
             # Handle case for regular function overload
             else:
                 prepare_method_def(ir, module_name, cdef, mapper, get_func_def(node.node), options)
+
+        prepare_fast_path(ir, module_name, cdef, mapper, node.node, options)
 
     if any(cls in mapper.type_to_ir and mapper.type_to_ir[cls].is_ext_class for cls in info.mro):
         errors.error(
