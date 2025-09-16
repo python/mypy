@@ -76,7 +76,7 @@ L2:
     r12 = load_address r11
     r13 = PyObject_Vectorcall(r9, r12, 2, 0)
     keep_alive r1, r10
-    r14 = CPyDict_SetItem(r2, r1, r13)
+    r14 = PyDict_SetItem(r2, r1, r13)
     r15 = r14 >= 0 :: signed
     r6 = r13
 L3:
@@ -214,7 +214,7 @@ L2:
     r12 = load_address r11
     r13 = PyObject_Vectorcall(r9, r12, 2, 0)
     keep_alive r1, r10
-    r14 = CPyDict_SetItem(r2, r1, r13)
+    r14 = PyDict_SetItem(r2, r1, r13)
     r15 = r14 >= 0 :: signed
     r6 = r13
 L3:

@@ -435,6 +435,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.flavor,
             snapshot_type(typ.upper_bound),
             snapshot_type(typ.default),
+            snapshot_type(typ.prefix),
         )
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> SnapshotItem:

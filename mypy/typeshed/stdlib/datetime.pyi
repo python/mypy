@@ -2,7 +2,7 @@ import sys
 from abc import abstractmethod
 from time import struct_time
 from typing import ClassVar, Final, NoReturn, SupportsIndex, final, overload, type_check_only
-from typing_extensions import CapsuleType, Self, TypeAlias, deprecated
+from typing_extensions import CapsuleType, Self, TypeAlias, deprecated, disjoint_base
 
 if sys.version_info >= (3, 11):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR", "UTC")
@@ -51,6 +51,7 @@ class _IsoCalendarDate(tuple[int, int, int]):
     @property
     def weekday(self) -> int: ...
 
+@disjoint_base
 class date:
     min: ClassVar[date]
     max: ClassVar[date]
@@ -112,6 +113,7 @@ class date:
     def isoweekday(self) -> int: ...
     def isocalendar(self) -> _IsoCalendarDate: ...
 
+@disjoint_base
 class time:
     min: ClassVar[time]
     max: ClassVar[time]
@@ -191,6 +193,7 @@ class time:
 _Date: TypeAlias = date
 _Time: TypeAlias = time
 
+@disjoint_base
 class timedelta:
     min: ClassVar[timedelta]
     max: ClassVar[timedelta]
@@ -239,6 +242,7 @@ class timedelta:
     def __bool__(self) -> bool: ...
     def __hash__(self) -> int: ...
 
+@disjoint_base
 class datetime(date):
     min: ClassVar[datetime]
     max: ClassVar[datetime]

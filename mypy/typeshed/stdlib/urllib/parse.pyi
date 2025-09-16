@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Iterable, Mapping, Sequence
 from types import GenericAlias
-from typing import Any, AnyStr, Generic, Literal, NamedTuple, Protocol, overload, type_check_only
+from typing import Any, AnyStr, Final, Generic, Literal, NamedTuple, Protocol, overload, type_check_only
 from typing_extensions import TypeAlias
 
 __all__ = [
@@ -28,23 +28,26 @@ __all__ = [
     "SplitResultBytes",
 ]
 
-uses_relative: list[str]
-uses_netloc: list[str]
-uses_params: list[str]
-non_hierarchical: list[str]
-uses_query: list[str]
-uses_fragment: list[str]
-scheme_chars: str
+uses_relative: Final[list[str]]
+uses_netloc: Final[list[str]]
+uses_params: Final[list[str]]
+non_hierarchical: Final[list[str]]
+uses_query: Final[list[str]]
+uses_fragment: Final[list[str]]
+scheme_chars: Final[str]
 if sys.version_info < (3, 11):
-    MAX_CACHE_SIZE: int
+    MAX_CACHE_SIZE: Final[int]
 
 class _ResultMixinStr:
+    __slots__ = ()
     def encode(self, encoding: str = "ascii", errors: str = "strict") -> _ResultMixinBytes: ...
 
 class _ResultMixinBytes:
+    __slots__ = ()
     def decode(self, encoding: str = "ascii", errors: str = "strict") -> _ResultMixinStr: ...
 
 class _NetlocResultMixinBase(Generic[AnyStr]):
+    __slots__ = ()
     @property
     def username(self) -> AnyStr | None: ...
     @property
@@ -55,8 +58,11 @@ class _NetlocResultMixinBase(Generic[AnyStr]):
     def port(self) -> int | None: ...
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): ...
-class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes): ...
+class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr):
+    __slots__ = ()
+
+class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes):
+    __slots__ = ()
 
 class _DefragResultBase(NamedTuple, Generic[AnyStr]):
     url: AnyStr

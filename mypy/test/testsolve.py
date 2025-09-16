@@ -64,12 +64,14 @@ class SolveSuite(Suite):
         )
 
     def test_no_constraints_for_var(self) -> None:
-        self.assert_solve([self.fx.t], [], [self.fx.uninhabited])
-        self.assert_solve([self.fx.t, self.fx.s], [], [self.fx.uninhabited, self.fx.uninhabited])
+        self.assert_solve([self.fx.t], [], [self.fx.a_uninhabited])
+        self.assert_solve(
+            [self.fx.t, self.fx.s], [], [self.fx.a_uninhabited, self.fx.a_uninhabited]
+        )
         self.assert_solve(
             [self.fx.t, self.fx.s],
             [self.supc(self.fx.s, self.fx.a)],
-            [self.fx.uninhabited, self.fx.a],
+            [self.fx.a_uninhabited, self.fx.a],
         )
 
     def test_simple_constraints_with_dynamic_type(self) -> None:
@@ -116,7 +118,7 @@ class SolveSuite(Suite):
         self.assert_solve(
             [self.fx.t, self.fx.u],
             [],
-            [self.fx.uninhabited, self.fx.uninhabited],
+            [self.fx.a_uninhabited, self.fx.a_uninhabited],
             allow_polymorphic=True,
         )
 
@@ -152,7 +154,7 @@ class SolveSuite(Suite):
         self.assert_solve(
             [self.fx.ub, self.fx.uc],
             [self.subc(self.fx.ub, self.fx.uc)],
-            [self.fx.uninhabited, self.fx.uninhabited],
+            [self.fx.a_uninhabited, self.fx.a_uninhabited],
             [],
             allow_polymorphic=True,
         )

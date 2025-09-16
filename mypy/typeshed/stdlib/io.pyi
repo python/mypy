@@ -67,7 +67,9 @@ class TextIOBase(_TextIOBase, IOBase): ...
 
 if sys.version_info >= (3, 14):
     class Reader(Protocol[_T_co]):
+        __slots__ = ()
         def read(self, size: int = ..., /) -> _T_co: ...
 
     class Writer(Protocol[_T_contra]):
+        __slots__ = ()
         def write(self, data: _T_contra, /) -> int: ...

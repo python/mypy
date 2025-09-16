@@ -35,6 +35,7 @@ zstd_version_info: Final[tuple[int, int, int]]
 COMPRESSION_LEVEL_DEFAULT: Final = _zstd.ZSTD_CLEVEL_DEFAULT
 
 class FrameInfo:
+    __slots__ = ("decompressed_size", "dictionary_id")
     decompressed_size: int
     dictionary_id: int
     def __init__(self, decompressed_size: int, dictionary_id: int) -> None: ...

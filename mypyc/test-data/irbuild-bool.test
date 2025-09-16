@@ -473,3 +473,181 @@ L0:
     r0 = x == y
     r1 = r0 ^ 1
     return r1
+
+[case testUnaryNotWithPrimitiveTypes]
+def not_obj(x: object) -> bool:
+    return not x
+
+def not_int(x: int) -> bool:
+    return not x
+
+def not_str(x: str) -> bool:
+    return not x
+
+def not_list(x: list[int]) -> bool:
+    return not x
+
+def not_tuple(x: tuple[int, ...]) -> bool:
+    return not x
+
+def not_dict(x: dict[str, int]) -> bool:
+    return not x
+[out]
+def not_obj(x):
+    x :: object
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = PyObject_Not(x)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def not_int(x):
+    x :: int
+    r0 :: bit
+L0:
+    r0 = int_eq x, 0
+    return r0
+def not_str(x):
+    x :: str
+    r0, r1 :: bit
+L0:
+    r0 = CPyStr_IsTrue(x)
+    r1 = r0 ^ 1
+    return r1
+def not_list(x):
+    x :: list
+    r0 :: native_int
+    r1 :: short_int
+    r2, r3 :: bit
+L0:
+    r0 = var_object_size x
+    r1 = r0 << 1
+    r2 = int_ne r1, 0
+    r3 = r2 ^ 1
+    return r3
+def not_tuple(x):
+    x :: tuple
+    r0 :: native_int
+    r1 :: short_int
+    r2, r3 :: bit
+L0:
+    r0 = var_object_size x
+    r1 = r0 << 1
+    r2 = int_ne r1, 0
+    r3 = r2 ^ 1
+    return r3
+def not_dict(x):
+    x :: dict
+    r0 :: native_int
+    r1 :: short_int
+    r2, r3 :: bit
+L0:
+    r0 = PyDict_Size(x)
+    r1 = r0 << 1
+    r2 = int_ne r1, 0
+    r3 = r2 ^ 1
+    return r3
+
+[case testUnaryNotWithNativeClass]
+from __future__ import annotations
+
+class C:
+    def __bool__(self) -> bool:
+        return True
+
+def not_c(x: C) -> bool:
+    return not x
+
+def not_c_opt(x: C | None) -> bool:
+    return not x
+[out]
+def C.__bool__(self):
+    self :: __main__.C
+L0:
+    return 1
+def not_c(x):
+    x :: __main__.C
+    r0, r1 :: bool
+L0:
+    r0 = x.__bool__()
+    r1 = r0 ^ 1
+    return r1
+def not_c_opt(x):
+    x :: union[__main__.C, None]
+    r0 :: object
+    r1, r2 :: bit
+    r3 :: __main__.C
+    r4, r5 :: bool
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = x == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    goto L3
+L2:
+    r3 = unchecked borrow cast(__main__.C, x)
+    r4 = r3.__bool__()
+    r5 = r4 ^ 1
+    r2 = r5
+L3:
+    keep_alive x
+    return r2
+
+[case testUnaryNotWithOptionalPrimitiveTypes]
+from __future__ import annotations
+
+def not_str(x: str | None) -> bool:
+    return not x
+
+def not_list(x: list[int] | None) -> bool:
+    return not x
+[out]
+def not_str(x):
+    x :: union[str, None]
+    r0 :: object
+    r1, r2 :: bit
+    r3 :: str
+    r4, r5 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = x == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    goto L3
+L2:
+    r3 = unchecked borrow cast(str, x)
+    r4 = CPyStr_IsTrue(r3)
+    r5 = r4 ^ 1
+    r2 = r5
+L3:
+    keep_alive x
+    return r2
+def not_list(x):
+    x :: union[list, None]
+    r0 :: object
+    r1, r2 :: bit
+    r3 :: list
+    r4 :: native_int
+    r5 :: short_int
+    r6, r7 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = x == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    goto L3
+L2:
+    r3 = unchecked borrow cast(list, x)
+    r4 = var_object_size r3
+    r5 = r4 << 1
+    r6 = int_ne r5, 0
+    r7 = r6 ^ 1
+    r2 = r7
+L3:
+    keep_alive x
+    return r2

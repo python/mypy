@@ -4,8 +4,8 @@ import types
 from _typeshed import SupportsKeysAndGetItem, Unused
 from builtins import property as _builtins_property
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, Generic, Literal, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from typing import Any, Final, Generic, Literal, TypeVar, overload
+from typing_extensions import Self, TypeAlias, disjoint_base
 
 __all__ = ["EnumMeta", "Enum", "IntEnum", "Flag", "IntFlag", "auto", "unique"]
 
@@ -228,16 +228,25 @@ class Enum(metaclass=EnumMeta):
 if sys.version_info >= (3, 11):
     class ReprEnum(Enum): ...
 
-if sys.version_info >= (3, 11):
-    _IntEnumBase = ReprEnum
-else:
-    _IntEnumBase = Enum
+if sys.version_info >= (3, 12):
+    class IntEnum(int, ReprEnum):
+        _value_: int
+        @_magic_enum_attr
+        def value(self) -> int: ...
+        def __new__(cls, value: int) -> Self: ...
 
-class IntEnum(int, _IntEnumBase):
-    _value_: int
-    @_magic_enum_attr
-    def value(self) -> int: ...
-    def __new__(cls, value: int) -> Self: ...
+else:
+    if sys.version_info >= (3, 11):
+        _IntEnumBase = ReprEnum
+    else:
+        _IntEnumBase = Enum
+
+    @disjoint_base
+    class IntEnum(int, _IntEnumBase):
+        _value_: int
+        @_magic_enum_attr
+        def value(self) -> int: ...
+        def __new__(cls, value: int) -> Self: ...
 
 def unique(enumeration: _EnumerationT) -> _EnumerationT: ...
 
@@ -277,9 +286,9 @@ if sys.version_info >= (3, 11):
         NAMED_FLAGS = "multi-flag aliases may not contain unnamed flags"
         UNIQUE = "one name per value"
 
-    CONTINUOUS = EnumCheck.CONTINUOUS
-    NAMED_FLAGS = EnumCheck.NAMED_FLAGS
-    UNIQUE = EnumCheck.UNIQUE
+    CONTINUOUS: Final = EnumCheck.CONTINUOUS
+    NAMED_FLAGS: Final = EnumCheck.NAMED_FLAGS
+    UNIQUE: Final = EnumCheck.UNIQUE
 
     class verify:
         def __init__(self, *checks: EnumCheck) -> None: ...
@@ -291,17 +300,17 @@ if sys.version_info >= (3, 11):
         EJECT = "eject"
         KEEP = "keep"
 
-    STRICT = FlagBoundary.STRICT
-    CONFORM = FlagBoundary.CONFORM
-    EJECT = FlagBoundary.EJECT
-    KEEP = FlagBoundary.KEEP
+    STRICT: Final = FlagBoundary.STRICT
+    CONFORM: Final = FlagBoundary.CONFORM
+    EJECT: Final = FlagBoundary.EJECT
+    KEEP: Final = FlagBoundary.KEEP
 
     def global_str(self: Enum) -> str: ...
     def global_enum(cls: _EnumerationT, update_str: bool = False) -> _EnumerationT: ...
     def global_enum_repr(self: Enum) -> str: ...
     def global_flag_repr(self: Flag) -> str: ...
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 12):
     # The body of the class is the same, but the base classes are different.
     class IntFlag(int, ReprEnum, Flag, boundary=KEEP):  # type: ignore[misc]  # complaints about incompatible bases
         def __new__(cls, value: int) -> Self: ...
@@ -313,7 +322,21 @@ if sys.version_info >= (3, 11):
         __rand__ = __and__
         __rxor__ = __xor__
 
+elif sys.version_info >= (3, 11):
+    # The body of the class is the same, but the base classes are different.
+    @disjoint_base
+    class IntFlag(int, ReprEnum, Flag, boundary=KEEP):  # type: ignore[misc]  # complaints about incompatible bases
+        def __new__(cls, value: int) -> Self: ...
+        def __or__(self, other: int) -> Self: ...
+        def __and__(self, other: int) -> Self: ...
+        def __xor__(self, other: int) -> Self: ...
+        def __invert__(self) -> Self: ...
+        __ror__ = __or__
+        __rand__ = __and__
+        __rxor__ = __xor__
+
 else:
+    @disjoint_base
     class IntFlag(int, Flag):  # type: ignore[misc]  # complaints about incompatible bases
         def __new__(cls, value: int) -> Self: ...
         def __or__(self, other: int) -> Self: ...

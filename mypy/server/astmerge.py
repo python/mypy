@@ -489,6 +489,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_param_spec(self, typ: ParamSpecType) -> None:
         typ.upper_bound.accept(self)
         typ.default.accept(self)
+        typ.prefix.accept(self)
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
         typ.upper_bound.accept(self)

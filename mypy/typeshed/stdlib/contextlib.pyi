@@ -47,6 +47,7 @@ _CM_EF = TypeVar("_CM_EF", bound=AbstractContextManager[Any, Any] | _ExitFunc)
 # allowlist for use as a Protocol.
 @runtime_checkable
 class AbstractContextManager(ABC, Protocol[_T_co, _ExitT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
+    __slots__ = ()
     def __enter__(self) -> _T_co: ...
     @abstractmethod
     def __exit__(
@@ -58,6 +59,7 @@ class AbstractContextManager(ABC, Protocol[_T_co, _ExitT_co]):  # type: ignore[m
 # allowlist for use as a Protocol.
 @runtime_checkable
 class AbstractAsyncContextManager(ABC, Protocol[_T_co, _ExitT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
+    __slots__ = ()
     async def __aenter__(self) -> _T_co: ...
     @abstractmethod
     async def __aexit__(
