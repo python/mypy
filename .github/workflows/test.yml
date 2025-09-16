@@ -37,11 +37,6 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
-        - name: Test suite with py39-windows-64
-          python: '3.9'
-          os: windows-latest
-          toxenv: py39
-          tox_extra_args: "-n 4"
         - name: Test suite with py310-ubuntu
           python: '3.10'
           os: ubuntu-24.04-arm
@@ -64,6 +59,11 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
+        - name: Test suite with py313-windows-64
+          python: '3.13'
+          os: windows-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
 
         - name: Test suite with py314-dev-ubuntu
           python: '3.14-dev'

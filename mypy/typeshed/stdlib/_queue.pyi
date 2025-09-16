@@ -1,10 +1,12 @@
 from types import GenericAlias
 from typing import Any, Generic, TypeVar
+from typing_extensions import disjoint_base
 
 _T = TypeVar("_T")
 
 class Empty(Exception): ...
 
+@disjoint_base
 class SimpleQueue(Generic[_T]):
     def __init__(self) -> None: ...
     def empty(self) -> bool: ...

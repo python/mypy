@@ -30,7 +30,7 @@ def showinfo(
     *,
     detail: str = ...,
     icon: Literal["error", "info", "question", "warning"] = ...,
-    default: Literal["ok"] = ...,
+    default: Literal["ok"] = "ok",
     parent: Misc = ...,
 ) -> str: ...
 def showwarning(
@@ -39,7 +39,7 @@ def showwarning(
     *,
     detail: str = ...,
     icon: Literal["error", "info", "question", "warning"] = ...,
-    default: Literal["ok"] = ...,
+    default: Literal["ok"] = "ok",
     parent: Misc = ...,
 ) -> str: ...
 def showerror(
@@ -48,7 +48,7 @@ def showerror(
     *,
     detail: str = ...,
     icon: Literal["error", "info", "question", "warning"] = ...,
-    default: Literal["ok"] = ...,
+    default: Literal["ok"] = "ok",
     parent: Misc = ...,
 ) -> str: ...
 def askquestion(
