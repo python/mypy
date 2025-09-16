@@ -2975,3 +2975,18 @@ val: int = 8
 match val:
     case FOO:  # E: Cannot assign to final name "FOO"
         pass
+
+[case testMatchExhaustivenessWithDeferral]
+# flags: --enable-error-code exhaustive-match
+from typing import Literal
+import unknown_module  # E: Cannot find implementation or library stub for module named "unknown_module" \
+                       # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+def foo(e: Literal[0, 1]) -> None:
+    match e:
+        case 0:
+            defer
+        case 1:
+            ...
+
+defer = unknown_module.foo

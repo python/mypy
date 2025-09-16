@@ -369,29 +369,6 @@ class TypeAliasType(Type):
 
         return self.alias.target.accept(InstantiateAliasVisitor(mapping))
 
-    def _partial_expansion(self, nothing_args: bool = False) -> tuple[ProperType, bool]:
-        # Private method mostly for debugging and testing.
-        unroller = UnrollAliasVisitor(set(), {})
-        if nothing_args:
-            alias = self.copy_modified(args=[UninhabitedType()] * len(self.args))
-        else:
-            alias = self
-        unrolled = alias.accept(unroller)
-        assert isinstance(unrolled, ProperType)
-        return unrolled, unroller.recursed
-
-    def expand_all_if_possible(self, nothing_args: bool = False) -> ProperType | None:
-        """Attempt a full expansion of the type alias (including nested aliases).
-
-        If the expansion is not possible, i.e. the alias is (mutually-)recursive,
-        return None. If nothing_args is True, replace all type arguments with an
-        UninhabitedType() (used to detect recursively defined aliases).
-        """
-        unrolled, recursed = self._partial_expansion(nothing_args=nothing_args)
-        if recursed:
-            return None
-        return unrolled
-
     @property
     def is_recursive(self) -> bool:
         """Whether this type alias is recursive.
@@ -404,7 +381,7 @@ class TypeAliasType(Type):
         assert self.alias is not None, "Unfixed type alias"
         is_recursive = self.alias._is_recursive
         if is_recursive is None:
-            is_recursive = self.expand_all_if_possible(nothing_args=True) is None
+            is_recursive = self.alias in self.alias.target.accept(CollectAliasesVisitor())
             # We cache the value on the underlying TypeAlias node as an optimization,
             # since the value is the same for all instances of the same alias.
             self.alias._is_recursive = is_recursive
@@ -3654,8 +3631,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def __init__(self, id_mapper: IdMapper | None = None, *, options: Options) -> None:
         self.id_mapper = id_mapper
-        self.any_as_dots = False
         self.options = options
+        self.dotted_aliases: set[TypeAliasType] | None = None
 
     def visit_unbound_type(self, t: UnboundType, /) -> str:
         s = t.name + "?"
@@ -3674,8 +3651,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return f"{t.constructor}({typ}, {t.name})"
 
     def visit_any(self, t: AnyType, /) -> str:
-        if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
-            return "..."
         return "Any"
 
     def visit_none_type(self, t: NoneType, /) -> str:
@@ -3902,13 +3877,18 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"<placeholder {t.fullname}>"
 
     def visit_type_alias_type(self, t: TypeAliasType, /) -> str:
-        if t.alias is not None:
-            unrolled, recursed = t._partial_expansion()
-            self.any_as_dots = recursed
-            type_str = unrolled.accept(self)
-            self.any_as_dots = False
-            return type_str
-        return "<alias (unfixed)>"
+        if t.alias is None:
+            return "<alias (unfixed)>"
+        if not t.is_recursive:
+            return get_proper_type(t).accept(self)
+        if self.dotted_aliases is None:
+            self.dotted_aliases = set()
+        elif t in self.dotted_aliases:
+            return "..."
+        self.dotted_aliases.add(t)
+        type_str = get_proper_type(t).accept(self)
+        self.dotted_aliases.discard(t)
+        return type_str
 
     def visit_unpack_type(self, t: UnpackType, /) -> str:
         return f"Unpack[{t.type.accept(self)}]"
@@ -3943,28 +3923,23 @@ class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type])
         return t
 
 
-class UnrollAliasVisitor(TrivialSyntheticTypeTranslator):
-    def __init__(
-        self, initial_aliases: set[TypeAliasType], cache: dict[Type, Type] | None
-    ) -> None:
-        assert cache is not None
-        super().__init__(cache)
-        self.recursed = False
-        self.initial_aliases = initial_aliases
+class CollectAliasesVisitor(TypeQuery[list[mypy.nodes.TypeAlias]]):
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen_alias_nodes: set[mypy.nodes.TypeAlias] = set()
 
-    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        if t in self.initial_aliases:
-            self.recursed = True
-            return AnyType(TypeOfAny.special_form)
-        # Create a new visitor on encountering a new type alias, so that an alias like
-        #     A = Tuple[B, B]
-        #     B = int
-        # will not be detected as recursive on the second encounter of B.
-        subvisitor = UnrollAliasVisitor(self.initial_aliases | {t}, self.cache)
-        result = get_proper_type(t).accept(subvisitor)
-        if subvisitor.recursed:
-            self.recursed = True
-        return result
+    def strategy(self, items: list[list[mypy.nodes.TypeAlias]]) -> list[mypy.nodes.TypeAlias]:
+        out = []
+        for item in items:
+            out.extend(item)
+        return out
+
+    def visit_type_alias_type(self, t: TypeAliasType, /) -> list[mypy.nodes.TypeAlias]:
+        assert t.alias is not None
+        if t.alias not in self.seen_alias_nodes:
+            self.seen_alias_nodes.add(t.alias)
+            return [t.alias] + t.alias.target.accept(self)
+        return []
 
 
 def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[Instance]:
