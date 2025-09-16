@@ -165,7 +165,7 @@ class NodeStripVisitor(TraverserVisitor):
             # in order to get the state exactly as it was before semantic analysis.
             # See also #4814.
             assert isinstance(node.type, CallableType)
-            node.type.variables = []
+            node.type.variables = ()
         with self.enter_method(node.info) if node.info else nullcontext():
             super().visit_func_def(node)
 

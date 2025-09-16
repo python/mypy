@@ -1312,3 +1312,29 @@ from native import f
 print(f(1))
 [out]
 2
+
+[case testStarArgFastPaths]
+from typing import Any, Mapping
+def fn(x: str, y: int) -> str:
+    return x * y
+def star_tuple(*args: Any) -> str:
+    return fn(*args)
+def star_list(args: list[Any]) -> str:
+    return fn(*args)
+def star_generic(args: dict[Any, Any]) -> str:
+    return fn(*args)
+def star2(**kwargs: Any) -> str:
+    return fn(**kwargs)
+def star2_generic(kwargs: Mapping[Any, Any]) -> str:
+    return fn(**kwargs)
+
+def test_star_fastpath_tuple() -> None:
+    assert star_tuple("a", 3) == "aaa"
+def test_star_fastpath_list() -> None:
+    assert star_list(["a", 3]) == "aaa"
+def test_star_fastpath_generic() -> None:
+    assert star_generic({"a": None, 3: None}) == "aaa"
+def test_star2_fastpath() -> None:
+    assert star2(x="a", y=3) == "aaa"
+def test_star2_fastpath_generic() -> None:
+    assert star2_generic({"x": "a", "y": 3}) == "aaa"

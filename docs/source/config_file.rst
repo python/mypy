@@ -834,7 +834,15 @@ section of the command line docs.
    :default: False
 
    Prohibit equality checks, identity checks, and container checks between
-   non-overlapping types.
+   non-overlapping types (except ``None``).
+
+.. confval:: strict_equality_for_none
+
+   :type: boolean
+   :default: False
+
+   Include ``None`` in strict equality checks (requires :confval:`strict_equality`
+   to be activated).
 
 .. confval:: strict_bytes
 

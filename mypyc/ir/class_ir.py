@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import NamedTuple
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
-from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import DeserMaps, Value
-from mypyc.ir.rtypes import RInstance, RType, deserialize_type
+from mypyc.ir.rtypes import RInstance, RType, deserialize_type, object_rprimitive
 from mypyc.namegen import NameGenerator, exported_name
 
 # Some notes on the vtable layout: Each concrete class has a vtable
@@ -133,6 +133,16 @@ class ClassIR:
         self.builtin_base: str | None = None
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
+        # Declare setup method that allocates and initializes an object. type is the
+        # type of the class being initialized, which could be another class if there
+        # is an interpreted subclass.
+        # TODO: Make it a regular method and generate its body in IR
+        self.setup = FuncDecl(
+            "__mypyc__" + name + "_setup",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("type", object_rprimitive)], RInstance(self)),
+        )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
         # Deletable attributes

@@ -649,26 +649,11 @@ class MessageBuilder:
             else:
                 base = extract_type(name)
 
-            for method, op in op_methods_to_symbols.items():
-                for variant in method, "__r" + method[2:]:
-                    # FIX: do not rely on textual formatting
-                    if name.startswith(f'"{variant}" of'):
-                        if op == "in" or variant != method:
-                            # Reversed order of base/argument.
-                            return self.unsupported_operand_types(
-                                op, arg_type, base, context, code=codes.OPERATOR
-                            )
-                        else:
-                            return self.unsupported_operand_types(
-                                op, base, arg_type, context, code=codes.OPERATOR
-                            )
-
             if name.startswith('"__getitem__" of'):
                 return self.invalid_index_type(
                     arg_type, callee.arg_types[n - 1], base, context, code=codes.INDEX
                 )
-
-            if name.startswith('"__setitem__" of'):
+            elif name.startswith('"__setitem__" of'):
                 if n == 1:
                     return self.invalid_index_type(
                         arg_type, callee.arg_types[n - 1], base, context, code=codes.INDEX
@@ -684,6 +669,20 @@ class MessageBuilder:
                         message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT.with_additional_msg(info)
                     )
                     return self.fail(error_msg.value, context, code=error_msg.code)
+            elif name.startswith('"__'):
+                for method, op in op_methods_to_symbols.items():
+                    for variant in method, "__r" + method[2:]:
+                        # FIX: do not rely on textual formatting
+                        if name.startswith(f'"{variant}" of'):
+                            if op == "in" or variant != method:
+                                # Reversed order of base/argument.
+                                return self.unsupported_operand_types(
+                                    op, arg_type, base, context, code=codes.OPERATOR
+                                )
+                            else:
+                                return self.unsupported_operand_types(
+                                    op, base, arg_type, context, code=codes.OPERATOR
+                                )
 
             target = f"to {name} "
 

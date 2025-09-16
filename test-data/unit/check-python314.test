@@ -1,0 +1,3 @@
+[case testTemplateString]
+reveal_type(t"mypy")  # E: PEP 750 template strings are not yet supported \
+                      # N: Revealed type is "Any"

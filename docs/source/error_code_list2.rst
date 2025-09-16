@@ -145,6 +145,29 @@ literal:
     def is_magic(x: bytes) -> bool:
         return x == b'magic'  # OK
 
+:option:`--strict-equality <mypy --strict-equality>` does not include comparisons with
+``None``:
+
+.. code-block:: python
+
+    # mypy: strict-equality
+
+    def is_none(x: str) -> bool:
+        return x is None  # OK
+
+If you want such checks, you must also activate
+:option:`--strict-equality-for-none <mypy --strict-equality-for-none>` (we might merge
+these two options later).
+
+.. code-block:: python
+
+    # mypy: strict-equality strict-equality-for-none
+
+    def is_none(x: str) -> bool:
+        # Error: Non-overlapping identity check
+        #        (left operand type: "str", right operand type: "None")
+        return x is None
+
 .. _code-no-untyped-call:
 
 Check that no untyped functions are called [no-untyped-call]

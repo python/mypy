@@ -250,10 +250,12 @@ class ConditionalTypeBinder:
         options are the same.
         """
         all_reachable = all(not f.unreachable for f in frames)
-        frames = [f for f in frames if not f.unreachable]
+        if not all_reachable:
+            frames = [f for f in frames if not f.unreachable]
         changed = False
-        keys = {key for f in frames for key in f.types}
-
+        keys = [key for f in frames for key in f.types]
+        if len(keys) > 1:
+            keys = list(set(keys))
         for key in keys:
             current_value = self._get(key)
             resulting_values = [f.types.get(key, current_value) for f in frames]

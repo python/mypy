@@ -31,7 +31,7 @@ x = ''
 -- We only do the following two sections once here to avoid repetition.
 -- Most other test cases are similar.
 [rechecked a]
-[stale]
+[stale a]
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
