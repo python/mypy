@@ -8,11 +8,13 @@ _T = TypeVar("_T")
 StringTypes: tuple[type[str]]
 
 class NodeList(list[_T]):
+    __slots__ = ()
     @property
     def length(self) -> int: ...
     def item(self, index: int) -> _T | None: ...
 
 class EmptyNodeList(tuple[()]):
+    __slots__ = ()
     @property
     def length(self) -> Literal[0]: ...
     def item(self, index: int) -> None: ...

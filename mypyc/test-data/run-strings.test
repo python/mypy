@@ -412,9 +412,16 @@ def test_basics() -> None:
 [case testFStrings]
 import decimal
 from datetime import datetime
+from typing import Final
 
 var = 'mypyc'
 num = 20
+final_known_at_compile_time: Final = 'hello'
+
+def final_value_setter() -> str:
+    return 'goodbye'
+
+final_unknown_at_compile_time: Final = final_value_setter()
 
 def test_fstring_basics() -> None:
     assert f'Hello {var}, this is a test' == "Hello mypyc, this is a test"
@@ -450,6 +457,8 @@ def test_fstring_basics() -> None:
     nan_num = float('nan')
     inf_num = float('inf')
     assert f'{nan_num}, {inf_num}' == 'nan, inf'
+
+    assert f'{final_known_at_compile_time} {final_unknown_at_compile_time}' == 'hello goodbye'
 
 # F-strings would be translated into ''.join[string literals, format method call, ...] in mypy AST.
 # Currently we are using a str.join specializer for f-string speed up. We might not cover all cases
@@ -1063,3 +1072,34 @@ class subc(str):
 [file userdefinedstr.py]
 class str:
     pass
+
+[case testStrOptionalEquality]
+from __future__ import annotations
+
+def eq_s_opt_s_opt(x: str | None, y: str | None) -> bool:
+    return x == y
+
+def ne_s_opt_s_opt(x: str | None, y: str | None) -> bool:
+    return x != y
+
+def test_optional_eq() -> None:
+    s = 'x'
+    assert eq_s_opt_s_opt(s, s)
+    assert eq_s_opt_s_opt(s + str(int()), s + str(int()))
+    assert eq_s_opt_s_opt(None, None)
+
+    assert not eq_s_opt_s_opt('x', 'y')
+    assert not eq_s_opt_s_opt('y', 'x')
+    assert not eq_s_opt_s_opt(None, 'x')
+    assert not eq_s_opt_s_opt('x', None)
+
+def test_optional_ne() -> None:
+    s = 'x'
+    assert not ne_s_opt_s_opt(s, s)
+    assert not ne_s_opt_s_opt(s + str(int()), s+ str(int()))
+    assert not ne_s_opt_s_opt(None, None)
+
+    assert ne_s_opt_s_opt('x', 'y')
+    assert ne_s_opt_s_opt('y', 'x')
+    assert ne_s_opt_s_opt(None, 'x')
+    assert ne_s_opt_s_opt('x', None)

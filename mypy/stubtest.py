@@ -140,6 +140,11 @@ class Error:
         # TODO: This is hacky, use error codes or something more resilient
         return "should be positional" in self.message
 
+    def is_disjoint_base_related(self) -> bool:
+        """Whether or not the error is related to @disjoint_base."""
+        # TODO: This is hacky, use error codes or something more resilient
+        return "@disjoint_base" in self.message
+
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
 
@@ -1048,7 +1053,10 @@ class Signature(Generic[T]):
 
 
 def _verify_signature(
-    stub: Signature[nodes.Argument], runtime: Signature[inspect.Parameter], function_name: str
+    stub: Signature[nodes.Argument],
+    runtime: Signature[inspect.Parameter],
+    function_name: str,
+    warn_runtime_is_object_init: bool = False,
 ) -> Iterator[str]:
     # Check positional arguments match up
     for stub_arg, runtime_arg in zip(stub.pos, runtime.pos):
@@ -1093,6 +1101,8 @@ def _verify_signature(
                     msg = f'runtime does not have parameter "{stub_arg.variable.name}"'
                     if runtime.varkw is not None:
                         msg += ". Maybe you forgot to make it keyword-only in the stub?"
+                    elif warn_runtime_is_object_init:
+                        msg += ". You may need to write stubs for __new__ instead of __init__."
                     yield msg
                 else:
                     yield f'stub parameter "{stub_arg.variable.name}" is not keyword-only'
@@ -1132,7 +1142,11 @@ def _verify_signature(
                 if arg not in {runtime_arg.name for runtime_arg in runtime.pos[len(stub.pos) :]}:
                     yield f'runtime parameter "{arg}" is not keyword-only'
             else:
-                yield f'runtime does not have parameter "{arg}"'
+                msg = f'runtime does not have parameter "{arg}"'
+                if warn_runtime_is_object_init:
+                    msg += ". You may need to write stubs for __new__ instead of __init__."
+                yield msg
+
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
         if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
@@ -1218,7 +1232,12 @@ def verify_funcitem(
     if not signature:
         return
 
-    for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
+    for message in _verify_signature(
+        stub_sig,
+        runtime_sig,
+        function_name=stub.name,
+        warn_runtime_is_object_init=runtime is object.__init__,
+    ):
         yield Error(
             object_path,
             "is inconsistent, " + message,
@@ -1328,7 +1347,12 @@ def verify_overloadedfuncdef(
     stub_sig = Signature.from_overloadedfuncdef(stub)
     runtime_sig = Signature.from_inspect_signature(signature)
 
-    for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
+    for message in _verify_signature(
+        stub_sig,
+        runtime_sig,
+        function_name=stub.name,
+        warn_runtime_is_object_init=runtime is object.__init__,
+    ):
         # TODO: This is a little hacky, but the addition here is super useful
         if "has a default value of type" in message:
             message += (
@@ -2181,6 +2205,7 @@ class _Arguments:
     concise: bool
     ignore_missing_stub: bool
     ignore_positional_only: bool
+    ignore_disjoint_bases: bool
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
@@ -2274,6 +2299,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
                 continue
             if args.ignore_positional_only and error.is_positional_only_related():
                 continue
+            if args.ignore_disjoint_bases and error.is_disjoint_base_related():
+                continue
             if error.object_desc in allowlist:
                 allowlist[error.object_desc] = True
                 continue
@@ -2363,6 +2390,12 @@ def parse_options(args: list[str]) -> _Arguments:
         "--ignore-positional-only",
         action="store_true",
         help="Ignore errors for whether an argument should or shouldn't be positional-only",
+    )
+    # TODO: Remove once PEP 800 is accepted
+    parser.add_argument(
+        "--ignore-disjoint-bases",
+        action="store_true",
+        help="Disable checks for PEP 800 @disjoint_base classes",
     )
     parser.add_argument(
         "--allowlist",
