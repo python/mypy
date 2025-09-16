@@ -28,6 +28,8 @@ from mypy.types import (
     LiteralType,
     ProperType,
     Type,
+    TypeVarType,
+    UnionType,
     get_proper_type,
     is_named_instance,
 )
@@ -297,3 +299,62 @@ def _extract_underlying_field_name(typ: Type) -> str | None:
     # as a string.
     assert isinstance(underlying_literal.value, str)
     return underlying_literal.value
+
+
+def enum_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
+    """This plugin refines the return type of `__new__`, ensuring reconstructed
+    Enums are idempotent.
+
+    By default, mypy will infer that `Foo(Foo.x)` is of type `Foo`. This plugin
+    ensures types are not loosened, meaning with this plugin enabled
+    `Foo(Foo.x)` is of type `Literal[Foo.x]?`.
+
+    This means with this plugin:
+    ```
+        reveal_type(Foo(Foo.x))  # mypy reveals Literal[Foo.x]?
+    ```
+
+    This plugin works by adjusting the return type of `__new__` to be the given
+    argument type, if and only if `__new__` comes from `enum.Enum`.
+
+    This plugin supports arguments that are Final, Literial, Union of Literials
+    and generic TypeVars.
+    """
+    base_ret = ctx.default_return_type
+    enum_inst = get_proper_type(base_ret)
+    if not isinstance(enum_inst, Instance):
+        return base_ret
+
+    info: TypeInfo = enum_inst.type
+    if not info.is_enum:
+        return base_ret
+
+    if _implements_new(info):
+        return base_ret
+
+    if not ctx.args or not ctx.args[0] or not ctx.arg_types or not ctx.arg_types[0]:
+        return base_ret
+
+    arg0_t = get_proper_type(ctx.arg_types[0][0])
+
+    if isinstance(arg0_t, Instance) and arg0_t.type is info:
+        return arg0_t
+    elif isinstance(arg0_t, LiteralType) and arg0_t.fallback.type is info:
+        return arg0_t
+    elif isinstance(arg0_t, UnionType):
+
+        def is_memeber(given_t: ProperType) -> bool:
+            return (isinstance(given_t, Instance) and given_t.type is info) or (
+                isinstance(given_t, LiteralType) and given_t.fallback.type is info
+            )
+
+        items = [get_proper_type(it) for it in arg0_t.items]
+        if items and all(is_memeber(item) for item in items):
+            return arg0_t
+    elif (isinstance(arg0_t, TypeVarType)) and isinstance(
+        upperbound_t := get_proper_type(arg0_t.upper_bound), Instance
+    ):
+        if upperbound_t.type is info:
+            return arg0_t
+
+    return base_ret

@@ -5,7 +5,7 @@ from typing import Callable, Final
 
 import mypy.errorcodes as codes
 from mypy import message_registry
-from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
+from mypy.nodes import DictExpr, IntExpr, StrExpr, TypeInfo, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
@@ -47,7 +47,12 @@ from mypy.plugins.dataclasses import (
     dataclass_tag_callback,
     replace_function_sig_callback,
 )
-from mypy.plugins.enums import enum_member_callback, enum_name_callback, enum_value_callback
+from mypy.plugins.enums import (
+    enum_member_callback,
+    enum_name_callback,
+    enum_new_callback,
+    enum_value_callback,
+)
 from mypy.plugins.functools import (
     functools_total_ordering_maker_callback,
     functools_total_ordering_makers,
@@ -104,6 +109,12 @@ class DefaultPlugin(Plugin):
             return partial_new_callback
         elif fullname == "enum.member":
             return enum_member_callback
+        elif (
+            (st := self.lookup_fully_qualified(fullname))
+            and isinstance(st.node, TypeInfo)
+            and getattr(st.node, "is_enum", False)
+        ):
+            return enum_new_callback
         return None
 
     def get_function_signature_hook(
