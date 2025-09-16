@@ -601,6 +601,8 @@ class GroupGenerator:
         ext_declarations.emit_line(f"#define MYPYC_NATIVE{self.group_suffix}_H")
         ext_declarations.emit_line("#include <Python.h>")
         ext_declarations.emit_line("#include <CPy.h>")
+        if self.compiler_options.depends_on_native_internal:
+            ext_declarations.emit_line("#include <native_internal.h>")
 
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_NATIVE_INTERNAL{self.group_suffix}_H")
@@ -983,7 +985,7 @@ class GroupGenerator:
             emitter.emit_line(
                 (
                     '{{"{name}", (PyCFunction){prefix}{cname}, {flag} | METH_KEYWORDS, '
-                    "{doc} /* docstring */}},"
+                    "PyDoc_STR({doc}) /* docstring */}},"
                 ).format(
                     name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag, doc=doc
                 )
@@ -1027,6 +1029,10 @@ class GroupGenerator:
         declaration = f"int CPyExec_{exported_name(module_name)}(PyObject *module)"
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
+        if self.compiler_options.depends_on_native_internal:
+            emitter.emit_line("if (import_native_internal() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")
         if self.multi_phase_init:
             emitter.emit_line(f"{module_static} = module;")
@@ -1187,7 +1193,7 @@ class GroupGenerator:
         self.declare_global("PyObject *", static_name)
 
     def module_internal_static_name(self, module_name: str, emitter: Emitter) -> str:
-        return emitter.static_name(module_name + "_internal", None, prefix=MODULE_PREFIX)
+        return emitter.static_name(module_name + "__internal", None, prefix=MODULE_PREFIX)
 
     def declare_module(self, module_name: str, emitter: Emitter) -> None:
         # We declare two globals for each compiled module:
@@ -1268,8 +1274,8 @@ def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported
             return True
-        # TODO: Support fastcall for __init__.
-        return fn.name != "__init__"
+        # TODO: Support fastcall for __init__ and __new__.
+        return fn.name != "__init__" and fn.name != "__new__"
     return True
 
 

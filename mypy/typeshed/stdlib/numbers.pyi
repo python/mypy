@@ -61,12 +61,14 @@ class _IntegralLike(_RealLike, Protocol):
 #################
 
 class Number(metaclass=ABCMeta):
+    __slots__ = ()
     @abstractmethod
     def __hash__(self) -> int: ...
 
 # See comment at the top of the file
 # for why some of these return types are purposefully vague
 class Complex(Number, _ComplexLike):
+    __slots__ = ()
     @abstractmethod
     def __complex__(self) -> complex: ...
     def __bool__(self) -> bool: ...
@@ -109,6 +111,7 @@ class Complex(Number, _ComplexLike):
 # See comment at the top of the file
 # for why some of these return types are purposefully vague
 class Real(Complex, _RealLike):
+    __slots__ = ()
     @abstractmethod
     def __float__(self) -> float: ...
     @abstractmethod
@@ -153,6 +156,7 @@ class Real(Complex, _RealLike):
 # See comment at the top of the file
 # for why some of these return types are purposefully vague
 class Rational(Real):
+    __slots__ = ()
     @property
     @abstractmethod
     def numerator(self) -> _IntegralLike: ...
@@ -164,6 +168,7 @@ class Rational(Real):
 # See comment at the top of the file
 # for why some of these return types are purposefully vague
 class Integral(Rational, _IntegralLike):
+    __slots__ = ()
     @abstractmethod
     def __int__(self) -> int: ...
     def __index__(self) -> int: ...
