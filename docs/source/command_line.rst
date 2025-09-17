@@ -1089,12 +1089,12 @@ Report generation
 If these flags are set, mypy will generate a report in the specified
 format into the specified directory.
 
-.. option:: --any-exprs-report DIR
+.. option:: --any-exprs-report OUTPUT_DIR
 
     Causes mypy to generate a text file report documenting how many
     expressions of type ``Any`` are present within your codebase.
 
-.. option:: --cobertura-xml-report DIR
+.. option:: --cobertura-xml-report OUTPUT_DIR
 
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
@@ -1102,7 +1102,7 @@ format into the specified directory.
     library or specify mypy installation with the setuptools extra
     ``mypy[reports]``.
 
-.. option:: --html-report / --xslt-html-report DIR
+.. option:: --html-report / --xslt-html-report OUTPUT_DIR
 
     Causes mypy to generate an HTML type checking coverage report.
 
@@ -1110,23 +1110,23 @@ format into the specified directory.
     library or specify mypy installation with the setuptools extra
     ``mypy[reports]``.
 
-.. option:: --linecount-report DIR
+.. option:: --linecount-report OUTPUT_DIR
 
     Causes mypy to generate a text file report documenting the functions
     and lines that are typed and untyped within your codebase.
 
-.. option:: --linecoverage-report DIR
+.. option:: --linecoverage-report OUTPUT_DIR
 
     Causes mypy to generate a JSON file that maps each source file's
     absolute filename to a list of line numbers that belong to typed
     functions in that file.
 
-.. option:: --lineprecision-report DIR
+.. option:: --lineprecision-report OUTPUT_DIR
 
     Causes mypy to generate a flat text file report with per-module
     statistics of how many lines are typechecked etc.
 
-.. option:: --txt-report / --xslt-txt-report DIR
+.. option:: --txt-report / --xslt-txt-report OUTPUT_DIR
 
     Causes mypy to generate a text file type checking coverage report.
 
@@ -1134,7 +1134,7 @@ format into the specified directory.
     library or specify mypy installation with the setuptools extra
     ``mypy[reports]``.
 
-.. option:: --xml-report DIR
+.. option:: --xml-report OUTPUT_DIR
 
     Causes mypy to generate an XML type checking coverage report.
 
