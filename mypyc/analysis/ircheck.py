@@ -291,8 +291,6 @@ class OpChecker(OpVisitor[None]):
             # Acceptable key types: str, bytes, bool, int, float, complex
             if not isinstance(k, valid_types):
                 self.fail(op, f"Invalid type for key of dict literal: {type(k)})")
-            if isinstance(k, tuple):
-                self.check_tuple_items_valid_literals(op, k)
             # Acceptable value types: str, bytes, bool, int, float, complex
             if not isinstance(v, valid_types):
                 self.fail(op, f"Invalid type for value of dict literal: {type(v)})"))
