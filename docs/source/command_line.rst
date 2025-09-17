@@ -1216,7 +1216,7 @@ List of currently incomplete/experimental features:
 
      def test_values() -> {"int": int, "str": str}:
          return {"int": 42, "str": "test"}
- 
+
 .. option:: --find-occurrences CLASS.MEMBER
 
     This flag will make mypy print out all usages of a class member
