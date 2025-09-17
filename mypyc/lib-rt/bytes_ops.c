@@ -105,7 +105,7 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
     } else {
         if (join_id_unicode == NULL) {
             _Py_IDENTIFIER(join);
-            PyObject *join_id_unicode = _PyUnicode_FromId(&PyId_join); /* borrowed */
+            join_id_unicode = _PyUnicode_FromId(&PyId_join); /* borrowed */
             if (join_id_unicode == NULL) {
                 return NULL;
             }
