@@ -1096,6 +1096,67 @@ in developing or debugging mypy internals.
     cause mypy to type check the contents of ``temp.py`` instead of  ``original.py``,
     but error messages will still reference ``original.py``.
 
+
+Report generation
+*****************
+
+If these flags are set, mypy will generate a report in the specified
+format into the specified directory.
+
+.. option:: --any-exprs-report DIR
+
+    Causes mypy to generate a text file report documenting how many
+    expressions of type ``Any`` are present within your codebase.
+
+.. option:: --cobertura-xml-report DIR
+
+    Causes mypy to generate a Cobertura XML type checking coverage report.
+
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
+
+.. option:: --html-report / --xslt-html-report DIR
+
+    Causes mypy to generate an HTML type checking coverage report.
+
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
+
+.. option:: --linecount-report DIR
+
+    Causes mypy to generate a text file report documenting the functions
+    and lines that are typed and untyped within your codebase.
+
+.. option:: --linecoverage-report DIR
+
+    Causes mypy to generate a JSON file that maps each source file's
+    absolute filename to a list of line numbers that belong to typed
+    functions in that file.
+
+.. option:: --lineprecision-report DIR
+
+    Causes mypy to generate a flat text file report with per-module
+    statistics of how many lines are typechecked etc.
+
+.. option:: --txt-report / --xslt-txt-report DIR
+
+    Causes mypy to generate a text file type checking coverage report.
+
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
+
+.. option:: --xml-report DIR
+
+    Causes mypy to generate an XML type checking coverage report.
+
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
+
+
 .. _enabling-incomplete-experimental-features:
 
 Experimental features
@@ -1160,65 +1221,6 @@ Experimental features
 
     This flag will make mypy print out all usages of a class member
     based on static type information. This feature is experimental.
-
-Report generation
-*****************
-
-If these flags are set, mypy will generate a report in the specified
-format into the specified directory.
-
-.. option:: --any-exprs-report DIR
-
-    Causes mypy to generate a text file report documenting how many
-    expressions of type ``Any`` are present within your codebase.
-
-.. option:: --cobertura-xml-report DIR
-
-    Causes mypy to generate a Cobertura XML type checking coverage report.
-
-    To generate this report, you must either manually install the `lxml`_
-    library or specify mypy installation with the setuptools extra
-    ``mypy[reports]``.
-
-.. option:: --html-report / --xslt-html-report DIR
-
-    Causes mypy to generate an HTML type checking coverage report.
-
-    To generate this report, you must either manually install the `lxml`_
-    library or specify mypy installation with the setuptools extra
-    ``mypy[reports]``.
-
-.. option:: --linecount-report DIR
-
-    Causes mypy to generate a text file report documenting the functions
-    and lines that are typed and untyped within your codebase.
-
-.. option:: --linecoverage-report DIR
-
-    Causes mypy to generate a JSON file that maps each source file's
-    absolute filename to a list of line numbers that belong to typed
-    functions in that file.
-
-.. option:: --lineprecision-report DIR
-
-    Causes mypy to generate a flat text file report with per-module
-    statistics of how many lines are typechecked etc.
-
-.. option:: --txt-report / --xslt-txt-report DIR
-
-    Causes mypy to generate a text file type checking coverage report.
-
-    To generate this report, you must either manually install the `lxml`_
-    library or specify mypy installation with the setuptools extra
-    ``mypy[reports]``.
-
-.. option:: --xml-report DIR
-
-    Causes mypy to generate an XML type checking coverage report.
-
-    To generate this report, you must either manually install the `lxml`_
-    library or specify mypy installation with the setuptools extra
-    ``mypy[reports]``.
 
 
 Miscellaneous
