@@ -472,3 +472,23 @@ from native import (
 test_mutation_independence()
 test_ineligible_not_folded()
 test_eligible_folded()
+
+[case testDictLiteralIsImmutable]
+def get_flat():
+    return {"x": 1, "y": 2}
+def get_nested():
+    return {"a": {"b": 1}}
+def test_shallow_mutation_independence():
+    d1 = get_flat()
+    d2 = get_flat()
+    d1["x"] = 99
+    assert d2["x"] == 1
+    d2["y"] = 42
+    assert d1["y"] == 2
+def test_deep_mutation_independence():
+    d1 = get_nested()
+    d2 = get_nested()
+    d1["a"]["b"] = 99
+    assert d2["a"]["b"] == 1
+    d2["a"]["b"] = 42
+    assert d1["a"]["b"] == 99

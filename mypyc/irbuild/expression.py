@@ -1035,15 +1035,7 @@ def dict_literal_values(
         # Recursively staticize dict values
         value = constant_fold_expr(builder, value_expr)
         if value is None:
-            # Try to staticize nested dicts
-            if isinstance(value_expr, DictExpr):
-                nested = dict_literal_values(builder, value_expr.items, value_expr.line)
-                if nested is not None:
-                    value = nested
-                else:
-                    return None
-            else:
-                return None
+            return None
         result[key] = value
 
     return result or None
