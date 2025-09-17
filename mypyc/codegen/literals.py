@@ -121,7 +121,7 @@ class Literals:
             return n + self.dict_literals[key]
         assert False, "invalid literal: %r" % value
 
-    def make_dict_literal_key(self, value: dict) -> tuple:
+    def make_dict_literal_key(self, value: dict[LiteralValue, LiteralValue]) -> tuple[tuple[LiteralValue, LiteralValue]]:
         """Make a unique key for a literal dict."""
         return tuple(value.items())
     
