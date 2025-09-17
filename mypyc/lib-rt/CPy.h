@@ -74,6 +74,10 @@ static inline PyObject *CPyTuple_LoadEmptyTupleConstant(void) {
     return __mypyc_empty_tuple__;
 }
 
+// Shared unicode objects for method names
+extern PyObject *clear_id_unicode;
+extern PyObject *copy_id_unicode;
+
 // Native object operations
 
 

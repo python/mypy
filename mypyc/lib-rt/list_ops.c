@@ -9,8 +9,7 @@
 #define Py_TPFLAGS_SEQUENCE (1 << 5)
 #endif
 
-static PyObject *clear_id_unicode = NULL;
-static PyObject *copy_id_unicode = NULL;
+// clear_id_unicode and copy_id_unicode are shared with dict_ops, declared in misc_ops.c
 
 PyObject *CPyList_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
@@ -38,7 +37,7 @@ char CPyList_Clear(PyObject *list) {
     } else {
         if (clear_id_unicode == NULL) {
             _Py_IDENTIFIER(clear);
-            PyObject *clear_id_unicode = _PyUnicode_FromId(&PyId_clear);
+            clear_id_unicode = _PyUnicode_FromId(&PyId_clear);
             if (clear_id_unicode == NULL) {
                 return 0;
             }
@@ -57,7 +56,7 @@ PyObject *CPyList_Copy(PyObject *list) {
     }
     if (copy_id_unicode == NULL) {
         _Py_IDENTIFIER(copy);
-        PyObject *copy_id_unicode = _PyUnicode_FromId(&PyId_copy);
+        copy_id_unicode = _PyUnicode_FromId(&PyId_copy);
         if (copy_id_unicode == NULL) {
             return NULL;
         }

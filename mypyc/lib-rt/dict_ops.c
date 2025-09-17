@@ -15,8 +15,7 @@ static PyObject *update_id_unicode = NULL;
 static PyObject *keys_id_unicode = NULL;
 static PyObject *values_id_unicode = NULL;
 static PyObject *items_id_unicode = NULL;
-static PyObject *clear_id_unicode = NULL;
-static PyObject *copy_id_unicode = NULL;
+// clear_id_unicode and copy_id_unicode are shared with list_ops, declared in misc_ops.c
 
 // Dict subclasses like defaultdict override things in interesting
 // ways, so we don't want to just directly use the dict methods. Not
