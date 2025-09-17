@@ -1025,13 +1025,18 @@ def dict_literal_values(
     If all keys and values are deeply immutable and constant (including nested dicts as values),
     return the Python dict value. Otherwise, return None.
     """
-    def constant_fold_expr_or_tuple(builder: IRBuilder, expr: Expression) -> ConstantValueTuple | None:
+
+    def constant_fold_expr_or_tuple(
+        builder: IRBuilder, expr: Expression
+    ) -> ConstantValueTuple | None:
         value = constant_fold_expr(builder, expr)
         if value is not None:
             return value
         if not isinstance(expr, TupleExpr):
             return None
-        folded = tuple(const for const in map(constant_fold_expr_or_tuple, expr.items) if const is not None)
+        folded = tuple(
+            const for const in map(constant_fold_expr_or_tuple, expr.items) if const is not None
+        )
         return folded if len(folded) == len(expr.items) else None
 
     result = {}
