@@ -293,7 +293,7 @@ class OpChecker(OpVisitor[None]):
                 self.fail(op, f"Invalid type for key of dict literal: {type(k)})")
             # Acceptable value types: str, bytes, bool, int, float, complex
             if not isinstance(v, valid_types):
-                self.fail(op, f"Invalid type for value of dict literal: {type(v)})"))
+                self.fail(op, f"Invalid type for value of dict literal: {type(v)})")
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None
