@@ -1,6 +1,11 @@
 -- Tests for error codes and ignoring errors using error codes
 --
--- These implicitly use --show-error-codes.
+-- These implicitly use --show-error-codes. # TODO: isn't this statement redundant now that this flag defaults to true?
+
+[case testErrorCodeMiscDoesntSuppressRevealType-xfail]
+# Prevent regression on https://github.com/python/mypy/issues/19840
+from typing import reveal_type
+reveal_type(1) #type: ignore[misc] # N: Revealed type is "Literal[1]?"
 
 [case testErrorCodeNoAttribute]
 import m
