@@ -6,10 +6,6 @@
 #include <patchlevel.h>
 #include "CPy.h"
 
-PyObject *clear_id_unicode = NULL;
-PyObject *copy_id_unicode = NULL;
-static PyObject *send_id_unicode = NULL;
-
 PyObject *CPy_GetCoro(PyObject *obj)
 {
     // If the type has an __await__ method, call it,
@@ -23,6 +19,8 @@ PyObject *CPy_GetCoro(PyObject *obj)
         return PyObject_GetIter(obj);
     }
 }
+
+static PyObject *send_id_unicode = NULL;
 
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 {

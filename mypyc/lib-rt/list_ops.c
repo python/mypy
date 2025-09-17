@@ -9,7 +9,9 @@
 #define Py_TPFLAGS_SEQUENCE (1 << 5)
 #endif
 
-// clear_id_unicode and copy_id_unicode are shared with dict_ops, declared in misc_ops.c
+// list_ prefix prevents a name conflict with dict_ops
+static PyObject *list_clear_id_unicode = NULL;
+static PyObject *list_copy_id_unicode = NULL;
 
 PyObject *CPyList_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
@@ -35,14 +37,14 @@ char CPyList_Clear(PyObject *list) {
     if (PyList_CheckExact(list)) {
         PyList_Clear(list);
     } else {
-        if (clear_id_unicode == NULL) {
+        if (list_clear_id_unicode == NULL) {
             _Py_IDENTIFIER(clear);
-            clear_id_unicode = _PyUnicode_FromId(&PyId_clear);
-            if (clear_id_unicode == NULL) {
+            list_clear_id_unicode = _PyUnicode_FromId(&PyId_clear);
+            if (list_clear_id_unicode == NULL) {
                 return 0;
             }
         }
-        PyObject *res = PyObject_CallMethodNoArgs(list, clear_id_unicode);
+        PyObject *res = PyObject_CallMethodNoArgs(list, list_clear_id_unicode);
         if (res == NULL) {
             return 0;
         }
@@ -54,14 +56,14 @@ PyObject *CPyList_Copy(PyObject *list) {
     if(PyList_CheckExact(list)) {
         return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
     }
-    if (copy_id_unicode == NULL) {
+    if (list_copy_id_unicode == NULL) {
         _Py_IDENTIFIER(copy);
-        copy_id_unicode = _PyUnicode_FromId(&PyId_copy);
-        if (copy_id_unicode == NULL) {
+        list_copy_id_unicode = _PyUnicode_FromId(&PyId_copy);
+        if (list_copy_id_unicode == NULL) {
             return NULL;
         }
     }
-    return PyObject_CallMethodNoArgs(list, copy_id_unicode);
+    return PyObject_CallMethodNoArgs(list, list_copy_id_unicode);
 }
 
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {

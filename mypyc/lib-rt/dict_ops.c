@@ -15,7 +15,9 @@ static PyObject *update_id_unicode = NULL;
 static PyObject *keys_id_unicode = NULL;
 static PyObject *values_id_unicode = NULL;
 static PyObject *items_id_unicode = NULL;
-// clear_id_unicode and copy_id_unicode are shared with list_ops, declared in misc_ops.c
+// dict_ prefix prevents a name conflict with list_ops
+static PyObject *dict_copy_id_unicode = NULL;
+static PyObject *dict_clear_id_unicode = NULL;
 
 // Dict subclasses like defaultdict override things in interesting
 // ways, so we don't want to just directly use the dict methods. Not
@@ -336,14 +338,14 @@ char CPyDict_Clear(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         PyDict_Clear(dict);
     } else {
-        if (clear_id_unicode == NULL) {
+        if (dict_clear_id_unicode == NULL) {
             _Py_IDENTIFIER(clear);
-            clear_id_unicode = _PyUnicode_FromId(&PyId_clear); /* borrowed */
-            if (clear_id_unicode == NULL) {
+            dict_clear_id_unicode = _PyUnicode_FromId(&PyId_clear); /* borrowed */
+            if (dict_clear_id_unicode == NULL) {
                 return 0;
             }
         }
-        PyObject *res = PyObject_CallMethodNoArgs(dict, clear_id_unicode);
+        PyObject *res = PyObject_CallMethodNoArgs(dict, dict_clear_id_unicode);
         if (res == NULL) {
             return 0;
         }
@@ -355,14 +357,14 @@ PyObject *CPyDict_Copy(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Copy(dict);
     }
-    if (copy_id_unicode == NULL) {
+    if (dict_copy_id_unicode == NULL) {
         _Py_IDENTIFIER(copy);
-        copy_id_unicode = _PyUnicode_FromId(&PyId_copy); /* borrowed */
-        if (copy_id_unicode == NULL) {
+        dict_copy_id_unicode = _PyUnicode_FromId(&PyId_copy); /* borrowed */
+        if (dict_copy_id_unicode == NULL) {
             return NULL;
         }
     }
-    return PyObject_CallMethodNoArgs(dict, copy_id_unicode);
+    return PyObject_CallMethodNoArgs(dict, dict_copy_id_unicode);
 }
 
 PyObject *CPyDict_GetKeysIter(PyObject *dict) {
