@@ -1012,11 +1012,11 @@ def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
     return builder.primitive_op(list_tuple_op, [val_as_list], expr.line)
 
 
-def dict_literal_values(builder: IRBuilder, items: Sequence[tuple[Expression | None, Expression]], line: int) -> "Value | None":
-    """Try to extract a constant dict from a dict literal.
+def dict_literal_values(builder: IRBuilder, items: Sequence[tuple[Expression | None, Expression]], line: int) -> "dict | None":
+    """Try to extract a constant dict from a dict literal, recursively staticizing nested dicts.
 
-    If all keys and values are deeply immutable and constant, register it as a static
-    and return a LoadLiteral for it. Otherwise, return None.
+    If all keys and values are deeply immutable and constant (including nested dicts as values),
+    return the Python dict value. Otherwise, return None.
     """
     result = {}
     for key_expr, value_expr in items:
@@ -1027,12 +1027,21 @@ def dict_literal_values(builder: IRBuilder, items: Sequence[tuple[Expression | N
         key = constant_fold_expr(builder, key_expr)
         if key is None:
             return None
+        # Recursively staticize dict values
         value = constant_fold_expr(builder, value_expr)
         if value is None:
-            return None
+            # Try to staticize nested dicts
+            if isinstance(value_expr, DictExpr):
+                nested = dict_literal_values(builder, value_expr.items, value_expr.line)
+                if nested is not None:
+                    value = nested
+                else:
+                    return None
+            else:
+                return None
         result[key] = value
 
-    return builder.add(LoadLiteral(result, dict_rprimitive)) if result else None
+    return result or None
 
 def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
     """First accepts all keys and values, then makes a dict out of them.
@@ -1041,10 +1050,11 @@ def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
     and at runtime use PyDict_Copy to return a fresh dict.
     """
     # Try to constant fold the dict and get a static Value
-    template = dict_literal_values(builder, expr.items, expr.line)
-    if template is not None:
-        # At runtime, return PyDict_Copy(template)
-        return builder.call_c(dict_template_copy_op, [template], expr.line)
+    static_dict = dict_literal_values(builder, expr.items, expr.line)
+    if static_dict is not None:
+        # Register the static dict and return a copy at runtime
+        static_val = builder.add(LoadLiteral(static_dict, dict_rprimitive))
+        return builder.call_c(dict_template_copy_op, [static_val], expr.line)
 
     # Fallback: build dict at runtime as before
     key_value_pairs = []
