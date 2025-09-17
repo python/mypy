@@ -1020,7 +1020,7 @@ def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
 
 def dict_literal_values(
     builder: IRBuilder, items: Sequence[tuple[Expression | None, Expression]], line: int
-) -> dict[ConstantValue, ConstantValue] | None:
+) -> dict[ConstantValueTuple, ConstantValueTuple] | None:
     """Try to extract a constant dict from a dict literal, recursively staticizing nested dicts.
 
     If all keys and values are deeply immutable and constant (including nested dicts as values),
