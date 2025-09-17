@@ -286,23 +286,16 @@ class OpChecker(OpVisitor[None]):
                 self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
 
     def check_dict_items_valid_literals(self, op: LoadLiteral, d: dict[object, object]) -> None:
-        key_types = (str, bytes, bool, int, float, complex, tuple)
-        value_types = (str, bytes, bool, int, float, complex, tuple, dict, frozenset)
+        valid_types = (str, bytes, bool, int, float, complex)
         for k, v in d.items():
-            # Acceptable key types: str, bytes, bool, int, float, complex, tuple, None
-            if k is not None and not isinstance(k, key_types):
+            # Acceptable key types: str, bytes, bool, int, float, complex
+            if not isinstance(k, valid_types):
                 self.fail(op, f"Invalid type for key of dict literal: {type(k)})")
             if isinstance(k, tuple):
                 self.check_tuple_items_valid_literals(op, k)
-            # Acceptable value types: str, bytes, bool, int, float, complex, tuple, dict, frozenset, None
-            if v is not None and not isinstance(v, value_types):
-                self.fail(op, f"Invalid type for value of dict literal: {type(v)})")
-            if isinstance(v, tuple):
-                self.check_tuple_items_valid_literals(op, v)
-            elif isinstance(v, dict):
-                self.check_dict_items_valid_literals(op, v)
-            elif isinstance(v, frozenset):
-                self.check_frozenset_items_valid_literals(op, v)
+            # Acceptable value types: str, bytes, bool, int, float, complex
+            if not isinstance(v, valid_types):
+                self.fail(op, f"Invalid type for value of dict literal: {type(v)})"))
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None
