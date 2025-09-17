@@ -1128,7 +1128,7 @@ def define_options(
 
     report_group = parser.add_argument_group(
         title="Report generation",
-        description="Generate a report in the specified format in the specified directory.",
+        description="Generate a report in the specified format into the specified directory.",
     )
     for report_type in sorted(defaults.REPORTER_NAMES):
         if report_type not in {"memory-xml"}:
