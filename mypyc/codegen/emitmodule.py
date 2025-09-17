@@ -934,8 +934,6 @@ class GroupGenerator:
             f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"
         )
 
-        # (No per-dict static assignments needed; dict statics are handled by Literals)
-
         emitter.emit_lines("is_initialized = 1;", "return 0;", "}")
 
     def generate_module_def(self, emitter: Emitter, module_name: str, module: ModuleIR) -> None:
