@@ -570,7 +570,6 @@ def define_options(
     general_group.add_argument(
         "-O",
         "--output",
-        metavar="FORMAT",
         help="Set a custom output format",
         choices=OUTPUT_CHOICES,
     )
@@ -1108,7 +1107,7 @@ def define_options(
     parser.add_argument(
         "--enable-incomplete-feature",
         action="append",
-        metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
+        choices=sorted(INCOMPLETE_FEATURES),
         help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
