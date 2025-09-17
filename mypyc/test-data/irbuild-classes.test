@@ -1690,7 +1690,7 @@ def fn2() -> NewClassMethod:
 class NotTransformed:
     def __new__(cls, val: int) -> Any:
         return super().__new__(str)
-    
+
     @classmethod
     def factory(cls, val: int) -> NotTransformed:
         return super().__new__(cls)
@@ -1826,7 +1826,7 @@ def fn2() -> NewClassMethod:
 class NotTransformed:
     def __new__(cls, val: int) -> Any:
         return object.__new__(str)
-    
+
     @classmethod
     def factory(cls, val: int) -> NotTransformed:
         return object.__new__(cls)
