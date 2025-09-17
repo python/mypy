@@ -568,10 +568,7 @@ def define_options(
     )
 
     general_group.add_argument(
-        "-O",
-        "--output",
-        help="Set a custom output format",
-        choices=sorted(OUTPUT_CHOICES),
+        "-O", "--output", help="Set a custom output format", choices=sorted(OUTPUT_CHOICES)
     )
 
     config_group = parser.add_argument_group(
