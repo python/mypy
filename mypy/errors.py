@@ -509,7 +509,7 @@ class Errors:
             line: line number of error
             column: column number of error
             message: message to report
-            code: error code (defaults to 'misc'; not shown for notes)
+            code: error code (not shown for notes), may be None
             blocker: if True, don't continue analysis after this error
             severity: 'error' or 'note'
             file: if non-None, override current file as context
@@ -548,7 +548,6 @@ class Errors:
             end_line = line
 
         code = code or (parent_error.code if parent_error else None)
-        code = code or (codes.MISC if not blocker else None)
 
         info = ErrorInfo(
             import_ctx=self.import_context(),
