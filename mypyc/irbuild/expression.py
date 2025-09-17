@@ -1054,7 +1054,7 @@ def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
         static_val = builder.add(LoadLiteral(static_dict, dict_rprimitive))
         return builder.call_c(dict_template_copy_op, [static_val], expr.line)
 
-    # Fallback: build dict at runtime as before
+    # If that fails, build dict at runtime
     key_value_pairs = []
     for key_expr, value_expr in expr.items:
         key = builder.accept(key_expr) if key_expr is not None else None
