@@ -368,3 +368,107 @@ class subc(dict[Any, Any]):
 [file userdefineddict.py]
 class dict:
     pass
+
+[case testDictConstantFolding]
+# Test constant folding of dict literals with deeply immutable keys/values
+def get_headers():
+    return {"k0": "v0", "k1": "v1"}
+
+def get_numbers():
+    return {1: 2, 3: 4}
+
+def get_tuple_key():
+    return {(1, 2): "a", (3, 4): "b"}
+
+def get_frozenset_key():
+    return {frozenset({1, 2}): "x"}
+
+def get_nested_tuple():
+    return {(1, (2, 3)): "ok"}
+
+def get_bool_none():
+    return {True: None, False: 1}
+
+def get_bytes():
+    return {b"x": b"y"}
+
+def get_mutable_value():
+    return {"a": []}
+
+def get_mutable_key():
+    return {(1, []): "bad"}
+
+def get_nested_mutable():
+    return {(1, (2, [])): "bad"}
+
+def get_unhashable_key():
+    return {[1, 2]: "bad"}
+
+def get_tuple_of_frozenset():
+    return {(1, frozenset({2, 3})): "ok"}
+
+def get_tuple_of_tuple():
+    return {(1, (2, (3, 4))): "ok"}
+
+def get_frozenset_of_tuple():
+    return {frozenset({(1, 2), (3, 4)}): "ok"}
+
+class C: pass
+
+def get_user_defined():
+    return {C(): 1}
+
+def test_mutation_independence():
+    d1 = get_headers()
+    d2 = get_headers()
+    d1["k0"] = "changed"
+    assert d2["k0"] == "v0"
+    d2["k1"] = "changed2"
+    assert d1["k1"] == "v1"
+
+def test_ineligible_not_folded():
+    # These should not be constant folded
+    assert get_mutable_value()["a"] == []
+    try:
+        get_mutable_key()
+    except TypeError:
+        pass
+    else:
+        assert False
+    try:
+        get_nested_mutable()
+    except TypeError:
+        pass
+    else:
+        assert False
+    try:
+        get_unhashable_key()
+    except TypeError:
+        pass
+    else:
+        assert False
+    # User-defined class instance as key should not be folded
+    d = get_user_defined()
+    assert list(d.values()) == [1]
+
+def test_eligible_folded():
+    assert get_headers() == {"k0": "v0", "k1": "v1"}
+    assert get_numbers() == {1: 2, 3: 4}
+    assert get_tuple_key() == {(1, 2): "a", (3, 4): "b"}
+    assert get_frozenset_key() == {frozenset({1, 2}): "x"}
+    assert get_nested_tuple() == {(1, (2, 3)): "ok"}
+    assert get_bool_none() == {True: None, False: 1}
+    assert get_bytes() == {b"x": b"y"}
+    assert get_tuple_of_frozenset() == {(1, frozenset({2, 3})): "ok"}
+    assert get_tuple_of_tuple() == {(1, (2, (3, 4))): "ok"}
+    assert get_frozenset_of_tuple() == {frozenset({(1, 2), (3, 4)}): "ok"}
+
+[file driver.py]
+from native import (
+    test_mutation_independence,
+    test_ineligible_not_folded,
+    test_eligible_folded,
+)
+test_mutation_independence()
+test_ineligible_not_folded()
+test_eligible_folded()

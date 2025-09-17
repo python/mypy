@@ -59,9 +59,11 @@ from mypyc.ir.ops import (
     BasicBlock,
     Call,
     ComparisonOp,
+    InitStatic,
     Integer,
     LoadAddress,
     LoadLiteral,
+    LoadStatic,
     PrimitiveDescription,
     RaiseStandardError,
     Register,
@@ -73,6 +75,7 @@ from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
     bool_rprimitive,
+    dict_rprimitive,
     int_rprimitive,
     is_fixed_width_rtype,
     is_int_rprimitive,
@@ -100,7 +103,7 @@ from mypyc.irbuild.format_str_tokenizer import (
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
 from mypyc.primitives.bytes_ops import bytes_slice_op
-from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
+from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op, dict_template_copy_op, exact_dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
@@ -1009,8 +1012,53 @@ def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
     return builder.primitive_op(list_tuple_op, [val_as_list], expr.line)
 
 
+def dict_literal_values(builder: IRBuilder, items: Sequence[tuple[Expression | None, Expression]], line: int) -> "Value | None":
+    """Try to extract a constant dict from a dict literal.
+
+    If all keys and values are deeply immutable and constant, build a static dict at module init,
+    register it as a static, and return a LoadStatic for it. Otherwise, return None.
+    """
+    result = {}
+    for key_expr, value_expr in items:
+        if key_expr is None:
+            # ** unpacking, not a literal
+            # TODO: if ** is unpacking a dict literal we can use that, we just need logic
+            return None
+        key = constant_fold_expr(builder, key_expr)
+        if key is None:
+            return None
+        value = constant_fold_expr(builder, value_expr)
+        if value is None:
+            return None
+        result[key] = value
+
+    dict_reg = builder.call_c(dict_new_op, [], line)
+    for k, v in result.items():
+        key = builder.load_literal_value(k)
+        value = builder.load_literal_value(v)
+        builder.primitive_op(dict_set_item_op, [dict_reg, key, value], line)
+
+    # Register as a static with a unique name
+    static_name = f"__mypyc_dict_template__{abs(hash(tuple(sorted(result.items()))))}"
+
+    if _static_dicts.get(static_name) is None:
+        _static_dicts[static_name] = builder.add(InitStatic(dict_reg, static_name, builder.module_name))
+    
+    return builder.add(LoadStatic(dict_rprimitive, static_name, builder.module_name))
+
 def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
-    """First accepts all keys and values, then makes a dict out of them."""
+    """First accepts all keys and values, then makes a dict out of them.
+
+    Optimization: If all keys and values are deeply immutable, emit a static template dict
+    and at runtime use PyDict_Copy to return a fresh dict.
+    """
+    # Try to constant fold the dict and get a static Value
+    template = dict_literal_values(builder, expr.items, expr.line)
+    if template is not None:
+        # At runtime, return PyDict_Copy(template)
+        return builder.call_c(dict_template_copy_op, [template], expr.line)
+
+    # Fallback: build dict at runtime as before
     key_value_pairs = []
     for key_expr, value_expr in expr.items:
         key = builder.accept(key_expr) if key_expr is not None else None
@@ -1019,6 +1067,8 @@ def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
 
     return builder.builder.make_dict(key_value_pairs, expr.line)
 
+
+_static_dicts = {}
 
 def transform_set_expr(builder: IRBuilder, expr: SetExpr) -> Value:
     return _visit_display(
