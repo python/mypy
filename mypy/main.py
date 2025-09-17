@@ -1170,7 +1170,7 @@ def define_options(
         metavar="JUNIT_XML_OUTPUT_FILE",
         help="Write a JUnit XML test result document with type checking results to the given file",
     )
-    imports_group.add_argument(
+    misc_group.add_argument(
         "--junit-format",
         choices=["global", "per_file"],
         default="global",
