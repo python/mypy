@@ -95,18 +95,22 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     return CPyObject_GetSlice(obj, start, end);
 }
 
+static PyObject *join_id_unicode = NULL;
+
 // Like _PyBytes_Join but fallback to dynamic call if 'sep' is not bytes
 // (mostly commonly, for bytearrays)
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
     if (PyBytes_CheckExact(sep)) {
         return PyBytes_Join(sep, iter);
     } else {
-        _Py_IDENTIFIER(join);
-        PyObject *name = _PyUnicode_FromId(&PyId_join); /* borrowed */
-        if (name == NULL) {
-            return NULL;
+        if (join_id_unicode == NULL) {
+            _Py_IDENTIFIER(join);
+            PyObject *join_id_unicode = _PyUnicode_FromId(&PyId_join); /* borrowed */
+            if (join_id_unicode == NULL) {
+                return NULL;
+            }
         }
-        return PyObject_CallMethodOneArg(sep, name, iter);
+        return PyObject_CallMethodOneArg(sep, join_id_unicode, iter);
     }
 }
 

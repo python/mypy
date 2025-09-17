@@ -20,6 +20,8 @@ PyObject *CPy_GetCoro(PyObject *obj)
     }
 }
 
+static PyObject *send_id_unicode = NULL;
+
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 {
     // Do a send, or a next if second arg is None.
@@ -27,12 +29,14 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
-        _Py_IDENTIFIER(send);
-        PyObject *name = _PyUnicode_FromId(&PyId_send); /* borrowed */
-        if (name == NULL) {
-            return NULL;
+        if (send_id_unicode == NULL) {
+            _Py_IDENTIFIER(send);
+            PyObject *send_id_unicode = _PyUnicode_FromId(&PyId_send); /* borrowed */
+            if (send_id_unicode == NULL) {
+                return NULL;
+            }
         }
-        return PyObject_CallMethodOneArg(iter, name, val);
+        return PyObject_CallMethodOneArg(iter, send_id_unicode, val);
     }
 }
 
@@ -1058,14 +1062,21 @@ error:
 
 #if CPY_3_11_FEATURES
 
+static PyObject *__name___id_unicode = NULL;
+
 // Return obj.__name__ (specialized to type objects, which are the most common target).
 PyObject *CPy_GetName(PyObject *obj) {
     if (PyType_Check(obj)) {
         return PyType_GetName((PyTypeObject *)obj);
     }
-    _Py_IDENTIFIER(__name__);
-    PyObject *name = _PyUnicode_FromId(&PyId___name__); /* borrowed */
-    return PyObject_GetAttr(obj, name);
+    if (__name___id_unicode == NULL) {
+        _Py_IDENTIFIER(__name__);
+        __name___id_unicode = _PyUnicode_FromId(&PyId___name__); /* borrowed */
+        if (__name___id_unicode == NULL) {
+            return NULL;
+        }
+    }
+    return PyObject_GetAttr(obj, __name___id_unicode);
 }
 
 #endif

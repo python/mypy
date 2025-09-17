@@ -9,6 +9,9 @@
 #define Py_TPFLAGS_SEQUENCE (1 << 5)
 #endif
 
+static PyObject *clear_id_unicode = NULL;
+static PyObject *copy_id_unicode = NULL;
+
 PyObject *CPyList_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
 
@@ -33,12 +36,14 @@ char CPyList_Clear(PyObject *list) {
     if (PyList_CheckExact(list)) {
         PyList_Clear(list);
     } else {
-        _Py_IDENTIFIER(clear);
-        PyObject *name = _PyUnicode_FromId(&PyId_clear);
-        if (name == NULL) {
-            return 0;
+        if (clear_id_unicode == NULL) {
+            _Py_IDENTIFIER(clear);
+            PyObject *clear_id_unicode = _PyUnicode_FromId(&PyId_clear);
+            if (clear_id_unicode == NULL) {
+                return 0;
+            }
         }
-        PyObject *res = PyObject_CallMethodNoArgs(list, name);
+        PyObject *res = PyObject_CallMethodNoArgs(list, clear_id_unicode);
         if (res == NULL) {
             return 0;
         }
@@ -50,13 +55,14 @@ PyObject *CPyList_Copy(PyObject *list) {
     if(PyList_CheckExact(list)) {
         return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
     }
-    _Py_IDENTIFIER(copy);
-
-    PyObject *name = _PyUnicode_FromId(&PyId_copy);
-    if (name == NULL) {
-        return NULL;
+    if (copy_id_unicode == NULL) {
+        _Py_IDENTIFIER(copy);
+        PyObject *copy_id_unicode = _PyUnicode_FromId(&PyId_copy);
+        if (copy_id_unicode == NULL) {
+            return NULL;
+        }
     }
-    return PyObject_CallMethodNoArgs(list, name);
+    return PyObject_CallMethodNoArgs(list, copy_id_unicode);
 }
 
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
