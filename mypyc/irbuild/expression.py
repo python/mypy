@@ -1015,8 +1015,8 @@ def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
 def dict_literal_values(builder: IRBuilder, items: Sequence[tuple[Expression | None, Expression]], line: int) -> "Value | None":
     """Try to extract a constant dict from a dict literal.
 
-    If all keys and values are deeply immutable and constant, build a static dict at module init,
-    register it as a static, and return a LoadStatic for it. Otherwise, return None.
+    If all keys and values are deeply immutable and constant, register it as a static
+    and return a LoadLiteral for it. Otherwise, return None.
     """
     result = {}
     for key_expr, value_expr in items:
@@ -1032,19 +1032,7 @@ def dict_literal_values(builder: IRBuilder, items: Sequence[tuple[Expression | N
             return None
         result[key] = value
 
-    dict_reg = builder.call_c(dict_new_op, [], line)
-    for k, v in result.items():
-        key = builder.load_literal_value(k)
-        value = builder.load_literal_value(v)
-        builder.primitive_op(dict_set_item_op, [dict_reg, key, value], line)
-
-    # Register as a static with a unique name
-    static_name = f"__mypyc_dict_template__{abs(hash(tuple(sorted(result.items()))))}"
-
-    if _static_dicts.get(static_name) is None:
-        _static_dicts[static_name] = builder.add(InitStatic(dict_reg, static_name, builder.module_name))
-    
-    return builder.add(LoadStatic(dict_rprimitive, static_name, builder.module_name))
+    return builder.add(LoadLiteral(result, dict_rprimitive)) if result else None
 
 def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
     """First accepts all keys and values, then makes a dict out of them.
@@ -1067,8 +1055,6 @@ def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
 
     return builder.builder.make_dict(key_value_pairs, expr.line)
 
-
-_static_dicts = {}
 
 def transform_set_expr(builder: IRBuilder, expr: SetExpr) -> Value:
     return _visit_display(

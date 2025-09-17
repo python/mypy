@@ -708,6 +708,9 @@ class GroupGenerator:
         # Descriptions of frozenset literals
         init_frozenset = c_array_initializer(literals.encoded_frozenset_values())
         self.declare_global("const int []", "CPyLit_FrozenSet", initializer=init_frozenset)
+        # Descriptions of dict literals
+        init_dict = c_array_initializer(literals.encoded_dict_values())
+        self.declare_global("const int []", "CPyLit_Dict", initializer=init_dict)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -926,10 +929,12 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line(f"{symbol} = {fixup};")
 
-        values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple, CPyLit_FrozenSet"
+        values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple, CPyLit_FrozenSet, CPyLit_Dict"
         emitter.emit_lines(
             f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"
         )
+
+        # (No per-dict static assignments needed; dict statics are handled by Literals)
 
         emitter.emit_lines("is_initialized = 1;", "return 0;", "}")
 

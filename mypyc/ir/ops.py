@@ -812,6 +812,10 @@ class LoadLiteral(RegisterOp):
 
     Tuple / frozenset literals must contain only valid literal values as items.
 
+    Dict literals must contain only literal keys and literal values.
+    Due to their mutability, dict literals will be copied from the main template
+    at each use.
+
     NOTE: You can use this to load boxed (Python) int objects. Use
           Integer to load unboxed, tagged integers or fixed-width,
           low-level integers.

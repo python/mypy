@@ -72,8 +72,7 @@ class Literals:
                     self.record_literal(item)
                 frozenset_literals[value] = len(frozenset_literals)
         elif isinstance(value, dict):
-            # Represent dicts as a tuple of sorted (key, value) pairs for uniqueness
-            items = tuple(sorted(value.items()))
+            items = self.make_dict_literal_key(value)
             dict_literals = self.dict_literals
             if items not in dict_literals:
                 for k, v in items:
@@ -118,10 +117,14 @@ class Literals:
             return n + self.frozenset_literals[value]
         n += len(self.frozenset_literals)
         if isinstance(value, dict):
-            items = tuple(sorted(value.items()))
-            return n + self.dict_literals[items]
+            key = self.make_dict_literal_key(value)
+            return n + self.dict_literals[key]
         assert False, "invalid literal: %r" % value
 
+    def make_dict_literal_key(self, value: dict) -> tuple:
+        """Make a unique key for a literal dict."""
+        return tuple(value.items())
+    
     def num_literals(self) -> int:
         # The first three are for None, True and False
         return (
