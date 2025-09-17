@@ -1165,7 +1165,11 @@ def define_options(
 
     misc_group = parser.add_argument_group(title="Miscellaneous")
     misc_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
-    misc_group.add_argument("--junit-xml", metavar="JUNIT_XML_OUTPUT_FILE", help="Write a JUnit XML test result document with type checking results to the given file")
+    misc_group.add_argument(
+        "--junit-xml",
+        metavar="JUNIT_XML_OUTPUT_FILE",
+        help="Write a JUnit XML test result document with type checking results to the given file",
+    )
     imports_group.add_argument(
         "--junit-format",
         choices=["global", "per_file"],
