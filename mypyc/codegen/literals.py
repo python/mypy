@@ -81,7 +81,7 @@ class Literals:
                     self.record_literal(item)
                 frozenset_literals[value] = len(frozenset_literals)
         elif isinstance(value, dict):
-            items = self.make_dict_literal_key(value)
+            items = self.make_dict_literal_key(value)  # type: ignore [arg-type]
             dict_literals = self.dict_literals
             if items not in dict_literals:
                 for k, v in items:
@@ -126,13 +126,13 @@ class Literals:
             return n + self.frozenset_literals[value]
         n += len(self.frozenset_literals)
         if isinstance(value, dict):
-            key = self.make_dict_literal_key(value)
+            key = self.make_dict_literal_key(value)  # type: ignore [arg-type]
             return n + self.dict_literals[key]
         assert False, "invalid literal: %r" % value
 
     def make_dict_literal_key(
         self, value: dict[LiteralValue, LiteralValue]
-    ) -> tuple[tuple[LiteralValue, LiteralValue]]:
+    ) -> tuple[tuple[LiteralValue, LiteralValue], ...]:
         """Make a unique key for a literal dict."""
         return tuple(value.items())
 
@@ -198,8 +198,8 @@ class Literals:
             items = value_by_index[i]
             result.append(str(len(items)))
             for k, v in items:
-                index_k = self.literal_index(k)
-                index_v = self.literal_index(v)
+                index_k = self.literal_index(k)  # type: ignore [arg-type]
+                index_v = self.literal_index(v)  # type: ignore [arg-type]
                 result.append(str(index_k))
                 result.append(str(index_v))
         return result
