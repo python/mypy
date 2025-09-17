@@ -1063,6 +1063,12 @@ def define_options(
         action="store_true",
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
+    if server_options:
+        incremental_group.add_argument(
+            "--use-fine-grained-cache",
+            action="store_true",
+            help="Use the cache in fine-grained incremental mode (this flag only available for dmypy)",
+        )
     incremental_group.add_argument(
         "--fixed-format-cache",
         action="store_true",
@@ -1202,13 +1208,6 @@ def define_options(
         group=misc_group,
         inverse="--interactive",
     )
-
-    if server_options:
-        misc_group.add_argument(
-            "--use-fine-grained-cache",
-            action="store_true",
-            help="Use the cache in fine-grained incremental mode",
-        )
 
     # hidden options
     parser.add_argument(
