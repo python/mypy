@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from functools import partial
-from typing import Callable
+from typing import Callable, Union
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -116,7 +116,7 @@ from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
-ConstantValueTuple = ConstantValue | tuple["ConstantValueTuple", ...]
+ConstantValueTuple = Union[ConstantValue, tuple["ConstantValueTuple", ...]]
 
 # Name and attribute references
 
