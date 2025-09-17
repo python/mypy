@@ -1196,25 +1196,6 @@ def define_options(
     internals_group.add_argument(
         "--disable-expression-cache", action="store_true", help=argparse.SUPPRESS
     )
-    experimental_group = parser.add_argument_group(
-        title="Experimental options",
-        description="Enable features that work well enough to be useful,"
-        + " but perhaps not as well as you might wish."
-        + " These features may be enabled by default in the future,"
-        + " or perhaps moved to another section.",
-    )
-    experimental_group.add_argument(
-        "--enable-incomplete-feature",
-        action="append",
-        metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
-        help="Enable support of incomplete/experimental features for early preview",
-    )
-    experimental_group.add_argument(
-        "--find-occurrences",
-        metavar="CLASS.MEMBER",
-        dest="special-opts:find_occurrences",
-        help="Print out all usages of a class member",
-    )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
     )
@@ -1265,6 +1246,26 @@ def define_options(
     # This can be useful when debugging mypyc bugs.
     report_group.add_argument(
         "--skip-c-gen", dest="mypyc_skip_c_generation", action="store_true", help=argparse.SUPPRESS
+    )
+
+    experimental_group = parser.add_argument_group(
+        title="Experimental options",
+        description="Enable features that work well enough to be useful,"
+        + " but perhaps not as well as you might wish."
+        + " These features may be enabled by default in the future,"
+        + " or perhaps moved to another section.",
+    )
+    experimental_group.add_argument(
+        "--enable-incomplete-feature",
+        action="append",
+        metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
+        help="Enable support of incomplete/experimental features for early preview",
+    )
+    experimental_group.add_argument(
+        "--find-occurrences",
+        metavar="CLASS.MEMBER",
+        dest="special-opts:find_occurrences",
+        help="Print out all usages of a class member",
     )
 
     misc_group = parser.add_argument_group(title="Miscellaneous")
