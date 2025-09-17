@@ -603,4 +603,3 @@ L0:
     r5 = CPyDict_Build(1, r0, r4)
     d = r5
     return 1
-

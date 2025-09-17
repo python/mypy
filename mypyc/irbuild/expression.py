@@ -59,11 +59,9 @@ from mypyc.ir.ops import (
     BasicBlock,
     Call,
     ComparisonOp,
-    InitStatic,
     Integer,
     LoadAddress,
     LoadLiteral,
-    LoadStatic,
     PrimitiveDescription,
     RaiseStandardError,
     Register,
@@ -103,7 +101,12 @@ from mypyc.irbuild.format_str_tokenizer import (
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
 from mypyc.primitives.bytes_ops import bytes_slice_op
-from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op, dict_template_copy_op, exact_dict_set_item_op
+from mypyc.primitives.dict_ops import (
+    dict_get_item_op,
+    dict_new_op,
+    dict_template_copy_op,
+    exact_dict_set_item_op,
+)
 from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
@@ -1012,7 +1015,9 @@ def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
     return builder.primitive_op(list_tuple_op, [val_as_list], expr.line)
 
 
-def dict_literal_values(builder: IRBuilder, items: Sequence[tuple[Expression | None, Expression]], line: int) -> "dict | None":
+def dict_literal_values(
+    builder: IRBuilder, items: Sequence[tuple[Expression | None, Expression]], line: int
+) -> dict | None:
     """Try to extract a constant dict from a dict literal, recursively staticizing nested dicts.
 
     If all keys and values are deeply immutable and constant (including nested dicts as values),
@@ -1042,6 +1047,7 @@ def dict_literal_values(builder: IRBuilder, items: Sequence[tuple[Expression | N
         result[key] = value
 
     return result or None
+
 
 def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
     """First accepts all keys and values, then makes a dict out of them.

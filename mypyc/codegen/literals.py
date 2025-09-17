@@ -6,7 +6,16 @@ from typing_extensions import TypeGuard
 # Supported Python literal types. All tuple / frozenset / dict items must have supported
 # literal types as well, but we can't represent the type precisely.
 LiteralValue = Union[
-    str, bytes, int, bool, float, complex, tuple[object, ...], frozenset[object], dict[object, object], None
+    str,
+    bytes,
+    int,
+    bool,
+    float,
+    complex,
+    tuple[object, ...],
+    frozenset[object],
+    dict[object, object],
+    None,
 ]
 
 
@@ -124,7 +133,7 @@ class Literals:
     def make_dict_literal_key(self, value: dict) -> tuple:
         """Make a unique key for a literal dict."""
         return tuple(value.items())
-    
+
     def num_literals(self) -> int:
         # The first three are for None, True and False
         return (
