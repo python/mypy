@@ -1051,7 +1051,7 @@ def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
     static_dict = dict_literal_values(builder, expr.items, expr.line)
     if static_dict is not None:
         # Register the static dict and return a copy at runtime
-        static_val = builder.add(LoadLiteral(static_dict, dict_rprimitive))
+        static_val = builder.add(LoadLiteral(static_dict, dict_rprimitive))  # type: ignore [arg-type]
         return builder.call_c(dict_template_copy_op, [static_val], expr.line)
 
     # If that fails, build dict at runtime
