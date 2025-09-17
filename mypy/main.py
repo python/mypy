@@ -1127,13 +1127,13 @@ def define_options(
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
-        title="Report generation", description="Generate a report in the specified format."
+        title="Report generation", description="Generate a report in the specified format in the specified directory."
     )
     for report_type in sorted(defaults.REPORTER_NAMES):
         if report_type not in {"memory-xml"}:
             report_group.add_argument(
                 f"--{report_type.replace('_', '-')}-report",
-                metavar="DIR",
+                metavar="OUTPUT_DIR",
                 dest=f"special-opts:{report_type}_report",
             )
 
