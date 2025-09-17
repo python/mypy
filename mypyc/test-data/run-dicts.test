@@ -425,7 +425,6 @@ def test_mutation_independence():
     assert d2["k0"] == "v0"
     d2["k1"] = "changed2"
     assert d1["k1"] == "v1"
-
 def test_ineligible_not_folded():
     # These should not be constant folded
     assert get_mutable_value()["a"] == []
@@ -450,7 +449,6 @@ def test_ineligible_not_folded():
     # User-defined class instance as key should not be folded
     d = get_user_defined()
     assert list(d.values()) == [1]
-
 def test_eligible_folded():
     assert get_headers() == {"k0": "v0", "k1": "v1"}
     assert get_numbers() == {1: 2, 3: 4}
@@ -462,16 +460,6 @@ def test_eligible_folded():
     assert get_tuple_of_frozenset() == {(1, frozenset({2, 3})): "ok"}
     assert get_tuple_of_tuple() == {(1, (2, (3, 4))): "ok"}
     assert get_frozenset_of_tuple() == {frozenset({(1, 2), (3, 4)}): "ok"}
-
-[file driver.py]
-from native import (
-    test_mutation_independence,
-    test_ineligible_not_folded,
-    test_eligible_folded,
-)
-test_mutation_independence()
-test_ineligible_not_folded()
-test_eligible_folded()
 
 [case testDictLiteralIsImmutable]
 def get_flat():
