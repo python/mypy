@@ -370,17 +370,103 @@ FOOTER: Final = """Environment variables:
   Define MYPY_CACHE_DIR to override configuration cache_dir path."""
 
 
+def is_terminal_punctuation(char: str) -> bool:
+    return char in (".", "?", "!")
+
+
+class ArgumentGroup(argparse._ArgumentGroup):
+    """A wrapper for argparse's ArgumentGroup class that lets us enforce capitalization
+    on the added arguments."""
+
+    def __init__(self, argument_group: argparse._ArgumentGroup) -> None:
+        self.argument_group = argument_group
+
+    def add_argument(
+        self, *name_or_flags: str, help: str | None = None, **kwargs: Any
+    ) -> argparse.Action:
+        if self.argument_group.title == "Report generation":
+            if help and help != argparse.SUPPRESS:
+                ValueError(
+                    "Mypy-internal CLI documentation style error: help description for the Report generation flag"
+                    + f" {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
+                    + " This check is in the code because we assume there's nothing helpful to say about the report flags."
+                    + " If you're improving that situation, feel free to remove this check."
+                )
+        else:
+            if not help:
+                raise ValueError(
+                    f"Mypy-internal CLI documentation style error: flag help description for {name_or_flags}"
+                    + f" must be provided. (Currently, '{help}'.)"
+                )
+            if help[0] != help[0].upper():
+                raise ValueError(
+                    f"Mypy-internal CLI documentation style error: flag help description for {name_or_flags}"
+                    + f" must start with a capital letter (or unicameral symbol). (Currently, '{help}'.)"
+                )
+            if help[-1] == ".":
+                raise ValueError(
+                    f"Mypy-internal CLI documentation style error: flag help description for {name_or_flags}"
+                    + f" must NOT end with a period. (Currently, '{help}'.)"
+                )
+        return self.argument_group.add_argument(*name_or_flags, help=help, **kwargs)
+
+    def _add_action(self, action: Any) -> Any:
+        """This is used by the internal argparse machinery so we have to provide it."""
+        return self.argument_group._add_action(action)
+
+
 class CapturableArgumentParser(argparse.ArgumentParser):
     """Override ArgumentParser methods that use sys.stdout/sys.stderr directly.
 
     This is needed because hijacking sys.std* is not thread-safe,
     yet output must be captured to properly support mypy.api.run.
+
+    Also enforces our style guides for groups and flags (ie, capitalization).
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.stdout = kwargs.pop("stdout", sys.stdout)
         self.stderr = kwargs.pop("stderr", sys.stderr)
         super().__init__(*args, **kwargs)
+
+    # =====================
+    # Enforce style guide
+    # =====================
+    # We just hard fail on these, as CI will ensure the runtime errors never get to users.
+    def add_argument_group(
+        self, title: str | None = None, description: str | None = None, **kwargs: str | Any
+    ) -> ArgumentGroup:
+        if title is None:
+            raise ValueError(
+                "CLI documentation style error: all argument groups must have titles,"
+                + " and at least one currently does not."
+            )
+        if title not in [
+            "positional arguments",
+            "options",
+            "optional arguments",  # name in python 3.9
+        ]:  # These are built-in names, ignore them.
+            if not title[0].isupper():
+                raise ValueError(
+                    f"CLI documentation style error: Title of group {title}"
+                    + f" must start with a capital letter. (Currently, '{title[0]}'.)"
+                )
+            if description and not description[0].isupper():
+                raise ValueError(
+                    f"CLI documentation style error: Description of group {title}"
+                    + f" must start with a capital letter. (Currently, '{description[0]}'.)"
+                )
+            if is_terminal_punctuation(title[-1]):
+                raise ValueError(
+                    f"CLI documentation style error: Title of group {title}"
+                    + f" must NOT end with terminal punction. (Currently, '{title[-1]}'.)"
+                )
+            if description and not is_terminal_punctuation(description[-1]):
+                raise ValueError(
+                    f"CLI documentation style error: Description of group {title}"
+                    + f" must end with terminal punction. (Currently, '{description[-1]}'.)"
+                )
+        return ArgumentGroup(super().add_argument_group(title, description, **kwargs))
 
     # =====================
     # Help-printing methods
@@ -469,7 +555,8 @@ def define_options(
     stderr: TextIO = sys.stderr,
     server_options: bool = False,
 ) -> tuple[CapturableArgumentParser, list[str], list[tuple[str, bool]]]:
-    """Define the options in the parser (by calling a bunch of methods that express/build our desired command-line flags).
+    """Define the options in the parser
+    (by calling a bunch of methods that express/build our desired command-line flags).
     Returns a tuple of:
       a parser object, that can parse command line arguments to mypy (expected consumer: main's process_options),
       a list of what flags are strict (expected consumer: docs' html_builder's _add_strict_list),
@@ -544,10 +631,6 @@ def define_options(
     #     Feel free to add subsequent sentences that add additional details.
     # 3.  If you cannot think of a meaningful description for a new group, omit it entirely.
     #     (E.g. see the "miscellaneous" sections).
-    # 4.  The group description should end with a period (unless the last line is a link). If you
-    #     do end the group description with a link, omit the 'http://' prefix. (Some links are too
-    #     long and will break up into multiple lines if we include that prefix, so for consistency
-    #     we omit the prefix on all links.)
 
     general_group = parser.add_argument_group(title="Optional arguments")
     general_group.add_argument(
@@ -777,7 +860,7 @@ def define_options(
         title="None and Optional handling",
         description="Adjust how values of type 'None' are handled. For more context on "
         "how mypy handles values of type 'None', see: "
-        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#optional-types-and-the-none-type",
+        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#optional-types-and-the-none-type.",
     )
     add_invertible_flag(
         "--implicit-optional",
@@ -1034,7 +1117,7 @@ def define_options(
         "Mypy caches type information about modules into a cache to "
         "let you speed up future invocations of mypy. Also see "
         "mypy's daemon mode: "
-        "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
+        "https://mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon.",
     )
     incremental_group.add_argument(
         "-i", "--incremental", action="store_true", help=argparse.SUPPRESS
@@ -1128,7 +1211,7 @@ def define_options(
         dest="shadow_file",
         action="append",
         help="When encountering SOURCE_FILE, read and type check "
-        "the contents of SHADOW_FILE instead.",
+        "the contents of SHADOW_FILE instead",
     )
     internals_group.add_argument("--fast-exit", action="store_true", help=argparse.SUPPRESS)
     internals_group.add_argument(
@@ -1278,7 +1361,7 @@ def define_options(
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
-        "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
+        "https://mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy.",
     )
     add_invertible_flag(
         "--explicit-package-bases",
