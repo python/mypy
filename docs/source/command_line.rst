@@ -1171,6 +1171,14 @@ Enabling incomplete/experimental features
 
 List of currently incomplete/experimental features:
 
+* ``InlineTypedDict``: this feature enables non-standard syntax for inline
+  :ref:`TypedDicts <typeddict>`, for example:
+
+  .. code-block:: python
+
+     def test_values() -> {"int": int, "str": str}:
+         return {"int": 42, "str": "test"}
+
 * ``PreciseTupleTypes``: this feature will infer more precise tuple types in
   various scenarios. Before variadic types were added to the Python type system
   by :pep:`646`, it was impossible to express a type like "a tuple with
@@ -1205,14 +1213,6 @@ List of currently incomplete/experimental features:
          reveal_type(numbers)
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
-
-* ``InlineTypedDict``: this feature enables non-standard syntax for inline
-  :ref:`TypedDicts <typeddict>`, for example:
-
-  .. code-block:: python
-
-     def test_values() -> {"int": int, "str": str}:
-         return {"int": 42, "str": "test"}
 
 
 Miscellaneous
