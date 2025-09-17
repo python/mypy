@@ -1159,7 +1159,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
