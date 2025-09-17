@@ -1035,7 +1035,7 @@ def dict_literal_values(
         if not isinstance(expr, TupleExpr):
             return None
         folded = tuple(
-            const for const in map(constant_fold_expr_or_tuple, expr.items) if const is not None
+            const for const in map(partial(constant_fold_expr_or_tuple, builder), expr.items) if const is not None
         )
         return folded if len(folded) == len(expr.items) else None
 
