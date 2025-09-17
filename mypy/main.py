@@ -1107,6 +1107,8 @@ def define_options(
     parser.add_argument(
         "--enable-incomplete-feature",
         action="append",
+        # We can't just use choices= here because we actually accept more than this;
+        # see process_incomplete_features.
         metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
         help="Enable support of incomplete/experimental features for early preview",
     )
