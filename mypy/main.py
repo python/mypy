@@ -571,7 +571,7 @@ def define_options(
         "-O",
         "--output",
         help="Set a custom output format",
-        choices=OUTPUT_CHOICES,
+        choices=sorted(OUTPUT_CHOICES),
     )
 
     config_group = parser.add_argument_group(
