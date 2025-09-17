@@ -7,6 +7,9 @@
 from typing import reveal_type
 reveal_type(1) #type: ignore[misc] # N: Revealed type is "Literal[1]?"
 
+[case testErrorCodeMiscDoesntSuppressRevealLocals-xfail]
+reveal_locals() #type:ignore[misc] # N: There are no locals to reveal
+
 [case testErrorCodeNoAttribute]
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
