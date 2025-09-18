@@ -81,7 +81,7 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
     elif (
         isinstance(expr, CallExpr)
         and isinstance(callee := expr.callee, MemberExpr)
-        and isinstance(callee.expr, StrExpr)
+        and isinstance(folded_callee := constant_fold_expr(callee.expr, cur_mod_id), str)
         and callee.name == "join"
         and len(args := expr.args) == 1
         and isinstance(arg := args[0], (ListExpr, TupleExpr))
@@ -92,7 +92,7 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
             if not isinstance(val, str):
                 return None
             folded_items.append(val)
-        return callee.expr.value.join(folded_items)
+        return folded_callee.join(folded_items)
     return None
 
 
