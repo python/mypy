@@ -90,7 +90,7 @@ char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t litera
     if (str == literal_str) {
         return 1;
     }
-    return _CPyStr_Equal_NoIdentCheck(str1, str2, literal_length);
+    return _CPyStr_Equal_NoIdentCheck(str, literal_str, literal_length);
 }
 
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
