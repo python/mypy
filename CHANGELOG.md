@@ -285,9 +285,9 @@ Please see [git log](https://github.com/python/typeshed/commits/main?after=2480d
 
 ### Mypy 1.18.2
 
-- Fix crash on recursive alias in `indirection.py` (Ivan Levkivskyi, PR [19845](https://github.com/python/mypy/pull/19845))
-- Add additional guidance for errors when runtime is `object.__init__` (Stephen Morton, PR [19733](https://github.com/python/mypy/pull/19733))
-- Fix handling of None values in f-string expressions (BobTheBuidler, PR [19846](https://github.com/python/mypy/pull/19846))
+- Fix crash on recursive alias (Ivan Levkivskyi, PR [19845](https://github.com/python/mypy/pull/19845))
+- Add additional guidance for stubtest errors when runtime is `object.__init__` (Stephen Morton, PR [19733](https://github.com/python/mypy/pull/19733))
+- Fix handling of None values in f-string expressions in mypyc (BobTheBuidler, PR [19846](https://github.com/python/mypy/pull/19846))
 
 ### Acknowledgements
 
