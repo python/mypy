@@ -21,6 +21,8 @@ from mypy.version import __version__ as mypy_version
 
 T = TypeVar("T")
 
+Severity = Literal["note", "warning", "error"]
+
 # Show error codes for some note-level messages (these usually appear alone
 # and not as a comment for a previous error-level message).
 SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED, codes.DEPRECATED}
@@ -79,8 +81,8 @@ class ErrorInfo:
     # The end column number related to this error with file.
     end_column = 0  # -1 if unknown
 
-    # Either 'error' or 'note'
-    severity = ""
+    # A set string indicating the badness of the info
+    severity: Severity = ""
 
     # The error message.
     message = ""
@@ -494,7 +496,7 @@ class Errors:
         code: ErrorCode | None = None,
         *,
         blocker: bool = False,
-        severity: Literal["note", "error"] = "error",
+        severity: Severity = "error",
         file: str | None = None,
         only_once: bool = False,
         origin_span: Iterable[int] | None = None,
@@ -511,7 +513,7 @@ class Errors:
             message: message to report
             code: error code (defaults to misc; or None for notes), not shown for notes
             blocker: if True, don't continue analysis after this error
-            severity: 'error' or 'note'
+            severity: a Severity like "note" or "error"
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             origin_span: if non-None, override current context as origin
