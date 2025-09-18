@@ -9,7 +9,6 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 from typing import Callable, Final, Optional
-
 from typing_extensions import TypeGuard
 
 from mypy.argmap import map_actuals_to_formals
