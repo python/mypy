@@ -374,3 +374,30 @@ class subbytearray(bytearray):
 [file userdefinedbytes.py]
 class bytes:
     pass
+
+[case testBytesOptionalEquality]
+from __future__ import annotations
+
+def eq_b_opt_b(x: bytes | None, y: bytes) -> bool:
+    return x == y
+
+def ne_b_b_opt(x: bytes, y: bytes | None) -> bool:
+    return x != y
+
+def test_optional_eq() -> None:
+    b = b'x'
+    assert eq_b_opt_b(b, b)
+    assert eq_b_opt_b(b + bytes([int()]), b + bytes([int()]))
+
+    assert not eq_b_opt_b(b'x', b'y')
+    assert not eq_b_opt_b(b'y', b'x')
+    assert not eq_b_opt_b(None, b'x')
+
+def test_optional_ne() -> None:
+    b = b'x'
+    assert not ne_b_b_opt(b, b)
+    assert not ne_b_b_opt(b + b'y', b + bytes() + b'y')
+
+    assert ne_b_b_opt(b'x', b'y')
+    assert ne_b_b_opt(b'y', b'x')
+    assert ne_b_b_opt(b'x', None)

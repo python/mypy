@@ -6084,7 +6084,7 @@ class B(A):
     __slots__ = ('a', 'b')
 class C:
     __slots__ = ('x',)
-class D(B, C):
+class D(B, C):  # E: Class "D" has incompatible disjoint bases
     __slots__ = ('aa', 'bb', 'cc')
 [builtins fixtures/tuple.pyi]
 
@@ -9273,3 +9273,19 @@ class Bar:
 [file foo.py]
 class Bar:
     ...
+
+[case testConstructorWithoutStrictOptionalNoCache]
+import mod
+a = mod.NT(x=None)  # OK
+
+[file typ.py]
+from typing import NamedTuple, Optional
+NT = NamedTuple("NT", [("x", Optional[str])])
+
+[file mod.py]
+# mypy: no-strict-optional
+from typ import NT
+
+def f() -> NT:
+    return NT(x='')
+[builtins fixtures/tuple.pyi]

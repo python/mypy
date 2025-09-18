@@ -845,7 +845,9 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
             )
             builder.activate_block(regular_block)
             rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
-            retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
+            retval = builder.coerce(
+                builder.builder.unary_not(eqval, line, likely_bool=True), rettype, line
+            )
             builder.add(Return(retval))
             builder.activate_block(not_implemented_block)
             builder.add(Return(not_implemented))

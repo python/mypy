@@ -728,8 +728,21 @@ of the above sections.
        if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 
-       assert text is not None  # OK, check against None is allowed as a special case.
+       assert text is not None  # OK, check against None is allowed
 
+
+.. option:: --strict-equality-for-none
+
+    This flag extends :option:`--strict-equality <mypy --strict-equality>` for checks
+    against ``None``:
+
+    .. code-block:: python
+
+       text: str
+       assert text is not None  # Error: non-overlapping identity check!
+
+    Note that :option:`--strict-equality-for-none <mypy --strict-equality-for-none>`
+    only works in combination with :option:`--strict-equality <mypy --strict-equality>`.
 
 .. option:: --strict-bytes
 
