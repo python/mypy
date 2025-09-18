@@ -1012,10 +1012,7 @@ def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     if fn.name != "__new__":
         return None
 
-    ir = None
-    for cls in builder.classes:
-        if cls.name == fn.class_name:
-            ir = cls
+    ir = builder.get_current_class_ir()
     if ir is None:
         return None
 
