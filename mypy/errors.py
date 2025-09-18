@@ -6,7 +6,7 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from itertools import chain
-from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
+from typing import Callable, Final, Literal, NoReturn, Optional, TextIO, TypeVar
 from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
@@ -494,7 +494,7 @@ class Errors:
         code: ErrorCode | None = None,
         *,
         blocker: bool = False,
-        severity: str = "error",
+        severity: Literal["note", "error"] = "error",
         file: str | None = None,
         only_once: bool = False,
         origin_span: Iterable[int] | None = None,
@@ -509,7 +509,7 @@ class Errors:
             line: line number of error
             column: column number of error
             message: message to report
-            code: error code (not shown for notes), may be None
+            code: error code (defaults to misc; or None for notes), not shown for notes
             blocker: if True, don't continue analysis after this error
             severity: 'error' or 'note'
             file: if non-None, override current file as context
@@ -548,6 +548,11 @@ class Errors:
             end_line = line
 
         code = code or (parent_error.code if parent_error else None)
+        if code is None:
+            if blocker or (severity=='note'):
+                code = None # do we even need to do this for blockers?
+            else:
+                code = codes.MISC
 
         info = ErrorInfo(
             import_ctx=self.import_context(),
