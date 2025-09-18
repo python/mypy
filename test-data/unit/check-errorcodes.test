@@ -10,6 +10,14 @@ reveal_type(1) #type: ignore[misc] # N: Revealed type is "Literal[1]?"
 [case testErrorCodeMiscDoesntSuppressRevealLocals]
 reveal_locals() #type:ignore[misc] # N: There are no locals to reveal
 
+[case testErrorCodeMiscRedefinitionNotes]
+# flags: --strict
+if x: #type: ignore[name-defined]
+    def y() -> None: pass
+else:
+    def y() -> bool: return True # type: ignore[misc]
+
+
 [case testErrorCodeNoAttribute]
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
