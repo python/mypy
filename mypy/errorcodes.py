@@ -59,18 +59,14 @@ ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "Genera
 CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
-VALID_TYPE: Final = ErrorCode(
-    "valid-type", "Check that type (annotation) is valid", "General"
-)
+VALID_TYPE: Final = ErrorCode("valid-type", "Check that type (annotation) is valid", "General")
 VAR_ANNOTATED: Final = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
 )
 OVERRIDE: Final = ErrorCode(
     "override", "Check that method override is compatible with base class", "General"
 )
-RETURN: Final = ErrorCode(
-    "return", "Check that function always returns a value", "General"
-)
+RETURN: Final = ErrorCode("return", "Check that function always returns a value", "General")
 RETURN_VALUE: Final = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
@@ -158,7 +154,7 @@ AWAIT_NOT_ASYNC: Final = ErrorCode(
     "await-not-async", 'Warn about "await" outside coroutine ("async def")', "General"
 )
 # These error codes aren't enabled by default.
-NO_UNTYPED_DEF: Final= ErrorCode(
+NO_UNTYPED_DEF: Final = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
 )
 NO_UNTYPED_CALL: Final = ErrorCode(
