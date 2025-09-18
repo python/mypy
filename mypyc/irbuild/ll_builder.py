@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
-from typing import Callable, Final, Optional
+from typing import Callable, Final, Optional, TypeGuard
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
@@ -1552,7 +1552,7 @@ class LowLevelIRBuilder:
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
 
-        def is_string_literal(value: Value) -> bool:
+        def is_string_literal(value: Value) -> TypeGuard[LoadLiteral]:
             return isinstance(value, LoadLiteral) and is_str_rprimitive(value.type)
 
         if op == "==":
