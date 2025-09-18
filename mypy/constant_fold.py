@@ -208,4 +208,3 @@ def constant_fold_unary_op(op: str, value: ConstantValue) -> int | float | None:
 
 
 def is_f_string_expr(expr: Expression) -> TypeGuard[CallExpr]:
-    
