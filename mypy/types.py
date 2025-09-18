@@ -2278,6 +2278,8 @@ class CallableType(FunctionLike):
             ret = ret.partial_fallback
         if isinstance(ret, TypedDictType):
             ret = ret.fallback
+        if isinstance(ret, LiteralType):
+            ret = ret.fallback
         assert isinstance(ret, Instance)
         return ret.type
 
