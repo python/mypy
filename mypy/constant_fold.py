@@ -281,4 +281,3 @@ def constant_fold_call_expr(
                 folded_args.append(arg_val)
             return folded_callee.format(*folded_args)
     return None
-    
