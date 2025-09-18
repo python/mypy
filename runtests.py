@@ -106,7 +106,7 @@ cmds = {
 # Stop run immediately if these commands fail
 FAST_FAIL = ["self", "lint"]
 
-EXTRA_COMMANDS = ("pytest-extra", "mypyc-fast", "mypyc-extra")
+EXTRA_COMMANDS = ("pytest-extra", "mypyc-fast", "mypyc-extra", "selfc")
 DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd not in EXTRA_COMMANDS]
 
 assert all(cmd in cmds for cmd in FAST_FAIL)
@@ -162,7 +162,7 @@ def main() -> None:
         print()
         print(
             "Run the given tests. If given no arguments, run everything except"
-            + " pytest-extra and mypyc-extra. Unrecognized arguments will be"
+            + f" the slowest commands {EXTRA_COMMANDS}. Unrecognized arguments will be"
             + " interpreted as individual test names / substring expressions"
             + " (or, if they end in .test, individual test files)"
             + " and this script will try to run them."
