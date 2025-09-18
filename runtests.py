@@ -67,15 +67,7 @@ cmds = {
     ],
     # Self type check, but use mypyc;
     # for instance, to catch nasty mypyc bugs.
-    "selfc": [
-        "mypyc",
-        "--config-file",
-        "mypy_self_check.ini",
-        "-p",
-        "mypy",
-        "-p",
-        "mypyc",
-    ],
+    "selfc": ["mypyc", "--config-file", "mypy_self_check.ini", "-p", "mypy", "-p", "mypyc"],
     # Type check setup.py as well
     "self-packaging": [
         executable,
