@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import Callable
 
 from mypy.checker import TypeChecker
-from mypy.errorcodes import MISC
 from mypy.nodes import TypeInfo
 from mypy.plugin import FunctionContext, Plugin
 from mypy.subtypes import is_proper_subtype
@@ -73,7 +72,6 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
                 "If you pass on the original type"
                 " after the check, always use its unexpanded version",
                 ctx.context,
-                code=MISC,
             )
     return ctx.default_return_type
 
