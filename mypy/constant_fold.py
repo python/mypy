@@ -17,6 +17,9 @@ from mypy.nodes import (
     StrExpr,
     UnaryExpr,
     Var,
+    CallExpr,
+    MemberExpr,
+    ListExpr,
 )
 
 # All possible result types of constant folding
@@ -73,6 +76,23 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if value is not None:
             return constant_fold_unary_op(expr.op, value)
+    # --- f-string constant folding ---
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, MemberExpr)
+        and isinstance(callee.expr, StrExpr)
+        and callee.expr.value == ""
+        and callee.name == "join"
+        and len(args := expr.args) == 1
+        and isinstance(arg := args[0], ListExpr)
+    ):
+        folded_items = []
+        for item in arg.items:
+            val = constant_fold_expr(item, cur_mod_id)
+            if not isinstance(val, str):
+                return None
+            folded_items.append(val)
+        return "".join(folded_items)
     return None
 
 
@@ -185,3 +205,7 @@ def constant_fold_unary_op(op: str, value: ConstantValue) -> int | float | None:
     elif op == "+" and isinstance(value, (int, float)):
         return value
     return None
+
+
+def is_f_string_expr(expr: Expression) -> TypeGuard[CallExpr]:
+    
