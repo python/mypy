@@ -549,8 +549,8 @@ class Errors:
 
         code = code or (parent_error.code if parent_error else None)
         if code is None:
-            if blocker or (severity=='note'):
-                code = None # do we even need to do this for blockers?
+            if blocker or (severity == "note"):
+                code = None  # do we even need to do this for blockers?
             else:
                 code = codes.MISC
 
