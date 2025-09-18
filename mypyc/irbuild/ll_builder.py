@@ -185,6 +185,7 @@ from mypyc.primitives.set_ops import new_set_op
 from mypyc.primitives.str_ops import (
     str_check_if_true,
     str_eq,
+    str_eq_literal,
     str_ssize_t_size_op,
     unicode_compare,
 )
@@ -1551,9 +1552,22 @@ class LowLevelIRBuilder:
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
         if op == "==":
+            if isinstance(lhs, LoadLiteral) and is_str_rprimitive(lhs.type):
+                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)
+                return self.primitive_op(str_eq_literal, [rhs, lhs, literal_length], line)
+            elif isinstance(rhs, LoadLiteral) and is_str_rprimitive(rhs.type):
+                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)
+                return self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
             return self.primitive_op(str_eq, [lhs, rhs], line)
         elif op == "!=":
-            eq = self.primitive_op(str_eq, [lhs, rhs], line)
+            if isinstance(lhs, LoadLiteral) and is_str_rprimitive(lhs.type):
+                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)
+                eq = self.primitive_op(str_eq_literal, [rhs, lhs, literal_length])
+            elif isinstance(rhs, LoadLiteral) and is_str_rprimitive(rhs.type):
+                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)
+                eq = self.primitive_op(str_eq_literal, [lhs, rhs, literal_length])
+            else:
+                eq = self.primitive_op(str_eq, [lhs, rhs], line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
 
         # TODO: modify 'str' to use same interface as 'compare_bytes' as it would avoid
