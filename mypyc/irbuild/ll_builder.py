@@ -1551,10 +1551,10 @@ class LowLevelIRBuilder:
 
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
-        
+
         def is_string_literal(value: Value) -> bool:
             return isinstance(value, LoadLiteral) and is_str_rprimitive(value.type)
-        
+
         if op == "==":
             if is_string_literal(lhs):
                 if is_string_literal(rhs):
