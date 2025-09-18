@@ -29,7 +29,6 @@ from mypy.errors import (
     ErrorWatcher,
     IterationDependentErrors,
     IterationErrorWatcher,
-    Severity,
 )
 from mypy.nodes import (
     ARG_NAMED,
@@ -234,7 +233,7 @@ class MessageBuilder:
         self,
         msg: str,
         context: Context | None,
-        severity: Severity,
+        severity: str,
         *,
         code: ErrorCode | None = None,
         file: str | None = None,

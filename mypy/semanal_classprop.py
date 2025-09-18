@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from mypy.errors import Errors, Severity
+from mypy.errors import Errors
 from mypy.nodes import (
     IMPLICITLY_ABSTRACT,
     IS_ABSTRACT,
@@ -102,7 +102,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
             return
         if abstract and not abstract_in_this_class:
 
-            def report(message: str, severity: Severity) -> None:
+            def report(message: str, severity: str) -> None:
                 errors.report(typ.line, typ.column, message, severity=severity)
 
             attrs = ", ".join(f'"{attr}"' for attr, _ in sorted(abstract))
