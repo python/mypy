@@ -228,30 +228,30 @@ def constant_fold_call_expr(
         if func is None:
             return None
 
-        folded_args = []
+        args = []
         for arg in expr.args:
             val = constant_fold_expr(arg, cur_mod_id)
             if val is None:
                 return None
-            folded_args.append(arg)
+            args.append(arg)
 
-        args = []
-        kwargs = {}
-        for folded_arg, arg_kind, arg_name in zip(folded_args, expr.arg_kinds, expr.arg_names):
+        call_args = []
+        call_kwargs = {}
+        for folded_arg, arg_kind, arg_name in zip(args, expr.arg_kinds, expr.arg_names):
             try:
                 if arg_kind == ArgKind.ARG_POS:
-                    args.append(folded_arg)
+                    call_args.append(folded_arg)
                 elif arg_kind == ArgKind.ARG_NAMED:
-                    kwargs[arg_name] = folded_arg
+                    call_kwargs[arg_name] = folded_arg
                 elif arg_kind == ArgKind.ARG_STAR:
-                    args.extend(folded_arg)
+                    call_args.extend(folded_arg)
                 elif arg_kind == ArgKind.ARG_STAR2:
-                    kwargs.update(folded_arg)
+                    call_kwargs.update(folded_arg)
             except:
                 return None
 
         try:
-            return func(*args, **kwargs)
+            return func(*call_args, **call_kwargs)
         except:
             return None
     # --- f-string requires partial support for both str.join and str.format ---
