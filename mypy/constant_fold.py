@@ -205,7 +205,3 @@ def constant_fold_unary_op(op: str, value: ConstantValue) -> int | float | None:
     elif op == "+" and isinstance(value, (int, float)):
         return value
     return None
-
-
-def is_f_string_expr(expr: Expression) -> TypeGuard[CallExpr]:
-    
