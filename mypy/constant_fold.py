@@ -98,7 +98,7 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
             return folded_callee.join(folded_items)
         # --- str.format constant folding
         elif callee.name == "format":
-            folded_args: list[str] = []
+            folded_args: list[ConstantValue] = []
             for arg in expr.args:
                 arg_val = constant_fold_expr(arg, cur_mod_id)
                 if arg_val is None:
