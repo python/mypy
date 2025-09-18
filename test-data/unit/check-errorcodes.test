@@ -2,12 +2,12 @@
 --
 -- These implicitly use --show-error-codes. # TODO: isn't this statement redundant now that this flag defaults to true?
 
-[case testErrorCodeMiscDoesntSuppressRevealType-xfail]
+[case testErrorCodeMiscDoesntSuppressRevealType]
 # Prevent regression on https://github.com/python/mypy/issues/19840
 from typing import reveal_type
 reveal_type(1) #type: ignore[misc] # N: Revealed type is "Literal[1]?"
 
-[case testErrorCodeMiscDoesntSuppressRevealLocals-xfail]
+[case testErrorCodeMiscDoesntSuppressRevealLocals]
 reveal_locals() #type:ignore[misc] # N: There are no locals to reveal
 
 [case testErrorCodeNoAttribute]
