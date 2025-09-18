@@ -65,7 +65,7 @@ make_bloom_mask(int kind, const void* ptr, Py_ssize_t len)
 }
 
 static char _CPyStr_Equal_NoIdentCheck(PyObject *str1, PyObject *str2, Py_ssize_t str2_length) {
-    // This helper function only exists to deduplicate code
+    // This helper function only exists to deduplicate code in CPyStr_Equal and CPyStr_EqualLiteral
     Py_ssize_t str1_length = PyUnicode_GET_LENGTH(str1);
     if (str1_length != str2_length)
         return 0;
@@ -86,11 +86,11 @@ char CPyStr_Equal(PyObject *str1, PyObject *str2) {
     return _CPyStr_Equal_NoIdentCheck(str1, str2, str2_length);
 }
 
-char CPyStr_EqualLiteral(PyObject *str1, PyObject *str2, Py_ssize_t literal_length) {
-    if (str1 == str2) {
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length) {
+    if (str == literal_str) {
         return 1;
     }
-    return _CPyStr_Equal_NoIdentCheck(str1, str2, literal_length)
+    return _CPyStr_Equal_NoIdentCheck(str1, str2, literal_length);
 }
 
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
