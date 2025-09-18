@@ -159,7 +159,13 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
         for node in module.names.values():
-            if isinstance(node.node, TypeInfo) and is_from_module(node.node, module):
+            if (
+                isinstance(node.node, TypeInfo)
+                and is_from_module(node.node, module)
+                and not node.node.is_newtype
+                and not node.node.is_named_tuple
+                and node.node.typeddict_type is None
+            ):
                 ir = deser_ctx.classes[node.node.fullname]
                 mapper.type_to_ir[node.node] = ir
                 mapper.symbol_fullnames.add(node.node.fullname)
