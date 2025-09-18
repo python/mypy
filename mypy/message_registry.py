@@ -13,6 +13,7 @@ from typing import Final, NamedTuple
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 
+
 class ErrorMessage(NamedTuple):
     value: str
     code: ErrorCode | None = None
