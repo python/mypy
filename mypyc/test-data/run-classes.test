@@ -3110,7 +3110,7 @@ f = native.F()
 del f
 
 [out]
-Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+Exception ignored in: <native.F object at 0x000000000000>
 Traceback (most recent call last):
   File "native.py", line 5, in __del__
     raise Exception("e2")
@@ -3794,3 +3794,100 @@ assert t.native == 43
 assert t.generic == "{}"
 assert t.bitfield == 0x0C
 assert t.default == 10
+
+[case testPerTypeFreeList]
+from __future__ import annotations
+
+from mypy_extensions import mypyc_attr
+
+a = []
+
+@mypyc_attr(free_list_len=1)
+class Foo:
+    def __init__(self, x: int) -> None:
+        self.x = x
+        a.append(x)
+
+def test_alloc() -> None:
+    x: Foo | None
+    y: Foo | None
+
+    x = Foo(1)
+    assert x.x == 1
+    x = None
+
+    x = Foo(2)
+    assert x.x == 2
+    y = Foo(3)
+    assert x.x == 2
+    assert y.x == 3
+    x = None
+    y = None
+    assert a == [1, 2, 3]
+
+    x = Foo(4)
+    assert x.x == 4
+    y = Foo(5)
+    assert x.x == 4
+    assert y.x == 5
+
+@mypyc_attr(free_list_len=1)
+class Base:
+    def __init__(self, x: str) -> None:
+        self.x = x
+
+class Deriv(Base):
+    def __init__(self, x: str, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+@mypyc_attr(free_list_len=1)
+class Deriv2(Base):
+    def __init__(self, x: str, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+def test_inheritance() -> None:
+    x: Base | None
+    y: Base | None
+    x = Base('x' + str())
+    y = Base('y' + str())
+    y = None
+    d = Deriv('a' + str(), 'b' + str())
+    assert type(d) is Deriv
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert x.x == 'x'
+    y = Base('z' + str())
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert y.x == 'z'
+    x = None
+    y = None
+
+def test_inheritance_2() -> None:
+    x: Base | None
+    y: Base | None
+    d: Deriv2 | None
+    x = Base('x' + str())
+    y = Base('y' + str())
+    y = None
+    d = Deriv2('a' + str(), 'b' + str())
+    assert type(d) is Deriv2
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert x.x == 'x'
+    d = None
+    d = Deriv2('c' + str(), 'd' + str())
+    assert type(d) is Deriv2
+    assert d.x == 'c'
+    assert d.y == 'd'
+    assert x.x == 'x'
+    y = Base('z' + str())
+    assert type(y) is Base
+    assert d.x == 'c'
+    assert d.y == 'd'
+    assert y.x == 'z'
+    x = None
+    y = None
+    d = None

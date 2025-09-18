@@ -422,7 +422,7 @@ def detect_undefined_bitmap(cl: ClassIR, seen: set[ClassIR]) -> None:
         return
     seen.add(cl)
     for base in cl.base_mro[1:]:
-        detect_undefined_bitmap(cl, seen)
+        detect_undefined_bitmap(base, seen)
 
     if len(cl.base_mro) > 1:
         cl.bitmap_attrs.extend(cl.base_mro[1].bitmap_attrs)

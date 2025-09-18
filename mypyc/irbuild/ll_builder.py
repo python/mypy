@@ -94,7 +94,6 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     check_native_int_range,
-    dict_rprimitive,
     float_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
@@ -110,13 +109,13 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_optional_type,
     is_set_rprimitive,
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tagged,
     is_tuple_rprimitive,
     is_uint8_rprimitive,
-    list_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -1684,6 +1683,44 @@ class LowLevelIRBuilder:
         if is_bool_or_bit_rprimitive(typ):
             mask = Integer(1, typ, line)
             return self.int_op(typ, value, mask, IntOp.XOR, line)
+        if is_tagged(typ) or is_fixed_width_rtype(typ):
+            return self.binary_op(value, Integer(0), "==", line)
+        if (
+            is_str_rprimitive(typ)
+            or is_list_rprimitive(typ)
+            or is_tuple_rprimitive(typ)
+            or is_dict_rprimitive(typ)
+            or isinstance(typ, RInstance)
+        ):
+            bool_val = self.bool_value(value)
+            return self.unary_not(bool_val, line)
+        if is_optional_type(typ):
+            value_typ = optional_value_type(typ)
+            assert value_typ
+            if (
+                is_str_rprimitive(value_typ)
+                or is_list_rprimitive(value_typ)
+                or is_tuple_rprimitive(value_typ)
+                or is_dict_rprimitive(value_typ)
+                or isinstance(value_typ, RInstance)
+            ):
+                # 'X | None' type: Check for None first and then specialize for X.
+                res = Register(bit_rprimitive)
+                cmp = self.add(ComparisonOp(value, self.none_object(), ComparisonOp.EQ, line))
+                none, not_none, out = BasicBlock(), BasicBlock(), BasicBlock()
+                self.add(Branch(cmp, none, not_none, Branch.BOOL))
+                self.activate_block(none)
+                self.add(Assign(res, self.true()))
+                self.goto(out)
+                self.activate_block(not_none)
+                val = self.unary_not(
+                    self.unbox_or_cast(value, value_typ, line, can_borrow=True, unchecked=True),
+                    line,
+                )
+                self.add(Assign(res, val))
+                self.goto(out)
+                self.activate_block(out)
+                return res
         if likely_bool and is_object_rprimitive(typ):
             # First quickly check if it's a bool, and otherwise fall back to generic op.
             res = Register(bit_rprimitive)
@@ -1882,10 +1919,12 @@ class LowLevelIRBuilder:
         elif is_fixed_width_rtype(value.type):
             zero = Integer(0, value.type)
             result = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
-        elif is_same_type(value.type, str_rprimitive):
+        elif is_str_rprimitive(value.type):
             result = self.call_c(str_check_if_true, [value], value.line)
-        elif is_same_type(value.type, list_rprimitive) or is_same_type(
-            value.type, dict_rprimitive
+        elif (
+            is_list_rprimitive(value.type)
+            or is_dict_rprimitive(value.type)
+            or is_tuple_rprimitive(value.type)
         ):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)

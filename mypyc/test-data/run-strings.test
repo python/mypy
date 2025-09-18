@@ -412,9 +412,16 @@ def test_basics() -> None:
 [case testFStrings]
 import decimal
 from datetime import datetime
+from typing import Final
 
 var = 'mypyc'
 num = 20
+final_known_at_compile_time: Final = 'hello'
+
+def final_value_setter() -> str:
+    return 'goodbye'
+
+final_unknown_at_compile_time: Final = final_value_setter()
 
 def test_fstring_basics() -> None:
     assert f'Hello {var}, this is a test' == "Hello mypyc, this is a test"
@@ -450,6 +457,8 @@ def test_fstring_basics() -> None:
     nan_num = float('nan')
     inf_num = float('inf')
     assert f'{nan_num}, {inf_num}' == 'nan, inf'
+
+    assert f'{final_known_at_compile_time} {final_unknown_at_compile_time}' == 'hello goodbye'
 
 # F-strings would be translated into ''.join[string literals, format method call, ...] in mypy AST.
 # Currently we are using a str.join specializer for f-string speed up. We might not cover all cases
