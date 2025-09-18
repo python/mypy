@@ -82,7 +82,7 @@ class ErrorInfo:
     end_column = 0  # -1 if unknown
 
     # A set string indicating the badness of the info
-    severity: Severity = ""
+    severity: Severity
 
     # The error message.
     message = ""
@@ -123,7 +123,7 @@ class ErrorInfo:
         column: int,
         end_line: int,
         end_column: int,
-        severity: str,
+        severity: Severity,
         message: str,
         code: ErrorCode | None,
         blocker: bool,
