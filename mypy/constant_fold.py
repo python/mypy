@@ -226,14 +226,14 @@ def constant_fold_call_expr(
         func = foldable_builtins.get(callee.fullname)
         if func is None:
             return None
-        
+
         folded_args = []
         for arg in expr.args:
             val = constant_fold_expr(arg, cur_mod_id)
             if val is None:
                 return None
             folded_args.append(arg)
-        
+
         args = []
         kwargs = {}
         for folded_arg, arg_kind, arg_name in zip(folded_args, expr.arg_kinds, expr.arg_names):
@@ -254,9 +254,8 @@ def constant_fold_call_expr(
         except:
             return None
     # --- f-string requires partial support for both str.join and str.format ---
-    elif (
-        isinstance(callee, MemberExpr)
-        and isinstance(folded_callee := constant_fold_expr(callee.expr, cur_mod_id), str)
+    elif isinstance(callee, MemberExpr) and isinstance(
+        folded_callee := constant_fold_expr(callee.expr, cur_mod_id), str
     ):
         # --- partial str.join constant folding ---
         if (
