@@ -1,2 +1,0 @@
-mypy_extensions.FlexibleAlias
-mypy_extensions.TypedDict

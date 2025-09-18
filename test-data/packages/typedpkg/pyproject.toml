@@ -1,8 +1,0 @@
-[project]
-name = 'typedpkg'
-version = '0.1'
-description = 'test'
-
-[build-system]
-requires = ["hatchling==1.18"]
-build-backend = "hatchling.build"

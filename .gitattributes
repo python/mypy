@@ -1,2 +1,0 @@
-# We vendor typeshed from https://github.com/python/typeshed
-mypy/typeshed/** linguist-vendored
