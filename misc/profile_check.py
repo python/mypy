@@ -79,7 +79,7 @@ def check_requirements() -> None:
         # TODO: How to make this work on other platforms?
         sys.exit("error: Only Linux is supported")
 
-    try: #type: ignore[unreachable] # https://github.com/python/mypy/issues/10773
+    try:  # type: ignore[unreachable] # https://github.com/python/mypy/issues/10773
         subprocess.run(["perf", "-h"], capture_output=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
         print("error: The 'perf' profiler is not installed")
