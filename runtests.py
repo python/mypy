@@ -165,7 +165,7 @@ def main() -> None:
             + " interpreted as individual test names / substring expressions"
             + " (or, if they end in .test, individual test files)"
             + " and this script will try to run them."
-            + " a flag of --update-data will be propagated through to all pytest commands."
+            + " A flag of --update-data will be propagated through to all pytest commands."
         )
         if "-h" in args or "--help" in args:
             exit(1)
@@ -189,8 +189,8 @@ def main() -> None:
     for arg in args:
         if arg != "--update-data":
             cmd_status = run_cmd(arg)
-        if cmd_status:
-            status = cmd_status
+            if cmd_status:
+                status = cmd_status
 
     exit(status)
 
