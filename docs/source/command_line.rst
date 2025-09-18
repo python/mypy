@@ -85,8 +85,9 @@ for full details, see :ref:`running-mypy`.
 
     This flag will add everything that matches ``.gitignore`` file(s) to :option:`--exclude`.
 
+.. _optional-arguments:
 
-Optional arguments
+Utility arguments
 ******************
 
 .. option:: -h, --help
@@ -1156,7 +1157,9 @@ format into the specified directory.
     ``mypy[reports]``.
 
 
-Enabling incomplete/experimental features
+.. _enabling-incomplete-experimental-features:
+
+Experimental features
 *****************************************
 
 .. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
@@ -1214,6 +1217,11 @@ List of currently incomplete/experimental features:
      def test_values() -> {"int": int, "str": str}:
          return {"int": 42, "str": "test"}
 
+.. option:: --find-occurrences CLASS.MEMBER
+
+    This flag will make mypy print out all usages of a class member
+    based on static type information. This feature is experimental.
+
 
 Miscellaneous
 *************
@@ -1260,11 +1268,6 @@ Miscellaneous
     Causes mypy to generate a JUnit XML test result document with
     type checking results. This can make it easier to integrate mypy
     with continuous integration (CI) tools.
-
-.. option:: --find-occurrences CLASS.MEMBER
-
-    This flag will make mypy print out all usages of a class member
-    based on static type information. This feature is experimental.
 
 .. option:: --scripts-are-modules
 
