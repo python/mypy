@@ -5,7 +5,7 @@ For example, 3 + 5 can be constant folded into 8.
 
 from __future__ import annotations
 
-from typing import Final, Union
+from typing import Any, Callable, Final, Union
 
 from mypy.nodes import (
     ArgKind,
@@ -216,7 +216,11 @@ foldable_builtins = {
     "builtins.chr": chr,
 }
 
-def constant_fold_call_expr(expr: CallExpr, cur_mod_id: str, foldable_builtins=foldable_builtins) -> ConstantValue | None:
+def constant_fold_call_expr(
+    expr: CallExpr,
+    cur_mod_id: str,
+    foldable_builtins: dict[str, Callable[..., Any]] = foldable_builtins,
+) -> ConstantValue | None:
     callee = expr.callee
     if isinstance(callee, NameExpr):
         func = foldable_builtins.get(callee.fullname)
