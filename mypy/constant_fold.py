@@ -8,19 +8,19 @@ from __future__ import annotations
 from typing import Final, Union
 
 from mypy.nodes import (
+    CallExpr,
     ComplexExpr,
     Expression,
     FloatExpr,
     IntExpr,
+    ListExpr,
+    MemberExpr,
     NameExpr,
     OpExpr,
     StrExpr,
+    TupleExpr,
     UnaryExpr,
     Var,
-    CallExpr,
-    MemberExpr,
-    ListExpr,
-    TupleExpr,
 )
 
 # All possible result types of constant folding
