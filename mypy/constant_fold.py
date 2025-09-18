@@ -216,6 +216,7 @@ foldable_builtins = {
     "builtins.chr": chr,
 }
 
+
 def constant_fold_call_expr(
     expr: CallExpr,
     cur_mod_id: str,
