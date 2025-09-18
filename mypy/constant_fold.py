@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Final, Union
 
 from mypy.nodes import (
+    ArgKind,
     CallExpr,
     ComplexExpr,
     Expression,
@@ -77,34 +78,8 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if value is not None:
             return constant_fold_unary_op(expr.op, value)
-    # --- f-string requires partial support for both str.join and str.format ---
-    elif (
-        isinstance(expr, CallExpr)
-        and isinstance(callee := expr.callee, MemberExpr)
-        and isinstance(folded_callee := constant_fold_expr(callee.expr, cur_mod_id), str)
-    ):
-        # --- partial str.join constant folding ---
-        if (
-            callee.name == "join"
-            and len(args := expr.args) == 1
-            and isinstance(arg := args[0], (ListExpr, TupleExpr))
-        ):
-            folded_items: list[str] = []
-            for item in arg.items:
-                val = constant_fold_expr(item, cur_mod_id)
-                if not isinstance(val, str):
-                    return None
-                folded_items.append(val)
-            return folded_callee.join(folded_items)
-        # --- str.format constant folding
-        elif callee.name == "format":
-            folded_args: list[ConstantValue] = []
-            for arg in expr.args:
-                arg_val = constant_fold_expr(arg, cur_mod_id)
-                if arg_val is None:
-                    return None
-                folded_args.append(arg_val)
-            return folded_callee.format(*folded_args)
+    elif isinstance(expr, CallExpr):
+        return constant_fold_call_expr(expr, cur_mod_id)
     return None
 
 
@@ -217,3 +192,87 @@ def constant_fold_unary_op(op: str, value: ConstantValue) -> int | float | None:
     elif op == "+" and isinstance(value, (int, float)):
         return value
     return None
+
+
+foldable_builtins = {
+    "builtins.str": str,
+    "builtins.int": int,
+    "builtins.bool": bool,
+    "builtins.float": float,
+    "builtins.complex": complex,
+    "builtins.repr": repr,
+    "builtins.len": len,
+    "builtins.hasattr": hasattr,
+    "builtins.hex": hex,
+    "builtins.hash": hash,
+    "builtins.min": min,
+    "builtins.max": max,
+    "builtins.oct": oct,
+    "builtins.pow": pow,
+    "builtins.round": round,
+    "builtins.abs": abs,
+    "builtins.ascii": ascii,
+    "builtins.bin": bin,
+    "builtins.chr": chr,
+}
+
+def constant_fold_call_expr(expr: CallExpr, cur_mod_id: str, foldable_builtins=foldable_builtins) -> ConstantValue | None:
+    callee = expr.callee
+    if isinstance(callee, NameExpr):
+        func = foldable_builtins.get(callee.fullname)
+        if func is None:
+            return None
+        
+        folded_args = []
+        for arg in expr.args:
+            val = constant_fold_expr(arg, cur_mod_id)
+            if val is None:
+                return None
+            folded_args.append(arg)
+        
+        args = []
+        kwargs = {}
+        for folded_arg, arg_kind, arg_name in zip(folded_args, expr.arg_kinds, expr.arg_names):
+            try:
+                if arg_kind == ArgKind.ARG_POS:
+                    args.append(folded_arg)
+                elif arg_kind == ArgKind.ARG_NAMED:
+                    kwargs[arg_name] = folded_arg
+                elif arg_kind == ArgKind.ARG_STAR:
+                    args.extend(folded_arg)
+                elif arg_kind == ArgKind.ARG_STAR2:
+                    kwargs.update(folded_arg)
+            except:
+                return None
+
+        try:
+            return func(*args, **kwargs)
+        except:
+            return None
+    # --- f-string requires partial support for both str.join and str.format ---
+    elif (
+        isinstance(callee, MemberExpr)
+        and isinstance(folded_callee := constant_fold_expr(callee.expr, cur_mod_id), str)
+    ):
+        # --- partial str.join constant folding ---
+        if (
+            callee.name == "join"
+            and len(args := expr.args) == 1
+            and isinstance(arg := args[0], (ListExpr, TupleExpr))
+        ):
+            folded_items: list[str] = []
+            for item in arg.items:
+                val = constant_fold_expr(item, cur_mod_id)
+                if not isinstance(val, str):
+                    return None
+                folded_items.append(val)
+            return folded_callee.join(folded_items)
+        # --- str.format constant folding
+        elif callee.name == "format":
+            folded_args: list[str] = []
+            for arg in expr.args:
+                arg_val = constant_fold_expr(arg, cur_mod_id)
+                if arg_val is None:
+                    return None
+                folded_args.append(arg_val)
+            return folded_callee.format(*folded_args)
