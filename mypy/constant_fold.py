@@ -194,7 +194,7 @@ def constant_fold_unary_op(op: str, value: ConstantValue) -> int | float | None:
     return None
 
 
-foldable_builtins = {
+foldable_builtins: dict[str, Callable[..., Any] = {
     "builtins.str": str,
     "builtins.int": int,
     "builtins.bool": bool,
@@ -235,8 +235,8 @@ def constant_fold_call_expr(
                 return None
             args.append(arg)
 
-        call_args = []
-        call_kwargs = {}
+        call_args: list[ConstantValue] = []
+        call_kwargs: dict[str, ConstantValue] = {}
         for folded_arg, arg_kind, arg_name in zip(args, expr.arg_kinds, expr.arg_names):
             try:
                 if arg_kind == ArgKind.ARG_POS:
@@ -251,7 +251,7 @@ def constant_fold_call_expr(
                 return None
 
         try:
-            return func(*call_args, **call_kwargs)
+            return func(*call_args, **call_kwargs)  # type: ignore [return-value]
         except:
             return None
     # --- f-string requires partial support for both str.join and str.format ---
@@ -280,3 +280,5 @@ def constant_fold_call_expr(
                     return None
                 folded_args.append(arg_val)
             return folded_callee.format(*folded_args)
+    return None
+    
