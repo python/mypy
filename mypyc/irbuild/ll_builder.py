@@ -1551,21 +1551,31 @@ class LowLevelIRBuilder:
 
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
+        
+        def is_string_literal(value: Value) -> bool:
+            return isinstance(value, LoadLiteral) and is_str_rprimitive(value.type)
+        
         if op == "==":
-            if isinstance(lhs, LoadLiteral) and is_str_rprimitive(lhs.type):
-                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)
+            if is_string_literal(lhs):
+                if is_string_literal(rhs):
+                    # we can optimize out the check entirely in some Final cases
+                    return self.true() if lhs.value == rhs.value else self.false()
+                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
                 return self.primitive_op(str_eq_literal, [rhs, lhs, literal_length], line)
-            elif isinstance(rhs, LoadLiteral) and is_str_rprimitive(rhs.type):
-                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)
+            elif is_string_literal(rhs):
+                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
                 return self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
             return self.primitive_op(str_eq, [lhs, rhs], line)
         elif op == "!=":
-            if isinstance(lhs, LoadLiteral) and is_str_rprimitive(lhs.type):
-                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)
-                eq = self.primitive_op(str_eq_literal, [rhs, lhs, literal_length])
-            elif isinstance(rhs, LoadLiteral) and is_str_rprimitive(rhs.type):
-                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)
-                eq = self.primitive_op(str_eq_literal, [lhs, rhs, literal_length])
+            if is_string_literal(lhs):
+                if is_string_literal(rhs):
+                    # we can optimize out the check entirely in some Final cases
+                    return self.true() if lhs.value != rhs.value else self.false()
+                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
+                eq = self.primitive_op(str_eq_literal, [rhs, lhs, literal_length], line)
+            elif is_string_literal(rhs):
+                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
+                eq = self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
             else:
                 eq = self.primitive_op(str_eq, [lhs, rhs], line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
