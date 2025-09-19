@@ -57,7 +57,6 @@ from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
     Assign,
     BasicBlock,
-    Call,
     ComparisonOp,
     Integer,
     LoadAddress,
@@ -98,7 +97,11 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_printf_style,
 )
-from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
+from mypyc.irbuild.specialize import (
+    apply_function_specialization,
+    apply_method_specialization,
+    translate_object_new,
+)
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, name_op
@@ -473,35 +476,15 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         if callee.name in base.method_decls:
             break
     else:
+        if callee.name == "__new__":
+            result = translate_object_new(builder, expr, MemberExpr(callee.call, "__new__"))
+            if result:
+                return result
         if ir.is_ext_class and ir.builtin_base is None and not ir.inherits_python:
             if callee.name == "__init__" and len(expr.args) == 0:
                 # Call translates to object.__init__(self), which is a
                 # no-op, so omit the call.
                 return builder.none()
-            elif callee.name == "__new__":
-                # object.__new__(cls)
-                assert (
-                    len(expr.args) == 1
-                ), f"Expected object.__new__() call to have exactly 1 argument, got {len(expr.args)}"
-                typ_arg = expr.args[0]
-                method_args = builder.fn_info.fitem.arg_names
-                if (
-                    isinstance(typ_arg, NameExpr)
-                    and len(method_args) > 0
-                    and method_args[0] == typ_arg.name
-                ):
-                    subtype = builder.accept(expr.args[0])
-                    return builder.add(Call(ir.setup, [subtype], expr.line))
-
-        if callee.name == "__new__":
-            call = "super().__new__()"
-            if not ir.is_ext_class:
-                builder.error(f"{call} not supported for non-extension classes", expr.line)
-            if ir.inherits_python:
-                builder.error(
-                    f"{call} not supported for classes inheriting from non-native classes",
-                    expr.line,
-                )
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)

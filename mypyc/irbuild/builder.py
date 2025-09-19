@@ -1437,6 +1437,10 @@ class IRBuilder:
         self.function_names.add(name)
         self.functions.append(func_ir)
 
+    def get_current_class_ir(self) -> ClassIR | None:
+        type_info = self.fn_info.fitem.info
+        return self.mapper.type_to_ir.get(type_info)
+
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
     """Generate blocks for arguments that have default values.
