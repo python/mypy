@@ -2052,6 +2052,14 @@ class ClsListAssignment:
         [cls, val] = [object, "object"]  # E: Assignment to argument cls in __new__ method unsupported
         return object.__new__(cls)
 
+class WrongNumberOfArgs:
+    def __new__(cls):
+        return super().__new__()  # E: object.__new__() supported only with 1 argument, got 0
+
+class WrongNumberOfArgsObjectNew:
+    def __new__(cls):
+        return object.__new__(cls, 1)  # E: object.__new__() supported only with 1 argument, got 2
+
 [case testClassWithFreeList]
 from mypy_extensions import mypyc_attr, trait
 

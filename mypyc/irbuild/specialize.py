@@ -1025,10 +1025,10 @@ def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             f"{call} not supported for classes inheriting from non-native classes", expr.line
         )
         return None
+    if len(expr.args) != 1:
+        builder.error(f"{call} supported only with 1 argument, got {len(expr.args)}", expr.line)
+        return None
 
-    assert (
-        len(expr.args) == 1
-    ), f"Expected object.__new__() call to have exactly 1 argument, got {len(expr.args)}"
     typ_arg = expr.args[0]
     method_args = fn.fitem.arg_names
     if isinstance(typ_arg, NameExpr) and len(method_args) > 0 and method_args[0] == typ_arg.name:
