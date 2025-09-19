@@ -2,9 +2,9 @@
 
 ## Next Release
 
-## Mypy 1.18
+## Mypy 1.18.1
 
-We’ve just uploaded mypy 1.18 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+We’ve just uploaded mypy 1.18.1 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
 Mypy is a static type checker for Python. This release includes new features, performance
 improvements and bug fixes. You can install it as follows:
 
@@ -14,7 +14,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### Mypy Performance Improvements
 
-Mypy 1.18 includes numerous performance improvements, resulting in about 40% speedup
+Mypy 1.18.1 includes numerous performance improvements, resulting in about 40% speedup
 compared to 1.17 when type checking mypy itself. In extreme cases, the improvement
 can be 10x or higher. The list below is an overview of the various mypy optimizations.
 Many mypyc improvements (discussed in a separate section below) also improve performance.
@@ -282,6 +282,12 @@ Related PRs:
 ### Typeshed Updates
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=2480d7e7c74493a024eaf254c5d2c6f452c80ee2+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
+### Mypy 1.18.2
+
+- Fix crash on recursive alias (Ivan Levkivskyi, PR [19845](https://github.com/python/mypy/pull/19845))
+- Add additional guidance for stubtest errors when runtime is `object.__init__` (Stephen Morton, PR [19733](https://github.com/python/mypy/pull/19733))
+- Fix handling of None values in f-string expressions in mypyc (BobTheBuidler, PR [19846](https://github.com/python/mypy/pull/19846))
 
 ### Acknowledgements
 
