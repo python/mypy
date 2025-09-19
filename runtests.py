@@ -48,26 +48,17 @@ MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI, MYPYC_SEPARATE]
 # These mypyc test filters cover most slow test cases
 MYPYC_SLOW = [MYPYC_RUN_MULTI, MYPYC_COMMAND_LINE, MYPYC_SEPARATE, MYPYC_MULTIMODULE]
 
+self_args = ["--config-file", "mypy_self_check.ini", "-p", "mypy", "-p", "mypyc"]
 
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similar
 # time to run.
 cmds = {
     # Self type check
-    "self": [
-        executable,
-        "-m",
-        "mypy",
-        "--config-file",
-        "mypy_self_check.ini",
-        "-p",
-        "mypy",
-        "-p",
-        "mypyc",
-    ],
+    "self": [executable, "-m", "mypy"] + self_args,
     # Self type check, but use mypyc;
     # for instance, to catch nasty mypyc bugs.
-    "selfc": ["mypyc", "--config-file", "mypy_self_check.ini", "-p", "mypy", "-p", "mypyc"],
+    "selfc": ["mypyc"] + self_args,
     # Type check setup.py as well
     "self-packaging": [
         executable,
