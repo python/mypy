@@ -41,8 +41,8 @@ def extract_classes(chunks: Iterable[CacheData]) -> Iterable[JsonDict]:
             if isinstance(chunk, dict):
                 yield chunk
                 yield from extract(chunk.values())
-            elif isinstance(chunk, list):
-                yield from extract(chunk)  # type: ignore[unreachable] #TODO: is this actually unreachable, or are our types wrong?
+            elif isinstance(chunk, list):  # type: ignore[unreachable] #TODO: is this actually unreachable, or are our types wrong?
+                yield from extract(chunk)
 
     yield from extract([chunk.data for chunk in chunks])
 
