@@ -41,6 +41,8 @@ def extract_classes(chunks: Iterable[CacheData]) -> Iterable[JsonDict]:
             if isinstance(chunk, dict):
                 yield chunk
                 yield from extract(chunk.values())
+            elif isinstance(chunk, list):
+                yield from extract(chunk)  #type: ignore[unreachable] #TODO: is this actually unreachable, or are our types wrong?
 
     yield from extract([chunk.data for chunk in chunks])
 
@@ -90,6 +92,8 @@ def compress(chunk: JsonDict) -> JsonDict:
 
     def helper(chunk: JsonDict) -> JsonDict:
         nonlocal counter
+        if not isinstance(chunk, dict):
+            return chunk  #type: ignore[unreachable] #TODO: is this actually unreachable, or are our types wrong?
 
         if len(chunk) <= 2:
             return chunk
@@ -119,6 +123,8 @@ def decompress(chunk: JsonDict) -> JsonDict:
     cache: dict[int, JsonDict] = {}
 
     def helper(chunk: JsonDict) -> JsonDict:
+        if not isinstance(chunk, dict):
+            return chunk  #type: ignore[unreachable] #TODO: is this actually unreachable, or are our types wrong?
         if ".id" in chunk:
             return cache[chunk[".id"]]
 
