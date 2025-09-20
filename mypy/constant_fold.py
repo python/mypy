@@ -235,12 +235,12 @@ def constant_fold_call_expr(
                 return None
             args.append(arg)
 
-        call_args: list[ConstantValue] = []
-        call_kwargs: dict[str, ConstantValue] = {}
+        call_args: list[Expression] = []
+        call_kwargs: dict[str, Expression] = {}
         for folded_arg, arg_kind, arg_name in zip(args, expr.arg_kinds, expr.arg_names):
             try:
                 if arg_kind == ArgKind.ARG_POS:
-                    call_args.append(folded_arg)
+                    call_args.append(folded_arg)  # 
                 elif arg_kind == ArgKind.ARG_NAMED:
                     call_kwargs[arg_name] = folded_arg
                 elif arg_kind == ArgKind.ARG_STAR:
@@ -251,7 +251,7 @@ def constant_fold_call_expr(
                 return None
 
         try:
-            return func(*call_args, **call_kwargs)  # type: ignore [return-value]
+            return func(*call_args, **call_kwargs)  # type: ignore [no-any-return]
         except:
             return None
     # --- f-string requires partial support for both str.join and str.format ---
