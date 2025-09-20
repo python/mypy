@@ -99,7 +99,11 @@ hot blocks: [0, 1]
 [case testRareBranch_freq]
 from typing import Final
 
-x: Final = str()
+def setter() -> str:
+    # we need this helper to ensure `x` cannot be constant folded
+    return ""
+
+x: Final = setter()
 
 def f() -> str:
     return x
