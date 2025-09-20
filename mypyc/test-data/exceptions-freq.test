@@ -108,6 +108,13 @@ x: Final = setter()
 def f() -> str:
     return x
 [out]
+def setter():
+    r0 :: str
+L0:
+    r0 = ''
+    inc_ref r0
+    return r0
+hot blocks: [0]
 def f():
     r0 :: str
     r1 :: bool
