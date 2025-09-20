@@ -222,13 +222,15 @@ def constant_fold_call_expr(
     cur_mod_id: str,
     foldable_builtins: dict[str, Callable[..., Any]] = foldable_builtins,
 ) -> ConstantValue | None:
+    folded_args: list[ConstantValue]
+    
     callee = expr.callee
     if isinstance(callee, NameExpr):
         func = foldable_builtins.get(callee.fullname)
         if func is None:
             return None
 
-        folded_args: list[ConstantValue] = []
+        folded_args = []
         for arg in expr.args:
             val = constant_fold_expr(arg, cur_mod_id)
             if val is None:
@@ -273,7 +275,7 @@ def constant_fold_call_expr(
             return folded_callee.join(folded_items)
         # --- str.format constant folding ---
         elif callee.name == "format":
-            folded_strings: list[str] = []
+            folded_args = []
             for arg in expr.args:
                 arg_val = constant_fold_expr(arg, cur_mod_id)
                 if arg_val is None:
