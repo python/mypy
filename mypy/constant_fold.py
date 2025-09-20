@@ -228,25 +228,25 @@ def constant_fold_call_expr(
         if func is None:
             return None
 
-        args: list[ConstantValue] = []
+        folded_args: list[ConstantValue] = []
         for arg in expr.args:
             val = constant_fold_expr(arg, cur_mod_id)
             if val is None:
                 return None
-            args.append(val)
+            folded_args.append(val)
 
         call_args: list[ConstantValue] = []
         call_kwargs: dict[str, ConstantValue] = {}
-        for folded_arg, arg_kind, arg_name in zip(args, expr.arg_kinds, expr.arg_names):
+        for folded_arg, arg_kind, arg_name in zip(folded_args, expr.arg_kinds, expr.arg_names):
             try:
                 if arg_kind == ArgKind.ARG_POS:
                     call_args.append(folded_arg)
                 elif arg_kind == ArgKind.ARG_NAMED:
                     call_kwargs[arg_name] = folded_arg  # type: ignore [index]
                 elif arg_kind == ArgKind.ARG_STAR:
-                    call_args.extend(folded_arg)
+                    call_args.extend(folded_arg)  # type: ignore [arg-type]
                 elif arg_kind == ArgKind.ARG_STAR2:
-                    call_kwargs.update(folded_arg)  # type: ignore [call-overload]
+                    call_kwargs.update(folded_arg)  # type: ignore [arg-type, call-overload]
             except:
                 return None
 
@@ -273,11 +273,11 @@ def constant_fold_call_expr(
             return folded_callee.join(folded_items)
         # --- str.format constant folding ---
         elif callee.name == "format":
-            folded_args: list[str] = []
+            folded_strings: list[str] = []
             for arg in expr.args:
                 arg_val = constant_fold_expr(arg, cur_mod_id)
                 if arg_val is None:
                     return None
-                folded_args.append(arg_val)
-            return folded_callee.format(*folded_args)
+                folded_strings.append(arg_val)
+            return folded_callee.format(*folded_strings)
     return None
