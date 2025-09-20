@@ -124,7 +124,7 @@ L0:
     if is_error(r0) goto L1 else goto L3
 L1:
     r1 = raise NameError('value for final name "x" was not set')
-    if not r1 goto L4 (error at f:6) else goto L2 :: bool
+    if not r1 goto L4 (error at f:10) else goto L2 :: bool
 L2:
     unreachable
 L3:
