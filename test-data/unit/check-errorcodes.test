@@ -1,6 +1,27 @@
 -- Tests for error codes and ignoring errors using error codes
 --
--- These implicitly use --show-error-codes.
+-- These implicitly use --show-error-codes. # TODO: isn't this statement redundant now that this flag defaults to true?
+
+[case testErrorCodeMiscDoesntSuppressRevealType]
+# Prevent regression on https://github.com/python/mypy/issues/19840
+from typing import reveal_type
+reveal_type(1) #type: ignore[misc] # N: Revealed type is "Literal[1]?"
+
+[case testErrorCodeMiscDoesntSuppressRevealLocals]
+reveal_locals() #type:ignore[misc] # N: There are no locals to reveal
+
+[case testErrorCodeMiscSuppressesAccompanyingNotes]
+# flags: --strict
+if x: #type: ignore[name-defined]
+    def y() -> None: pass
+else:
+    def y() -> bool: return True # type: ignore[misc]
+    def y() -> str: return "hmm" # All conditional function variants must have identical signatures  [misc] # E: All conditional function variants must have identical signatures  [misc] \
+                                                                                                            # N: Original: \
+                                                                                                            # N:     def y() -> None \
+                                                                                                            # N: Redefinition: \
+                                                                                                            # N:     def y() -> str
+
 
 [case testErrorCodeNoAttribute]
 import m
