@@ -240,7 +240,7 @@ def constant_fold_call_expr(
         for folded_arg, arg_kind, arg_name in zip(args, expr.arg_kinds, expr.arg_names):
             try:
                 if arg_kind == ArgKind.ARG_POS:
-                    call_args.append(folded_arg)  # 
+                    call_args.append(folded_arg)  #
                 elif arg_kind == ArgKind.ARG_NAMED:
                     call_kwargs[arg_name] = folded_arg
                 elif arg_kind == ArgKind.ARG_STAR:
