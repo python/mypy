@@ -7734,7 +7734,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     ) -> ErrorInfo:
         """Produce an error message."""
         if isinstance(msg, ErrorMessage):
-            return self.msg.fail(msg.value, context, code=msg.code)
+            msg, code = msg.value, msg.code  # type: ignore[attr-defined] #TODO: https://github.com/python/mypy/issues/19891
         return self.msg.fail(msg, context, code=code)
 
     def note(
@@ -7744,12 +7744,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         offset: int = 0,
         *,
         code: ErrorCode | None = None,
+        parent_error: ErrorInfo | None = None,
     ) -> None:
         """Produce a note."""
         if isinstance(msg, ErrorMessage):
-            self.msg.note(msg.value, context, code=msg.code)
-            return
-        self.msg.note(msg, context, offset=offset, code=code)
+            msg, code = msg.value, msg.code  # type: ignore[attr-defined] #TODO: https://github.com/python/mypy/issues/19891
+        self.msg.note(msg, context, offset=offset, code=code, parent_error=parent_error)
 
     def iterable_item_type(
         self, it: Instance | CallableType | TypeType | Overloaded, context: Context
