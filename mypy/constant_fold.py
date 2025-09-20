@@ -280,6 +280,6 @@ def constant_fold_call_expr(
                 arg_val = constant_fold_expr(arg, cur_mod_id)
                 if arg_val is None:
                     return None
-                folded_strings.append(arg_val)
-            return folded_callee.format(*folded_strings)
+                folded_args.append(arg_val)
+            return folded_callee.format(*folded_args)
     return None
