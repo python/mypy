@@ -266,13 +266,13 @@ def constant_fold_call_expr(
             and len(args := expr.args) == 1
             and isinstance(arg := args[0], (ListExpr, TupleExpr))
         ):
-            folded_items: list[str] = []
+            folded_strings: list[str] = []
             for item in arg.items:
                 val = constant_fold_expr(item, cur_mod_id)
                 if not isinstance(val, str):
                     return None
-                folded_items.append(val)
-            return folded_callee.join(folded_items)
+                folded_strings.append(val)
+            return folded_callee.join(folded_strings)
         # --- str.format constant folding ---
         elif callee.name == "format":
             folded_args = []
