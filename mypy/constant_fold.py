@@ -194,7 +194,7 @@ def constant_fold_unary_op(op: str, value: ConstantValue) -> int | float | None:
     return None
 
 
-foldable_builtins: dict[str, Callable[..., Any] = {
+foldable_builtins: dict[str, Callable[..., Any]] = {
     "builtins.str": str,
     "builtins.int": int,
     "builtins.bool": bool,
