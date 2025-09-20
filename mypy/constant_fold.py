@@ -223,7 +223,7 @@ def constant_fold_call_expr(
     foldable_builtins: dict[str, Callable[..., Any]] = foldable_builtins,
 ) -> ConstantValue | None:
     folded_args: list[ConstantValue]
-    
+
     callee = expr.callee
     if isinstance(callee, NameExpr):
         func = foldable_builtins.get(callee.fullname)
