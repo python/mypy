@@ -1516,9 +1516,9 @@ class MessageBuilder:
         if isinstance(old_type, (CallableType, Overloaded)) and isinstance(
             new_type, (CallableType, Overloaded)
         ):
-            self.note("Original:", defn)
+            self.note("Original:", defn, parent_error=error)
             self.pretty_callable_or_overload(old_type, defn, offset=4, parent_error=error)
-            self.note("Redefinition:", defn)
+            self.note("Redefinition:", defn, parent_error=error)
             self.pretty_callable_or_overload(new_type, defn, offset=4, parent_error=error)
 
     def cannot_instantiate_abstract_class(
