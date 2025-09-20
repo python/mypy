@@ -228,25 +228,25 @@ def constant_fold_call_expr(
         if func is None:
             return None
 
-        args = []
+        args: list[ConstantValue] = []
         for arg in expr.args:
             val = constant_fold_expr(arg, cur_mod_id)
             if val is None:
                 return None
-            args.append(arg)
+            args.append(val)
 
-        call_args: list[Expression] = []
-        call_kwargs: dict[str, Expression] = {}
+        call_args: list[ConstantValue] = []
+        call_kwargs: dict[str, ConstantValue] = {}
         for folded_arg, arg_kind, arg_name in zip(args, expr.arg_kinds, expr.arg_names):
             try:
                 if arg_kind == ArgKind.ARG_POS:
-                    call_args.append(folded_arg)  #
+                    call_args.append(folded_arg)
                 elif arg_kind == ArgKind.ARG_NAMED:
-                    call_kwargs[arg_name] = folded_arg
+                    call_kwargs[arg_name] = folded_arg  # type: ignore [index]
                 elif arg_kind == ArgKind.ARG_STAR:
                     call_args.extend(folded_arg)
                 elif arg_kind == ArgKind.ARG_STAR2:
-                    call_kwargs.update(folded_arg)
+                    call_kwargs.update(folded_arg)  # type: ignore [call-overload]
             except:
                 return None
 
@@ -271,7 +271,7 @@ def constant_fold_call_expr(
                     return None
                 folded_items.append(val)
             return folded_callee.join(folded_items)
-        # --- str.format constant folding
+        # --- str.format constant folding ---
         elif callee.name == "format":
             folded_args: list[str] = []
             for arg in expr.args:
