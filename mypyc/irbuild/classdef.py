@@ -263,7 +263,7 @@ class NonExtClassBuilder(ClassBuilder):
         non_ext_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
 
         # Try to avoid contention when using free threading.
-        self.builder.set_immortal_if_free_threaded(non_ext_class, self.cdef.line)
+        self.builder.builder.set_immortal_if_py312plus(non_ext_class, self.cdef.line)
 
         # Save the decorated class
         self.builder.add(

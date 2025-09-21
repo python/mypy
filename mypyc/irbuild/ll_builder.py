@@ -2491,6 +2491,11 @@ class LowLevelIRBuilder:
         """Make an object immortal on free-threaded builds (to avoid contention)."""
         if IS_FREE_THREADED and sys.version_info >= (3, 14):
             self.primitive_op(set_immortal_op, [v], line)
+    
+    def set_immortal_if_py312plus(self, v: Value, line: int) -> None:
+        """Emit IR to mark an object as immortal in Python 3.12+ (calls CPy_SetImmortal)."""
+        if sys.version_info >= (3, 12):
+            self.primitive_op(set_immortal_op, [v], line)
 
     # Internal helpers
 

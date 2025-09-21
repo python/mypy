@@ -1129,12 +1129,22 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
 
 #endif
 
-#if CPY_3_14_FEATURES
+#if CPY_3_12_FEATURES
 
 #include "internal/pycore_object.h"
 
+#if !CPY_3_14_FEATURES
+    // The immortal refcount value is -1 (see PEP 683 and CPython source)
+    // This is safe for statically allocated objects and matches CPython's logic.
+    #define IMMORTAL_REFCNT ((Py_ssize_t)-1)
+#endif
+
 void CPy_SetImmortal(PyObject *obj) {
+#if CPY_3_14_FEATURES
     _Py_SetImmortal(obj);
+#elif CPY_3_12_FEATURES
+    Py_SET_REFCNT(obj, IMMORTAL_REFCNT);
+#endif
 }
 
 #endif

@@ -428,6 +428,9 @@ class IRBuilder:
     def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
         """Make an object immortal on free-threaded builds (to avoid contention)."""
         self.builder.set_immortal_if_free_threaded(v, line)
+    
+    def set_immortal_if_py312plus(self, v: Value, line: int) -> None:
+        self.builder.set_immortal_if_py312plus(v, line)
 
     # Helpers for IR building
 
@@ -572,6 +575,7 @@ class IRBuilder:
             coerced = self.coerce(rvalue_reg, type_override or self.node_type(lvalue), lvalue.line)
             self.final_names.append((name, coerced.type))
             self.add(InitStatic(coerced, name, self.module_name))
+            self.set_immortal_if_py312plus(coerced, lvalue.line)
 
     def load_final_static(
         self, fullname: str, typ: RType, line: int, error_name: str | None = None

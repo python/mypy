@@ -324,9 +324,9 @@ log_trace_event = custom_primitive_op(
 # threading, since this eliminates contention from concurrent reference count
 # updates.
 #
-# Needs at least Python 3.14.
+# Available for Python 3.12+ (uses public API in 3.14+, internal logic in 3.12/3.13).
 set_immortal_op = custom_primitive_op(
-    name="set_immmortal",
+    name="set_immortal",
     c_function_name="CPy_SetImmortal",
     arg_types=[object_rprimitive],
     return_type=void_rtype,
