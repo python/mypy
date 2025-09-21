@@ -428,7 +428,7 @@ class IRBuilder:
     def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
         """Make an object immortal on free-threaded builds (to avoid contention)."""
         self.builder.set_immortal_if_free_threaded(v, line)
-    
+
     def set_immortal_if_py312plus(self, v: Value, line: int) -> None:
         self.builder.set_immortal_if_py312plus(v, line)
 
