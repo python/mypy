@@ -5,7 +5,7 @@ from typing import Callable, Final
 
 import mypy.errorcodes as codes
 from mypy import message_registry
-from mypy.nodes import IntExpr, StrExpr, UnaryExpr
+from mypy.nodes import DictExpr, Expression, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
@@ -75,7 +75,6 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarType,
-    UninhabitedType,
     UnionType,
     get_proper_type,
     get_proper_types,
@@ -225,9 +224,12 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
             return ctx.default_return_type
 
         default_type: Type
+        default_arg: Expression | None
         if len(ctx.arg_types) <= 1 or not ctx.arg_types[1]:
+            default_arg = None
             default_type = NoneType()
         elif len(ctx.arg_types[1]) == 1 and len(ctx.args[1]) == 1:
+            default_arg = ctx.args[1][0]
             default_type = ctx.arg_types[1][0]
         else:
             return ctx.default_return_type
@@ -242,14 +244,10 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
                 output_types.append(value_type)
             else:
                 # HACK to deal with get(key, {})
-                proper_default = get_proper_type(default_type)
                 if (
-                    isinstance(vt := get_proper_type(value_type), TypedDictType)
-                    and isinstance(proper_default, Instance)
-                    and proper_default.type.fullname == "builtins.dict"
-                    and len(proper_default.args) == 2
-                    and isinstance(get_proper_type(proper_default.args[0]), UninhabitedType)
-                    and isinstance(get_proper_type(proper_default.args[1]), UninhabitedType)
+                    isinstance(default_arg, DictExpr)
+                    and len(default_arg.items) == 0
+                    and isinstance(vt := get_proper_type(value_type), TypedDictType)
                 ):
                     output_types.append(vt.copy_modified(required_keys=set()))
                 else:
