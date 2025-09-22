@@ -3799,3 +3799,139 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     wrapper = r2
     return wrapper
+
+[case testForOverTupleLiteral]
+def f() -> int:
+    s = 0
+    for x in (1, 2, 3):
+        s += x
+    return s
+[out]
+def f():
+    s, x, r0, r1, r2 :: int
+L0:
+    s = 0
+    x = 2
+    r0 = CPyTagged_Add(s, x)
+    s = r0
+    x = 4
+    r1 = CPyTagged_Add(s, x)
+    s = r1
+    x = 6
+    r2 = CPyTagged_Add(s, x)
+    s = r2
+    return s
+
+[case testForOverStringLiteral]
+def f() -> str:
+    out = ""
+    for c in "abc":
+        out += c
+    return out
+[out]
+def f():
+    r0, out, r1, c, r2, r3, r4, r5, r6 :: str
+L0:
+    r0 = ''
+    out = r0
+    r1 = 'a'
+    c = r1
+    r2 = CPyStr_Append(out, c)
+    out = r2
+    r3 = 'b'
+    c = r3
+    r4 = CPyStr_Append(out, c)
+    out = r4
+    r5 = 'c'
+    c = r5
+    r6 = CPyStr_Append(out, c)
+    out = r6
+    return out
+
+[case testForOverRTuple]
+from typing import Tuple
+def f(t: Tuple[int, int]) -> int:
+    s = 0
+    for x in t:
+        s += x
+    return s
+[out]
+def f(t):
+    t :: tuple[int, int]
+    s, r0, x, r1, r2, r3 :: int
+L0:
+    s = 0
+    r0 = t[0]
+    x = r0
+    r1 = CPyTagged_Add(s, x)
+    s = r1
+    r2 = t[1]
+    x = r2
+    r3 = CPyTagged_Add(s, x)
+    s = r3
+    return s
+
+[case testForOverStringVar]
+def f(s: str) -> str:
+    out = ""
+    for c in s:
+        out += c
+    return out
+[out]
+def f(s):
+    s, r0, out :: str
+    r1, r2 :: native_int
+    r3, r4 :: bit
+    r5, c, r6 :: str
+    r7 :: native_int
+L0:
+    r0 = ''
+    out = r0
+    r1 = 0
+L1:
+    r2 = CPyStr_Size_size_t(s)
+    r3 = r2 >= 0 :: signed
+    r4 = r1 < r2 :: signed
+L2:
+    r5 = CPyStr_GetItemUnsafe(s, r1)
+    c = r5
+    r6 = CPyStr_Append(out, c)
+    out = r6
+L3:
+    r7 = r1 + 1
+    r1 = r7
+    goto L1
+L4:
+    return out
+
+[case TestForOverCompledTupleExpr]
+def f() -> None:
+    abc = (1, 2, str(3))
+    for x in abc:
+        y = x
+[out]
+def f():
+    r0 :: str
+    r1, abc :: tuple[int, int, str]
+    r2 :: int
+    r3 :: object
+    x, y :: union[int, str]
+    r4 :: int
+    r5 :: object
+    r6 :: str
+L0:
+    r0 = CPyTagged_Str(6)
+    r1 = (2, 4, r0)
+    abc = r1
+    r2 = abc[0]
+    r3 = box(int, r2)
+    x = r3
+    y = x
+    r4 = abc[1]
+    r5 = box(int, r4)
+    x = r5
+    y = x
+    r6 = abc[2]
+    x = r6
+    y = x
+    return 1
