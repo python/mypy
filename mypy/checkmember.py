@@ -1448,19 +1448,6 @@ def analyze_typeddict_access(
                 )
                 overloads.append(overload)
 
-                # We add an extra overload for the case when the given default is a subtype of the value type.
-                # This makes sure that the return type is inferred as the value type instead of a union.
-                # def (K, V) -> V
-                overload = CallableType(
-                    arg_types=[key_type, value_type],
-                    arg_kinds=[ARG_POS, ARG_POS],
-                    arg_names=[None, None],
-                    ret_type=value_type,
-                    fallback=fn_type,
-                    name=name,
-                )
-                overloads.append(overload)
-
                 # fallback: def [T](K, T) -> V | T
                 overload = CallableType(
                     variables=[tvar],

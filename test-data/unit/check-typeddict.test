@@ -1011,7 +1011,6 @@ def test(d: D) -> None:
         "Overload(\
         def (Literal['a'], builtins.object =) -> builtins.int, \
         def (Literal['b']) -> Union[builtins.str, None], \
-        def (Literal['b'], builtins.str) -> builtins.str, \
         def [T] (Literal['b'], T`-1) -> Union[builtins.str, T`-1], \
         def (builtins.str, builtins.object =) -> builtins.object)"
 
