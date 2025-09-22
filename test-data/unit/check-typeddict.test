@@ -1213,6 +1213,27 @@ def test_chaining(d: Config) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 
+[case testTypedDictGetWithNestedUnionOfTypedDicts]
+# https://github.com/python/mypy/issues/19902
+from typing import TypedDict, Union
+from typing_extensions import TypeAlias, NotRequired
+class A(TypedDict):
+    key: NotRequired[int]
+
+class B(TypedDict):
+    key: NotRequired[int]
+
+class C(TypedDict):
+    key: NotRequired[int]
+
+A_or_B: TypeAlias = Union[A, B]
+A_or_B_or_C: TypeAlias = Union[A_or_B, C]
+
+def test(d: A_or_B_or_C) -> None:
+    reveal_type(d.get("key"))  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 -- Totality (the "total" keyword argument)
 
 [case testTypedDictWithTotalTrue]
