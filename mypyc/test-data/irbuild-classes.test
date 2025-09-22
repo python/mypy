@@ -2022,43 +2022,48 @@ from typing import Any
 @mypyc_attr(native_class=False)
 class NonNative:
     def __new__(cls) -> NonNative:
-        return super().__new__(cls)  # E: object.__new__() not supported for non-extension classes
+        return super().__new__(cls)  # E: "object.__new__()" not supported for non-extension classes
 
 class InheritsPython(dict):
     def __new__(cls) -> InheritsPython:
-        return super().__new__(cls)  # E: object.__new__() not supported for classes inheriting from non-native classes
+        return super().__new__(cls)  # E: "object.__new__()" not supported for classes inheriting from non-native classes
 
 @mypyc_attr(native_class=False)
 class NonNativeObjectNew:
     def __new__(cls) -> NonNativeObjectNew:
-        return object.__new__(cls)  # E: object.__new__() not supported for non-extension classes
+        return object.__new__(cls)  # E: "object.__new__()" not supported for non-extension classes
 
 class InheritsPythonObjectNew(dict):
     def __new__(cls) -> InheritsPythonObjectNew:
-        return object.__new__(cls)  # E: object.__new__() not supported for classes inheriting from non-native classes
+        return object.__new__(cls)  # E: "object.__new__()" not supported for classes inheriting from non-native classes
 
 class ClsAssignment:
     def __new__(cls: Any) -> Any:
-        cls = str  # E: Assignment to argument cls in __new__ method unsupported
+        cls = str  # E: Assignment to argument "cls" in "__new__" method unsupported
         return super().__new__(cls)
 
 class ClsTupleAssignment:
     def __new__(class_i_want: Any, val: int) -> Any:
-        class_i_want, val = dict, 1  # E: Assignment to argument class_i_want in __new__ method unsupported
+        class_i_want, val = dict, 1  # E: Assignment to argument "class_i_want" in "__new__" method unsupported
         return object.__new__(class_i_want)
 
 class ClsListAssignment:
     def __new__(cls: Any, val: str) -> Any:
-        [cls, val] = [object, "object"]  # E: Assignment to argument cls in __new__ method unsupported
+        [cls, val] = [object, "object"]  # E: Assignment to argument "cls" in "__new__" method unsupported
+        return object.__new__(cls)
+
+class ClsNestedAssignment:
+    def __new__(cls: Any, val1: str, val2: int) -> Any:
+        [val1, [val2, cls]] = ["val1", [2, int]]  # E: Assignment to argument "cls" in "__new__" method unsupported
         return object.__new__(cls)
 
 class WrongNumberOfArgs:
     def __new__(cls):
-        return super().__new__()  # E: object.__new__() supported only with 1 argument, got 0
+        return super().__new__()  # E: "object.__new__()" supported only with 1 argument, got 0
 
 class WrongNumberOfArgsObjectNew:
     def __new__(cls):
-        return object.__new__(cls, 1)  # E: object.__new__() supported only with 1 argument, got 2
+        return object.__new__(cls, 1)  # E: "object.__new__()" supported only with 1 argument, got 2
 
 [case testClassWithFreeList]
 from mypy_extensions import mypyc_attr, trait

@@ -30,6 +30,7 @@ from mypy.nodes import (
     NameExpr,
     RefExpr,
     StrExpr,
+    SuperExpr,
     TupleExpr,
     Var,
 )
@@ -1012,11 +1013,20 @@ def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     if fn.name != "__new__":
         return None
 
+    is_super_new = isinstance(expr.callee, SuperExpr)
+    is_object_new = (
+        isinstance(callee, MemberExpr)
+        and isinstance(callee.expr, NameExpr)
+        and callee.expr.fullname == "builtins.object"
+    )
+    if not (is_super_new or is_object_new):
+        return None
+
     ir = builder.get_current_class_ir()
     if ir is None:
         return None
 
-    call = "object.__new__()"
+    call = '"object.__new__()"'
     if not ir.is_ext_class:
         builder.error(f"{call} not supported for non-extension classes", expr.line)
         return None

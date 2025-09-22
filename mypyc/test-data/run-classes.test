@@ -3945,6 +3945,53 @@ assert t.generic == "{}"
 assert t.bitfield == 0x0C
 assert t.default == 10
 
+[case testUntransformedDunderNewCalls]
+from testutil import assertRaises
+from typing import Any
+
+class TestStrCls:
+    def __new__(cls):
+        return str.__new__(cls)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(cls)
+
+class TestStrStr:
+    def __new__(cls):
+        return str.__new__(str)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(str)
+
+class TestStrInt:
+    def __new__(cls):
+        return str.__new__(int)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(int)
+
+def test_untransformed_dunder_new() -> None:
+    with assertRaises(TypeError, "str.__new__(TestStrCls): TestStrCls is not a subtype of str"):
+        i = TestStrCls()
+
+    j: Any = TestStrStr()
+    assert j == ""
+
+    with assertRaises(TypeError, "str.__new__(int): int is not a subtype of str"):
+        k = TestStrInt()
+
+    with assertRaises(TypeError, "str.__new__(TestStrCls): TestStrCls is not a subtype of str"):
+        i = TestStrCls.factory()
+
+    j = TestStrStr.factory()
+    assert j == ""
+
+    with assertRaises(TypeError, "str.__new__(int): int is not a subtype of str"):
+        k = TestStrInt.factory()
+
 [case testPerTypeFreeList]
 from __future__ import annotations
 

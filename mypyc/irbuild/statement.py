@@ -182,19 +182,24 @@ def check_unsupported_cls_assignment(builder: IRBuilder, stmt: AssignmentStmt) -
         return
 
     cls_arg = method_args[0]
-    lvalues: list[Expression] = []
-    for lvalue in stmt.lvalues:
-        if isinstance(lvalue, (TupleExpr, ListExpr)):
-            lvalues += lvalue.items
-        else:
-            lvalues.append(lvalue)
+
+    def flatten(lvalues: list[Expression]) -> list[Expression]:
+        flat = []
+        for lvalue in lvalues:
+            if isinstance(lvalue, (TupleExpr, ListExpr)):
+                flat += flatten(lvalue.items)
+            else:
+                flat.append(lvalue)
+        return flat
+
+    lvalues = flatten(stmt.lvalues)
 
     for lvalue in lvalues:
         if isinstance(lvalue, NameExpr) and lvalue.name == cls_arg:
             # Disallowed because it could break the transformation of object.__new__ calls
             # inside __new__ methods.
             builder.error(
-                f"Assignment to argument {cls_arg} in __new__ method unsupported", stmt.line
+                f'Assignment to argument "{cls_arg}" in "__new__" method unsupported', stmt.line
             )
 
 
