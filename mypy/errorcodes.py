@@ -273,6 +273,8 @@ METACLASS: Final = ErrorCode("metaclass", "Ensure that metaclass is valid", "Gen
 # Syntax errors are often blocking.
 SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
 
+UNTYPED_DECORATOR: Final = ErrorCode("untyped-decorator", "Error if an untyped decorator makes a typed function untyped", "General")
+
 # This is an internal marker code for a whole-file ignore. It is not intended to
 # be user-visible.
 FILE: Final = ErrorCode("file", "Internal marker for a whole file being ignored", "General")
