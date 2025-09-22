@@ -3493,6 +3493,156 @@ Add(0, 5)=5
 running __new__ with 1 and 0
 Add(1, 0)=1
 
+[case testObjectDunderNew]
+from __future__ import annotations
+from typing import Any, Union
+
+from testutil import assertRaises
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> Any:
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            object.__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+IntLike = Union[int, Add]
+
+class RaisesException:
+    def __new__(cls, val: int) -> RaisesException:
+        if val == 0:
+            raise RuntimeError("Invalid value!")
+        return object.__new__(cls)
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return object.__new__(str)
+
+class SkipsBase(Add):
+    def __new__(cls) -> Any:
+        obj = object.__new__(cls)
+        obj.l = 0
+        obj.r = 0
+        return obj
+
+def test_dunder_new() -> None:
+    add_instance: Any = Add(1, 5)
+    assert type(add_instance) == Add
+    assert add_instance.l == 1
+    assert add_instance.r == 5
+
+    # TODO: explicit types should not be needed but mypy does not use
+    # the return type of __new__ which makes mypyc add casts to Add.
+    right_int: Any = Add(0, 5)
+    assert type(right_int) == int
+    assert right_int == 5
+
+    left_int: Any = Add(1, 0)
+    assert type(left_int) == int
+    assert left_int == 1
+
+    with assertRaises(RuntimeError, "Invalid value!"):
+        _ = RaisesException(0)
+
+    not_raised = RaisesException(1)
+    assert not_raised.val == 1
+
+    with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+        _ = ClsArgNotPassed()
+
+    skip = SkipsBase.__new__(SkipsBase)
+    assert type(skip) == SkipsBase
+    assert skip.l == 0
+    assert skip.r == 0
+
+[case testObjectDunderNewInInterpreted]
+from __future__ import annotations
+from typing import Any, Union
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> Any:
+        print(f'running __new__ with {l} and {r}')
+
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            object.__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+    def __repr__(self) -> str:
+        return f'({self.l} + {self.r})'
+
+IntLike = Union[int, Add]
+
+class RaisesException:
+    def __new__(cls, val: int) -> RaisesException:
+        if val == 0:
+            raise RuntimeError("Invalid value!")
+        return object.__new__(cls)
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return object.__new__(str)
+
+class SkipsBase(Add):
+    def __new__(cls) -> Any:
+        obj = object.__new__(cls)
+        obj.l = 0
+        obj.r = 0
+        return obj
+
+[file driver.py]
+from native import Add, ClsArgNotPassed, RaisesException, SkipsBase
+
+from testutil import assertRaises
+
+print(f'{Add(1, 5)=}')
+print(f'{Add(0, 5)=}')
+print(f'{Add(1, 0)=}')
+
+with assertRaises(RuntimeError, "Invalid value!"):
+    raised = RaisesException(0)
+
+not_raised = RaisesException(1)
+assert not_raised.val == 1
+
+with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+    str_as_cls = ClsArgNotPassed()
+
+skip = SkipsBase.__new__(SkipsBase)
+assert type(skip) == SkipsBase
+assert skip.l == 0
+assert skip.r == 0
+
+[out]
+running __new__ with 1 and 5
+Add(1, 5)=(1 + 5)
+running __new__ with 0 and 5
+Add(0, 5)=5
+running __new__ with 1 and 0
+Add(1, 0)=1
+
 [case testInheritedDunderNew]
 from __future__ import annotations
 from mypy_extensions import mypyc_attr
@@ -3794,6 +3944,53 @@ assert t.native == 43
 assert t.generic == "{}"
 assert t.bitfield == 0x0C
 assert t.default == 10
+
+[case testUntransformedDunderNewCalls]
+from testutil import assertRaises
+from typing import Any
+
+class TestStrCls:
+    def __new__(cls):
+        return str.__new__(cls)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(cls)
+
+class TestStrStr:
+    def __new__(cls):
+        return str.__new__(str)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(str)
+
+class TestStrInt:
+    def __new__(cls):
+        return str.__new__(int)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(int)
+
+def test_untransformed_dunder_new() -> None:
+    with assertRaises(TypeError, "str.__new__(TestStrCls): TestStrCls is not a subtype of str"):
+        i = TestStrCls()
+
+    j: Any = TestStrStr()
+    assert j == ""
+
+    with assertRaises(TypeError, "str.__new__(int): int is not a subtype of str"):
+        k = TestStrInt()
+
+    with assertRaises(TypeError, "str.__new__(TestStrCls): TestStrCls is not a subtype of str"):
+        i = TestStrCls.factory()
+
+    j = TestStrStr.factory()
+    assert j == ""
+
+    with assertRaises(TypeError, "str.__new__(int): int is not a subtype of str"):
+        k = TestStrInt.factory()
 
 [case testPerTypeFreeList]
 from __future__ import annotations
