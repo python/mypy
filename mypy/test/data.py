@@ -312,8 +312,7 @@ class DataDrivenTestCase(pytest.Item):
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
-        # TODO: add a better error message for when someone uses skip and xfail at the same time
-        elif self.xfail:
+        if self.xfail:
             self.add_marker(pytest.mark.xfail)
         parent = self.getparent(DataSuiteCollector)
         assert parent is not None, "Should not happen"
@@ -659,8 +658,7 @@ _case_name_pattern = re.compile(
     r"(?P<only_when>-only_when_cache|-only_when_nocache)?"
     r"(?P<skip_path_normalization>-skip_path_normalization)?"
     r"(-(?P<platform>posix|windows))?"
-    r"(?P<skip>-skip)?"
-    r"(?P<xfail>-xfail)?"
+    r"(?:(?P<skip>-skip)?(?P<xfail>-xfail)?|(?P<xfail2>-xfail)?(?P<skip2>-skip)?)?"
 )
 
 
@@ -699,8 +697,8 @@ def split_test_cases(
             writescache=bool(m.group("writescache")),
             only_when=m.group("only_when"),
             platform=m.group("platform"),
-            skip=bool(m.group("skip")),
-            xfail=bool(m.group("xfail")),
+            skip=bool(m.group("skip") or m.group("skip2")),
+            xfail=bool(m.group("xfail") or m.group("xfail2")),
             normalize_output=not m.group("skip_path_normalization"),
             data=data,
             line=line_no,
