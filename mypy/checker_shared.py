@@ -21,7 +21,7 @@ from mypy.nodes import (
     MypyFile,
     Node,
     RefExpr,
-    TypeAlias,
+    SymbolNode,
     TypeInfo,
     Var,
 )
@@ -62,10 +62,6 @@ class ExpressionCheckerSharedApi:
 
     @abstractmethod
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
-        raise NotImplementedError
-
-    @abstractmethod
-    def module_type(self, node: MypyFile) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
@@ -113,23 +109,25 @@ class ExpressionCheckerSharedApi:
         raise NotImplementedError
 
     @abstractmethod
-    def alias_type_in_runtime_context(
-        self, alias: TypeAlias, *, ctx: Context, alias_definition: bool = False
-    ) -> Type:
-        raise NotImplementedError
-
-    @abstractmethod
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
     ) -> tuple[Type, set[str]]:
         raise NotImplementedError
 
     @abstractmethod
-    def typeddict_callable(self, info: TypeInfo) -> CallableType:
+    def infer_literal_expr_type(self, value: LiteralValue, fallback_name: str) -> Type:
         raise NotImplementedError
 
     @abstractmethod
-    def infer_literal_expr_type(self, value: LiteralValue, fallback_name: str) -> Type:
+    def analyze_static_reference(
+        self,
+        node: SymbolNode,
+        ctx: Context,
+        is_lvalue: bool,
+        *,
+        include_modules: bool = True,
+        suppress_errors: bool = False,
+    ) -> Type:
         raise NotImplementedError
 
 
@@ -139,6 +137,7 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     module_refs: set[str]
     scope: CheckerScope
     checking_missing_await: bool
+    allow_constructor_cache: bool
 
     @property
     @abstractmethod
@@ -255,12 +254,6 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def warn_deprecated_overload_item(
-        self, node: Node | None, context: Context, *, target: Type, selftype: Type | None = None
-    ) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
     def type_is_iterable(self, type: Type) -> bool:
         raise NotImplementedError
 
@@ -277,6 +270,14 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
 
     @abstractmethod
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_defined_in_stub(self, typ: Instance, /) -> bool:
         raise NotImplementedError
 
 
@@ -335,6 +336,10 @@ class CheckerScope:
             if isinstance(item, TypeInfo):
                 return fill_typevars(item)
         return None
+
+    def is_top_level(self) -> bool:
+        """Is current scope top-level (no classes or functions)?"""
+        return len(self.stack) == 1
 
     @contextmanager
     def push_function(self, item: FuncItem) -> Iterator[None]:

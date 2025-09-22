@@ -1,18 +1,8 @@
-import sys
+from tkinter import Misc
 from tkinter.commondialog import Dialog
-from typing import ClassVar, Final
+from typing import ClassVar, Final, Literal
 
-if sys.version_info >= (3, 9):
-    __all__ = [
-        "showinfo",
-        "showwarning",
-        "showerror",
-        "askquestion",
-        "askokcancel",
-        "askyesno",
-        "askyesnocancel",
-        "askretrycancel",
-    ]
+__all__ = ["showinfo", "showwarning", "showerror", "askquestion", "askokcancel", "askyesno", "askyesnocancel", "askretrycancel"]
 
 ERROR: Final = "error"
 INFO: Final = "info"
@@ -34,11 +24,75 @@ NO: Final = "no"
 class Message(Dialog):
     command: ClassVar[str]
 
-def showinfo(title: str | None = None, message: str | None = None, **options) -> str: ...
-def showwarning(title: str | None = None, message: str | None = None, **options) -> str: ...
-def showerror(title: str | None = None, message: str | None = None, **options) -> str: ...
-def askquestion(title: str | None = None, message: str | None = None, **options) -> str: ...
-def askokcancel(title: str | None = None, message: str | None = None, **options) -> bool: ...
-def askyesno(title: str | None = None, message: str | None = None, **options) -> bool: ...
-def askyesnocancel(title: str | None = None, message: str | None = None, **options) -> bool | None: ...
-def askretrycancel(title: str | None = None, message: str | None = None, **options) -> bool: ...
+def showinfo(
+    title: str | None = None,
+    message: str | None = None,
+    *,
+    detail: str = ...,
+    icon: Literal["error", "info", "question", "warning"] = ...,
+    default: Literal["ok"] = "ok",
+    parent: Misc = ...,
+) -> str: ...
+def showwarning(
+    title: str | None = None,
+    message: str | None = None,
+    *,
+    detail: str = ...,
+    icon: Literal["error", "info", "question", "warning"] = ...,
+    default: Literal["ok"] = "ok",
+    parent: Misc = ...,
+) -> str: ...
+def showerror(
+    title: str | None = None,
+    message: str | None = None,
+    *,
+    detail: str = ...,
+    icon: Literal["error", "info", "question", "warning"] = ...,
+    default: Literal["ok"] = "ok",
+    parent: Misc = ...,
+) -> str: ...
+def askquestion(
+    title: str | None = None,
+    message: str | None = None,
+    *,
+    detail: str = ...,
+    icon: Literal["error", "info", "question", "warning"] = ...,
+    default: Literal["yes", "no"] = ...,
+    parent: Misc = ...,
+) -> str: ...
+def askokcancel(
+    title: str | None = None,
+    message: str | None = None,
+    *,
+    detail: str = ...,
+    icon: Literal["error", "info", "question", "warning"] = ...,
+    default: Literal["ok", "cancel"] = ...,
+    parent: Misc = ...,
+) -> bool: ...
+def askyesno(
+    title: str | None = None,
+    message: str | None = None,
+    *,
+    detail: str = ...,
+    icon: Literal["error", "info", "question", "warning"] = ...,
+    default: Literal["yes", "no"] = ...,
+    parent: Misc = ...,
+) -> bool: ...
+def askyesnocancel(
+    title: str | None = None,
+    message: str | None = None,
+    *,
+    detail: str = ...,
+    icon: Literal["error", "info", "question", "warning"] = ...,
+    default: Literal["cancel", "yes", "no"] = ...,
+    parent: Misc = ...,
+) -> bool | None: ...
+def askretrycancel(
+    title: str | None = None,
+    message: str | None = None,
+    *,
+    detail: str = ...,
+    icon: Literal["error", "info", "question", "warning"] = ...,
+    default: Literal["retry", "cancel"] = ...,
+    parent: Misc = ...,
+) -> bool: ...

@@ -23,7 +23,6 @@ from mypy.nodes import (
     Expression,
     NameExpr,
 )
-from mypy.options import Options
 from mypy.plugins.common import find_shallow_matching_overload_item
 from mypy.state import state
 from mypy.subtypes import is_more_precise, is_proper_subtype, is_same_type, is_subtype
@@ -130,17 +129,13 @@ class TypesSuite(Suite):
         )
         assert_equal(str(c3), "def (X? =, *Y?) -> Any")
 
-    def test_tuple_type_upper(self) -> None:
-        options = Options()
-        options.force_uppercase_builtins = True
-        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[()]")
-        assert_equal(TupleType([self.x], self.fx.std_tuple).str_with_options(options), "Tuple[X?]")
-        assert_equal(
-            TupleType(
-                [self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple
-            ).str_with_options(options),
-            "Tuple[X?, Any]",
-        )
+    def test_tuple_type_str(self) -> None:
+        t1 = TupleType([], self.fx.std_tuple)
+        assert_equal(str(t1), "tuple[()]")
+        t2 = TupleType([self.x], self.fx.std_tuple)
+        assert_equal(str(t2), "tuple[X?]")
+        t3 = TupleType([self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple)
+        assert_equal(str(t3), "tuple[X?, Any]")
 
     def test_type_variable_binding(self) -> None:
         assert_equal(
@@ -205,18 +200,6 @@ class TypesSuite(Suite):
         A, target = self.fx.def_alias_2(self.fx.a)
         assert get_proper_type(A) == target
         assert get_proper_type(target) == target
-
-    def test_type_alias_expand_all(self) -> None:
-        A, _ = self.fx.def_alias_1(self.fx.a)
-        assert A.expand_all_if_possible() is None
-        A, _ = self.fx.def_alias_2(self.fx.a)
-        assert A.expand_all_if_possible() is None
-
-        B = self.fx.non_rec_alias(self.fx.a)
-        C = self.fx.non_rec_alias(TupleType([B, B], Instance(self.fx.std_tuplei, [B])))
-        assert C.expand_all_if_possible() == TupleType(
-            [self.fx.a, self.fx.a], Instance(self.fx.std_tuplei, [self.fx.a])
-        )
 
     def test_recursive_nested_in_non_recursive(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)

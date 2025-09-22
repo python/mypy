@@ -64,6 +64,15 @@ typedef struct tuple_T4CIOO {
 } tuple_T4CIOO;
 #endif
 
+// System-wide empty tuple constant
+extern PyObject * __mypyc_empty_tuple__;
+
+static inline PyObject *CPyTuple_LoadEmptyTupleConstant(void) {
+#if !CPY_3_12_FEATURES
+    Py_INCREF(__mypyc_empty_tuple__);
+#endif
+    return __mypyc_empty_tuple__;
+}
 
 // Native object operations
 
@@ -646,14 +655,13 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
-bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value);
+void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
 bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
@@ -667,6 +675,7 @@ PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+char CPyList_Clear(PyObject *list);
 PyObject *CPyList_Copy(PyObject *list);
 int CPySequence_Check(PyObject *obj);
 
@@ -703,14 +712,13 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
 int CPyMapping_Check(PyObject *obj);
 
 // Check that dictionary didn't change size during iteration.
-static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
+static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
     if (!PyDict_CheckExact(dict)) {
         // Dict subclasses will be checked by Python runtime.
         return 1;
     }
-    Py_ssize_t py_size = CPyTagged_AsSsize_t(size);
     Py_ssize_t dict_size = PyDict_Size(dict);
-    if (py_size != dict_size) {
+    if (size != dict_size) {
         PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
         return 0;
     }
@@ -725,8 +733,10 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 #define RIGHTSTRIP 1
 #define BOTHSTRIP  2
 
+char CPyStr_Equal(PyObject *str1, PyObject *str2);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
+PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
@@ -751,7 +761,12 @@ PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
+PyObject *CPy_DecodeUTF8(PyObject *bytes);
+PyObject *CPy_DecodeASCII(PyObject *bytes);
+PyObject *CPy_DecodeLatin1(PyObject *bytes);
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
+Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
+Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
 
 
@@ -780,7 +795,8 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
-bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *value);
+PyObject *CPySequenceTuple_GetItemUnsafe(PyObject *tuple, Py_ssize_t index);
+void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t index, PyObject *value);
 
 
 // Exception operations
@@ -870,6 +886,12 @@ static inline bool CPy_TypeCheck(PyObject *o, PyObject *type) {
     return PyObject_TypeCheck(o, (PyTypeObject *)type);
 }
 
+static inline PyObject *CPy_TYPE(PyObject *obj) {
+    PyObject *result = (PyObject *)Py_TYPE(obj);
+    Py_INCREF(result);
+    return result;
+}
+
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
 PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
@@ -925,6 +947,15 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyOb
 PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
 void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
+void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details);
+
+#if CPY_3_11_FEATURES
+PyObject *CPy_GetName(PyObject *obj);
+#endif
+
+#if CPY_3_14_FEATURES
+void CPy_SetImmortal(PyObject *obj);
+#endif
 
 #ifdef __cplusplus
 }

@@ -17,15 +17,23 @@ else:
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import Any, Callable, Final, TextIO, Union, cast
-from typing_extensions import TypeAlias as _TypeAlias
+from typing_extensions import Never, TypeAlias
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
 
-_CONFIG_VALUE_TYPES: _TypeAlias = Union[
+_CONFIG_VALUE_TYPES: TypeAlias = Union[
     str, bool, int, float, dict[str, str], list[str], tuple[int, int]
 ]
-_INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
+_INI_PARSER_CALLABLE: TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
+
+
+class VersionTypeError(argparse.ArgumentTypeError):
+    """Provide a fallback value if the Python version is unsupported."""
+
+    def __init__(self, *args: Any, fallback: tuple[int, int]) -> None:
+        self.fallback = fallback
+        super().__init__(*args)
 
 
 def parse_version(v: str | float) -> tuple[int, int]:
@@ -44,7 +52,7 @@ def parse_version(v: str | float) -> tuple[int, int]:
             if isinstance(v, float):
                 msg += ". You may need to put quotes around your Python version"
 
-            raise argparse.ArgumentTypeError(msg)
+            raise VersionTypeError(msg, fallback=defaults.PYTHON3_VERSION_MIN)
     else:
         raise argparse.ArgumentTypeError(
             f"Python major version '{major}' out of range (must be 3)"
@@ -52,14 +60,31 @@ def parse_version(v: str | float) -> tuple[int, int]:
     return major, minor
 
 
-def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
-    """Split and trim a str or list of str into a list of str"""
+def try_split(v: str | Sequence[str] | object, split_regex: str = ",") -> list[str]:
+    """Split and trim a str or sequence (eg: list) of str into a list of str.
+    If an element of the input is not str, a type error will be raised."""
+
+    def complain(x: object, additional_info: str = "") -> Never:
+        raise argparse.ArgumentTypeError(
+            f"Expected a list or a stringified version thereof, but got: '{x}', of type {type(x).__name__}.{additional_info}"
+        )
+
     if isinstance(v, str):
         items = [p.strip() for p in re.split(split_regex, v)]
         if items and items[-1] == "":
             items.pop(-1)
         return items
-    return [p.strip() for p in v]
+    elif isinstance(v, Sequence):
+        return [
+            (
+                p.strip()
+                if isinstance(p, str)
+                else complain(p, additional_info=" (As an element of the list.)")
+            )
+            for p in v
+        ]
+    else:
+        complain(v)
 
 
 def validate_codes(codes: list[str]) -> list[str]:
@@ -643,6 +668,9 @@ def parse_section(
                     continue
                 try:
                     v = ct(section.get(key))
+                except VersionTypeError as err_version:
+                    print(f"{prefix}{key}: {err_version}", file=stderr)
+                    v = err_version.fallback
                 except argparse.ArgumentTypeError as err:
                     print(f"{prefix}{key}: {err}", file=stderr)
                     continue
@@ -733,9 +761,8 @@ def parse_mypy_comments(
     Returns a dictionary of options to be applied and a list of error messages
     generated.
     """
-
     errors: list[tuple[int, str]] = []
-    sections = {}
+    sections: dict[str, object] = {"enable_error_code": [], "disable_error_code": []}
 
     for lineno, line in args:
         # In order to easily match the behavior for bools, we abuse configparser.
@@ -743,7 +770,6 @@ def parse_mypy_comments(
         # method is to create a config parser.
         parser = configparser.RawConfigParser()
         options, parse_errors = mypy_comments_to_config_map(line, template)
-
         if "python_version" in options:
             errors.append((lineno, "python_version not supported in inline configuration"))
             del options["python_version"]
@@ -773,9 +799,24 @@ def parse_mypy_comments(
                     '(see "mypy -h" for the list of flags enabled in strict mode)',
                 )
             )
-
+        # Because this is currently special-cased
+        # (the new_sections for an inline config *always* includes 'disable_error_code' and
+        # 'enable_error_code' fields, usually empty, which overwrite the old ones),
+        # we have to manipulate them specially.
+        # This could use a refactor, but so could the whole subsystem.
+        if (
+            "enable_error_code" in new_sections
+            and isinstance(neec := new_sections["enable_error_code"], list)
+            and isinstance(eec := sections.get("enable_error_code", []), list)
+        ):
+            new_sections["enable_error_code"] = sorted(set(neec + eec))
+        if (
+            "disable_error_code" in new_sections
+            and isinstance(ndec := new_sections["disable_error_code"], list)
+            and isinstance(dec := sections.get("disable_error_code", []), list)
+        ):
+            new_sections["disable_error_code"] = sorted(set(ndec + dec))
         sections.update(new_sections)
-
     return sections, errors
 
 

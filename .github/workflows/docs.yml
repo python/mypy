@@ -12,6 +12,9 @@ on:
     # so it's important to do the docs build on all PRs touching mypy/errorcodes.py
     # in case somebody's adding a new error code without any docs
     - 'mypy/errorcodes.py'
+    # Part of the documentation is automatically generated from the options
+    # definitions in mypy/main.py
+    - 'mypy/main.py'
     - 'mypyc/doc/**'
     - '**/*.rst'
     - '**/*.md'
@@ -41,7 +44,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install tox
-        run: pip install tox==4.21.2
+        run: pip install tox==4.26.0
       - name: Setup tox environment
         run: tox run -e ${{ env.TOXENV }} --notest
       - name: Test

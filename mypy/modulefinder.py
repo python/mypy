@@ -796,6 +796,7 @@ def default_lib_path(
         custom_typeshed_dir = os.path.abspath(custom_typeshed_dir)
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
         mypy_extensions_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-extensions")
+        mypy_native_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-native")
         versions_file = os.path.join(typeshed_dir, "VERSIONS")
         if not os.path.isdir(typeshed_dir) or not os.path.isfile(versions_file):
             print(
@@ -811,11 +812,13 @@ def default_lib_path(
             data_dir = auto
         typeshed_dir = os.path.join(data_dir, "typeshed", "stdlib")
         mypy_extensions_dir = os.path.join(data_dir, "typeshed", "stubs", "mypy-extensions")
+        mypy_native_dir = os.path.join(data_dir, "typeshed", "stubs", "mypy-native")
     path.append(typeshed_dir)
 
-    # Get mypy-extensions stubs from typeshed, since we treat it as an
-    # "internal" library, similar to typing and typing-extensions.
+    # Get mypy-extensions and mypy-native stubs from typeshed, since we treat them as
+    # "internal" libraries, similar to typing and typing-extensions.
     path.append(mypy_extensions_dir)
+    path.append(mypy_native_dir)
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != "win32":
@@ -995,6 +998,6 @@ def parse_version(version: str) -> tuple[int, int]:
 
 def typeshed_py_version(options: Options) -> tuple[int, int]:
     """Return Python version used for checking whether module supports typeshed."""
-    # Typeshed no longer covers Python 3.x versions before 3.8, so 3.8 is
+    # Typeshed no longer covers Python 3.x versions before 3.9, so 3.9 is
     # the earliest we can support.
-    return max(options.python_version, (3, 8))
+    return max(options.python_version, (3, 9))

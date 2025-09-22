@@ -1,16 +1,16 @@
 import sys
 from _typeshed import ReadableBuffer
-from typing import ClassVar, final
+from typing import ClassVar, Final, final
 from typing_extensions import Self
 
-BLAKE2B_MAX_DIGEST_SIZE: int = 64
-BLAKE2B_MAX_KEY_SIZE: int = 64
-BLAKE2B_PERSON_SIZE: int = 16
-BLAKE2B_SALT_SIZE: int = 16
-BLAKE2S_MAX_DIGEST_SIZE: int = 32
-BLAKE2S_MAX_KEY_SIZE: int = 32
-BLAKE2S_PERSON_SIZE: int = 8
-BLAKE2S_SALT_SIZE: int = 8
+BLAKE2B_MAX_DIGEST_SIZE: Final = 64
+BLAKE2B_MAX_KEY_SIZE: Final = 64
+BLAKE2B_PERSON_SIZE: Final = 16
+BLAKE2B_SALT_SIZE: Final = 16
+BLAKE2S_MAX_DIGEST_SIZE: Final = 32
+BLAKE2S_MAX_KEY_SIZE: Final = 32
+BLAKE2S_PERSON_SIZE: Final = 8
+BLAKE2S_SALT_SIZE: Final = 8
 
 @final
 class blake2b:
@@ -21,11 +21,10 @@ class blake2b:
     block_size: int
     digest_size: int
     name: str
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 13):
         def __new__(
             cls,
             data: ReadableBuffer = b"",
-            /,
             *,
             digest_size: int = 64,
             key: ReadableBuffer = b"",
@@ -39,6 +38,7 @@ class blake2b:
             inner_size: int = 0,
             last_node: bool = False,
             usedforsecurity: bool = True,
+            string: ReadableBuffer | None = None,
         ) -> Self: ...
     else:
         def __new__(
@@ -57,6 +57,7 @@ class blake2b:
             node_depth: int = 0,
             inner_size: int = 0,
             last_node: bool = False,
+            usedforsecurity: bool = True,
         ) -> Self: ...
 
     def copy(self) -> Self: ...
@@ -73,11 +74,10 @@ class blake2s:
     block_size: int
     digest_size: int
     name: str
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 13):
         def __new__(
             cls,
             data: ReadableBuffer = b"",
-            /,
             *,
             digest_size: int = 32,
             key: ReadableBuffer = b"",
@@ -91,6 +91,7 @@ class blake2s:
             inner_size: int = 0,
             last_node: bool = False,
             usedforsecurity: bool = True,
+            string: ReadableBuffer | None = None,
         ) -> Self: ...
     else:
         def __new__(
@@ -109,6 +110,7 @@ class blake2s:
             node_depth: int = 0,
             inner_size: int = 0,
             last_node: bool = False,
+            usedforsecurity: bool = True,
         ) -> Self: ...
 
     def copy(self) -> Self: ...

@@ -272,7 +272,7 @@ from typing import TypeVar
 T = TypeVar('T')
 def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar  [type-var]
 x = f()  # E: Need type annotation for "x"  [var-annotated]
-y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
+y = []  # E: Need type annotation for "y" (hint: "y: list[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeBadOverride]
@@ -341,10 +341,10 @@ a: A
 a.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 
 [case testErrorCodeMissingTypeArg]
-# flags: --python-version 3.8 --disallow-any-generics
+# flags: --disallow-any-generics
 from typing import List, TypeVar
 x: List  # E: Missing type parameters for generic type "List"  [type-arg]
-y: list  # E: Implicit generic "Any". Use "typing.List" and specify generic parameters  [type-arg]
+y: list  # E: Missing type parameters for generic type "list"  [type-arg]
 T = TypeVar('T')
 L = List[List[T]]
 z: L  # E: Missing type parameters for generic type "L"  [type-arg]
@@ -397,7 +397,7 @@ def g():
 [case testErrorCodeIndexing]
 from typing import Dict
 x: Dict[int, int]
-x['']  # E: Invalid index type "str" for "Dict[int, int]"; expected type "int"  [index]
+x['']  # E: Invalid index type "str" for "dict[int, int]"; expected type "int"  [index]
 1['']  # E: Value of type "int" is not indexable  [index]
 1[''] = 1  # E: Unsupported target for indexed assignment ("int")  [index]
 [builtins fixtures/dict.pyi]
@@ -970,22 +970,21 @@ def f(arg: int) -> int:
 def f(arg: str) -> str:
     ...
 
-[case testSliceInDict39]
-# flags: --python-version 3.9 --show-column-numbers
-from typing import Dict
-b: Dict[int, x:y]
-c: Dict[x:y]
+[case testSliceInDictBuiltin]
+# flags: --show-column-numbers
+b: dict[int, x:y]
+c: dict[x:y]
 
 [builtins fixtures/dict.pyi]
 [out]
-main:3:14: error: Invalid type comment or annotation  [valid-type]
-main:3:14: note: did you mean to use ',' instead of ':' ?
-main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
-main:4:9: error: Invalid type comment or annotation  [valid-type]
-main:4:9: note: did you mean to use ',' instead of ':' ?
+main:2:14: error: Invalid type comment or annotation  [valid-type]
+main:2:14: note: did you mean to use ',' instead of ':' ?
+main:3:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:3:9: error: Invalid type comment or annotation  [valid-type]
+main:3:9: note: did you mean to use ',' instead of ':' ?
 
-[case testSliceInDict38]
-# flags: --python-version 3.8 --show-column-numbers
+[case testSliceInDictTyping]
+# flags: --show-column-numbers
 from typing import Dict
 b: Dict[int, x:y]
 c: Dict[x:y]
@@ -1072,12 +1071,12 @@ class C(abc.ABC):
 
 T = TypeVar("T")
 def test(tp: Type[T]) -> T: ...
-test(C)  # E: Only concrete class can be given where "Type[C]" is expected  [type-abstract]
+test(C)  # E: Only concrete class can be given where "type[C]" is expected  [type-abstract]
 
 class D(C):
     @abc.abstractmethod
     def bar(self) -> None: ...
-cls: Type[C] = D  # E: Can only assign concrete classes to a variable of type "Type[C]"  [type-abstract]
+cls: Type[C] = D  # E: Can only assign concrete classes to a variable of type "type[C]"  [type-abstract]
 
 [case testUncheckedAnnotationCodeShown]
 def f():
@@ -1239,6 +1238,47 @@ def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of inpu
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testDynamicMetaclass]
+class A(metaclass=type(tuple)): pass  # E: Dynamic metaclass not supported for "A"  [metaclass]
+[builtins fixtures/tuple.pyi]
+
+[case testMetaclassOfTypeAny]
+# mypy: disallow-subclassing-any=True
+from typing import Any
+foo: Any = ...
+class A(metaclass=foo): pass  # E: Class cannot use "foo" as a metaclass (has type "Any")  [metaclass]
+
+[case testMetaclassOfWrongType]
+class Foo:
+    bar = 1
+class A2(metaclass=Foo.bar): pass  # E: Invalid metaclass "Foo.bar"  [metaclass]
+
+[case testMetaclassNotTypeSubclass]
+class M: pass
+class A(metaclass=M): pass  # E: Metaclasses not inheriting from "type" are not supported  [metaclass]
+
+[case testMultipleMetaclasses]
+import six
+class M1(type): pass
+
+@six.add_metaclass(M1)
+class A1(metaclass=M1): pass  # E: Multiple metaclass definitions  [metaclass]
+
+class A2(six.with_metaclass(M1), metaclass=M1): pass  # E: Multiple metaclass definitions  [metaclass]
+
+@six.add_metaclass(M1)
+class A3(six.with_metaclass(M1)): pass  # E: Multiple metaclass definitions  [metaclass]
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidMetaclassStructure]
+class X(type): pass
+class Y(type): pass
+class A(metaclass=X): pass
+class B(A, metaclass=Y): pass  # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases  [metaclass] \
+                               # N: "__main__.Y" (metaclass of "__main__.B") conflicts with "__main__.X" (metaclass of "__main__.A")
+
+
 
 
 [case testOverloadedFunctionSignature]

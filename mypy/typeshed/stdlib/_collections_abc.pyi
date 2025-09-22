@@ -1,7 +1,7 @@
 import sys
 from abc import abstractmethod
 from types import MappingProxyType
-from typing import (  # noqa: Y022,Y038
+from typing import (  # noqa: Y022,Y038,UP035
     AbstractSet as Set,
     AsyncGenerator as AsyncGenerator,
     AsyncIterable as AsyncIterable,
@@ -61,7 +61,7 @@ __all__ = [
     "MutableSequence",
 ]
 if sys.version_info < (3, 14):
-    from typing import ByteString as ByteString  # noqa: Y057
+    from typing import ByteString as ByteString  # noqa: Y057,UP035
 
     __all__ += ["ByteString"]
 
@@ -103,5 +103,6 @@ class dict_items(ItemsView[_KT_co, _VT_co]):  # undocumented
 if sys.version_info >= (3, 12):
     @runtime_checkable
     class Buffer(Protocol):
+        __slots__ = ()
         @abstractmethod
         def __buffer__(self, flags: int, /) -> memoryview: ...

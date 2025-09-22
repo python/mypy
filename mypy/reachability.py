@@ -115,31 +115,44 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
     MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
     false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
     """
+    if isinstance(expr, UnaryExpr) and expr.op == "not":
+        positive = infer_condition_value(expr.expr, options)
+        return inverted_truth_mapping[positive]
+
     pyversion = options.python_version
     name = ""
-    negated = False
-    alias = expr
-    if isinstance(alias, UnaryExpr):
-        if alias.op == "not":
-            expr = alias.expr
-            negated = True
+
     result = TRUTH_VALUE_UNKNOWN
     if isinstance(expr, NameExpr):
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
-    elif isinstance(expr, OpExpr) and expr.op in ("and", "or"):
+    elif isinstance(expr, OpExpr):
+        if expr.op not in ("or", "and"):
+            return TRUTH_VALUE_UNKNOWN
+
         left = infer_condition_value(expr.left, options)
-        if (left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "and") or (
-            left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "or"
-        ):
-            # Either `True and <other>` or `False or <other>`: the result will
-            # always be the right-hand-side.
-            return infer_condition_value(expr.right, options)
-        else:
-            # The result will always be the left-hand-side (e.g. ALWAYS_* or
-            # TRUTH_VALUE_UNKNOWN).
-            return left
+        right = infer_condition_value(expr.right, options)
+        results = {left, right}
+        if expr.op == "or":
+            if ALWAYS_TRUE in results:
+                return ALWAYS_TRUE
+            elif MYPY_TRUE in results:
+                return MYPY_TRUE
+            elif left == right == MYPY_FALSE:
+                return MYPY_FALSE
+            elif results <= {ALWAYS_FALSE, MYPY_FALSE}:
+                return ALWAYS_FALSE
+        elif expr.op == "and":
+            if ALWAYS_FALSE in results:
+                return ALWAYS_FALSE
+            elif MYPY_FALSE in results:
+                return MYPY_FALSE
+            elif left == right == ALWAYS_TRUE:
+                return ALWAYS_TRUE
+            elif results <= {ALWAYS_TRUE, MYPY_TRUE}:
+                return MYPY_TRUE
+        return TRUTH_VALUE_UNKNOWN
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:
@@ -155,8 +168,6 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
             result = ALWAYS_TRUE
         elif name in options.always_false:
             result = ALWAYS_FALSE
-    if negated:
-        result = inverted_truth_mapping[result]
     return result
 
 
