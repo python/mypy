@@ -1426,6 +1426,7 @@ def analyze_typeddict_access(
 
             if key in typ.required_keys:
                 # If the key is required, we know it must be present in the TypedDict.
+                # def (K, object=...) -> V
                 overload = CallableType(
                     arg_types=[key_type, object_type],
                     arg_kinds=[ARG_POS, ARG_OPT],
@@ -1437,7 +1438,7 @@ def analyze_typeddict_access(
                 overloads.append(overload)
             else:
                 # The key is not required, but if it is present, we know its type.
-                # def (K) -> V | None
+                # def (K) -> V | None   (implicit default)
                 overload = CallableType(
                     arg_types=[key_type],
                     arg_kinds=[ARG_POS],
@@ -1448,7 +1449,7 @@ def analyze_typeddict_access(
                 )
                 overloads.append(overload)
 
-                # fallback: def [T](K, T) -> V | T
+                # def [T](K, T) -> V | T   (explicit default)
                 overload = CallableType(
                     variables=[tvar],
                     arg_types=[key_type, tvar],
@@ -1461,6 +1462,7 @@ def analyze_typeddict_access(
                 overloads.append(overload)
 
         # finally, add fallback overload when a key is used that is not in the TypedDict
+        # TODO: add support for extra items (PEP 728)
         # def (str, object=...) -> object
         fallback_overload = CallableType(
             arg_types=[str_type, object_type],
