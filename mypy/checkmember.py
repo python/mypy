@@ -1409,12 +1409,12 @@ def analyze_typeddict_access(
         str_type = mx.chk.named_type("builtins.str")
         fn_type = mx.chk.named_type("builtins.function")
         object_type = mx.chk.named_type("builtins.object")
-
+        type_info = typ.fallback.type
         # type variable for default value
         tvar = TypeVarType(
             "T",
-            "T",
-            id=TypeVarId(-1),
+            f"{type_info.fullname}.get.T",
+            id=TypeVarId(-1, namespace=f"{type_info.fullname}.get"),
             values=[],
             upper_bound=object_type,
             default=AnyType(TypeOfAny.from_omitted_generics),
