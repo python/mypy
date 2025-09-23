@@ -9,6 +9,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 from typing import Callable, Final, Optional
+from typing_extensions import TypeGuard
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
@@ -185,6 +186,7 @@ from mypyc.primitives.set_ops import new_set_op
 from mypyc.primitives.str_ops import (
     str_check_if_true,
     str_eq,
+    str_eq_literal,
     str_ssize_t_size_op,
     unicode_compare,
 )
@@ -1550,10 +1552,33 @@ class LowLevelIRBuilder:
 
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
+
+        def is_string_literal(value: Value) -> TypeGuard[LoadLiteral]:
+            return isinstance(value, LoadLiteral) and is_str_rprimitive(value.type)
+
         if op == "==":
+            if is_string_literal(lhs):
+                if is_string_literal(rhs):
+                    # we can optimize out the check entirely in some Final cases
+                    return self.true() if lhs.value == rhs.value else self.false()
+                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
+                return self.primitive_op(str_eq_literal, [rhs, lhs, literal_length], line)
+            elif is_string_literal(rhs):
+                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
+                return self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
             return self.primitive_op(str_eq, [lhs, rhs], line)
         elif op == "!=":
-            eq = self.primitive_op(str_eq, [lhs, rhs], line)
+            if is_string_literal(lhs):
+                if is_string_literal(rhs):
+                    # we can optimize out the check entirely in some Final cases
+                    return self.true() if lhs.value != rhs.value else self.false()
+                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
+                eq = self.primitive_op(str_eq_literal, [rhs, lhs, literal_length], line)
+            elif is_string_literal(rhs):
+                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
+                eq = self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
+            else:
+                eq = self.primitive_op(str_eq, [lhs, rhs], line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
 
         # TODO: modify 'str' to use same interface as 'compare_bytes' as it would avoid
