@@ -696,6 +696,6 @@ Example:
                 return func(*args, **kwds)
             return wrapper
         # A decorated function.
-        @printing_decorator  # E: Untyped decorator makes function "add_forty_two" untyped  [misc]
+        @printing_decorator  # E: Untyped decorator makes function "add_forty_two" untyped  [untyped-decorator]
         def add_forty_two(value: int) -> int:
             return value + 42
