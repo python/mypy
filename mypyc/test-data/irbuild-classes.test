@@ -1662,6 +1662,7 @@ L0:
 
 [case testDunderNew]
 from __future__ import annotations
+from typing import Any
 
 class Test:
     val: int
@@ -1685,6 +1686,14 @@ class NewClassMethod:
 
 def fn2() -> NewClassMethod:
     return NewClassMethod.__new__(42)
+
+class NotTransformed:
+    def __new__(cls, val: int) -> Any:
+        return super().__new__(str)
+
+    def factory(cls: Any, val: int) -> Any:
+        cls = str
+        return super().__new__(cls)
 
 [out]
 def Test.__new__(cls, val):
@@ -1721,19 +1730,340 @@ L0:
     r0 = __main__.NewClassMethod :: type
     r1 = NewClassMethod.__new__(r0, 84)
     return r1
+def NotTransformed.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
+    r10 :: object[1]
+    r11 :: object_ptr
+    r12 :: object
+    r13 :: str
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.NotTransformed :: type
+    r4 = [r3, cls]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, cls
+    r7 = '__new__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = load_address PyUnicode_Type
+    r10 = [r9]
+    r11 = load_address r10
+    r12 = PyObject_Vectorcall(r8, r11, 1, 0)
+    keep_alive r9
+    r13 = cast(str, r12)
+    return r13
+def NotTransformed.factory(cls, val):
+    cls :: object
+    val :: int
+    r0, r1 :: object
+    r2 :: str
+    r3, r4 :: object
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: object[1]
+    r11 :: object_ptr
+    r12 :: object
+L0:
+    r0 = load_address PyUnicode_Type
+    cls = r0
+    r1 = builtins :: module
+    r2 = 'super'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = __main__.NotTransformed :: type
+    r5 = [r4, cls]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r3, r6, 2, 0)
+    keep_alive r4, cls
+    r8 = '__new__'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = [cls]
+    r11 = load_address r10
+    r12 = PyObject_Vectorcall(r9, r11, 1, 0)
+    keep_alive cls
+    return r12
+
+[case testObjectDunderNew_64bit]
+from __future__ import annotations
+from mypy_extensions import mypyc_attr
+from typing import Any
+
+class Test:
+    val: int
+
+    def __new__(cls, val: int) -> Test:
+        obj = object.__new__(cls)
+        obj.val = val
+        return obj
+
+def fn() -> Test:
+    return Test.__new__(Test, 42)
+
+class NewClassMethod:
+    val: int
+
+    @classmethod
+    def __new__(cls, val: int) -> NewClassMethod:
+        obj = object.__new__(cls)
+        obj.val = val
+        return obj
+
+def fn2() -> NewClassMethod:
+    return NewClassMethod.__new__(42)
+
+class NotTransformed:
+    def __new__(cls, val: int) -> Any:
+        return object.__new__(str)
+
+    def factory(cls: Any, val: int) -> Any:
+        cls = str
+        return object.__new__(cls)
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __new__(cls: Any) -> Any:
+        cls = str
+        return cls("str")
+
+class InheritsPython(dict):
+    def __new__(cls: Any) -> Any:
+        cls = dict
+        return cls({})
+
+class ObjectNewOutsideDunderNew:
+    def __init__(self) -> None:
+        object.__new__(ObjectNewOutsideDunderNew)
+
+def object_new_outside_class() -> None:
+    object.__new__(Test)
+
+[out]
+def Test.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.Test
+    r1 :: bool
+L0:
+    r0 = __mypyc__Test_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn():
+    r0 :: object
+    r1 :: __main__.Test
+L0:
+    r0 = __main__.Test :: type
+    r1 = Test.__new__(r0, 84)
+    return r1
+def NewClassMethod.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.NewClassMethod
+    r1 :: bool
+L0:
+    r0 = __mypyc__NewClassMethod_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn2():
+    r0 :: object
+    r1 :: __main__.NewClassMethod
+L0:
+    r0 = __main__.NewClassMethod :: type
+    r1 = NewClassMethod.__new__(r0, 84)
+    return r1
+def NotTransformed.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: str
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+    r8 :: str
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = load_address PyUnicode_Type
+    r4 = '__new__'
+    r5 = [r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
+    keep_alive r2, r3
+    r8 = cast(str, r7)
+    return r8
+def NotTransformed.factory(cls, val):
+    cls :: object
+    val :: int
+    r0, r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+L0:
+    r0 = load_address PyUnicode_Type
+    cls = r0
+    r1 = builtins :: module
+    r2 = 'object'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = '__new__'
+    r5 = [r3, cls]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
+    keep_alive r3, cls
+    return r7
+def __new___NonNative_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def __new___NonNative_obj.__call__(__mypyc_self__, cls):
+    __mypyc_self__ :: __main__.__new___NonNative_obj
+    cls, r0 :: object
+    r1 :: str
+    r2 :: object[1]
+    r3 :: object_ptr
+    r4 :: object
+L0:
+    r0 = load_address PyUnicode_Type
+    cls = r0
+    r1 = 'str'
+    r2 = [r1]
+    r3 = load_address r2
+    r4 = PyObject_Vectorcall(cls, r3, 1, 0)
+    keep_alive r1
+    return r4
+def InheritsPython.__new__(cls):
+    cls, r0 :: object
+    r1 :: dict
+    r2 :: object[1]
+    r3 :: object_ptr
+    r4 :: object
+L0:
+    r0 = load_address PyDict_Type
+    cls = r0
+    r1 = PyDict_New()
+    r2 = [r1]
+    r3 = load_address r2
+    r4 = PyObject_Vectorcall(cls, r3, 1, 0)
+    keep_alive r1
+    return r4
+def ObjectNewOutsideDunderNew.__init__(self):
+    self :: __main__.ObjectNewOutsideDunderNew
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: str
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.ObjectNewOutsideDunderNew :: type
+    r4 = '__new__'
+    r5 = [r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
+    keep_alive r2, r3
+    return 1
+def object_new_outside_class():
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: str
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.Test :: type
+    r4 = '__new__'
+    r5 = [r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
+    keep_alive r2, r3
+    return 1
 
 [case testUnsupportedDunderNew]
 from __future__ import annotations
 from mypy_extensions import mypyc_attr
+from typing import Any
 
 @mypyc_attr(native_class=False)
 class NonNative:
     def __new__(cls) -> NonNative:
-        return super().__new__(cls)  # E: super().__new__() not supported for non-extension classes
+        return super().__new__(cls)  # E: "object.__new__()" not supported for non-extension classes
 
 class InheritsPython(dict):
     def __new__(cls) -> InheritsPython:
-        return super().__new__(cls)  # E: super().__new__() not supported for classes inheriting from non-native classes
+        return super().__new__(cls)  # E: "object.__new__()" not supported for classes inheriting from non-native classes
+
+@mypyc_attr(native_class=False)
+class NonNativeObjectNew:
+    def __new__(cls) -> NonNativeObjectNew:
+        return object.__new__(cls)  # E: "object.__new__()" not supported for non-extension classes
+
+class InheritsPythonObjectNew(dict):
+    def __new__(cls) -> InheritsPythonObjectNew:
+        return object.__new__(cls)  # E: "object.__new__()" not supported for classes inheriting from non-native classes
+
+class ClsAssignment:
+    def __new__(cls: Any) -> Any:
+        cls = str  # E: Assignment to argument "cls" in "__new__" method unsupported
+        return super().__new__(cls)
+
+class ClsTupleAssignment:
+    def __new__(class_i_want: Any, val: int) -> Any:
+        class_i_want, val = dict, 1  # E: Assignment to argument "class_i_want" in "__new__" method unsupported
+        return object.__new__(class_i_want)
+
+class ClsListAssignment:
+    def __new__(cls: Any, val: str) -> Any:
+        [cls, val] = [object, "object"]  # E: Assignment to argument "cls" in "__new__" method unsupported
+        return object.__new__(cls)
+
+class ClsNestedAssignment:
+    def __new__(cls: Any, val1: str, val2: int) -> Any:
+        [val1, [val2, cls]] = ["val1", [2, int]]  # E: Assignment to argument "cls" in "__new__" method unsupported
+        return object.__new__(cls)
+
+class WrongNumberOfArgs:
+    def __new__(cls):
+        return super().__new__()  # E: "object.__new__()" supported only with 1 argument, got 0
+
+class WrongNumberOfArgsObjectNew:
+    def __new__(cls):
+        return object.__new__(cls, 1)  # E: "object.__new__()" supported only with 1 argument, got 2
 
 [case testClassWithFreeList]
 from mypy_extensions import mypyc_attr, trait

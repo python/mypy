@@ -3488,7 +3488,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
 
 
 def sorted_components(
-    graph: Graph, vertices: AbstractSet[str] | None = None, pri_max: int = PRI_ALL
+    graph: Graph, vertices: AbstractSet[str] | None = None, pri_max: int = PRI_INDIRECT
 ) -> list[AbstractSet[str]]:
     """Return the graph's SCCs, topologically sorted by dependencies.
 
