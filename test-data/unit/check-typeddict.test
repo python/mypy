@@ -1018,29 +1018,123 @@ def test(d: D) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testTypedDictGetMethod]
-from typing import TypedDict
-class A: pass
+[case testTypedDictGetMethodTotalFalse]
+from typing import TypedDict, Literal
+class Unrelated: pass
 D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
+u: Unrelated
+x: Literal['x']
+y: Literal['y']
+z: Literal['z']
+x_or_y: Literal['x', 'y']
+x_or_z: Literal['x', 'z']
+x_or_y_or_z: Literal['x', 'y', 'z']
+
+# test with literal expression
 reveal_type(d.get('x')) # N: Revealed type is "Union[builtins.int, None]"
 reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
-reveal_type(d.get('x', A())) # N: Revealed type is "Union[builtins.int, __main__.A]"
+reveal_type(d.get('z')) # N: Revealed type is "builtins.object"
+reveal_type(d.get('x', u)) # N: Revealed type is "Union[builtins.int, __main__.Unrelated]"
 reveal_type(d.get('x', 1)) # N: Revealed type is "builtins.int"
 reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
+
+# test with literal type / union of literal types with implicit default
+reveal_type(d.get(x)) # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(d.get(y)) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get(z)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y)) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+reveal_type(d.get(x_or_z)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y_or_z)) # N: Revealed type is "builtins.object"
+
+# test with literal type / union of literal types with explicit default
+reveal_type(d.get(x, u)) # N: Revealed type is "Union[builtins.int, __main__.Unrelated]"
+reveal_type(d.get(y, u)) # N: Revealed type is "Union[builtins.str, __main__.Unrelated]"
+reveal_type(d.get(z, u)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y, u)) # N: Revealed type is "Union[builtins.int, builtins.str, __main__.Unrelated]"
+reveal_type(d.get(x_or_z, u)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y_or_z, u)) # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictGetMethod2]
-from typing import TypedDict
-class A: pass
+[case testTypedDictGetMethodTotalTrue]
+from typing import TypedDict, Literal
+class Unrelated: pass
 D = TypedDict('D', {'x': int, 'y': str}, total=True)
 d: D
+u: Unrelated
+x: Literal['x']
+y: Literal['y']
+z: Literal['z']
+x_or_y: Literal['x', 'y']
+x_or_z: Literal['x', 'z']
+x_or_y_or_z: Literal['x', 'y', 'z']
+
+# test with literal expression
 reveal_type(d.get('x')) # N: Revealed type is "builtins.int"
 reveal_type(d.get('y')) # N: Revealed type is "builtins.str"
-reveal_type(d.get('x', A())) # N: Revealed type is "builtins.int"
+reveal_type(d.get('z')) # N: Revealed type is "builtins.object"
+reveal_type(d.get('x', u)) # N: Revealed type is "builtins.int"
 reveal_type(d.get('x', 1)) # N: Revealed type is "builtins.int"
 reveal_type(d.get('y', None)) # N: Revealed type is "builtins.str"
+
+# test with literal type / union of literal types with implicit default
+reveal_type(d.get(x)) # N: Revealed type is "builtins.int"
+reveal_type(d.get(y)) # N: Revealed type is "builtins.str"
+reveal_type(d.get(z)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y)) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(d.get(x_or_z)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y_or_z)) # N: Revealed type is "builtins.object"
+
+# test with literal type / union of literal types with explicit default
+reveal_type(d.get(x, u)) # N: Revealed type is "builtins.int"
+reveal_type(d.get(y, u)) # N: Revealed type is "builtins.str"
+reveal_type(d.get(z, u)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y, u)) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(d.get(x_or_z, u)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y_or_z, u)) # N: Revealed type is "builtins.object"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictGetMethodTotalMixed]
+from typing import TypedDict, Literal
+from typing_extensions import Required, NotRequired
+class Unrelated: pass
+D = TypedDict('D', {'x': Required[int], 'y': NotRequired[str]})
+d: D
+u: Unrelated
+x: Literal['x']
+y: Literal['y']
+z: Literal['z']
+x_or_y: Literal['x', 'y']
+x_or_z: Literal['x', 'z']
+x_or_y_or_z: Literal['x', 'y', 'z']
+
+# test with literal expression
+reveal_type(d.get('x')) # N: Revealed type is "builtins.int"
+reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get('z')) # N: Revealed type is "builtins.object"
+reveal_type(d.get('x', u)) # N: Revealed type is "builtins.int"
+reveal_type(d.get('x', 1)) # N: Revealed type is "builtins.int"
+reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
+
+# test with literal type / union of literal types with implicit default
+reveal_type(d.get(x)) # N: Revealed type is "builtins.int"
+reveal_type(d.get(y)) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get(z)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y)) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+reveal_type(d.get(x_or_z)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y_or_z)) # N: Revealed type is "builtins.object"
+
+# test with literal type / union of literal types with explicit default
+reveal_type(d.get(x, u)) # N: Revealed type is "builtins.int"
+reveal_type(d.get(y, u)) # N: Revealed type is "Union[builtins.str, __main__.Unrelated]"
+reveal_type(d.get(z, u)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y, u)) # N: Revealed type is "Union[builtins.int, builtins.str, __main__.Unrelated]"
+reveal_type(d.get(x_or_z, u)) # N: Revealed type is "builtins.object"
+reveal_type(d.get(x_or_y_or_z, u)) # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
