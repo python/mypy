@@ -680,7 +680,7 @@ Example:
 .. _code-untyped-decorator:
 
 Error if an untyped decorator makes a typed function effectively untyped [untyped-decorator]
-------------------------------------------------------
+--------------------------------------------------------------------------------------------
 
 If enabled with :option:`--disallow-untyped-decorators <mypy --disallow-untyped-decorators>`
 mypy generates an error if a typed function is wrapped by an untyped decorator
