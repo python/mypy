@@ -1336,3 +1336,19 @@ class S9(S2, S4):  # E: Class "S9" has incompatible disjoint bases
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testFinalJoin]
+from typing import Final
+
+x: Final = " ".join(("hello","my","name","is","joe"))
+y: Final = " ".join(["hello","joe","my","name","is","moe"])
+
+reveal_type(x)  # N: Revealed type is "Literal['hello my name is joe']?"
+reveal_type(y)  # N: Revealed type is "Literal['hello joe my name is moe']?"
+
+# TODO: implement me
+constant_fold_not_yet_supported: Final = "you", "cant", "fold", "this", "yet"
+z: Final = " ".join(constant_fold_not_yet_supported)
+
+reveal_type(z)  # N: Revealed type is "builtins.str"
+[out]
