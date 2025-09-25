@@ -740,3 +740,20 @@ L2:
 L3:
     keep_alive x
     return r2
+
+[case testStrJoinConstantFold]
+from typing import Final
+
+constant: Final = "constant"
+
+def fold_tuple() -> str:
+    return " ".join((constant, "folded"))
+def fold_list() -> str:
+    return " ".join([constant, "folded"])
+[out]
+def fold_tuple():
+L0:
+    return "constant folded"
+def fold_list():
+L0:
+    return "constant folded"
