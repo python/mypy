@@ -1363,5 +1363,5 @@ constant_fold_not_yet_supported: Final = "you", "cant", "fold", "this", "yet"
 z: Final = " ".join(constant_fold_not_yet_supported)
 
 reveal_type(z)  # N: Revealed type is "builtins.str"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/f-string.pyi]
 [out]
