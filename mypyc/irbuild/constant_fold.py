@@ -78,7 +78,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
 
         # builtins.str methods
         if isinstance(folded_callee, str):
-`           # str.join
+            # str.join
             if (
                 callee.name == "join"
                 and len(args := expr.args) == 1
