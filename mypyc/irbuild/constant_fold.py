@@ -88,15 +88,15 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 # TODO extend this to work with rtuples comprised of known literal values
                 and isinstance(arg := args[0], (ListExpr, TupleExpr))
             ):
-                folded_items = []
+                folded_strings = []
                 for item in arg.items:
                     val = constant_fold_expr(builder, item)
                     if not isinstance(val, str):
                         return None
-                    folded_items.append(val)
-                return folded_callee.join(folded_items)
+                    folded_strings.append(val)
+                return folded_callee.join(folded_strings)
 
-        # builtins.str methods
+        # builtins.bytes methods
         elif isinstance(folded_callee, bytes):
             # str.join
             if (
@@ -105,13 +105,13 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 # TODO extend this to work with rtuples comprised of known literal values
                 and isinstance(arg := args[0], (ListExpr, TupleExpr))
             ):
-                folded_items = []
+                folded_bytes = []
                 for item in arg.items:
                     val = constant_fold_expr(builder, item)
                     if not isinstance(val, bytes):
                         return None
-                    folded_items.append(val)
-                return folded_callee.join(folded_items)
+                    folded_bytes.append(val)
+                return folded_callee.join(folded_bytes)
     return None
 
 
