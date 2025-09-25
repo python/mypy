@@ -759,7 +759,8 @@ def delDictMultiple() -> None:
 def delDict():
     r0, r1 :: str
     r2, r3 :: object
-    r4, d :: dict
+    r4 :: dict[exact]
+    d :: dict
     r5 :: str
     r6 :: i32
     r7 :: bit
@@ -777,7 +778,8 @@ L0:
 def delDictMultiple():
     r0, r1, r2, r3 :: str
     r4, r5, r6, r7 :: object
-    r8, d :: dict
+    r8 :: dict[exact]
+    d :: dict
     r9, r10 :: str
     r11 :: i32
     r12 :: bit

@@ -1089,7 +1089,8 @@ def f(x):
     x :: object
     r0 :: i32
     r1 :: bit
-    r2, rest :: dict
+    r2 :: dict[exact]
+    rest :: dict
     r3 :: str
     r4 :: object
     r5 :: str
@@ -1118,6 +1119,7 @@ L3:
 L4:
     r10 = box(None, 1)
     return r10
+
 [case testMatchMappingPatternWithRestPopKeys_python3_10]
 def f(x):
     match x:
@@ -1137,7 +1139,8 @@ def f(x):
     r8 :: i32
     r9 :: bit
     r10 :: bool
-    r11, rest :: dict
+    r11 :: dict[exact]
+    rest :: dict
     r12 :: i32
     r13 :: bit
     r14 :: str
@@ -1183,6 +1186,7 @@ L5:
 L6:
     r21 = box(None, 1)
     return r21
+
 [case testMatchEmptySequencePattern_python3_10]
 def f(x):
     match x:

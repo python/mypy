@@ -50,7 +50,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
-    dict_rprimitive,
+    exact_dict_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
     is_optional_type,
@@ -611,7 +611,7 @@ def setup_non_ext_dict(
         py_hasattr_op, [metaclass, builder.load_str("__prepare__")], cdef.line
     )
 
-    non_ext_dict = Register(dict_rprimitive)
+    non_ext_dict = Register(exact_dict_rprimitive)
 
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
     builder.add_bool_branch(has_prepare, true_block, false_block)

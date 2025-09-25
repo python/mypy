@@ -526,11 +526,11 @@ def __top_level__():
     r11 :: native_int[4]
     r12 :: c_ptr
     r13 :: object
-    r14 :: dict
+    r14 :: dict[exact]
     r15, r16 :: str
     r17 :: bit
     r18 :: str
-    r19 :: dict
+    r19 :: dict[exact]
     r20 :: str
     r21 :: i32
     r22 :: bit
@@ -540,7 +540,7 @@ def __top_level__():
     r26 :: native_int[1]
     r27 :: c_ptr
     r28 :: object
-    r29 :: dict
+    r29 :: dict[exact]
     r30, r31 :: str
     r32 :: bit
     r33 :: object
@@ -572,7 +572,7 @@ L2:
     r18 = 'filler'
     r19 = __main__.globals :: static
     r20 = '_'
-    r21 = CPyDict_SetItem(r19, r20, r18)
+    r21 = PyDict_SetItem(r19, r20, r18)
     r22 = r21 >= 0 :: signed
     r23 = load_address single :: module
     r24 = [r23]
@@ -604,25 +604,25 @@ def h() -> int:
 [out]
 def f(x):
     x :: int
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2, r3 :: object
     r4 :: object[1]
     r5 :: object_ptr
     r6 :: object
     r7 :: int
-    r8 :: dict
+    r8 :: dict[exact]
     r9 :: str
     r10, r11 :: object
     r12, r13 :: int
-    r14 :: dict
+    r14 :: dict[exact]
     r15 :: str
     r16, r17 :: object
     r18, r19 :: int
 L0:
     r0 = __main__.globals :: static
     r1 = 'g'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = box(int, x)
     r4 = [r3]
     r5 = load_address r4
@@ -631,13 +631,13 @@ L0:
     r7 = unbox(int, r6)
     r8 = __main__.globals :: static
     r9 = 'h'
-    r10 = CPyDict_GetItem(r8, r9)
+    r10 = CPyDict_GetItemUnsafe(r8, r9)
     r11 = PyObject_Vectorcall(r10, 0, 0, 0)
     r12 = unbox(int, r11)
     r13 = CPyTagged_Add(r7, r12)
     r14 = __main__.globals :: static
     r15 = 'two'
-    r16 = CPyDict_GetItem(r14, r15)
+    r16 = CPyDict_GetItemUnsafe(r14, r15)
     r17 = PyObject_Vectorcall(r16, 0, 0, 0)
     r18 = unbox(int, r17)
     r19 = CPyTagged_Add(r13, r18)
@@ -648,10 +648,10 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8, r9, r10 :: object
     r11 :: str
-    r12 :: dict
+    r12 :: dict[exact]
     r13 :: object
 L0:
     r0 = builtins :: module
@@ -1137,7 +1137,7 @@ L0:
     return r0
 def call_python_function(x):
     x :: int
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2, r3 :: object
     r4 :: object[1]
@@ -1147,7 +1147,7 @@ def call_python_function(x):
 L0:
     r0 = __main__.globals :: static
     r1 = 'f'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = box(int, x)
     r4 = [r3]
     r5 = load_address r4
@@ -1159,13 +1159,13 @@ def return_float():
 L0:
     return 5.0
 def return_callable_type():
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
 L0:
     r0 = __main__.globals :: static
     r1 = 'return_float'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     return r2
 def call_callable_type():
     r0, f, r1 :: object
@@ -1423,7 +1423,7 @@ def f() -> None:
     print(x)
 [out]
 def f():
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: int
@@ -1436,7 +1436,7 @@ def f():
 L0:
     r0 = __main__.globals :: static
     r1 = 'x'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = unbox(int, r2)
     r4 = builtins :: module
     r5 = 'print'
@@ -1452,12 +1452,12 @@ def __top_level__():
     r2 :: bit
     r3 :: str
     r4 :: object
-    r5 :: dict
+    r5 :: dict[exact]
     r6 :: str
     r7 :: object
     r8 :: i32
     r9 :: bit
-    r10 :: dict
+    r10 :: dict[exact]
     r11 :: str
     r12 :: object
     r13 :: int
@@ -1480,11 +1480,11 @@ L2:
     r5 = __main__.globals :: static
     r6 = 'x'
     r7 = object 1
-    r8 = CPyDict_SetItem(r5, r6, r7)
+    r8 = PyDict_SetItem(r5, r6, r7)
     r9 = r8 >= 0 :: signed
     r10 = __main__.globals :: static
     r11 = 'x'
-    r12 = CPyDict_GetItem(r10, r11)
+    r12 = CPyDict_GetItemUnsafe(r10, r11)
     r13 = unbox(int, r12)
     r14 = builtins :: module
     r15 = 'print'
@@ -1672,7 +1672,7 @@ L0:
     return r0
 def g():
     r0 :: tuple[int, int, int]
-    r1 :: dict
+    r1 :: dict[exact]
     r2 :: str
     r3, r4, r5 :: object
     r6 :: tuple[int, int, int]
@@ -1680,14 +1680,14 @@ L0:
     r0 = (2, 4, 6)
     r1 = __main__.globals :: static
     r2 = 'f'
-    r3 = CPyDict_GetItem(r1, r2)
+    r3 = CPyDict_GetItemUnsafe(r1, r2)
     r4 = box(tuple[int, int, int], r0)
     r5 = PyObject_CallObject(r3, r4)
     r6 = unbox(tuple[int, int, int], r5)
     return r6
 def h():
     r0 :: tuple[int, int]
-    r1 :: dict
+    r1 :: dict[exact]
     r2 :: str
     r3 :: object
     r4 :: list
@@ -1701,7 +1701,7 @@ L0:
     r0 = (4, 6)
     r1 = __main__.globals :: static
     r2 = 'f'
-    r3 = CPyDict_GetItem(r1, r2)
+    r3 = CPyDict_GetItemUnsafe(r1, r2)
     r4 = PyList_New(1)
     r5 = object 1
     r6 = list_items r4
@@ -1732,11 +1732,11 @@ L0:
 def g():
     r0, r1, r2 :: str
     r3, r4, r5 :: object
-    r6, r7 :: dict
+    r6, r7 :: dict[exact]
     r8 :: str
     r9 :: object
     r10 :: tuple
-    r11 :: dict
+    r11 :: dict[exact]
     r12 :: object
     r13 :: tuple[int, int, int]
 L0:
@@ -1749,7 +1749,7 @@ L0:
     r6 = CPyDict_Build(3, r0, r3, r1, r4, r2, r5)
     r7 = __main__.globals :: static
     r8 = 'f'
-    r9 = CPyDict_GetItem(r7, r8)
+    r9 = CPyDict_GetItemUnsafe(r7, r8)
     r10 = CPyTuple_LoadEmptyTupleConstant()
     r11 = PyDict_Copy(r6)
     r12 = PyObject_Call(r9, r10, r11)
@@ -1758,10 +1758,10 @@ L0:
 def h():
     r0, r1 :: str
     r2, r3 :: object
-    r4, r5 :: dict
+    r4, r5 :: dict[exact]
     r6 :: str
     r7 :: object
-    r8 :: dict
+    r8 :: dict[exact]
     r9 :: i32
     r10 :: bit
     r11 :: object
@@ -1776,9 +1776,9 @@ L0:
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
     r5 = __main__.globals :: static
     r6 = 'f'
-    r7 = CPyDict_GetItem(r5, r6)
+    r7 = CPyDict_GetItemUnsafe(r5, r6)
     r8 = PyDict_New()
-    r9 = CPyDict_UpdateInDisplay(r8, r4)
+    r9 = PyDict_Update(r8, r4)
     r10 = r9 >= 0 :: signed
     r11 = object 1
     r12 = PyTuple_Pack(1, r11)
@@ -1931,7 +1931,7 @@ def f() -> Dict[int, int]:
     return {x: x*x for x in [1,2,3] if x != 2 if x != 3}
 [out]
 def f():
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: list
     r2, r3, r4 :: object
     r5 :: ptr
@@ -2149,7 +2149,7 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: object
     r9, r10 :: str
     r11 :: object
@@ -2161,53 +2161,53 @@ def __top_level__():
     r17 :: object
     r18 :: tuple[object, object]
     r19 :: object
-    r20 :: dict
+    r20 :: dict[exact]
     r21 :: str
     r22 :: object
     r23 :: object[2]
     r24 :: object_ptr
     r25 :: object
-    r26 :: dict
+    r26 :: dict[exact]
     r27 :: str
     r28 :: i32
     r29 :: bit
     r30 :: str
-    r31 :: dict
+    r31 :: dict[exact]
     r32 :: str
     r33, r34 :: object
     r35 :: object[2]
     r36 :: object_ptr
     r37 :: object
     r38 :: tuple
-    r39 :: dict
+    r39 :: dict[exact]
     r40 :: str
     r41 :: i32
     r42 :: bit
-    r43 :: dict
+    r43 :: dict[exact]
     r44 :: str
     r45, r46, r47 :: object
-    r48 :: dict
+    r48 :: dict[exact]
     r49 :: str
     r50 :: i32
     r51 :: bit
     r52 :: str
-    r53 :: dict
+    r53 :: dict[exact]
     r54 :: str
     r55 :: object
-    r56 :: dict
+    r56 :: dict[exact]
     r57 :: str
     r58 :: object
     r59 :: object[2]
     r60 :: object_ptr
     r61 :: object
-    r62 :: dict
+    r62 :: dict[exact]
     r63 :: str
     r64 :: i32
     r65 :: bit
     r66 :: list
     r67, r68, r69 :: object
     r70 :: ptr
-    r71 :: dict
+    r71 :: dict[exact]
     r72 :: str
     r73 :: i32
     r74 :: bit
@@ -2239,19 +2239,19 @@ L2:
     r19 = box(tuple[object, object], r18)
     r20 = __main__.globals :: static
     r21 = 'NamedTuple'
-    r22 = CPyDict_GetItem(r20, r21)
+    r22 = CPyDict_GetItemUnsafe(r20, r21)
     r23 = [r9, r19]
     r24 = load_address r23
     r25 = PyObject_Vectorcall(r22, r24, 2, 0)
     keep_alive r9, r19
     r26 = __main__.globals :: static
     r27 = 'Lol'
-    r28 = CPyDict_SetItem(r26, r27, r25)
+    r28 = PyDict_SetItem(r26, r27, r25)
     r29 = r28 >= 0 :: signed
     r30 = ''
     r31 = __main__.globals :: static
     r32 = 'Lol'
-    r33 = CPyDict_GetItem(r31, r32)
+    r33 = CPyDict_GetItemUnsafe(r31, r32)
     r34 = object 1
     r35 = [r34, r30]
     r36 = load_address r35
@@ -2260,31 +2260,31 @@ L2:
     r38 = cast(tuple, r37)
     r39 = __main__.globals :: static
     r40 = 'x'
-    r41 = CPyDict_SetItem(r39, r40, r38)
+    r41 = PyDict_SetItem(r39, r40, r38)
     r42 = r41 >= 0 :: signed
     r43 = __main__.globals :: static
     r44 = 'List'
-    r45 = CPyDict_GetItem(r43, r44)
+    r45 = CPyDict_GetItemUnsafe(r43, r44)
     r46 = load_address PyLong_Type
     r47 = PyObject_GetItem(r45, r46)
     r48 = __main__.globals :: static
     r49 = 'Foo'
-    r50 = CPyDict_SetItem(r48, r49, r47)
+    r50 = PyDict_SetItem(r48, r49, r47)
     r51 = r50 >= 0 :: signed
     r52 = 'Bar'
     r53 = __main__.globals :: static
     r54 = 'Foo'
-    r55 = CPyDict_GetItem(r53, r54)
+    r55 = CPyDict_GetItemUnsafe(r53, r54)
     r56 = __main__.globals :: static
     r57 = 'NewType'
-    r58 = CPyDict_GetItem(r56, r57)
+    r58 = CPyDict_GetItemUnsafe(r56, r57)
     r59 = [r52, r55]
     r60 = load_address r59
     r61 = PyObject_Vectorcall(r58, r60, 2, 0)
     keep_alive r52, r55
     r62 = __main__.globals :: static
     r63 = 'Bar'
-    r64 = CPyDict_SetItem(r62, r63, r61)
+    r64 = PyDict_SetItem(r62, r63, r61)
     r65 = r64 >= 0 :: signed
     r66 = PyList_New(3)
     r67 = object 1
@@ -2297,7 +2297,7 @@ L2:
     keep_alive r66
     r71 = __main__.globals :: static
     r72 = 'y'
-    r73 = CPyDict_SetItem(r71, r72, r66)
+    r73 = PyDict_SetItem(r71, r72, r66)
     r74 = r73 >= 0 :: signed
     return 1
 
@@ -2581,19 +2581,19 @@ def c():
     r0 :: __main__.c_env
     r1 :: __main__.d_c_obj
     r2 :: bool
-    r3 :: dict
+    r3 :: dict[exact]
     r4 :: str
     r5 :: object
     r6 :: object[1]
     r7 :: object_ptr
     r8 :: object
-    r9 :: dict
+    r9 :: dict[exact]
     r10 :: str
     r11 :: object
     r12 :: object[1]
     r13 :: object_ptr
     r14, d :: object
-    r15 :: dict
+    r15 :: dict[exact]
     r16 :: str
     r17 :: i32
     r18 :: bit
@@ -2610,14 +2610,14 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = __main__.globals :: static
     r4 = 'b'
-    r5 = CPyDict_GetItem(r3, r4)
+    r5 = CPyDict_GetItemUnsafe(r3, r4)
     r6 = [r1]
     r7 = load_address r6
     r8 = PyObject_Vectorcall(r5, r7, 1, 0)
     keep_alive r1
     r9 = __main__.globals :: static
     r10 = 'a'
-    r11 = CPyDict_GetItem(r9, r10)
+    r11 = CPyDict_GetItemUnsafe(r9, r10)
     r12 = [r8]
     r13 = load_address r12
     r14 = PyObject_Vectorcall(r11, r13, 1, 0)
@@ -2643,24 +2643,24 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: object
-    r9 :: dict
+    r9 :: dict[exact]
     r10 :: str
     r11 :: object
-    r12 :: dict
+    r12 :: dict[exact]
     r13 :: str
     r14 :: object
     r15 :: object[1]
     r16 :: object_ptr
     r17 :: object
-    r18 :: dict
+    r18 :: dict[exact]
     r19 :: str
     r20 :: object
     r21 :: object[1]
     r22 :: object_ptr
     r23 :: object
-    r24 :: dict
+    r24 :: dict[exact]
     r25 :: str
     r26 :: i32
     r27 :: bit
@@ -2681,17 +2681,17 @@ L2:
     typing = r8 :: module
     r9 = __main__.globals :: static
     r10 = 'c'
-    r11 = CPyDict_GetItem(r9, r10)
+    r11 = CPyDict_GetItemUnsafe(r9, r10)
     r12 = __main__.globals :: static
     r13 = 'b'
-    r14 = CPyDict_GetItem(r12, r13)
+    r14 = CPyDict_GetItemUnsafe(r12, r13)
     r15 = [r11]
     r16 = load_address r15
     r17 = PyObject_Vectorcall(r14, r16, 1, 0)
     keep_alive r11
     r18 = __main__.globals :: static
     r19 = 'a'
-    r20 = CPyDict_GetItem(r18, r19)
+    r20 = CPyDict_GetItemUnsafe(r18, r19)
     r21 = [r17]
     r22 = load_address r21
     r23 = PyObject_Vectorcall(r20, r22, 1, 0)
@@ -2784,7 +2784,7 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: object
 L0:
     r0 = builtins :: module
@@ -3284,24 +3284,24 @@ x = 1
 [file p/m.py]
 [out]
 def root():
-    r0 :: dict
+    r0 :: dict[exact]
     r1, r2 :: object
     r3 :: bit
     r4 :: str
     r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: str
     r9 :: object
     r10 :: i32
     r11 :: bit
-    r12 :: dict
+    r12 :: dict[exact]
     r13, r14 :: object
     r15 :: bit
     r16 :: str
     r17 :: object
     r18 :: str
-    r19 :: dict
+    r19 :: dict[exact]
     r20 :: str
     r21 :: object
     r22 :: i32
@@ -3320,8 +3320,8 @@ L2:
     r6 = 'dataclasses'
     r7 = PyImport_GetModuleDict()
     r8 = 'dataclasses'
-    r9 = CPyDict_GetItem(r7, r8)
-    r10 = CPyDict_SetItem(r0, r6, r9)
+    r9 = CPyDict_GetItemUnsafe(r7, r8)
+    r10 = PyDict_SetItem(r0, r6, r9)
     r11 = r10 >= 0 :: signed
     r12 = __main__.globals :: static
     r13 = enum :: module
@@ -3336,23 +3336,23 @@ L4:
     r18 = 'enum'
     r19 = PyImport_GetModuleDict()
     r20 = 'enum'
-    r21 = CPyDict_GetItem(r19, r20)
-    r22 = CPyDict_SetItem(r12, r18, r21)
+    r21 = CPyDict_GetItemUnsafe(r19, r20)
+    r22 = PyDict_SetItem(r12, r18, r21)
     r23 = r22 >= 0 :: signed
     return 1
 def submodule():
-    r0 :: dict
+    r0 :: dict[exact]
     r1, r2 :: object
     r3 :: bit
     r4 :: str
     r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: str
     r9 :: object
     r10 :: i32
     r11 :: bit
-    r12 :: dict
+    r12 :: dict[exact]
     r13 :: str
     r14 :: object
     r15 :: str
@@ -3372,12 +3372,12 @@ L2:
     r6 = 'p'
     r7 = PyImport_GetModuleDict()
     r8 = 'p'
-    r9 = CPyDict_GetItem(r7, r8)
-    r10 = CPyDict_SetItem(r0, r6, r9)
+    r9 = CPyDict_GetItemUnsafe(r7, r8)
+    r10 = PyDict_SetItem(r0, r6, r9)
     r11 = r10 >= 0 :: signed
     r12 = PyImport_GetModuleDict()
     r13 = 'p'
-    r14 = CPyDict_GetItem(r12, r13)
+    r14 = CPyDict_GetItemUnsafe(r12, r13)
     r15 = 'x'
     r16 = CPyObject_GetAttr(r14, r15)
     r17 = unbox(int, r16)
@@ -3675,15 +3675,16 @@ def wrapper_deco_obj.__call__(__mypyc_self__, lst, kwargs):
     r0 :: __main__.deco_env
     r1 :: object
     r2 :: tuple
-    r3 :: dict
-    r4 :: object
+    r3, r4 :: dict[exact]
+    r5 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PyList_AsTuple(lst)
-    r3 = PyDict_Copy(kwargs)
-    r4 = PyObject_Call(r1, r2, r3)
-    return r4
+    r3 = cast(dict[exact], kwargs)
+    r4 = PyDict_Copy(r3)
+    r5 = PyObject_Call(r1, r2, r4)
+    return r5
 def deco(fn):
     fn :: object
     r0 :: __main__.deco_env
@@ -3776,15 +3777,16 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args, kwargs):
     r0 :: __main__.deco_env
     r1 :: object
     r2 :: tuple
-    r3 :: dict
-    r4 :: object
+    r3, r4 :: dict[exact]
+    r5 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PySequence_Tuple(args)
-    r3 = PyDict_Copy(kwargs)
-    r4 = PyObject_Call(r1, r2, r3)
-    return r4
+    r3 = cast(dict[exact], kwargs)
+    r4 = PyDict_Copy(r3)
+    r5 = PyObject_Call(r1, r2, r4)
+    return r5
 def deco(fn):
     fn :: object
     r0 :: __main__.deco_env

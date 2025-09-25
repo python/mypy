@@ -64,6 +64,7 @@ from mypyc.ir.rtypes import (
     RUnion,
     bytes_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     is_float_rprimitive,
     is_object_rprimitive,
@@ -177,6 +178,7 @@ disjoint_types = {
     int_rprimitive.name,
     bytes_rprimitive.name,
     str_rprimitive.name,
+    exact_dict_rprimitive.name,
     dict_rprimitive.name,
     list_rprimitive.name,
     set_rprimitive.name,
@@ -197,7 +199,10 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
         if isinstance(src, RPrimitive):
             # If either src or dest is a disjoint type, then they must both be.
             if src.name in disjoint_types and dest.name in disjoint_types:
-                return src.name == dest.name
+                return src.name == dest.name or (
+                    src.name in ("builtins.dict", "builtins.dict[exact]")
+                    and dest.name in ("builtins.dict", "builtins.dict[exact]")
+                )
             return src.size == dest.size
         if isinstance(src, RInstance):
             return is_object_rprimitive(dest)

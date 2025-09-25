@@ -161,7 +161,8 @@ L5:
 def test3():
     r0, r1, r2 :: str
     r3, r4, r5 :: object
-    r6, tmp_dict :: dict
+    r6 :: dict[exact]
+    tmp_dict :: dict
     r7 :: set
     r8 :: short_int
     r9 :: native_int
@@ -646,7 +647,7 @@ L0:
     return r3
 def not_precomputed_non_final_name(i):
     i :: int
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: int
@@ -661,7 +662,7 @@ def not_precomputed_non_final_name(i):
 L0:
     r0 = __main__.globals :: static
     r1 = 'non_const'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = unbox(int, r2)
     r4 = PySet_New(0)
     r5 = box(int, r3)
@@ -766,7 +767,7 @@ L4:
 L5:
     return 1
 def not_precomputed():
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: int
@@ -780,7 +781,7 @@ def not_precomputed():
 L0:
     r0 = __main__.globals :: static
     r1 = 'non_const'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = unbox(int, r2)
     r4 = PySet_New(0)
     r5 = box(int, r3)

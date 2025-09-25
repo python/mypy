@@ -52,6 +52,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     int_rprimitive,
     is_dict_rprimitive,
+    is_exact_dict_rprimitive,
     is_fixed_width_rtype,
     is_immutable_rprimitive,
     is_list_rprimitive,
@@ -75,6 +76,11 @@ from mypyc.primitives.dict_ops import (
     dict_next_key_op,
     dict_next_value_op,
     dict_value_iter_op,
+    exact_dict_check_size_op,
+    exact_dict_iter_fast_path_op,
+    exact_dict_next_item_op,
+    exact_dict_next_key_op,
+    exact_dict_next_value_op,
 )
 from mypyc.primitives.exc_ops import no_err_occurred_op, propagate_if_error_op
 from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
@@ -424,8 +430,10 @@ def make_for_loop_generator(
         # Special case "for k in <dict>".
         expr_reg = builder.accept(expr)
         target_type = builder.get_dict_key_type(expr)
-
-        for_dict = ForDictionaryKeys(builder, index, body_block, loop_exit, line, nested)
+        for_loop_cls = (
+            ForExactDictionaryKeys if is_exact_dict_rprimitive(rtyp) else ForDictionaryKeys
+        )
+        for_dict = for_loop_cls(builder, index, body_block, loop_exit, line, nested)
         for_dict.init(expr_reg, target_type)
         return for_dict
 
@@ -507,13 +515,22 @@ def make_for_loop_generator(
             for_dict_type: type[ForGenerator] | None = None
             if expr.callee.name == "keys":
                 target_type = builder.get_dict_key_type(expr.callee.expr)
-                for_dict_type = ForDictionaryKeys
+                if is_exact_dict_rprimitive(rtype):
+                    for_dict_type = ForExactDictionaryKeys
+                else:
+                    for_dict_type = ForDictionaryKeys
             elif expr.callee.name == "values":
                 target_type = builder.get_dict_value_type(expr.callee.expr)
-                for_dict_type = ForDictionaryValues
+                if is_exact_dict_rprimitive(rtype):
+                    for_dict_type = ForExactDictionaryValues
+                else:
+                    for_dict_type = ForDictionaryValues
             else:
                 target_type = builder.get_dict_item_type(expr.callee.expr)
-                for_dict_type = ForDictionaryItems
+                if is_exact_dict_rprimitive(rtype):
+                    for_dict_type = ForExactDictionaryItems
+                else:
+                    for_dict_type = ForDictionaryItems
             for_dict_gen = for_dict_type(builder, index, body_block, loop_exit, line, nested)
             for_dict_gen.init(expr_reg, target_type)
             return for_dict_gen
@@ -898,6 +915,7 @@ class ForDictionaryCommon(ForGenerator):
 
     dict_next_op: ClassVar[CFunctionDescription]
     dict_iter_op: ClassVar[CFunctionDescription]
+    dict_size_op: ClassVar[CFunctionDescription] = dict_check_size_op
 
     def need_cleanup(self) -> bool:
         # Technically, a dict subclass can raise an unrelated exception
@@ -944,7 +962,7 @@ class ForDictionaryCommon(ForGenerator):
         line = self.line
         # Technically, we don't need a new primitive for this, but it is simpler.
         builder.call_c(
-            dict_check_size_op,
+            self.dict_size_op,
             [builder.read(self.expr_target, line), builder.read(self.size, line)],
             line,
         )
@@ -1020,6 +1038,30 @@ class ForDictionaryItems(ForDictionaryCommon):
         else:
             rvalue = builder.add(TupleSet([key, value], line))
             builder.assign(target, rvalue, line)
+
+
+class ForExactDictionaryKeys(ForDictionaryKeys):
+    """Generate optimized IR for a for loop over dictionary items without type checks."""
+
+    dict_next_op = exact_dict_next_key_op
+    dict_iter_op = exact_dict_iter_fast_path_op
+    dict_size_op = exact_dict_check_size_op
+
+
+class ForExactDictionaryValues(ForDictionaryValues):
+    """Generate optimized IR for a for loop over dictionary items without type checks."""
+
+    dict_next_op = exact_dict_next_value_op
+    dict_iter_op = exact_dict_iter_fast_path_op
+    dict_size_op = exact_dict_check_size_op
+
+
+class ForExactDictionaryItems(ForDictionaryItems):
+    """Generate optimized IR for a for loop over dictionary items without type checks."""
+
+    dict_next_op = exact_dict_next_item_op
+    dict_iter_op = exact_dict_iter_fast_path_op
+    dict_size_op = exact_dict_check_size_op
 
 
 class ForRange(ForGenerator):
