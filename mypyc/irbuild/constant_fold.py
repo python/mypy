@@ -15,14 +15,17 @@ from typing import Final, Union
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
     BytesExpr,
+    CallExpr,
     ComplexExpr,
     Expression,
     FloatExpr,
     IntExpr,
+    ListExpr,
     MemberExpr,
     NameExpr,
     OpExpr,
     StrExpr,
+    TupleExpr,
     UnaryExpr,
     Var,
 )
