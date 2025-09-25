@@ -127,7 +127,9 @@ def constant_fold_binary_op_extended(
     return None
 
 
-def constant_fold_container_items(builder: IRBuilder, expr: ListExpr | TupleExpr) -> list[ConstantValue] | None:
+def constant_fold_container_items(
+    builder: IRBuilder, expr: ListExpr | TupleExpr
+) -> list[ConstantValue] | None:
     folded_items = [constant_fold_expr(builder, item_expr) for item_expr in expr.items]
     if all(isinstance(item, ConstantValue) for item in folded_items):
         return folded_items
