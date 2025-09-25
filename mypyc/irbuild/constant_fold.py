@@ -88,13 +88,9 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 # TODO extend this to work with rtuples comprised of known literal values
                 and isinstance(arg := args[0], (ListExpr, TupleExpr))
             ):
-                folded_strings = []
-                for item in arg.items:
-                    val = constant_fold_expr(builder, item)
-                    if not isinstance(val, str):
-                        return None
-                    folded_strings.append(val)
-                return folded_callee.join(folded_strings)
+                folded_items = constant_fold_container_items(builder, arg)
+                if all(isinstance(item, str) for item in folded_items):
+                    return folded_callee.join(folded_items)
 
         # builtins.bytes methods
         elif isinstance(folded_callee, bytes):
@@ -105,13 +101,9 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 # TODO extend this to work with rtuples comprised of known literal values
                 and isinstance(arg := args[0], (ListExpr, TupleExpr))
             ):
-                folded_bytes = []
-                for item in arg.items:
-                    val = constant_fold_expr(builder, item)
-                    if not isinstance(val, bytes):
-                        return None
-                    folded_bytes.append(val)
-                return folded_callee.join(folded_bytes)
+                folded_items = constant_fold_container_items(builder, arg)
+                if all(isinstance(item, bytes) for item in folded_items):
+                    return folded_callee.join(folded_items)
     return None
 
 
@@ -132,4 +124,11 @@ def constant_fold_binary_op_extended(
     elif op == "*" and isinstance(left, int) and isinstance(right, bytes):
         return left * right
 
+    return None
+
+
+def constant_fold_container_items(builder: IRBuilder, expr: ListExpr | TupleExpr) -> list[ConstantValue] | None:
+    folded_items = [constant_fold_expr(builder, item_expr) for item_expr in expr.items]
+    if all(isinstance(item, ConstantValue) for item in folded_items):
+        return folded_items
     return None
