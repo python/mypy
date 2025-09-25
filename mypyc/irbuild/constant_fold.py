@@ -72,6 +72,26 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
+    # we can also constant fold some common methods of builtin types
+    elif isinstance(expr, CallExpr) and isinstance(callee := expr.callee, MemberExpr):
+        folded_callee = constant_fold_expr(builder, callee.expr)
+
+        # builtins.str methods
+        if isinstance(folded_callee, str):
+`           # str.join
+            if (
+                callee.name == "join"
+                and len(args := expr.args) == 1
+                # TODO extend this to work with rtuples comprised of known literal values
+                and isinstance(arg := args[0], (ListExpr, TupleExpr))
+            ):
+                folded_items = []
+                for item in arg.items:
+                    val = constant_fold_expr(builder, item)
+                    if not isinstance(val, str):
+                        return None
+                    folded_items.append(val)
+                return folded_callee.join(folded_items)
     return None
 
 
