@@ -1340,12 +1340,23 @@ class S9(S2, S4):  # E: Class "S9" has incompatible disjoint bases
 [case testFinalJoin]
 from typing import Final
 
+
 hello: Final = "hello"
 x: Final = " ".join((hello,"my","name","is","joe"))
 y: Final = " ".join([hello,"joe","my","name","is","moe"])
 
 reveal_type(x)  # N: Revealed type is "Literal['hello my name is joe']?"
 reveal_type(y)  # N: Revealed type is "Literal['hello joe my name is moe']?"
+
+delimiter: Final = ","
+headers: Final = delimiter.join(("name", "age"))
+joe: Final = delimiter.join(["joe", "24"])
+jack: Final = delimiter.join(("jack", "77"))
+jill: Final = delimiter.join(["jill", "30"])
+lines: Final = "\n".join((headers, joe, jack, jill))
+
+reveal_type(headers)  # N: Revealed type is "Literal['name,age']?"
+reveal_type(lines)  # N: Revealed type is "Literal['name,age\njoe,24\njack,77\njill,30']?"
 
 # TODO: implement me
 constant_fold_not_yet_supported: Final = "you", "cant", "fold", "this", "yet"
