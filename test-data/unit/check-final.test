@@ -1340,8 +1340,9 @@ class S9(S2, S4):  # E: Class "S9" has incompatible disjoint bases
 [case testFinalJoin]
 from typing import Final
 
-x: Final = " ".join(("hello","my","name","is","joe"))
-y: Final = " ".join(["hello","joe","my","name","is","moe"])
+hello: Final = "hello"
+x: Final = " ".join((hello,"my","name","is","joe"))
+y: Final = " ".join([hello,"joe","my","name","is","moe"])
 
 reveal_type(x)  # N: Revealed type is "Literal['hello my name is joe']?"
 reveal_type(y)  # N: Revealed type is "Literal['hello joe my name is moe']?"
