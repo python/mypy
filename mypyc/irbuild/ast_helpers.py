@@ -9,6 +9,7 @@ from __future__ import annotations
 from mypy.nodes import (
     LDEF,
     BytesExpr,
+    CallExpr,
     ComparisonExpr,
     Expression,
     FloatExpr,
