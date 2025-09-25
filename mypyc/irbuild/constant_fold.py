@@ -10,7 +10,7 @@ to other compiled modules in the same compilation unit.
 
 from __future__ import annotations
 
-from typing import Final, Union
+from typing import Final, Union, overload
 
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
@@ -127,10 +127,17 @@ def constant_fold_binary_op_extended(
     return None
 
 
-def constant_fold_container_items(
-    builder: IRBuilder, expr: ListExpr | TupleExpr
-) -> list[ConstantValue] | None:
+@overload
+def constant_fold_container_expr(builder: IRBuilder, expr: ListExpr) -> list[ConstantValue] | None: ...
+@overload
+def constant_fold_container_expr(builder: IRBuilder, expr: TupleExpr) -> tuple[ConstantValue, ...] | None: ...
+def constant_fold_container_expr(builder: IRBuilder, expr: ListExpr | TupleExpr) -> list[ConstantValue] | tuple[ConstantValue, ...] | None:
     folded_items = [constant_fold_expr(builder, item_expr) for item_expr in expr.items]
-    if all(isinstance(item, ConstantValue) for item in folded_items):
+    if not all(isinstance(item, ConstantValue) for item in folded_items):
+        return None
+    elif isinstance(expr, ListExpr):
         return folded_items
-    return None
+    elif isinstance(expr, TupleExpr):
+        return tuple(folded_items)
+    else:
+        raise NotImplementedError(type(expr), expr)
