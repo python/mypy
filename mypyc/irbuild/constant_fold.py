@@ -128,10 +128,16 @@ def constant_fold_binary_op_extended(
 
 
 @overload
-def constant_fold_container_expr(builder: IRBuilder, expr: ListExpr) -> list[ConstantValue] | None: ...
+def constant_fold_container_expr(
+    builder: IRBuilder, expr: ListExpr
+) -> list[ConstantValue] | None: ...
 @overload
-def constant_fold_container_expr(builder: IRBuilder, expr: TupleExpr) -> tuple[ConstantValue, ...] | None: ...
-def constant_fold_container_expr(builder: IRBuilder, expr: ListExpr | TupleExpr) -> list[ConstantValue] | tuple[ConstantValue, ...] | None:
+def constant_fold_container_expr(
+    builder: IRBuilder, expr: TupleExpr
+) -> tuple[ConstantValue, ...] | None: ...
+def constant_fold_container_expr(
+    builder: IRBuilder, expr: ListExpr | TupleExpr
+) -> list[ConstantValue] | tuple[ConstantValue, ...] | None:
     folded_items = [constant_fold_expr(builder, item_expr) for item_expr in expr.items]
     if not all(isinstance(item, ConstantValue) for item in folded_items):
         return None
