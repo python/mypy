@@ -76,6 +76,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     LoadStatic,
+    MethodCall,
     Op,
     PrimitiveDescription,
     RaiseStandardError,
@@ -735,8 +736,15 @@ class IRBuilder:
             self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
-                self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
+                setattr = target.obj_type.class_ir.get_method("__setattr__")
+                if setattr:
+                    key = self.load_str(target.attr)
+                    boxed_reg = self.builder.box(rvalue_reg)
+                    call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
+                    self.add(call)
+                else:
+                    rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
+                    self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
