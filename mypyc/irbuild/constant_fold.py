@@ -88,7 +88,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 # TODO extend this to work with rtuples comprised of known literal values
                 and isinstance(arg := args[0], (ListExpr, TupleExpr))
             ):
-                folded_items = constant_fold_container_items(builder, arg)
+                folded_items = constant_fold_container_expr(builder, arg)
                 if all(isinstance(item, str) for item in folded_items):
                     return folded_callee.join(folded_items)
 
@@ -101,7 +101,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 # TODO extend this to work with rtuples comprised of known literal values
                 and isinstance(arg := args[0], (ListExpr, TupleExpr))
             ):
-                folded_items = constant_fold_container_items(builder, arg)
+                folded_items = constant_fold_container_expr(builder, arg)
                 if all(isinstance(item, bytes) for item in folded_items):
                     return folded_callee.join(folded_items)
     return None
@@ -139,11 +139,11 @@ def constant_fold_container_expr(
     builder: IRBuilder, expr: ListExpr | TupleExpr
 ) -> list[ConstantValue] | tuple[ConstantValue, ...] | None:
     folded_items = [constant_fold_expr(builder, item_expr) for item_expr in expr.items]
-    if not all(isinstance(item, ConstantValue) for item in folded_items):
-        return None
-    elif isinstance(expr, ListExpr):
-        return folded_items
-    elif isinstance(expr, TupleExpr):
-        return tuple(folded_items)
-    else:
-        raise NotImplementedError(type(expr), expr)
+    if all(isinstance(item, (ConstantValue)) for item in folded_items):
+        if isinstance(expr, ListExpr):
+            return folded_items
+        elif isinstance(expr, TupleExpr):
+            return tuple(folded_items)
+        else:
+            raise NotImplementedError(type(expr), expr)
+    return None
