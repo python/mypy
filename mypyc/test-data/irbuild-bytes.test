@@ -225,18 +225,18 @@ from typing import Final
 
 constant: Final = b"constant"
 
-def fold_tuple() -> str:
+def fold_tuple() -> bytes:
     return b" ".join((constant, b"folded"))
-def fold_list() -> str:
+def fold_list() -> bytes:
     return b" ".join([constant, b"folded"])
 [out]
 def fold_tuple():
     r0 :: bytes
 L0:
-    r0 = "constant folded"
+    r0 = b'constant folded'
     return r0
 def fold_list():
     r0 :: bytes
 L0:
-    r0 = "constant folded"
+    r0 = b'constant folded'
     return r0
