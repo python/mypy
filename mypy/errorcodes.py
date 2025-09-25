@@ -303,9 +303,7 @@ PROPERTY_DECORATOR: Final = ErrorCode(
 )
 
 UNTYPED_DECORATOR: Final = ErrorCode(
-    "untyped-decorator",
-    "Error if an untyped decorator makes a typed function untyped",
-    "General",
+    "untyped-decorator", "Error if an untyped decorator makes a typed function untyped", "General"
 )
 
 NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorCode(
