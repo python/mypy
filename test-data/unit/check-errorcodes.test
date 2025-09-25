@@ -404,7 +404,7 @@ def x() -> int: return 1
 def y() -> int: return 2
 @d # type: ignore[untyped-decorator]
 def best() -> int: return 3
-@d # type: ignore[misc]  # E: Unused "type: ignore" comment, use narrower [untyped-decorator] instead of [misc] code  [unused-ignore]
+@d  # E: Untyped decorator makes function "z" untyped  [untyped-decorator]
 def z() -> int: return 4
 
 [case testErrorCodeIndexing]

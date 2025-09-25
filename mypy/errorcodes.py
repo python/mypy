@@ -306,7 +306,6 @@ UNTYPED_DECORATOR: Final = ErrorCode(
     "untyped-decorator",
     "Error if an untyped decorator makes a typed function untyped",
     "General",
-    sub_code_of=MISC,
 )
 
 NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorCode(
