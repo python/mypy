@@ -752,8 +752,12 @@ def fold_list() -> str:
     return " ".join([constant, "folded"])
 [out]
 def fold_tuple():
+    r0 :: str
 L0:
-    return "constant folded"
+    r0 = "constant folded"
+    return r0
 def fold_list():
+    r0 :: str
 L0:
-    return "constant folded"
+    r0 = "constant folded"
+    return r0
