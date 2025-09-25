@@ -400,11 +400,13 @@ def d(f): return f
 
 @d  # E: Untyped decorator makes function "x" untyped  [untyped-decorator]
 def x() -> int: return 1
-@d # type: ignore
+@d  # type: ignore
 def y() -> int: return 2
-@d # type: ignore[untyped-decorator]
+@d  # type: ignore[untyped-decorator]
 def best() -> int: return 3
-@d  # E: Untyped decorator makes function "z" untyped  [untyped-decorator]
+@d  # type: ignore[misc]  # E: Unused "type: ignore" comment  [unused-ignore] \
+                          # E: Untyped decorator makes function "z" untyped  [untyped-decorator] \
+                          # N: Error code "untyped-decorator" not covered by "type: ignore" comment
 def z() -> int: return 4
 
 [case testErrorCodeIndexing]
