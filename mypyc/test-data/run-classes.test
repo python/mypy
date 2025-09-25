@@ -4091,54 +4091,54 @@ def test_inheritance_2() -> None:
 
 [case testDunderGetAttr]
 from mypy_extensions import mypyc_attr
-from typing import Dict, Optional
+from typing import ClassVar
 
 class GetAttr:
     class_var = "x"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
         self.extra_attrs = extra_attrs
         self.regular_attr = regular_attr
 
-    def __getattr__(self, attr: str) -> Optional[object]:
+    def __getattr__(self, attr: str) -> object:
         return self.extra_attrs.get(attr)
 
 class GetAttrDefault:
-    class_var = "x"
+    class_var: ClassVar[str] = "x"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
         self.extra_attrs = extra_attrs
         self.regular_attr = regular_attr
 
-    def __getattr__(self, attr: str, default: int = 8, mult: int = 1) -> Optional[object]:
+    def __getattr__(self, attr: str, default: int = 8, mult: int = 1) -> object:
         return self.extra_attrs.get(attr, default * mult)
 
 class GetAttrInherited(GetAttr):
     subclass_var = "y"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int, sub_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
         super().__init__(extra_attrs, regular_attr)
         self.sub_attr = sub_attr
 
 class GetAttrOverridden(GetAttr):
-    subclass_var = "y"
+    subclass_var: ClassVar[str] = "y"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int, sub_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
         super().__init__(extra_attrs, regular_attr)
         self.sub_attr = sub_attr
 
-    def __getattr__(self, attr: str) -> Optional[object]:
+    def __getattr__(self, attr: str) -> str:
         return attr
 
 @mypyc_attr(native_class=False)
 class GetAttrNonNative:
     class_var = "x"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
         self.extra_attrs = extra_attrs
         self.regular_attr = regular_attr
 
-    def __getattr__(self, attr: str) -> Optional[object]:
+    def __getattr__(self, attr: str) -> object:
         return self.extra_attrs.get(attr)
 
 def test_getattr() -> None:
@@ -4302,54 +4302,54 @@ def test_getattr_nonnative() -> None:
 
 [case testDunderGetAttrInterpreted]
 from mypy_extensions import mypyc_attr
-from typing import Dict, Optional
+from typing import ClassVar
 
 class GetAttr:
     class_var = "x"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
         self.extra_attrs = extra_attrs
         self.regular_attr = regular_attr
 
-    def __getattr__(self, attr: str) -> Optional[object]:
+    def __getattr__(self, attr: str) -> object:
         return self.extra_attrs.get(attr)
 
 class GetAttrDefault:
-    class_var = "x"
+    class_var: ClassVar[str] = "x"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
         self.extra_attrs = extra_attrs
         self.regular_attr = regular_attr
 
-    def __getattr__(self, attr: str, default: int = 8, mult: int = 1) -> Optional[object]:
+    def __getattr__(self, attr: str, default: int = 8, mult: int = 1) -> object:
         return self.extra_attrs.get(attr, default * mult)
 
 class GetAttrInherited(GetAttr):
     subclass_var = "y"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int, sub_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
         super().__init__(extra_attrs, regular_attr)
         self.sub_attr = sub_attr
 
 class GetAttrOverridden(GetAttr):
-    subclass_var = "y"
+    subclass_var: ClassVar[str] = "y"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int, sub_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
         super().__init__(extra_attrs, regular_attr)
         self.sub_attr = sub_attr
 
-    def __getattr__(self, attr: str) -> Optional[object]:
+    def __getattr__(self, attr: str) -> str:
         return attr
 
 @mypyc_attr(native_class=False)
 class GetAttrNonNative:
     class_var = "x"
 
-    def __init__(self, extra_attrs: Dict[str, object], regular_attr: int):
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
         self.extra_attrs = extra_attrs
         self.regular_attr = regular_attr
 
-    def __getattr__(self, attr: str) -> Optional[object]:
+    def __getattr__(self, attr: str) -> object:
         return self.extra_attrs.get(attr)
 
 [file driver.py]

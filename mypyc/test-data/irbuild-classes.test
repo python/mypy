@@ -2091,35 +2091,48 @@ class InterpSub:
 
 [case testUnsupportedGetAttr]
 from mypy_extensions import mypyc_attr
-from typing import Optional
 
 @mypyc_attr(allow_interpreted_subclasses=True)
 class AllowsInterpreted:
-    def __getattr__(self, attr: str) -> Optional[object]:  # E: "__getattr__" not supported in class "AllowsInterpreted" because it allows interpreted subclasses
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "AllowsInterpreted" because it allows interpreted subclasses
         return 0
 
 class InheritsInterpreted(dict):
-    def __getattr__(self, attr: str) -> Optional[object]:  # E: "__getattr__" not supported in class "InheritsInterpreted" because it inherits from an interpreted class
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "InheritsInterpreted" because it inherits from a non-native class
+        return 0
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    pass
+
+class InheritsNonNative(NonNative):
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "InheritsNonNative" because it inherits from a non-native class
         return 0
 
 [case testGetAttr]
-from typing import Optional, Tuple
+from typing import ClassVar
 
 class GetAttr:
     class_var = "x"
+    class_var_annotated: ClassVar[int] = 99
 
     def __init__(self, regular_attr: int):
         self.regular_attr = regular_attr
 
-    def __getattr__(self, attr: str) -> Optional[object]:
+    def __getattr__(self, attr: str) -> object:
         return attr
 
-def test_getattr() -> Tuple[object, object, object]:
+    def method(self) -> int:
+        return 0
+
+def test_getattr() -> list[object]:
     i = GetAttr(42)
     one = i.one
     two = i.regular_attr
     three = i.class_var
-    return (one, two, three)
+    four = i.class_var_annotated
+    five = i.method()
+    return [one, two, three, four, five]
 
 [typing fixtures/typing-full.pyi]
 [out]
@@ -2139,7 +2152,7 @@ def GetAttr.__getattr____wrapper(__mypyc_self__, attr):
     attr, r0 :: object
     r1 :: bit
     r2 :: str
-    r3 :: union[object, None]
+    r3 :: object
 L0:
     r0 = CPyObject_GenericGetAttr(__mypyc_self__, attr)
     r1 = r0 != 0
@@ -2150,6 +2163,10 @@ L2:
     r2 = cast(str, attr)
     r3 = __mypyc_self__.__getattr__(r2)
     return r3
+def GetAttr.method(self):
+    self :: __main__.GetAttr
+L0:
+    return 0
 def GetAttr.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.GetAttr
     r0 :: str
@@ -2160,16 +2177,14 @@ L0:
 def test_getattr():
     r0, i :: __main__.GetAttr
     r1 :: str
-    r2 :: object
-    one :: union[object, None]
+    r2, one :: object
     r3, two :: int
-    r4, three :: str
-    r5 :: tuple[union[object, None], int, str]
-    r6 :: union[object, None]
-    r7 :: int
-    r8 :: str
-    r9 :: object
-    r10 :: tuple[union[object, None], object, str]
+    r4, three, r5 :: str
+    r6 :: object
+    r7, four, r8, five :: int
+    r9 :: list
+    r10, r11, r12 :: object
+    r13 :: ptr
 L0:
     r0 = GetAttr(84)
     i = r0
@@ -2180,10 +2195,21 @@ L0:
     two = r3
     r4 = i.class_var
     three = r4
-    r5 = (one, two, three)
-    r6 = r5[0]
-    r7 = r5[1]
-    r8 = r5[2]
-    r9 = box(int, r7)
-    r10 = (r6, r9, r8)
-    return r10
+    r5 = 'class_var_annotated'
+    r6 = CPyObject_GetAttr(i, r5)
+    r7 = unbox(int, r6)
+    four = r7
+    r8 = i.method()
+    five = r8
+    r9 = PyList_New(5)
+    r10 = box(int, two)
+    r11 = box(int, four)
+    r12 = box(int, five)
+    r13 = list_items r9
+    buf_init_item r13, 0, one
+    buf_init_item r13, 1, r10
+    buf_init_item r13, 2, three
+    buf_init_item r13, 3, r11
+    buf_init_item r13, 4, r12
+    keep_alive r9
+    return r9

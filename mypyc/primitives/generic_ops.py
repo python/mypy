@@ -408,5 +408,5 @@ generic_getattr = custom_op(
     return_type=object_rprimitive,
     c_function_name="CPyObject_GenericGetAttr",
     error_kind=ERR_NEVER,
-    is_borrowed=True,
+    returns_null=True,
 )

@@ -375,10 +375,10 @@ def generate_getattr_wrapper(builder: IRBuilder, cdef: ClassDef, getattr: FuncDe
     __getattr__ is not supported in classes that allow interpreted subclasses because the
     tp_getattro slot is inherited by subclasses and if the subclass overrides __getattr__,
     the override would be ignored in our wrapper. TODO: To support this, the wrapper would
-    have to resolve "__getattr__" against the type at runtime and call the returned method,
-    like _Py_slot_tp_getattr_hook in cpython.
+    have to check type of self and if it's not the compiled class, resolve "__getattr__" against
+    the type at runtime and call the returned method, like _Py_slot_tp_getattr_hook in cpython.
 
-    __getattr__ is not supported in classes which inherit from python classes because those
+    __getattr__ is not supported in classes which inherit from non-native classes because those
     have __dict__ which currently has some strange interactions when class attributes and
     variables are assigned through __dict__ vs. through regular attribute access. Allowing
     __getattr__ on top of that could be problematic.
@@ -391,7 +391,7 @@ def generate_getattr_wrapper(builder: IRBuilder, cdef: ClassDef, getattr: FuncDe
     if ir.allow_interpreted_subclasses:
         builder.error(error_base + "it allows interpreted subclasses", line)
     if ir.inherits_python:
-        builder.error(error_base + "it inherits from an interpreted class", line)
+        builder.error(error_base + "it inherits from a non-native class", line)
 
     with builder.enter_method(ir, name, object_rprimitive, internal=True):
         attr_arg = builder.add_argument("attr", object_rprimitive)
