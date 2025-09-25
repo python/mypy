@@ -323,7 +323,7 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
     folded = try_constant_fold(builder, expr)
     if folded is not None:
         return folded
-    
+
     if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
         callee = callee.analyzed.expr  # Unwrap type application
 
