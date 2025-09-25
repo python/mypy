@@ -6292,22 +6292,37 @@ class SemanticAnalyzer(
         if sym.kind == LDEF or sym.node is None:
             return
         node = sym.node
-        if not node.fullname:
+        if isinstance(node, PlaceholderNode) or not node.fullname:
+            # This node is not ready yet.
             return
+        if node.fullname.startswith(("builtins.", "typing.")):
+            # Skip dependencies on builtins/typing.
+            return
+        # Modules, classes, and type aliases store defining module directly.
         if isinstance(node, MypyFile):
             fullname = node.fullname
         elif isinstance(node, TypeInfo):
             fullname = node.module_name
         elif isinstance(node, TypeAlias):
             fullname = node.module
-        elif isinstance(node, (Var, FuncDef, OverloadedFuncDef)) and node.info:
-            fullname = node.info.module_name
+        elif isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)):
+            # For functions/variables infer defining module from enclosing class.
+            info = node.var.info if isinstance(node, Decorator) else node.info
+            if info:
+                fullname = info.module_name
+            else:
+                # global function/variable
+                fullname = node.fullname.rsplit(".", maxsplit=1)[0]
         else:
-            fullname = node.fullname.rsplit(".")[0]
+            # Some nodes (currently only TypeVarLikeExpr subclasses) don't store
+            # module fullname explicitly, infer it from the node fullname iteratively.
+            # TODO: this is not 100% robust for type variables nested within a class
+            # with a name that matches name of a submodule.
+            fullname = node.fullname.rsplit(".", maxsplit=1)[0]
             if fullname == self.cur_mod_id:
                 return
             while "." in fullname and fullname not in self.modules:
-                fullname = fullname.rsplit(".")[0]
+                fullname = fullname.rsplit(".", maxsplit=1)[0]
         if fullname != self.cur_mod_id:
             self.cur_mod_node.module_refs.add(fullname)
 
