@@ -1200,10 +1200,13 @@ def get_expr_length(expr: Expression) -> int | None:
         and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
-    # TODO: extend this, passing length of listcomp and genexp should have worthwhile
-    # performance boost and can be (sometimes) figured out pretty easily. set and dict
-    # comps *can* be done as well but will need special logic to consider the possibility
-    # of key conflicts. Range, enumerate, zip are all simple logic.
+    elif isinstance(expr, ListComprehension):
+        return get_expr_length(expr.generator)
+    elif isinstance(expr, GeneratorExpr) and len(expr.sequences) == 1 and not expr.condlists:
+        return get_expr_length(expr.sequences[0])
+    # TODO: extend this, set and dict comps can be done as well but will
+    # need special logic to consider the possibility of key conflicts.
+    # Range, enumerate, zip are all simple logic.
     return None
 
 
