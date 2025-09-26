@@ -1206,7 +1206,7 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
     # comps *can* be done as well but will need special logic to consider the possibility
     # of key conflicts. Range, enumerate, zip are all simple logic.
 
-    # we might still be able to get the length direcly from the type
+    # we might still be able to get the length directly from the type
     rtype = builder.node_type(expr)
     if isinstance(rtype, RTuple):
         return len(rtype.types)
