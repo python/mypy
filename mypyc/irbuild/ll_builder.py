@@ -2444,7 +2444,7 @@ class LowLevelIRBuilder:
         if isinstance(typ, RInstance):
             # TODO: Support use_pyssize_t
             assert not use_pyssize_t
-            
+
             if typ.class_ir.has_method("__len__") and typ.class_ir.is_method_final("__len__"):
                 # Direct C call for final native __len__ methods
                 decl = typ.class_ir.method_decl("__len__")
@@ -2452,7 +2452,7 @@ class LowLevelIRBuilder:
             else:
                 # Fallback: generic method call for non-native or ambiguous cases
                 length = self.gen_method_call(val, "__len__", [], int_rprimitive, line)
-            
+
             length = self.coerce(length, int_rprimitive, line)
             ok, fail = BasicBlock(), BasicBlock()
             cond = self.binary_op(length, Integer(0), ">=", line)
