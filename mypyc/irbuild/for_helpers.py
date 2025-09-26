@@ -245,7 +245,11 @@ def sequence_from_generator_preallocate_helper(
             assert isinstance(proper_type, TupleType), proper_type
 
             get_item_ops = [
-                LoadLiteral(typ.value, object_rprimitive) if isinstance(typ, LiteralType) else TupleGet(sequence, i, line)
+                (
+                    LoadLiteral(typ.value, object_rprimitive)
+                    if isinstance(typ, LiteralType)
+                    else TupleGet(sequence, i, line)
+                )
                 for i, typ in enumerate(get_proper_types(proper_type.items))
             ]
             items = list(map(builder.add, get_item_ops))
