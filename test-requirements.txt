@@ -61,8 +61,12 @@ types-psutil==7.0.0.20250822
     # via -r build-requirements.txt
 types-setuptools==80.9.0.20250822
     # via -r build-requirements.txt
+types-requests==2.32.4.20250913
+    # via -r test-requirements.in
 typing-extensions==4.14.1
     # via -r mypy-requirements.txt
+urllib3==2.5.0
+    # via types-requests
 virtualenv==20.34.0
     # via pre-commit
 
