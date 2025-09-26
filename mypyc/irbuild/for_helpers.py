@@ -248,7 +248,6 @@ def sequence_from_generator_preallocate_helper(
                 builder.add(
                     LoadLiteral(typ.value, object_rprimitive)
                     if isinstance(typ, LiteralType)
-                    and isinstance(typ.value, (int, str, bool, float))
                     else TupleGet(sequence, i, line)
                 )
                 for i, typ in enumerate(get_proper_types(proper_type.items))
