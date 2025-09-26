@@ -234,10 +234,11 @@ def sequence_from_generator_preallocate_helper(
         if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
             return None
         sequence = builder.accept(sequence_expr)
-        # For both RTuple and other sequences, get the length
         if isinstance(rtype, RTuple):
-            # RTuple: length is number of fields
             length = Integer(len(rtype.types), c_pyssize_t_rprimitive)
+            # If input is RTuple, box it to tuple_rprimitive for generic iteration
+            # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
+            sequence = builder.builder.box(sequence)
         else:
             length = get_expr_length_value(
                 builder, sequence_expr, sequence, gen.line, use_pyssize_t=True
@@ -835,7 +836,6 @@ class ForSequence(ForGenerator):
     def gen_condition(self) -> None:
         builder = self.builder
         line = self.line
-        # TODO: Don't reload the length each time when iterating an immutable sequence?
         if self.reverse:
             # If we are iterating in reverse order, we obviously need
             # to check that the index is still positive. Somewhat less
