@@ -1052,12 +1052,12 @@ def fn():
     r6, abc :: tuple
     r7 :: native_int
     r8 :: list
-    r9, r10 :: native_int
-    r11 :: bit
-    r12 :: object
-    r13, i :: int
-    r14 :: str
-    r15 :: native_int
+    r9 :: native_int
+    r10 :: bit
+    r11 :: object
+    r12, i :: int
+    r13 :: str
+    r14 :: native_int
 L0:
     r0 = load_address PyRange_Type
     r1 = object 3
@@ -1070,20 +1070,19 @@ L0:
     abc = r6
     r7 = var_object_size abc
     r8 = PyList_New(r7)
-    r9 = var_object_size abc
-    r10 = 0
+    r9 = 0
 L1:
-    r11 = r10 < r9 :: signed
-    if r11 goto L2 else goto L4 :: bool
+    r10 = r9 < r7 :: signed
+    if r10 goto L2 else goto L4 :: bool
 L2:
-    r12 = CPySequenceTuple_GetItemUnsafe(abc, r10)
-    r13 = unbox(int, r12)
-    i = r13
-    r14 = CPyTagged_Str(i)
-    CPyList_SetItemUnsafe(r8, r10, r14)
+    r11 = CPySequenceTuple_GetItemUnsafe(abc, r9)
+    r12 = unbox(int, r11)
+    i = r12
+    r13 = CPyTagged_Str(i)
+    CPyList_SetItemUnsafe(r8, r9, r13)
 L3:
-    r15 = r10 + 1
-    r10 = r15
+    r14 = r9 + 1
+    r9 = r14
     goto L1
 L4:
     return r8
@@ -1102,12 +1101,12 @@ def fn():
     r7, abc :: tuple
     r8 :: native_int
     r9 :: list
-    r10, r11 :: native_int
-    r12 :: bit
-    r13 :: object
-    r14, i :: int
-    r15 :: str
-    r16 :: native_int
+    r10 :: native_int
+    r11 :: bit
+    r12 :: object
+    r13, i :: int
+    r14 :: str
+    r15 :: native_int
 L0:
     r0 = load_address PyRange_Type
     r1 = object 1
@@ -1121,20 +1120,19 @@ L0:
     abc = r7
     r8 = var_object_size abc
     r9 = PyList_New(r8)
-    r10 = var_object_size abc
-    r11 = 0
+    r10 = 0
 L1:
-    r12 = r11 < r10 :: signed
-    if r12 goto L2 else goto L4 :: bool
+    r11 = r10 < r8 :: signed
+    if r11 goto L2 else goto L4 :: bool
 L2:
-    r13 = CPySequenceTuple_GetItemUnsafe(abc, r11)
-    r14 = unbox(int, r13)
-    i = r14
-    r15 = CPyTagged_Str(i)
-    CPyList_SetItemUnsafe(r9, r11, r15)
+    r12 = CPySequenceTuple_GetItemUnsafe(abc, r10)
+    r13 = unbox(int, r12)
+    i = r13
+    r14 = CPyTagged_Str(i)
+    CPyList_SetItemUnsafe(r9, r10, r14)
 L3:
-    r16 = r11 + 1
-    r11 = r16
+    r15 = r10 + 1
+    r10 = r15
     goto L1
 L4:
     return r9
@@ -1153,12 +1151,12 @@ def fn():
     r8, abc :: tuple
     r9 :: native_int
     r10 :: list
-    r11, r12 :: native_int
-    r13 :: bit
-    r14 :: object
-    r15, i :: int
-    r16 :: str
-    r17 :: native_int
+    r11 :: native_int
+    r12 :: bit
+    r13 :: object
+    r14, i :: int
+    r15 :: str
+    r16 :: native_int
 L0:
     r0 = load_address PyRange_Type
     r1 = object 1
@@ -1173,20 +1171,20 @@ L0:
     abc = r8
     r9 = var_object_size abc
     r10 = PyList_New(r9)
-    r11 = var_object_size abc
-    r12 = 0
+    r11 = 0
 L1:
-    r13 = r12 < r11 :: signed
-    if r13 goto L2 else goto L4 :: bool
+    r12 = r11 < r9 :: signed
+    if r12 goto L2 else goto L4 :: bool
 L2:
-    r14 = CPySequenceTuple_GetItemUnsafe(abc, r12)
-    r15 = unbox(int, r14)
-    i = r15
-    r16 = CPyTagged_Str(i)
-    CPyList_SetItemUnsafe(r10, r12, r16)
+    r13 = CPySequenceTuple_GetItemUnsafe(abc, r11)
+    r14 = unbox(int, r13)
+    i = r14
+    r15 = CPyTagged_Str(i)
+    CPyList_SetItemUnsafe(r10, r11, r15)
 L3:
-    r17 = r12 + 1
-    r12 = r17
+    r16 = r11 + 1
+    r11 = r16
     goto L1
 L4:
     return r10
+
