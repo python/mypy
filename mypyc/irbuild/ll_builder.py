@@ -2450,24 +2450,10 @@ class LowLevelIRBuilder:
             if class_ir.has_method("__len__") and class_ir.is_method_final("__len__"):
                 decl = class_ir.method_decl("__len__")
                 length = self.call(decl, [val], [ARG_POS], [None], line)
-
-                # Coerce/check result and error handling as before
-                length = self.coerce(length, int_rprimitive, line)
-                ok, fail = BasicBlock(), BasicBlock()
-                cond = self.binary_op(length, Integer(0), ">=", line)
-                self.add_bool_branch(cond, ok, fail)
-                self.activate_block(fail)
-                self.add(
-                    RaiseStandardError(
-                        RaiseStandardError.VALUE_ERROR, "__len__() should return >= 0", line
-                    )
-                )
-                self.add(Unreachable())
-                self.activate_block(ok)
-                return length
-
-            # Fallback: generic method call for non-native or ambiguous cases
-            length = self.gen_method_call(val, "__len__", [], int_rprimitive, line)
+            else:
+                # Fallback: generic method call for non-native or ambiguous cases
+                length = self.gen_method_call(val, "__len__", [], int_rprimitive, line)
+            
             length = self.coerce(length, int_rprimitive, line)
             ok, fail = BasicBlock(), BasicBlock()
             cond = self.binary_op(length, Integer(0), ">=", line)
