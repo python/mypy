@@ -248,7 +248,7 @@ def constant_fold_call_expr(
                 elif arg_kind == ArgKind.ARG_STAR:
                     call_args.extend(folded_arg)  # type: ignore [arg-type]
                 elif arg_kind == ArgKind.ARG_STAR2:
-                    call_kwargs.update(folded_arg)  # type: ignore [arg-type, call-overload]
+                    call_kwargs.update(folded_arg)  # type: ignore [arg-type]
             except:
                 return None
 
