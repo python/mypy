@@ -230,30 +230,30 @@ def sequence_from_generator_preallocate_helper(
             implementation.
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
+        line = gen.line
         sequence_expr = gen.sequences[0]
         rtype = builder.node_type(sequence_expr)
         if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
             return None
         sequence = builder.accept(sequence_expr)
-        length: Value
+        length = get_expr_length_value(
+            builder, sequence_expr, sequence, line, use_pyssize_t=True
+        )
         if isinstance(rtype, RTuple):
-            length = Integer(len(rtype.types), c_pyssize_t_rprimitive)
             # If input is RTuple, box it to tuple_rprimitive for generic iteration
             # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
-            sequence = builder.coerce(sequence, tuple_rprimitive, gen.line, force=True)
-            assert is_tuple_rprimitive(sequence.type), sequence.type
-        else:
-            length = get_expr_length_value(
-                builder, sequence_expr, sequence, gen.line, use_pyssize_t=True
-            )
-        target_op = empty_op_llbuilder(length, gen.line)
+            sequence = builder.coerce(sequence, tuple_rprimitive, line, force=True)
+            items = [builder.add(TupleGet(sequence, i, line) for i in range(len(rtype.types)))]
+            sequence = builder.new_tuple(items, line)
+            
+        target_op = empty_op_llbuilder(length, line)
 
         def set_item(item_index: Value) -> None:
             e = builder.accept(gen.left_expr)
-            builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
+            builder.call_c(set_item_op, [target_op, item_index, e], line)
 
         for_loop_helper_with_index(
-            builder, gen.indices[0], sequence_expr, sequence, set_item, gen.line, length
+            builder, gen.indices[0], sequence_expr, sequence, set_item, line, length
         )
 
         return target_op
@@ -1224,6 +1224,6 @@ def get_expr_length_value(
     length = get_expr_length(expr)
     if length is None:
         # We cannot compute the length at compile time, so we will fetch it.
-        return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
+        return builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
     # The expression result is known at compile time, so we can use a constant.
     return Integer(length, c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive)
