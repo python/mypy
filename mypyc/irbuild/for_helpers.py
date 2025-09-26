@@ -1224,6 +1224,6 @@ def get_expr_length_value(
     length = get_expr_length(expr)
     if length is None:
         # We cannot compute the length at compile time, so we will fetch it.
-        return builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
+        return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
     # The expression result is known at compile time, so we can use a constant.
     return Integer(length, c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive)
