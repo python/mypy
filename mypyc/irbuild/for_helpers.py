@@ -1209,7 +1209,7 @@ def get_expr_length(expr: Expression) -> int | None:
                 return sequence_lengths[0]
             product = sequence_lengths[0]
             for l in sequence_lengths[1:]:
-                product *= l
+                product *= l  # type: ignore [operator]
             return product
     # TODO: extend this, set and dict comps can be done as well but will
     # need special logic to consider the possibility of key conflicts.
