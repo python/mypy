@@ -218,8 +218,6 @@ L3:
     keep_alive y
     return r2
 
-    return r2	    return r2
-
 [case testBytesJoinConstantFold]
 from typing import Final
 
