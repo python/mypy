@@ -93,7 +93,8 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                         return folded_callee.join(folded_items)  # type: ignore [arg-type]
                 expr_type = builder.types[arg]
                 if isinstance(expr_type, TupleType) and all(
-                    isinstance(i, LiteralType) and isinstance(i.value, str) for i in expr_type.items
+                    isinstance(i, LiteralType) and isinstance(i.value, str)
+                    for i in expr_type.items
                 ):
                     return folded_callee.join(i.value for i in expr_type.items)
 
