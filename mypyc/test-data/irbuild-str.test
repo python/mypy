@@ -749,7 +749,7 @@ tuple_of_literals = "tuple", "of", "literals"
 
 def fold_tuple() -> str:
     return " ".join((constant, "folded"))
-def fold_tuple_var() -> str
+def fold_tuple_var() -> str:
     return " ".join(tuple_of_literals)
 def fold_list() -> str:
     return " ".join([constant, "folded"])
