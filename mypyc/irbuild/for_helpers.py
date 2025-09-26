@@ -234,7 +234,7 @@ def sequence_from_generator_preallocate_helper(
         if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
             return None
         sequence = builder.accept(sequence_expr)
-        # For both RTuple and other sequences, get the length
+        length: Value
         if isinstance(rtype, RTuple):
             # RTuple: length is number of fields
             length = Integer(len(rtype.types), c_pyssize_t_rprimitive)
