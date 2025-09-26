@@ -2453,7 +2453,7 @@ class LowLevelIRBuilder:
             else:
                 # Fallback: generic method call for non-native or ambiguous cases
                 length = self.gen_method_call(val, "__len__", [], int_rprimitive, line)
-            
+
             length = self.coerce(length, int_rprimitive, line)
             ok, fail = BasicBlock(), BasicBlock()
             cond = self.binary_op(length, Integer(0), ">=", line)
