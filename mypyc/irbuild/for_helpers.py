@@ -170,7 +170,7 @@ def for_loop_helper_with_index(
         body_insts: a function that generates the body of the loop.
                     It needs a index as parameter.
     """
-    assert is_sequence_rprimitive(expr_reg.type)
+    assert is_sequence_rprimitive(expr_reg.type) or isinstance(expr_reg.type, RTuple)
     target_type = builder.get_sequence_type(expr)
 
     body_block = BasicBlock()
@@ -234,6 +234,7 @@ def sequence_from_generator_preallocate_helper(
         if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
             return None
         sequence = builder.accept(sequence_expr)
+        length: Value
         if isinstance(rtype, RTuple):
             length = Integer(len(rtype.types), c_pyssize_t_rprimitive)
             # If input is RTuple, box it to tuple_rprimitive for generic iteration
