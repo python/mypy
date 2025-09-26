@@ -837,6 +837,7 @@ def f(val: bool) -> bool:
 
 def test() -> None:
     # this tuple is created from a very complex genexp but we can still compute the length and preallocate the tuple
+    # r1 = PyTuple_New(5)  the shorter input to the zip(...) has len 5
     a = tuple(
         x
         for x
@@ -852,101 +853,123 @@ L0:
     r0 = val ^ 1
     return r0
 def test():
-    r0 :: list
-    r1, r2, r3 :: object
-    r4 :: object[1]
-    r5 :: object_ptr
-    r6 :: object
-    r7 :: range
-    r8 :: object
-    r9 :: str
-    r10 :: object
-    r11 :: object[2]
-    r12 :: object_ptr
-    r13 :: object
-    r14 :: str
-    r15 :: tuple
-    r16 :: object
-    r17 :: str
-    r18 :: object
-    r19 :: object[1]
-    r20 :: object_ptr
-    r21 :: object
-    r22 :: list
-    r23 :: object
-    r24 :: str
-    r25 :: object
-    r26 :: object[1]
-    r27 :: object_ptr
-    r28, r29 :: object
-    r30 :: str
-    r31 :: object
-    r32 :: object[2]
-    r33 :: object_ptr
-    r34, r35, r36 :: object
-    r37, x :: tuple[str, tuple[int, str]]
-    r38 :: object
-    r39 :: i32
-    r40, r41 :: bit
-    r42, a :: tuple
+    r0 :: int
+    r1 :: tuple
+    r2, r3, r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7 :: object
+    r8 :: range
+    r9 :: object
+    r10 :: str
+    r11 :: object
+    r12 :: object[2]
+    r13 :: object_ptr
+    r14 :: object
+    r15 :: str
+    r16 :: tuple
+    r17 :: object
+    r18 :: str
+    r19 :: object
+    r20 :: object[1]
+    r21 :: object_ptr
+    r22 :: object
+    r23 :: list
+    r24 :: object
+    r25 :: str
+    r26 :: object
+    r27 :: object[1]
+    r28 :: object_ptr
+    r29, r30 :: object
+    r31 :: str
+    r32 :: object
+    r33 :: object[2]
+    r34 :: object_ptr
+    r35, r36, r37 :: object
+    r38, x :: tuple[str, tuple[int, str]]
+    r39 :: native_int
+    r40 :: bit
+    r41, r42 :: native_int
+    r43 :: ptr
+    r44 :: c_ptr
+    r45 :: i64
+    r46 :: object
+    r47 :: int
+    r48 :: bit
+    a :: tuple
 L0:
-    r0 = PyList_New(0)
-    r1 = load_address PyUnicode_Type
-    r2 = load_address PyRange_Type
-    r3 = object 5
-    r4 = [r3]
-    r5 = load_address r4
-    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
-    keep_alive r3
-    r7 = cast(range, r6)
-    r8 = builtins :: module
-    r9 = 'map'
-    r10 = CPyObject_GetAttr(r8, r9)
-    r11 = [r1, r7]
-    r12 = load_address r11
-    r13 = PyObject_Vectorcall(r10, r12, 2, 0)
-    keep_alive r1, r7
-    r14 = 'abcdefg'
-    r15 = PySequence_Tuple(r14)
-    r16 = builtins :: module
-    r17 = 'reversed'
-    r18 = CPyObject_GetAttr(r16, r17)
-    r19 = [r15]
-    r20 = load_address r19
-    r21 = PyObject_Vectorcall(r18, r20, 1, 0)
-    keep_alive r15
-    r22 = CPySequence_Sort(r21)
-    r23 = builtins :: module
-    r24 = 'enumerate'
-    r25 = CPyObject_GetAttr(r23, r24)
-    r26 = [r22]
-    r27 = load_address r26
-    r28 = PyObject_Vectorcall(r25, r27, 1, 0)
-    keep_alive r22
-    r29 = builtins :: module
-    r30 = 'zip'
-    r31 = CPyObject_GetAttr(r29, r30)
-    r32 = [r13, r28]
-    r33 = load_address r32
-    r34 = PyObject_Vectorcall(r31, r33, 2, 0)
-    keep_alive r13, r28
-    r35 = PyObject_GetIter(r34)
+    r0 = 0
+    r1 = PyTuple_New(5)
+    r2 = load_address PyUnicode_Type
+    r3 = load_address PyRange_Type
+    r4 = object 5
+    r5 = [r4]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r3, r6, 1, 0)
+    keep_alive r4
+    r8 = cast(range, r7)
+    r9 = builtins :: module
+    r10 = 'map'
+    r11 = CPyObject_GetAttr(r9, r10)
+    r12 = [r2, r8]
+    r13 = load_address r12
+    r14 = PyObject_Vectorcall(r11, r13, 2, 0)
+    keep_alive r2, r8
+    r15 = 'abcdefg'
+    r16 = PySequence_Tuple(r15)
+    r17 = builtins :: module
+    r18 = 'reversed'
+    r19 = CPyObject_GetAttr(r17, r18)
+    r20 = [r16]
+    r21 = load_address r20
+    r22 = PyObject_Vectorcall(r19, r21, 1, 0)
+    keep_alive r16
+    r23 = CPySequence_Sort(r22)
+    r24 = builtins :: module
+    r25 = 'enumerate'
+    r26 = CPyObject_GetAttr(r24, r25)
+    r27 = [r23]
+    r28 = load_address r27
+    r29 = PyObject_Vectorcall(r26, r28, 1, 0)
+    keep_alive r23
+    r30 = builtins :: module
+    r31 = 'zip'
+    r32 = CPyObject_GetAttr(r30, r31)
+    r33 = [r14, r29]
+    r34 = load_address r33
+    r35 = PyObject_Vectorcall(r32, r34, 2, 0)
+    keep_alive r14, r29
+    r36 = PyObject_GetIter(r35)
 L1:
-    r36 = PyIter_Next(r35)
-    if is_error(r36) goto L4 else goto L2
+    r37 = PyIter_Next(r36)
+    if is_error(r37) goto L7 else goto L2
 L2:
-    r37 = unbox(tuple[str, tuple[int, str]], r36)
-    x = r37
-    r38 = box(tuple[str, tuple[int, str]], x)
-    r39 = PyList_Append(r0, r38)
-    r40 = r39 >= 0 :: signed
+    r38 = unbox(tuple[str, tuple[int, str]], r37)
+    x = r38
+    r39 = r0 & 1
+    r40 = r39 == 0
+    if r40 goto L3 else goto L4 :: bool
 L3:
-    goto L1
+    r41 = r0 >> 1
+    r42 = r41
+    goto L5
 L4:
-    r41 = CPy_NoErrOccurred()
+    r43 = r0 ^ 1
+    r44 = r43
+    r45 = CPyLong_AsInt64(r44)
+    r42 = r45
+    keep_alive r0
 L5:
-    r42 = PyList_AsTuple(r0)
-    a = r42
+    r46 = box(tuple[str, tuple[int, str]], x)
+    CPySequenceTuple_SetItemUnsafe(r1, r42, r46)
+    r47 = CPyTagged_Add(r0, 2)
+    r0 = r47
+L6:
+    goto L1
+L7:
+    r48 = CPy_NoErrOccurred()
+L8:
+    a = r1
     return 1
 
 [case testTupleBuiltFromStars]
