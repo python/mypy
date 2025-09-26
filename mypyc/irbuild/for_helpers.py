@@ -1212,7 +1212,7 @@ def get_expr_length(expr: Expression) -> int | None:
                 return min(arg_lengths)
         elif fullname == "builtins.range" and all(isinstance(arg, IntExpr) for arg in expr.args):
             return len(range(*(arg.value for arg in expr.args)))
-            
+
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
