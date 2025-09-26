@@ -1202,8 +1202,15 @@ def get_expr_length(expr: Expression) -> int | None:
         return len(expr.node.final_value)
     elif isinstance(expr, ListComprehension):
         return get_expr_length(expr.generator)
-    elif isinstance(expr, GeneratorExpr) and len(expr.sequences) == 1 and not expr.condlists:
-        return get_expr_length(expr.sequences[0])
+    elif isinstance(expr, GeneratorExpr) and not expr.condlists:
+        sequence_lengths = [get_expr_length(seq) for seq in expr.sequences]
+        if None not in sequence_lengths:
+            if len(sequence_lengths) == 1:
+                return sequence_lengths[0]
+            product = sequence_lengths[0]
+            for l in sequence_lengths[1:]:
+                product *= l
+            return product
     # TODO: extend this, set and dict comps can be done as well but will
     # need special logic to consider the possibility of key conflicts.
     # Range, enumerate, zip are all simple logic.
