@@ -1203,7 +1203,10 @@ def get_expr_length(expr: Expression) -> int | None:
         return len(expr.node.final_value)
     elif isinstance(expr, CallExpr) and isinstance(callee := expr.callee, NameExpr):
         fullname = callee.fullname
-        if fullname in ("builtins.list", "builtins.tuple", "builtins.enumerate") and len(expr.args) == 1:
+        if (
+            fullname in ("builtins.list", "builtins.tuple", "builtins.enumerate")
+            and len(expr.args) == 1
+        ):
             return get_expr_length(expr.args[0])
         elif fullname == "builtins.map" and len(expr.args) == 2:
             return get_expr_length(expr.args[1])
