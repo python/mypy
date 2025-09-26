@@ -243,11 +243,12 @@ def sequence_from_generator_preallocate_helper(
             # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
             proper_type = get_proper_type(builder.types[sequence_expr])
             assert isinstance(proper_type, TupleType), proper_type
-            
+
             items = [
                 builder.add(
                     LoadLiteral(typ.value, object_rprimitive)
-                    if isinstance(typ, LiteralType) and isinstance(typ.value, (int, str, bool, float))
+                    if isinstance(typ, LiteralType)
+                    and isinstance(typ.value, (int, str, bool, float))
                     else TupleGet(sequence, i, line)
                 )
                 for i, typ in enumerate(proper_type.items)
