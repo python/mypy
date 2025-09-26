@@ -28,7 +28,7 @@ from mypy.nodes import (
     TypeAlias,
     Var,
 )
-from mypy.types import LiteralType, TupleType, get_proper_type
+from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -251,7 +251,7 @@ def sequence_from_generator_preallocate_helper(
                     and isinstance(typ.value, (int, str, bool, float))
                     else TupleGet(sequence, i, line)
                 )
-                for i, typ in enumerate(proper_type.items)
+                for i, typ in enumerate(get_proper_types(proper_type.items))
             ]
             sequence = builder.new_tuple(items, line)
 
