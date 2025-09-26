@@ -63,7 +63,6 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     pointer_rprimitive,
     short_int_rprimitive,
-    tuple_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
