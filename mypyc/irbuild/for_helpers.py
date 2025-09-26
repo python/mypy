@@ -1218,7 +1218,7 @@ def get_expr_length_value(
     builder: IRBuilder, expr: Expression, expr_reg: Value, line: int, use_pyssize_t: bool
 ) -> Value:
     rtype = builder.node_type(expr)
-    assert is_sequence_rprimitive(rtype), rtype
+    assert is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple), rtype
     length = get_expr_length(expr)
     if length is None:
         # We cannot compute the length at compile time, so we will fetch it.
