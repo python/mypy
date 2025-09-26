@@ -442,6 +442,7 @@ def f2(val: str) -> str:
     return val + "f2"
 
 def test() -> None:
+    # `"ab" + c` should constant fold to "abc"
     a = tuple(f2(x) for x in "ab" + c)
 
 [out]
