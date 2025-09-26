@@ -1201,7 +1201,11 @@ def get_expr_length(expr: Expression) -> int | None:
         and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
-    elif isinstance(expr, CallExpr) and isinstance(callee := expr.callee, NameExpr) and all(kind == ARG_POS for kind in expr.arg_kinds):
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, NameExpr)
+        and all(kind == ARG_POS for kind in expr.arg_kinds)
+    ):
         fullname = callee.fullname
         if (
             fullname in ("builtins.list", "builtins.tuple", "builtins.enumerate")
