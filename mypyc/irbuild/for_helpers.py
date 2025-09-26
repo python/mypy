@@ -28,6 +28,7 @@ from mypy.nodes import (
     TypeAlias,
     Var,
 )
+from mypy.types import LiteralType, TupleType, get_proper_type
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -36,6 +37,7 @@ from mypyc.ir.ops import (
     IntOp,
     LoadAddress,
     LoadErrorValue,
+    LoadLiteral,
     LoadMem,
     MethodCall,
     RaiseStandardError,
@@ -239,7 +241,17 @@ def sequence_from_generator_preallocate_helper(
         if isinstance(rtype, RTuple):
             # If input is RTuple, box it to tuple_rprimitive for generic iteration
             # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
-            items = [builder.add(TupleGet(sequence, i, line)) for i in range(len(rtype.types))]
+            proper_type = get_proper_type(builder.types[sequence_expr])
+            assert isinstance(proper_type, TupleType), proper_type
+            
+            items = [
+                builder.add(
+                    LoadLiteral(typ.value, object_rprimitive)
+                    if isinstance(typ, LiteralType) and isinstance(typ.value, (int, str, bool, float))
+                    else TupleGet(sequence, i, line)
+                )
+                for i, typ in enumerate(proper_type.items)
+            ]
             sequence = builder.new_tuple(items, line)
 
         target_op = empty_op_llbuilder(length, line)
