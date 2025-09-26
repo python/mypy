@@ -29,10 +29,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import (
-    LiteralType,
-    TupleType,
-)
+from mypy.types import LiteralType, TupleType
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.util import bytes_from_str
 
