@@ -65,6 +65,7 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.primitives.dict_ops import (
@@ -1180,26 +1181,19 @@ class ForZip(ForGenerator):
             gen.gen_cleanup()
 
 
-def get_expr_length(expr: Expression) -> int | None:
-    if isinstance(expr, (StrExpr, BytesExpr)):
-        return len(expr.value)
+def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
+    folded = constant_fold_expr(builder, expr)
+    if isinstance(folded, (str, bytes)):
+        return len(folded)
     elif isinstance(expr, (ListExpr, TupleExpr)):
         # if there are no star expressions, or we know the length of them,
         # we know the length of the expression
-        stars = [get_expr_length(i) for i in expr.items if isinstance(i, StarExpr)]
+        stars = [get_expr_length(builder, i) for i in expr.items if isinstance(i, StarExpr)]
         if None not in stars:
             other = sum(not isinstance(i, StarExpr) for i in expr.items)
             return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
-        return get_expr_length(expr.expr)
-    elif (
-        isinstance(expr, RefExpr)
-        and isinstance(expr.node, Var)
-        and expr.node.is_final
-        and isinstance(expr.node.final_value, str)
-        and expr.node.has_explicit_value
-    ):
-        return len(expr.node.final_value)
+        return get_expr_length(builder, expr.expr)
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
@@ -1212,7 +1206,7 @@ def get_expr_length_value(
 ) -> Value:
     rtype = builder.node_type(expr)
     assert is_sequence_rprimitive(rtype), rtype
-    length = get_expr_length(expr)
+    length = get_expr_length(builder, expr)
     if length is None:
         # We cannot compute the length at compile time, so we will fetch it.
         return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
