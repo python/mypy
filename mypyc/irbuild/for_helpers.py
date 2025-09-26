@@ -16,6 +16,7 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
+    IntExpr,
     ListExpr,
     Lvalue,
     MemberExpr,
