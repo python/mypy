@@ -92,7 +92,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 if folded_items is not None and all(
                     isinstance(item, str) for item in folded_items
                 ):
-                    return folded_callee.join(folded_items)
+                    return folded_callee.join(folded_items)  # type: ignore [arg-type]
 
         # builtins.bytes methods
         elif isinstance(folded_callee, bytes):
@@ -107,7 +107,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 if folded_items is not None and all(
                     isinstance(item, bytes) for item in folded_items
                 ):
-                    return folded_callee.join(folded_items)
+                    return folded_callee.join(folded_items)  # type: ignore [arg-type]
     return None
 
 
@@ -143,11 +143,11 @@ def constant_fold_container_expr(
     builder: IRBuilder, expr: ListExpr | TupleExpr
 ) -> list[ConstantValue] | tuple[ConstantValue, ...] | None:
     folded_items = [constant_fold_expr(builder, item_expr) for item_expr in expr.items]
-    if all(isinstance(item, CONST_TYPES) for item in folded_items):
-        if isinstance(expr, ListExpr):
-            return folded_items
-        elif isinstance(expr, TupleExpr):
-            return tuple(folded_items)
-        else:
-            raise NotImplementedError(type(expr), expr)
-    return None
+    if None in folded_items:
+        return None
+    if isinstance(expr, ListExpr):
+        return folded_items  # type: ignore [return-value]
+    elif isinstance(expr, TupleExpr):
+        return tuple(folded_items)  # type: ignore [arg-type]
+    else:
+        raise NotImplementedError(type(expr), expr)
