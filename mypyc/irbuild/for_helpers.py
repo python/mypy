@@ -28,7 +28,10 @@ from mypy.nodes import (
     TypeAlias,
     Var,
 )
-from mypy.types import TupleType
+from mypy.types import (
+    TupleType,
+    get_proper_type,
+)
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -1207,12 +1210,12 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
     # of key conflicts. Range, enumerate, zip are all simple logic.
 
     # we might still be able to get the length direcly from the type
-    expr_rtype = builder.node_type(expr)
-    if isinstance(expr_rtype, RTuple):
-        return len(expr_rtype.types)
-    expr_type = builder.types[expr]
-    if isinstance(expr_type, TupleType):
-        return len(expr_type.items)
+    rtype = builder.node_type(expr)
+    if isinstance(rtype, RTuple):
+        return len(rtype.types)
+    proper_type = get_proper_type(builder.types[expr])
+    if isinstance(proper_type, TupleType):
+        return len(proper_type.items)
     return None
 
 
