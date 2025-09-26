@@ -212,10 +212,9 @@ def sequence_from_generator_preallocate_helper(
     there is no condition list in the generator and only one original sequence with
     one index is allowed.
 
-    e.g.  (1) tuple(f(x) for x in a_list/a_tuple/a_str/a_bytes)
-          (2) list(f(x) for x in a_list/a_tuple/a_str/a_bytes)
-          (3) [f(x) for x in a_list/a_tuple/a_str/a_bytes]
-    RTuple as an original sequence is not supported yet.
+    e.g.  (1) tuple(f(x) for x in a_list/a_tuple/a_str/a_bytes/an_rtuple)
+          (2) list(f(x) for x in a_list/a_tuple/a_str/a_bytes/an_rtuple)
+          (3) [f(x) for x in a_list/a_tuple/a_str/a_bytes/an_rtuple]
 
     Args:
         empty_op_llbuilder: A function that can generate an empty sequence op when
@@ -230,23 +229,30 @@ def sequence_from_generator_preallocate_helper(
             implementation.
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
-        rtype = builder.node_type(gen.sequences[0])
-        if is_sequence_rprimitive(rtype):
-            sequence = builder.accept(gen.sequences[0])
+        sequence_expr = gen.sequences[0]
+        rtype = builder.node_type(sequence_expr)
+        if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
+            return None
+        sequence = builder.accept(sequence_expr)
+        # For both RTuple and other sequences, get the length
+        if isinstance(rtype, RTuple):
+            # RTuple: length is number of fields
+            length = Integer(len(rtype.types), c_pyssize_t_rprimitive)
+        else:
             length = get_expr_length_value(
-                builder, gen.sequences[0], sequence, gen.line, use_pyssize_t=True
+                builder, sequence_expr, sequence, gen.line, use_pyssize_t=True
             )
-            target_op = empty_op_llbuilder(length, gen.line)
+        target_op = empty_op_llbuilder(length, gen.line)
 
-            def set_item(item_index: Value) -> None:
-                e = builder.accept(gen.left_expr)
-                builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
+        def set_item(item_index: Value) -> None:
+            e = builder.accept(gen.left_expr)
+            builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
 
-            for_loop_helper_with_index(
-                builder, gen.indices[0], gen.sequences[0], sequence, set_item, gen.line, length
-            )
+        for_loop_helper_with_index(
+            builder, gen.indices[0], sequence_expr, sequence, set_item, gen.line, length
+        )
 
-            return target_op
+        return target_op
     return None
 
 
