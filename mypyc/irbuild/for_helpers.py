@@ -236,16 +236,14 @@ def sequence_from_generator_preallocate_helper(
         if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
             return None
         sequence = builder.accept(sequence_expr)
-        length = get_expr_length_value(
-            builder, sequence_expr, sequence, line, use_pyssize_t=True
-        )
+        length = get_expr_length_value(builder, sequence_expr, sequence, line, use_pyssize_t=True)
         if isinstance(rtype, RTuple):
             # If input is RTuple, box it to tuple_rprimitive for generic iteration
             # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
             sequence = builder.coerce(sequence, tuple_rprimitive, line, force=True)
             items = [builder.add(TupleGet(sequence, i, line) for i in range(len(rtype.types)))]
             sequence = builder.new_tuple(items, line)
-            
+
         target_op = empty_op_llbuilder(length, line)
 
         def set_item(item_index: Value) -> None:
