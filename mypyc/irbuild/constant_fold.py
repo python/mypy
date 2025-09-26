@@ -29,7 +29,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import LiteralType, TupleType
+from mypy.types import LiteralType, TupleType, get_proper_type
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.util import bytes_from_str
 
@@ -91,12 +91,13 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                         isinstance(item, str) for item in folded_items
                     ):
                         return folded_callee.join(folded_items)  # type: ignore [arg-type]
-                expr_type = builder.types[arg]
-                if isinstance(expr_type, TupleType) and all(
-                    isinstance(i, LiteralType) and isinstance(i.value, str)
-                    for i in expr_type.items
-                ):
-                    return folded_callee.join(i.value for i in expr_type.items)  # type: ignore [attr-defined]
+                if expr_type := builder.types.get(arg):
+                    proper_type = get_proper_type(expr_type)
+                    if isinstance(proper_type, TupleType) and all(
+                        isinstance(i, LiteralType) and isinstance(i.value, str)
+                        for i in proper_type.items
+                    ):
+                        return folded_callee.join(i.value for i in proper_type.items)  # type: ignore [attr-defined]
 
         # builtins.bytes methods
         elif isinstance(folded_callee, bytes):
