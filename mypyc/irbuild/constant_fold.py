@@ -96,7 +96,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                     isinstance(i, LiteralType) and isinstance(i.value, str)
                     for i in expr_type.items
                 ):
-                    return folded_callee.join(i.value for i in expr_type.items)
+                    return folded_callee.join(i.value for i in expr_type.items)  # type: ignore [attr-defined]
 
         # builtins.bytes methods
         elif isinstance(folded_callee, bytes):
