@@ -829,6 +829,53 @@ L4:
     a = r1
     return 1
 
+[case testTupleBuiltFromLengthCheckable]
+from typing import Tuple
+
+def f(val: bool) -> bool:
+    return not val
+
+def test() -> None:
+    a = tuple((i, x) for i, (_, x) in zip(map(str, range(5)), enumerate(sorted(reversed("abc")))))
+[out]
+def f(val):
+    val, r0 :: bool
+L0:
+    r0 = val ^ 1
+    return r0
+def test(source):
+    source :: tuple
+    r0 :: native_int
+    r1 :: tuple
+    r2 :: native_int
+    r3 :: bit
+    r4 :: object
+    r5, x, r6 :: bool
+    r7 :: object
+    r8 :: native_int
+    a :: tuple
+L0:
+    r0 = var_object_size source
+    r1 = PyTuple_New(r0)
+    r2 = 0
+L1:
+    r3 = r2 < r0 :: signed
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = CPySequenceTuple_GetItemUnsafe(source, r2)
+    r5 = unbox(bool, r4)
+    x = r5
+    r6 = f(x)
+    r7 = box(bool, r6)
+    CPySequenceTuple_SetItemUnsafe(r1, r2, r7)
+L3:
+    r8 = r2 + 1
+    r2 = r8
+    goto L1
+L4:
+    a = r1
+    return 1
+
 [case testTupleBuiltFromStars]
 from typing import Final
 
