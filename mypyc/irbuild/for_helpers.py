@@ -1225,7 +1225,7 @@ def get_expr_length(expr: Expression) -> int | None:
             arg_lengths = [get_expr_length(arg) for arg in expr.args]
             if all(arg is not None for arg in arg_lengths):
                 return min(arg_lengths)  # type: ignore [type-var]
-        elif fullname == "builtins.range" and all(isinstance(arg, IntExpr) for arg in expr.args):
+        elif fullname == "builtins.range" and len(expr.args) <= 3 and all(isinstance(arg, IntExpr) for arg in expr.args):
             return len(range(*(arg.value for arg in expr.args)))  # type: ignore [attr-defined]
 
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
