@@ -1200,10 +1200,23 @@ def get_expr_length(expr: Expression) -> int | None:
         and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
+    elif isinstance(expr, CallExpr) and isinstance(callee := expr.callee, NameExpr):
+        fullname = callee.fullname
+        if fullname == "builtins.enumerate" and len(expr.args) == 1:
+            return get_expr_length(expr.args[0])
+        elif fullname == "builtins.map" and len(expr.args) == 2:
+            return get_expr_length(expr.args[1])
+        elif fullname == "builtins.zip" and expr.args:
+            arg_lengths = [get_expr_length(arg) for arg in expr.args]
+            if all(arg is not None for arg in arg_lengths):
+                return min(arg_lengths)
+        elif fullname == "builtins.range" and all(isinstance(arg, IntExpr) for arg in expr.args):
+            return len(range(*(arg.value for arg in expr.args)))
+            
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
-    # of key conflicts. Range, enumerate, zip are all simple logic.
+    # of key conflicts.
     return None
 
 
