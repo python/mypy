@@ -344,6 +344,38 @@ L4:
     a = r6
     return 1
 
+[case testTupleBuiltFromListComprehension]
+def f(val: int) -> bool:
+    return val % 2 == 0
+
+def test() -> None:
+    a = tuple(f(x) for x in [a * b for a in [1, 2, 3] for b in [1, 2, 3]])
+[out]
+def f(val):
+    val, r0 :: int
+    r1 :: bit
+L0:
+    r0 = CPyTagged_Remainder(val, 4)
+    r1 = int_eq r0, 0
+    return r1
+def test():
+    r0 :: list
+    r1, r2, r3 :: object
+    r4 :: ptr
+    source :: list
+    r5 :: native_int
+    r6 :: tuple
+    r7, r8 :: native_int
+    r9 :: bit
+    r10 :: object
+    r11, x :: int
+    r12 :: bool
+    r13 :: object
+    r14 :: native_int
+    a :: tuple
+L0:
+    r6 = PyTuple_New(9)
+
 [case testTupleBuiltFromStr]
 def f2(val: str) -> str:
     return val + "f2"
