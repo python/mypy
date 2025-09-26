@@ -2448,7 +2448,11 @@ class LowLevelIRBuilder:
             class_ir = typ.class_ir
 
             # Only optimize for native extension classes (not built-in base, not Python subclass)
-            if class_ir.is_ext_class and not class_ir.inherits_python and class_ir.has_method("__len__"):
+            if (
+                class_ir.is_ext_class
+                and not class_ir.inherits_python
+                and class_ir.has_method("__len__")
+            ):
                 # 1. Direct C call for final native methods and exact type
                 if class_ir.is_method_final("__len__"):
                     decl = class_ir.method_decl("__len__")
