@@ -241,6 +241,7 @@ def sequence_from_generator_preallocate_helper(
             # If input is RTuple, box it to tuple_rprimitive for generic iteration
             # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
             sequence = builder.coerce(sequence, tuple_rprimitive, gen.line, force=True)
+            assert is_tuple_rprimitive(sequence.type), sequence.type
         else:
             length = get_expr_length_value(
                 builder, sequence_expr, sequence, gen.line, use_pyssize_t=True
