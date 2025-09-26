@@ -2000,11 +2000,6 @@ class State:
             self.parse_file(temporary=temporary)
             self.compute_dependencies()
 
-    @property
-    def xmeta(self) -> CacheMeta:
-        assert self.meta, "missing meta on allegedly fresh module"
-        return self.meta
-
     def add_ancestors(self) -> None:
         if self.path is not None:
             _, name = os.path.split(self.path)
