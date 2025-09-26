@@ -248,7 +248,7 @@ def sequence_from_generator_preallocate_helper(
                 builder, gen.indices[0], sequence_expr, sequence, set_item_index, gen.line, length
             )
             return target_op
-        
+
         expr_length = get_expr_length(sequence_expr)
         if expr_length is not None:
             item_index = Register(int_rprimitive)
@@ -258,14 +258,14 @@ def sequence_from_generator_preallocate_helper(
                 e = builder.accept(gen.left_expr)
                 builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
                 builder.assign(
-                    item_index,
-                    builder.binary_op(item_index, Integer(1), "+", gen.line),
-                    gen.line,
+                    item_index, builder.binary_op(item_index, Integer(1), "+", gen.line), gen.line
                 )
 
             length = Integer(expr_length, c_pyssize_t_rprimitive, gen.line)
             target_op = empty_op_llbuilder(length, gen.line)
-            for_loop_helper(builder, gen.indices[0], sequence_expr, set_item_noindex, None, False, gen.line, )
+            for_loop_helper(
+                builder, gen.indices[0], sequence_expr, set_item_noindex, None, False, gen.line
+            )
             return target_op
     return None
 
