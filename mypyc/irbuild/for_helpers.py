@@ -1197,7 +1197,6 @@ def get_expr_length(expr: Expression) -> int | None:
         and isinstance(expr.node, Var)
         and expr.node.is_final
         and isinstance(expr.node.final_value, str)
-        and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
     elif isinstance(expr, ListComprehension):
