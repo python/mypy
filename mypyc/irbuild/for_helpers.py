@@ -11,7 +11,6 @@ from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
-    BytesExpr,
     CallExpr,
     DictionaryComprehension,
     Expression,
@@ -23,10 +22,8 @@ from mypy.nodes import (
     RefExpr,
     SetExpr,
     StarExpr,
-    StrExpr,
     TupleExpr,
     TypeAlias,
-    Var,
 )
 from mypyc.ir.ops import (
     ERR_NEVER,
