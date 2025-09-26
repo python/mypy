@@ -1208,7 +1208,14 @@ def get_expr_length(expr: Expression) -> int | None:
     ):
         fullname = callee.fullname
         if (
-            fullname in ("builtins.list", "builtins.tuple", "builtins.enumerate", "builtins.sorted", "builtins.reversed")
+            fullname
+            in (
+                "builtins.list",
+                "builtins.tuple",
+                "builtins.enumerate",
+                "builtins.sorted",
+                "builtins.reversed",
+            )
             and len(expr.args) == 1
         ):
             return get_expr_length(expr.args[0])
