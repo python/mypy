@@ -1,3 +1,4 @@
+import collections
 from typing import Tuple, TypeVar, Generic, Union, cast, Any, Type
 
 T = TypeVar('T')

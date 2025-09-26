@@ -728,6 +728,7 @@ def test_named_tuple() -> None:
     assert type(t) is NT
     assert isinstance(t, tuple)
     assert not isinstance(tuple([1]), NT)
+[typing fixtures/typing-full.pyi]
 
 [case testUnion]
 from typing import Union

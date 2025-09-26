@@ -176,6 +176,7 @@ L2:
     r2 = CPySequenceTuple_GetItem(nt, 2)
     r3 = unbox(int, r2)
     return r3
+[typing fixtures/typing-full.pyi]
 
 
 [case testTupleOperatorIn]
