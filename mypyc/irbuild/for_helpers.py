@@ -28,9 +28,7 @@ from mypy.nodes import (
     TypeAlias,
     Var,
 )
-from mypy.types import (
-    TupleType,
-)
+from mypy.types import TupleType
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
