@@ -5928,8 +5928,7 @@ class SemanticAnalyzer(
                 if isinstance(sym.node, PlaceholderNode):
                     self.process_placeholder(expr.name, "attribute", expr)
                     return
-                if sym.node is not None:
-                    self.record_imported_symbol(sym.node)
+                self.record_imported_symbol(sym)
                 expr.kind = sym.kind
                 expr.fullname = sym.fullname or ""
                 expr.node = sym.node
@@ -5960,7 +5959,7 @@ class SemanticAnalyzer(
             if type_info:
                 n = type_info.names.get(expr.name)
                 if n is not None and isinstance(n.node, (MypyFile, TypeInfo, TypeAlias)):
-                    self.record_imported_symbol(n.node)
+                    self.record_imported_symbol(n)
                     expr.kind = n.kind
                     expr.fullname = n.fullname or ""
                     expr.node = n.node
@@ -6282,30 +6281,48 @@ class SemanticAnalyzer(
         self, name: str, ctx: Context, suppress_errors: bool = False
     ) -> SymbolTableNode | None:
         node = self._lookup(name, ctx, suppress_errors)
-        if node is not None and node.node is not None:
+        if node is not None:
             # This call is unfortunate from performance point of view, but
             # needed for rare cases like e.g. testIncrementalChangingAlias.
-            self.record_imported_symbol(node.node)
+            self.record_imported_symbol(node)
         return node
 
-    def record_imported_symbol(self, node: SymbolNode) -> None:
+    def record_imported_symbol(self, sym: SymbolTableNode) -> None:
         """If the symbol was not defined in current module, add its module to module_refs."""
-        if not node.fullname:
+        if sym.kind == LDEF or sym.node is None:
             return
+        node = sym.node
+        if isinstance(node, PlaceholderNode) or not node.fullname:
+            # This node is not ready yet.
+            return
+        if node.fullname.startswith(("builtins.", "typing.")):
+            # Skip dependencies on builtins/typing.
+            return
+        # Modules, classes, and type aliases store defining module directly.
         if isinstance(node, MypyFile):
             fullname = node.fullname
         elif isinstance(node, TypeInfo):
             fullname = node.module_name
         elif isinstance(node, TypeAlias):
             fullname = node.module
-        elif isinstance(node, (Var, FuncDef, OverloadedFuncDef)) and node.info:
-            fullname = node.info.module_name
+        elif isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)):
+            # For functions/variables infer defining module from enclosing class.
+            info = node.var.info if isinstance(node, Decorator) else node.info
+            if info:
+                fullname = info.module_name
+            else:
+                # global function/variable
+                fullname = node.fullname.rsplit(".", maxsplit=1)[0]
         else:
-            fullname = node.fullname.rsplit(".")[0]
+            # Some nodes (currently only TypeVarLikeExpr subclasses) don't store
+            # module fullname explicitly, infer it from the node fullname iteratively.
+            # TODO: this is not 100% robust for type variables nested within a class
+            # with a name that matches name of a submodule.
+            fullname = node.fullname.rsplit(".", maxsplit=1)[0]
             if fullname == self.cur_mod_id:
                 return
             while "." in fullname and fullname not in self.modules:
-                fullname = fullname.rsplit(".")[0]
+                fullname = fullname.rsplit(".", maxsplit=1)[0]
         if fullname != self.cur_mod_id:
             self.cur_mod_node.module_refs.add(fullname)
 
@@ -6519,8 +6536,8 @@ class SemanticAnalyzer(
                         self.name_not_defined(name, ctx, namespace=namespace)
                     return None
                 sym = nextsym
-        if sym is not None and sym.node is not None:
-            self.record_imported_symbol(sym.node)
+        if sym is not None:
+            self.record_imported_symbol(sym)
         return sym
 
     def lookup_type_node(self, expr: Expression) -> SymbolTableNode | None:

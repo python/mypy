@@ -30,12 +30,14 @@ from mypy.nodes import (
     NameExpr,
     RefExpr,
     StrExpr,
+    SuperExpr,
     TupleExpr,
     Var,
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
     BasicBlock,
+    Call,
     Extend,
     Integer,
     RaiseStandardError,
@@ -68,6 +70,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
+    object_rprimitive,
     set_rprimitive,
     str_rprimitive,
     uint8_rprimitive,
@@ -1001,4 +1004,45 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     arg = expr.args[0]
     if isinstance(arg, (StrExpr, BytesExpr)) and len(arg.value) == 1:
         return Integer(ord(arg.value))
+    return None
+
+
+@specialize_function("__new__", object_rprimitive)
+def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    fn = builder.fn_info
+    if fn.name != "__new__":
+        return None
+
+    is_super_new = isinstance(expr.callee, SuperExpr)
+    is_object_new = (
+        isinstance(callee, MemberExpr)
+        and isinstance(callee.expr, NameExpr)
+        and callee.expr.fullname == "builtins.object"
+    )
+    if not (is_super_new or is_object_new):
+        return None
+
+    ir = builder.get_current_class_ir()
+    if ir is None:
+        return None
+
+    call = '"object.__new__()"'
+    if not ir.is_ext_class:
+        builder.error(f"{call} not supported for non-extension classes", expr.line)
+        return None
+    if ir.inherits_python:
+        builder.error(
+            f"{call} not supported for classes inheriting from non-native classes", expr.line
+        )
+        return None
+    if len(expr.args) != 1:
+        builder.error(f"{call} supported only with 1 argument, got {len(expr.args)}", expr.line)
+        return None
+
+    typ_arg = expr.args[0]
+    method_args = fn.fitem.arg_names
+    if isinstance(typ_arg, NameExpr) and len(method_args) > 0 and method_args[0] == typ_arg.name:
+        subtype = builder.accept(expr.args[0])
+        return builder.add(Call(ir.setup, [subtype], expr.line))
+
     return None
