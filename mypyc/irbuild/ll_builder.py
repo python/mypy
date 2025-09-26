@@ -2441,39 +2441,38 @@ class LowLevelIRBuilder:
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset, IntOp.LEFT_SHIFT, line)
 
-        # --- Optimized dispatch for RInstance (native/user-defined classes) ---
         if isinstance(typ, RInstance):
             # TODO: Support use_pyssize_t
             assert not use_pyssize_t
             class_ir = typ.class_ir
 
-            # Only optimize for native extension classes (not built-in base, not Python subclass)
+            # Optimize for native extension classes (not built-in base, not Python subclass)
+            # Direct C call for final native methods and exact type
             if (
                 class_ir.is_ext_class
                 and not class_ir.inherits_python
                 and class_ir.has_method("__len__")
+                and class_ir.is_method_final("__len__")
             ):
-                # 1. Direct C call for final native methods and exact type
-                if class_ir.is_method_final("__len__"):
-                    decl = class_ir.method_decl("__len__")
-                    length = self.call(decl, [val], [ARG_POS], [None], line)
+                decl = class_ir.method_decl("__len__")
+                length = self.call(decl, [val], [ARG_POS], [None], line)
 
-                    # Coerce/check result and error handling as before
-                    length = self.coerce(length, int_rprimitive, line)
-                    ok, fail = BasicBlock(), BasicBlock()
-                    cond = self.binary_op(length, Integer(0), ">=", line)
-                    self.add_bool_branch(cond, ok, fail)
-                    self.activate_block(fail)
-                    self.add(
-                        RaiseStandardError(
-                            RaiseStandardError.VALUE_ERROR, "__len__() should return >= 0", line
-                        )
+                # Coerce/check result and error handling as before
+                length = self.coerce(length, int_rprimitive, line)
+                ok, fail = BasicBlock(), BasicBlock()
+                cond = self.binary_op(length, Integer(0), ">=", line)
+                self.add_bool_branch(cond, ok, fail)
+                self.activate_block(fail)
+                self.add(
+                    RaiseStandardError(
+                        RaiseStandardError.VALUE_ERROR, "__len__() should return >= 0", line
                     )
-                    self.add(Unreachable())
-                    self.activate_block(ok)
-                    return length
+                )
+                self.add(Unreachable())
+                self.activate_block(ok)
+                return length
 
-            # 4. Fallback: generic method call for non-native or ambiguous cases
+            # Fallback: generic method call for non-native or ambiguous cases
             length = self.gen_method_call(val, "__len__", [], int_rprimitive, line)
             length = self.coerce(length, int_rprimitive, line)
             ok, fail = BasicBlock(), BasicBlock()
