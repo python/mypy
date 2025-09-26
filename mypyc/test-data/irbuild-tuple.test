@@ -829,7 +829,7 @@ L4:
     a = r1
     return 1
 
-[case testTupleBuiltFromLengthCheckable]
+[case testTupleBuiltFromLengthCheckable_64bit]
 from typing import Tuple
 
 def f(val: bool) -> bool:
