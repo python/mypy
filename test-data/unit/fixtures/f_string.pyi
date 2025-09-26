@@ -32,7 +32,7 @@ class bool(int): pass
 class str:
     def __add__(self, s: str) -> str: pass
     def format(self, *args) -> str: pass
-    def join(self, l: List[str]) -> str: pass
+    def join(self, l: Iterable[str]) -> str: pass
 
 
 class dict: pass
