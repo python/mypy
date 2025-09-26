@@ -1,15 +1,41 @@
 # Test cases for (some) dunder methods
 
 [case testDundersLen]
+from typing import final
+
 class C:
     def __len__(self) -> int:
         return 2
-
+@final
+class D:
+    def __len__(self) -> int:
+        return 2
+class E:
+    @final
+    def __len__(self) -> int:
+        return 2
+class F(C):
+    """def __len__(self) -> int:
+        return 3"""
 def f(c: C) -> int:
     return len(c)
+def g(d: D) -> int:
+    return len(d)
+def h(e: E) -> int:
+    return len(e)
+def i(f: F) -> int:
+    return len(f)
 [out]
 def C.__len__(self):
     self :: __main__.C
+L0:
+    return 4
+def D.__len__(self):
+    self :: __main__.D
+L0:
+    return 4
+def E.__len__(self):
+    self :: __main__.E
 L0:
     return 4
 def f(c):
@@ -18,7 +44,49 @@ def f(c):
     r1 :: bit
     r2 :: bool
 L0:
-    r0 = c.__len__()
+    r0 = C.__len__(c)
+    r1 = int_ge r0, 0
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise ValueError('__len__() should return >= 0')
+    unreachable
+L2:
+    return r0
+def g(d):
+    d :: __main__.D
+    r0 :: int
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = D.__len__(d)
+    r1 = int_ge r0, 0
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise ValueError('__len__() should return >= 0')
+    unreachable
+L2:
+    return r0
+def h(e):
+    e :: __main__.E
+    r0 :: int
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = E.__len__(e)
+    r1 = int_ge r0, 0
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise ValueError('__len__() should return >= 0')
+    unreachable
+L2:
+    return r0
+def i(f):
+    f :: __main__.F
+    r0 :: int
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = C.__len__(f)
     r1 = int_ge r0, 0
     if r1 goto L2 else goto L1 :: bool
 L1:
