@@ -171,7 +171,7 @@ def for_loop_helper_with_index(
         body_insts: a function that generates the body of the loop.
                     It needs a index as parameter.
     """
-    assert is_sequence_rprimitive(expr_reg.type)
+    assert is_sequence_rprimitive(expr_reg.type), expr_reg
     target_type = builder.get_sequence_type(expr)
 
     body_block = BasicBlock()
