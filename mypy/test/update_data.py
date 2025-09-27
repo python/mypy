@@ -75,7 +75,7 @@ def _iter_fixes(
                 # using continuation backslashes
                 for i, (severity, msg) in enumerate(reports_on_this_line):
                     out_l = source_line if i == 0 else " " * len(source_line)
-                    is_last = (i == len(reports_on_this_line) - 1)
+                    is_last = i == len(reports_on_this_line) - 1
                     severity_char = severity[0].upper()
                     continuation = "" if is_last else " \\"
                     fix_lines.append(f"{out_l}{indent}# {severity_char}: {msg}{continuation}")
