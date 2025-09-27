@@ -21,7 +21,7 @@ class UpdateDataSuite(Suite):
         # Note: We test multiple testcases rather than 'test case per test case'
         #       so we could also exercise rewriting multiple testcases at once.
         result = _run_pytest_update_data(
-            """
+            r"""
             [case testCorrect]
             s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -79,7 +79,7 @@ class UpdateDataSuite(Suite):
 
         # Assert
         expected = dedent_docstring(
-            """
+            r"""
         [case testCorrect]
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -93,7 +93,7 @@ class UpdateDataSuite(Suite):
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
         [case testMissingMultiline]
-        s: str = 42;  i: int = 'foo'  # E: Incompatible types in assignment (expression has type "int", variable has type "str") \\
+        s: str = 42;  i: int = 'foo'  # E: Incompatible types in assignment (expression has type "int", variable has type "str") \
                                       # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
         [case testExtraneous]
