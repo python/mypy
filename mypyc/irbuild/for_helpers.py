@@ -16,6 +16,7 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
+    IntExpr,
     ListExpr,
     Lvalue,
     MemberExpr,
@@ -230,22 +231,41 @@ def sequence_from_generator_preallocate_helper(
             implementation.
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
-        rtype = builder.node_type(gen.sequences[0])
+        sequence_expr = gen.sequences[0]
+        rtype = builder.node_type(sequence_expr)
         if is_sequence_rprimitive(rtype):
-            sequence = builder.accept(gen.sequences[0])
+            sequence = builder.accept(sequence_expr)
             length = get_expr_length_value(
-                builder, gen.sequences[0], sequence, gen.line, use_pyssize_t=True
+                builder, sequence_expr, sequence, gen.line, use_pyssize_t=True
             )
             target_op = empty_op_llbuilder(length, gen.line)
 
-            def set_item(item_index: Value) -> None:
+            def set_item_index(item_index: Value) -> None:
                 e = builder.accept(gen.left_expr)
                 builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
 
             for_loop_helper_with_index(
-                builder, gen.indices[0], gen.sequences[0], sequence, set_item, gen.line, length
+                builder, gen.indices[0], sequence_expr, sequence, set_item_index, gen.line, length
             )
+            return target_op
 
+        expr_length = get_expr_length(sequence_expr)
+        if expr_length is not None:
+            item_index = Register(int_rprimitive)
+            builder.assign(item_index, Integer(0), gen.line)
+
+            def set_item_noindex() -> None:
+                e = builder.accept(gen.left_expr)
+                builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
+                builder.assign(
+                    item_index, builder.binary_op(item_index, Integer(1), "+", gen.line), gen.line
+                )
+
+            length = Integer(expr_length, c_pyssize_t_rprimitive, gen.line)
+            target_op = empty_op_llbuilder(length, gen.line)
+            for_loop_helper(
+                builder, gen.indices[0], sequence_expr, set_item_noindex, None, False, gen.line
+            )
             return target_op
     return None
 
@@ -1200,10 +1220,37 @@ def get_expr_length(expr: Expression) -> int | None:
         and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, NameExpr)
+        and all(kind == ARG_POS for kind in expr.arg_kinds)
+    ):
+        fullname = callee.fullname
+        if (
+            fullname
+            in (
+                "builtins.list",
+                "builtins.tuple",
+                "builtins.enumerate",
+                "builtins.sorted",
+                "builtins.reversed",
+            )
+            and len(expr.args) == 1
+        ):
+            return get_expr_length(expr.args[0])
+        elif fullname == "builtins.map" and len(expr.args) == 2:
+            return get_expr_length(expr.args[1])
+        elif fullname == "builtins.zip" and expr.args:
+            arg_lengths = [get_expr_length(arg) for arg in expr.args]
+            if all(arg is not None for arg in arg_lengths):
+                return min(arg_lengths)  # type: ignore [type-var]
+        elif fullname == "builtins.range" and all(isinstance(arg, IntExpr) for arg in expr.args):
+            return len(range(*(arg.value for arg in expr.args)))  # type: ignore [attr-defined]
+
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
-    # of key conflicts. Range, enumerate, zip are all simple logic.
+    # of key conflicts.
     return None
 
 
