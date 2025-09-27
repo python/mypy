@@ -445,7 +445,7 @@ class TestItem:
 
 
 def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
-    """Parse a list of lines that represent a sequence of test items."""
+    """Parse a multi-line text that represents a sequence of test items in a single test case."""
 
     lines = ["", "[case " + name + "]"] + raw_data.split("\n")
     ret: list[TestItem] = []
