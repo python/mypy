@@ -4199,7 +4199,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # inferred return type for an overloaded function
                     # to be ambiguous.
                     return
-                assert isinstance(reinferred_rvalue_type, TupleType)
+                if not isinstance(reinferred_rvalue_type, TupleType):
+                    # Using outer context may transform a tuple type into something
+                    # else when the callee is overloaded. Recheck with the new result
+                    # and bail out.
+                    self.check_multi_assignment(
+                        lvalues,
+                        rvalue,
+                        context,
+                        rv_type=reinferred_rvalue_type,
+                        infer_lvalue_type=infer_lvalue_type,
+                        undefined_rvalue=undefined_rvalue,
+                    )
+                    return
                 rvalue_type = reinferred_rvalue_type
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
