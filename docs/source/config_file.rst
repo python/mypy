@@ -800,6 +800,14 @@ section of the command line docs.
 
     Note: This option will override disabled error codes from the disable_error_code option.
 
+.. confval:: disable_ignores
+
+    :type: boolean
+    :default: false
+    :availability: global
+
+    Ignores ignores. See :option:`mypy --disable-ignores`.
+
 .. confval:: extra_checks
 
    :type: boolean

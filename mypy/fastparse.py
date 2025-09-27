@@ -896,12 +896,13 @@ class ASTConverter:
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
-        for ti in mod.type_ignores:
-            parsed = parse_type_ignore_tag(ti.tag)
-            if parsed is not None:
-                self.type_ignores[ti.lineno] = parsed
-            else:
-                self.fail(message_registry.INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
+        if not self.options.disable_ignores:
+            for ti in mod.type_ignores:
+                parsed = parse_type_ignore_tag(ti.tag)
+                if parsed is not None:
+                    self.type_ignores[ti.lineno] = parsed
+                else:
+                    self.fail(message_registry.INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
 
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
 

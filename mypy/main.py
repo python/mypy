@@ -956,6 +956,10 @@ def define_options(
         help="Enable a specific error code",
     )
 
+    strictness_group.add_argument(
+        "--disable-ignores", action="store_true", help="Don't honor '# type: ignore' comments"
+    )
+
     error_group = parser.add_argument_group(
         title="Configuring error messages",
         description="Adjust the amount of detail shown in error messages.",
