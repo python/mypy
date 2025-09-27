@@ -63,17 +63,19 @@ def _iter_fixes(
 
         fix_lines = []
         for lineno, source_line in enumerate(source_lines, start=1):
-            reports = reports_by_line.get((file_path, lineno))
+            reports_on_this_line = reports_by_line.get((file_path, lineno))
             comment_match = re.search(r"(?P<indent>\s+)(?P<comment># [EWN]: .+)$", source_line)
             if comment_match:
                 source_line = source_line[: comment_match.start("indent")]  # strip old comment
-            if reports:
+            if reports_on_this_line:
                 indent = comment_match.group("indent") if comment_match else "  "
-                # multiline comments are on the first line and then on subsequent lines empty lines
-                # with a continuation backslash
-                for j, (severity, msg) in enumerate(reports):
-                    out_l = source_line if j == 0 else " " * len(source_line)
-                    is_last = j == len(reports) - 1
+                # Multiple info reports for the same line are represented in these
+                # comments with the first on the relevant line, then the subsequent
+                # ones on subsequent empty (indented) lines
+                # using continuation backslashes
+                for i, (severity, msg) in enumerate(reports_on_this_line):
+                    out_l = source_line if i == 0 else " " * len(source_line)
+                    is_last = (i == len(reports_on_this_line) - 1)
                     severity_char = severity[0].upper()
                     continuation = "" if is_last else " \\"
                     fix_lines.append(f"{out_l}{indent}# {severity_char}: {msg}{continuation}")
