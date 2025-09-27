@@ -51,7 +51,7 @@ from mypy.types import (
     get_proper_type,
 )
 
-T = TypeVar("T")
+T = TypeVar("T", covariant=True)
 
 
 @trait

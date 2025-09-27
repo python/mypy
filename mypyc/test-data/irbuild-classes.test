@@ -2088,3 +2088,128 @@ class NonNative:
 @mypyc_attr(free_list_len=1, allow_interpreted_subclasses=True)  # E: "free_list_len" can't be used in a class that allows interpreted subclasses
 class InterpSub:
     pass
+
+[case testUnsupportedGetAttr]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class AllowsInterpreted:
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "AllowsInterpreted" because it allows interpreted subclasses
+        return 0
+
+class InheritsInterpreted(dict):
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "InheritsInterpreted" because it inherits from a non-native class
+        return 0
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    pass
+
+class InheritsNonNative(NonNative):
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "InheritsNonNative" because it inherits from a non-native class
+        return 0
+
+[case testGetAttr]
+from typing import ClassVar
+
+class GetAttr:
+    class_var = "x"
+    class_var_annotated: ClassVar[int] = 99
+
+    def __init__(self, regular_attr: int):
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return attr
+
+    def method(self) -> int:
+        return 0
+
+def test_getattr() -> list[object]:
+    i = GetAttr(42)
+    one = i.one
+    two = i.regular_attr
+    three = i.class_var
+    four = i.class_var_annotated
+    five = i.method()
+    return [one, two, three, four, five]
+
+[typing fixtures/typing-full.pyi]
+[out]
+def GetAttr.__init__(self, regular_attr):
+    self :: __main__.GetAttr
+    regular_attr :: int
+L0:
+    self.regular_attr = regular_attr
+    return 1
+def GetAttr.__getattr__(self, attr):
+    self :: __main__.GetAttr
+    attr :: str
+L0:
+    return attr
+def GetAttr.__getattr____wrapper(__mypyc_self__, attr):
+    __mypyc_self__ :: __main__.GetAttr
+    attr, r0 :: object
+    r1 :: bit
+    r2 :: str
+    r3 :: object
+L0:
+    r0 = CPyObject_GenericGetAttr(__mypyc_self__, attr)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return r0
+L2:
+    r2 = cast(str, attr)
+    r3 = __mypyc_self__.__getattr__(r2)
+    return r3
+def GetAttr.method(self):
+    self :: __main__.GetAttr
+L0:
+    return 0
+def GetAttr.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.GetAttr
+    r0 :: str
+L0:
+    r0 = 'x'
+    __mypyc_self__.class_var = r0
+    return 1
+def test_getattr():
+    r0, i :: __main__.GetAttr
+    r1 :: str
+    r2, one :: object
+    r3, two :: int
+    r4, three, r5 :: str
+    r6 :: object
+    r7, four, r8, five :: int
+    r9 :: list
+    r10, r11, r12 :: object
+    r13 :: ptr
+L0:
+    r0 = GetAttr(84)
+    i = r0
+    r1 = 'one'
+    r2 = CPyObject_GetAttr(i, r1)
+    one = r2
+    r3 = i.regular_attr
+    two = r3
+    r4 = i.class_var
+    three = r4
+    r5 = 'class_var_annotated'
+    r6 = CPyObject_GetAttr(i, r5)
+    r7 = unbox(int, r6)
+    four = r7
+    r8 = i.method()
+    five = r8
+    r9 = PyList_New(5)
+    r10 = box(int, two)
+    r11 = box(int, four)
+    r12 = box(int, five)
+    r13 = list_items r9
+    buf_init_item r13, 0, one
+    buf_init_item r13, 1, r10
+    buf_init_item r13, 2, three
+    buf_init_item r13, 3, r11
+    buf_init_item r13, 4, r12
+    keep_alive r9
+    return r9

@@ -4088,3 +4088,435 @@ def test_inheritance_2() -> None:
     x = None
     y = None
     d = None
+
+[case testDunderGetAttr]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar
+
+class GetAttr:
+    class_var = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return self.extra_attrs.get(attr)
+
+class GetAttrDefault:
+    class_var: ClassVar[str] = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str, default: int = 8, mult: int = 1) -> object:
+        return self.extra_attrs.get(attr, default * mult)
+
+class GetAttrInherited(GetAttr):
+    subclass_var = "y"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
+        super().__init__(extra_attrs, regular_attr)
+        self.sub_attr = sub_attr
+
+class GetAttrOverridden(GetAttr):
+    subclass_var: ClassVar[str] = "y"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
+        super().__init__(extra_attrs, regular_attr)
+        self.sub_attr = sub_attr
+
+    def __getattr__(self, attr: str) -> str:
+        return attr
+
+@mypyc_attr(native_class=False)
+class GetAttrNonNative:
+    class_var = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return self.extra_attrs.get(attr)
+
+def test_getattr() -> None:
+    i = GetAttr({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == None
+
+    assert i.__class__ == GetAttr
+
+    i.extra_attrs["regular_attr"] = (4, 4, 4)
+    assert i.__getattr__("regular_attr") == (4, 4, 4)
+    assert getattr(i, "regular_attr") == 42
+    assert i.regular_attr == 42
+
+def test_getattr_default() -> None:
+    i = GetAttrDefault({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == 8
+    assert i.__getattr__("class_var") == 8
+    assert i.__getattr__("four", 4, 3) == 12
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == 8
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == 8
+
+    assert i.__class__ == GetAttrDefault
+
+    i.extra_attrs["class_var"] = (4, 4, 4)
+    assert i.__getattr__("class_var") == (4, 4, 4)
+    assert getattr(i, "class_var") == "x"
+    assert i.class_var == "x"
+
+def test_getattr_inherited() -> None:
+    i = GetAttrInherited({"one": 1, "two": "two", "three": 3.14}, 42, 24)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("sub_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("subclass_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "sub_attr") == 24
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "subclass_var") == "y"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.sub_attr == 24
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.four == None
+
+    assert i.__class__ == GetAttrInherited
+
+    i.extra_attrs["sub_attr"] = (4, 4, 4)
+    assert i.__getattr__("sub_attr") == (4, 4, 4)
+    assert getattr(i, "sub_attr") == 24
+    assert i.sub_attr == 24
+
+    base_ref: GetAttr = i
+    assert getattr(base_ref, "sub_attr") == 24
+    assert base_ref.sub_attr == 24
+
+    assert getattr(base_ref, "subclass_var") == "y"
+    assert base_ref.subclass_var == "y"
+
+    assert getattr(base_ref, "new") == None
+    assert base_ref.new == None
+
+    assert base_ref.__class__ == GetAttrInherited
+
+
+def test_getattr_overridden() -> None:
+    i = GetAttrOverridden({"one": 1, "two": "two", "three": 3.14}, 42, 24)
+    assert i.__getattr__("one") == "one"
+    assert i.__getattr__("regular_attr") == "regular_attr"
+    assert i.__getattr__("sub_attr") == "sub_attr"
+    assert i.__getattr__("class_var") == "class_var"
+    assert i.__getattr__("subclass_var") == "subclass_var"
+    assert i.__getattr__("four") == "four"
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "sub_attr") == 24
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "subclass_var") == "y"
+    assert getattr(i, "four") == "four"
+
+    assert i.three == "three"
+    assert i.regular_attr == 42
+    assert i.sub_attr == 24
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.four == "four"
+
+    assert i.__class__ == GetAttrOverridden
+
+    i.extra_attrs["subclass_var"] = (4, 4, 4)
+    assert i.__getattr__("subclass_var") == "subclass_var"
+    assert getattr(i, "subclass_var") == "y"
+    assert i.subclass_var == "y"
+
+    base_ref: GetAttr = i
+    assert getattr(base_ref, "sub_attr") == 24
+    assert base_ref.sub_attr == 24
+
+    assert getattr(base_ref, "subclass_var") == "y"
+    assert base_ref.subclass_var == "y"
+
+    assert getattr(base_ref, "new") == "new"
+    assert base_ref.new == "new"
+
+    assert base_ref.__class__ == GetAttrOverridden
+
+def test_getattr_nonnative() -> None:
+    i = GetAttr({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == None
+
+    assert i.__class__ == GetAttr
+
+    i.extra_attrs["regular_attr"] = (4, 4, 4)
+    assert i.__getattr__("regular_attr") == (4, 4, 4)
+    assert getattr(i, "regular_attr") == 42
+    assert i.regular_attr == 42
+
+[typing fixtures/typing-full.pyi]
+
+[case testDunderGetAttrInterpreted]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar
+
+class GetAttr:
+    class_var = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return self.extra_attrs.get(attr)
+
+class GetAttrDefault:
+    class_var: ClassVar[str] = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str, default: int = 8, mult: int = 1) -> object:
+        return self.extra_attrs.get(attr, default * mult)
+
+class GetAttrInherited(GetAttr):
+    subclass_var = "y"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
+        super().__init__(extra_attrs, regular_attr)
+        self.sub_attr = sub_attr
+
+class GetAttrOverridden(GetAttr):
+    subclass_var: ClassVar[str] = "y"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
+        super().__init__(extra_attrs, regular_attr)
+        self.sub_attr = sub_attr
+
+    def __getattr__(self, attr: str) -> str:
+        return attr
+
+@mypyc_attr(native_class=False)
+class GetAttrNonNative:
+    class_var = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return self.extra_attrs.get(attr)
+
+[file driver.py]
+from native import GetAttr, GetAttrDefault, GetAttrInherited, GetAttrOverridden, GetAttrNonNative
+
+def test_getattr() -> None:
+    i = GetAttr({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == None
+
+    assert i.__class__ == GetAttr
+
+    i.extra_attrs["regular_attr"] = (4, 4, 4)
+    assert i.__getattr__("regular_attr") == (4, 4, 4)
+    assert getattr(i, "regular_attr") == 42
+    assert i.regular_attr == 42
+
+def test_getattr_default() -> None:
+    i = GetAttrDefault({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == 8
+    assert i.__getattr__("class_var") == 8
+    assert i.__getattr__("four", 4, 3) == 12
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == 8
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == 8
+
+    assert i.__class__ == GetAttrDefault
+
+    i.extra_attrs["class_var"] = (4, 4, 4)
+    assert i.__getattr__("class_var") == (4, 4, 4)
+    assert getattr(i, "class_var") == "x"
+    assert i.class_var == "x"
+
+def test_getattr_inherited() -> None:
+    i = GetAttrInherited({"one": 1, "two": "two", "three": 3.14}, 42, 24)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("sub_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("subclass_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "sub_attr") == 24
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "subclass_var") == "y"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.sub_attr == 24
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.four == None
+
+    assert i.__class__ == GetAttrInherited
+
+    i.extra_attrs["sub_attr"] = (4, 4, 4)
+    assert i.__getattr__("sub_attr") == (4, 4, 4)
+    assert getattr(i, "sub_attr") == 24
+    assert i.sub_attr == 24
+
+    base_ref: GetAttr = i
+    assert getattr(base_ref, "sub_attr") == 24
+    assert base_ref.sub_attr == 24
+
+    assert getattr(base_ref, "subclass_var") == "y"
+    assert base_ref.subclass_var == "y"
+
+    assert getattr(base_ref, "new") == None
+    assert base_ref.new == None
+
+    assert base_ref.__class__ == GetAttrInherited
+
+
+def test_getattr_overridden() -> None:
+    i = GetAttrOverridden({"one": 1, "two": "two", "three": 3.14}, 42, 24)
+    assert i.__getattr__("one") == "one"
+    assert i.__getattr__("regular_attr") == "regular_attr"
+    assert i.__getattr__("sub_attr") == "sub_attr"
+    assert i.__getattr__("class_var") == "class_var"
+    assert i.__getattr__("subclass_var") == "subclass_var"
+    assert i.__getattr__("four") == "four"
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "sub_attr") == 24
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "subclass_var") == "y"
+    assert getattr(i, "four") == "four"
+
+    assert i.three == "three"
+    assert i.regular_attr == 42
+    assert i.sub_attr == 24
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.four == "four"
+
+    assert i.__class__ == GetAttrOverridden
+
+    i.extra_attrs["subclass_var"] = (4, 4, 4)
+    assert i.__getattr__("subclass_var") == "subclass_var"
+    assert getattr(i, "subclass_var") == "y"
+    assert i.subclass_var == "y"
+
+    base_ref: GetAttr = i
+    assert getattr(base_ref, "sub_attr") == 24
+    assert base_ref.sub_attr == 24
+
+    assert getattr(base_ref, "subclass_var") == "y"
+    assert base_ref.subclass_var == "y"
+
+    assert getattr(base_ref, "new") == "new"
+    assert base_ref.new == "new"
+
+    assert base_ref.__class__ == GetAttrOverridden
+
+def test_getattr_nonnative() -> None:
+    i = GetAttr({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == None
+
+    assert i.__class__ == GetAttr
+
+    i.extra_attrs["regular_attr"] = (4, 4, 4)
+    assert i.__getattr__("regular_attr") == (4, 4, 4)
+    assert getattr(i, "regular_attr") == 42
+    assert i.regular_attr == 42
+
+test_getattr()
+test_getattr_default()
+test_getattr_inherited()
+test_getattr_overridden()
+test_getattr_nonnative()
+
+
+[typing fixtures/typing-full.pyi]

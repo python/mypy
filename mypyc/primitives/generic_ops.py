@@ -401,3 +401,12 @@ name_op = custom_primitive_op(
     c_function_name="CPy_GetName",
     error_kind=ERR_MAGIC,
 )
+
+# look-up name in tp_dict but don't raise AttributeError on failure
+generic_getattr = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyObject_GenericGetAttr",
+    error_kind=ERR_NEVER,
+    returns_null=True,
+)
