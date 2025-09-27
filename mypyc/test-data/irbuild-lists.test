@@ -645,6 +645,7 @@ L0:
     r0 = 'abc'
     r1 = PyList_New(3)
     r2 = 0
+    goto L2
 L1:
     r3 = r2 < 3 :: signed
     if r3 goto L2 else goto L4 :: bool
@@ -690,6 +691,7 @@ L0:
     r0 = 'abc'
     r1 = PyList_New(3)
     r2 = 0
+    goto L2
 L1:
     r3 = r2 < 3 :: signed
     if r3 goto L2 else goto L4 :: bool
@@ -798,6 +800,7 @@ L0:
     r0 = b'abc'
     r1 = PyList_New(3)
     r2 = 0
+    goto L2
 L1:
     r3 = r2 < 3 :: signed
     if r3 goto L2 else goto L8 :: bool
@@ -952,6 +955,7 @@ L0:
     r18 = CPyList_Extend(r10, r17)
     r19 = PyList_New(13)
     r20 = 0
+    goto L2
 L1:
     r21 = var_object_size r10
     r22 = r20 < r21 :: signed
