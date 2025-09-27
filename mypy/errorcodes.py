@@ -302,6 +302,10 @@ PROPERTY_DECORATOR: Final = ErrorCode(
     sub_code_of=MISC,
 )
 
+UNTYPED_DECORATOR: Final = ErrorCode(
+    "untyped-decorator", "Error if an untyped decorator makes a typed function untyped", "General"
+)
+
 NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorCode(
     "narrowed-type-not-subtype",
     "Warn if a TypeIs function's narrowed type is not a subtype of the original type",
