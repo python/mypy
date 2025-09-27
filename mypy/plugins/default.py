@@ -5,7 +5,7 @@ from typing import Callable, Final
 
 import mypy.errorcodes as codes
 from mypy import message_registry
-from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
+from mypy.nodes import DictExpr, Expression, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
@@ -120,9 +120,9 @@ class DefaultPlugin(Plugin):
     def get_method_signature_hook(
         self, fullname: str
     ) -> Callable[[MethodSigContext], FunctionLike] | None:
-        if fullname == "typing.Mapping.get":
-            return typed_dict_get_signature_callback
-        elif fullname in TD_SETDEFAULT_NAMES:
+        # NOTE: signatures for `__setitem__`, `__delitem__` and `get` are
+        #  defined in checkmember.py/analyze_typeddict_access
+        if fullname in TD_SETDEFAULT_NAMES:
             return typed_dict_setdefault_signature_callback
         elif fullname in TD_POP_NAMES:
             return typed_dict_pop_signature_callback
@@ -212,46 +212,6 @@ class DefaultPlugin(Plugin):
         return None
 
 
-def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
-    """Try to infer a better signature type for TypedDict.get.
-
-    This is used to get better type context for the second argument that
-    depends on a TypedDict value type.
-    """
-    signature = ctx.default_signature
-    if (
-        isinstance(ctx.type, TypedDictType)
-        and len(ctx.args) == 2
-        and len(ctx.args[0]) == 1
-        and isinstance(ctx.args[0][0], StrExpr)
-        and len(signature.arg_types) == 2
-        and len(signature.variables) == 1
-        and len(ctx.args[1]) == 1
-    ):
-        key = ctx.args[0][0].value
-        value_type = get_proper_type(ctx.type.items.get(key))
-        ret_type = signature.ret_type
-        if value_type:
-            default_arg = ctx.args[1][0]
-            if (
-                isinstance(value_type, TypedDictType)
-                and isinstance(default_arg, DictExpr)
-                and len(default_arg.items) == 0
-            ):
-                # Caller has empty dict {} as default for typed dict.
-                value_type = value_type.copy_modified(required_keys=set())
-            # Tweak the signature to include the value type as context. It's
-            # only needed for type inference since there's a union with a type
-            # variable that accepts everything.
-            tv = signature.variables[0]
-            assert isinstance(tv, TypeVarType)
-            return signature.copy_modified(
-                arg_types=[signature.arg_types[0], make_simplified_union([value_type, tv])],
-                ret_type=ret_type,
-            )
-    return signature
-
-
 def typed_dict_get_callback(ctx: MethodContext) -> Type:
     """Infer a precise return type for TypedDict.get with literal first argument."""
     if (
@@ -263,30 +223,40 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if keys is None:
             return ctx.default_return_type
 
+        default_type: Type
+        default_arg: Expression | None
+        if len(ctx.arg_types) <= 1 or not ctx.arg_types[1]:
+            default_arg = None
+            default_type = NoneType()
+        elif len(ctx.arg_types[1]) == 1 and len(ctx.args[1]) == 1:
+            default_arg = ctx.args[1][0]
+            default_type = ctx.arg_types[1][0]
+        else:
+            return ctx.default_return_type
+
         output_types: list[Type] = []
         for key in keys:
-            value_type = get_proper_type(ctx.type.items.get(key))
+            value_type: Type | None = ctx.type.items.get(key)
             if value_type is None:
                 return ctx.default_return_type
 
-            if len(ctx.arg_types) == 1:
+            if key in ctx.type.required_keys:
                 output_types.append(value_type)
-            elif len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1 and len(ctx.args[1]) == 1:
-                default_arg = ctx.args[1][0]
+            else:
+                # HACK to deal with get(key, {})
                 if (
                     isinstance(default_arg, DictExpr)
                     and len(default_arg.items) == 0
-                    and isinstance(value_type, TypedDictType)
+                    and isinstance(vt := get_proper_type(value_type), TypedDictType)
                 ):
-                    # Special case '{}' as the default for a typed dict type.
-                    output_types.append(value_type.copy_modified(required_keys=set()))
+                    output_types.append(vt.copy_modified(required_keys=set()))
                 else:
                     output_types.append(value_type)
-                    output_types.append(ctx.arg_types[1][0])
+                    output_types.append(default_type)
 
-        if len(ctx.arg_types) == 1:
-            output_types.append(NoneType())
-
+        # for nicer reveal_type, put default at the end, if it is present
+        if default_type in output_types:
+            output_types = [t for t in output_types if t != default_type] + [default_type]
         return make_simplified_union(output_types)
     return ctx.default_return_type
 
