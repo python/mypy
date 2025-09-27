@@ -645,7 +645,7 @@ class Errors:
         if ignored_codes and info.code:
             # Something is ignored on the line, but not this error, so maybe the error
             # code is incorrect.
-            msg = f'Error code "{info.code.code}" not covered by "type: ignore" comment ignoring [{", ".join(ignored_codes)}]'
+            msg = f"""Error code "{info.code.code}" not covered by "type: ignore[{', '.join(ignored_codes)}]" comment"""
             if info.code in original_error_codes:
                 # If there seems to be a "type: ignore" with a stale error
                 # code, report a more specific note.
