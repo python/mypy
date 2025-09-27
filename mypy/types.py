@@ -3941,6 +3941,14 @@ class CollectAliasesVisitor(TypeQuery[list[mypy.nodes.TypeAlias]]):
             return [t.alias] + t.alias.target.accept(self)
         return []
 
+    def visit_instance(self, t: Instance) -> list[mypy.nodes.TypeAlias]:
+        aliases = super().visit_instance(t)
+        special_alias = t.type.special_alias
+        if special_alias is None or special_alias in self.seen_alias_nodes:
+            return aliases
+        self.seen_alias_nodes.add(special_alias)
+        return aliases + [special_alias] + special_alias.target.accept(self)
+
 
 def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[Instance]:
     if not isinstance(fullnames, tuple):

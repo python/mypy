@@ -1530,3 +1530,20 @@ class Base:
         names = [name for name in namespace if fail]  # E: Name "fail" is not defined
         self.n = namedtuple("n", names)  # E: NamedTuple type as an attribute is not supported
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleRecursiveTypeAlias]
+from __future__ import annotations
+from typing import Awaitable, NamedTuple, TypeVar, Union
+
+T = TypeVar("T")
+AwaitOrValue = Union[Awaitable[T], T]
+
+class Leaf(NamedTuple):
+    data: Wrapper
+
+class Wrapper(NamedTuple):
+    result: AwaitOrValue[Leaf]
+
+def foo(value: Leaf | Wrapper) -> None:
+    wrapper: Wrapper = value  # E: Incompatible types in assignment (expression has type "Union[Leaf, Wrapper]", variable has type "Wrapper")
+[builtins fixtures/tuple.pyi]
