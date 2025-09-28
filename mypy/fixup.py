@@ -441,4 +441,4 @@ def missing_info(modules: dict[str, MypyFile]) -> TypeInfo:
 
 def missing_alias() -> TypeAlias:
     suggestion = _SUGGESTION.format("alias")
-    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, line=-1, column=-1)
+    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, "<missing>", line=-1, column=-1)

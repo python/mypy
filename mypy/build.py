@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import collections
 import contextlib
-import errno
 import gc
 import json
 import os
@@ -47,7 +46,7 @@ from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
-from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable, TypeInfo
+from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
 from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
@@ -335,7 +334,9 @@ class CacheMeta(NamedTuple):
     # dep_prios and dep_lines are in parallel with dependencies + suppressed
     dep_prios: list[int]
     dep_lines: list[int]
+    dep_hashes: dict[str, str]
     interface_hash: str  # hash representing the public interface
+    error_lines: list[str]
     version_id: str  # mypy version for cache invalidation
     ignore_all: bool  # if errors were ignored
     plugin_data: Any  # config data from plugins
@@ -373,7 +374,9 @@ def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
         meta.get("options"),
         meta.get("dep_prios", []),
         meta.get("dep_lines", []),
+        meta.get("dep_hashes", {}),
         meta.get("interface_hash", ""),
+        meta.get("error_lines", []),
         meta.get("version_id", sentinel),
         meta.get("ignore_all", True),
         meta.get("plugin_data", None),
@@ -890,8 +893,6 @@ class BuildManager:
             self.stderr.flush()
 
     def log_fine_grained(self, *message: str) -> None:
-        import mypy.build
-
         if self.verbosity() >= 1:
             self.log("fine-grained:", *message)
         elif mypy.build.DEBUG_FINE_GRAINED:
@@ -1500,7 +1501,9 @@ def validate_meta(
                 "options": (manager.options.clone_for_module(id).select_options_affecting_cache()),
                 "dep_prios": meta.dep_prios,
                 "dep_lines": meta.dep_lines,
+                "dep_hashes": meta.dep_hashes,
                 "interface_hash": meta.interface_hash,
+                "error_lines": meta.error_lines,
                 "version_id": manager.version_id,
                 "ignore_all": meta.ignore_all,
                 "plugin_data": meta.plugin_data,
@@ -1543,7 +1546,7 @@ def write_cache(
     source_hash: str,
     ignore_all: bool,
     manager: BuildManager,
-) -> tuple[str, CacheMeta | None]:
+) -> tuple[str, tuple[dict[str, Any], str, str] | None]:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -1564,9 +1567,9 @@ def write_cache(
       manager: the build manager (for pyversion, log/trace)
 
     Returns:
-      A tuple containing the interface hash and CacheMeta
-      corresponding to the metadata that was written (the latter may
-      be None if the cache could not be written).
+      A tuple containing the interface hash and inner tuple with cache meta JSON
+      that should be written and paths to cache files (inner tuple may be None,
+      if the cache data could not be written).
     """
     metastore = manager.metastore
     # For Bazel we use relative paths and zero mtimes.
@@ -1581,6 +1584,8 @@ def write_cache(
     if bazel:
         tree.path = path
 
+    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
+
     # Serialize data and analyze interface
     if manager.options.fixed_format_cache:
         data_io = Buffer()
@@ -1589,9 +1594,7 @@ def write_cache(
     else:
         data = tree.serialize()
         data_bytes = json_dumps(data, manager.options.debug_cache)
-    interface_hash = hash_digest(data_bytes)
-
-    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
+    interface_hash = hash_digest(data_bytes + json_dumps(plugin_data))
 
     # Obtain and set up metadata
     st = manager.get_stat(path)
@@ -1659,8 +1662,14 @@ def write_cache(
         "ignore_all": ignore_all,
         "plugin_data": plugin_data,
     }
+    return interface_hash, (meta, meta_json, data_json)
 
+
+def write_cache_meta(
+    meta: dict[str, Any], manager: BuildManager, meta_json: str, data_json: str
+) -> CacheMeta:
     # Write meta cache file
+    metastore = manager.metastore
     meta_str = json_dumps(meta, manager.options.debug_cache)
     if not metastore.write(meta_json, meta_str):
         # Most likely the error is the replace() call
@@ -1668,29 +1677,7 @@ def write_cache(
         # The next run will simply find the cache entry out of date.
         manager.log(f"Error writing meta JSON file {meta_json}")
 
-    return interface_hash, cache_meta_from_dict(meta, data_json)
-
-
-def delete_cache(id: str, path: str, manager: BuildManager) -> None:
-    """Delete cache files for a module.
-
-    The cache files for a module are deleted when mypy finds errors there.
-    This avoids inconsistent states with cache files from different mypy runs,
-    see #4043 for an example.
-    """
-    # We don't delete .deps files on errors, since the dependencies
-    # are mostly generated from other files and the metadata is
-    # tracked separately.
-    meta_path, data_path, _ = get_cache_names(id, path, manager.options)
-    cache_paths = [meta_path, data_path]
-    manager.log(f"Deleting {id} {path} {' '.join(x for x in cache_paths if x)}")
-
-    for filename in cache_paths:
-        try:
-            manager.metastore.remove(filename)
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                manager.log(f"Error deleting cache file {filename}: {e.strerror}")
+    return cache_meta_from_dict(meta, data_json)
 
 
 """Dependency manager.
@@ -1758,26 +1745,24 @@ of topsort recipes, e.g. https://code.activestate.com/recipes/577413/.
 
 For single nodes, processing is simple.  If the node was cached, we
 deserialize the cache data and fix up cross-references.  Otherwise, we
-do semantic analysis followed by type checking.  We also handle (c)
-above; if a module has valid cache data *but* any of its
-dependencies was processed from source, then the module should be
-processed from source.
+do semantic analysis followed by type checking.  Once we (re-)processed
+an SCC we check whether its interface (symbol table) is still fresh
+(matches previous cached value). If it is not, we consider dependent SCCs
+stale so that they need to be re-parsed as well.
 
-A relatively simple optimization (outside SCCs) we might do in the
-future is as follows: if a node's cache data is valid, but one or more
-of its dependencies are out of date so we have to re-parse the node
-from source, once we have fully type-checked the node, we can decide
-whether its symbol table actually changed compared to the cache data
-(by reading the cache data and comparing it to the data we would be
-writing).  If there is no change we can declare the node up to date,
-and any node that depends (and for which we have cached data, and
-whose other dependencies are up to date) on it won't need to be
-re-parsed from source.
+Note on indirect dependencies: normally dependencies are determined from
+imports, but since our interfaces are "opaque" (i.e. symbol tables can
+contain cross-references as well as types identified by name), these are not
+enough.  We *must* also add "indirect" dependencies from symbols and types to
+their definitions.  For this purpose, we record all accessed symbols during
+semantic analysis, and after we finished processing a module, we traverse its
+type map, and for each type we find (transitively) on which named types it
+depends.
 
 Import cycles
 -------------
 
-Finally we have to decide how to handle (c), import cycles.  Here
+Finally we have to decide how to handle (b), import cycles.  Here
 we'll need a modified version of the original state machine
 (build.py), but we only need to do this per SCC, and we won't have to
 deal with changes to the list of nodes while we're processing it.
@@ -1867,6 +1852,12 @@ class State:
     # Map each dependency to the line number where it is first imported
     dep_line_map: dict[str, int]
 
+    # Map from dependency id to its last observed interface hash
+    dep_hashes: dict[str, str] = {}
+
+    # List of errors reported for this file last time.
+    error_lines: list[str] = []
+
     # Parent package, its parent, etc.
     ancestors: list[str] | None = None
 
@@ -1879,9 +1870,6 @@ class State:
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
 
-    # If True, indicate that the public interface of this module is unchanged
-    externally_same = True
-
     # Contains a hash of the public interface in incremental mode
     interface_hash: str = ""
 
@@ -1890,9 +1878,6 @@ class State:
 
     # Whether to ignore all errors
     ignore_all = False
-
-    # Whether the module has an error or any of its dependencies have one.
-    transitive_error = False
 
     # Errors reported before semantic analysis, to allow fine-grained
     # mode to keep reporting them.
@@ -1994,6 +1979,8 @@ class State:
             self.priorities = {id: pri for id, pri in zip(all_deps, self.meta.dep_prios)}
             assert len(all_deps) == len(self.meta.dep_lines)
             self.dep_line_map = {id: line for id, line in zip(all_deps, self.meta.dep_lines)}
+            self.dep_hashes = self.meta.dep_hashes
+            self.error_lines = self.meta.error_lines
             if temporary:
                 self.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():
@@ -2046,26 +2033,17 @@ class State:
         """Return whether the cache data for this file is fresh."""
         # NOTE: self.dependencies may differ from
         # self.meta.dependencies when a dependency is dropped due to
-        # suppression by silent mode.  However when a suppressed
+        # suppression by silent mode.  However, when a suppressed
         # dependency is added back we find out later in the process.
-        return (
-            self.meta is not None
-            and self.is_interface_fresh()
-            and self.dependencies == self.meta.dependencies
-        )
-
-    def is_interface_fresh(self) -> bool:
-        return self.externally_same
+        return self.meta is not None and self.dependencies == self.meta.dependencies
 
     def mark_as_rechecked(self) -> None:
         """Marks this module as having been fully re-analyzed by the type-checker."""
         self.manager.rechecked_modules.add(self.id)
 
-    def mark_interface_stale(self, *, on_errors: bool = False) -> None:
+    def mark_interface_stale(self) -> None:
         """Marks this module as having a stale public interface, and discards the cache data."""
-        self.externally_same = False
-        if not on_errors:
-            self.manager.stale_modules.add(self.id)
+        self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
         """Raise CompileError if a blocking error is detected."""
@@ -2410,21 +2388,15 @@ class State:
 
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
-            # TODO: find a more robust way to traverse *all* relevant types?
-            all_types = list(self.type_map().values())
-            for _, sym, _ in self.tree.local_definitions():
-                if sym.type is not None:
-                    all_types.append(sym.type)
-                if isinstance(sym.node, TypeInfo):
-                    # TypeInfo symbols have some extra relevant types.
-                    all_types.extend(sym.node.bases)
-                    if sym.node.metaclass_type:
-                        all_types.append(sym.node.metaclass_type)
-                    if sym.node.typeddict_type:
-                        all_types.append(sym.node.typeddict_type)
-                    if sym.node.tuple_type:
-                        all_types.append(sym.node.tuple_type)
-            self._patch_indirect_dependencies(self.type_checker().module_refs, all_types)
+            self._patch_indirect_dependencies(
+                # Two possible sources of indirect dependencies:
+                # * Symbols not directly imported in this module but accessed via an attribute
+                #   or via a re-export (vast majority of these recorded in semantic analysis).
+                # * For each expression type we need to record definitions of type components
+                #   since "meaning" of the type may be updated when definitions are updated.
+                self.tree.module_refs | self.type_checker().module_refs,
+                set(self.type_map().values()),
+            )
 
             if self.options.dump_inference_stats:
                 dump_type_stats(
@@ -2453,7 +2425,7 @@ class State:
             self._type_checker.reset()
             self._type_checker = None
 
-    def _patch_indirect_dependencies(self, module_refs: set[str], types: list[Type]) -> None:
+    def _patch_indirect_dependencies(self, module_refs: set[str], types: set[Type]) -> None:
         assert None not in types
         valid = self.valid_references()
 
@@ -2507,7 +2479,7 @@ class State:
 
         return valid_refs
 
-    def write_cache(self) -> None:
+    def write_cache(self) -> tuple[dict[str, Any], str, str] | None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # We don't support writing cache files in fine-grained incremental mode.
         if (
@@ -2525,20 +2497,14 @@ class State:
                 except Exception:
                     print(f"Error serializing {self.id}", file=self.manager.stdout)
                     raise  # Propagate to display traceback
-            return
-        is_errors = self.transitive_error
-        if is_errors:
-            delete_cache(self.id, self.path, self.manager)
-            self.meta = None
-            self.mark_interface_stale(on_errors=True)
-            return
+            return None
         dep_prios = self.dependency_priorities()
         dep_lines = self.dependency_lines()
         assert self.source_hash is not None
         assert len(set(self.dependencies)) == len(
             self.dependencies
         ), f"Duplicates in dependencies list for {self.id} ({self.dependencies})"
-        new_interface_hash, self.meta = write_cache(
+        new_interface_hash, meta_tuple = write_cache(
             self.id,
             self.path,
             self.tree,
@@ -2557,6 +2523,7 @@ class State:
             self.manager.log(f"Cached module {self.id} has changed interface")
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
+        return meta_tuple
 
     def verify_dependencies(self, suppressed_only: bool = False) -> None:
         """Report errors for import targets in modules that don't exist.
@@ -3287,7 +3254,19 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         for id in scc:
             deps.update(graph[id].dependencies)
         deps -= ascc
-        stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
+
+        # Verify that interfaces of dependencies still present in graph are up-to-date (fresh).
+        # Note: if a dependency is not in graph anymore, it should be considered interface-stale.
+        # This is important to trigger any relevant updates from indirect dependencies that were
+        # removed in load_graph().
+        stale_deps = set()
+        for id in ascc:
+            for dep in graph[id].dep_hashes:
+                if dep not in graph:
+                    stale_deps.add(dep)
+                    continue
+                if graph[dep].interface_hash != graph[id].dep_hashes[dep]:
+                    stale_deps.add(dep)
         fresh = fresh and not stale_deps
         undeps = set()
         if fresh:
@@ -3300,34 +3279,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             if undeps:
                 fresh = False
         if fresh:
-            # All cache files are fresh.  Check that no dependency's
-            # cache file is newer than any scc node's cache file.
-            oldest_in_scc = min(graph[id].xmeta.data_mtime for id in scc)
-            viable = {id for id in stale_deps if graph[id].meta is not None}
-            newest_in_deps = (
-                0 if not viable else max(graph[dep].xmeta.data_mtime for dep in viable)
-            )
-            if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | viable, key=lambda id: graph[id].xmeta.data_mtime)
-                for id in all_ids:
-                    if id in scc:
-                        if graph[id].xmeta.data_mtime < newest_in_deps:
-                            key = "*id:"
-                        else:
-                            key = "id:"
-                    else:
-                        if graph[id].xmeta.data_mtime > oldest_in_scc:
-                            key = "+dep:"
-                        else:
-                            key = "dep:"
-                    manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
-            # If equal, give the benefit of the doubt, due to 1-sec time granularity
-            # (on some platforms).
-            if oldest_in_scc < newest_in_deps:
-                fresh = False
-                fresh_msg = f"out of date by {newest_in_deps - oldest_in_scc:.0f} seconds"
-            else:
-                fresh_msg = "fresh"
+            fresh_msg = "fresh"
         elif undeps:
             fresh_msg = f"stale due to changed suppression ({' '.join(sorted(undeps))})"
         elif stale_scc:
@@ -3339,15 +3291,14 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         else:
             fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
 
-        # Initialize transitive_error for all SCC members from union
-        # of transitive_error of dependencies.
-        if any(graph[dep].transitive_error for dep in deps if dep in graph):
-            for id in scc:
-                graph[id].transitive_error = True
-
         scc_str = " ".join(scc)
         if fresh:
             manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
+            for id in scc:
+                if graph[id].error_lines:
+                    manager.flush_errors(
+                        manager.errors.simplify_path(graph[id].xpath), graph[id].error_lines, False
+                    )
             fresh_scc_queue.append(scc)
         else:
             if fresh_scc_queue:
@@ -3358,11 +3309,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # Note that `process_graph` may end with us not having processed every
                 # single fresh SCC. This is intentional -- we don't need those modules
                 # loaded if there are no more stale SCCs to be rechecked.
-                #
-                # Also note we shouldn't have to worry about transitive_error here,
-                # since modules with transitive errors aren't written to the cache,
-                # and if any dependencies were changed, this SCC would be stale.
-                # (Also, in quick_and_dirty mode we don't care about transitive errors.)
                 #
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
@@ -3515,21 +3461,34 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
     for id in stale:
         graph[id].generate_unused_ignore_notes()
         graph[id].generate_ignore_without_code_notes()
-    if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
-        for id in stale:
-            graph[id].transitive_error = True
+
+    # Flush errors, and write cache in two phases: first data files, then meta files.
+    meta_tuples = {}
+    errors_by_id = {}
     for id in stale:
         if graph[id].xpath not in manager.errors.ignored_files:
             errors = manager.errors.file_messages(
                 graph[id].xpath, formatter=manager.error_formatter
             )
             manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
-        graph[id].write_cache()
+            errors_by_id[id] = errors
+        meta_tuples[id] = graph[id].write_cache()
         graph[id].mark_as_rechecked()
+    for id in stale:
+        meta_tuple = meta_tuples[id]
+        if meta_tuple is None:
+            graph[id].meta = None
+            continue
+        meta, meta_json, data_json = meta_tuple
+        meta["dep_hashes"] = {
+            dep: graph[dep].interface_hash for dep in graph[id].dependencies if dep in graph
+        }
+        meta["error_lines"] = errors_by_id.get(id, [])
+        graph[id].meta = write_cache_meta(meta, manager, meta_json, data_json)
 
 
 def sorted_components(
-    graph: Graph, vertices: AbstractSet[str] | None = None, pri_max: int = PRI_ALL
+    graph: Graph, vertices: AbstractSet[str] | None = None, pri_max: int = PRI_INDIRECT
 ) -> list[AbstractSet[str]]:
     """Return the graph's SCCs, topologically sorted by dependencies.
 

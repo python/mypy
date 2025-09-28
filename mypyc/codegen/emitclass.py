@@ -39,6 +39,12 @@ def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
 
 
+def dunder_attr_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    wrapper_fn = cl.get_method(fn.name + "__wrapper")
+    assert wrapper_fn
+    return f"{NATIVE_PREFIX}{wrapper_fn.cname(emitter.names)}"
+
+
 # We maintain a table from dunder function names to struct slots they
 # correspond to and functions that generate a wrapper (if necessary)
 # and return the function name to stick in the slot.
@@ -55,6 +61,7 @@ SLOT_DEFS: SlotTable = {
     "__iter__": ("tp_iter", native_slot),
     "__hash__": ("tp_hash", generate_hash_wrapper),
     "__get__": ("tp_descr_get", generate_get_wrapper),
+    "__getattr__": ("tp_getattro", dunder_attr_slot),
 }
 
 AS_MAPPING_SLOT_DEFS: SlotTable = {

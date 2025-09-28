@@ -270,6 +270,11 @@ def test_slicing() -> None:
 def f8(val: int) -> bool:
     return val % 2 == 0
 
+abc: Final = "abc"
+
+def known_length() -> tuple[str, ...]:
+    return tuple(str(x) for x in [*abc, *"def", *b"ghi", ("j", "k"), *("l", "m", "n")])
+
 def test_sequence_generator() -> None:
     source_list = [1, 2, 3]
     a = tuple(f8(x) for x in source_list)
@@ -286,6 +291,8 @@ def test_sequence_generator() -> None:
     source_str = 'abbc'
     b = tuple('s:' + x for x in source_str)
     assert b == ('s:a', 's:b', 's:b', 's:c')
+
+    assert known_length() == ('a', 'b', 'c', 'd', 'e', 'f', '103', '104', '105', "('j', 'k')", 'l', 'm', 'n')
 
 TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 

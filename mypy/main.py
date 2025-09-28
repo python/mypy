@@ -1064,7 +1064,13 @@ def define_options(
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
     incremental_group.add_argument(
-        "--fixed-format-cache", action="store_true", help=argparse.SUPPRESS
+        "--fixed-format-cache",
+        action="store_true",
+        help=(
+            "Use experimental fast and compact fixed format cache"
+            if compilation_status == "yes"
+            else argparse.SUPPRESS
+        ),
     )
     incremental_group.add_argument(
         "--skip-version-check",
@@ -1157,22 +1163,26 @@ def define_options(
         "--skip-c-gen", dest="mypyc_skip_c_generation", action="store_true", help=argparse.SUPPRESS
     )
 
-    other_group = parser.add_argument_group(title="Miscellaneous")
-    other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
-    other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
-    imports_group.add_argument(
+    misc_group = parser.add_argument_group(title="Miscellaneous")
+    misc_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
+    misc_group.add_argument(
+        "--junit-xml",
+        metavar="JUNIT_XML_OUTPUT_FILE",
+        help="Write a JUnit XML test result document with type checking results to the given file",
+    )
+    misc_group.add_argument(
         "--junit-format",
         choices=["global", "per_file"],
         default="global",
-        help="If --junit-xml is set, specifies format. global: single test with all errors; per_file: one test entry per file with failures",
+        help="If --junit-xml is set, specifies format. global (default): single test with all errors; per_file: one test entry per file with failures",
     )
-    other_group.add_argument(
+    misc_group.add_argument(
         "--find-occurrences",
         metavar="CLASS.MEMBER",
         dest="special-opts:find_occurrences",
         help="Print out all usages of a class member (experimental)",
     )
-    other_group.add_argument(
+    misc_group.add_argument(
         "--scripts-are-modules",
         action="store_true",
         help="Script x becomes module x instead of __main__",
@@ -1183,7 +1193,7 @@ def define_options(
         default=False,
         strict_flag=False,
         help="Install detected missing library stub packages using pip",
-        group=other_group,
+        group=misc_group,
     )
     add_invertible_flag(
         "--non-interactive",
@@ -1193,19 +1203,12 @@ def define_options(
             "Install stubs without asking for confirmation and hide "
             + "errors, with --install-types"
         ),
-        group=other_group,
+        group=misc_group,
         inverse="--interactive",
     )
 
     if server_options:
-        # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
-        other_group.add_argument(
-            "--experimental",
-            action="store_true",
-            dest="fine_grained_incremental",
-            help="Enable fine-grained incremental mode",
-        )
-        other_group.add_argument(
+        misc_group.add_argument(
             "--use-fine-grained-cache",
             action="store_true",
             help="Use the cache in fine-grained incremental mode",

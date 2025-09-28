@@ -1241,6 +1241,7 @@ class IRBuilder:
         ret_type: RType,
         fn_info: FuncInfo | str = "",
         self_type: RType | None = None,
+        internal: bool = False,
     ) -> Iterator[None]:
         """Generate IR for a method.
 
@@ -1268,7 +1269,7 @@ class IRBuilder:
             sig = FuncSignature(args, ret_type)
             name = self.function_name_stack.pop()
             class_ir = self.class_ir_stack.pop()
-            decl = FuncDecl(name, class_ir.name, self.module_name, sig)
+            decl = FuncDecl(name, class_ir.name, self.module_name, sig, internal=internal)
             ir = FuncIR(decl, arg_regs, blocks)
             class_ir.methods[name] = ir
             class_ir.method_decls[name] = ir.decl
@@ -1436,6 +1437,10 @@ class IRBuilder:
             return
         self.function_names.add(name)
         self.functions.append(func_ir)
+
+    def get_current_class_ir(self) -> ClassIR | None:
+        type_info = self.fn_info.fitem.info
+        return self.mapper.type_to_ir.get(type_info)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
