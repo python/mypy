@@ -794,8 +794,18 @@ def call_all(l: Iterable[int], val: int = 0) -> int:
     res = all(i == val for i in l)
     return 0 if res else 1
 
+def call_any_with_for_helper(l: Iterable[int], val: int = 0) -> int:
+    # this listcomp isnt a reasonable real world use but proves the any for loop specializer is good
+    res = any([i == val for i in l])
+    return 0 if res else 1
+
+def call_all_with_for_helper(l: Iterable[int], val: int = 0) -> int:
+    # this listcomp isnt a reasonable real world use but proves the all for loop specializer is good
+    res = all([i == val for i in l])
+    return 0 if res else 1
+
 [file driver.py]
-from native import call_any, call_all, call_any_nested
+from native import call_any, call_all, call_any_nested, call_any_with_for_helper, call_all_with_for_helper
 
 zeros = [0, 0, 0]
 ones = [1, 1, 1]
@@ -807,24 +817,42 @@ mixed_101 = [1, 0, 1]
 mixed_110 = [1, 1, 0]
 
 assert call_any([]) == 1
+assert call_any_with_for_helper([]) == 1
 assert call_any(zeros) == 0
+assert call_any_with_for_helper(zeros) == 0
 assert call_any(ones) == 1
+assert call_any_with_for_helper(ones) == 1
 assert call_any(mixed_001) == 0
+assert call_any_with_for_helper(mixed_001) == 0
 assert call_any(mixed_010) == 0
+assert call_any_with_for_helper(mixed_010) == 0
 assert call_any(mixed_100) == 0
+assert call_any_with_for_helper(mixed_100) == 0
 assert call_any(mixed_011) == 0
+assert call_any_with_for_helper(mixed_011) == 0
 assert call_any(mixed_101) == 0
+assert call_any_with_for_helper(mixed_101) == 0
 assert call_any(mixed_110) == 0
+assert call_any_with_for_helper(mixed_110) == 0
 
 assert call_all([]) == 0
+assert call_all_with_for_helper([]) == 0
 assert call_all(zeros) == 0
+assert call_all_with_for_helper(zeros) == 0
 assert call_all(ones) == 1
+assert call_all_with_for_helper(ones) == 1
 assert call_all(mixed_001) == 1
+assert call_all_with_for_helper(mixed_001) == 1
 assert call_all(mixed_010) == 1
+assert call_all_with_for_helper(mixed_010) == 1
 assert call_all(mixed_100) == 1
+assert call_all_with_for_helper(mixed_100) == 1
 assert call_all(mixed_011) == 1
+assert call_all_with_for_helper(mixed_011) == 1
 assert call_all(mixed_101) == 1
+assert call_all_with_for_helper(mixed_101) == 1
 assert call_all(mixed_110) == 1
+assert call_all_with_for_helper(mixed_110) == 1
 
 assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0

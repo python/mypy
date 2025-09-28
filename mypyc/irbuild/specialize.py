@@ -77,7 +77,10 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
+    _is_supported_forloop_iter,
+    _create_iterable_lexpr,
     comprehension_helper,
+    for_loop_helper,
     sequence_from_generator_preallocate_helper,
     translate_list_comprehension,
     translate_set_comprehension,
@@ -409,29 +412,86 @@ def translate_safe_generator_call(
 
 @specialize_function("builtins.any")
 def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
-    if (
-        len(expr.args) == 1
-        and expr.arg_kinds == [ARG_POS]
-        and isinstance(expr.args[0], GeneratorExpr)
-    ):
-        return any_all_helper(builder, expr.args[0], builder.false, lambda x: x, builder.true)
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg = expr.args[0]
+        if isinstance(arg, GeneratorExpr):
+            return any_all_helper(builder, arg, builder.false, lambda x: x, builder.true)
+        elif _is_supported_forloop_iter(builder, arg):
+            retval = Register(bool_rprimitive)
+            builder.assign(retval, builder.false(), -1)
+            loop_exit = BasicBlock()
+            index_name = "__mypyc_any_item__"
+
+            def body_insts() -> None:
+                true_block = BasicBlock()
+                false_block = BasicBlock()
+                builder.add_bool_branch(builder.read(index_reg), true_block, false_block)
+                builder.activate_block(true_block)
+                builder.assign(retval, builder.true(), -1)
+                builder.goto(loop_exit)
+                builder.activate_block(false_block)
+
+            index_type = builder._analyze_iterable_item_type(arg)
+            index = _create_iterable_lexpr(index_name, index_type)
+            index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
+
+            for_loop_helper(
+                builder,
+                index,
+                arg,
+                body_insts,
+                None,
+                is_async=False,
+                line=expr.line,
+            )
+            builder.goto_and_activate(loop_exit)
+            return retval
     return None
 
 
 @specialize_function("builtins.all")
 def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
-    if (
-        len(expr.args) == 1
-        and expr.arg_kinds == [ARG_POS]
-        and isinstance(expr.args[0], GeneratorExpr)
-    ):
-        return any_all_helper(
-            builder,
-            expr.args[0],
-            builder.true,
-            lambda x: builder.unary_op(x, "not", expr.line),
-            builder.false,
-        )
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg = expr.args[0]
+        if isinstance(arg, GeneratorExpr):
+            return any_all_helper(
+                builder,
+                arg,
+                builder.true,
+                lambda x: builder.unary_op(x, "not", expr.line),
+                builder.false,
+            )
+
+        elif _is_supported_forloop_iter(builder, arg):
+            retval = Register(bool_rprimitive)
+            builder.assign(retval, builder.true(), -1)
+            loop_exit = BasicBlock()
+            index_name = "__mypyc_all_item__"
+
+            def body_insts() -> None:
+                true_block = BasicBlock()
+                false_block = BasicBlock()
+                builder.add_bool_branch(builder.read(index_reg), true_block, false_block)
+                builder.activate_block(false_block)
+                builder.assign(retval, builder.false(), -1)
+                builder.goto(loop_exit)
+                builder.activate_block(true_block)
+            
+            index_type = builder._analyze_iterable_item_type(arg)
+            index = _create_iterable_lexpr(index_name, index_type)
+            index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
+
+            for_loop_helper(
+                builder,
+                index,
+                arg,
+                body_insts,
+                None,
+                is_async=False,
+                line=expr.line,
+            )
+            builder.goto_and_activate(loop_exit)
+            return retval
     return None
 
 

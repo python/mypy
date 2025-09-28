@@ -11,6 +11,7 @@ from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
+    LDEF,
     BytesExpr,
     CallExpr,
     DictionaryComprehension,
@@ -28,6 +29,7 @@ from mypy.nodes import (
     TypeAlias,
     Var,
 )
+from mypy.types import Type
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -1218,3 +1220,25 @@ def get_expr_length_value(
         return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
     # The expression result is known at compile time, so we can use a constant.
     return Integer(length, c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive)
+
+
+def _is_supported_forloop_iter(builder: IRBuilder, expr: Expression) -> bool:
+    if is_sequence_rprimitive(builder.node_type(expr)):
+        return True
+    return (
+        isinstance(expr, CallExpr)
+        and (
+            (isinstance(expr.callee, RefExpr) and expr.callee.fullname in {
+                "builtins.range", "builtins.enumerate", "builtins.zip", "builtins.reversed"
+            })
+            or (isinstance(expr.callee, MemberExpr) and expr.callee.name in {"keys", "values", "items"})
+        )
+    )
+
+    
+def _create_iterable_lexpr(index_name: str, index_type: Type) -> NameExpr:
+    """This helper spoofs a NameExpr to use as the lvalue in one of the for loop helpers."""
+    index = NameExpr(index_name)
+    index.kind = LDEF
+    index.node = Var(index_name, index_type)
+    return index
