@@ -1225,16 +1225,13 @@ def get_expr_length_value(
 def _is_supported_forloop_iter(builder: IRBuilder, expr: Expression) -> bool:
     if is_sequence_rprimitive(builder.node_type(expr)):
         return True
-    return isinstance(expr, CallExpr) and (
-        (
-            isinstance(expr.callee, RefExpr)
-            and expr.callee.fullname
-            in {"builtins.range", "builtins.enumerate", "builtins.zip", "builtins.reversed"}
-        )
-        or (
-            isinstance(expr.callee, MemberExpr) and expr.callee.name in {"keys", "values", "items"}
-        )
-    )
+    if not isinstance(expr, CallExpr):
+        return False
+    if isinstance(expr.callee, RefExpr):
+        return expr.callee.fullname in {"builtins.range", "builtins.enumerate", "builtins.zip", "builtins.reversed"}
+    elif isinstance(expr.callee, MemberExpr):
+        return expr.callee.fullname in {"keys", "values", "items"}
+    return False
 
 
 def _create_iterable_lexpr(index_name: str, index_type: Type) -> NameExpr:
