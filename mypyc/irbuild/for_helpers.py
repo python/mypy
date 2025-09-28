@@ -1259,7 +1259,7 @@ class ForMap(ForGenerator):
         for gen in self.gens:
             gen.gen_cleanup()
 
- 
+
 def get_expr_length(expr: Expression) -> int | None:
     if isinstance(expr, (StrExpr, BytesExpr)):
         return len(expr.value)
