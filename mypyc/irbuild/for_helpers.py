@@ -1228,7 +1228,12 @@ def _is_supported_forloop_iter(builder: IRBuilder, expr: Expression) -> bool:
     if not isinstance(expr, CallExpr):
         return False
     if isinstance(expr.callee, RefExpr):
-        return expr.callee.fullname in {"builtins.range", "builtins.enumerate", "builtins.zip", "builtins.reversed"}
+        return expr.callee.fullname in {
+            "builtins.range",
+            "builtins.enumerate",
+            "builtins.zip",
+            "builtins.reversed",
+        }
     elif isinstance(expr.callee, MemberExpr):
         return expr.callee.fullname in {"keys", "values", "items"}
     return False
