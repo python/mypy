@@ -77,8 +77,8 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
-    _is_supported_forloop_iter,
     _create_iterable_lexpr,
+    _is_supported_forloop_iter,
     comprehension_helper,
     for_loop_helper,
     sequence_from_generator_preallocate_helper,
@@ -435,15 +435,7 @@ def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
             index = _create_iterable_lexpr(index_name, index_type)
             index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
 
-            for_loop_helper(
-                builder,
-                index,
-                arg,
-                body_insts,
-                None,
-                is_async=False,
-                line=expr.line,
-            )
+            for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
             builder.goto_and_activate(loop_exit)
             return retval
     return None
@@ -476,20 +468,12 @@ def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
                 builder.assign(retval, builder.false(), -1)
                 builder.goto(loop_exit)
                 builder.activate_block(true_block)
-            
+
             index_type = builder._analyze_iterable_item_type(arg)
             index = _create_iterable_lexpr(index_name, index_type)
             index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
 
-            for_loop_helper(
-                builder,
-                index,
-                arg,
-                body_insts,
-                None,
-                is_async=False,
-                line=expr.line,
-            )
+            for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
             builder.goto_and_activate(loop_exit)
             return retval
     return None
