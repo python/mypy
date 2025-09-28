@@ -1240,7 +1240,7 @@ class ForFilter(ForGenerator):
             fake_call_expr = CallExpr(self.filter_func_def, [self.index], [ARG_POS], [None])
 
             # I put this here to prevent a circular import
-            # from mypyc.irbuild.expression import transform_call_expr
+            from mypyc.irbuild.expression import transform_call_expr
 
             result = transform_call_expr(builder, fake_call_expr)
             # result = builder.accept(fake_call_expr)
