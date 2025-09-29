@@ -2995,6 +2995,12 @@ from typing import Callable, Iterable
 def call_sum(l: Iterable[int], comparison: Callable[[int], bool]) -> int:
     return sum(comparison(x) for x in l)
 
+def call_sum_helper(l: Iterable[int], comparison: Callable[[int], bool]):
+    return sum([comparison(x) for x in l])
+
+def call_sum_helper_start(l: Iterable[int]):
+    return sum([str(i) for i in l], "")
+
 [out]
 def call_sum(l, comparison):
     l, comparison :: object
@@ -3033,6 +3039,121 @@ L4:
     r12 = CPy_NoErrOccurred()
 L5:
     return r0
+def call_sum_helper(l, comparison):
+    l, comparison :: object
+    r0 :: int
+    r1 :: list
+    r2, r3 :: object
+    r4, x :: int
+    r5 :: object
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8 :: object
+    r9 :: bool
+    r10 :: object
+    r11 :: i32
+    r12, r13 :: bit
+    r14, r15 :: native_int
+    r16 :: bit
+    r17 :: object
+    r18, __mypyc_sum_item__, r19 :: bool
+    r20, r21 :: int
+    r22 :: native_int
+    r23 :: object
+L0:
+    r0 = 0
+    r1 = PyList_New(0)
+    r2 = PyObject_GetIter(l)
+L1:
+    r3 = PyIter_Next(r2)
+    if is_error(r3) goto L4 else goto L2
+L2:
+    r4 = unbox(int, r3)
+    x = r4
+    r5 = box(int, x)
+    r6 = [r5]
+    r7 = load_address r6
+    r8 = PyObject_Vectorcall(comparison, r7, 1, 0)
+    keep_alive r5
+    r9 = unbox(bool, r8)
+    r10 = box(bool, r9)
+    r11 = PyList_Append(r1, r10)
+    r12 = r11 >= 0 :: signed
+L3:
+    goto L1
+L4:
+    r13 = CPy_NoErrOccurred()
+L5:
+    r14 = 0
+L6:
+    r15 = var_object_size r1
+    r16 = r14 < r15 :: signed
+    if r16 goto L7 else goto L9 :: bool
+L7:
+    r17 = list_get_item_unsafe r1, r14
+    r18 = unbox(bool, r17)
+    __mypyc_sum_item__ = r18
+    r19 = __mypyc_sum_item__ << 1
+    r20 = extend r19: builtins.bool to builtins.int
+    r21 = CPyTagged_Add(r0, r20)
+    r0 = r21
+L8:
+    r22 = r14 + 1
+    r14 = r22
+    goto L6
+L9:
+    r23 = box(int, r0)
+    return r23
+def call_sum_helper_start(l):
+    l :: object
+    r0, r1 :: str
+    r2 :: list
+    r3, r4 :: object
+    r5, i :: int
+    r6 :: str
+    r7 :: i32
+    r8, r9 :: bit
+    r10, r11 :: native_int
+    r12 :: bit
+    r13 :: object
+    r14, __mypyc_sum_item__, r15 :: str
+    r16 :: native_int
+L0:
+    r0 = ''
+    r1 = r0
+    r2 = PyList_New(0)
+    r3 = PyObject_GetIter(l)
+L1:
+    r4 = PyIter_Next(r3)
+    if is_error(r4) goto L4 else goto L2
+L2:
+    r5 = unbox(int, r4)
+    i = r5
+    r6 = CPyTagged_Str(i)
+    r7 = PyList_Append(r2, r6)
+    r8 = r7 >= 0 :: signed
+L3:
+    goto L1
+L4:
+    r9 = CPy_NoErrOccurred()
+L5:
+    r10 = 0
+L6:
+    r11 = var_object_size r2
+    r12 = r10 < r11 :: signed
+    if r12 goto L7 else goto L9 :: bool
+L7:
+    r13 = list_get_item_unsafe r2, r10
+    r14 = cast(str, r13)
+    __mypyc_sum_item__ = r14
+    r15 = PyUnicode_Concat(r1, __mypyc_sum_item__)
+    r1 = r15
+L8:
+    r16 = r10 + 1
+    r10 = r16
+    goto L6
+L9:
+    return r1
 
 [case testSetAttr1]
 from typing import Any, Dict, List
