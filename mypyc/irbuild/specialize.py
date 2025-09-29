@@ -606,7 +606,15 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             obj = builder.accept(obj_expr, can_borrow=can_borrow)
             return builder.builder.isinstance_helper(obj, irs, expr.line)
 
-    if isinstance(type_expr, TupleExpr):
+    if isinstance(type_expr, RefExpr):
+        node = type_expr.node
+        if node:
+            desc = isinstance_primitives.get(node.fullname)
+            if desc:
+                obj = builder.accept(obj_expr)
+                return builder.primitive_op(desc, [obj], expr.line)
+
+    elif isinstance(type_expr, TupleExpr):
         node_names: list[str] = []
         for item in type_expr.items:
             if not isinstance(item, RefExpr):
@@ -651,14 +659,6 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         # Return the result
         builder.activate_block(exit_block)
         return retval
-
-    if isinstance(type_expr, RefExpr):
-        node = type_expr.node
-        if node:
-            desc = isinstance_primitives.get(node.fullname)
-            if desc:
-                obj = builder.accept(obj_expr)
-                return builder.primitive_op(desc, [obj], expr.line)
 
     return None
 
