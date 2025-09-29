@@ -700,7 +700,12 @@ class IRBuilder:
         assert False, "Unsupported lvalue: %r" % lvalue
 
     def read(
-        self, target: Value | AssignmentTarget, line: int = -1, can_borrow: bool = False
+        self,
+        target: Value | AssignmentTarget,
+        line: int = -1,
+        *,
+        can_borrow: bool = False,
+        allow_error_value: bool = False,
     ) -> Value:
         if isinstance(target, Value):
             return target
@@ -716,7 +721,15 @@ class IRBuilder:
         if isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj.type, RInstance) and target.obj.type.class_ir.is_ext_class:
                 borrow = can_borrow and target.can_borrow
-                return self.add(GetAttr(target.obj, target.attr, line, borrow=borrow))
+                return self.add(
+                    GetAttr(
+                        target.obj,
+                        target.attr,
+                        line,
+                        borrow=borrow,
+                        allow_error_value=allow_error_value,
+                    )
+                )
             else:
                 return self.py_get_attr(target.obj, target.attr, line)
 
