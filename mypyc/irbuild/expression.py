@@ -481,7 +481,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             result = translate_object_new(builder, expr, MemberExpr(callee.call, "__new__"))
             if result:
                 return result
-        elif callee.name == "__setattr__" and ir.builtin_base is None and not ir.inherits_python:
+        elif callee.name == "__setattr__":
             result = translate_object_setattr(
                 builder, expr, MemberExpr(callee.call, "__setattr__")
             )

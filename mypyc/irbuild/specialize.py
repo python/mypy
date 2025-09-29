@@ -1064,6 +1064,8 @@ def translate_object_setattr(builder: IRBuilder, expr: CallExpr, callee: RefExpr
 
     self_reg = builder.accept(expr.args[0]) if is_object_callee else builder.self()
     ir = builder.get_current_class_ir()
+    if ir and (not ir.is_ext_class or ir.builtin_base or ir.inherits_python):
+        return None
     # Need to offset by 1 for super().__setattr__ calls because there is no self arg in this case.
     name_idx = 0 if is_super else 1
     value_idx = 1 if is_super else 2
