@@ -76,6 +76,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     LoadStatic,
+    MethodCall,
     Op,
     PrimitiveDescription,
     RaiseStandardError,
@@ -700,7 +701,12 @@ class IRBuilder:
         assert False, "Unsupported lvalue: %r" % lvalue
 
     def read(
-        self, target: Value | AssignmentTarget, line: int = -1, can_borrow: bool = False
+        self,
+        target: Value | AssignmentTarget,
+        line: int = -1,
+        *,
+        can_borrow: bool = False,
+        allow_error_value: bool = False,
     ) -> Value:
         if isinstance(target, Value):
             return target
@@ -716,7 +722,15 @@ class IRBuilder:
         if isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj.type, RInstance) and target.obj.type.class_ir.is_ext_class:
                 borrow = can_borrow and target.can_borrow
-                return self.add(GetAttr(target.obj, target.attr, line, borrow=borrow))
+                return self.add(
+                    GetAttr(
+                        target.obj,
+                        target.attr,
+                        line,
+                        borrow=borrow,
+                        allow_error_value=allow_error_value,
+                    )
+                )
             else:
                 return self.py_get_attr(target.obj, target.attr, line)
 
@@ -735,8 +749,15 @@ class IRBuilder:
             self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
-                self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
+                setattr = target.obj_type.class_ir.get_method("__setattr__")
+                if setattr:
+                    key = self.load_str(target.attr)
+                    boxed_reg = self.builder.box(rvalue_reg)
+                    call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
+                    self.add(call)
+                else:
+                    rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
+                    self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
