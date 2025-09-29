@@ -1010,9 +1010,7 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
 
 
 def is_object(callee: RefExpr) -> bool:
-    """
-    Returns True for object.<name> calls
-    """
+    """Returns True for object.<name> calls."""
     return (
         isinstance(callee, MemberExpr)
         and isinstance(callee.expr, NameExpr)
@@ -1021,9 +1019,7 @@ def is_object(callee: RefExpr) -> bool:
 
 
 def is_super_or_object(expr: CallExpr, callee: RefExpr) -> bool:
-    """
-    Returns True for super().<name> or object.<name> calls.
-    """
+    """Returns True for super().<name> or object.<name> calls."""
     return isinstance(expr.callee, SuperExpr) or is_object(callee)
 
 

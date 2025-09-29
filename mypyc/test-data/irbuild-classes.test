@@ -2373,6 +2373,8 @@ L0:
     return 1
 
 [case testUntransformedSetAttr_64bit]
+from mypy_extensions import mypyc_attr
+
 class SetAttr:
     def super_missing_args(self):
         super().__setattr__()
@@ -2382,6 +2384,18 @@ class SetAttr:
         object.__setattr__()
         object.__setattr__(self)
         object.__setattr__(self, "attr")
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    pass
+
+class InheritsPython(NonNative):
+    def super_setattr(self, key: str, val: object) -> None:
+        super().__setattr__(key, val)
+
+class BuiltInBase(dict):
+    def super_setattr(self, key: str, val: object) -> None:
+        super().__setattr__(key, val)
 
 [typing fixtures/typing-full.pyi]
 [out]
@@ -2484,3 +2498,63 @@ L0:
     keep_alive r16, self, r17
     r22 = box(None, 1)
     return r22
+def InheritsPython.super_setattr(self, key, val):
+    self :: __main__.InheritsPython
+    key :: str
+    val, r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[2]
+    r10 :: object_ptr
+    r11 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.InheritsPython :: type
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__setattr__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [key, val]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 2, 0)
+    keep_alive key, val
+    return 1
+def BuiltInBase.super_setattr(self, key, val):
+    self :: dict
+    key :: str
+    val, r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[2]
+    r10 :: object_ptr
+    r11 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.BuiltInBase :: type
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__setattr__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [key, val]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 2, 0)
+    keep_alive key, val
+    return 1

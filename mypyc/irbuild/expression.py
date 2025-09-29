@@ -481,17 +481,17 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             result = translate_object_new(builder, expr, MemberExpr(callee.call, "__new__"))
             if result:
                 return result
+        elif callee.name == "__setattr__" and ir.builtin_base is None and not ir.inherits_python:
+            result = translate_object_setattr(
+                builder, expr, MemberExpr(callee.call, "__setattr__")
+            )
+            if result:
+                return result
         if ir.is_ext_class and ir.builtin_base is None and not ir.inherits_python:
             if callee.name == "__init__" and len(expr.args) == 0:
                 # Call translates to object.__init__(self), which is a
                 # no-op, so omit the call.
                 return builder.none()
-            elif callee.name == "__setattr__":
-                result = translate_object_setattr(
-                    builder, expr, MemberExpr(callee.call, "__setattr__")
-                )
-                if result:
-                    return result
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)

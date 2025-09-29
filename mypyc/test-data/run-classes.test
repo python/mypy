@@ -4598,6 +4598,20 @@ class NoSetAttr:
     def super_setattr(self, attr: str, val: object) -> None:
         super().__setattr__(attr, val)
 
+@mypyc_attr(native_class=False)
+class NoSetAttrNonNative:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+    def __getattr__(self, attr: str) -> object:
+        pass
+
 def test_setattr() -> None:
     i = SetAttr(99, {"one": 1})
     assert i.class_var == "x"
@@ -4772,6 +4786,26 @@ def test_no_setattr() -> None:
     with assertRaises(AttributeError):
         object.__setattr__(i, "not_attr", 102)
 
+def test_no_setattr_nonnative() -> None:
+    i = NoSetAttrNonNative(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    i.super_setattr("one", 100)
+    assert i.one == 100
+
+    i.object_setattr("two", 101)
+    assert i.two == 101
+
+    object.__setattr__(i, "three", 102)
+    assert i.three == 102
+
 [typing fixtures/typing-full.pyi]
 
 [case testDunderSetAttrInterpreted]
@@ -4851,8 +4885,22 @@ class NoSetAttr:
     def super_setattr(self, attr: str, val: object) -> None:
         super().__setattr__(attr, val)
 
+@mypyc_attr(native_class=False)
+class NoSetAttrNonNative:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+    def __getattr__(self, attr: str) -> object:
+        pass
+
 [file driver.py]
-from native import SetAttr, SetAttrInherited, SetAttrOverridden, SetAttrNonNative, NoSetAttr
+from native import SetAttr, SetAttrInherited, SetAttrOverridden, SetAttrNonNative, NoSetAttr, NoSetAttrNonNative
 from testutil import assertRaises
 
 def test_setattr() -> None:
@@ -5029,10 +5077,31 @@ def test_no_setattr() -> None:
     with assertRaises(AttributeError):
         object.__setattr__(i, "not_attr", 102)
 
+def test_no_setattr_nonnative() -> None:
+    i = NoSetAttrNonNative(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    i.super_setattr("one", 100)
+    assert i.one == 100
+
+    i.object_setattr("two", 101)
+    assert i.two == 101
+
+    object.__setattr__(i, "three", 102)
+    assert i.three == 102
+
 test_setattr()
 test_setattr_inherited()
 test_setattr_overridden()
 test_setattr_nonnative()
 test_no_setattr()
+test_no_setattr_nonnative()
 
 [typing fixtures/typing-full.pyi]
