@@ -1238,8 +1238,9 @@ class LowLevelIRBuilder:
         if isinstance(base.type, RInstance):
             name = name if base.type.class_ir.is_ext_class else fast_name
 
-            def build_args() -> list[Value]:
-                decl = base.type.class_ir.method_decl(name)
+            def build_args(typ: RInstance) -> list[Value]:
+                nonlocal arg_kinds, arg_names
+                decl = typ.class_ir.method_decl(name)
                 if arg_kinds is None:
                     assert arg_names is None, "arg_kinds not present but arg_names is"
                     arg_kinds = [ARG_POS for _ in arg_values]
@@ -1257,7 +1258,7 @@ class LowLevelIRBuilder:
                 base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name)
             ) and not base.type.class_ir.builtin_base:
                 if base.type.class_ir.has_method(name):
-                    arg_values = build_args()
+                    arg_values = build_args(base.type)
                     return self.add(MethodCall(base, name, arg_values, line))
                 elif base.type.class_ir.has_attr(name):
                     function = self.add(GetAttr(base, name, line))
@@ -1268,7 +1269,7 @@ class LowLevelIRBuilder:
                 # does this really work tho? must check more. why wasnt this done before? what do all the if checks do above?
                 decl = base.type.class_ir.method_decl(name)
                 # should this be a MethodCall?
-                arg_values = build_args()
+                arg_values = build_args(base.type)
                 return self.call(decl, arg_values, [ARG_POS] * len(arg_values), [None], line)
 
         elif isinstance(base.type, RUnion):
