@@ -1235,13 +1235,10 @@ class LowLevelIRBuilder:
 
         # If the base type is one of ours, do a MethodCall
         fast_name = FAST_PREFIX + name
-        if (
-            isinstance(base.type, RInstance)
-            and (base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name))
-            and not base.type.class_ir.builtin_base
-        ):
+        if isinstance(base.type, RInstance):
             name = name if base.type.class_ir.is_ext_class else fast_name
-            if base.type.class_ir.has_method(name):
+
+            def build_args() -> list[Value]:
                 decl = base.type.class_ir.method_decl(name)
                 if arg_kinds is None:
                     assert arg_names is None, "arg_kinds not present but arg_names is"
@@ -1252,15 +1249,28 @@ class LowLevelIRBuilder:
 
                 # Normalize args to positionals.
                 assert decl.bound_sig
-                arg_values = self.native_args_to_positional(
+                return self.native_args_to_positional(
                     arg_values, arg_kinds, arg_names, decl.bound_sig, line
                 )
-                return self.add(MethodCall(base, name, arg_values, line))
-            elif base.type.class_ir.has_attr(name):
-                function = self.add(GetAttr(base, name, line))
-                return self.py_call(
-                    function, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names
-                )
+                
+            if (
+                (base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name))
+                and not base.type.class_ir.builtin_base
+            ):
+                if base.type.class_ir.has_method(name):
+                    arg_values = build_args()
+                    return self.add(MethodCall(base, name, arg_values, line))
+                elif base.type.class_ir.has_attr(name):
+                    function = self.add(GetAttr(base, name, line))
+                    return self.py_call(
+                        function, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names
+                    )
+            elif base.type.class_ir.has_method(name) and base.type.class_ir.is_method_final(name):
+                # does this really work tho? must check more. why wasnt this done before? what do all the if checks do above?
+                decl = base.type.class_ir.method_decl(name)
+                # should this be a MethodCall?
+                arg_values = build_args()
+                return self.call(decl, arg_values, [ARG_POS] * len(arg_values), [None], line)
 
         elif isinstance(base.type, RUnion):
             return self.union_method_call(
