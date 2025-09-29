@@ -1252,11 +1252,10 @@ class LowLevelIRBuilder:
                 return self.native_args_to_positional(
                     arg_values, arg_kinds, arg_names, decl.bound_sig, line
                 )
-                
+
             if (
-                (base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name))
-                and not base.type.class_ir.builtin_base
-            ):
+                base.type.class_ir.is_ext_class or base.type.class_ir.has_method(fast_name)
+            ) and not base.type.class_ir.builtin_base:
                 if base.type.class_ir.has_method(name):
                     arg_values = build_args()
                     return self.add(MethodCall(base, name, arg_values, line))
