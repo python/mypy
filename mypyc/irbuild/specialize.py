@@ -541,7 +541,7 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
         acc_rtype = int_rprimitive
     elif is_object_rprimitive(item_rtype) and is_int_rprimitive(start_rtype):
         acc_rtype = object_rprimitive
-    
+
     else:
         # escape hatch, maybe figure out a better way to handle this whole block
         # seeking ideas in review
@@ -551,17 +551,16 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
     builder.assign(retval, builder.coerce(builder.accept(start_expr), acc_rtype, -1), -1)
 
     if isinstance(arg, GeneratorExpr):
+
         def gen_inner_stmts() -> None:
             call_expr = builder.accept(arg.left_expr)
             builder.assign(retval, builder.binary_op(retval, call_expr, "+", -1), -1)
 
-        loop_params = list(
-            zip(arg.indices, arg.sequences, arg.condlists, arg.is_async)
-        )
+        loop_params = list(zip(arg.indices, arg.sequences, arg.condlists, arg.is_async))
         comprehension_helper(builder, loop_params, gen_inner_stmts, arg.line)
 
         return retval
-    
+
     else:
         index_name = "__mypyc_sum_item__"
 
@@ -573,15 +572,7 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
         index = _create_iterable_lexpr(index_name, index_type)
         index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
 
-        for_loop_helper(
-            builder,
-            index,
-            arg,
-            body_insts,
-            None,
-            is_async=False,
-            line=expr.line,
-        )
+        for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
         return retval
 
 
