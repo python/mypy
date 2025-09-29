@@ -952,6 +952,9 @@ void CPyTrace_LogEvent(const char *location, const char *line, const char *op, c
 static inline PyObject *CPyObject_GenericGetAttr(PyObject *self, PyObject *name) {
     return _PyObject_GenericGetAttrWithDict(self, name, NULL, 1);
 }
+static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObject *value) {
+    return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
+}
 
 #if CPY_3_11_FEATURES
 PyObject *CPy_GetName(PyObject *obj);
