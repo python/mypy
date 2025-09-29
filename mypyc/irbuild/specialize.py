@@ -590,11 +590,11 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
     obj_expr = expr.args[0]
     type_expr = expr.args[1]
-    
+
     if isinstance(type_expr, TupleExpr) and not type_expr.items:
         # we can compile this case to a noop
         return builder.false()
-    
+
     if isinstance(type_expr, (RefExpr, TupleExpr)):
         builder.types[obj_expr] = AnyType(TypeOfAny.from_error)
 
@@ -618,7 +618,7 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
                 nodes.append(item.node.fullname)
 
         descs = [isinstance_primitives.get(fullname) for fullname in nodes]
-    
+
         obj = builder.accept(expr.args[0])
 
         retval = Register(bool_rprimitive)
@@ -628,9 +628,11 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
         # Chain the checks: if any succeed, jump to pass_block; else, continue
         for i, desc in enumerate(descs):
-            is_last = (i == len(descs) - 1)
+            is_last = i == len(descs) - 1
             next_block = fail_block if is_last else BasicBlock()
-            builder.add_bool_branch(builder.primitive_op(desc, [obj], expr.line), pass_block, next_block)
+            builder.add_bool_branch(
+                builder.primitive_op(desc, [obj], expr.line), pass_block, next_block
+            )
             if not is_last:
                 builder.activate_block(next_block)
 
