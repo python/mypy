@@ -31,7 +31,6 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     SuperExpr,
-    SymbolNode,
     TupleExpr,
     Var,
 )
