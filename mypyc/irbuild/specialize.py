@@ -608,7 +608,7 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             return builder.builder.isinstance_helper(obj, irs, expr.line)
 
     if isinstance(type_expr, TupleExpr):
-        nodes: list[SymbolNode | None] = []
+        nodes: list[SymbolNode] = []
         for item in type_expr.items:
             if not isinstance(item, RefExpr):
                 return None
