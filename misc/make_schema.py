@@ -88,14 +88,6 @@ def make_schema(opts: Sequence[ConfigOpt]) -> dict[str, Any]:
         "description": "DEPRECATED and UNDOCUMENTED: Now defaults to true, use `hide_error_codes` if you need to disable error codes instead.",
         "deprecated": True,
     }
-    definitions.setdefault(
-        "show_error_code_links",
-        {
-            "type": "boolean",
-            "default": False,
-            "description": "UNDOCUMENTED: show links for error codes.",
-        },
-    )
 
     return {
         "$schema": "http://json-schema.org/draft-07/schema#",
