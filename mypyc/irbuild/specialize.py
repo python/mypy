@@ -31,6 +31,7 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     SuperExpr,
+    SymbolNode,
     TupleExpr,
     Var,
 )
@@ -611,14 +612,17 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         for item in type_expr.items:
             if not isinstance(item, RefExpr):
                 return None
-            if item.node is None or item.node.fullname not in isinstance_primitives:
+            if item.node is None:
                 return None
             if item.node.fullname not in node_names:
                 node_names.append(item.node.fullname)
 
-        descs = [isinstance_primitives[fullname] for fullname in node_names]
+        descs = [isinstance_primitives.get(fullname) for fullname in node_names]
+        if None in descs:
+            # not all types are primitive types, abort
+            return None
 
-        obj = builder.accept(expr.args[0])
+        obj = builder.accept(obj_expr)
 
         retval = Register(bool_rprimitive)
         pass_block = BasicBlock()
@@ -649,12 +653,12 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         builder.activate_block(exit_block)
         return retval
 
-    if isinstance(expr.args[1], RefExpr):
-        node = expr.args[1].node
+    if isinstance(type_expr, RefExpr):
+        node = type_expr.node
         if node:
             desc = isinstance_primitives.get(node.fullname)
             if desc:
-                obj = builder.accept(expr.args[0])
+                obj = builder.accept(obj_expr)
                 return builder.primitive_op(desc, [obj], expr.line)
 
     return None
