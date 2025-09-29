@@ -829,7 +829,14 @@ def transform_try_finally_stmt_async(
     # Check if we have a return value
     if ret_reg:
         return_block, check_old_exc = BasicBlock(), BasicBlock()
-        builder.add(Branch(builder.read(ret_reg), check_old_exc, return_block, Branch.IS_ERROR))
+        builder.add(
+            Branch(
+                builder.read(ret_reg, allow_error_value=True),
+                check_old_exc,
+                return_block,
+                Branch.IS_ERROR,
+            )
+        )
 
         builder.activate_block(return_block)
         builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)

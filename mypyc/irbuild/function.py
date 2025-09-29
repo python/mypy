@@ -57,6 +57,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     bool_rprimitive,
+    c_int_rprimitive,
     dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
@@ -415,6 +416,34 @@ def generate_getattr_wrapper(builder: IRBuilder, cdef: ClassDef, getattr: FuncDe
         builder.add(Return(getattr_result, line))
 
 
+def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDef) -> None:
+    """
+    Generate a wrapper function for __setattr__ that can be put into the tp_setattro slot.
+    The wrapper takes two arguments besides self - attribute name and the new value.
+    Returns 0 on success and -1 on failure. Restrictions are similar to the __getattr__
+    wrapper above.
+
+    This one is simpler because to match interpreted python semantics it's enough to always
+    call the user-provided function, including for names matching regular attributes.
+    """
+    name = setattr.name + "__wrapper"
+    ir = builder.mapper.type_to_ir[cdef.info]
+    line = setattr.line
+
+    error_base = f'"__setattr__" not supported in class "{cdef.name}" because '
+    if ir.allow_interpreted_subclasses:
+        builder.error(error_base + "it allows interpreted subclasses", line)
+    if ir.inherits_python:
+        builder.error(error_base + "it inherits from a non-native class", line)
+
+    with builder.enter_method(ir, name, c_int_rprimitive, internal=True):
+        attr_arg = builder.add_argument("attr", object_rprimitive)
+        value_arg = builder.add_argument("value", object_rprimitive)
+
+        builder.gen_method_call(builder.self(), setattr.name, [attr_arg, value_arg], None, line)
+        builder.add(Return(Integer(0, c_int_rprimitive), line))
+
+
 def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None:
     # Perform the function of visit_method for methods inside extension classes.
     name = fdef.name
@@ -483,6 +512,8 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
 
     if fdef.name == "__getattr__":
         generate_getattr_wrapper(builder, cdef, fdef)
+    elif fdef.name == "__setattr__":
+        generate_setattr_wrapper(builder, cdef, fdef)
 
 
 def handle_non_ext_method(
