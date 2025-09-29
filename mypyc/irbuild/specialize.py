@@ -77,9 +77,9 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
-    _create_iterable_lexpr,
-    _is_supported_forloop_iter,
     comprehension_helper,
+    create_synthetic_nameexpr,
+    expr_has_specialized_for_helper,
     for_loop_helper,
     sequence_from_generator_preallocate_helper,
     translate_list_comprehension,
@@ -416,7 +416,7 @@ def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
         arg = expr.args[0]
         if isinstance(arg, GeneratorExpr):
             return any_all_helper(builder, arg, builder.false, lambda x: x, builder.true)
-        elif _is_supported_forloop_iter(builder, arg):
+        elif expr_has_specialized_for_helper(builder, arg):
             retval = Register(bool_rprimitive)
             builder.assign(retval, builder.false(), -1)
             loop_exit = BasicBlock()
@@ -432,7 +432,7 @@ def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
                 builder.activate_block(false_block)
 
             index_type = builder._analyze_iterable_item_type(arg)
-            index = _create_iterable_lexpr(index_name, index_type)
+            index = create_synthetic_nameexpr(index_name, index_type)
             index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))  # type: ignore [arg-type]
 
             for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
@@ -454,7 +454,7 @@ def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
                 builder.false,
             )
 
-        elif _is_supported_forloop_iter(builder, arg):
+        elif expr_has_specialized_for_helper(builder, arg):
             retval = Register(bool_rprimitive)
             builder.assign(retval, builder.true(), -1)
             loop_exit = BasicBlock()
@@ -470,7 +470,7 @@ def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
                 builder.activate_block(true_block)
 
             index_type = builder._analyze_iterable_item_type(arg)
-            index = _create_iterable_lexpr(index_name, index_type)
+            index = create_synthetic_nameexpr(index_name, index_type)
             index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))  # type: ignore [arg-type]
 
             for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
