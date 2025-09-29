@@ -633,7 +633,7 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             is_last = i == len(descs) - 1
             next_block = fail_block if is_last else BasicBlock()
             builder.add_bool_branch(
-                builder.primitive_op(desc, [obj], expr.line), pass_block, next_block
+                builder.primitive_op(desc, [obj], expr.line), pass_block, next_block  # type: ignore [arg-type]
             )
             if not is_last:
                 builder.activate_block(next_block)
