@@ -1228,11 +1228,7 @@ def expr_has_specialized_for_helper(builder: IRBuilder, expr: Expression) -> boo
     if not isinstance(expr, CallExpr):
         return False
     if isinstance(expr.callee, RefExpr):
-        return expr.callee.fullname in {
-            "builtins.range",
-            "builtins.enumerate",
-            "builtins.zip",
-        }
+        return expr.callee.fullname in {"builtins.range", "builtins.enumerate", "builtins.zip"}
     elif isinstance(expr.callee, MemberExpr):
         return expr.callee.fullname in {"keys", "values", "items"}
     return False
