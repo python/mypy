@@ -465,6 +465,7 @@ L0:
     r0 = 'abc'
     r1 = PyTuple_New(3)
     r2 = 0
+    goto L2
 L1:
     r3 = r2 < 3 :: signed
     if r3 goto L2 else goto L4 :: bool
