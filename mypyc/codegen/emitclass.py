@@ -62,6 +62,7 @@ SLOT_DEFS: SlotTable = {
     "__hash__": ("tp_hash", generate_hash_wrapper),
     "__get__": ("tp_descr_get", generate_get_wrapper),
     "__getattr__": ("tp_getattro", dunder_attr_slot),
+    "__setattr__": ("tp_setattro", dunder_attr_slot),
 }
 
 AS_MAPPING_SLOT_DEFS: SlotTable = {
