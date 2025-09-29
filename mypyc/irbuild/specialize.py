@@ -31,7 +31,6 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     SuperExpr,
-    SymbolNode,
     TupleExpr,
     Var,
 )
@@ -590,11 +589,11 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
     obj_expr = expr.args[0]
     type_expr = expr.args[1]
-    
+
     if isinstance(type_expr, TupleExpr) and not type_expr.items:
         # we can compile this case to a noop
         return builder.false()
-    
+
     if isinstance(type_expr, (RefExpr, TupleExpr)):
         builder.types[obj_expr] = AnyType(TypeOfAny.from_error)
 
@@ -608,18 +607,21 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             return builder.builder.isinstance_helper(obj, irs, expr.line)
 
     if isinstance(type_expr, TupleExpr):
-        nodes: list[SymbolNode | None] = []
+        node_names: list[str] = []
         for item in type_expr.items:
             if not isinstance(item, RefExpr):
                 return None
             if item.node is None:
                 return None
-            if item.node.fullname not in nodes:
-                nodes.append(item.node.fullname)
+            if item.node.fullname not in node_names:
+                node_names.append(item.node.fullname)
 
-        descs = [isinstance_primitives.get(fullname) for fullname in nodes]
-    
-        obj = builder.accept(expr.args[0])
+        descs = [isinstance_primitives.get(fullname) for fullname in node_names]
+        if None in descs:
+            # not all types are primitive types, abort
+            return None
+
+        obj = builder.accept(obj_expr)
 
         retval = Register(bool_rprimitive)
         pass_block = BasicBlock()
@@ -628,9 +630,11 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
         # Chain the checks: if any succeed, jump to pass_block; else, continue
         for i, desc in enumerate(descs):
-            is_last = (i == len(descs) - 1)
+            is_last = i == len(descs) - 1
             next_block = fail_block if is_last else BasicBlock()
-            builder.add_bool_branch(builder.primitive_op(desc, [obj], expr.line), pass_block, next_block)
+            builder.add_bool_branch(
+                builder.primitive_op(desc, [obj], expr.line), pass_block, next_block
+            )
             if not is_last:
                 builder.activate_block(next_block)
 
@@ -648,12 +652,12 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         builder.activate_block(exit_block)
         return retval
 
-    if isinstance(expr.args[1], RefExpr):
-        node = expr.args[1].node
+    if isinstance(type_expr, RefExpr):
+        node = type_expr.node
         if node:
             desc = isinstance_primitives.get(node.fullname)
             if desc:
-                obj = builder.accept(expr.args[0])
+                obj = builder.accept(obj_expr)
                 return builder.primitive_op(desc, [obj], expr.line)
 
     return None
