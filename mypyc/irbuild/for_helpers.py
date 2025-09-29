@@ -1222,7 +1222,7 @@ def get_expr_length_value(
     return Integer(length, c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive)
 
 
-def _is_supported_forloop_iter(builder: IRBuilder, expr: Expression) -> bool:
+def expr_has_specialized_for_helper(builder: IRBuilder, expr: Expression) -> bool:
     if is_sequence_rprimitive(builder.node_type(expr)):
         return True
     if not isinstance(expr, CallExpr):
@@ -1232,14 +1232,13 @@ def _is_supported_forloop_iter(builder: IRBuilder, expr: Expression) -> bool:
             "builtins.range",
             "builtins.enumerate",
             "builtins.zip",
-            "builtins.reversed",
         }
     elif isinstance(expr.callee, MemberExpr):
         return expr.callee.fullname in {"keys", "values", "items"}
     return False
 
 
-def _create_iterable_lexpr(index_name: str, index_type: Type) -> NameExpr:
+def create_synthetic_nameexpr(index_name: str, index_type: Type) -> NameExpr:
     """This helper spoofs a NameExpr to use as the lvalue in one of the for loop helpers."""
     index = NameExpr(index_name)
     index.kind = LDEF
