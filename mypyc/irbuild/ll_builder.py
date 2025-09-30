@@ -2073,6 +2073,7 @@ class LowLevelIRBuilder:
                 line,
                 var_arg_idx,
                 is_pure=desc.is_pure,
+                returns_null=desc.returns_null,
             )
         )
         if desc.is_borrowed:
@@ -2156,6 +2157,7 @@ class LowLevelIRBuilder:
                 desc.extra_int_constants,
                 desc.priority,
                 is_pure=desc.is_pure,
+                returns_null=False,
             )
             return self.call_c(c_desc, args, line, result_type=result_type)
 

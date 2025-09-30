@@ -11,11 +11,12 @@ from __future__ import annotations
 from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes
+from mypy.errorcodes import ErrorCode
 
 
 class ErrorMessage(NamedTuple):
     value: str
-    code: codes.ErrorCode | None = None
+    code: ErrorCode | None = None
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
