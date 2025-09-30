@@ -14,7 +14,7 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Final, Optional
+from typing import Callable, Final, Optional, cast
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -30,16 +30,20 @@ from mypy.nodes import (
     NameExpr,
     RefExpr,
     StrExpr,
+    SuperExpr,
     TupleExpr,
     Var,
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
     BasicBlock,
+    Call,
     Extend,
     Integer,
+    PrimitiveDescription,
     RaiseStandardError,
     Register,
+    SetAttr,
     Truncate,
     Unreachable,
     Value,
@@ -69,6 +73,7 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     is_weakref_rprimitive,
     list_rprimitive,
+    object_rprimitive,
     set_rprimitive,
     str_rprimitive,
     uint8_rprimitive,
@@ -95,6 +100,7 @@ from mypyc.primitives.dict_ops import (
     isinstance_dict,
 )
 from mypyc.primitives.float_ops import isinstance_float
+from mypyc.primitives.generic_ops import generic_setattr
 from mypyc.primitives.int_ops import isinstance_int
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
@@ -588,25 +594,80 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     if not (len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]):
         return None
 
-    if isinstance(expr.args[1], (RefExpr, TupleExpr)):
-        builder.types[expr.args[0]] = AnyType(TypeOfAny.from_error)
+    obj_expr = expr.args[0]
+    type_expr = expr.args[1]
 
-        irs = builder.flatten_classes(expr.args[1])
+    if isinstance(type_expr, TupleExpr) and not type_expr.items:
+        # we can compile this case to a noop
+        return builder.false()
+
+    if isinstance(type_expr, (RefExpr, TupleExpr)):
+        builder.types[obj_expr] = AnyType(TypeOfAny.from_error)
+
+        irs = builder.flatten_classes(type_expr)
         if irs is not None:
             can_borrow = all(
                 ir.is_ext_class and not ir.inherits_python and not ir.allow_interpreted_subclasses
                 for ir in irs
             )
-            obj = builder.accept(expr.args[0], can_borrow=can_borrow)
+            obj = builder.accept(obj_expr, can_borrow=can_borrow)
             return builder.builder.isinstance_helper(obj, irs, expr.line)
 
-    if isinstance(expr.args[1], RefExpr):
-        node = expr.args[1].node
+    if isinstance(type_expr, RefExpr):
+        node = type_expr.node
         if node:
             desc = isinstance_primitives.get(node.fullname)
             if desc:
-                obj = builder.accept(expr.args[0])
+                obj = builder.accept(obj_expr)
                 return builder.primitive_op(desc, [obj], expr.line)
+
+    elif isinstance(type_expr, TupleExpr):
+        node_names: list[str] = []
+        for item in type_expr.items:
+            if not isinstance(item, RefExpr):
+                return None
+            if item.node is None:
+                return None
+            if item.node.fullname not in node_names:
+                node_names.append(item.node.fullname)
+
+        descs = [isinstance_primitives.get(fullname) for fullname in node_names]
+        if None in descs:
+            # not all types are primitive types, abort
+            return None
+
+        obj = builder.accept(obj_expr)
+
+        retval = Register(bool_rprimitive)
+        pass_block = BasicBlock()
+        fail_block = BasicBlock()
+        exit_block = BasicBlock()
+
+        # Chain the checks: if any succeed, jump to pass_block; else, continue
+        for i, desc in enumerate(descs):
+            is_last = i == len(descs) - 1
+            next_block = fail_block if is_last else BasicBlock()
+            builder.add_bool_branch(
+                builder.primitive_op(cast(PrimitiveDescription, desc), [obj], expr.line),
+                pass_block,
+                next_block,
+            )
+            if not is_last:
+                builder.activate_block(next_block)
+
+        # If any check passed
+        builder.activate_block(pass_block)
+        builder.assign(retval, builder.true(), expr.line)
+        builder.goto(exit_block)
+
+        # If all checks failed
+        builder.activate_block(fail_block)
+        builder.assign(retval, builder.false(), expr.line)
+        builder.goto(exit_block)
+
+        # Return the result
+        builder.activate_block(exit_block)
+        return retval
 
     return None
 
@@ -723,7 +784,9 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             if isinstance(expr, StrExpr):
                 return expr.value
             elif isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_final:
-                return str(expr.node.final_value)
+                final_value = expr.node.final_value
+                if final_value is not None:
+                    return str(final_value)
             return None
 
         for i in range(len(exprs) - 1):
@@ -1004,3 +1067,76 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     if isinstance(arg, (StrExpr, BytesExpr)) and len(arg.value) == 1:
         return Integer(ord(arg.value))
     return None
+
+
+def is_object(callee: RefExpr) -> bool:
+    """Returns True for object.<name> calls."""
+    return (
+        isinstance(callee, MemberExpr)
+        and isinstance(callee.expr, NameExpr)
+        and callee.expr.fullname == "builtins.object"
+    )
+
+
+def is_super_or_object(expr: CallExpr, callee: RefExpr) -> bool:
+    """Returns True for super().<name> or object.<name> calls."""
+    return isinstance(expr.callee, SuperExpr) or is_object(callee)
+
+
+@specialize_function("__new__", object_rprimitive)
+def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    fn = builder.fn_info
+    if fn.name != "__new__" or not is_super_or_object(expr, callee):
+        return None
+
+    ir = builder.get_current_class_ir()
+    if ir is None:
+        return None
+
+    call = '"object.__new__()"'
+    if not ir.is_ext_class:
+        builder.error(f"{call} not supported for non-extension classes", expr.line)
+        return None
+    if ir.inherits_python:
+        builder.error(
+            f"{call} not supported for classes inheriting from non-native classes", expr.line
+        )
+        return None
+    if len(expr.args) != 1:
+        builder.error(f"{call} supported only with 1 argument, got {len(expr.args)}", expr.line)
+        return None
+
+    typ_arg = expr.args[0]
+    method_args = fn.fitem.arg_names
+    if isinstance(typ_arg, NameExpr) and len(method_args) > 0 and method_args[0] == typ_arg.name:
+        subtype = builder.accept(expr.args[0])
+        return builder.add(Call(ir.setup, [subtype], expr.line))
+
+    return None
+
+
+@specialize_function("__setattr__", object_rprimitive)
+def translate_object_setattr(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    is_super = isinstance(expr.callee, SuperExpr)
+    is_object_callee = is_object(callee)
+    if not ((is_super and len(expr.args) >= 2) or (is_object_callee and len(expr.args) >= 3)):
+        return None
+
+    self_reg = builder.accept(expr.args[0]) if is_object_callee else builder.self()
+    ir = builder.get_current_class_ir()
+    if ir and (not ir.is_ext_class or ir.builtin_base or ir.inherits_python):
+        return None
+    # Need to offset by 1 for super().__setattr__ calls because there is no self arg in this case.
+    name_idx = 0 if is_super else 1
+    value_idx = 1 if is_super else 2
+    attr_name = expr.args[name_idx]
+    attr_value = expr.args[value_idx]
+    value = builder.accept(attr_value)
+
+    if isinstance(attr_name, StrExpr) and ir and ir.has_attr(attr_name.value):
+        name = attr_name.value
+        value = builder.coerce(value, ir.attributes[name], expr.line)
+        return builder.add(SetAttr(self_reg, name, value, expr.line))
+
+    name_reg = builder.accept(attr_name)
+    return builder.call_c(generic_setattr, [self_reg, name_reg, value], expr.line)
