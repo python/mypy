@@ -902,3 +902,51 @@ import native
 [out2]
 0
 None
+
+[case testIncrementalCompilationWithNonClassTypeDef]
+import other_a
+[file other_a.py]
+from other_b import MyInt
+[file other_a.py.2]
+from other_b import MyInt, NT, TD
+i = MyInt(42)
+
+def f(x: MyInt) -> int:
+    return x + 1
+
+def g(x: int) -> MyInt:
+    return MyInt(x + 2)
+
+print(i)
+print(f(i))
+print(g(13))
+
+def make_nt(x: int) -> NT:
+    return NT(x=MyInt(x))
+
+print(make_nt(4))
+
+def make_td(x: int) -> TD:
+    return {"x": MyInt(x)}
+
+print(make_td(5))
+
+[file other_b.py]
+from typing import NewType, NamedTuple, TypedDict
+from enum import Enum
+
+MyInt = NewType("MyInt", int)
+NT = NamedTuple("NT", [("x", MyInt)])
+TD = TypedDict("TD", {"x": MyInt})
+
+[file driver.py]
+import native
+
+[typing fixtures/typing-full.pyi]
+[out]
+[out2]
+42
+43
+15
+NT(x=4)
+{'x': 5}
