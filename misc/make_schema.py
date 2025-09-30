@@ -3,12 +3,15 @@ from __future__ import annotations
 import dataclasses
 import json
 import re
+import sys
 import textwrap
 from collections.abc import Generator, Sequence
 from pathlib import Path
 from typing import Any
 
 DIR = Path(__file__).parent.resolve()
+
+assert sys.version_info > (3, 9)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -30,7 +33,7 @@ class ConfigOpt:
                 case "string":
                     retval["default"] = self.default.strip("`")
                 case _:
-                    msg = f"Default not suppored for {self.type_str}"
+                    msg = f"Default not supported for {self.type_str}"
                     raise RuntimeError(msg)
         match self.type_str:
             case "boolean" | "integer" | "string":
