@@ -3938,8 +3938,12 @@ class CollectAliasesVisitor(TypeQuery[list[mypy.nodes.TypeAlias]]):
         assert t.alias is not None
         if t.alias not in self.seen_alias_nodes:
             self.seen_alias_nodes.add(t.alias)
-            return [t.alias] + t.alias.target.accept(self)
-        return []
+            res = [t.alias] + t.alias.target.accept(self)
+        else:
+            res = []
+        for arg in t.args:
+            res.extend(arg.accept(self))
+        return res
 
 
 def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[Instance]:
