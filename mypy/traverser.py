@@ -504,7 +504,7 @@ class ExtendedTraverserVisitor(TraverserVisitor):
     In addition to the base traverser it:
         * has visit_ methods for leaf nodes
         * has common method that is called for all nodes
-        * allows to skip recursing into a node
+        * allows skipping recursing into a node
 
     Note that this traverser still doesn't visit some internal
     mypy constructs like _promote expression and Var.
