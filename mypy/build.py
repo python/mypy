@@ -1546,7 +1546,7 @@ def write_cache(
     source_hash: str,
     ignore_all: bool,
     manager: BuildManager,
-) -> tuple[str, tuple[dict[str, Any], str, str] | None]:
+) -> tuple[str, tuple[dict[str, Any], str] | None]:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -1568,7 +1568,7 @@ def write_cache(
 
     Returns:
       A tuple containing the interface hash and inner tuple with cache meta JSON
-      that should be written and paths to cache files (inner tuple may be None,
+      that should be written and path to cache file (inner tuple may be None,
       if the cache data could not be written).
     """
     metastore = manager.metastore
@@ -1662,12 +1662,10 @@ def write_cache(
         "ignore_all": ignore_all,
         "plugin_data": plugin_data,
     }
-    return interface_hash, (meta, meta_json, data_json)
+    return interface_hash, (meta, meta_json)
 
 
-def write_cache_meta(
-    meta: dict[str, Any], manager: BuildManager, meta_json: str, data_json: str
-) -> CacheMeta:
+def write_cache_meta(meta: dict[str, Any], manager: BuildManager, meta_json: str) -> None:
     # Write meta cache file
     metastore = manager.metastore
     meta_str = json_dumps(meta, manager.options.debug_cache)
@@ -1676,8 +1674,6 @@ def write_cache_meta(
         # (see https://github.com/python/mypy/issues/3215).
         # The next run will simply find the cache entry out of date.
         manager.log(f"Error writing meta JSON file {meta_json}")
-
-    return cache_meta_from_dict(meta, data_json)
 
 
 """Dependency manager.
@@ -1864,9 +1860,6 @@ class State:
     # List of (path, line number) tuples giving context for import
     import_context: list[tuple[str, int]]
 
-    # The State from which this module was imported, if any
-    caller_state: State | None = None
-
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
 
@@ -1917,7 +1910,6 @@ class State:
         self.manager = manager
         State.order_counter += 1
         self.order = State.order_counter
-        self.caller_state = caller_state
         self.caller_line = caller_line
         if caller_state:
             self.import_context = caller_state.import_context.copy()
@@ -2007,11 +1999,6 @@ class State:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file(temporary=temporary)
             self.compute_dependencies()
-
-    @property
-    def xmeta(self) -> CacheMeta:
-        assert self.meta, "missing meta on allegedly fresh module"
-        return self.meta
 
     def add_ancestors(self) -> None:
         if self.path is not None:
@@ -2479,7 +2466,7 @@ class State:
 
         return valid_refs
 
-    def write_cache(self) -> tuple[dict[str, Any], str, str] | None:
+    def write_cache(self) -> tuple[dict[str, Any], str] | None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # We don't support writing cache files in fine-grained incremental mode.
         if (
@@ -3477,14 +3464,13 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
     for id in stale:
         meta_tuple = meta_tuples[id]
         if meta_tuple is None:
-            graph[id].meta = None
             continue
-        meta, meta_json, data_json = meta_tuple
+        meta, meta_json = meta_tuple
         meta["dep_hashes"] = {
             dep: graph[dep].interface_hash for dep in graph[id].dependencies if dep in graph
         }
         meta["error_lines"] = errors_by_id.get(id, [])
-        graph[id].meta = write_cache_meta(meta, manager, meta_json, data_json)
+        write_cache_meta(meta, manager, meta_json)
 
 
 def sorted_components(
