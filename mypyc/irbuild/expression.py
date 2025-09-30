@@ -101,6 +101,7 @@ from mypyc.irbuild.specialize import (
     apply_function_specialization,
     apply_method_specialization,
     translate_object_new,
+    translate_object_setattr,
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
@@ -478,6 +479,12 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     else:
         if callee.name == "__new__":
             result = translate_object_new(builder, expr, MemberExpr(callee.call, "__new__"))
+            if result:
+                return result
+        elif callee.name == "__setattr__":
+            result = translate_object_setattr(
+                builder, expr, MemberExpr(callee.call, "__setattr__")
+            )
             if result:
                 return result
         if ir.is_ext_class and ir.builtin_base is None and not ir.inherits_python:

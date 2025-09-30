@@ -4518,5 +4518,590 @@ test_getattr_inherited()
 test_getattr_overridden()
 test_getattr_nonnative()
 
+[typing fixtures/typing-full.pyi]
+
+[case testDunderSetAttr]
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+from typing import ClassVar
+
+class SetAttr:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+    const: int = 42
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        super().__setattr__("regular_attr", regular_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var" or key == "const":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __getattr__(self, key: str) -> object:
+        return self._attributes.get(key)
+
+class SetAttrInherited(SetAttr):
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__init__(regular_attr, extra_attrs)
+
+class SetAttrOverridden(SetAttr):
+    sub_attr: int
+    subclass_var: ClassVar[str] = "y"
+
+    def __init__(self, regular_attr: int, sub_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__init__(regular_attr, extra_attrs)
+        object.__setattr__(self, "sub_attr", sub_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "sub_attr":
+            object.__setattr__(self, "sub_attr", val)
+        elif key == "subclass_var":
+            raise AttributeError()
+        else:
+            super().__setattr__(key, val)
+
+@mypyc_attr(native_class=False)
+class SetAttrNonNative:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+    const: int = 42
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        super().__setattr__("regular_attr", regular_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var" or key == "const":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __getattr__(self, key: str) -> object:
+        return self._attributes.get(key)
+
+class NoSetAttr:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+@mypyc_attr(native_class=False)
+class NoSetAttrNonNative:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+    def __getattr__(self, attr: str) -> object:
+        pass
+
+def test_setattr() -> None:
+    i = SetAttr(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+def test_setattr_inherited() -> None:
+    i = SetAttrInherited(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+def test_setattr_overridden() -> None:
+    i = SetAttrOverridden(99, 1, {"one": 1})
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.regular_attr == 99
+    assert i.sub_attr == 1
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    i.__setattr__("sub_attr", 2)
+    assert i.sub_attr == 2
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("subclass_var", "a")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    setattr(i, "sub_attr", 3)
+    assert i.sub_attr == 3
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "subclass_var", "b")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    i.sub_attr = 4
+    assert i.sub_attr == 4
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    base_ref: SetAttr = i
+    setattr(base_ref, "sub_attr", 5)
+    assert base_ref.sub_attr == 5
+
+    base_ref.sub_attr = 6
+    assert base_ref.sub_attr == 6
+
+    with assertRaises(AttributeError):
+        setattr(base_ref, "subclass_var", "c")
+
+def test_setattr_nonnative() -> None:
+    i = SetAttrNonNative(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+def test_no_setattr() -> None:
+    i = NoSetAttr(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    with assertRaises(AttributeError):
+        i.super_setattr("not_attr", 100)
+
+    with assertRaises(AttributeError):
+        i.object_setattr("not_attr", 101)
+
+    with assertRaises(AttributeError):
+        object.__setattr__(i, "not_attr", 102)
+
+def test_no_setattr_nonnative() -> None:
+    i = NoSetAttrNonNative(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    i.super_setattr("one", 100)
+    assert i.one == 100
+
+    i.object_setattr("two", 101)
+    assert i.two == 101
+
+    object.__setattr__(i, "three", 102)
+    assert i.three == 102
+
+[typing fixtures/typing-full.pyi]
+
+[case testDunderSetAttrInterpreted]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar
+
+class SetAttr:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+    const: int = 42
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        super().__setattr__("regular_attr", regular_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var" or key == "const":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __getattr__(self, key: str) -> object:
+        return self._attributes.get(key)
+
+class SetAttrInherited(SetAttr):
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__init__(regular_attr, extra_attrs)
+
+class SetAttrOverridden(SetAttr):
+    sub_attr: int
+    subclass_var: ClassVar[str] = "y"
+
+    def __init__(self, regular_attr: int, sub_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__init__(regular_attr, extra_attrs)
+        object.__setattr__(self, "sub_attr", sub_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "sub_attr":
+            object.__setattr__(self, "sub_attr", val)
+        elif key == "subclass_var":
+            raise AttributeError()
+        else:
+            super().__setattr__(key, val)
+
+@mypyc_attr(native_class=False)
+class SetAttrNonNative:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+    const: int = 42
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        super().__setattr__("regular_attr", regular_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var" or key == "const":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __getattr__(self, key: str) -> object:
+        return self._attributes.get(key)
+
+class NoSetAttr:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+@mypyc_attr(native_class=False)
+class NoSetAttrNonNative:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+    def __getattr__(self, attr: str) -> object:
+        pass
+
+[file driver.py]
+from native import SetAttr, SetAttrInherited, SetAttrOverridden, SetAttrNonNative, NoSetAttr, NoSetAttrNonNative
+from testutil import assertRaises
+
+def test_setattr() -> None:
+    i = SetAttr(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+def test_setattr_inherited() -> None:
+    i = SetAttrInherited(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+def test_setattr_overridden() -> None:
+    i = SetAttrOverridden(99, 1, {"one": 1})
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.regular_attr == 99
+    assert i.sub_attr == 1
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    i.__setattr__("sub_attr", 2)
+    assert i.sub_attr == 2
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("subclass_var", "a")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    setattr(i, "sub_attr", 3)
+    assert i.sub_attr == 3
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "subclass_var", "b")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    i.sub_attr = 4
+    assert i.sub_attr == 4
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    base_ref: SetAttr = i
+    setattr(base_ref, "sub_attr", 5)
+    assert base_ref.sub_attr == 5
+
+    base_ref.sub_attr = 6
+    assert base_ref.sub_attr == 6
+
+    with assertRaises(AttributeError):
+        setattr(base_ref, "subclass_var", "c")
+
+def test_setattr_nonnative() -> None:
+    i = SetAttrNonNative(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+def test_no_setattr() -> None:
+    i = NoSetAttr(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    with assertRaises(AttributeError):
+        i.super_setattr("not_attr", 100)
+
+    with assertRaises(AttributeError):
+        i.object_setattr("not_attr", 101)
+
+    with assertRaises(AttributeError):
+        object.__setattr__(i, "not_attr", 102)
+
+def test_no_setattr_nonnative() -> None:
+    i = NoSetAttrNonNative(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    i.super_setattr("one", 100)
+    assert i.one == 100
+
+    i.object_setattr("two", 101)
+    assert i.two == 101
+
+    object.__setattr__(i, "three", 102)
+    assert i.three == 102
+
+test_setattr()
+test_setattr_inherited()
+test_setattr_overridden()
+test_setattr_nonnative()
+test_no_setattr()
+test_no_setattr_nonnative()
 
 [typing fixtures/typing-full.pyi]
