@@ -699,10 +699,15 @@ class LowLevelIRBuilder:
         even faster type comparison checks `type(obj) is typ`.
         """
         concrete = all_concrete_classes(class_ir)
-        if concrete is None or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1 or any(
-            # we can only take the fast path if we know
-            # an end user won't inherit from the class
-            cls.allow_interpreted_subclasses for cls in concrete
+        if (
+            concrete is None
+            or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1
+            or any(
+                # we can only take the fast path if we know
+                # an end user won't inherit from the class
+                cls.allow_interpreted_subclasses
+                for cls in concrete
+            )
         ):
             return self.primitive_op(
                 fast_isinstance_op, [obj, self.get_native_type(class_ir)], line
