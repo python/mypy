@@ -21,6 +21,7 @@ from mypy.nodes import (
     ArgKind,
     TypeInfo,
 )
+from mypy.type_visitor import ALL_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -41,7 +42,6 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
-    TypeQuery,
     TypeType,
     TypeVarId,
     TypeVarLikeType,
@@ -670,9 +670,9 @@ def is_complete_type(typ: Type) -> bool:
     return typ.accept(CompleteTypeVisitor())
 
 
-class CompleteTypeVisitor(TypeQuery[bool]):
+class CompleteTypeVisitor(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(all)
+        super().__init__(ALL_STRATEGY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return False
@@ -1110,7 +1110,10 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     # like U -> U, should be Callable[..., Any], but if U is a self-type, we can
                     # allow it to leak, to be later bound to self. A bunch of existing code
                     # depends on this old behaviour.
-                    and not any(tv.id.is_self() for tv in cactual.variables)
+                    and not (
+                        any(tv.id.is_self() for tv in cactual.variables)
+                        and template.is_ellipsis_args
+                    )
                 ):
                     # If the actual callable is generic, infer constraints in the opposite
                     # direction, and indicate to the solver there are extra type variables
@@ -1335,6 +1338,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     res.extend(
                         infer_constraints(template_items[i], actual_items[i], self.direction)
                     )
+            res.extend(
+                infer_constraints(
+                    template.partial_fallback, actual.partial_fallback, self.direction
+                )
+            )
             return res
         elif isinstance(actual, AnyType):
             return self.infer_against_any(template.items, actual)

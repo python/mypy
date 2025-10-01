@@ -668,6 +668,8 @@ def update_module_isolated(
     state.type_check_first_pass()
     state.type_check_second_pass()
     state.detect_possibly_undefined_vars()
+    state.generate_unused_ignore_notes()
+    state.generate_ignore_without_code_notes()
     t2 = time.time()
     state.finish_passes()
     t3 = time.time()
@@ -1023,10 +1025,12 @@ def reprocess_nodes(
     # We seem to need additional passes in fine-grained incremental mode.
     checker.pass_num = 0
     checker.last_pass = 3
-    more = checker.check_second_pass(nodes)
+    # It is tricky to reliably invalidate constructor cache in fine-grained increments.
+    # See PR 19514 description for details.
+    more = checker.check_second_pass(nodes, allow_constructor_cache=False)
     while more:
         more = False
-        if graph[module_id].type_checker().check_second_pass():
+        if graph[module_id].type_checker().check_second_pass(allow_constructor_cache=False):
             more = True
 
     if manager.options.export_types:

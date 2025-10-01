@@ -25,7 +25,7 @@ class tuple(Sequence[Tco]):
 class function: pass
 
 class str:
-    def __init__(self, x: 'int') -> None: pass
+    def __init__(self, x: 'int' = ...) -> None: pass
     def __add__(self, x: 'str') -> 'str': pass
     def __eq__(self, x: object) -> bool: pass
     def startswith(self, x: 'str') -> bool: pass

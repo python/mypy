@@ -731,6 +731,53 @@ assert a(x=x)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+# https://github.com/python/mypy/issues/19575
+[case testNoCrashOnDunderCallTypeGuardTemporaryObject]
+from typing_extensions import TypeGuard
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeGuard[int]:
+        return True
+x = object()
+if E()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnDunderCallTypeIsTemporaryObject]
+from typing_extensions import TypeIs
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeIs[int]:
+        return True
+x = object()
+if E()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnDunderCallTypeIsTemporaryObjectGeneric]
+from typing import Generic, TypeVar
+from typing_extensions import TypeIs
+T = TypeVar("T")
+class E(Generic[T]):
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeIs[T]:
+        return True
+x = object()
+if E[int]()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardTemporaryObjectWithKeywordArg]
+from typing_extensions import TypeGuard
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeGuard[int]:
+        return True
+x = object()
+if E()(o=x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeGuardRestrictAwaySingleInvariant]
 from typing import List
 from typing_extensions import TypeGuard
@@ -812,4 +859,21 @@ def is_xlike(obj: object) -> TypeIs[X | type[X]]: ...
 raw_target: object
 if isinstance(raw_target, type) and is_xlike(raw_target):
     reveal_type(raw_target)  # N: Revealed type is "type[__main__.X]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithDefer]
+from typing import Union
+from typing_extensions import TypeGuard
+
+class A: ...
+class B: ...
+
+def is_a(x: object) -> TypeGuard[A]:
+    return defer_not_defined()  # E: Name "defer_not_defined" is not defined
+
+def main(x: Union[A, B]) -> None:
+    if is_a(x):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[__main__.A, __main__.B]"
 [builtins fixtures/tuple.pyi]

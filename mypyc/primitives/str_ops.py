@@ -21,6 +21,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -47,6 +48,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# translate isinstance(obj, str)
+isinstance_str = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyUnicode_Check",
+    error_kind=ERR_NEVER,
+)
+
 # str1 + str2
 binary_op(
     name="+",
@@ -69,6 +79,15 @@ binary_op(
     steals=[True, False],
 )
 
+# str1 == str2 (very common operation, so we provide our own)
+str_eq = custom_primitive_op(
+    name="str_eq",
+    c_function_name="CPyStr_Equal",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
 unicode_compare = custom_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_int_rprimitive,
@@ -82,6 +101,15 @@ method_op(
     arg_types=[str_rprimitive, int_rprimitive],
     return_type=str_rprimitive,
     c_function_name="CPyStr_GetItem",
+    error_kind=ERR_MAGIC,
+)
+
+# This is unsafe since it assumes that the index is within reasonable bounds.
+# In the future this might do no bounds checking at all.
+str_get_item_unsafe_op = custom_op(
+    arg_types=[str_rprimitive, c_pyssize_t_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_GetItemUnsafe",
     error_kind=ERR_MAGIC,
 )
 
@@ -277,6 +305,34 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# str.count(substring)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyStr_Count",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(0, c_pyssize_t_rprimitive)],
+)
+
+# str.count(substring, start)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyStr_Count",
+    error_kind=ERR_NEG_INT,
+)
+
+# str.count(substring, start, end)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyStr_CountFull",
+    error_kind=ERR_NEG_INT,
+)
+
 # str.replace(old, new)
 method_op(
     name="replace",
@@ -331,12 +387,36 @@ method_op(
     extra_int_constants=[(0, pointer_rprimitive)],
 )
 
-# obj.decode(encoding, errors)
+# bytes.decode(encoding, errors)
 method_op(
     name="decode",
     arg_types=[bytes_rprimitive, str_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
     c_function_name="CPy_Decode",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - utf8 strict specialization
+bytes_decode_utf8_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeUTF8",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - ascii strict specialization
+bytes_decode_ascii_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeASCII",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - latin1 strict specialization
+bytes_decode_latin1_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeLatin1",
     error_kind=ERR_MAGIC,
 )
 

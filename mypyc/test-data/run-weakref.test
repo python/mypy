@@ -1,0 +1,52 @@
+# Test cases for weakrefs (compile and run)
+
+[case testWeakrefRef]
+# mypy: disable-error-code="union-attr"
+from weakref import proxy, ref
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+from typing import Optional
+
+@mypyc_attr(native_class=False)
+class Object:
+    """some random weakreffable object"""
+    def some_meth(self) -> int:
+        return 1
+
+_callback_called_cache = {"ref": False, "proxy": False}
+
+def test_weakref_ref() -> None:
+    obj: Optional[Object] = Object()
+    r = ref(obj)
+    assert r() is obj
+    obj = None
+    assert r() is None, r()
+
+def test_weakref_ref_with_callback() -> None:
+    obj: Optional[Object] = Object()
+    r = ref(obj, lambda x: _callback_called_cache.__setitem__("ref", True))
+    assert r() is obj
+    obj = None
+    assert r() is None, r()
+    assert _callback_called_cache["ref"] is True
+
+def test_weakref_proxy() -> None:
+    obj: Optional[Object] = Object()
+    p = proxy(obj)
+    assert obj.some_meth() == 1
+    assert p.some_meth() == 1
+    obj.some_meth()
+    obj = None
+    with assertRaises(ReferenceError):
+        p.some_meth()
+
+def test_weakref_proxy_with_callback() -> None:
+    obj: Optional[Object] = Object()
+    p = proxy(obj, lambda x: _callback_called_cache.__setitem__("proxy", True))
+    assert obj.some_meth() == 1
+    assert p.some_meth() == 1
+    obj.some_meth()
+    obj = None
+    with assertRaises(ReferenceError):
+        p.some_meth()
+    assert _callback_called_cache["proxy"] is True

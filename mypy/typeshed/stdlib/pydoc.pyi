@@ -5,7 +5,7 @@ from builtins import list as _list  # "list" conflicts with method name
 from collections.abc import Callable, Container, Mapping, MutableMapping
 from reprlib import Repr
 from types import MethodType, ModuleType, TracebackType
-from typing import IO, Any, AnyStr, Final, NoReturn, Protocol, TypeVar
+from typing import IO, Any, AnyStr, Final, NoReturn, Protocol, TypeVar, type_check_only
 from typing_extensions import TypeGuard, deprecated
 
 __all__ = ["help"]
@@ -17,6 +17,7 @@ __date__: Final[str]
 __version__: Final[str]
 __credits__: Final[str]
 
+@type_check_only
 class _Pager(Protocol):
     def __call__(self, text: str, title: str = "") -> None: ...
 
@@ -33,11 +34,11 @@ def visiblename(name: str, all: Container[str] | None = None, obj: object = None
 def classify_class_attrs(object: object) -> list[tuple[str, str, type, str]]: ...
 
 if sys.version_info >= (3, 13):
-    @deprecated("Deprecated in Python 3.13.")
-    def ispackage(path: str) -> bool: ...
+    @deprecated("Deprecated since Python 3.13.")
+    def ispackage(path: str) -> bool: ...  # undocumented
 
 else:
-    def ispackage(path: str) -> bool: ...
+    def ispackage(path: str) -> bool: ...  # undocumented
 
 def source_synopsis(file: IO[AnyStr]) -> AnyStr | None: ...
 def synopsis(filename: str, cache: MutableMapping[str, tuple[int, str]] = {}) -> str | None: ...

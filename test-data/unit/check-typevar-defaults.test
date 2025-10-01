@@ -729,8 +729,6 @@ class C(Generic[_I]): pass
 t: type[C] | int = C
 [builtins fixtures/tuple.pyi]
 
-
-
 [case testGenericTypeAliasWithDefaultTypeVarPreservesNoneInDefault]
 from typing_extensions import TypeVar
 from typing import Generic, Union
@@ -748,4 +746,105 @@ class A(Generic[T1, T2]):
 MyA = A[T1, int]
 a: MyA = A(None, 10)
 reveal_type(a.a)  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultAliasesTypeAliasType]
+from typing import Generic
+from typing_extensions import TypeAliasType, TypeVar
+
+K = TypeAliasType("K", int)
+V = TypeAliasType("V", int)
+L = TypeAliasType("L", list[int])
+T1 = TypeVar("T1", str, K, default=K)
+T2 = TypeVar("T2", str, K, default=V)
+T3 = TypeVar("T3", str, L, default=L)
+
+class A1(Generic[T1]):
+    x: T1
+class A2(Generic[T2]):
+    x: T2
+class A3(Generic[T3]):
+    x: T3
+
+reveal_type(A1().x)  # N: Revealed type is "builtins.int"
+reveal_type(A2().x)  # N: Revealed type is "builtins.int"
+reveal_type(A3().x)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultAliasesImplicitAlias]
+from typing_extensions import TypeVar
+
+K = int
+V = int
+L = list[int]
+T1 = TypeVar("T1", str, K, default=K)
+T2 = TypeVar("T2", str, K, default=V)
+T3 = TypeVar("T3", str, L, default=L)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultAliasesExplicitAlias]
+from typing_extensions import TypeAlias, TypeVar
+
+K: TypeAlias = int
+V: TypeAlias = int
+L: TypeAlias = list[int]
+T1 = TypeVar("T1", str, K, default=K)
+T2 = TypeVar("T2", str, K, default=V)
+T3 = TypeVar("T3", str, L, default=L)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultSpecialTypes]
+from typing import Generic, NamedTuple
+from typing_extensions import TypedDict, TypeVar
+
+class TD(TypedDict):
+    foo: str
+
+class NT(NamedTuple):
+    foo: str
+
+T1 = TypeVar("T1", str, TD, default=TD)
+T2 = TypeVar("T2", str, NT, default=NT)
+
+class A1(Generic[T1]):
+    x: T1
+class A2(Generic[T2]):
+    x: T2
+
+reveal_type(A1().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.str})"
+reveal_type(A2().x)  # N: Revealed type is "tuple[builtins.str, fallback=__main__.NT]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarConstraintsDefaultSpecialTypesGeneric]
+from typing import Generic, NamedTuple
+from typing_extensions import TypedDict, TypeVar
+
+T = TypeVar("T")
+
+class TD(TypedDict, Generic[T]):
+    foo: T
+class TD2(TD[int]): pass
+class TD3(TD[int]):
+    bar: str
+
+class NT(NamedTuple, Generic[T]):
+    foo: T
+class NT2(NT[int]): pass
+
+T1 = TypeVar("T1", str, TD[int], default=TD[int])
+T2 = TypeVar("T2", str, NT[int], default=NT[int])
+T3 = TypeVar("T3", str, TD2, default=TD[int])
+T4 = TypeVar("T4", str, TD3, default=TD[int])  # E: TypeVar default must be one of the constraint types
+T5 = TypeVar("T5", str, NT2, default=NT[int])  # E: TypeVar default must be one of the constraint types
+
+class A1(Generic[T1]):
+    x: T1
+class A2(Generic[T2]):
+    x: T2
+class A3(Generic[T3]):
+    x: T3
+
+reveal_type(A1().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.int})"
+reveal_type(A2().x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(A3().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.int})"
 [builtins fixtures/tuple.pyi]

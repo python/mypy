@@ -2752,7 +2752,7 @@ class B:
     @property
     @dec
     def f(self) -> int: pass
-    @dec # E: Only supported top decorator is @f.setter
+    @dec # E: Only supported top decorators are "@f.setter" and "@f.deleter"
     @f.setter
     def f(self, v: int) -> None: pass
 
@@ -2764,7 +2764,6 @@ class C:
     @dec
     def f(self, v: int) -> None: pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testInvalidArgCountForProperty]
 from typing import Callable, TypeVar
@@ -2783,7 +2782,6 @@ class A:
     @property
     def h(self, *args, **kwargs) -> int: pass   # OK
 [builtins fixtures/property.pyi]
-[out]
 
 [case testSubtypingUnionGenericBounds]
 from typing import Callable, TypeVar, Union, Sequence
@@ -3591,3 +3589,122 @@ class Bar(Foo):
 
     def foo(self, value: Union[int, str]) -> Union[int, str]:
         return super().foo(value)  # E: Call to abstract method "foo" of "Foo" with trivial body via super() is unsafe
+
+[case fullNamesOfImportedBaseClassesDisplayed]
+from a import A
+
+class B(A):
+    def f(self, x: str) -> None:  # E: Argument 1 of "f" is incompatible with supertype "a.A"; supertype defines the argument type as "int" \
+                                  # N: This violates the Liskov substitution principle \
+                                  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+        ...
+    def g(self, x: str) -> None:  # E: Signature of "g" incompatible with supertype "a.A" \
+                                  # N:      Superclass: \
+                                  # N:          def g(self) -> None \
+                                  # N:      Subclass: \
+                                  # N:          def g(self, x: str) -> None
+        ...
+
+[file a.py]
+class A:
+    def f(self, x: int) -> None:
+        ...
+    def g(self) -> None:
+        ...
+
+[case testBoundMethodsAssignedInClassBody]
+from typing import Callable
+
+class A:
+    def f(self, x: int) -> str:
+        pass
+    @classmethod
+    def g(cls, x: int) -> str:
+        pass
+    @staticmethod
+    def h(x: int) -> str:
+        pass
+    attr: Callable[[int], str]
+
+class C:
+    x1 = A.f
+    x2 = A.g
+    x3 = A().f
+    x4 = A().g
+    x5 = A.h
+    x6 = A().h
+    x7 = A().attr
+
+reveal_type(C.x1)  # N: Revealed type is "def (self: __main__.A, x: builtins.int) -> builtins.str"
+reveal_type(C.x2)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x3)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x4)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x5)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x7)  # N: Revealed type is "def (builtins.int) -> builtins.str"
+
+reveal_type(C().x1)  # E: Invalid self argument "C" to attribute function "x1" with type "Callable[[A, int], str]" \
+                     # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x2)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x3)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x4)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x5)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x7)  # E: Invalid self argument "C" to attribute function "x7" with type "Callable[[int], str]" \
+                     # N: Revealed type is "def () -> builtins.str"
+[builtins fixtures/classmethod.pyi]
+
+[case testFunctionRedefinitionDeferred]
+from typing import Callable, TypeVar
+
+def outer() -> None:
+    if bool():
+        def inner() -> str: ...
+    else:
+        def inner() -> int: ...  # E: All conditional function variants must have identical signatures \
+                                 # N: Original: \
+                                 # N:     def inner() -> str \
+                                 # N: Redefinition: \
+                                 # N:     def inner() -> int
+    x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
+[case testCheckFunctionErrorContextDuplicateDeferred]
+# flags: --show-error-context
+from typing import Callable, TypeVar
+
+def a() -> None:
+    def b() -> None:
+        1 + ""
+        x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[out]
+main: note: In function "a":
+main:6: error: Unsupported operand types for + ("int" and "str")
+
+[case testNoExtraNoteForUnpacking]
+from typing import Protocol
+
+class P(Protocol):
+    arg: int
+    # Something that list and dict also have
+    def __contains__(self, item: object) -> bool: ...
+
+def foo(x: P, y: P) -> None: ...
+
+args: list[object]
+foo(*args)  # E: Argument 1 to "foo" has incompatible type "*list[object]"; expected "P"
+kwargs: dict[str, object]
+foo(**kwargs)  # E: Argument 1 to "foo" has incompatible type "**dict[str, object]"; expected "P"
+[builtins fixtures/dict.pyi]
