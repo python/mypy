@@ -78,7 +78,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         isinstance(expr, CallExpr)
         and isinstance(callee := expr.callee, MemberExpr)
         and callee.name == "format"
-        and (folded_callee := constant_fold_expr(callee)) is not None
+        and isinstance(folded_callee := constant_fold_expr(builder, callee), str)
     ):
         folded_args: list[ConstantValue] = []
         for arg in expr.args:
