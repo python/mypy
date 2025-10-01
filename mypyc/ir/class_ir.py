@@ -347,7 +347,7 @@ class ClassIR:
         for child in self.children:
             if child.allow_interpreted_subclasses:
                 return None
-            if not (child.is_ext_class or child.is_final):
+            if not (child.is_ext_class or child.is_final_class):
                 return None
             if child.children:
                 child_subs = child.subclasses()
