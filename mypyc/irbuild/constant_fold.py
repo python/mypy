@@ -74,7 +74,12 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
     # --- str.format constant folding
-    elif isinstance(expr, CallExpr) and isinstance(callee := expr.callee, MemberExpr) and callee.name == "format" and (folded_callee := constant_fold_expr(callee)) is not None:
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, MemberExpr)
+        and callee.name == "format"
+        and (folded_callee := constant_fold_expr(callee)) is not None
+    ):
         folded_args: list[ConstantValue] = []
         for arg in expr.args:
             arg_val = constant_fold_expr(builder, arg)
