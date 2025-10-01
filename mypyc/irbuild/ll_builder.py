@@ -1563,18 +1563,18 @@ class LowLevelIRBuilder:
                 if is_string_literal(rhs):
                     # we can optimize out the check entirely in some constant-folded cases
                     return self.true() if lhs.value == rhs.value else self.false()
-                
+
                 # if lhs argument is string literal, switch sides to match specializer C api
                 lhs, rhs = rhs, lhs
                 literal_fastpath = True
             elif is_string_literal(rhs):
                 literal_fastpath = True
-                
+
             if literal_fastpath:
                 literal_string = cast(str, cast(LoadLiteral, rhs).value)
                 literal_length = Integer(len(literal_string), c_pyssize_t_rprimitive, line)
                 return self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
-            
+
             return self.primitive_op(str_eq, [lhs, rhs], line)
 
         elif op == "!=":
