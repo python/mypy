@@ -137,27 +137,28 @@ def get_mypyc_attrs(
     attrs: MypycAttrs = {}
     lines: dict[MypycAttr, int] = {}
 
-    def record_unsupported_key(key: str) -> None:
-        errors.error(f"{key} is not a supported `mypyc_attrs` key.", path, line)
-        errors.note(f"supported keys: {', '.join(map(repr, sorted(MYPYC_ATTRS)))}", path, line)
+    def set_mypyc_attr(key: MypycAttr, value: Any, line: int) -> None:
+        if key in MYPYC_ATTRS:
+            attrs[key] = value
+            lines[key] = line
+        else:
+            errors.error(f"{key} is not a supported `mypyc_attrs` key.", path, line)
+            errors.note(f"supported keys: {', '.join(map(repr, sorted(MYPYC_ATTRS)))}", path, line)
 
     for dec in stmt.decorators:
         if d := get_mypyc_attr_call(dec):
             line = d.line
+
+            key: MypycAttr
             for name, arg in zip(d.arg_names, d.args):
                 if name is None:
                     if isinstance(arg, StrExpr):
-                        key = cast(MypycAttr, arg.value)
-                        if key in MYPYC_ATTRS:
-                            attrs[key] = True
-                            lines[key] = line
-                        else:
-                            record_unsupported_key(key)
-                elif name not in MYPYC_ATTRS:
-                    record_unsupported_key(name)
+                        set_mypyc_attr(arg.value, True, line)
+                    else:
+                        errors.error("All `mypyc_attr` positional arguments must be string literals.", path, line)
                 else:
-                    attrs[name] = get_mypyc_attr_literal(arg)
-                    lines[name] = line
+                    arg_value = get_mypyc_attr_literal(arg)
+                    set_mypyc_attr(name, arg_value, line)
 
     return attrs, lines
 
