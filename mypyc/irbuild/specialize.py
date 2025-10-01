@@ -1060,8 +1060,9 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
         return None
     arg = expr.args[0]
-    if isinstance(arg, (StrExpr, BytesExpr)) and len(arg.value) == 1:
-        return Integer(ord(arg.value))
+    folded_arg = constant_fold_expr(builder, arg)
+    if isinstance(folded_arg, (str, bytes)) and len(folded_arg) == 1:
+        return Integer(ord(folded_arg))
     return None
 
 
