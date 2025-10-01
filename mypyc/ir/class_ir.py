@@ -345,6 +345,10 @@ class ClassIR:
             return None
         result = set(self.children)
         for child in self.children:
+            if child.allow_interpreted_subclasses:
+                return None
+            if not (child.is_ext_class or child.is_final):
+                return None
             if child.children:
                 child_subs = child.subclasses()
                 if child_subs is None:
