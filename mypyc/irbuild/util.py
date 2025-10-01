@@ -136,7 +136,7 @@ def get_mypyc_attrs(
     attrs: MypycAttrs = {}
     lines: dict[MypycAttr, int] = {}
 
-    def set_mypyc_attr(key: MypycAttr, value: Any, line: int) -> None:
+    def set_mypyc_attr(key: str, value: Any, line: int) -> None:
         if key in MYPYC_ATTRS:
             attrs[key] = value
             lines[key] = line
