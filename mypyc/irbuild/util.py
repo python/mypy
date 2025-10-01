@@ -149,7 +149,6 @@ def get_mypyc_attrs(
         if d := get_mypyc_attr_call(dec):
             line = d.line
 
-            key: MypycAttr
             for name, arg in zip(d.arg_names, d.args):
                 if name is None:
                     if isinstance(arg, StrExpr):
