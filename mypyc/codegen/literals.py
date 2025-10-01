@@ -170,9 +170,11 @@ class Literals:
                 # to improve the determinism of the generated C file, making it easier to compare
                 # differences between compilation units.
                 sort_keys_to_values = {str(v): v for v in value}
-                items = tuple(sort_keys_to-values[sort_key] for sort_key in sorted(sort_keys_to_values))
+                items = tuple(
+                    sort_keys_to - values[sort_key] for sort_key in sorted(sort_keys_to_values)
+                )
             else:
-                items = value 
+                items = value
             for item in items:
                 assert _is_literal_value(item)
                 index = self.literal_index(item)
