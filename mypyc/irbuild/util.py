@@ -1,8 +1,9 @@
+# mypy: disable-error-code="literal-required"
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
 from __future__ import annotations
 
-from typing import Any, Final, FrozenSet, Literal, TypedDict
+from typing import Any, Final, FrozenSet, Literal, TypedDict, cast
 from typing_extensions import NotRequired
 
 from mypy.nodes import (
@@ -146,7 +147,7 @@ def get_mypyc_attrs(
             for name, arg in zip(d.arg_names, d.args):
                 if name is None:
                     if isinstance(arg, StrExpr):
-                        key = arg.value
+                        key = cast(MypycAttr, arg.value)
                         if key in MYPYC_ATTRS:
                             attrs[key] = True
                             lines[key] = line
