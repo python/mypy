@@ -1,4 +1,3 @@
-# mypy: disable-error-code="literal-required"
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
 from __future__ import annotations
@@ -148,7 +147,6 @@ def get_mypyc_attrs(
     for dec in stmt.decorators:
         if d := get_mypyc_attr_call(dec):
             line = d.line
-
             for name, arg in zip(d.arg_names, d.args):
                 if name is None:
                     if isinstance(arg, StrExpr):
