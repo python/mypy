@@ -643,6 +643,12 @@ def test2(x: str) -> str:
     return f"{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
 def test3(x: str) -> str:
     return f"{x}{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
+def test4(x: str) -> str:
+    return f"{string!r}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean!r}"
+def test5(x: str) -> str:
+    return f"{string!r}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x!r}"
+def test6(x: str) -> str:
+    return f"{x!r}{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x!r}"
 
 [out]
 def test(x):
@@ -669,6 +675,636 @@ L0:
     r2 = 'abc1233.14True'
     r3 = CPyStr_Build(7, x, r0, x, r1, x, r2, x)
     return r3
+def test4(x):
+    x, r0, r1, r2, r3, r4 :: str
+    r5 :: object[3]
+    r6 :: object_ptr
+    r7 :: object
+    r8, r9, r10, r11 :: str
+    r12 :: object
+    r13 :: object[3]
+    r14 :: object_ptr
+    r15 :: object
+    r16, r17, r18, r19 :: str
+    r20 :: object
+    r21 :: object[3]
+    r22 :: object_ptr
+    r23 :: object
+    r24, r25, r26, r27 :: str
+    r28 :: object
+    r29 :: object[3]
+    r30 :: object_ptr
+    r31 :: object
+    r32, r33, r34, r35 :: str
+    r36 :: object[3]
+    r37 :: object_ptr
+    r38 :: object
+    r39, r40, r41, r42 :: str
+    r43 :: object
+    r44 :: object[3]
+    r45 :: object_ptr
+    r46 :: object
+    r47, r48, r49, r50 :: str
+    r51 :: object
+    r52 :: object[3]
+    r53 :: object_ptr
+    r54 :: object
+    r55, r56, r57, r58 :: str
+    r59 :: object
+    r60 :: object[3]
+    r61 :: object_ptr
+    r62 :: object
+    r63, r64, r65, r66, r67 :: str
+    r68 :: object[3]
+    r69 :: object_ptr
+    r70 :: object
+    r71, r72, r73, r74 :: str
+    r75 :: object[3]
+    r76 :: object_ptr
+    r77 :: object
+    r78, r79, r80, r81, r82 :: str
+    r83 :: object[3]
+    r84 :: object_ptr
+    r85 :: object
+    r86, r87, r88, r89 :: str
+    r90 :: object
+    r91 :: object[3]
+    r92 :: object_ptr
+    r93 :: object
+    r94, r95, r96, r97 :: str
+    r98 :: object
+    r99 :: object[3]
+    r100 :: object_ptr
+    r101 :: object
+    r102, r103, r104, r105 :: str
+    r106 :: object
+    r107 :: object[3]
+    r108 :: object_ptr
+    r109 :: object
+    r110 :: str
+    r111 :: list
+    r112 :: str
+L0:
+    r0 = ''
+    r1 = '{!r:{}}'
+    r2 = 'abc'
+    r3 = ''
+    r4 = 'format'
+    r5 = [r1, r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775811, 0)
+    keep_alive r1, r2, r3
+    r8 = cast(str, r7)
+    r9 = '{:{}}'
+    r10 = ''
+    r11 = 'format'
+    r12 = object 123
+    r13 = [r9, r12, r10]
+    r14 = load_address r13
+    r15 = PyObject_VectorcallMethod(r11, r14, 9223372036854775811, 0)
+    keep_alive r9, r12, r10
+    r16 = cast(str, r15)
+    r17 = '{:{}}'
+    r18 = ''
+    r19 = 'format'
+    r20 = box(float, 3.14)
+    r21 = [r17, r20, r18]
+    r22 = load_address r21
+    r23 = PyObject_VectorcallMethod(r19, r22, 9223372036854775811, 0)
+    keep_alive r17, r20, r18
+    r24 = cast(str, r23)
+    r25 = '{:{}}'
+    r26 = ''
+    r27 = 'format'
+    r28 = box(bool, 1)
+    r29 = [r25, r28, r26]
+    r30 = load_address r29
+    r31 = PyObject_VectorcallMethod(r27, r30, 9223372036854775811, 0)
+    keep_alive r25, r28, r26
+    r32 = cast(str, r31)
+    r33 = '{:{}}'
+    r34 = ''
+    r35 = 'format'
+    r36 = [r33, x, r34]
+    r37 = load_address r36
+    r38 = PyObject_VectorcallMethod(r35, r37, 9223372036854775811, 0)
+    keep_alive r33, x, r34
+    r39 = cast(str, r38)
+    r40 = '{:{}}'
+    r41 = ''
+    r42 = 'format'
+    r43 = box(bool, 1)
+    r44 = [r40, r43, r41]
+    r45 = load_address r44
+    r46 = PyObject_VectorcallMethod(r42, r45, 9223372036854775811, 0)
+    keep_alive r40, r43, r41
+    r47 = cast(str, r46)
+    r48 = '{:{}}'
+    r49 = ''
+    r50 = 'format'
+    r51 = box(float, 3.14)
+    r52 = [r48, r51, r49]
+    r53 = load_address r52
+    r54 = PyObject_VectorcallMethod(r50, r53, 9223372036854775811, 0)
+    keep_alive r48, r51, r49
+    r55 = cast(str, r54)
+    r56 = '{:{}}'
+    r57 = ''
+    r58 = 'format'
+    r59 = object 123
+    r60 = [r56, r59, r57]
+    r61 = load_address r60
+    r62 = PyObject_VectorcallMethod(r58, r61, 9223372036854775811, 0)
+    keep_alive r56, r59, r57
+    r63 = cast(str, r62)
+    r64 = '{:{}}'
+    r65 = 'abc'
+    r66 = ''
+    r67 = 'format'
+    r68 = [r64, r65, r66]
+    r69 = load_address r68
+    r70 = PyObject_VectorcallMethod(r67, r69, 9223372036854775811, 0)
+    keep_alive r64, r65, r66
+    r71 = cast(str, r70)
+    r72 = '{:{}}'
+    r73 = ''
+    r74 = 'format'
+    r75 = [r72, x, r73]
+    r76 = load_address r75
+    r77 = PyObject_VectorcallMethod(r74, r76, 9223372036854775811, 0)
+    keep_alive r72, x, r73
+    r78 = cast(str, r77)
+    r79 = '{:{}}'
+    r80 = 'abc'
+    r81 = ''
+    r82 = 'format'
+    r83 = [r79, r80, r81]
+    r84 = load_address r83
+    r85 = PyObject_VectorcallMethod(r82, r84, 9223372036854775811, 0)
+    keep_alive r79, r80, r81
+    r86 = cast(str, r85)
+    r87 = '{:{}}'
+    r88 = ''
+    r89 = 'format'
+    r90 = object 123
+    r91 = [r87, r90, r88]
+    r92 = load_address r91
+    r93 = PyObject_VectorcallMethod(r89, r92, 9223372036854775811, 0)
+    keep_alive r87, r90, r88
+    r94 = cast(str, r93)
+    r95 = '{:{}}'
+    r96 = ''
+    r97 = 'format'
+    r98 = box(float, 3.14)
+    r99 = [r95, r98, r96]
+    r100 = load_address r99
+    r101 = PyObject_VectorcallMethod(r97, r100, 9223372036854775811, 0)
+    keep_alive r95, r98, r96
+    r102 = cast(str, r101)
+    r103 = '{!r:{}}'
+    r104 = ''
+    r105 = 'format'
+    r106 = box(bool, 1)
+    r107 = [r103, r106, r104]
+    r108 = load_address r107
+    r109 = PyObject_VectorcallMethod(r105, r108, 9223372036854775811, 0)
+    keep_alive r103, r106, r104
+    r110 = cast(str, r109)
+    r111 = CPyList_Build(14, r8, r16, r24, r32, r39, r47, r55, r63, r71, r78, r86, r94, r102, r110)
+    r112 = PyUnicode_Join(r0, r111)
+    return r112
+def test5(x):
+    x, r0, r1, r2, r3, r4 :: str
+    r5 :: object[3]
+    r6 :: object_ptr
+    r7 :: object
+    r8, r9, r10, r11 :: str
+    r12 :: object
+    r13 :: object[3]
+    r14 :: object_ptr
+    r15 :: object
+    r16, r17, r18, r19 :: str
+    r20 :: object
+    r21 :: object[3]
+    r22 :: object_ptr
+    r23 :: object
+    r24, r25, r26, r27 :: str
+    r28 :: object
+    r29 :: object[3]
+    r30 :: object_ptr
+    r31 :: object
+    r32, r33, r34, r35 :: str
+    r36 :: object[3]
+    r37 :: object_ptr
+    r38 :: object
+    r39, r40, r41, r42 :: str
+    r43 :: object
+    r44 :: object[3]
+    r45 :: object_ptr
+    r46 :: object
+    r47, r48, r49, r50 :: str
+    r51 :: object
+    r52 :: object[3]
+    r53 :: object_ptr
+    r54 :: object
+    r55, r56, r57, r58 :: str
+    r59 :: object
+    r60 :: object[3]
+    r61 :: object_ptr
+    r62 :: object
+    r63, r64, r65, r66, r67 :: str
+    r68 :: object[3]
+    r69 :: object_ptr
+    r70 :: object
+    r71, r72, r73, r74 :: str
+    r75 :: object[3]
+    r76 :: object_ptr
+    r77 :: object
+    r78, r79, r80, r81, r82 :: str
+    r83 :: object[3]
+    r84 :: object_ptr
+    r85 :: object
+    r86, r87, r88, r89 :: str
+    r90 :: object
+    r91 :: object[3]
+    r92 :: object_ptr
+    r93 :: object
+    r94, r95, r96, r97 :: str
+    r98 :: object
+    r99 :: object[3]
+    r100 :: object_ptr
+    r101 :: object
+    r102, r103, r104, r105 :: str
+    r106 :: object
+    r107 :: object[3]
+    r108 :: object_ptr
+    r109 :: object
+    r110, r111, r112, r113 :: str
+    r114 :: object[3]
+    r115 :: object_ptr
+    r116 :: object
+    r117 :: str
+    r118 :: list
+    r119 :: str
+L0:
+    r0 = ''
+    r1 = '{!r:{}}'
+    r2 = 'abc'
+    r3 = ''
+    r4 = 'format'
+    r5 = [r1, r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775811, 0)
+    keep_alive r1, r2, r3
+    r8 = cast(str, r7)
+    r9 = '{:{}}'
+    r10 = ''
+    r11 = 'format'
+    r12 = object 123
+    r13 = [r9, r12, r10]
+    r14 = load_address r13
+    r15 = PyObject_VectorcallMethod(r11, r14, 9223372036854775811, 0)
+    keep_alive r9, r12, r10
+    r16 = cast(str, r15)
+    r17 = '{:{}}'
+    r18 = ''
+    r19 = 'format'
+    r20 = box(float, 3.14)
+    r21 = [r17, r20, r18]
+    r22 = load_address r21
+    r23 = PyObject_VectorcallMethod(r19, r22, 9223372036854775811, 0)
+    keep_alive r17, r20, r18
+    r24 = cast(str, r23)
+    r25 = '{:{}}'
+    r26 = ''
+    r27 = 'format'
+    r28 = box(bool, 1)
+    r29 = [r25, r28, r26]
+    r30 = load_address r29
+    r31 = PyObject_VectorcallMethod(r27, r30, 9223372036854775811, 0)
+    keep_alive r25, r28, r26
+    r32 = cast(str, r31)
+    r33 = '{:{}}'
+    r34 = ''
+    r35 = 'format'
+    r36 = [r33, x, r34]
+    r37 = load_address r36
+    r38 = PyObject_VectorcallMethod(r35, r37, 9223372036854775811, 0)
+    keep_alive r33, x, r34
+    r39 = cast(str, r38)
+    r40 = '{:{}}'
+    r41 = ''
+    r42 = 'format'
+    r43 = box(bool, 1)
+    r44 = [r40, r43, r41]
+    r45 = load_address r44
+    r46 = PyObject_VectorcallMethod(r42, r45, 9223372036854775811, 0)
+    keep_alive r40, r43, r41
+    r47 = cast(str, r46)
+    r48 = '{:{}}'
+    r49 = ''
+    r50 = 'format'
+    r51 = box(float, 3.14)
+    r52 = [r48, r51, r49]
+    r53 = load_address r52
+    r54 = PyObject_VectorcallMethod(r50, r53, 9223372036854775811, 0)
+    keep_alive r48, r51, r49
+    r55 = cast(str, r54)
+    r56 = '{:{}}'
+    r57 = ''
+    r58 = 'format'
+    r59 = object 123
+    r60 = [r56, r59, r57]
+    r61 = load_address r60
+    r62 = PyObject_VectorcallMethod(r58, r61, 9223372036854775811, 0)
+    keep_alive r56, r59, r57
+    r63 = cast(str, r62)
+    r64 = '{:{}}'
+    r65 = 'abc'
+    r66 = ''
+    r67 = 'format'
+    r68 = [r64, r65, r66]
+    r69 = load_address r68
+    r70 = PyObject_VectorcallMethod(r67, r69, 9223372036854775811, 0)
+    keep_alive r64, r65, r66
+    r71 = cast(str, r70)
+    r72 = '{:{}}'
+    r73 = ''
+    r74 = 'format'
+    r75 = [r72, x, r73]
+    r76 = load_address r75
+    r77 = PyObject_VectorcallMethod(r74, r76, 9223372036854775811, 0)
+    keep_alive r72, x, r73
+    r78 = cast(str, r77)
+    r79 = '{:{}}'
+    r80 = 'abc'
+    r81 = ''
+    r82 = 'format'
+    r83 = [r79, r80, r81]
+    r84 = load_address r83
+    r85 = PyObject_VectorcallMethod(r82, r84, 9223372036854775811, 0)
+    keep_alive r79, r80, r81
+    r86 = cast(str, r85)
+    r87 = '{:{}}'
+    r88 = ''
+    r89 = 'format'
+    r90 = object 123
+    r91 = [r87, r90, r88]
+    r92 = load_address r91
+    r93 = PyObject_VectorcallMethod(r89, r92, 9223372036854775811, 0)
+    keep_alive r87, r90, r88
+    r94 = cast(str, r93)
+    r95 = '{:{}}'
+    r96 = ''
+    r97 = 'format'
+    r98 = box(float, 3.14)
+    r99 = [r95, r98, r96]
+    r100 = load_address r99
+    r101 = PyObject_VectorcallMethod(r97, r100, 9223372036854775811, 0)
+    keep_alive r95, r98, r96
+    r102 = cast(str, r101)
+    r103 = '{:{}}'
+    r104 = ''
+    r105 = 'format'
+    r106 = box(bool, 1)
+    r107 = [r103, r106, r104]
+    r108 = load_address r107
+    r109 = PyObject_VectorcallMethod(r105, r108, 9223372036854775811, 0)
+    keep_alive r103, r106, r104
+    r110 = cast(str, r109)
+    r111 = '{!r:{}}'
+    r112 = ''
+    r113 = 'format'
+    r114 = [r111, x, r112]
+    r115 = load_address r114
+    r116 = PyObject_VectorcallMethod(r113, r115, 9223372036854775811, 0)
+    keep_alive r111, x, r112
+    r117 = cast(str, r116)
+    r118 = CPyList_Build(15, r8, r16, r24, r32, r39, r47, r55, r63, r71, r78, r86, r94, r102, r110, r117)
+    r119 = PyUnicode_Join(r0, r118)
+    return r119
+def test6(x):
+    x, r0, r1, r2, r3 :: str
+    r4 :: object[3]
+    r5 :: object_ptr
+    r6 :: object
+    r7, r8, r9, r10, r11 :: str
+    r12 :: object[3]
+    r13 :: object_ptr
+    r14 :: object
+    r15, r16, r17, r18 :: str
+    r19 :: object
+    r20 :: object[3]
+    r21 :: object_ptr
+    r22 :: object
+    r23, r24, r25, r26 :: str
+    r27 :: object
+    r28 :: object[3]
+    r29 :: object_ptr
+    r30 :: object
+    r31, r32, r33, r34 :: str
+    r35 :: object
+    r36 :: object[3]
+    r37 :: object_ptr
+    r38 :: object
+    r39, r40, r41, r42 :: str
+    r43 :: object[3]
+    r44 :: object_ptr
+    r45 :: object
+    r46, r47, r48, r49 :: str
+    r50 :: object
+    r51 :: object[3]
+    r52 :: object_ptr
+    r53 :: object
+    r54, r55, r56, r57 :: str
+    r58 :: object
+    r59 :: object[3]
+    r60 :: object_ptr
+    r61 :: object
+    r62, r63, r64, r65 :: str
+    r66 :: object
+    r67 :: object[3]
+    r68 :: object_ptr
+    r69 :: object
+    r70, r71, r72, r73, r74 :: str
+    r75 :: object[3]
+    r76 :: object_ptr
+    r77 :: object
+    r78, r79, r80, r81 :: str
+    r82 :: object[3]
+    r83 :: object_ptr
+    r84 :: object
+    r85, r86, r87, r88, r89 :: str
+    r90 :: object[3]
+    r91 :: object_ptr
+    r92 :: object
+    r93, r94, r95, r96 :: str
+    r97 :: object
+    r98 :: object[3]
+    r99 :: object_ptr
+    r100 :: object
+    r101, r102, r103, r104 :: str
+    r105 :: object
+    r106 :: object[3]
+    r107 :: object_ptr
+    r108 :: object
+    r109, r110, r111, r112 :: str
+    r113 :: object
+    r114 :: object[3]
+    r115 :: object_ptr
+    r116 :: object
+    r117, r118, r119, r120 :: str
+    r121 :: object[3]
+    r122 :: object_ptr
+    r123 :: object
+    r124 :: str
+    r125 :: list
+    r126 :: str
+L0:
+    r0 = ''
+    r1 = '{!r:{}}'
+    r2 = ''
+    r3 = 'format'
+    r4 = [r1, x, r2]
+    r5 = load_address r4
+    r6 = PyObject_VectorcallMethod(r3, r5, 9223372036854775811, 0)
+    keep_alive r1, x, r2
+    r7 = cast(str, r6)
+    r8 = '{:{}}'
+    r9 = 'abc'
+    r10 = ''
+    r11 = 'format'
+    r12 = [r8, r9, r10]
+    r13 = load_address r12
+    r14 = PyObject_VectorcallMethod(r11, r13, 9223372036854775811, 0)
+    keep_alive r8, r9, r10
+    r15 = cast(str, r14)
+    r16 = '{:{}}'
+    r17 = ''
+    r18 = 'format'
+    r19 = object 123
+    r20 = [r16, r19, r17]
+    r21 = load_address r20
+    r22 = PyObject_VectorcallMethod(r18, r21, 9223372036854775811, 0)
+    keep_alive r16, r19, r17
+    r23 = cast(str, r22)
+    r24 = '{:{}}'
+    r25 = ''
+    r26 = 'format'
+    r27 = box(float, 3.14)
+    r28 = [r24, r27, r25]
+    r29 = load_address r28
+    r30 = PyObject_VectorcallMethod(r26, r29, 9223372036854775811, 0)
+    keep_alive r24, r27, r25
+    r31 = cast(str, r30)
+    r32 = '{:{}}'
+    r33 = ''
+    r34 = 'format'
+    r35 = box(bool, 1)
+    r36 = [r32, r35, r33]
+    r37 = load_address r36
+    r38 = PyObject_VectorcallMethod(r34, r37, 9223372036854775811, 0)
+    keep_alive r32, r35, r33
+    r39 = cast(str, r38)
+    r40 = '{:{}}'
+    r41 = ''
+    r42 = 'format'
+    r43 = [r40, x, r41]
+    r44 = load_address r43
+    r45 = PyObject_VectorcallMethod(r42, r44, 9223372036854775811, 0)
+    keep_alive r40, x, r41
+    r46 = cast(str, r45)
+    r47 = '{:{}}'
+    r48 = ''
+    r49 = 'format'
+    r50 = box(bool, 1)
+    r51 = [r47, r50, r48]
+    r52 = load_address r51
+    r53 = PyObject_VectorcallMethod(r49, r52, 9223372036854775811, 0)
+    keep_alive r47, r50, r48
+    r54 = cast(str, r53)
+    r55 = '{:{}}'
+    r56 = ''
+    r57 = 'format'
+    r58 = box(float, 3.14)
+    r59 = [r55, r58, r56]
+    r60 = load_address r59
+    r61 = PyObject_VectorcallMethod(r57, r60, 9223372036854775811, 0)
+    keep_alive r55, r58, r56
+    r62 = cast(str, r61)
+    r63 = '{:{}}'
+    r64 = ''
+    r65 = 'format'
+    r66 = object 123
+    r67 = [r63, r66, r64]
+    r68 = load_address r67
+    r69 = PyObject_VectorcallMethod(r65, r68, 9223372036854775811, 0)
+    keep_alive r63, r66, r64
+    r70 = cast(str, r69)
+    r71 = '{:{}}'
+    r72 = 'abc'
+    r73 = ''
+    r74 = 'format'
+    r75 = [r71, r72, r73]
+    r76 = load_address r75
+    r77 = PyObject_VectorcallMethod(r74, r76, 9223372036854775811, 0)
+    keep_alive r71, r72, r73
+    r78 = cast(str, r77)
+    r79 = '{:{}}'
+    r80 = ''
+    r81 = 'format'
+    r82 = [r79, x, r80]
+    r83 = load_address r82
+    r84 = PyObject_VectorcallMethod(r81, r83, 9223372036854775811, 0)
+    keep_alive r79, x, r80
+    r85 = cast(str, r84)
+    r86 = '{:{}}'
+    r87 = 'abc'
+    r88 = ''
+    r89 = 'format'
+    r90 = [r86, r87, r88]
+    r91 = load_address r90
+    r92 = PyObject_VectorcallMethod(r89, r91, 9223372036854775811, 0)
+    keep_alive r86, r87, r88
+    r93 = cast(str, r92)
+    r94 = '{:{}}'
+    r95 = ''
+    r96 = 'format'
+    r97 = object 123
+    r98 = [r94, r97, r95]
+    r99 = load_address r98
+    r100 = PyObject_VectorcallMethod(r96, r99, 9223372036854775811, 0)
+    keep_alive r94, r97, r95
+    r101 = cast(str, r100)
+    r102 = '{:{}}'
+    r103 = ''
+    r104 = 'format'
+    r105 = box(float, 3.14)
+    r106 = [r102, r105, r103]
+    r107 = load_address r106
+    r108 = PyObject_VectorcallMethod(r104, r107, 9223372036854775811, 0)
+    keep_alive r102, r105, r103
+    r109 = cast(str, r108)
+    r110 = '{:{}}'
+    r111 = ''
+    r112 = 'format'
+    r113 = box(bool, 1)
+    r114 = [r110, r113, r111]
+    r115 = load_address r114
+    r116 = PyObject_VectorcallMethod(r112, r115, 9223372036854775811, 0)
+    keep_alive r110, r113, r111
+    r117 = cast(str, r116)
+    r118 = '{!r:{}}'
+    r119 = ''
+    r120 = 'format'
+    r121 = [r118, x, r119]
+    r122 = load_address r121
+    r123 = PyObject_VectorcallMethod(r120, r122, 9223372036854775811, 0)
+    keep_alive r118, x, r119
+    r124 = cast(str, r123)
+    r125 = CPyList_Build(16, r7, r15, r23, r31, r39, r46, r54, r62, r70, r78, r85, r93, r101, r109, r117, r124)
+    r126 = PyUnicode_Join(r0, r125)
+    return r126
 
 [case testOptionalStrEquality1]
 from typing import Optional
