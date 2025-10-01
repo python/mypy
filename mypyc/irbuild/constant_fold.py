@@ -15,6 +15,7 @@ from typing import Final, Union
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
     BytesExpr,
+    CallExpr,
     ComplexExpr,
     Expression,
     FloatExpr,
@@ -72,7 +73,18 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
+    elif isinstance(expr, CallExpr) and isinstance(callee := expr.callee, MemberExpr):
+        # --- str.format constant folding
+        if callee.name == "format":
+            folded_args: list[ConstantValue] = []
+            for arg in expr.args:
+                arg_val = constant_fold_expr(arg, cur_mod_id)
+                if arg_val is None:
+                    return None
+                folded_args.append(arg_val)
+            return folded_callee.format(*folded_args)
     return None
+    
 
 
 def constant_fold_binary_op_extended(
