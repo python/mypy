@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Final, FrozenSet, Literal, TypedDict, cast
+from typing import Any, Final, FrozenSet, Literal, TypedDict
 from typing_extensions import NotRequired
 
 from mypy.nodes import (
@@ -152,7 +152,11 @@ def get_mypyc_attrs(
                     if isinstance(arg, StrExpr):
                         set_mypyc_attr(arg.value, True, line)
                     else:
-                        errors.error("All `mypyc_attr` positional arguments must be string literals.", path, line)
+                        errors.error(
+                            "All `mypyc_attr` positional arguments must be string literals.",
+                            path,
+                            line,
+                        )
                 else:
                     arg_value = get_mypyc_attr_literal(arg)
                     set_mypyc_attr(name, arg_value, line)
