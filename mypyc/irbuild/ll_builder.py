@@ -1568,17 +1568,8 @@ class LowLevelIRBuilder:
                 return self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
             return self.primitive_op(str_eq, [lhs, rhs], line)
         elif op == "!=":
-            if is_string_literal(lhs):
-                if is_string_literal(rhs):
-                    # we can optimize out the check entirely in some constant-folded cases
-                    return self.true() if lhs.value != rhs.value else self.false()
-                literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
-                eq = self.primitive_op(str_eq_literal, [rhs, lhs, literal_length], line)
-            elif is_string_literal(rhs):
-                literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
-                eq = self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
-            else:
-                eq = self.primitive_op(str_eq, [lhs, rhs], line)
+            # perform a standard equality check, then negate
+            eq = compare_strings(lhs, rhs, "==", line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
 
         # TODO: modify 'str' to use same interface as 'compare_bytes' as it would avoid
