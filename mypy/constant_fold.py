@@ -20,6 +20,7 @@ from mypy.nodes import (
     CallExpr,
     MemberExpr,
     ListExpr,
+    TupleExpr,
 )
 
 # All possible result types of constant folding
@@ -76,15 +77,14 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if value is not None:
             return constant_fold_unary_op(expr.op, value)
-    # --- f-string constant folding ---
+    # --- partial str.join support in preparation for f-string constant folding ---
     elif (
         isinstance(expr, CallExpr)
         and isinstance(callee := expr.callee, MemberExpr)
         and isinstance(callee.expr, StrExpr)
-        and callee.expr.value == ""
         and callee.name == "join"
         and len(args := expr.args) == 1
-        and isinstance(arg := args[0], ListExpr)
+        and isinstance(arg := args[0], (ListExpr, TupleExpr))
     ):
         folded_items = []
         for item in arg.items:
@@ -92,7 +92,7 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
             if not isinstance(val, str):
                 return None
             folded_items.append(val)
-        return "".join(folded_items)
+        return callee.expr.value.join(folded_items)
     return None
 
 
