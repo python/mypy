@@ -171,7 +171,7 @@ class Literals:
                 # differences between compilation units.
                 sort_keys_to_values = {str(v): v for v in value}
                 items = tuple(
-                    sort_keys_to - values[sort_key] for sort_key in sorted(sort_keys_to_values)
+                    sort_keys_to_values[sort_key] for sort_key in sorted(sort_keys_to_values)
                 )
             else:
                 items = value
