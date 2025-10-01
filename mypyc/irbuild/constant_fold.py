@@ -84,7 +84,6 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 folded_args.append(arg_val)
             return folded_callee.format(*folded_args)
     return None
-    
 
 
 def constant_fold_binary_op_extended(
