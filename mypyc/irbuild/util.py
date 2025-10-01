@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Final, FrozenSet, Literal, TypedDict
+
+from typing_extensions import NotRequired
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -31,7 +33,18 @@ from mypy.semanal import refers_to_fullname
 from mypy.types import FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
 
-DATACLASS_DECORATORS = {"dataclasses.dataclass", "attr.s", "attr.attrs"}
+MYPYC_ATTRS: Final[FrozenSet["MypycAttr"]] = frozenset(["native_class", "allow_interpreted_subclasses", "serializable"])
+
+DATACLASS_DECORATORS: Final = frozenset(["dataclasses.dataclass", "attr.s", "attr.attrs"])
+
+
+MypycAttr = Literal["native_class", "allow_interpreted_subclasses", "serializable"]
+
+class MypycAttrs(TypedDict):
+    native_class: NotRequired[bool]
+    allow_interpreted_subclasses: NotRequired[bool]
+    serializable: NotRequired[bool]
+    free_list_len: NotRequired[int]
 
 
 def is_final_decorator(d: Expression) -> bool:
@@ -111,22 +124,37 @@ def get_mypyc_attr_call(d: Expression) -> CallExpr | None:
         return d
     return None
 
-
-def get_mypyc_attrs(stmt: ClassDef | Decorator) -> tuple[dict[str, Any], dict[str, int]]:
+    
+def get_mypyc_attrs(
+    stmt: ClassDef | Decorator,
+    path: str,
+    errors: Errors,
+) -> tuple[MypycAttrs, dict[MypycAttr, int]]:
     """Collect all the mypyc_attr attributes on a class definition or a function."""
-    attrs: dict[str, Any] = {}
-    lines: dict[str, int] = {}
+    attrs: MypycAttrs = {}
+    lines: dict[MypycAttr, int] = {}
+
+    def record_unsupported_key(key: str) -> None:
+        errors.error(f"{key} is not a supported `mypyc_attrs` key.", path, line)
+        errors.note(f"supported keys: {', '.join(map(repr, sorted(MYPYC_ATTRS)))}", path, line)
+
     for dec in stmt.decorators:
-        d = get_mypyc_attr_call(dec)
-        if d:
+        if d := get_mypyc_attr_call(dec):
+            line = d.line
             for name, arg in zip(d.arg_names, d.args):
                 if name is None:
                     if isinstance(arg, StrExpr):
-                        attrs[arg.value] = True
-                        lines[arg.value] = d.line
+                        key = arg.value
+                        if key in MYPYC_ATTRS:
+                            attrs[key] = True
+                            lines[key] = line
+                        else:
+                            record_unsupported_key(key)
+                elif name not in MYPYC_ATTRS:
+                    record_unsupported_key(name)
                 else:
                     attrs[name] = get_mypyc_attr_literal(arg)
-                    lines[name] = d.line
+                    lines[name] = line
 
     return attrs, lines
 
