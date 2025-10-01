@@ -169,7 +169,7 @@ class Literals:
                 # even though frozensets are not sorted in python, we need to sort the items here
                 # to improve the determinism of the generated C file, making it easier to compare
                 # differences between compilation units.
-                sort_keys_to_values = {str(v): v for v in value}
+                sort_keys_to_values = {str(v) + type(v).__name__: v for v in value}
                 items = tuple(
                     sort_keys_to_values[sort_key] for sort_key in sorted(sort_keys_to_values)
                 )
