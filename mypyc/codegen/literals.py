@@ -165,7 +165,15 @@ class Literals:
         for i in range(count):
             value = value_by_index[i]
             result.append(str(len(value)))
-            for item in value:
+            if isinstance(value, frozenset):
+                # even though frozensets are not sorted in python, we need to sort the items here
+                # to improve the determinism of the generated C file, making it easier to compare
+                # differences between compilation units.
+                sort_keys_to_values = {str(v): v for v in value}
+                items = tuple(sort_keys_to-values[sort_key] for sort_key in sorted(sort_keys_to_values))
+            else:
+                items = value 
+            for item in items:
                 assert _is_literal_value(item)
                 index = self.literal_index(item)
                 result.append(str(index))
