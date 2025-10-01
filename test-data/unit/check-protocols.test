@@ -4217,10 +4217,10 @@ def g2(a: Input[bytes], b: Output[bytes]) -> None:
     f(a, b)
 
 def g3(a: Input[str], b: Output[bytes]) -> None:
-    f(a, b)  # E: Cannot infer type argument 1 of "f"
+    f(a, b)  # E: Cannot infer value of type parameter "AnyStr" of "f"
 
 def g4(a: Input[bytes], b: Output[str]) -> None:
-    f(a, b)  # E: Cannot infer type argument 1 of "f"
+    f(a, b)  # E: Cannot infer value of type parameter "AnyStr" of "f"
 
 [builtins fixtures/tuple.pyi]
 
@@ -4551,3 +4551,112 @@ class Test(Generic[T]):
 t = Test(Mock())
 reveal_type(t)  # N: Revealed type is "__main__.Test[Any]"
 [builtins fixtures/dict.pyi]
+
+[case testProtocolClassObjectDescriptor]
+from typing import Any, Protocol, overload
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> int: ...
+    def __get__(self, instance, owner):
+        pass
+
+class HasDesc(Protocol):
+    attr: Desc
+
+class HasInt(Protocol):
+    attr: int
+
+class C:
+    attr = Desc()
+
+x: HasInt = C()
+y: HasDesc = C
+z: HasInt = C  # E: Incompatible types in assignment (expression has type "type[C]", variable has type "HasInt") \
+               # N: Following member(s) of "C" have conflicts: \
+               # N:     attr: expected "int", got "Desc"
+
+[case testProtocolErrorReportingNoDuplicates]
+from typing import Callable, Protocol, TypeVar
+
+class P(Protocol):
+    def meth(self) -> int: ...
+
+class C:
+    def meth(self) -> str: ...
+
+def foo() -> None:
+    c: P = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
+                # N: Following member(s) of "C" have conflicts: \
+                # N:     Expected: \
+                # N:         def meth(self) -> int \
+                # N:     Got: \
+                # N:         def meth(self) -> str
+    x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
+[case testProtocolClassValDescriptor]
+from typing import Any, Protocol, overload, ClassVar, Type
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: object) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: object) -> int: ...
+    def __get__(self, instance, owner):
+        pass
+
+class P(Protocol):
+    x: ClassVar[Desc]
+
+class C:
+    x = Desc()
+
+t: P = C()
+reveal_type(t.x)  # N: Revealed type is "builtins.int"
+tt: Type[P] = C
+reveal_type(tt.x)  # N: Revealed type is "__main__.Desc"
+
+bad: P = C  # E: Incompatible types in assignment (expression has type "type[C]", variable has type "P") \
+            # N: Following member(s) of "C" have conflicts: \
+            # N:     x: expected "int", got "Desc"
+
+[case testProtocolClassValCallable]
+from typing import Any, Protocol, overload, ClassVar, Type, Callable
+
+class P(Protocol):
+    foo: Callable[[object], int]
+    bar: ClassVar[Callable[[object], int]]
+
+class C:
+    foo: Callable[[object], int]
+    bar: ClassVar[Callable[[object], int]]
+
+t: P = C()
+reveal_type(t.foo)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+reveal_type(t.bar)  # N: Revealed type is "def () -> builtins.int"
+tt: Type[P] = C
+reveal_type(tt.foo)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+reveal_type(tt.bar)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+
+[case testProtocolDecoratedSelfBound]
+from abc import abstractmethod
+from typing import Protocol, Self
+
+class Proto(Protocol):
+    @abstractmethod
+    def foo(self, x: Self) -> None: ...
+
+class Impl:
+    def foo(self, x: Self) -> None:
+        pass
+
+x: Proto = Impl()

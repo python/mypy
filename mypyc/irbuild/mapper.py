@@ -25,6 +25,7 @@ from mypy.types import (
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     RInstance,
     RTuple,
     RType,
@@ -64,6 +65,8 @@ class Mapper:
         self.type_to_ir: dict[TypeInfo, ClassIR] = {}
         self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
         self.symbol_fullnames: set[str] = set()
+        # The corresponding generator class that implements a generator/async function
+        self.fdef_to_generator: dict[FuncDef, ClassIR] = {}
 
     def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
@@ -71,6 +74,10 @@ class Mapper:
 
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
+            if typ.type.is_newtype:
+                # Unwrap NewType to its base type for rprimitive mapping
+                assert len(typ.type.bases) == 1, typ.type.bases
+                return self.type_to_rtype(typ.type.bases[0])
             if typ.type.fullname == "builtins.int":
                 return int_rprimitive
             elif typ.type.fullname == "builtins.float":
@@ -113,6 +120,8 @@ class Mapper:
                 return int16_rprimitive
             elif typ.type.fullname == "mypy_extensions.u8":
                 return uint8_rprimitive
+            elif typ.type.fullname in KNOWN_NATIVE_TYPES:
+                return KNOWN_NATIVE_TYPES[typ.type.fullname]
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):
@@ -171,7 +180,14 @@ class Mapper:
                 for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)
             ]
             arg_pos_onlys = [name is None for name in fdef.type.arg_names]
-            ret = self.type_to_rtype(fdef.type.ret_type)
+            # TODO: We could probably support decorators sometimes (static and class method?)
+            if (fdef.is_coroutine or fdef.is_generator) and not fdef.is_decorated:
+                # Give a more precise type for generators, so that we can optimize
+                # code that uses them. They return a generator object, which has a
+                # specific class. Without this, the type would have to be 'object'.
+                ret: RType = RInstance(self.fdef_to_generator[fdef])
+            else:
+                ret = self.type_to_rtype(fdef.type.ret_type)
         else:
             # Handle unannotated functions
             arg_types = [object_rprimitive for _ in fdef.arguments]

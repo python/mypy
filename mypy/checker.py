@@ -6,7 +6,18 @@ import itertools
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
-from typing import Callable, Final, Generic, NamedTuple, Optional, TypeVar, Union, cast, overload
+from typing import (
+    Callable,
+    Final,
+    Generic,
+    Literal,
+    NamedTuple,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.checkexpr
@@ -25,7 +36,14 @@ from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
-from mypy.errors import Errors, ErrorWatcher, LoopErrorWatcher, report_internal_error
+from mypy.errors import (
+    ErrorInfo,
+    Errors,
+    ErrorWatcher,
+    IterationDependentErrors,
+    IterationErrorWatcher,
+    report_internal_error,
+)
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
@@ -62,6 +80,7 @@ from mypy.nodes import (
     AssertStmt,
     AssignmentExpr,
     AssignmentStmt,
+    AwaitExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -72,6 +91,7 @@ from mypy.nodes import (
     ContinueStmt,
     Decorator,
     DelStmt,
+    DictExpr,
     EllipsisExpr,
     Expression,
     ExpressionStmt,
@@ -100,11 +120,13 @@ from mypy.nodes import (
     OperatorAssignmentStmt,
     OpExpr,
     OverloadedFuncDef,
+    OverloadPart,
     PassStmt,
     PromoteExpr,
     RaiseStmt,
     RefExpr,
     ReturnStmt,
+    SetExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -122,6 +144,7 @@ from mypy.nodes import (
     WhileStmt,
     WithStmt,
     YieldExpr,
+    get_func_def,
     is_final_node,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
@@ -151,6 +174,7 @@ from mypy.treetransform import TransformVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
     bind_self,
+    can_have_shared_disjoint_base,
     coerce_to_literal,
     custom_special_method,
     erase_def_to_union_or_bound,
@@ -206,6 +230,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    instance_cache,
     is_literal_type,
     is_named_instance,
 )
@@ -266,6 +291,26 @@ class PartialTypeScope(NamedTuple):
     map: dict[Var, Context]
     is_function: bool
     is_local: bool
+
+
+class LocalTypeMap:
+    """Store inferred types into a temporary type map (returned).
+
+    This can be used to perform type checking "experiments" without
+    affecting exported types (which are used by mypyc).
+    """
+
+    def __init__(self, chk: TypeChecker) -> None:
+        self.chk = chk
+
+    def __enter__(self) -> dict[Expression, Type]:
+        temp_type_map: dict[Expression, Type] = {}
+        self.chk._type_maps.append(temp_type_map)
+        return temp_type_map
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> Literal[False]:
+        self.chk._type_maps.pop()
+        return False
 
 
 class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
@@ -333,11 +378,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     inferred_attribute_types: dict[Var, Type] | None = None
     # Don't infer partial None types if we are processing assignment from Union
     no_partial_types: bool = False
-
-    # The set of all dependencies (suppressed or not) that this module accesses, either
-    # directly or indirectly.
+    # Extra module references not detected during semantic analysis (these are rare cases
+    # e.g. access to class-level import via instance).
     module_refs: set[str]
-
     # A map from variable nodes to a snapshot of the frame ids of the
     # frames that were active when the variable was declared. This can
     # be used to determine nearest common ancestor frame of a variable's
@@ -349,6 +392,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     # Plugin that provides special type checking rules for specific library
     # functions such as open(), etc.
     plugin: Plugin
+
+    # A helper state to produce unique temporary names on demand.
+    _unique_id: int
 
     def __init__(
         self,
@@ -389,6 +435,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.is_stub = tree.is_stub
         self.is_typeshed_stub = tree.is_typeshed_file(options)
         self.inferred_attribute_types = None
+        self.allow_constructor_cache = True
+        self.local_type_map = LocalTypeMap(self)
 
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -399,6 +447,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
+
+        # Track when we enter an overload implementation. Some checks should not be applied
+        # to the implementation signature when specific overloads are available.
+        # Use `enter_overload_impl` to modify.
+        self.overload_impl_stack: list[OverloadPart] = []
 
         # This flag is set when we run type-check or attribute access check for the purpose
         # of giving a note on possibly missing "await". It is used to avoid infinite recursion.
@@ -413,7 +466,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self._expr_checker = mypy.checkexpr.ExpressionChecker(
             self, self.msg, self.plugin, per_line_checking_time_ns
         )
+
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
+        self._unique_id = 0
 
     @property
     def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
@@ -435,7 +490,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.binder = ConditionalTypeBinder(self.options)
         self._type_maps[1:] = []
         self._type_maps[0].clear()
-        self.temp_type_map = None
         self.expr_checker.reset()
         self.deferred_nodes = []
         self.partial_types = []
@@ -487,12 +541,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         )
 
     def check_second_pass(
-        self, todo: Sequence[DeferredNode | FineGrainedDeferredNode] | None = None
+        self,
+        todo: Sequence[DeferredNode | FineGrainedDeferredNode] | None = None,
+        *,
+        allow_constructor_cache: bool = True,
     ) -> bool:
         """Run second or following pass of type checking.
 
         This goes through deferred nodes, returning True if there were any.
         """
+        self.allow_constructor_cache = allow_constructor_cache
         self.recurse_into_functions = True
         with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
             if not todo and not self.deferred_nodes:
@@ -598,26 +656,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # on without bound otherwise)
             widened_old = len(self.widened_vars)
 
-            # one set of `unreachable`, `redundant-expr`, and `redundant-casts` errors
-            # per iteration step:
-            uselessness_errors = []
-            # one set of unreachable line numbers per iteration step:
-            unreachable_lines = []
-            # one set of revealed types per line where `reveal_type` is used (each
-            # created set can grow during the iteration):
-            revealed_types = defaultdict(set)
+            iter_errors = IterationDependentErrors()
             iter = 1
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     if on_enter_body is not None:
                         on_enter_body()
 
-                    with LoopErrorWatcher(self.msg.errors) as watcher:
+                    with IterationErrorWatcher(self.msg.errors, iter_errors):
                         self.accept(body)
-                    uselessness_errors.append(watcher.uselessness_errors)
-                    unreachable_lines.append(watcher.unreachable_lines)
-                    for key, values in watcher.revealed_types.items():
-                        revealed_types[key].update(values)
 
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 widened_new = len(self.widened_vars)
@@ -639,29 +686,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            # Report only those `unreachable`, `redundant-expr`, and `redundant-casts`
-            # errors that could not be ruled out in any iteration step:
-            persistent_uselessness_errors = set()
-            for candidate in set(itertools.chain(*uselessness_errors)):
-                if all(
-                    (candidate in errors) or (candidate[2] in lines)
-                    for errors, lines in zip(uselessness_errors, unreachable_lines)
-                ):
-                    persistent_uselessness_errors.add(candidate)
-            for error_info in persistent_uselessness_errors:
-                context = Context(line=error_info[2], column=error_info[3])
-                context.end_line = error_info[4]
-                context.end_column = error_info[5]
-                self.msg.fail(error_info[1], context, code=error_info[0])
-
-            #  Report all types revealed in at least one iteration step:
-            for note_info, types in revealed_types.items():
-                sorted_ = sorted(types, key=lambda typ: typ.lower())
-                revealed = sorted_[0] if len(types) == 1 else f"Union[{', '.join(sorted_)}]"
-                context = Context(line=note_info[1], column=note_info[2])
-                context.end_line = note_info[3]
-                context.end_column = note_info[4]
-                self.note(f'Revealed type is "{revealed}"', context)
+            self.msg.iteration_dependent_errors(iter_errors)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
             if exit_condition:
@@ -715,6 +740,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # TODO: keep precise type for callables with tricky but valid signatures.
                     setter_type = fallback_setter_type
                 defn.items[0].var.setter_type = setter_type
+                if isinstance(defn.type, Overloaded):
+                    # Update legacy property type for decorated properties.
+                    getter_type = self.extract_callable_type(defn.items[0].var.type, defn)
+                    if getter_type is not None:
+                        getter_type.definition = defn.items[0]
+                        defn.type.items[0] = getter_type
         for i, fdef in enumerate(defn.items):
             assert isinstance(fdef, Decorator)
             if defn.is_property:
@@ -732,7 +763,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if num_abstract not in (0, len(defn.items)):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.impl:
-            defn.impl.accept(self)
+            with self.enter_overload_impl(defn.impl):
+                defn.impl.accept(self)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
             if defn.type is None:
@@ -741,6 +773,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     assert isinstance(item, Decorator)
                     item_type = self.extract_callable_type(item.var.type, item)
                     if item_type is not None:
+                        item_type.definition = item
                         item_types.append(item_type)
                 if item_types:
                     defn.type = Overloaded(item_types)
@@ -774,6 +807,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 self.msg.no_overridable_method(defn.name, defn)
             self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
             self.check_inplace_operator_method(defn)
+
+    @contextmanager
+    def enter_overload_impl(self, impl: OverloadPart) -> Iterator[None]:
+        self.overload_impl_stack.append(impl)
+        try:
+            yield
+        finally:
+            assert self.overload_impl_stack.pop() == impl
 
     def extract_callable_type(self, inner_type: Type | None, ctx: Context) -> CallableType | None:
         """Get type as seen by an overload item caller."""
@@ -834,8 +875,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # At this point we should have set the impl already, and all remaining
         # items are decorators
 
-        if self.msg.errors.file in self.msg.errors.ignored_files or (
-            self.is_typeshed_stub and self.options.test_env
+        if (
+            self.options.ignore_errors
+            or self.msg.errors.file in self.msg.errors.ignored_files
+            or (self.is_typeshed_stub and self.options.test_env)
         ):
             # This is a little hacky, however, the quadratic check here is really expensive, this
             # method has no side effects, so we should skip it if we aren't going to report
@@ -1301,7 +1344,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     )
 
                 if name:  # Special method names
-                    if defn.info and self.is_reverse_op_method(name):
+                    if (
+                        defn.info
+                        and self.is_reverse_op_method(name)
+                        and defn not in self.overload_impl_stack
+                    ):
                         self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ("__getattr__", "__getattribute__"):
                         self.check_getattr_method(typ, defn, name)
@@ -1362,7 +1409,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if typ.type_is:
                     arg_index = 0
                     # For methods and classmethods, we want the second parameter
-                    if ref_type is not None and (not defn.is_static or defn.name == "__new__"):
+                    if ref_type is not None and defn.has_self_or_cls_argument:
                         arg_index = 1
                     if arg_index < len(typ.arg_types) and not is_subtype(
                         typ.type_is, typ.arg_types[arg_index]
@@ -1376,49 +1423,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         )
 
                 # Store argument types.
+                found_self = False
+                if isinstance(defn, FuncDef) and not defn.is_decorated:
+                    found_self = self.require_correct_self_argument(typ, defn)
                 for i in range(len(typ.arg_types)):
                     arg_type = typ.arg_types[i]
-                    if (
-                        isinstance(defn, FuncDef)
-                        and ref_type is not None
-                        and i == 0
-                        and (not defn.is_static or defn.name == "__new__")
-                        and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]
-                    ):
-                        if defn.is_class or defn.name == "__new__":
-                            ref_type = mypy.types.TypeType.make_normalized(ref_type)
-                        if not is_same_type(arg_type, ref_type):
-                            # This level of erasure matches the one in checkmember.check_self_arg(),
-                            # better keep these two checks consistent.
-                            erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
-                            if not is_subtype(ref_type, erased, ignore_type_params=True):
-                                if (
-                                    isinstance(erased, Instance)
-                                    and erased.type.is_protocol
-                                    or isinstance(erased, TypeType)
-                                    and isinstance(erased.item, Instance)
-                                    and erased.item.type.is_protocol
-                                ):
-                                    # We allow the explicit self-type to be not a supertype of
-                                    # the current class if it is a protocol. For such cases
-                                    # the consistency check will be performed at call sites.
-                                    msg = None
-                                elif typ.arg_names[i] in {"self", "cls"}:
-                                    msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
-                                        erased.str_with_options(self.options),
-                                        ref_type.str_with_options(self.options),
-                                    )
-                                else:
-                                    msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
-                                if msg:
-                                    self.fail(msg, defn)
-                    elif isinstance(arg_type, TypeVarType):
+                    if isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
                         if (
                             arg_type.variance == COVARIANT
                             and defn.name not in ("__init__", "__new__", "__post_init__")
                             and not is_private(defn.name)  # private methods are not inherited
+                            and (i != 0 or not found_self)
                         ):
                             ctx: Context = arg_type
                             if ctx.line < 0:
@@ -1472,7 +1489,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # TODO: Find a way of working around this limitation
                     if _is_empty_generator_function(item) or len(expanded) >= 2:
                         self.binder.suppress_unreachable_warnings()
-                    self.accept(item.body)
+                    # When checking a third-party library, we can skip function body,
+                    # if during semantic analysis we found that there are no attributes
+                    # defined via self here.
+                    if (
+                        not (
+                            self.options.ignore_errors
+                            or self.msg.errors.file in self.msg.errors.ignored_files
+                        )
+                        or self.options.preserve_asts
+                        or not isinstance(defn, FuncDef)
+                        or defn.has_self_attr_def
+                    ):
+                        self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
                 if new_frame is not None:
                     self.binder.pop_frame(True, 0)
@@ -1567,6 +1596,69 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def require_correct_self_argument(self, func: Type, defn: FuncDef) -> bool:
+        func = get_proper_type(func)
+        if not isinstance(func, CallableType):
+            return False
+
+        # Do not report errors for untyped methods in classes nested in untyped funcs.
+        if not (
+            self.options.check_untyped_defs
+            or len(self.dynamic_funcs) < 2
+            or not self.dynamic_funcs[-2]
+            or not defn.is_dynamic()
+        ):
+            return bool(func.arg_types)
+
+        with self.scope.push_function(defn):
+            # We temporary push the definition to get the self type as
+            # visible from *inside* of this function/method.
+            ref_type: Type | None = self.scope.active_self_type()
+            if ref_type is None:
+                return False
+
+        if not defn.has_self_or_cls_argument or (
+            func.arg_kinds and func.arg_kinds[0] in [nodes.ARG_STAR, nodes.ARG_STAR2]
+        ):
+            return False
+
+        if not func.arg_types:
+            self.fail(
+                'Method must have at least one argument. Did you forget the "self" argument?', defn
+            )
+            return False
+
+        arg_type = func.arg_types[0]
+        if defn.is_class or defn.name == "__new__":
+            ref_type = mypy.types.TypeType.make_normalized(ref_type)
+        if is_same_type(arg_type, ref_type):
+            return True
+
+        # This level of erasure matches the one in checkmember.check_self_arg(),
+        # better keep these two checks consistent.
+        erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
+        if not is_subtype(ref_type, erased, ignore_type_params=True):
+            if (
+                isinstance(erased, Instance)
+                and erased.type.is_protocol
+                or isinstance(erased, TypeType)
+                and isinstance(erased.item, Instance)
+                and erased.item.type.is_protocol
+            ):
+                # We allow the explicit self-type to be not a supertype of
+                # the current class if it is a protocol. For such cases
+                # the consistency check will be performed at call sites.
+                msg = None
+            elif func.arg_names[0] in {"self", "cls"}:
+                msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
+                    erased.str_with_options(self.options), ref_type.str_with_options(self.options)
+                )
+            else:
+                msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
+            if msg:
+                self.fail(msg, defn)
+        return True
 
     def is_var_redefined_in_outer_context(self, v: Var, after_line: int) -> bool:
         """Can the variable be assigned to at module top level or outer function?
@@ -2092,6 +2184,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         Return a list of base classes which contain an attribute with the method name.
         """
+        if self.options.ignore_errors or self.msg.errors.file in self.msg.errors.ignored_files:
+            # Method override checks may be expensive, so skip them in third-party libraries.
+            return None
         # Check against definitions in base classes.
         check_override_compatibility = (
             defn.name not in ("__init__", "__new__", "__init_subclass__", "__post_init__")
@@ -2195,7 +2290,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             override_class_or_static = defn.func.is_class or defn.func.is_static
         typ, _ = self.node_type_from_base(defn.name, defn.info, defn)
-        assert typ is not None
+        if typ is None:
+            # This may only happen if we're checking `x-redefinition` member
+            # and `x` itself is for some reason gone. Normally the node should
+            # be reachable from the containing class by its name.
+            # The redefinition is never removed, use this as a sanity check to verify
+            # the reasoning above.
+            assert f"{defn.name}-redefinition" in defn.info.names
+            return False
 
         original_node = base_attr.node
         # `original_type` can be partial if (e.g.) it is originally an
@@ -2442,8 +2544,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 override_ids = override.type_var_ids()
                 type_name = None
-                if isinstance(override.definition, FuncDef):
-                    type_name = override.definition.info.name
+                definition = get_func_def(override)
+                if isinstance(definition, FuncDef):
+                    type_name = definition.info.name
 
                 def erase_override(t: Type) -> Type:
                     return erase_typevars(t, ids_to_erase=override_ids)
@@ -2552,6 +2655,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
+        if not can_have_shared_disjoint_base(typ.bases):
+            self.fail(message_registry.INCOMPATIBLE_DISJOINT_BASES.format(typ.name), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder(self.options)
@@ -2956,23 +3061,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         ):
             return  # Reasonable exceptions from this check
 
-        metaclasses = [
-            entry.metaclass_type
-            for entry in typ.mro[1:-1]
-            if entry.metaclass_type
-            and not is_named_instance(entry.metaclass_type, "builtins.type")
-        ]
-        if not metaclasses:
-            return
-        if typ.metaclass_type is not None and all(
-            is_subtype(typ.metaclass_type, meta) for meta in metaclasses
+        if typ.metaclass_type is None and any(
+            base.type.metaclass_type is not None for base in typ.bases
         ):
-            return
-        self.fail(
-            "Metaclass conflict: the metaclass of a derived class must be "
-            "a (non-strict) subclass of the metaclasses of all its bases",
-            typ,
-        )
+            self.fail(
+                "Metaclass conflict: the metaclass of a derived class must be "
+                "a (non-strict) subclass of the metaclasses of all its bases",
+                typ,
+                code=codes.METACLASS,
+            )
+            explanation = typ.explain_metaclass_conflict()
+            if explanation:
+                self.note(explanation, typ, code=codes.METACLASS)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:
@@ -3024,6 +3124,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     break
             else:
                 self.accept(s)
+                # Clear expression cache after each statement to avoid unlimited growth.
+                self.expr_checker.expr_cache.clear()
 
     def should_report_unreachable_issues(self) -> bool:
         return (
@@ -3050,7 +3152,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if isinstance(s.expr, EllipsisExpr):
                 return True
             elif isinstance(s.expr, CallExpr):
-                with self.expr_checker.msg.filter_errors():
+                with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
                     typ = get_proper_type(
                         self.expr_checker.accept(
                             s.expr, allow_none_return=True, always_allow_any=True
@@ -3150,7 +3252,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         else:
                             self.check_getattr_method(signature, lvalue, name)
 
-                if name == "__slots__":
+                if name == "__slots__" and self.scope.active_class() is not None:
                     typ = lvalue_type or self.expr_checker.accept(rvalue)
                     self.check_slots_definition(typ, lvalue)
                 if name == "__match_args__" and inferred is not None:
@@ -3329,6 +3431,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     type_contexts.append(base_type)
         # Use most derived supertype as type context if available.
         if not type_contexts:
+            if inferred.name == "__slots__" and self.scope.active_class() is not None:
+                str_type = self.named_type("builtins.str")
+                return self.named_generic_type("typing.Iterable", [str_type])
+            if inferred.name == "__all__" and self.scope.is_top_level():
+                str_type = self.named_type("builtins.str")
+                return self.named_generic_type("typing.Sequence", [str_type])
             return None
         candidate = type_contexts[0]
         for other in type_contexts:
@@ -3447,6 +3555,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
 
                 base_type, base_node = self.node_type_from_base(lvalue_node.name, base, lvalue)
+                # TODO: if the r.h.s. is a descriptor, we should check setter override as well.
                 custom_setter = is_custom_settable_property(base_node)
                 if isinstance(base_type, PartialType):
                     base_type = None
@@ -3711,6 +3820,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return
 
         inst = get_proper_type(self.expr_checker.accept(lvalue.expr))
+        if isinstance(inst, TypeVarType) and inst.id.is_self():
+            # Unwrap self type
+            inst = get_proper_type(inst.upper_bound)
         if not isinstance(inst, Instance):
             return
         if inst.type.slots is None:
@@ -3840,7 +3952,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if rvalue_needed > 0:
                     rvalues = (
                         rvalues[0:iterable_start]
-                        + [TempNode(iterable_type) for i in range(rvalue_needed)]
+                        + [TempNode(iterable_type, context=rval) for _ in range(rvalue_needed)]
                         + rvalues[iterable_end + 1 :]
                     )
 
@@ -3999,7 +4111,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 for t, lv in zip(transposed, self.flatten_lvalues(lvalues)):
                     # We can access _type_maps directly since temporary type maps are
                     # only created within expressions.
-                    t.append(self._type_maps[0].pop(lv, AnyType(TypeOfAny.special_form)))
+                    t.append(self._type_maps[-1].pop(lv, AnyType(TypeOfAny.special_form)))
         union_types = tuple(make_simplified_union(col) for col in transposed)
         for expr, items in assignments.items():
             # Bind a union of types collected in 'assignments' to every expression.
@@ -4400,9 +4512,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         refers to the variable (lvalue). If var is None, do nothing.
         """
         if var and not self.current_node_deferred:
-            # TODO: should we also set 'is_ready = True' here?
             var.type = type
             var.is_inferred = True
+            var.is_ready = True
             if var not in self.var_decl_frames:
                 # Used for the hack to improve optional type inference in conditionals
                 self.var_decl_frames[var] = {frame.id for frame in self.binder.frames}
@@ -4412,9 +4524,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
             p_type = get_proper_type(type)
-            if isinstance(p_type, CallableType) and is_node_static(p_type.definition):
-                # TODO: handle aliases to class methods (similarly).
-                var.is_staticmethod = True
+            definition = None
+            if isinstance(p_type, CallableType):
+                definition = p_type.definition
+            elif isinstance(p_type, Overloaded):
+                # Randomly select first item, if items are different, there will
+                # be an error during semantic analysis.
+                definition = p_type.items[0].definition
+            if definition:
+                if is_node_static(definition):
+                    var.is_staticmethod = True
+                elif is_classmethod_node(definition):
+                    var.is_classmethod = True
+                elif is_property(definition):
+                    var.is_property = True
+                    if isinstance(p_type, Overloaded):
+                        # TODO: in theory we can have a property with a deleter only.
+                        var.is_settable_property = True
+                        assert isinstance(definition, Decorator), definition
+                        var.setter_type = definition.var.setter_type
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
         """Store best known type for variable if type inference failed.
@@ -4534,7 +4662,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # may cause some perf impact, plus we want to partially preserve
                 # the old behavior. This helps with various practical examples, see
                 # e.g. testOptionalTypeNarrowedByGenericCall.
-                with self.msg.filter_errors() as local_errors, self.local_type_map() as type_map:
+                with self.msg.filter_errors() as local_errors, self.local_type_map as type_map:
                     alt_rvalue_type = self.expr_checker.accept(
                         rvalue, None, always_allow_any=always_allow_any
                     )
@@ -4580,7 +4708,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self,
         lvalue: MemberExpr,
         instance_type: Type,
-        attribute_type: Type,
+        set_lvalue_type: Type,
         rvalue: Expression,
         context: Context,
     ) -> tuple[Type, Type, bool]:
@@ -4597,23 +4725,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if (isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or isinstance(
             instance_type, TypeType
         ):
-            rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, attribute_type, True
+            rvalue_type, _ = self.check_simple_assignment(set_lvalue_type, rvalue, context)
+            return rvalue_type, set_lvalue_type, True
 
         with self.msg.filter_errors(filter_deprecated=True):
             get_lvalue_type = self.expr_checker.analyze_ordinary_member_access(
                 lvalue, is_lvalue=False
             )
 
-        # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
-        # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
+        # Special case: if the rvalue_type is a subtype of '__get__' type, and
+        # '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
-        rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
-        infer = is_subtype(rvalue_type, get_lvalue_type) and is_subtype(
-            get_lvalue_type, attribute_type
-        )
-        return rvalue_type if infer else attribute_type, attribute_type, infer
+        rvalue_type, _ = self.check_simple_assignment(set_lvalue_type, rvalue, context)
+        rvalue_type = rvalue_type if is_subtype(rvalue_type, get_lvalue_type) else get_lvalue_type
+        return rvalue_type, set_lvalue_type, is_subtype(get_lvalue_type, set_lvalue_type)
 
     def check_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression, context: Context
@@ -4646,6 +4772,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     ) -> None:
         """Replace the partial type of var with a non-partial type."""
         var.type = new_type
+        # Updating a partial type should invalidate expression caches.
+        self.binder.version += 1
         del partial_types[var]
         if self.options.allow_redefinition_new:
             # When using --allow-redefinition-new, binder tracks all types of
@@ -4727,6 +4855,42 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.check_return_stmt(s)
         self.binder.unreachable()
 
+    def infer_context_dependent(
+        self, expr: Expression, type_ctx: Type, allow_none_func_call: bool
+    ) -> ProperType:
+        """Infer type of an expression with fallback to empty type context."""
+        with self.msg.filter_errors(
+            filter_errors=True, filter_deprecated=True, save_filtered_errors=True
+        ) as msg:
+            with self.local_type_map as type_map:
+                typ = get_proper_type(
+                    self.expr_checker.accept(
+                        expr, type_ctx, allow_none_return=allow_none_func_call
+                    )
+                )
+        if not msg.has_new_errors():
+            self.store_types(type_map)
+            return typ
+
+        # If there are errors with the original type context, try re-inferring in empty context.
+        original_messages = msg.filtered_errors()
+        original_type_map = type_map
+        with self.msg.filter_errors(
+            filter_errors=True, filter_deprecated=True, save_filtered_errors=True
+        ) as msg:
+            with self.local_type_map as type_map:
+                alt_typ = get_proper_type(
+                    self.expr_checker.accept(expr, None, allow_none_return=allow_none_func_call)
+                )
+        if not msg.has_new_errors() and is_subtype(alt_typ, type_ctx):
+            self.store_types(type_map)
+            return alt_typ
+
+        # If empty fallback didn't work, use results from the original type context.
+        self.msg.add_errors(original_messages)
+        self.store_types(original_type_map)
+        return typ
+
     def check_return_stmt(self, s: ReturnStmt) -> None:
         defn = self.scope.current_function()
         if defn is not None:
@@ -4759,11 +4923,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 allow_none_func_call = is_lambda or declared_none_return or declared_any_return
 
                 # Return with a value.
-                typ = get_proper_type(
-                    self.expr_checker.accept(
-                        s.expr, return_type, allow_none_return=allow_none_func_call
+                if (
+                    isinstance(s.expr, (CallExpr, ListExpr, TupleExpr, DictExpr, SetExpr, OpExpr))
+                    or isinstance(s.expr, AwaitExpr)
+                    and isinstance(s.expr.expr, CallExpr)
+                ):
+                    # For expressions that (strongly) depend on type context (i.e. those that
+                    # are handled like a function call), we allow fallback to empty type context
+                    # in case of errors, this improves user experience in some cases,
+                    # see e.g. testReturnFallbackInference.
+                    typ = self.infer_context_dependent(s.expr, return_type, allow_none_func_call)
+                else:
+                    typ = get_proper_type(
+                        self.expr_checker.accept(
+                            s.expr, return_type, allow_none_return=allow_none_func_call
+                        )
                     )
-                )
                 # Treat NotImplemented as having type Any, consistent with its
                 # definition in typeshed prior to python/typeshed#4222.
                 if (
@@ -4873,17 +5048,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
-            rvalue_type, method_type = self.expr_checker.check_op(method, lvalue_type, s.rvalue, s)
-            if isinstance(inst := get_proper_type(lvalue_type), Instance) and isinstance(
-                defn := inst.type.get_method(method), OverloadedFuncDef
-            ):
-                for item in defn.items:
-                    if (
-                        isinstance(item, Decorator)
-                        and isinstance(typ := item.func.type, CallableType)
-                        and (bind_self(typ) == method_type)
-                    ):
-                        self.warn_deprecated(item.func, s)
+            rvalue_type, _ = self.expr_checker.check_op(method, lvalue_type, s.rvalue, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
         else:
@@ -4948,6 +5113,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
+
+        iter_errors = None
+
         # Our enclosing frame will get the result if the try/except falls through.
         # This one gets all possible states after the try block exited abnormally
         # (by exception, return, break, etc.)
@@ -4962,7 +5130,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.visit_try_without_finally(s, try_frame=bool(s.finally_body))
             if s.finally_body:
                 # First we check finally_body is type safe on all abnormal exit paths
-                self.accept(s.finally_body)
+                iter_errors = IterationDependentErrors()
+                with IterationErrorWatcher(self.msg.errors, iter_errors):
+                    self.accept(s.finally_body)
 
         if s.finally_body:
             # Then we try again for the more restricted set of options
@@ -4976,8 +5146,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # type checks in both contexts, but only the resulting types
             # from the latter context affect the type state in the code
             # that follows the try statement.)
+            assert iter_errors is not None
             if not self.binder.is_unreachable():
-                self.accept(s.finally_body)
+                with IterationErrorWatcher(self.msg.errors, iter_errors):
+                    self.accept(s.finally_body)
+            self.msg.iteration_dependent_errors(iter_errors)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.
@@ -5277,7 +5450,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
         if non_trivial_decorator:
             self.check_untyped_after_decorator(sig, e.func)
+        self.require_correct_self_argument(sig, e.func)
         sig = set_callable_name(sig, e.func)
+        if isinstance(sig, CallableType):
+            sig.definition = e
         e.var.type = sig
         e.var.is_ready = True
         if e.func.is_property:
@@ -5372,7 +5548,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.accept(s.body)
 
     def check_untyped_after_decorator(self, typ: Type, func: FuncDef) -> None:
-        if not self.options.disallow_any_decorated or self.is_stub:
+        if not self.options.disallow_any_decorated or self.is_stub or self.current_node_deferred:
             return
 
         if mypy.checkexpr.has_any_type(typ):
@@ -5419,21 +5595,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
-        named_subject: Expression
-        if isinstance(s.subject, CallExpr):
-            # Create a dummy subject expression to handle cases where a match statement's subject
-            # is not a literal value. This lets us correctly narrow types and check exhaustivity
-            # This is hack!
-            if s.subject_dummy is None:
-                id = s.subject.callee.fullname if isinstance(s.subject.callee, RefExpr) else ""
-                name = "dummy-match-" + id
-                v = Var(name)
-                s.subject_dummy = NameExpr(name)
-                s.subject_dummy.node = v
-            named_subject = s.subject_dummy
-        else:
-            named_subject = s.subject
-
+        # In sync with similar actions elsewhere, narrow the target if
+        # we are matching an AssignmentExpr
+        unwrapped_subject = collapse_walrus(s.subject)
+        named_subject = self._make_named_statement_for_match(s, unwrapped_subject)
         with self.binder.frame_context(can_skip=False, fall_through=0):
             subject_type = get_proper_type(self.expr_checker.accept(s.subject))
 
@@ -5466,6 +5631,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         pattern_map, else_map = conditional_types_to_typemaps(
                             named_subject, pattern_type.type, pattern_type.rest_type
                         )
+                        # Maybe the subject type can be inferred from constraints on
+                        # its attribute/item?
+                        if pattern_map and named_subject in pattern_map:
+                            pattern_map[unwrapped_subject] = pattern_map[named_subject]
+                        if else_map and named_subject in else_map:
+                            else_map[unwrapped_subject] = else_map[named_subject]
                         pattern_map = self.propagate_up_typemap_info(pattern_map)
                         else_map = self.propagate_up_typemap_info(else_map)
                         self.remove_capture_conflicts(pattern_type.captures, inferred_types)
@@ -5509,14 +5680,32 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 self.push_type_map(else_map, from_assignment=False)
                 unmatched_types = else_map
 
-            if unmatched_types is not None:
-                for typ in list(unmatched_types.values()):
+            if unmatched_types is not None and not self.current_node_deferred:
+                for typ in unmatched_types.values():
                     self.msg.match_statement_inexhaustive_match(typ, s)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
+
+    def _make_named_statement_for_match(self, s: MatchStmt, subject: Expression) -> Expression:
+        """Construct a fake NameExpr for inference if a match clause is complex."""
+        if self.binder.can_put_directly(subject):
+            # Already named - we should infer type of it as given
+            return subject
+        elif s.subject_dummy is not None:
+            return s.subject_dummy
+        else:
+            # Create a dummy subject expression to handle cases where a match statement's subject
+            # is not a literal value. This lets us correctly narrow types and check exhaustivity
+            # This is hack!
+            name = self.new_unique_dummy_name("match")
+            v = Var(name)
+            named_subject = NameExpr(name)
+            named_subject.node = v
+            s.subject_dummy = named_subject
+            return named_subject
 
     def _get_recursive_sub_patterns_map(
         self, expr: Expression, typ: Type
@@ -5556,6 +5745,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 previous_type, _, _ = self.check_lvalue(expr)
                 if previous_type is not None:
                     already_exists = True
+                    if isinstance(expr.node, Var) and expr.node.is_final:
+                        self.msg.cant_assign_to_final(expr.name, False, expr)
                     if self.check_subtype(
                         typ,
                         previous_type,
@@ -5679,6 +5870,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         pretty_names_list = pretty_seq(
             format_type_distinctly(*base_classes, options=self.options, bare=True), "and"
         )
+
+        if not can_have_shared_disjoint_base(base_classes):
+            errors.append((pretty_names_list, "have distinct disjoint bases"))
+            return None
 
         new_errors = []
         for base in base_classes:
@@ -6124,21 +6319,26 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 attr = try_getting_str_literals(node.args[1], self.lookup_type(node.args[1]))
                 if literal(expr) == LITERAL_TYPE and attr and len(attr) == 1:
                     return self.hasattr_type_maps(expr, self.lookup_type(expr), attr[0])
-            elif isinstance(node.callee, RefExpr):
-                if node.callee.type_guard is not None or node.callee.type_is is not None:
+            else:
+                type_is, type_guard = None, None
+                called_type = self.lookup_type_or_none(node.callee)
+                if called_type is not None:
+                    called_type = get_proper_type(called_type)
+                    # TODO: there are some more cases in check_call() to handle.
+                    # If the callee is an instance, try to extract TypeGuard/TypeIs from its __call__ method.
+                    if isinstance(called_type, Instance):
+                        call = find_member("__call__", called_type, called_type, is_operator=True)
+                        if call is not None:
+                            called_type = get_proper_type(call)
+                    if isinstance(called_type, CallableType):
+                        type_is, type_guard = called_type.type_is, called_type.type_guard
+
+                # If the callee is a RefExpr, extract TypeGuard/TypeIs directly.
+                if isinstance(node.callee, RefExpr):
+                    type_is, type_guard = node.callee.type_is, node.callee.type_guard
+                if type_guard is not None or type_is is not None:
                     # TODO: Follow *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
-                        # the first argument might be used as a kwarg
-                        called_type = get_proper_type(self.lookup_type(node.callee))
-
-                        # TODO: there are some more cases in check_call() to handle.
-                        if isinstance(called_type, Instance):
-                            call = find_member(
-                                "__call__", called_type, called_type, is_operator=True
-                            )
-                            if call is not None:
-                                called_type = get_proper_type(call)
-
                         # *assuming* the overloaded function is correct, there's a couple cases:
                         #  1) The first argument has different names, but is pos-only. We don't
                         #     care about this case, the argument must be passed positionally.
@@ -6151,9 +6351,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 # we want the idx-th variable to be narrowed
                                 expr = collapse_walrus(node.args[idx])
                             else:
-                                kind = (
-                                    "guard" if node.callee.type_guard is not None else "narrower"
-                                )
+                                kind = "guard" if type_guard is not None else "narrower"
                                 self.fail(
                                     message_registry.TYPE_GUARD_POS_ARG_REQUIRED.format(kind), node
                                 )
@@ -6164,16 +6362,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # considered "always right" (i.e. even if the types are not overlapping).
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
-                        if node.callee.type_guard is not None:
-                            return {expr: TypeGuardedType(node.callee.type_guard)}, {}
+                        if type_guard is not None:
+                            return {expr: TypeGuardedType(type_guard)}, {}
                         else:
-                            assert node.callee.type_is is not None
+                            assert type_is is not None
                             return conditional_types_to_typemaps(
                                 expr,
                                 *self.conditional_types_with_intersection(
                                     self.lookup_type(expr),
-                                    [TypeRange(node.callee.type_is, is_upper_bound=False)],
+                                    [TypeRange(type_is, is_upper_bound=False)],
                                     expr,
+                                    consider_runtime_isinstance=False,
                                 ),
                             )
         elif isinstance(node, ComparisonExpr):
@@ -7181,7 +7380,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if extra_info:
             msg = msg.with_additional_msg(" (" + ", ".join(extra_info) + ")")
 
-        self.fail(msg, context)
+        error = self.fail(msg, context)
         for note in notes:
             self.msg.note(note, context, code=msg.code)
         if note_msg:
@@ -7190,9 +7389,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if (
             isinstance(supertype, Instance)
             and supertype.type.is_protocol
-            and isinstance(subtype, (CallableType, Instance, TupleType, TypedDictType))
+            and isinstance(subtype, (CallableType, Instance, TupleType, TypedDictType, TypeType))
         ):
-            self.msg.report_protocol_problems(subtype, supertype, context, code=msg.code)
+            self.msg.report_protocol_problems(subtype, supertype, context, parent_error=error)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
             call = find_member("__call__", subtype, subtype, is_operator=True)
             if call:
@@ -7258,13 +7457,36 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         For example, named_type('builtins.object') produces the 'object' type.
         """
+        if name == "builtins.str":
+            if instance_cache.str_type is None:
+                instance_cache.str_type = self._named_type(name)
+            return instance_cache.str_type
+        if name == "builtins.function":
+            if instance_cache.function_type is None:
+                instance_cache.function_type = self._named_type(name)
+            return instance_cache.function_type
+        if name == "builtins.int":
+            if instance_cache.int_type is None:
+                instance_cache.int_type = self._named_type(name)
+            return instance_cache.int_type
+        if name == "builtins.bool":
+            if instance_cache.bool_type is None:
+                instance_cache.bool_type = self._named_type(name)
+            return instance_cache.bool_type
+        if name == "builtins.object":
+            if instance_cache.object_type is None:
+                instance_cache.object_type = self._named_type(name)
+            return instance_cache.object_type
+        return self._named_type(name)
+
+    def _named_type(self, name: str) -> Instance:
         # Assume that the name refers to a type.
         sym = self.lookup_qualified(name)
         node = sym.node
         if isinstance(node, TypeAlias):
             assert isinstance(node.target, Instance)  # type: ignore[misc]
             node = node.target.type
-        assert isinstance(node, TypeInfo)
+        assert isinstance(node, TypeInfo), node
         any_type = AnyType(TypeOfAny.from_omitted_generics)
         return Instance(node, [any_type] * len(node.defn.type_vars))
 
@@ -7283,7 +7505,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # Assume that the name refers to a class.
         sym = self.lookup_qualified(fullname)
         node = sym.node
-        assert isinstance(node, TypeInfo)
+        assert isinstance(node, TypeInfo), node
         return node
 
     def type_type(self) -> Instance:
@@ -7316,18 +7538,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def store_types(self, d: dict[Expression, Type]) -> None:
         self._type_maps[-1].update(d)
-
-    @contextmanager
-    def local_type_map(self) -> Iterator[dict[Expression, Type]]:
-        """Store inferred types into a temporary type map (returned).
-
-        This can be used to perform type checking "experiments" without
-        affecting exported types (which are used by mypyc).
-        """
-        temp_type_map: dict[Expression, Type] = {}
-        self._type_maps.append(temp_type_map)
-        yield temp_type_map
-        self._type_maps.pop()
 
     def in_checked_function(self) -> bool:
         """Should we type-check the current function?
@@ -7521,12 +7731,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def fail(
         self, msg: str | ErrorMessage, context: Context, *, code: ErrorCode | None = None
-    ) -> None:
+    ) -> ErrorInfo:
         """Produce an error message."""
         if isinstance(msg, ErrorMessage):
-            self.msg.fail(msg.value, context, code=msg.code)
-            return
-        self.msg.fail(msg, context, code=code)
+            return self.msg.fail(msg.value, context, code=msg.code)
+        return self.msg.fail(msg, context, code=code)
 
     def note(
         self,
@@ -7602,11 +7811,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: None = None,
+        *,
+        consider_runtime_isinstance: bool = True,
     ) -> tuple[Type | None, Type | None]: ...
 
     @overload
     def conditional_types_with_intersection(
-        self, expr_type: Type, type_ranges: list[TypeRange] | None, ctx: Context, default: Type
+        self,
+        expr_type: Type,
+        type_ranges: list[TypeRange] | None,
+        ctx: Context,
+        default: Type,
+        *,
+        consider_runtime_isinstance: bool = True,
     ) -> tuple[Type, Type]: ...
 
     def conditional_types_with_intersection(
@@ -7615,8 +7832,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: Type | None = None,
+        *,
+        consider_runtime_isinstance: bool = True,
     ) -> tuple[Type | None, Type | None]:
-        initial_types = conditional_types(expr_type, type_ranges, default)
+        initial_types = conditional_types(
+            expr_type,
+            type_ranges,
+            default,
+            consider_runtime_isinstance=consider_runtime_isinstance,
+        )
         # For some reason, doing "yes_map, no_map = conditional_types_to_typemaps(...)"
         # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
         yes_type: Type | None = initial_types[0]
@@ -7860,6 +8084,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
 
+    def is_defined_in_stub(self, typ: Instance, /) -> bool:
+        return self.modules[typ.type.module_name].is_stub
+
     def check_deprecated(self, node: Node | None, context: Context) -> None:
         """Warn if deprecated and not directly imported with a `from` statement."""
         if isinstance(node, Decorator):
@@ -7879,7 +8106,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             node = node.func
         if (
             isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo))
-            and ((deprecated := node.deprecated) is not None)
+            and (deprecated := node.deprecated) is not None
             and not self.is_typeshed_stub
             and not any(
                 node.fullname == p or node.fullname.startswith(f"{p}.")
@@ -7889,20 +8116,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             warn = self.msg.note if self.options.report_deprecated_as_note else self.msg.fail
             warn(deprecated, context, code=codes.DEPRECATED)
 
-    def warn_deprecated_overload_item(
-        self, node: Node | None, context: Context, *, target: Type, selftype: Type | None = None
-    ) -> None:
-        """Warn if the overload item corresponding to the given callable is deprecated."""
-        target = get_proper_type(target)
-        if isinstance(node, OverloadedFuncDef) and isinstance(target, CallableType):
-            for item in node.items:
-                if isinstance(item, Decorator) and isinstance(
-                    candidate := item.func.type, CallableType
-                ):
-                    if selftype is not None and not node.is_static:
-                        candidate = bind_self(candidate, selftype)
-                    if candidate == target:
-                        self.warn_deprecated(item.func, context)
+    def new_unique_dummy_name(self, namespace: str) -> str:
+        """Generate a name that is guaranteed to be unique for this TypeChecker instance."""
+        name = f"dummy-{namespace}-{self._unique_id}"
+        self._unique_id += 1
+        return name
 
     # leafs
 
@@ -7928,18 +8146,30 @@ class CollectArgTypeVarTypes(TypeTraverserVisitor):
 
 @overload
 def conditional_types(
-    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: None = None
+    current_type: Type,
+    proposed_type_ranges: list[TypeRange] | None,
+    default: None = None,
+    *,
+    consider_runtime_isinstance: bool = True,
 ) -> tuple[Type | None, Type | None]: ...
 
 
 @overload
 def conditional_types(
-    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: Type
+    current_type: Type,
+    proposed_type_ranges: list[TypeRange] | None,
+    default: Type,
+    *,
+    consider_runtime_isinstance: bool = True,
 ) -> tuple[Type, Type]: ...
 
 
 def conditional_types(
-    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: Type | None = None
+    current_type: Type,
+    proposed_type_ranges: list[TypeRange] | None,
+    default: Type | None = None,
+    *,
+    consider_runtime_isinstance: bool = True,
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
@@ -7981,7 +8211,11 @@ def conditional_types(
                     if not type_range.is_upper_bound
                 ]
             )
-            remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
+            remaining_type = restrict_subtype_away(
+                current_type,
+                proposed_precise_type,
+                consider_runtime_isinstance=consider_runtime_isinstance,
+            )
             return proposed_type, remaining_type
     else:
         # An isinstance check, but we don't understand the type
@@ -8532,15 +8766,25 @@ class SetNothingToAny(TypeTranslator):
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
-def is_node_static(node: Node | None) -> bool | None:
-    """Find out if a node describes a static function method."""
+def is_classmethod_node(node: SymbolNode | None) -> bool | None:
+    """Find out if a node describes a classmethod."""
+    if isinstance(node, Decorator):
+        node = node.func
+    if isinstance(node, FuncDef):
+        return node.is_class
+    if isinstance(node, Var):
+        return node.is_classmethod
+    return None
 
+
+def is_node_static(node: SymbolNode | None) -> bool | None:
+    """Find out if a node describes a static function method."""
+    if isinstance(node, Decorator):
+        node = node.func
     if isinstance(node, FuncDef):
         return node.is_static
-
     if isinstance(node, Var):
         return node.is_staticmethod
-
     return None
 
 
@@ -8787,6 +9031,8 @@ def is_static(func: FuncBase | Decorator) -> bool:
 
 
 def is_property(defn: SymbolNode) -> bool:
+    if isinstance(defn, FuncDef):
+        return defn.is_property
     if isinstance(defn, Decorator):
         return defn.func.is_property
     if isinstance(defn, OverloadedFuncDef):

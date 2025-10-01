@@ -233,6 +233,9 @@ def clean_up(a: list[str]) -> list[str]:
         for p in prefix, prefix.replace(os.sep, "/"):
             if p != "/" and p != "//" and p != "\\" and p != "\\\\":
                 ss = ss.replace(p, "")
+        # Replace memory address with zeros
+        if "at 0x" in ss:
+            ss = re.sub(r"(at 0x)\w+>", r"\g<1>000000000000>", ss)
         # Ignore spaces at end of line.
         ss = re.sub(" +$", "", ss)
         # Remove pwd from driver.py's path

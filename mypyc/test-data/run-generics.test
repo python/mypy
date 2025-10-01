@@ -27,22 +27,23 @@ def fn_typeddict(t: T) -> None:
     print([x for x in t.keys()])
     print({k: v for k, v in t.items()})
 
-fn_mapping({})
-print("=====")
-fn_mapping({"a": 1, "b": 2})
-print("=====")
+def test_mapping() -> None:
+    fn_mapping({})
+    print("=====")
+    fn_mapping({"a": 1, "b": 2})
+    print("=====")
 
-fn_union({"a": 1, "b": 2})
-print("=====")
-fn_union({"a": "1", "b": "2"})
-print("=====")
+    fn_union({"a": 1, "b": 2})
+    print("=====")
+    fn_union({"a": "1", "b": "2"})
+    print("=====")
 
-orig: Union[Dict[str, int], Dict[str, str]] = {"a": 1, "b": 2}
-fn_union(orig)
-print("=====")
+    orig: Union[Dict[str, int], Dict[str, str]] = {"a": 1, "b": 2}
+    fn_union(orig)
+    print("=====")
 
-td: TD = {"foo": 1}
-fn_typeddict(td)
+    td: TD = {"foo": 1}
+    fn_typeddict(td)
 [typing fixtures/typing-full.pyi]
 [out]
 \[]
@@ -96,8 +97,9 @@ def deco(func: Callable[P, int]) -> Callable[P, int]:
 def f(x: int, y: str) -> int:
     return x
 
-assert f(1, 'a') == 1
-assert f(2, y='b') == 2
+def test_usable() -> None:
+    assert f(1, 'a') == 1
+    assert f(2, y='b') == 2
 [out]
 \[1, 'a']
 {}
