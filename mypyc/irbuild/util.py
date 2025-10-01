@@ -39,7 +39,9 @@ MYPYC_ATTRS: Final[FrozenSet[MypycAttr]] = frozenset(
 DATACLASS_DECORATORS: Final = frozenset(["dataclasses.dataclass", "attr.s", "attr.attrs"])
 
 
-MypycAttr = Literal["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len"]
+MypycAttr = Literal[
+    "native_class", "allow_interpreted_subclasses", "serializable", "free_list_len"
+]
 
 
 class MypycAttrs(TypedDict):
