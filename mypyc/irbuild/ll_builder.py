@@ -1559,7 +1559,7 @@ class LowLevelIRBuilder:
         if op == "==":
             if is_string_literal(lhs):
                 if is_string_literal(rhs):
-                    # we can optimize out the check entirely in some Final cases
+                    # we can optimize out the check entirely in some constant-folded cases
                     return self.true() if lhs.value == rhs.value else self.false()
                 literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
                 return self.primitive_op(str_eq_literal, [rhs, lhs, literal_length], line)
@@ -1570,7 +1570,7 @@ class LowLevelIRBuilder:
         elif op == "!=":
             if is_string_literal(lhs):
                 if is_string_literal(rhs):
-                    # we can optimize out the check entirely in some Final cases
+                    # we can optimize out the check entirely in some constant-folded cases
                     return self.true() if lhs.value != rhs.value else self.false()
                 literal_length = Integer(len(lhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
                 eq = self.primitive_op(str_eq_literal, [rhs, lhs, literal_length], line)
