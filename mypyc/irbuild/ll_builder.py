@@ -1554,10 +1554,10 @@ class LowLevelIRBuilder:
         """Compare two strings"""
         if op == "==":
             # We can specialize this case if one or both values are string literals
-            
+
             def is_string_literal(value: Value) -> TypeGuard[LoadLiteral]:
                 return isinstance(value, LoadLiteral) and is_str_rprimitive(value.type)
-                
+
             if is_string_literal(lhs):
                 if is_string_literal(rhs):
                     # we can optimize out the check entirely in some constant-folded cases
@@ -1568,7 +1568,7 @@ class LowLevelIRBuilder:
                 literal_length = Integer(len(rhs.value), c_pyssize_t_rprimitive, line)  # type: ignore [arg-type]
                 return self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
             return self.primitive_op(str_eq, [lhs, rhs], line)
-            
+
         elif op == "!=":
             # perform a standard equality check, then negate
             eq = compare_strings(lhs, rhs, "==", line)
