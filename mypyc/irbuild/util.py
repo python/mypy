@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Final, FrozenSet, Literal, TypedDict
+from typing import Any, Final, Literal, TypedDict
 from typing_extensions import NotRequired
 
 from mypy.nodes import (
@@ -32,7 +32,7 @@ from mypy.semanal import refers_to_fullname
 from mypy.types import FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
 
-MYPYC_ATTRS: Final[FrozenSet[MypycAttr]] = frozenset(
+MYPYC_ATTRS: Final[MypycAttr] = frozenset(
     ["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len"]
 )
 
