@@ -1579,7 +1579,7 @@ class LowLevelIRBuilder:
 
         elif op == "!=":
             # perform a standard equality check, then negate
-            eq = compare_strings(lhs, rhs, "==", line)
+            eq = self.compare_strings(lhs, rhs, "==", line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
 
         # TODO: modify 'str' to use same interface as 'compare_bytes' as it would avoid
