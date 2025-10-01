@@ -2692,3 +2692,27 @@ tuple(a)
 (x,) = a
 (_,) = a
 [builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnUndefinedUnpackInBase]
+from typing import TypeVarTuple, Generic, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+class MyTuple(tuple[Unpack[TsWithTypo]], Generic[Unpack[Ts]]):  # E: Name "TsWithTypo" is not defined
+    ...
+
+x: MyTuple[int, str]
+reveal_type(x[0])  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnInvalidUnpackInBase]
+from typing import TypeVarTuple, Generic, Unpack, Union
+
+Ts = TypeVarTuple("Ts")
+
+class MyTuple(tuple[Unpack[Union[int, str]]], Generic[Unpack[Ts]]):  # E: "Union[int, str]" cannot be unpacked (must be tuple or TypeVarTuple)
+    ...
+
+x: MyTuple[int, str]
+reveal_type(x[0])  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
