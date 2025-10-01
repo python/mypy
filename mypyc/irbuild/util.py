@@ -32,7 +32,7 @@ from mypy.semanal import refers_to_fullname
 from mypy.types import FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
 
-MYPYC_ATTRS: Final[MypycAttr] = frozenset(
+MYPYC_ATTRS: Final[frozenset[MypycAttr]] = frozenset(
     ["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len"]
 )
 
