@@ -630,7 +630,7 @@ L3:
 L4:
     return r6
 
-[case testFStringFromConstants]
+[case testFStringFromConstants_64bit]
 from typing import Final
 string: Final = "abc"
 integer: Final = 123
