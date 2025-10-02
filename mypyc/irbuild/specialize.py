@@ -19,7 +19,6 @@ from typing import Callable, Final, Optional, cast
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
-    BytesExpr,
     CallExpr,
     DictExpr,
     Expression,
