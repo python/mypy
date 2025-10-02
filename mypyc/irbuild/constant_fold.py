@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Final, Union, overload
 
+from mypy.checkexpr import try_getting_literal
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
     BytesExpr,
@@ -94,11 +95,12 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                 if expr_type := builder.types.get(arg):
                     proper_type = get_proper_type(expr_type)
                     if isinstance(proper_type, TupleType):
-                        types = list(map(get_proper_type, proper_type.items))
-                        if all(
-                            isinstance(i, LiteralType) and isinstance(i.value, str) for i in types
-                        ):
-                            return folded_callee.join(i.value for i in types)  # type: ignore [attr-defined]
+                        values: list[str] = []
+                        for item_type in map(try_getting_literal, proper_type.items):
+                            if not (isinstance(item_type, LiteralType) and isinstance(item_type.value, str)):
+                                return None
+                            values.append(item_type.value)
+                        return folded_callee.join(values)
 
         # builtins.bytes methods
         elif isinstance(folded_callee, bytes):
