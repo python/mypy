@@ -27,6 +27,7 @@ from mypy.expandtype import (
     freshen_all_functions_type_vars,
     freshen_function_type_vars,
 )
+from mypy.exprlength import get_static_expr_length
 from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infer_type_arguments
 from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
@@ -4452,6 +4453,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Allow special forms to be indexed and used to create union types
             return self.named_type("typing._SpecialForm")
         else:
+            self.static_index_range_check(left_type, e, index)
             result, method_type = self.check_method_call_by_name(
                 "__getitem__",
                 left_type,
@@ -4473,6 +4475,46 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if isinstance(unpack.type, TypeVarTupleType):
             return left.length() - 1 + unpack.type.min_len
         return left.length() - 1
+
+    def static_index_range_check(self, left_type: Type, e: IndexExpr, index: Expression) -> None:
+        if isinstance(left_type, Instance) and left_type.type.fullname in (
+            "builtins.list",
+            "builtins.tuple",
+            "builtins.str",
+            "builtins.bytes",
+        ):
+            idx_val = None
+            # Try to extract integer literal index
+            if isinstance(index, IntExpr):
+                idx_val = index.value
+            elif isinstance(index, UnaryExpr):
+                if index.op == "-":
+                    operand = index.expr
+                    if isinstance(operand, IntExpr):
+                        idx_val = -operand.value
+                elif index.op == "+":
+                    operand = index.expr
+                    if isinstance(operand, IntExpr):
+                        idx_val = operand.value
+            # Could add more cases (e.g. LiteralType) if desired
+            if idx_val is not None:
+                length = get_static_expr_length(e.base)
+                if length is not None:
+                    # For negative indices, Python counts from the end
+                    check_idx = idx_val
+                    if check_idx < 0:
+                        check_idx += length
+                    if not (0 <= check_idx < length):
+                        name = ""
+                        if isinstance(e.base, NameExpr):
+                            name = e.base.name
+                        self.chk.fail(
+                            message_registry.SEQUENCE_INDEX_OUT_OF_RANGE.format(
+                                name=name or "<expr>", length=length
+                            ),
+                            e,
+                            code=message_registry.SEQUENCE_INDEX_OUT_OF_RANGE.code,
+                        )
 
     def visit_tuple_index_helper(self, left: TupleType, n: int) -> Type | None:
         unpack_index = find_unpack_in_list(left.items)
