@@ -57,6 +57,7 @@ import mypy.traverser
 import mypy.util
 import mypy.version
 from mypy.build import build
+from mypy.constant_fold import constant_fold_expr
 from mypy.errors import CompileError, Errors
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.modulefinder import (
