@@ -21,6 +21,7 @@ from typing import Any, Callable, Final, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
+from mypy.constant_fold import constant_fold_expr
 from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
 from mypy.errors import (
@@ -807,7 +808,7 @@ class MessageBuilder:
                     )
                     arg_label = f'"{arg_name}"'
                 if isinstance(outer_context, IndexExpr) and isinstance(
-                    index := constant_fold_expr(outer_context.index, "unused"), str
+                    index := constant_fold_expr(outer_context.index, "<unused>"), str
                 ):
                     msg = 'Value of "{}" has incompatible type {}; expected {}'.format(
                         index,
