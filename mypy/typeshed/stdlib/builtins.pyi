@@ -1917,7 +1917,7 @@ def __import__(
     name: str,
     globals: Mapping[str, object] | None = None,
     locals: Mapping[str, object] | None = None,
-    fromlist: Sequence[str] = (),
+    fromlist: Sequence[str] | None = (),
     level: int = 0,
 ) -> types.ModuleType: ...
 def __build_class__(func: Callable[[], CellType | Any], name: str, /, *bases: Any, metaclass: Any = ..., **kwds: Any) -> Any: ...
