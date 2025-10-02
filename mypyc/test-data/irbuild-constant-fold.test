@@ -478,3 +478,16 @@ L0:
     r3 = (-1.5+2j)
     neg_2 = r3
     return 1
+
+[case testIndexExprConstantFolding]
+from typing import Final
+
+long_string: Final = "long string"
+
+def f() -> None:
+    a = long_string[5:]
+[out]
+def f():
+    a :: str
+L0:
+    a = "string"
