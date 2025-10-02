@@ -80,7 +80,7 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
             index = constant_fold_expr(expr.index, cur_mod_id)
             if index is not None:
                 try:
-                    return base[index]
+                    return base[index]  # type: ignore [index]
                 except Exception:
                     return None
     return None
