@@ -23,6 +23,7 @@ from mypy.nodes import (
     MemberExpr,
     NameExpr,
     OpExpr,
+    SliceExpr,
     StrExpr,
     UnaryExpr,
     Var,
@@ -76,7 +77,32 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
     elif isinstance(expr, IndexExpr):
         base = constant_fold_expr(builder, expr.base)
         if base is not None:
-            index = constant_fold_expr(builder, expr.base)
+            index_expr = expr.index
+            if isinstance(index_expr, SliceExpr):
+                if index_expr.begin_index is None:
+                    begin_index = None
+                else:
+                    begin_index = constant_fold_expr(builder, index_expr.begin_index)
+                    if begin_index is None:
+                        return None
+                if index_expr.end_index is None:
+                    end_index = None
+                else:
+                    end_index = constant_fold_expr(builder, index_expr.end_index)
+                    if end_index is None:
+                        return None
+                if index_expr.stride is None:
+                    stride = None
+                else:
+                    stride = constant_fold_expr(builder, index_expr.stride)
+                    if stride is None:
+                        return None
+                try:
+                    return base[begin_index:end_index:stride]
+                except Exception:
+                    return None
+            
+            index = constant_fold_expr(builder, index_expr)
             if index is not None:
                 try:
                     return base[index]  # type: ignore [index]
