@@ -79,7 +79,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
             index = constant_fold_expr(builder, expr.base)
             if index is not None:
                 try:
-                    return base[index]
+                    return base[index]  # type: ignore [index]
                 except Exception:
                     return None
     return None
