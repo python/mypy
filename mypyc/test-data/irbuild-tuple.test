@@ -747,20 +747,17 @@ from typing import Final, Literal
 def varint() -> int:
     # this helper lets us break constant folding for this test
     return 2
-
 def varint_check() -> Literal[10]:
     # this helper lets us make sure a literal hint is not honored if not certain
     return 4
 
 source: Final = (1, varint(), 3, varint_check())
-source_check: Final = (1, varint_check(), 3)
 
 def f(val: int) -> bool:
     return val % 2 == 0
 
 def test() -> None:
     a = tuple(f(x) for x in source)
-
 [out]
 def varint():
 L0:
