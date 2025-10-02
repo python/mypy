@@ -38,6 +38,8 @@ if TYPE_CHECKING:
 ConstantValue = Union[int, float, complex, str, bytes]
 CONST_TYPES: Final = (int, float, complex, str, bytes)
 
+E = TypeVar("E", Expression)
+
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
     """Return the constant value of an expression for supported operations.
@@ -146,8 +148,8 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
 
 
 def folding_candidate(
-    transform: Callable[[IRBuilder, Expression], Value],
-) -> Callable[[IRBuilder, Expression], Value]:
+    transform: Callable[[IRBuilder, E], Value],
+) -> Callable[[IRBuilder, E], Value]:
     """Mark a transform function as a candidate for constant folding.
 
     Candidate functions will attempt to short-circuit the transformation
@@ -155,7 +157,7 @@ def folding_candidate(
     the expression if folding is not possible.
     """
 
-    def constant_fold_wrap(builder: IRBuilder, expr: Expression) -> Value:
+    def constant_fold_wrap(builder: IRBuilder, expr: E) -> Value:
         folded = try_constant_fold(builder, expr)
         return folded if folded is not None else transform(builder, expr)
 
