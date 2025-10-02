@@ -290,3 +290,21 @@ reveal_type(A1().x)  # N: Revealed type is "builtins.int"
 reveal_type(A2().x)  # N: Revealed type is "builtins.int"
 reveal_type(A3().x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+
+[case testTernaryOperatorWithTypeVarDefault]
+# gh-18817
+
+class Ok[T, E = None]:
+    def __init__(self, value: T) -> None:
+        self._value = value
+
+class Err[E, T = None]:
+    def __init__(self, value: E) -> None:
+        self._value = value
+
+type Result[T, E] = Ok[T, E] | Err[E, T]
+
+class Bar[U]:
+    def foo(data: U, cond: bool) -> Result[U, str]:
+        return Ok(data) if cond else Err("Error")
