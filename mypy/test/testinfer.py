@@ -5,7 +5,16 @@ from __future__ import annotations
 from mypy.argmap import map_actuals_to_formals
 from mypy.checker import DisjointDict, group_comparison_operands
 from mypy.literals import Key
-from mypy.nodes import ARG_NAMED, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind, ArgKinds, NameExpr
+from mypy.nodes import (
+    ARG_NAMED,
+    ARG_OPT,
+    ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
+    ArgKind,
+    ArgKinds,
+    NameExpr,
+)
 from mypy.test.helpers import Suite, assert_equal
 from mypy.test.typefixture import TypeFixture
 from mypy.types import AnyType, TupleType, Type, TypeOfAny
@@ -118,9 +127,7 @@ class MapActualsToFormalsSuite(Suite):
         assert_equal(result, expected)
 
 
-def expand_caller_kinds(
-    kinds_or_names: list[ArgKind | str],
-) -> tuple[ArgKinds, list[str | None]]:
+def expand_caller_kinds(kinds_or_names: list[ArgKind | str]) -> tuple[ArgKinds, list[str | None]]:
     kinds = []
     names: list[str | None] = []
     for k in kinds_or_names:
