@@ -1028,7 +1028,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             elif isinstance(fields_arg, (ListExpr, TupleExpr)):
                 field_names = []
                 for field in fields_arg.items:
-                    folded = constant_fold_expr(fields_arg, "<unused>")
+                    folded = constant_fold_expr(field, "<unused>")
                     if not isinstance(folded, str):
                         return None
                     field_names.append(folded)
