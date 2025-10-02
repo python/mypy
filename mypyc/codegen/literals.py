@@ -150,12 +150,12 @@ class Literals:
             for key in sorted(sort_helper):
                 v = sort_helper[key]
                 if isinstance(v, frozenset):
-                    v = sort_frozenset_items(v)
+                    v = sort_frozenset_recursive(v)
                 items.append(v)
             return items
 
         return self._encode_collection_values(
-            {sort_frozenset_items(fr): i for fr, i in self.frozenset_literals.items()}
+            {sort_frozenset_recursive(fr): i for fr, i in self.frozenset_literals.items()}
         )
 
     def _encode_collection_values(
