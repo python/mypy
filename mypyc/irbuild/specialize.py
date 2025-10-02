@@ -78,6 +78,7 @@ from mypyc.ir.rtypes import (
     uint8_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
     sequence_from_generator_preallocate_helper,
