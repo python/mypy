@@ -798,25 +798,25 @@ L2:
     r6 = r0[1]
     r7 = object 3
     r8 = box(int, r6)
-    r8 = PyTuple_Pack(3, r6, r9, r7)
-    r9 = PyTuple_New(r3)
-    r10 = 0
+    r9 = PyTuple_Pack(3, r5, r8, r7)
+    r10 = PyTuple_New(r3)
+    r11 = 0
 L3:
-    r14 = r13 < r3 :: signed
-    if r14 goto L4 else goto L6 :: bool
+    r12 = r11 < r3 :: signed
+    if r12 goto L4 else goto L6 :: bool
 L4:
-    r15 = CPySequenceTuple_GetItemUnsafe(r11, r13)
-    r16 = unbox(int, r15)
-    x = r16
-    r17 = f(x)
-    r18 = box(bool, r17)
-    CPySequenceTuple_SetItemUnsafe(r12, r13, r18)
+    r13 = CPySequenceTuple_GetItemUnsafe(r9, r11)
+    r14 = unbox(int, r13)
+    x = r14
+    r15 = f(x)
+    r16 = box(bool, r15)
+    CPySequenceTuple_SetItemUnsafe(r10, r11, r16)
 L5:
-    r19 = r13 + 1
-    r13 = r19
+    r17 = r11 + 1
+    r11 = r17
     goto L3
 L6:
-    a = r12
+    a = r10
     return 1
 
 [case testTupleBuiltFromVariableLengthTuple]
