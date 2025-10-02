@@ -50,7 +50,6 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     ReturnStmt,
-    StrExpr,
     SymbolNode,
     SymbolTable,
     TypeInfo,
