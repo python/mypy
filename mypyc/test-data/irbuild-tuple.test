@@ -744,7 +744,11 @@ L4:
 [case testTupleBuiltFromFinalFixedLengthTuple]
 from typing import Final
 
-source: Final = (1, 2, 3)
+def varint() -> int:
+    # this helper lets us break constant folding for this test
+    return 2
+
+source: Final = (1, varint(), 3)
 
 def f(val: int) -> bool:
     return val % 2 == 0
@@ -765,16 +769,15 @@ def test():
     r2 :: object
     r3 :: native_int
     r4 :: bit
-    r5, r6, r7 :: int
-    r8, r9, r10 :: object
-    r11, r12 :: tuple
-    r13 :: native_int
-    r14 :: bit
+    r5, r6, r7 :: object
+    r8, r9 :: tuple
+    r10 :: native_int
+    r11 :: bit
+    r12 :: object
+    r13, x :: int
+    r14 :: bool
     r15 :: object
-    r16, x :: int
-    r17 :: bool
-    r18 :: object
-    r19 :: native_int
+    r16 :: native_int
     a :: tuple
 L0:
     r0 = __main__.source :: static
@@ -786,15 +789,13 @@ L2:
     r2 = box(tuple[int, int, int], r0)
     r3 = PyObject_Size(r2)
     r4 = r3 >= 0 :: signed
-    r5 = r0[0]
+    r5 = object 1
     r6 = r0[1]
-    r7 = r0[2]
-    r8 = box(int, r5)
-    r9 = box(int, r6)
-    r10 = box(int, r7)
-    r11 = PyTuple_Pack(3, r8, r9, r10)
-    r12 = PyTuple_New(r3)
-    r13 = 0
+    r7 = object 3
+    r8 = box(int, r6)
+    r8 = PyTuple_Pack(3, r6, r9, r7)
+    r9 = PyTuple_New(r3)
+    r10 = 0
 L3:
     r14 = r13 < r3 :: signed
     if r14 goto L4 else goto L6 :: bool
