@@ -154,7 +154,9 @@ def folding_candidate(
     by constant folding the expression and will only proceed to transform
     the expression if folding is not possible.
     """
+
     def constant_fold_wrap(builder: IRBuilder, expr: Expression) -> Value | None:
         folded = try_constant_fold(builder, expr)
         return folded if folded is not None else transform(builder, expr)
+
     return constant_fold_wrap
