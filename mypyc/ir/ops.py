@@ -1049,7 +1049,7 @@ class TupleGet(RegisterOp):
         self.index = index
         assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
         src_len = len(src.type.types)
-        assert -src_len <= index <= src_len - 1, f"source {src} index {index}"
+        assert -src_len <= index <= src_len - 1, f"source type: {src.type}\nindex: {index}"
         self.type = src.type.types[index]
         self.is_borrowed = borrow
 
