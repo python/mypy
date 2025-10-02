@@ -573,7 +573,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
 
 def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
     """Replace // with a power of two with a right shift, if possible."""
-    divisor = constant_fold_expr(builder, expr)
+    divisor = constant_fold_expr(builder, expr.right)
     if not isinstance(divisor, int):
         return expr
     shift = divisor.bit_length() - 1
