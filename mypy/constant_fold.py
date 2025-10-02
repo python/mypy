@@ -15,6 +15,7 @@ from mypy.nodes import (
     IntExpr,
     NameExpr,
     OpExpr,
+    SliceExpr,
     StrExpr,
     UnaryExpr,
     Var,
