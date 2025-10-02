@@ -273,6 +273,10 @@ def is_same_type(
     ):
         return all(is_same_type(x, y) for x, y in zip(a.args, b.args))
     elif isinstance(a, TypeVarType) and isinstance(b, TypeVarType) and a.id == b.id:
+        # This is not only a performance optimization. Deeper check will compare upper
+        # bounds, but we want to consider copies of the same type variable "same type".
+        # This makes sense semantically: even we have narrowed the upper bound somehow,
+        # it's still the same object it used to be before.
         return True
 
     # Note that using ignore_promotions=True (default) makes types like int and int64
