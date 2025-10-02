@@ -1917,7 +1917,11 @@ class Parameters(ProperType):
         self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
-        assert len(arg_types) == len(arg_kinds) == len(arg_names), (len(arg_types), len(arg_kinds), len(arg_names))
+        assert len(arg_types) == len(arg_kinds) == len(arg_names), (
+            len(arg_types),
+            len(arg_kinds),
+            len(arg_names),
+        )
         assert not any(isinstance(t, Parameters) for t in arg_types)
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_ellipsis_args = is_ellipsis_args
@@ -2158,7 +2162,11 @@ class CallableType(FunctionLike):
         unpack_kwargs: bool = False,
     ) -> None:
         super().__init__(line, column)
-        assert len(arg_types) == len(arg_kinds) == len(arg_names), (len(arg_types), len(arg_kinds), len(arg_names))
+        assert len(arg_types) == len(arg_kinds) == len(arg_names), (
+            len(arg_types),
+            len(arg_kinds),
+            len(arg_names),
+        )
         self.arg_types = list(arg_types)
         for t in self.arg_types:
             if isinstance(t, ParamSpecType):
