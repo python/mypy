@@ -1053,7 +1053,9 @@ class TupleGet(RegisterOp):
         self.index = index
         if index < 0:
             self.index += src_len
-        assert self.index <= src_len - 1, f"Index out of range.\nsource type: {src.type}\nindex: {index}"
+        assert (
+            self.index <= src_len - 1
+        ), f"Index out of range.\nsource type: {src.type}\nindex: {index}"
         self.type = src.type.types[index]
         self.is_borrowed = borrow
 
