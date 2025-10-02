@@ -494,18 +494,18 @@ def slice_index() -> None:
 def pos_index():
     r0, a :: str
 L0:
-    r0 = "s"
+    r0 = 's'
     a = r0
     return 1
 def neg_index():
     r0, a :: str
 L0:
-    r0 = "t"
+    r0 = 't'
     a = r0
     return 1
 def slice_index():
     r0, a :: str
 L0:
-    r0 = "string"
+    r0 = 'string'
     a = r0
     return 1
