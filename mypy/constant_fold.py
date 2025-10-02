@@ -98,7 +98,7 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
                     if stride is None:
                         return None
                 try:
-                    return base[begin_index:end_index:stride]
+                    return base[begin_index:end_index:stride]  # type: ignore [index, misc]
                 except Exception:
                     return None
                     
