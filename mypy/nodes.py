@@ -2210,12 +2210,20 @@ class ArgKind(Enum):
 @mypyc_attr(native_class=False)
 class ArgKinds(list[ArgKind]):
     def __init__(self, values: Iterable[ArgKind] = None) -> None:
+        if values is None:
+            super().__init__()
+        else:
+            super().__init__(values)
         self.__count_cache: dict[ArgKind, int] = {}
         self.__index_cache: dict[ArgKind, int] = {}
+        self.__positional_only: bool | None = None
 
     @property
     def positional_only(self) -> bool:
-        return all(kind == ARG_POS for kind in self)
+        pos_only = self.__positional_only
+        if pos_only is None:
+            pos_only = self.__positional_only = all(kind == ARG_POS for kind in self)
+        return pos_only
 
     @property
     def has_star(self) -> bool:
