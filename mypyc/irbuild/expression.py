@@ -590,8 +590,8 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
 
     base = builder.accept(expr.base, can_borrow=can_borrow_base)
 
-    if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
-        return builder.add(TupleGet(base, index.value, expr.line))
+    if isinstance(base.type, RTuple) and isinstance(folded_index := constant_fold_expr(builder, index), int):
+        return builder.add(TupleGet(base, folded_index, expr.line))
 
     if isinstance(index, SliceExpr):
         value = try_gen_slice_op(builder, base, index)
