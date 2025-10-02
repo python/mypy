@@ -10,7 +10,7 @@ to other compiled modules in the same compilation unit.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, Union
+from typing import TYPE_CHECKING, Callable, Final, Union
 
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
