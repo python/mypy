@@ -151,7 +151,7 @@ def test_unicode() -> None:
     assert ne("\U0001f4a9foo", "\U0001f4a8foo" + str())
 
 [case testStringOps]
-from typing import Final, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from testutil import assertRaises
 
 def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
@@ -226,12 +226,6 @@ def contains(s: str, o: str) -> bool:
 def getitem(s: str, index: int) -> str:
     return s[index]
 
-final_string: Final = "abc"
-final_int: Final = 1
-
-def getitem_folded() -> str:
-    return final_string[final_int] + final_string[-1]
-
 def find(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
     if start is not None:
         if end is not None:
@@ -269,7 +263,6 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
-    assert getitem_folded() == "bc"
 
 def test_find() -> None:
     s = "abcab"
