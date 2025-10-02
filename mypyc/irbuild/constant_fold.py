@@ -18,6 +18,7 @@ from mypy.nodes import (
     ComplexExpr,
     Expression,
     FloatExpr,
+    IndexExpr,
     IntExpr,
     MemberExpr,
     NameExpr,
@@ -72,7 +73,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
-    elif isinstance(expr, IndexOp):
+    elif isinstance(expr, IndexExpr):
         base = constant_fold_expr(builder, expr.base)
         if base is not None:
             index = constant_fold_expr(builder, expr.base)
