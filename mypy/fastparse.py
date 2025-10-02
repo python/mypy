@@ -1690,7 +1690,7 @@ class ASTConverter:
                 del strs_to_join.items[-1:]
         join_method = MemberExpr(empty_string, "join")
         join_method.set_line(empty_string)
-        result_expression = CallExpr(join_method, [strs_to_join], [ARG_POS], [None])
+        result_expression = CallExpr(join_method, [strs_to_join], [ARG_POS], ArgKinds([None]))
         return self.set_line(result_expression, n)
 
     # FormattedValue(expr value)
