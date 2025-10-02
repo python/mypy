@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Callable, ClassVar
 
+from mypy.checkexpr import try_getting_literal
 from mypy.nodes import (
     ARG_POS,
     BytesExpr,
@@ -255,7 +256,7 @@ def sequence_from_generator_preallocate_helper(
                     if isinstance(typ, LiteralType)
                     else TupleGet(sequence, i, line)
                 )
-                for i, typ in enumerate(get_proper_types(proper_type.items))
+                for i, typ in enumerate(map(try_getting_literal, proper_type.items))
             ]
             items = list(map(builder.add, get_item_ops))
             sequence = builder.new_tuple(items, line)
