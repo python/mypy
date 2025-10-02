@@ -16,6 +16,7 @@ from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
     BytesExpr,
     ComplexExpr,
+    ConditionalExpr,
     Expression,
     FloatExpr,
     IntExpr,
@@ -72,6 +73,11 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
+    elif isinstance(expr, ConditionalExpr):
+        cond = constant_fold_expr(builder, expr.cond)
+        if cond is not None:
+            value_expr = expr.if_expr if cond else expr.else_expr
+            return constant_fold_expr(builder, expr.cond)
     return None
 
 
