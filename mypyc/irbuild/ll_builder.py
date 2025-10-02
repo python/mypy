@@ -287,7 +287,7 @@ class LowLevelIRBuilder:
     def activate_block(self, block: BasicBlock) -> None:
         """Add a basic block and make it the active one (target of adds)."""
         if self.blocks:
-            assert self.blocks[-1].terminated
+            assert self.blocks[-1].terminated, self.blocks[-1]
 
         block.error_handler = self.error_handlers[-1]
         self.blocks.append(block)

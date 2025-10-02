@@ -988,14 +988,14 @@ class RegularClass:
 from typing import NamedTuple
 
 # TODO: make sure that nested classes in `NamedTuple` are supported:
-class NamedTupleWithNestedClass(NamedTuple):
+class NamedTupleWithNestedClass(NamedTuple): ...
     class Nested:
         x: int
         y: str = 'a'
 [out]
 from typing import NamedTuple
 
-class NamedTupleWithNestedClass(NamedTuple):
+class NamedTupleWithNestedClass(NamedTuple): ...
     class Nested:
         x: int
         y: str
