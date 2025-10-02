@@ -1021,14 +1021,16 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
     def _get_namedtuple_fields(self, call: CallExpr) -> list[tuple[str, str]] | None:
         if self.is_namedtuple(call):
             fields_arg = call.args[1]
-            if isinstance(fields_arg, StrExpr):
-                field_names = fields_arg.value.replace(",", " ").split()
+            folded = constant_fold_expr(fields_arg, "unused")
+            if isinstance(folded, str):
+                field_names = folded.replace(",", " ").split()
             elif isinstance(fields_arg, (ListExpr, TupleExpr)):
                 field_names = []
                 for field in fields_arg.items:
-                    if not isinstance(field, StrExpr):
+                    folded = constant_fold_expr(fields_arg, "unused")
+                    if not isinstance(folded, str):
                         return None
-                    field_names.append(field.value)
+                    field_names.append(folded)
             else:
                 return None  # Invalid namedtuple fields type
             if field_names:
