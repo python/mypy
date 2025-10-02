@@ -10,7 +10,7 @@ to other compiled modules in the same compilation unit.
 
 from __future__ import annotations
 
-from typing import Final, Union, overload
+from typing import TYPE_CHECKING, Final, Union, overload
 
 from mypy.checkexpr import try_getting_literal
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
@@ -33,6 +33,9 @@ from mypy.nodes import (
 from mypy.types import LiteralType, TupleType, get_proper_type
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.util import bytes_from_str
+
+if TYPE_CHECKING:
+    from mypyc.irbuild.builder import IRBuilder
 
 # All possible result types of constant folding
 ConstantValue = Union[int, float, complex, str, bytes]
