@@ -58,6 +58,31 @@ f(5)
 [out]
 5
 
+[case test_macro_splice_decorator_runtime]
+def log_decorator(fn):
+    def wrapper(*args, **kwargs):
+        print("Calling function")
+        return fn(*args, **kwargs)
+    return wrapper
+
+@log_decorator
+def add(x: int, y: int) -> int:
+    return x + y
+
+@log_decorator
+def mul(x: int, y: int) -> int:
+    return x * y
+
+def test_decorator_runtime() -> None:
+    print(add(2, 3))
+    print(mul(4, 5))
+
+[out]
+Calling function
+5
+Calling function
+20
+
 [case testOptional]
 from typing import Optional
 
