@@ -154,7 +154,9 @@ class Literals:
                 items.append(v)
             return items
 
-        return self._encode_collection_values({sort_frozenset_items(fr): i for fr, i in self.frozenset_literals.items()})
+        return self._encode_collection_values(
+            {sort_frozenset_items(fr): i for fr, i in self.frozenset_literals.items()}
+        )
 
     def _encode_collection_values(
         self, values: dict[tuple[object, ...], int] | dict[frozenset[object], int]
