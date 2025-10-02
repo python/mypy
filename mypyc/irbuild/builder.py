@@ -40,7 +40,6 @@ from mypy.nodes import (
     TypeAlias,
     TypeInfo,
     TypeParam,
-    UnaryExpr,
     Var,
 )
 from mypy.types import (
