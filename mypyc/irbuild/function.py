@@ -634,7 +634,7 @@ def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> Ar
         arg.name if arg.kind.is_named() or (arg.kind.is_optional() and not arg.pos_only) else None
         for arg in rt_args
     ]
-    arg_kinds = [arg.kind for arg in rt_args]
+    arg_kinds = ArgKinds(arg.kind for arg in rt_args)
     return ArgInfo(args, arg_names, arg_kinds)
 
 
