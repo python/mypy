@@ -657,11 +657,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return ret_type
 
     def check_str_format_call(self, e: CallExpr) -> None:
-        """More precise type checking for str.format() calls on literals."""
+        """More precise type checking for str.format() calls on literals and folded constants."""
         assert isinstance(e.callee, MemberExpr)
         format_value = None
-        if isinstance(e.callee.expr, StrExpr):
-            format_value = e.callee.expr.value
+        folded_callee_expr = constant_fold_expr(e.callee.expr, "<unused>")
+        if isinstance(folded_callee_expr, str):
+            format_value = folded_callee_expr
         elif self.chk.has_type(e.callee.expr):
             typ = get_proper_type(self.chk.lookup_type(e.callee.expr))
             if (
