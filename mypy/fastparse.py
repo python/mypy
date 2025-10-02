@@ -21,6 +21,7 @@ from mypy.nodes import (
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
     ArgKind,
+    ArgKinds,
     Argument,
     AssertStmt,
     AssignmentExpr,
