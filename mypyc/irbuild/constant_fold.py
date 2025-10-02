@@ -77,7 +77,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         cond = constant_fold_expr(builder, expr.cond)
         if cond is not None:
             value_expr = expr.if_expr if cond else expr.else_expr
-            return constant_fold_expr(builder, expr.cond)
+            return constant_fold_expr(builder, value_expr)
     return None
 
 
