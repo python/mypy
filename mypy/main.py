@@ -1066,11 +1066,7 @@ def define_options(
     incremental_group.add_argument(
         "--fixed-format-cache",
         action="store_true",
-        help=(
-            "Use experimental fast and compact fixed format cache"
-            if compilation_status == "yes"
-            else argparse.SUPPRESS
-        ),
+        help="Use new fast and compact fixed format cache",
     )
     incremental_group.add_argument(
         "--skip-version-check",
