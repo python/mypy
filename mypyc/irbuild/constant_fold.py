@@ -146,8 +146,8 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
 
 
 def folding_candidate(
-    transform: Callable[[IRBuilder, Expression], Value | None],
-) -> Callable[[IRBuilder, Expression], Value | None]:
+    transform: Callable[[IRBuilder, Expression], Value],
+) -> Callable[[IRBuilder, Expression], Value]:
     """Mark a transform function as a candidate for constant folding.
 
     Candidate functions will attempt to short-circuit the transformation
@@ -155,7 +155,7 @@ def folding_candidate(
     the expression if folding is not possible.
     """
 
-    def constant_fold_wrap(builder: IRBuilder, expr: Expression) -> Value | None:
+    def constant_fold_wrap(builder: IRBuilder, expr: Expression) -> Value:
         folded = try_constant_fold(builder, expr)
         return folded if folded is not None else transform(builder, expr)
 
