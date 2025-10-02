@@ -27,6 +27,7 @@ from mypy.nodes import (
     Var,
 )
 from mypyc.irbuild.util import bytes_from_str
+
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder
 
@@ -35,7 +36,7 @@ ConstantValue = Union[int, float, complex, str, bytes]
 CONST_TYPES: Final = (int, float, complex, str, bytes)
 
 
-def constant_fold_expr(builder: "IRBuilder", expr: Expression) -> ConstantValue | None:
+def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
     """Return the constant value of an expression for supported operations.
 
     Return None otherwise.
