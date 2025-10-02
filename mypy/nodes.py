@@ -2288,6 +2288,7 @@ class CallExpr(Expression):
 
         self.callee = callee
         self.args = args
+        assert isinstance(arg_kinds, ArgKinds), type(arg_kinds)
         self.arg_kinds = arg_kinds  # ARG_ constants
         # Each name can be None if not a keyword argument.
         self.arg_names: list[str | None] = arg_names
