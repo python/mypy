@@ -760,7 +760,6 @@ def f(val: int) -> bool:
 
 def test() -> None:
     a = tuple(f(x) for x in source)
-    a = tuple(f(x) for x in source_check)
 
 [out]
 def varint():
