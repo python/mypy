@@ -15,6 +15,7 @@ from typing import Final, Union
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
     BytesExpr,
+    CastExpr,
     ComplexExpr,
     Expression,
     FloatExpr,
@@ -72,6 +73,8 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
+    elif isinstance(expr, CastExpr):
+        return constant_fold_expr(builder, expr.expr)
     return None
 
 
