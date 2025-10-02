@@ -1,0 +1,8 @@
+[case test_missing_return_annotation_ok]
+# flags: --enable-error-code missing-return-annotation
+def g(x: int) -> int:
+    return x
+
+[case test_missing_return_annotation_off_by_default]
+def h(x: int):
+    return x  # no error expected, since code is opt-in

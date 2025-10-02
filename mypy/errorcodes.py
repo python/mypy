@@ -319,5 +319,12 @@ DEPRECATED: Final = ErrorCode(
     default_enabled=False,
 )
 
+MISSING_RETURN_ANNOTATION = ErrorCode(
+    "missing-return-annotation", 
+    "Function has no return type annotation",
+    "Optional",
+)
+
+
 # This copy will not include any error codes defined later in the plugins.
 mypy_error_codes = error_codes.copy()

@@ -57,7 +57,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
-from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode
+from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode, MISSING_RETURN_ANNOTATION
 from mypy.errors import Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.message_registry import ErrorMessage
@@ -925,6 +925,25 @@ class SemanticAnalyzer(
         with self.scope.function_scope(defn):
             with self.inside_except_star_block_set(value=False):
                 self.analyze_func_def(defn)
+
+                # Missing return annotation check (optional error code)
+                from mypy.types import CallableType
+
+                if (
+                    # Makes sure return type is not specified, ignores lambdas and special cases
+                    isinstance(defn.type, CallableType)
+                    and defn.type.ret_type is None
+                    and any(arg.type_annotation is not None for arg in defn.arguments)
+                    and defn.name != "__init__"
+                    and not defn.is_lambda
+                    and not defn.is_overload
+                ):
+                    self.msg.fail(
+                        f'Function "{defn.name}" has no return type annotation',
+                        defn,
+                        code=MISSING_RETURN_ANNOTATION,
+                    )
+        
 
     def function_fullname(self, fullname: str) -> str:
         if self.current_overload_item is None:
