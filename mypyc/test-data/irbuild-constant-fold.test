@@ -492,14 +492,20 @@ def slice_index() -> None:
     a = long_string[5:]
 [out]
 def pos_index():
-    a :: str
+    r0, a :: str
 L0:
-    a = "s"
+    r0 = "s"
+    a = r0
+    return 1
 def neg_index():
-    a :: str
+    r0, a :: str
 L0:
-    a = "t"
+    r0 = "t"
+    a = r0
+    return 1
 def slice_index():
-    a :: str
+    r0, a :: str
 L0:
-    a = "string"
+    r0 = "string"
+    a = r0
+    return 1
