@@ -77,12 +77,37 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
     elif isinstance(expr, IndexExpr):
         base = constant_fold_expr(expr.base, cur_mod_id)
         if base is not None:
-            index = constant_fold_expr(expr.index, cur_mod_id)
-            if index is not None:
-                try:
-                    return base[index]  # type: ignore [index]
-                except Exception:
+            index_expr = expr.index
+            if not isinstance(index_expr, SliceExpr):
+                index = constant_fold_expr(index_expr, cur_mod_id)
+                if index is not None:
+                    try:
+                        return base[index]  # type: ignore [index]
+                    except Exception:
+                        return None
+            
+            if index_expr.begin_index is None:
+                begin_index = None
+            else:
+                begin_index = constant_fold_expr(index_expr.begin_index, cur_mod_id)
+                if begin_index is None:
                     return None
+            if index_expr.end_index is None:
+                end_index = None
+            else:
+                end_index = constant_fold_expr(index_expr.end_index, cur_mod_id)
+                if end_index is None:
+                    return None
+            if index_expr.stride is None:
+                stride = None
+            else:
+                stride = constant_fold_expr(index_expr.stride, cur_mod_id)
+                if stride is None:
+                    return None
+            try:
+                return base[begin_index:end_index:stride]
+            except Exception:
+                return None
     return None
 
 
