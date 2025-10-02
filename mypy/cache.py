@@ -1,65 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Final
+from typing import Final
 
 from mypy_extensions import u8
-
-try:
-    from native_internal import (
-        Buffer as Buffer,
-        read_bool as read_bool,
-        read_float as read_float,
-        read_int as read_int,
-        read_str as read_str,
-        read_tag as read_tag,
-        write_bool as write_bool,
-        write_float as write_float,
-        write_int as write_int,
-        write_str as write_str,
-        write_tag as write_tag,
-    )
-except ImportError:
-    # TODO: temporary, remove this after we publish mypy-native on PyPI.
-    if not TYPE_CHECKING:
-
-        class Buffer:
-            def __init__(self, source: bytes = b"") -> None:
-                raise NotImplementedError
-
-            def getvalue(self) -> bytes:
-                raise NotImplementedError
-
-        def read_int(data: Buffer) -> int:
-            raise NotImplementedError
-
-        def write_int(data: Buffer, value: int) -> None:
-            raise NotImplementedError
-
-        def read_tag(data: Buffer) -> u8:
-            raise NotImplementedError
-
-        def write_tag(data: Buffer, value: u8) -> None:
-            raise NotImplementedError
-
-        def read_str(data: Buffer) -> str:
-            raise NotImplementedError
-
-        def write_str(data: Buffer, value: str) -> None:
-            raise NotImplementedError
-
-        def read_bool(data: Buffer) -> bool:
-            raise NotImplementedError
-
-        def write_bool(data: Buffer, value: bool) -> None:
-            raise NotImplementedError
-
-        def read_float(data: Buffer) -> float:
-            raise NotImplementedError
-
-        def write_float(data: Buffer, value: float) -> None:
-            raise NotImplementedError
-
+from native_internal import (
+    Buffer as Buffer,
+    read_bool as read_bool,
+    read_float as read_float,
+    read_int as read_int,
+    read_str as read_str,
+    read_tag as read_tag,
+    write_bool as write_bool,
+    write_float as write_float,
+    write_int as write_int,
+    write_str as write_str,
+    write_tag as write_tag,
+)
 
 # Always use this type alias to refer to type tags.
 Tag = u8
