@@ -9,6 +9,7 @@ from typing import Final, Union
 
 from mypy.nodes import (
     ComplexExpr,
+    ConditionalExpr,
     Expression,
     FloatExpr,
     IntExpr,
