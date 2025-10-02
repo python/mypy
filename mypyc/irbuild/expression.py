@@ -113,6 +113,9 @@ from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
+TransformFunc = Callable[[IRBuilder, Expression], Value | None]
+
+
 # Name and attribute references
 
 
@@ -527,11 +530,8 @@ def translate_cast_expr(builder: IRBuilder, expr: CastExpr) -> Value:
 # Operators
 
 
+@folding_candidate
 def transform_unary_expr(builder: IRBuilder, expr: UnaryExpr) -> Value:
-    folded = try_constant_fold(builder, expr)
-    if folded:
-        return folded
-
     return builder.unary_op(builder.accept(expr.expr), expr.op, expr.line)
 
 
@@ -582,6 +582,7 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
     return expr
 
 
+@folding_candidate
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
@@ -613,6 +614,19 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
     if value is not None:
         return builder.load_literal_value(value)
     return None
+
+
+def folding_candidate(transform: TransformFunc) -> TransformFunc:
+    """Mark a transform function as a candidate for constant folding.
+
+    Candidate functions will attempt to short-circuit the transformation
+    by constant folding the expression and will only proceed to transform
+    the expression if folding is not possible.
+    """
+    def constant_fold_wrap(builder: IRBuilder, expr: Expression) -> Value | None:
+        folded = try_constant_fold(builder, expr)
+        return folded if folded is not None else transform(builder, expr)
+    return constant_fold_wrap
 
 
 def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Value | None:
