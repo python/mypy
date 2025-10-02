@@ -593,7 +593,7 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     if (
         isinstance(base.type, RTuple)
         and isinstance(folded_index := constant_fold_expr(builder, index), int)
-        and folded_index >= 0
+        and 0 <= folded_index <= len(base.type.types) - 1
     ):
         return builder.add(TupleGet(base, folded_index, expr.line))
 
