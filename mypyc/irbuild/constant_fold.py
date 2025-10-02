@@ -28,6 +28,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
+from mypyc.ir.ops import Value
 from mypyc.irbuild.util import bytes_from_str
 
 if TYPE_CHECKING:
