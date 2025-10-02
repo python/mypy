@@ -32,7 +32,7 @@ from mypy.cache import (
     write_str_opt_list,
     write_tag,
 )
-from mypy.nodes import ARG_KINDS, ARG_POS, ARG_STAR, ARG_STAR2, INVARIANT, ArgKind, SymbolNode
+from mypy.nodes import ARG_KINDS, ARG_POS, ARG_STAR, ARG_STAR2, INVARIANT, ArgKind, ArgKinds, SymbolNode
 from mypy.options import Options
 from mypy.state import state
 from mypy.util import IdMapper
@@ -1895,7 +1895,7 @@ class Parameters(ProperType):
     def __init__(
         self,
         arg_types: Sequence[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None],
         *,
         variables: Sequence[TypeVarLikeType] | None = None,
@@ -1918,7 +1918,7 @@ class Parameters(ProperType):
     def copy_modified(
         self,
         arg_types: Bogus[Sequence[Type]] = _dummy,
-        arg_kinds: Bogus[list[ArgKind]] = _dummy,
+        arg_kinds: Bogus[ArgKinds] = _dummy,
         arg_names: Bogus[Sequence[str | None]] = _dummy,
         *,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
@@ -2128,7 +2128,7 @@ class CallableType(FunctionLike):
         self,
         # maybe this should be refactored to take a Parameters object
         arg_types: Sequence[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None],
         ret_type: Type,
         fallback: Instance,
@@ -2186,7 +2186,7 @@ class CallableType(FunctionLike):
     def copy_modified(
         self: CT,
         arg_types: Bogus[Sequence[Type]] = _dummy,
-        arg_kinds: Bogus[list[ArgKind]] = _dummy,
+        arg_kinds: Bogus[ArgKinds] = _dummy,
         arg_names: Bogus[Sequence[str | None]] = _dummy,
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,

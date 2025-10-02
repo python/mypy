@@ -43,6 +43,7 @@ from mypy.nodes import (
     REVEAL_LOCALS,
     REVEAL_TYPE,
     ArgKind,
+    ArgKinds,
     AssertTypeExpr,
     AssignmentExpr,
     AwaitExpr,
@@ -772,7 +773,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def check_typeddict_call(
         self,
         callee: TypedDictType,
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None],
         args: list[Expression],
         context: Context,
@@ -1213,7 +1214,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def apply_function_plugin(
         self,
         callee: CallableType,
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_types: list[Type],
         arg_names: Sequence[str | None] | None,
         formal_to_actual: list[list[int]],
@@ -1237,7 +1238,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         formal_arg_types: list[list[Type]] = [[] for _ in range(num_formals)]
         formal_arg_exprs: list[list[Expression]] = [[] for _ in range(num_formals)]
         formal_arg_names: list[list[str | None]] = [[] for _ in range(num_formals)]
-        formal_arg_kinds: list[list[ArgKind]] = [[] for _ in range(num_formals)]
+        formal_arg_kinds: list[ArgKinds] = [[] for _ in range(num_formals)]
         for formal, actuals in enumerate(formal_to_actual):
             for actual in actuals:
                 formal_arg_types[formal].append(arg_types[actual])
@@ -1287,7 +1288,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: FunctionLike,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         hook: Callable[[list[list[Expression]], CallableType], FunctionLike],
     ) -> FunctionLike:
@@ -1319,7 +1320,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: FunctionLike,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         arg_names: Sequence[str | None] | None,
         signature_hook: Callable[[FunctionSigContext], FunctionLike],
@@ -1337,7 +1338,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: FunctionLike,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         arg_names: Sequence[str | None] | None,
         object_type: Type,
@@ -1362,7 +1363,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         callable_name: str | None,
         callee: Type,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         arg_names: Sequence[str | None] | None = None,
         object_type: Type | None = None,
@@ -1529,7 +1530,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: Type,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         arg_names: Sequence[str | None] | None = None,
         callable_node: Expression | None = None,
@@ -1651,7 +1652,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: CallableType,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         arg_names: Sequence[str | None] | None,
         callable_node: Expression | None,
@@ -1934,7 +1935,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: CallableType,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         formal_to_actual: list[list[int]],
     ) -> list[Type]:
         """Infer argument expression types using a callable type as context.
@@ -2056,7 +2057,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee_type: CallableType,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         formal_to_actual: list[list[int]],
         need_refresh: bool,
@@ -2115,7 +2116,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if (
                 callee_type.special_sig == "dict"
                 and len(inferred_args) == 2
-                and (ARG_NAMED in arg_kinds or ARG_STAR2 in arg_kinds)
+                and (ARG_NAMED in arg_kinds or arg_kinds.has_star2)
             ):
                 # HACK: Infer str key type for dict(...) with keyword args. The type system
                 #       can't represent this so we special case it, as this is a pretty common
@@ -2195,7 +2196,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee_type: CallableType,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         formal_to_actual: list[list[int]],
         old_inferred_args: Sequence[Type | None],
@@ -2330,7 +2331,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: CallableType,
         actual_types: list[Type],
-        actual_kinds: list[ArgKind],
+        actual_kinds: ArgKinds,
         actual_names: Sequence[str | None] | None,
         formal_to_actual: list[list[int]],
         context: Context | None,
@@ -2410,7 +2411,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: CallableType,
         actual_types: list[Type],
-        actual_kinds: list[ArgKind],
+        actual_kinds: ArgKinds,
         actual_names: Sequence[str | None] | None,
         all_actuals: dict[int, int],
         context: Context,
@@ -2484,7 +2485,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def check_argument_types(
         self,
         arg_types: list[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         args: list[Expression],
         callee: CallableType,
         formal_to_actual: list[list[int]],
@@ -2671,7 +2672,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: Overloaded,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         callable_name: str | None,
         object_type: Type | None,
@@ -2813,7 +2814,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def plausible_overload_call_targets(
         self,
         arg_types: list[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         overload: Overloaded,
     ) -> list[CallableType]:
@@ -2874,7 +2875,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         plausible_targets: list[CallableType],
         args: list[Expression],
         arg_types: list[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         callable_name: str | None,
         object_type: Type | None,
@@ -2957,7 +2958,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         plausible_targets: list[CallableType],
         arg_types: list[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         args: list[Expression],
         context: Context,
@@ -3017,7 +3018,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         plausible_targets: list[CallableType],
         args: list[Expression],
         arg_types: list[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         callable_name: str | None,
         object_type: Type | None,
@@ -3217,7 +3218,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def erased_signature_similarity(
         self,
         arg_types: list[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         args: list[Expression],
         callee: CallableType,
@@ -3298,7 +3299,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self,
         callee: UnionType,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None] | None,
         context: Context,
     ) -> tuple[Type, Type]:
@@ -3857,7 +3858,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         method: str,
         base_type: Type,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         original_type: Type | None = None,
         self_type: Type | None = None,
@@ -3896,7 +3897,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         method: str,
         base_type: UnionType,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         original_type: Type | None = None,
     ) -> tuple[Type, Type]:
@@ -3925,7 +3926,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         base_type: Type,
         method_type: Type,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
     ) -> tuple[Type, Type]:
         """Type check a call to a method with the given name and type on an object.
@@ -5542,7 +5543,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_names=e.arg_names.copy(),
             )
 
-        if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
+        if arg_kinds.has_any_star:
             # TODO treat this case appropriately
             return callable_ctx, None
 
@@ -6445,7 +6446,7 @@ def is_non_empty_tuple(t: Type) -> bool:
 
 
 def is_duplicate_mapping(
-    mapping: list[int], actual_types: list[Type], actual_kinds: list[ArgKind]
+    mapping: list[int], actual_types: list[Type], actual_kinds: ArgKinds
 ) -> bool:
     return (
         len(mapping) > 1
@@ -6585,7 +6586,7 @@ def any_causes_overload_ambiguity(
     items: list[CallableType],
     return_types: list[Type],
     arg_types: list[Type],
-    arg_kinds: list[ArgKind],
+    arg_kinds: ArgKinds,
     arg_names: Sequence[str | None] | None,
 ) -> bool:
     """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?

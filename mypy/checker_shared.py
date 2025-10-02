@@ -13,7 +13,7 @@ from mypy.errorcodes import ErrorCode
 from mypy.errors import ErrorWatcher
 from mypy.message_registry import ErrorMessage
 from mypy.nodes import (
-    ArgKind,
+    ArgKinds,
     Context,
     Expression,
     FuncItem,
@@ -69,7 +69,7 @@ class ExpressionCheckerSharedApi:
         self,
         callee: Type,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         arg_names: Sequence[str | None] | None = None,
         callable_node: Expression | None = None,
@@ -85,7 +85,7 @@ class ExpressionCheckerSharedApi:
         callable_name: str | None,
         callee: Type,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         arg_names: Sequence[str | None] | None = None,
         object_type: Type | None = None,
@@ -102,7 +102,7 @@ class ExpressionCheckerSharedApi:
         method: str,
         base_type: Type,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         context: Context,
         original_type: Type | None = None,
     ) -> tuple[Type, Type]:

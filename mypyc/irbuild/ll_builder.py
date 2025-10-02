@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from typing import Callable, Final, Optional
 
 from mypy.argmap import map_actuals_to_formals
-from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
+from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind, ArgKinds
 from mypy.operators import op_methods, unary_op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
@@ -958,7 +958,7 @@ class LowLevelIRBuilder:
         function: Value,
         arg_values: list[Value],
         line: int,
-        arg_kinds: list[ArgKind] | None = None,
+        arg_kinds: ArgKinds | None = None,
         arg_names: Sequence[str | None] | None = None,
     ) -> Value:
         """Call a Python function (non-native and slow).
@@ -970,7 +970,7 @@ class LowLevelIRBuilder:
             return result
 
         # If all arguments are positional, we can use py_call_op.
-        if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
+        if arg_kinds is None or arg_kinds.positional_only:
             return self.call_c(py_call_op, [function] + arg_values, line)
 
         # Otherwise fallback to py_call_with_posargs_op or py_call_with_kwargs_op.
@@ -991,7 +991,7 @@ class LowLevelIRBuilder:
         function: Value,
         arg_values: list[Value],
         line: int,
-        arg_kinds: list[ArgKind] | None = None,
+        arg_kinds: ArgKinds | None = None,
         arg_names: Sequence[str | None] | None = None,
     ) -> Value | None:
         """Call function using the vectorcall API if possible.
@@ -1009,7 +1009,7 @@ class LowLevelIRBuilder:
                 arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
             else:
                 arg_ptr = Integer(0, object_pointer_rprimitive)
-            num_pos = num_positional_args(arg_values, arg_kinds)
+            num_pos = arg_kinds.count(ARG_POS) if arg_kinds else len(arg_values)
             keywords = self._vectorcall_keywords(arg_names)
             value = self.call_c(
                 py_vectorcall_op,
@@ -1041,7 +1041,7 @@ class LowLevelIRBuilder:
         method_name: str,
         arg_values: list[Value],
         line: int,
-        arg_kinds: list[ArgKind] | None,
+        arg_kinds: ArgKinds | None,
         arg_names: Sequence[str | None] | None,
     ) -> Value:
         """Call a Python method (non-native and slow)."""
@@ -1051,7 +1051,7 @@ class LowLevelIRBuilder:
         if result is not None:
             return result
 
-        if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
+        if arg_kinds is None or arg_kinds.positional_only:
             # Use legacy method call API
             method_name_reg = self.load_str(method_name)
             return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
@@ -1066,7 +1066,7 @@ class LowLevelIRBuilder:
         method_name: str,
         arg_values: list[Value],
         line: int,
-        arg_kinds: list[ArgKind] | None,
+        arg_kinds: ArgKinds | None,
         arg_names: Sequence[str | None] | None,
     ) -> Value | None:
         """Call method using the vectorcall API if possible.
@@ -1082,7 +1082,7 @@ class LowLevelIRBuilder:
                 self.coerce(arg, object_rprimitive, line) for arg in [obj] + arg_values
             ]
             arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
-            num_pos = num_positional_args(arg_values, arg_kinds)
+            num_pos = arg_kinds.count(ARG_POS) if arg_kinds else len(arg_values)
             keywords = self._vectorcall_keywords(arg_names)
             value = self.call_c(
                 py_vectorcall_method_op,
@@ -1105,7 +1105,7 @@ class LowLevelIRBuilder:
         self,
         decl: FuncDecl,
         args: Sequence[Value],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None],
         line: int,
         *,
@@ -1126,7 +1126,7 @@ class LowLevelIRBuilder:
     def native_args_to_positional(
         self,
         args: Sequence[Value],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None],
         sig: FuncSignature,
         line: int,
@@ -1224,13 +1224,13 @@ class LowLevelIRBuilder:
         arg_values: list[Value],
         result_type: RType | None,
         line: int,
-        arg_kinds: list[ArgKind] | None = None,
+        arg_kinds: ArgKinds | None = None,
         arg_names: list[str | None] | None = None,
         can_borrow: bool = False,
     ) -> Value:
         """Generate either a native or Python method call."""
         # If we have *args, then fallback to Python method call.
-        if arg_kinds is not None and any(kind.is_star() for kind in arg_kinds):
+        if arg_kinds is not None and arg_kinds.has_any_star:
             return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
@@ -1286,7 +1286,7 @@ class LowLevelIRBuilder:
         arg_values: list[Value],
         return_rtype: RType | None,
         line: int,
-        arg_kinds: list[ArgKind] | None,
+        arg_kinds: ArgKinds | None,
         arg_names: list[str | None] | None,
     ) -> Value:
         """Generate a method call with a union type for the object."""
@@ -2736,13 +2736,3 @@ class LowLevelIRBuilder:
     def error(self, msg: str, line: int) -> None:
         assert self.errors is not None, "cannot generate errors in this compiler phase"
         self.errors.error(msg, self.module_path, line)
-
-
-def num_positional_args(arg_values: list[Value], arg_kinds: list[ArgKind] | None) -> int:
-    if arg_kinds is None:
-        return len(arg_values)
-    num_pos = 0
-    for kind in arg_kinds:
-        if kind == ARG_POS:
-            num_pos += 1
-    return num_pos

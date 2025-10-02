@@ -11,7 +11,7 @@ from mypy.constraints import (
     infer_constraints,
     infer_constraints_for_callable,
 )
-from mypy.nodes import ArgKind
+from mypy.nodes import ArgKinds
 from mypy.solve import solve_constraints
 from mypy.types import CallableType, Instance, Type, TypeVarLikeType
 
@@ -33,7 +33,7 @@ class ArgumentInferContext(NamedTuple):
 def infer_function_type_arguments(
     callee_type: CallableType,
     arg_types: Sequence[Type | None],
-    arg_kinds: list[ArgKind],
+    arg_kinds: ArgKinds,
     arg_names: Sequence[str | None] | None,
     formal_to_actual: list[list[int]],
     context: ArgumentInferContext,

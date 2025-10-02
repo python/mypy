@@ -5,7 +5,7 @@ from __future__ import annotations
 from mypy.argmap import map_actuals_to_formals
 from mypy.checker import DisjointDict, group_comparison_operands
 from mypy.literals import Key
-from mypy.nodes import ARG_NAMED, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind, NameExpr
+from mypy.nodes import ARG_NAMED, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind, ArgKinds, NameExpr
 from mypy.test.helpers import Suite, assert_equal
 from mypy.test.typefixture import TypeFixture
 from mypy.types import AnyType, TupleType, Type, TypeOfAny
@@ -109,8 +109,8 @@ class MapActualsToFormalsSuite(Suite):
 
     def assert_vararg_map(
         self,
-        caller_kinds: list[ArgKind],
-        callee_kinds: list[ArgKind],
+        caller_kinds: ArgKinds,
+        callee_kinds: ArgKinds,
         expected: list[list[int]],
         vararg_type: Type,
     ) -> None:
@@ -120,7 +120,7 @@ class MapActualsToFormalsSuite(Suite):
 
 def expand_caller_kinds(
     kinds_or_names: list[ArgKind | str],
-) -> tuple[list[ArgKind], list[str | None]]:
+) -> tuple[ArgKinds, list[str | None]]:
     kinds = []
     names: list[str | None] = []
     for k in kinds_or_names:
@@ -135,7 +135,7 @@ def expand_caller_kinds(
 
 def expand_callee_kinds(
     kinds_and_names: list[ArgKind | tuple[ArgKind, str]],
-) -> tuple[list[ArgKind], list[str | None]]:
+) -> tuple[ArgKinds, list[str | None]]:
     kinds = []
     names: list[str | None] = []
     for v in kinds_and_names:

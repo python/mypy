@@ -18,7 +18,7 @@ from mypy.nodes import (
     ARG_STAR2,
     CONTRAVARIANT,
     COVARIANT,
-    ArgKind,
+    ArgKinds,
     TypeInfo,
 )
 from mypy.type_visitor import ALL_STRATEGY, BoolTypeQuery
@@ -110,7 +110,7 @@ class Constraint:
 def infer_constraints_for_callable(
     callee: CallableType,
     arg_types: Sequence[Type | None],
-    arg_kinds: list[ArgKind],
+    arg_kinds: ArgKinds,
     arg_names: Sequence[str | None] | None,
     formal_to_actual: list[list[int]],
     context: ArgumentInferContext,

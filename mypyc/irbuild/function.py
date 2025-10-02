@@ -18,6 +18,7 @@ from typing import NamedTuple
 
 from mypy.nodes import (
     ArgKind,
+    ArgKinds,
     ClassDef,
     Decorator,
     FuncBase,
@@ -619,7 +620,7 @@ def gen_glue(
 class ArgInfo(NamedTuple):
     args: list[Value]
     arg_names: list[str | None]
-    arg_kinds: list[ArgKind]
+    arg_kinds: ArgKinds
 
 
 def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> ArgInfo:
@@ -692,7 +693,7 @@ def gen_glue_method(
 
     # We can do a passthrough *args/**kwargs with a native call, but if the
     # args need to get distributed out to arguments, we just let python handle it
-    if any(kind.is_star() for kind in arg_kinds) and any(
+    if arg_kinds.has_any_star and any(
         not arg.kind.is_star() for arg in target.decl.sig.args
     ):
         do_pycall = True

@@ -8,10 +8,10 @@ from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from enum import Enum, unique
-from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Final, Iterable, Optional, TypeVar, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
-from mypy_extensions import trait
+from mypy_extensions import mypyc_attr, trait
 
 import mypy.strconv
 from mypy.cache import (
@@ -860,7 +860,7 @@ class FuncItem(FuncBase):
         super().__init__()
         self.arguments = arguments or []
         self.arg_names = [None if arg.pos_only else arg.variable.name for arg in self.arguments]
-        self.arg_kinds: list[ArgKind] = [arg.kind for arg in self.arguments]
+        self.arg_kinds = ArgKinds(arg.kind for arg in self.arguments)
         self.max_pos: int = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
         self.type_args: list[TypeParam] | None = type_args
         self.body: Block = body or Block([])
@@ -1015,7 +1015,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
         ret.original_first_arg = data.get("original_first_arg")
-        ret.arg_kinds = [ARG_KINDS[x] for x in data["arg_kinds"]]
+        ret.arg_kinds = ArgKinds(ARG_KINDS[x] for x in data["arg_kinds"])
         ret.abstract_status = data["abstract_status"]
         ret.dataclass_transform_spec = (
             DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
@@ -1057,7 +1057,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         read_flags(data, ret, FUNCDEF_FLAGS)
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = read_str_opt_list(data)
-        ret.arg_kinds = [ARG_KINDS[ak] for ak in read_int_list(data)]
+        ret.arg_kinds = ArgKinds(ARG_KINDS[ak] for ak in read_int_list(data))
         ret.abstract_status = read_int(data)
         if read_bool(data):
             ret.dataclass_transform_spec = DataclassTransformSpec.read(data)
@@ -2207,6 +2207,35 @@ class ArgKind(Enum):
         return self == ARG_STAR or self == ARG_STAR2
 
 
+@mypyc_attr(native_class=False)
+class ArgKinds(list[ArgKind]):
+    def __init__(self, values: Iterable[ArgKind] = None) -> None:
+        self._count_cache: dict[ArgKind, int] = {}
+        self._index_cache: dict[ArgKind, int] = {}
+    @property
+    def positional_only(self) -> bool:
+        return all(kind == ARG_POS for kind in self)
+    @property
+    def has_star(self) -> bool:
+        return ARG_STAR in self
+    @property
+    def has_star2(self) -> bool:
+        return ARG_STAR2 in self
+    @property
+    def has_any_star(self) -> bool:
+        return any(kind.is_star() for kind in self)
+    def count(self, kind: ArgKind) -> int:
+        count = self._count_cache.get(kind)
+        if count is None:
+            count = self._count_cache[kind] = super().count(kind)
+        return count
+    def index(self, kind: ArgKind) -> int:
+        index = self._index_cache.get(kind)
+        if index is None:
+            index = self._index_cache[kind] = super().index(kind)
+        return index
+
+
 ARG_POS: Final = ArgKind.ARG_POS
 ARG_OPT: Final = ArgKind.ARG_OPT
 ARG_STAR: Final = ArgKind.ARG_STAR
@@ -2232,7 +2261,7 @@ class CallExpr(Expression):
         self,
         callee: Expression,
         args: list[Expression],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: list[str | None],
         analyzed: Expression | None = None,
     ) -> None:
@@ -4799,7 +4828,7 @@ deserialize_map: Final = {
 
 
 def check_arg_kinds(
-    arg_kinds: list[ArgKind], nodes: list[T], fail: Callable[[str, T], None]
+    arg_kinds: ArgKinds, nodes: list[T], fail: Callable[[str, T], None]
 ) -> None:
     is_var_arg = False
     is_kw_arg = False
