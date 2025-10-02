@@ -1006,13 +1006,12 @@ class StringFormatterChecker:
                     and len(expr.value) != 1
                 ):
                     self.msg.requires_int_or_single_byte(context)
-                else:
-                    if isinstance(folded := constant_fold_expr(expr, "<unused>"), str):
-                        if len(folded) != 1:
-                            self.msg.requires_int_or_char(context)
-                    elif isinstance(expr, BytesExpr):
-                        if len(expr.value) != 1:
-                            self.msg.requires_int_or_char(context)
+                elif isinstance(folded := constant_fold_expr(expr, "<unused>"), str):
+                    if len(folded) != 1:
+                        self.msg.requires_int_or_char(context)
+                elif isinstance(expr, BytesExpr):
+                    if len(expr.value) != 1:
+                        self.msg.requires_int_or_char(context)
 
         return check_expr, check_type
 
