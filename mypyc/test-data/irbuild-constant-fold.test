@@ -484,10 +484,22 @@ from typing import Final
 
 long_string: Final = "long string"
 
-def f() -> None:
+def pos_index() -> None:
+    a = long_string[5]
+def neg_index() -> None:
+    a = long_string[-5]
+def slice_index() -> None:
     a = long_string[5:]
 [out]
-def f():
+def pos_index():
+    a :: str
+L0:
+    a = "s"
+def neg_index():
+    a :: str
+L0:
+    a = "t"
+def slice_index():
     a :: str
 L0:
     a = "string"
