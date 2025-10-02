@@ -83,7 +83,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
-from mypyc.irbuild.constant_fold import constant_fold_expr
+from mypyc.irbuild.constant_fold import constant_fold_expr, folding_candidate, try_constant_fold
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
     raise_error_if_contains_unreachable_names,
@@ -112,9 +112,6 @@ from mypyc.primitives.registry import builtin_names
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
-
-TransformFunc = Callable[[IRBuilder, Expression], Value | None]
-
 
 # Name and attribute references
 
@@ -603,30 +600,6 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     return builder.gen_method_call(
         base, "__getitem__", [index_reg], builder.node_type(expr), expr.line
     )
-
-
-def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
-    """Return the constant value of an expression if possible.
-
-    Return None otherwise.
-    """
-    value = constant_fold_expr(builder, expr)
-    if value is not None:
-        return builder.load_literal_value(value)
-    return None
-
-
-def folding_candidate(transform: TransformFunc) -> TransformFunc:
-    """Mark a transform function as a candidate for constant folding.
-
-    Candidate functions will attempt to short-circuit the transformation
-    by constant folding the expression and will only proceed to transform
-    the expression if folding is not possible.
-    """
-    def constant_fold_wrap(builder: IRBuilder, expr: Expression) -> Value | None:
-        folded = try_constant_fold(builder, expr)
-        return folded if folded is not None else transform(builder, expr)
-    return constant_fold_wrap
 
 
 def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Value | None:
