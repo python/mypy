@@ -70,6 +70,7 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_str_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -101,7 +102,12 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr
-from mypyc.primitives.int_ops import isinstance_int
+from mypyc.primitives.int_ops import (
+    int_to_big_endian_op,
+    int_to_bytes_op,
+    int_to_little_endian_op,
+    isinstance_int,
+)
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
@@ -1134,3 +1140,40 @@ def translate_object_setattr(builder: IRBuilder, expr: CallExpr, callee: RefExpr
 
     name_reg = builder.accept(attr_name)
     return builder.call_c(generic_setattr, [self_reg, name_reg, value], expr.line)
+
+
+@specialize_function("to_bytes", int_rprimitive)
+def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    # int.to_bytes(length, byteorder, signed=False)
+    # args: [self, length, byteorder, (optional) signed]
+    if len(expr.args) == 2:
+        signed_arg = builder.false()
+    elif len(expr.args) == 3:
+        signed_arg = builder.accept(expr.args[2])
+    else:
+        return None
+    if not isinstance(callee, MemberExpr):
+        return None
+    self_arg = builder.accept(callee.expr)
+    length_arg = builder.accept(expr.args[0])
+    byteorder_expr = expr.args[1]
+    if not (
+        is_int_rprimitive(builder.node_type(length_arg))
+        and is_str_rprimitive(builder.node_type(byteorder_expr))
+        and is_bool_rprimitive(builder.node_type(signed_arg))
+    ):
+        return None
+    if isinstance(byteorder_expr, StrExpr):
+        if byteorder_expr.value == "little":
+            return builder.call_c(
+                int_to_little_endian_op, [self_arg, length_arg, signed_arg], expr.line
+            )
+        elif byteorder_expr.value == "big":
+            return builder.call_c(
+                int_to_big_endian_op, [self_arg, length_arg, signed_arg], expr.line
+            )
+    # Fallback to generic primitive op
+    byteorder_arg = builder.accept(byteorder_expr)
+    return builder.call_c(
+        int_to_bytes_op, [self_arg, length_arg, byteorder_arg, signed_arg], expr.line
+    )
