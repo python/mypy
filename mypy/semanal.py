@@ -57,7 +57,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
-from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode, MISSING_RETURN_ANNOTATION
+from mypy.errorcodes import MISSING_RETURN_ANNOTATION, PROPERTY_DECORATOR, ErrorCode
 from mypy.errors import Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.message_registry import ErrorMessage
@@ -943,7 +943,6 @@ class SemanticAnalyzer(
                         defn,
                         code=MISSING_RETURN_ANNOTATION,
                     )
-        
 
     def function_fullname(self, fullname: str) -> str:
         if self.current_overload_item is None:

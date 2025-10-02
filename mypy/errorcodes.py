@@ -320,9 +320,7 @@ DEPRECATED: Final = ErrorCode(
 )
 
 MISSING_RETURN_ANNOTATION = ErrorCode(
-    "missing-return-annotation", 
-    "Function has no return type annotation",
-    "Optional",
+    "missing-return-annotation", "Function has no return type annotation", "Optional"
 )
 
 
