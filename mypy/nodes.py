@@ -6,9 +6,9 @@ import json
 import os
 from abc import abstractmethod
 from collections import defaultdict
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from enum import Enum, unique
-from typing import TYPE_CHECKING, Any, Callable, Final, Iterable, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import mypyc_attr, trait
@@ -2210,29 +2210,38 @@ class ArgKind(Enum):
 @mypyc_attr(native_class=False)
 class ArgKinds(list[ArgKind]):
     def __init__(self, values: Iterable[ArgKind] = None) -> None:
-        self._count_cache: dict[ArgKind, int] = {}
-        self._index_cache: dict[ArgKind, int] = {}
+        self.__count_cache: dict[ArgKind, int] = {}
+        self.__index_cache: dict[ArgKind, int] = {}
+
     @property
     def positional_only(self) -> bool:
         return all(kind == ARG_POS for kind in self)
+
     @property
     def has_star(self) -> bool:
         return ARG_STAR in self
+
     @property
     def has_star2(self) -> bool:
         return ARG_STAR2 in self
+
     @property
     def has_any_star(self) -> bool:
         return any(kind.is_star() for kind in self)
+
+    def copy(self) -> ArgKinds:
+        return ArgKinds(kind for kind in self)
+
     def count(self, kind: ArgKind) -> int:
-        count = self._count_cache.get(kind)
+        count = self.__count_cache.get(kind)
         if count is None:
-            count = self._count_cache[kind] = super().count(kind)
+            count = self.__count_cache[kind] = super().count(kind)
         return count
+
     def index(self, kind: ArgKind) -> int:
-        index = self._index_cache.get(kind)
+        index = self.__index_cache.get(kind)
         if index is None:
-            index = self._index_cache[kind] = super().index(kind)
+            index = self.__index_cache[kind] = super().index(kind)
         return index
 
 
@@ -4827,9 +4836,7 @@ deserialize_map: Final = {
 }
 
 
-def check_arg_kinds(
-    arg_kinds: ArgKinds, nodes: list[T], fail: Callable[[str, T], None]
-) -> None:
+def check_arg_kinds(arg_kinds: ArgKinds, nodes: list[T], fail: Callable[[str, T], None]) -> None:
     is_var_arg = False
     is_kw_arg = False
     seen_named = False
