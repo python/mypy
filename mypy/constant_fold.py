@@ -73,6 +73,11 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if value is not None:
             return constant_fold_unary_op(expr.op, value)
+    elif isinstance(expr, ConditionalExpr):
+        cond = constant_fold_expr(expr.cond, cur_mod_id)
+        if cond is not None:
+            value_expr = expr.if_expr if cond else expr.else_expr
+            return constant_fold_expr(value_expr, cur_mod_id)
     return None
 
 
