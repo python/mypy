@@ -2210,8 +2210,8 @@ class ArgKind(Enum):
 @mypyc_attr(native_class=False)
 class ArgKinds(list[ArgKind]):
     def __init__(self, values: Iterable[ArgKind] = None) -> None:
-        self._count_cache: dict[ArgKind, int] = {}
-        self._index_cache: dict[ArgKind, int] = {}
+        self.__count_cache: dict[ArgKind, int] = {}
+        self.__index_cache: dict[ArgKind, int] = {}
 
     @property
     def positional_only(self) -> bool:
@@ -2229,16 +2229,19 @@ class ArgKinds(list[ArgKind]):
     def has_any_star(self) -> bool:
         return any(kind.is_star() for kind in self)
 
+    def copy(self) -> ArgKinds:
+        return ArgKinds(kind for kind in self)
+
     def count(self, kind: ArgKind) -> int:
-        count = self._count_cache.get(kind)
+        count = self.__count_cache.get(kind)
         if count is None:
-            count = self._count_cache[kind] = super().count(kind)
+            count = self.__count_cache[kind] = super().count(kind)
         return count
 
     def index(self, kind: ArgKind) -> int:
-        index = self._index_cache.get(kind)
+        index = self.__index_cache.get(kind)
         if index is None:
-            index = self._index_cache[kind] = super().index(kind)
+            index = self.__index_cache[kind] = super().index(kind)
         return index
 
 
