@@ -97,7 +97,10 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                     if isinstance(proper_type, TupleType):
                         values: list[str] = []
                         for item_type in map(try_getting_literal, proper_type.items):
-                            if not (isinstance(item_type, LiteralType) and isinstance(item_type.value, str)):
+                            if not (
+                                isinstance(item_type, LiteralType)
+                                and isinstance(item_type.value, str)
+                            ):
                                 return None
                             values.append(item_type.value)
                         return folded_callee.join(values)
