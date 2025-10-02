@@ -808,10 +808,10 @@ class MessageBuilder:
                     )
                     arg_label = f'"{arg_name}"'
                 if isinstance(outer_context, IndexExpr) and isinstance(
-                    outer_context.index, StrExpr
+                    index := constant_fold_expr(outer_context.index, "unused"), str
                 ):
                     msg = 'Value of "{}" has incompatible type {}; expected {}'.format(
-                        outer_context.index.value,
+                        index,
                         quote_type_string(arg_type_str),
                         quote_type_string(expected_type_str),
                     )
