@@ -20,6 +20,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 import mypy.errorcodes as codes
 from mypy import message_registry
 from mypy.checker_shared import TypeCheckerSharedApi
+from mypy.constant_fold import constant_fold_expr
 from mypy.errors import Errors
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
@@ -1005,8 +1006,13 @@ class StringFormatterChecker:
                     and len(expr.value) != 1
                 ):
                     self.msg.requires_int_or_single_byte(context)
-                elif isinstance(expr, (StrExpr, BytesExpr)) and len(expr.value) != 1:
-                    self.msg.requires_int_or_char(context)
+                else:
+                    if isinstance(folded := constant_fold_expr(expr, "unused"), str):
+                        value = folded
+                    elif isinstance(expr, BytesExpr):
+                        value = expr.value
+                    if len(value) != 1:
+                        self.msg.requires_int_or_char(context)
 
         return check_expr, check_type
 
