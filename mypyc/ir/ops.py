@@ -1049,11 +1049,11 @@ class TupleGet(RegisterOp):
             src.type, RTuple
         ), "TupleGet only operates on tuples, not {type(src.type).__name__}"
         src_len = len(src.type.types)
-        if index < 0:
-            index += src_len
-        assert index <= src_len - 1, f"Index out of range.\nsource type: {src.type}\nindex: {index}"
         self.src = src
         self.index = index
+        if index < 0:
+            self.index += src_len
+        assert self.index <= src_len - 1, f"Index out of range.\nsource type: {src.type}\nindex: {index}"
         self.type = src.type.types[index]
         self.is_borrowed = borrow
 
