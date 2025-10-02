@@ -1045,8 +1045,6 @@ class TupleGet(RegisterOp):
 
     def __init__(self, src: Value, index: int, line: int = -1, *, borrow: bool = False) -> None:
         super().__init__(line)
-        self.src = src
-        self.index = index
         assert isinstance(
             src.type, RTuple
         ), "TupleGet only operates on tuples, not {type(src.type).__name__}"
@@ -1054,6 +1052,8 @@ class TupleGet(RegisterOp):
         if index < 0:
             index += src_len
         assert index <= src_len - 1, f"Index out of range.\nsource type: {src.type}\nindex: {index}"
+        self.src = src
+        self.index = index
         self.type = src.type.types[index]
         self.is_borrowed = borrow
 
