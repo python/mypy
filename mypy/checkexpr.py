@@ -18,6 +18,7 @@ from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_
 from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
+from mypy.constant_fold import constant_fold_expr
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorInfo, ErrorWatcher, report_internal_error
 from mypy.expandtype import (
@@ -4620,8 +4621,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
     ) -> tuple[Type, set[str]]:
-        if isinstance(index, StrExpr):
-            key_names = [index.value]
+        if isinstance(folded_index := constant_fold_expr(index, "unused"), str):
+            key_names = [folded_index]
         else:
             typ = get_proper_type(self.accept(index))
             if isinstance(typ, UnionType):
