@@ -5532,7 +5532,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # See https://github.com/python/mypy/issues/9927
             return None, None
 
-        arg_kinds = [arg.kind for arg in e.arguments]
+        arg_kinds = ArgKinds(arg.kind for arg in e.arguments)
 
         if callable_ctx.is_ellipsis_args or ctx.param_spec() is not None:
             # Fill in Any arguments to match the arguments of the lambda.
