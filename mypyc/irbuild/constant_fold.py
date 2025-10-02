@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 ConstantValue = Union[int, float, complex, str, bytes]
 CONST_TYPES: Final = (int, float, complex, str, bytes)
 
-Expr = TypeVar("Expr", Expression)
+Expr = TypeVar("Expr", bound=Expression)
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
