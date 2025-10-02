@@ -101,7 +101,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                     return base[begin_index:end_index:stride]
                 except Exception:
                     return None
-            
+
             index = constant_fold_expr(builder, index_expr)
             if index is not None:
                 try:
