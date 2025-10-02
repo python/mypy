@@ -131,3 +131,29 @@ def constant_fold_binary_op_extended(
         return left * right
 
     return None
+
+
+def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
+    """Return the constant value of an expression if possible.
+
+    Return None otherwise.
+    """
+    value = constant_fold_expr(builder, expr)
+    if value is not None:
+        return builder.load_literal_value(value)
+    return None
+
+
+def folding_candidate(
+    transform: Callable[[IRBuilder, Expression], Value | None],
+) -> Callable[[IRBuilder, Expression], Value | None]:
+    """Mark a transform function as a candidate for constant folding.
+
+    Candidate functions will attempt to short-circuit the transformation
+    by constant folding the expression and will only proceed to transform
+    the expression if folding is not possible.
+    """
+    def constant_fold_wrap(builder: IRBuilder, expr: Expression) -> Value | None:
+        folded = try_constant_fold(builder, expr)
+        return folded if folded is not None else transform(builder, expr)
+    return constant_fold_wrap
