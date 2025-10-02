@@ -718,9 +718,9 @@ def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExp
 @specialize_function("format", str_rprimitive)
 def translate_str_format(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if isinstance(callee, MemberExpr):
-        format_str = constant_fold_expr(builder, callee.expr)
-        if isinstance(format_str, str) and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds):
-            tokens = tokenizer_format_call(format_str)
+        folded_callee = constant_fold_expr(builder, callee.expr)
+        if isinstance(folded_callee, str) and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds):
+            tokens = tokenizer_format_call(folded_callee)
             if tokens is None:
                 return None
             literals, format_ops = tokens
