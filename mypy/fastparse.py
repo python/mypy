@@ -1634,9 +1634,11 @@ class ASTConverter:
         arg_types = self.translate_expr_list(
             [a.value if isinstance(a, Starred) else a for a in args] + [k.value for k in keywords]
         )
-        arg_kinds = [ARG_STAR if type(a) is Starred else ARG_POS for a in args] + [
+        arg_kinds = ArgKinds(
+            [ARG_STAR if type(a) is Starred else ARG_POS for a in args] + [
             ARG_STAR2 if arg is None else ARG_NAMED for arg in keyword_names
         ]
+        )
         e = CallExpr(
             self.visit(n.func),
             arg_types,
