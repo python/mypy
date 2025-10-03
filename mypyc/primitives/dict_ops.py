@@ -93,6 +93,7 @@ dict_get_item_op = method_op(
 # dict[key] = value (exact dict only, no subclasses)
 # NOTE: this is currently for internal use only, and not used for CallExpr specialization
 exact_dict_get_item_op = custom_primitive_op(
+    name="__getitem__",
     arg_types=[dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_GetItemUnsafe",
