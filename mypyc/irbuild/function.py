@@ -58,7 +58,7 @@ from mypyc.ir.rtypes import (
     RInstance,
     bool_rprimitive,
     c_int_rprimitive,
-    dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
 )
@@ -1043,7 +1043,7 @@ def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo)
 
 
 def load_singledispatch_registry(builder: IRBuilder, dispatch_func_obj: Value, line: int) -> Value:
-    return builder.builder.get_attr(dispatch_func_obj, "registry", dict_rprimitive, line)
+    return builder.builder.get_attr(dispatch_func_obj, "registry", exact_dict_rprimitive, line)
 
 
 def singledispatch_main_func_name(orig_name: str) -> str:
