@@ -7,7 +7,7 @@ from re import Pattern
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Protocol, overload
+from typing import Any, Final, Protocol, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 __all__ = [
@@ -30,12 +30,12 @@ __all__ = [
 _Reply: TypeAlias = tuple[int, bytes]
 _SendErrs: TypeAlias = dict[str, _Reply]
 
-SMTP_PORT: int
-SMTP_SSL_PORT: int
-CRLF: str
-bCRLF: bytes
+SMTP_PORT: Final = 25
+SMTP_SSL_PORT: Final = 465
+CRLF: Final[str]
+bCRLF: Final[bytes]
 
-OLDSTYLE_AUTH: Pattern[str]
+OLDSTYLE_AUTH: Final[Pattern[str]]
 
 class SMTPException(OSError): ...
 class SMTPNotSupportedError(SMTPException): ...
@@ -65,12 +65,12 @@ class SMTPAuthenticationError(SMTPResponseException): ...
 
 def quoteaddr(addrstring: str) -> str: ...
 def quotedata(data: str) -> str: ...
-
+@type_check_only
 class _AuthObject(Protocol):
     @overload
-    def __call__(self, challenge: None = None) -> str | None: ...
+    def __call__(self, challenge: None = None, /) -> str | None: ...
     @overload
-    def __call__(self, challenge: bytes) -> str: ...
+    def __call__(self, challenge: bytes, /) -> str: ...
 
 class SMTP:
     debuglevel: int
@@ -128,7 +128,13 @@ class SMTP:
     def auth_plain(self, challenge: ReadableBuffer | None = None) -> str: ...
     def auth_login(self, challenge: ReadableBuffer | None = None) -> str: ...
     def login(self, user: str, password: str, *, initial_response_ok: bool = True) -> _Reply: ...
-    def starttls(self, keyfile: str | None = None, certfile: str | None = None, context: SSLContext | None = None) -> _Reply: ...
+    if sys.version_info >= (3, 12):
+        def starttls(self, *, context: SSLContext | None = None) -> _Reply: ...
+    else:
+        def starttls(
+            self, keyfile: str | None = None, certfile: str | None = None, context: SSLContext | None = None
+        ) -> _Reply: ...
+
     def sendmail(
         self,
         from_addr: str,
@@ -152,35 +158,38 @@ class SMTP_SSL(SMTP):
     keyfile: str | None
     certfile: str | None
     context: SSLContext
-    def __init__(
-        self,
-        host: str = "",
-        port: int = 0,
-        local_hostname: str | None = None,
-        keyfile: str | None = None,
-        certfile: str | None = None,
-        timeout: float = ...,
-        source_address: _SourceAddress | None = None,
-        context: SSLContext | None = None,
-    ) -> None: ...
-
-LMTP_PORT: int
-
-class LMTP(SMTP):
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 12):
         def __init__(
             self,
             host: str = "",
-            port: int = 2003,
+            port: int = 0,
             local_hostname: str | None = None,
-            source_address: _SourceAddress | None = None,
+            *,
             timeout: float = ...,
+            source_address: _SourceAddress | None = None,
+            context: SSLContext | None = None,
         ) -> None: ...
     else:
         def __init__(
             self,
             host: str = "",
-            port: int = 2003,
+            port: int = 0,
             local_hostname: str | None = None,
+            keyfile: str | None = None,
+            certfile: str | None = None,
+            timeout: float = ...,
             source_address: _SourceAddress | None = None,
+            context: SSLContext | None = None,
         ) -> None: ...
+
+LMTP_PORT: Final = 2003
+
+class LMTP(SMTP):
+    def __init__(
+        self,
+        host: str = "",
+        port: int = 2003,
+        local_hostname: str | None = None,
+        source_address: _SourceAddress | None = None,
+        timeout: float = ...,
+    ) -> None: ...

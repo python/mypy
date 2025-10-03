@@ -4,7 +4,7 @@ from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.subtypes import is_subtype
 from mypy.test.helpers import Suite
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
-from mypy.types import Instance, TupleType, Type, UnpackType
+from mypy.types import Instance, TupleType, Type, UninhabitedType, UnpackType
 
 
 class SubtypingSuite(Suite):
@@ -87,7 +87,7 @@ class SubtypingSuite(Suite):
         )
 
         self.assert_strict_subtype(
-            self.fx.callable(self.fx.a, self.fx.nonet), self.fx.callable(self.fx.a, self.fx.a)
+            self.fx.callable(self.fx.a, UninhabitedType()), self.fx.callable(self.fx.a, self.fx.a)
         )
 
         self.assert_unrelated(
@@ -221,10 +221,6 @@ class SubtypingSuite(Suite):
             Instance(self.fx.gvi, [UnpackType(self.fx.us)]),
         )
 
-        self.assert_subtype(
-            Instance(self.fx.gvi, [UnpackType(self.fx.anyt)]),
-            Instance(self.fx.gvi, [self.fx.anyt]),
-        )
         self.assert_not_subtype(
             Instance(self.fx.gvi, [UnpackType(self.fx.ss)]), Instance(self.fx.gvi, [])
         )
@@ -272,86 +268,14 @@ class SubtypingSuite(Suite):
             Instance(self.fx.gvi, [self.fx.a, UnpackType(self.fx.ss), self.fx.b, self.fx.c]),
         )
 
-    def test_type_var_tuple_unpacked_varlength_tuple(self) -> None:
-        self.assert_subtype(
-            Instance(
-                self.fx.gvi,
-                [
-                    UnpackType(
-                        TupleType(
-                            [self.fx.a, self.fx.b],
-                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
-                        )
-                    )
-                ],
-            ),
-            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
-        )
-
-    def test_type_var_tuple_unpacked_tuple(self) -> None:
-        self.assert_subtype(
-            Instance(
-                self.fx.gvi,
-                [
-                    UnpackType(
-                        TupleType(
-                            [self.fx.a, self.fx.b],
-                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
-                        )
-                    )
-                ],
-            ),
-            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
-        )
-        self.assert_subtype(
-            Instance(
-                self.fx.gvi,
-                [
-                    UnpackType(
-                        TupleType(
-                            [self.fx.a, self.fx.b],
-                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
-                        )
-                    )
-                ],
-            ),
-            Instance(self.fx.gvi, [self.fx.anyt, self.fx.anyt]),
-        )
-        self.assert_not_subtype(
-            Instance(
-                self.fx.gvi,
-                [
-                    UnpackType(
-                        TupleType(
-                            [self.fx.a, self.fx.b],
-                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
-                        )
-                    )
-                ],
-            ),
-            Instance(self.fx.gvi, [self.fx.a]),
-        )
-        self.assert_not_subtype(
-            Instance(
-                self.fx.gvi,
-                [
-                    UnpackType(
-                        TupleType(
-                            [self.fx.a, self.fx.b],
-                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
-                        )
-                    )
-                ],
-            ),
-            # Order flipped here.
-            Instance(self.fx.gvi, [self.fx.b, self.fx.a]),
-        )
-
     def test_type_var_tuple_unpacked_variable_length_tuple(self) -> None:
-        self.assert_equivalent(
+        self.assert_subtype(
             Instance(self.fx.gvi, [self.fx.a, self.fx.a]),
             Instance(self.fx.gvi, [UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))]),
         )
+
+    def test_fallback_not_subtype_of_tuple(self) -> None:
+        self.assert_not_subtype(self.fx.a, TupleType([self.fx.b], fallback=self.fx.a))
 
     # IDEA: Maybe add these test cases (they are tested pretty well in type
     #       checker tests already):

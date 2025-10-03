@@ -12,11 +12,11 @@ from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
+    HAVE_IMMORTAL,
     NATIVE_PREFIX,
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
-    use_vectorcall,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FuncDecl
@@ -28,17 +28,18 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     int_rprimitive,
-    is_bit_rprimitive,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_frozenset_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_native_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
     is_optional_type,
@@ -195,7 +196,7 @@ class Emitter:
         return ATTR_PREFIX + name
 
     def object_annotation(self, obj: object, line: str) -> str:
-        """Build a C comment with an object's string represention.
+        """Build a C comment with an object's string representation.
 
         If the comment exceeds the line length limit, it's wrapped into a
         multiline string (with the extra lines indented to be aligned with
@@ -397,9 +398,6 @@ class Emitter:
         if value:
             self.emit_line("}")
 
-    def use_vectorcall(self) -> bool:
-        return use_vectorcall(self.capi_version)
-
     def emit_undefined_attr_check(
         self,
         rtype: RType,
@@ -511,8 +509,11 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
         elif not rtype.is_unboxed:
-            # Always inline, since this is a simple op
-            self.emit_line("CPy_INCREF(%s);" % dest)
+            # Always inline, since this is a simple but very hot op
+            if rtype.may_be_immortal or not HAVE_IMMORTAL:
+                self.emit_line("CPy_INCREF(%s);" % dest)
+            else:
+                self.emit_line("CPy_INCREF_NO_IMM(%s);" % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def emit_dec_ref(
@@ -540,7 +541,10 @@ class Emitter:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
             else:
                 # Inlined
-                self.emit_line(f"CPy_{x}DECREF({dest});")
+                if rtype.may_be_immortal or not HAVE_IMMORTAL:
+                    self.emit_line(f"CPy_{x}DECREF({dest});")
+                else:
+                    self.emit_line(f"CPy_{x}DECREF_NO_IMM({dest});")
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
@@ -606,12 +610,12 @@ class Emitter:
             is_list_rprimitive(typ)
             or is_dict_rprimitive(typ)
             or is_set_rprimitive(typ)
+            or is_frozenset_rprimitive(typ)
             or is_str_rprimitive(typ)
             or is_range_rprimitive(typ)
             or is_float_rprimitive(typ)
             or is_int_rprimitive(typ)
-            or is_bool_rprimitive(typ)
-            or is_bit_rprimitive(typ)
+            or is_bool_or_bit_rprimitive(typ)
             or is_fixed_width_rtype(typ)
         ):
             if declare_dest:
@@ -622,6 +626,8 @@ class Emitter:
                 prefix = "PyDict"
             elif is_set_rprimitive(typ):
                 prefix = "PySet"
+            elif is_frozenset_rprimitive(typ):
+                prefix = "PyFrozenSet"
             elif is_str_rprimitive(typ):
                 prefix = "PyUnicode"
             elif is_range_rprimitive(typ):
@@ -631,7 +637,7 @@ class Emitter:
             elif is_int_rprimitive(typ) or is_fixed_width_rtype(typ):
                 # TODO: Range check for fixed-width types?
                 prefix = "PyLong"
-            elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+            elif is_bool_or_bit_rprimitive(typ):
                 prefix = "PyBool"
             else:
                 assert False, f"unexpected primitive type: {typ}"
@@ -686,7 +692,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check, optional)
-            self.emit_lines(f"    {dest} = {src};".format(dest, src), "else {")
+            self.emit_lines(f"    {dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif is_none_rprimitive(typ):
@@ -699,7 +705,7 @@ class Emitter:
             self.emit_lines(f"    {dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
-        elif is_object_rprimitive(typ):
+        elif is_object_rprimitive(typ) or is_native_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f"PyObject *{dest};")
             self.emit_arg_check(src, dest, typ, "", optional)
@@ -737,7 +743,7 @@ class Emitter:
             self.emit_traceback(error.source_path, error.module_name, error.traceback_entry)
             self.emit_line("goto %s;" % error.label)
         else:
-            assert isinstance(error, ReturnHandler)
+            assert isinstance(error, ReturnHandler), error
             self.emit_line("return %s;" % error.value)
 
     def emit_union_cast(
@@ -866,7 +872,7 @@ class Emitter:
         elif isinstance(error, GotoHandler):
             failure = "goto %s;" % error.label
         else:
-            assert isinstance(error, ReturnHandler)
+            assert isinstance(error, ReturnHandler), error
             failure = "return %s;" % error.value
         if raise_exception:
             raise_exc = f'CPy_TypeError("{self.pretty_name(typ)}", {src}); '
@@ -882,7 +888,7 @@ class Emitter:
             self.emit_line("else {")
             self.emit_line(failure)
             self.emit_line("}")
-        elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+        elif is_bool_or_bit_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
                 self.emit_line(f"char {dest};")
@@ -1008,7 +1014,7 @@ class Emitter:
         if is_int_rprimitive(typ) or is_short_int_rprimitive(typ):
             # Steal the existing reference if it exists.
             self.emit_line(f"{declaration}{dest} = CPyTagged_StealAsObject({src});")
-        elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
+        elif is_bool_or_bit_rprimitive(typ):
             # N.B: bool is special cased to produce a borrowed value
             # after boxing, so we don't need to increment the refcount
             # when this comes directly from a Box op.
@@ -1030,17 +1036,21 @@ class Emitter:
             self.emit_line(f"{declaration}{dest} = PyFloat_FromDouble({src});")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
-            self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
-            self.emit_line(f"if (unlikely({dest} == NULL))")
-            self.emit_line("    CPyError_OutOfMemory();")
-            # TODO: Fail if dest is None
-            for i in range(0, len(typ.types)):
-                if not typ.is_unboxed:
-                    self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {src}.f{i}")
-                else:
-                    inner_name = self.temp_name()
-                    self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
-                    self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
+            if not typ.types:
+                self.emit_line(f"{declaration}{dest} = CPyTuple_LoadEmptyTupleConstant();")
+            else:
+                self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
+                self.emit_line(f"if (unlikely({dest} == NULL))")
+                self.emit_line("    CPyError_OutOfMemory();")
+
+                # TODO: Fail if dest is None
+                for i in range(len(typ.types)):
+                    if not typ.is_unboxed:
+                        self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {src}.f{i}")
+                    else:
+                        inner_name = self.temp_name()
+                        self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
+                        self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.
@@ -1107,6 +1117,31 @@ class Emitter:
             self.emit_line(f"Py_CLEAR({target});")
         else:
             assert False, "emit_gc_clear() not implemented for %s" % repr(rtype)
+
+    def emit_reuse_clear(self, target: str, rtype: RType) -> None:
+        """Emit attribute clear before object is added into freelist.
+
+        Assume that 'target' represents a C expression that refers to a
+        struct member, such as 'self->x'.
+
+        Unlike emit_gc_clear(), initialize attribute value to match a freshly
+        allocated object.
+        """
+        if isinstance(rtype, RTuple):
+            for i, item_type in enumerate(rtype.types):
+                self.emit_reuse_clear(f"{target}.f{i}", item_type)
+        elif not rtype.is_refcounted:
+            self.emit_line(f"{target} = {rtype.c_undefined};")
+        elif isinstance(rtype, RPrimitive) and rtype.name == "builtins.int":
+            self.emit_line(f"if (CPyTagged_CheckLong({target})) {{")
+            self.emit_line(f"CPyTagged __tmp = {target};")
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+            self.emit_line("Py_XDECREF(CPyTagged_LongAsObject(__tmp));")
+            self.emit_line("} else {")
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+            self.emit_line("}")
+        else:
+            self.emit_gc_clear(target, rtype)
 
     def emit_traceback(
         self, source_path: str, module_name: str, traceback_entry: tuple[str, int]

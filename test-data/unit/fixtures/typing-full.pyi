@@ -10,33 +10,47 @@ from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
+class _SpecialForm:
+    def __getitem__(self, index: Any) -> Any: ...
+    def __or__(self, other): ...
+    def __ror__(self, other): ...
+class TypeVar:
+    def __init__(self, name, *args, bound=None): ...
+    def __or__(self, other): ...
+class ParamSpec: ...
+class TypeVarTuple: ...
+
 def cast(t, o): ...
 def assert_type(o, t): ...
 overload = 0
-Any = 0
-Union = 0
+Any = object()
 Optional = 0
-TypeVar = 0
 Generic = 0
 Protocol = 0
 Tuple = 0
-Callable = 0
 _promote = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
 Final = 0
-Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Self = 0
+Unpack = 0
+Callable: _SpecialForm
+Union: _SpecialForm
+Literal: _SpecialForm
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
-T_contra = TypeVar('T_contra', contravariant=True)
+R_co = TypeVar('R_co', covariant=True)
+S_contra = TypeVar('S_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
+
+def final(x: T) -> T: ...
 
 class NamedTuple(tuple[Any, ...]): ...
 
@@ -69,9 +83,9 @@ class Iterator(Iterable[T_co], Protocol):
     @abstractmethod
     def __next__(self) -> T_co: pass
 
-class Generator(Iterator[T], Generic[T, U, V]):
+class Generator(Iterator[T_co], Generic[T_co, S_contra, R_co]):
     @abstractmethod
-    def send(self, value: U) -> T: pass
+    def send(self, value: S_contra) -> T_co: pass
 
     @abstractmethod
     def throw(self, typ: Any, val: Any=None, tb: Any=None) -> None: pass
@@ -80,35 +94,40 @@ class Generator(Iterator[T], Generic[T, U, V]):
     def close(self) -> None: pass
 
     @abstractmethod
-    def __iter__(self) -> 'Generator[T, U, V]': pass
+    def __iter__(self) -> 'Generator[T_co, S_contra, R_co]': pass
 
-class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
+class AsyncGenerator(AsyncIterator[T_co], Generic[T_co, S_contra]):
     @abstractmethod
-    def __anext__(self) -> Awaitable[T]: pass
-
-    @abstractmethod
-    def asend(self, value: U) -> Awaitable[T]: pass
+    def __anext__(self) -> Awaitable[T_co]: pass
 
     @abstractmethod
-    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T]: pass
+    def asend(self, value: S_contra) -> Awaitable[T_co]: pass
 
     @abstractmethod
-    def aclose(self) -> Awaitable[T]: pass
+    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T_co]: pass
 
     @abstractmethod
-    def __aiter__(self) -> 'AsyncGenerator[T, U]': pass
+    def aclose(self) -> Awaitable[T_co]: pass
+
+    @abstractmethod
+    def __aiter__(self) -> 'AsyncGenerator[T_co, S_contra]': pass
 
 @runtime_checkable
-class Awaitable(Protocol[T]):
+class Awaitable(Protocol[T_co]):
     @abstractmethod
-    def __await__(self) -> Generator[Any, Any, T]: pass
+    def __await__(self) -> Generator[Any, Any, T_co]: pass
 
-class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S], metaclass=ABCMeta):
+class AwaitableGenerator(
+    Awaitable[R_co],
+    Generator[T_co, S_contra, R_co],
+    Generic[T_co, S_contra, R_co, S],
+    metaclass=ABCMeta
+):
     pass
 
-class Coroutine(Awaitable[V], Generic[T, U, V]):
+class Coroutine(Awaitable[R_co], Generic[T_co, S_contra, R_co]):
     @abstractmethod
-    def send(self, value: U) -> T: pass
+    def send(self, value: S_contra) -> T_co: pass
 
     @abstractmethod
     def throw(self, typ: Any, val: Any=None, tb: Any=None) -> None: pass
@@ -117,15 +136,15 @@ class Coroutine(Awaitable[V], Generic[T, U, V]):
     def close(self) -> None: pass
 
 @runtime_checkable
-class AsyncIterable(Protocol[T]):
+class AsyncIterable(Protocol[T_co]):
     @abstractmethod
-    def __aiter__(self) -> 'AsyncIterator[T]': pass
+    def __aiter__(self) -> 'AsyncIterator[T_co]': pass
 
 @runtime_checkable
-class AsyncIterator(AsyncIterable[T], Protocol):
-    def __aiter__(self) -> 'AsyncIterator[T]': return self
+class AsyncIterator(AsyncIterable[T_co], Protocol):
+    def __aiter__(self) -> 'AsyncIterator[T_co]': return self
     @abstractmethod
-    def __anext__(self) -> Awaitable[T]: pass
+    def __anext__(self) -> Awaitable[T_co]: pass
 
 class Sequence(Iterable[T_co], Container[T_co]):
     @abstractmethod
@@ -181,8 +200,6 @@ class _TypedDict(Mapping[str, object]):
     def update(self: T, __m: T) -> None: ...
     def __delitem__(self, k: NoReturn) -> None: ...
 
-class _SpecialForm: pass
-
 def dataclass_transform(
     *,
     eq_default: bool = ...,
@@ -192,3 +209,19 @@ def dataclass_transform(
     **kwargs: Any,
 ) -> Callable[[T], T]: ...
 def override(__arg: T) -> T: ...
+
+# Was added in 3.11
+def reveal_type(__obj: T) -> T: ...
+
+# Only exists in type checking time:
+def type_check_only(__func_or_class: T) -> T: ...
+
+# Was added in 3.12
+@final
+class TypeAliasType:
+    def __init__(
+        self, name: str, value: Any, *, type_params: Tuple[Union[TypeVar, ParamSpec, TypeVarTuple], ...] = ()
+    ) -> None: ...
+
+    def __or__(self, other: Any) -> Any: ...
+    def __ror__(self, other: Any) -> Any: ...

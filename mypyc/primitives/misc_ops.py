@@ -2,20 +2,35 @@
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     bit_rprimitive,
     bool_rprimitive,
+    bytes_rprimitive,
     c_int_rprimitive,
     c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
+    cstring_rprimitive,
     dict_rprimitive,
+    float_rprimitive,
     int_rprimitive,
+    none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
+    pointer_rprimitive,
     str_rprimitive,
+    uint8_rprimitive,
+    void_rtype,
 )
-from mypyc.primitives.registry import ERR_NEG_INT, custom_op, function_op, load_address_op
+from mypyc.primitives.registry import (
+    ERR_NEG_INT,
+    custom_op,
+    custom_primitive_op,
+    function_op,
+    load_address_op,
+    method_op,
+)
 
 # Get the 'bool' type object.
 load_address_op(name="builtins.bool", type=object_rprimitive, src="PyBool_Type")
@@ -183,6 +198,15 @@ bool_op = function_op(
     truncated_type=bool_rprimitive,
 )
 
+# isinstance(obj, bool)
+isinstance_bool = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyBool_Check",
+    error_kind=ERR_NEVER,
+)
+
 # slice(start, stop, step)
 new_slice_op = function_op(
     name="builtins.slice",
@@ -196,7 +220,7 @@ new_slice_op = function_op(
 type_op = function_op(
     name="builtins.type",
     arg_types=[object_rprimitive],
-    c_function_name="PyObject_Type",
+    c_function_name="CPy_TYPE",
     return_type=object_rprimitive,
     error_kind=ERR_NEVER,
 )
@@ -216,7 +240,13 @@ pytype_from_template_op = custom_op(
 # Create a dataclass from an extension class. See
 # CPyDataclass_SleightOfHand for more docs.
 dataclass_sleight_of_hand = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive, dict_rprimitive, dict_rprimitive],
+    arg_types=[
+        object_rprimitive,
+        object_rprimitive,
+        dict_rprimitive,
+        dict_rprimitive,
+        str_rprimitive,
+    ],
     return_type=bit_rprimitive,
     c_function_name="CPyDataclass_SleightOfHand",
     error_kind=ERR_FALSE,
@@ -232,10 +262,181 @@ check_unpack_count_op = custom_op(
 )
 
 
-# register an implementation for a singledispatch function
+# Register an implementation for a singledispatch function
 register_function = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPySingledispatch_RegisterFunction",
     error_kind=ERR_MAGIC,
+)
+
+
+# Initialize a PyObject * item in a memory buffer (steal the value)
+buf_init_item = custom_primitive_op(
+    name="buf_init_item",
+    arg_types=[pointer_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+    steals=[False, False, True],
+)
+
+# Get length of PyVarObject instance (e.g. list or tuple)
+var_object_size = custom_primitive_op(
+    name="var_object_size",
+    arg_types=[object_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
+# Set the lazy value compute function of an TypeAliasType instance (Python 3.12+).
+# This must only be used as part of initializing the object. Any existing value
+# will be cleared.
+set_type_alias_compute_function_op = custom_primitive_op(
+    name="set_type_alias_compute_function",
+    c_function_name="CPy_SetTypeAliasTypeComputeFunction",
+    # (alias object, value compute function)
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)
+
+debug_print_op = custom_primitive_op(
+    name="debug_print",
+    c_function_name="CPyDebug_PrintObject",
+    arg_types=[object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)
+
+# Log an event to a trace log, which is written to a file during execution.
+log_trace_event = custom_primitive_op(
+    name="log_trace_event",
+    c_function_name="CPyTrace_LogEvent",
+    # (fullname of function/location, line number, operation name, operation details)
+    arg_types=[cstring_rprimitive, cstring_rprimitive, cstring_rprimitive, cstring_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)
+
+# Mark object as immortal -- it won't be freed via reference counting, as
+# the reference count won't be updated any longer. Immortal objects support
+# fast concurrent read-only access from multiple threads when using free
+# threading, since this eliminates contention from concurrent reference count
+# updates.
+#
+# Needs at least Python 3.14.
+set_immortal_op = custom_primitive_op(
+    name="set_immmortal",
+    c_function_name="CPy_SetImmortal",
+    arg_types=[object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)
+
+buffer_rprimitive = KNOWN_NATIVE_TYPES["native_internal.Buffer"]
+
+# Buffer(source)
+function_op(
+    name="native_internal.Buffer",
+    arg_types=[bytes_rprimitive],
+    return_type=buffer_rprimitive,
+    c_function_name="Buffer_internal",
+    error_kind=ERR_MAGIC,
+)
+
+# Buffer()
+function_op(
+    name="native_internal.Buffer",
+    arg_types=[],
+    return_type=buffer_rprimitive,
+    c_function_name="Buffer_internal_empty",
+    error_kind=ERR_MAGIC,
+)
+
+method_op(
+    name="getvalue",
+    arg_types=[buffer_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="Buffer_getvalue_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_bool",
+    arg_types=[object_rprimitive, bool_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_bool_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_bool",
+    arg_types=[object_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="read_bool_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_str",
+    arg_types=[object_rprimitive, str_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_str_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_str",
+    arg_types=[object_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="read_str_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_float",
+    arg_types=[object_rprimitive, float_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_float_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_float",
+    arg_types=[object_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="read_float_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_int",
+    arg_types=[object_rprimitive, int_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_int_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_int",
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="read_int_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.write_tag",
+    arg_types=[object_rprimitive, uint8_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_tag_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="native_internal.read_tag",
+    arg_types=[object_rprimitive],
+    return_type=uint8_rprimitive,
+    c_function_name="read_tag_internal",
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )

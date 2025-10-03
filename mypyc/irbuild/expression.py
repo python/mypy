@@ -7,9 +7,11 @@ and mypyc.irbuild.builder.
 from __future__ import annotations
 
 import math
-from typing import Callable, Sequence
+from collections.abc import Sequence
+from typing import Callable
 
 from mypy.nodes import (
+    ARG_NAMED,
     ARG_POS,
     LDEF,
     AssertTypeExpr,
@@ -44,6 +46,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeApplication,
     TypeInfo,
+    TypeVarLikeExpr,
     UnaryExpr,
     Var,
 )
@@ -58,6 +61,7 @@ from mypyc.ir.ops import (
     Integer,
     LoadAddress,
     LoadLiteral,
+    PrimitiveDescription,
     RaiseStandardError,
     Register,
     TupleGet,
@@ -65,6 +69,7 @@ from mypyc.ir.ops import (
     Value,
 )
 from mypyc.ir.rtypes import (
+    RInstance,
     RTuple,
     bool_rprimitive,
     int_rprimitive,
@@ -72,6 +77,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_list_rprimitive,
     is_none_rprimitive,
+    is_object_rprimitive,
     object_rprimitive,
     set_rprimitive,
 )
@@ -80,6 +86,7 @@ from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    raise_error_if_contains_unreachable_names,
     translate_list_comprehension,
     translate_set_comprehension,
 )
@@ -90,14 +97,18 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_printf_style,
 )
-from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
+from mypyc.irbuild.specialize import (
+    apply_function_specialization,
+    apply_method_specialization,
+    translate_object_new,
+    translate_object_setattr,
+)
 from mypyc.primitives.bytes_ops import bytes_slice_op
-from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
-from mypyc.primitives.generic_ops import iter_op
-from mypyc.primitives.int_ops import int_comparison_op_mapping
+from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
+from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
-from mypyc.primitives.registry import CFunctionDescription, builtin_names
+from mypyc.primitives.registry import builtin_names
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
@@ -106,12 +117,14 @@ from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
 
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
+    if isinstance(expr.node, TypeVarLikeExpr) and expr.node.is_new_style:
+        # Reference to Python 3.12 implicit TypeVar/TupleVarTuple/... object.
+        # These are stored in C statics and not visible in Python namespaces.
+        return builder.load_type_var(expr.node.name, expr.node.line)
     if expr.node is None:
         builder.add(
             RaiseStandardError(
-                RaiseStandardError.RUNTIME_ERROR,
-                "mypyc internal error: should be unreachable",
-                expr.line,
+                RaiseStandardError.NAME_ERROR, f'name "{expr.name}" is not defined', expr.line
             )
         )
         return builder.none()
@@ -125,6 +138,8 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if fullname == "builtins.True":
         return builder.true()
     if fullname == "builtins.False":
+        return builder.false()
+    if fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
         return builder.false()
 
     math_literal = transform_math_literal(builder, fullname)
@@ -174,7 +189,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             # AST doesn't include a Var node for the module. We
             # instead load the module separately on each access.
             mod_dict = builder.call_c(get_module_dict_op, [], expr.line)
-            obj = builder.call_c(
+            obj = builder.primitive_op(
                 dict_get_item_op, [mod_dict, builder.load_str(expr.node.fullname)], expr.line
             )
             return obj
@@ -185,6 +200,10 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
 
 
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
+    # Special Cases
+    if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
+        return builder.false()
+
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
@@ -205,6 +224,18 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     can_borrow = builder.is_native_attr_ref(expr)
     obj = builder.accept(expr.expr, can_borrow=can_borrow)
     rtype = builder.node_type(expr)
+
+    if (
+        is_object_rprimitive(obj.type)
+        and expr.name == "__name__"
+        and builder.options.capi_version >= (3, 11)
+    ):
+        return builder.primitive_op(name_op, [obj], expr.line)
+
+    if isinstance(obj.type, RInstance) and expr.name == "__class__":
+        # A non-native class could override "__class__" using "__getattribute__", so
+        # only apply to RInstance types.
+        return builder.primitive_op(type_op, [obj], expr.line)
 
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
@@ -344,9 +375,10 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         and isinstance(callee.expr.node, TypeInfo)
         and callee.expr.node in builder.mapper.type_to_ir
         and builder.mapper.type_to_ir[callee.expr.node].has_method(callee.name)
+        and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
     ):
         # Call a method via the *class*
-        assert isinstance(callee.expr.node, TypeInfo)
+        assert isinstance(callee.expr.node, TypeInfo), callee.expr.node
         ir = builder.mapper.type_to_ir[callee.expr.node]
         return call_classmethod(builder, ir, expr, callee)
     elif builder.is_module_member_expr(callee):
@@ -445,27 +477,32 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         if callee.name in base.method_decls:
             break
     else:
-        if (
-            ir.is_ext_class
-            and ir.builtin_base is None
-            and not ir.inherits_python
-            and callee.name == "__init__"
-            and len(expr.args) == 0
-        ):
-            # Call translates to object.__init__(self), which is a
-            # no-op, so omit the call.
-            return builder.none()
+        if callee.name == "__new__":
+            result = translate_object_new(builder, expr, MemberExpr(callee.call, "__new__"))
+            if result:
+                return result
+        elif callee.name == "__setattr__":
+            result = translate_object_setattr(
+                builder, expr, MemberExpr(callee.call, "__setattr__")
+            )
+            if result:
+                return result
+        if ir.is_ext_class and ir.builtin_base is None and not ir.inherits_python:
+            if callee.name == "__init__" and len(expr.args) == 0:
+                # Call translates to object.__init__(self), which is a
+                # no-op, so omit the call.
+                return builder.none()
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)
     arg_values = [builder.accept(arg) for arg in expr.args]
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
-    if decl.kind != FUNC_STATICMETHOD:
+    if decl.kind != FUNC_STATICMETHOD and decl.name != "__new__":
         # Grab first argument
         vself: Value = builder.self()
         if decl.kind == FUNC_CLASSMETHOD:
-            vself = builder.call_c(type_op, [vself], expr.line)
+            vself = builder.primitive_op(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
             # For generator classes, the self target is the 6th value
             # in the symbol table (which is an ordered dict). This is sort
@@ -521,7 +558,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     # Special case some int ops to allow borrowing operands.
     if is_int_rprimitive(ltype) and is_int_rprimitive(rtype):
         if expr.op == "//":
-            expr = try_optimize_int_floor_divide(expr)
+            expr = try_optimize_int_floor_divide(builder, expr)
         if expr.op in int_borrow_friendly_op:
             borrow_left = is_borrow_friendly_expr(builder, expr.right)
             borrow_right = True
@@ -534,11 +571,11 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     return builder.binary_op(left, right, expr.op, expr.line)
 
 
-def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:
+def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
     """Replace // with a power of two with a right shift, if possible."""
-    if not isinstance(expr.right, IntExpr):
+    divisor = constant_fold_expr(builder, expr.right)
+    if not isinstance(divisor, int):
         return expr
-    divisor = expr.right.value
     shift = divisor.bit_length() - 1
     if 0 < shift < 28 and divisor == (1 << shift):
         return OpExpr(">>", expr.left, IntExpr(shift))
@@ -688,72 +725,9 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
     first_op = e.operators[0]
-    if (
-        first_op in ["in", "not in"]
-        and len(e.operators) == 1
-        and isinstance(e.operands[1], (TupleExpr, ListExpr))
-    ):
-        items = e.operands[1].items
-        n_items = len(items)
-        # x in y -> x == y[0] or ... or x == y[n]
-        # x not in y -> x != y[0] and ... and x != y[n]
-        # 16 is arbitrarily chosen to limit code size
-        if 1 < n_items < 16:
-            if e.operators[0] == "in":
-                bin_op = "or"
-                cmp_op = "=="
-            else:
-                bin_op = "and"
-                cmp_op = "!="
-            lhs = e.operands[0]
-            mypy_file = builder.graph["builtins"].tree
-            assert mypy_file is not None
-            info = mypy_file.names["bool"].node
-            assert isinstance(info, TypeInfo)
-            bool_type = Instance(info, [])
-            exprs = []
-            for item in items:
-                expr = ComparisonExpr([cmp_op], [lhs, item])
-                builder.types[expr] = bool_type
-                exprs.append(expr)
-
-            or_expr: Expression = exprs.pop(0)
-            for expr in exprs:
-                or_expr = OpExpr(bin_op, or_expr, expr)
-                builder.types[or_expr] = bool_type
-            return builder.accept(or_expr)
-        # x in [y]/(y) -> x == y
-        # x not in [y]/(y) -> x != y
-        elif n_items == 1:
-            if e.operators[0] == "in":
-                cmp_op = "=="
-            else:
-                cmp_op = "!="
-            e.operators = [cmp_op]
-            e.operands[1] = items[0]
-        # x in []/() -> False
-        # x not in []/() -> True
-        elif n_items == 0:
-            if e.operators[0] == "in":
-                return builder.false()
-            else:
-                return builder.true()
-
-    # x in {...}
-    # x not in {...}
-    if (
-        first_op in ("in", "not in")
-        and len(e.operators) == 1
-        and isinstance(e.operands[1], SetExpr)
-    ):
-        set_literal = precompute_set_literal(builder, e.operands[1])
-        if set_literal is not None:
-            lhs = e.operands[0]
-            result = builder.builder.call_c(
-                set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
-            )
-            if first_op == "not in":
-                return builder.unary_op(result, "not", e.line)
+    if first_op in ["in", "not in"] and len(e.operators) == 1:
+        result = try_specialize_in_expr(builder, first_op, e.operands[0], e.operands[1], e.line)
+        if result is not None:
             return result
 
     if len(e.operators) == 1:
@@ -771,7 +745,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     borrow_left = is_borrow_friendly_expr(builder, right_expr)
                     left = builder.accept(left_expr, can_borrow=borrow_left)
                     right = builder.accept(right_expr, can_borrow=True)
-                    return builder.compare_tagged(left, right, first_op, e.line)
+                    return builder.binary_op(left, right, first_op, e.line)
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
@@ -799,6 +773,86 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     return go(0, builder.accept(e.operands[0]))
 
 
+def try_specialize_in_expr(
+    builder: IRBuilder, op: str, lhs: Expression, rhs: Expression, line: int
+) -> Value | None:
+    left: Value | None = None
+    items: list[Value] | None = None
+
+    if isinstance(rhs, (TupleExpr, ListExpr)):
+        left = builder.accept(lhs)
+        items = [builder.accept(item) for item in rhs.items]
+    elif isinstance(builder.node_type(rhs), RTuple):
+        left = builder.accept(lhs)
+        tuple_val = builder.accept(rhs)
+        assert isinstance(tuple_val.type, RTuple)
+        items = [builder.add(TupleGet(tuple_val, i)) for i in range(len(tuple_val.type.types))]
+
+    if items is not None:
+        assert left is not None
+        n_items = len(items)
+        # x in y -> x == y[0] or ... or x == y[n]
+        # x not in y -> x != y[0] and ... and x != y[n]
+        if n_items > 1:
+            if op == "in":
+                cmp_op = "=="
+            else:
+                cmp_op = "!="
+            out = BasicBlock()
+            for item in items:
+                cmp = transform_basic_comparison(builder, cmp_op, left, item, line)
+                bool_val = builder.builder.bool_value(cmp)
+                next_block = BasicBlock()
+                if op == "in":
+                    builder.add_bool_branch(bool_val, out, next_block)
+                else:
+                    builder.add_bool_branch(bool_val, next_block, out)
+                builder.activate_block(next_block)
+            result_reg = Register(bool_rprimitive)
+            end = BasicBlock()
+            if op == "in":
+                values = builder.false(), builder.true()
+            else:
+                values = builder.true(), builder.false()
+            builder.assign(result_reg, values[0], line)
+            builder.goto(end)
+            builder.activate_block(out)
+            builder.assign(result_reg, values[1], line)
+            builder.goto(end)
+            builder.activate_block(end)
+            return result_reg
+        # x in [y]/(y) -> x == y
+        # x not in [y]/(y) -> x != y
+        elif n_items == 1:
+            if op == "in":
+                cmp_op = "=="
+            else:
+                cmp_op = "!="
+            right = items[0]
+            return transform_basic_comparison(builder, cmp_op, left, right, line)
+        # x in []/() -> False
+        # x not in []/() -> True
+        elif n_items == 0:
+            if op == "in":
+                return builder.false()
+            else:
+                return builder.true()
+
+    # x in {...}
+    # x not in {...}
+    if isinstance(rhs, SetExpr):
+        set_literal = precompute_set_literal(builder, rhs)
+        if set_literal is not None:
+            result = builder.builder.primitive_op(
+                set_in_op, [builder.accept(lhs), set_literal], line, bool_rprimitive
+            )
+            if op == "not in":
+                return builder.unary_op(result, "not", line)
+            return result
+
+    return None
+
+
 def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Value:
     v = builder.accept(expr, can_borrow=True)
     return builder.binary_op(v, builder.none_object(), "is not" if negated else "is", expr.line)
@@ -807,13 +861,7 @@ def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Va
 def transform_basic_comparison(
     builder: IRBuilder, op: str, left: Value, right: Value, line: int
 ) -> Value:
-    if (
-        is_int_rprimitive(left.type)
-        and is_int_rprimitive(right.type)
-        and op in int_comparison_op_mapping
-    ):
-        return builder.compare_tagged(left, right, op, line)
-    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
+    if is_fixed_width_rtype(left.type) and op in ComparisonOp.signed_ops:
         if right.type == left.type:
             if left.type.is_signed:
                 op_id = ComparisonOp.signed_ops[op]
@@ -830,7 +878,7 @@ def transform_basic_comparison(
             )
     elif (
         is_fixed_width_rtype(right.type)
-        and op in int_comparison_op_mapping
+        and op in ComparisonOp.signed_ops
         and isinstance(left, Integer)
     ):
         if right.type.is_signed:
@@ -948,7 +996,7 @@ def transform_tuple_expr(builder: IRBuilder, expr: TupleExpr) -> Value:
 def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
     """Create a list, then turn it into a tuple."""
     val_as_list = _visit_list_display(builder, expr.items, expr.line)
-    return builder.call_c(list_tuple_op, [val_as_list], expr.line)
+    return builder.primitive_op(list_tuple_op, [val_as_list], expr.line)
 
 
 def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
@@ -972,8 +1020,8 @@ def _visit_display(
     builder: IRBuilder,
     items: list[Expression],
     constructor_op: Callable[[list[Value], int], Value],
-    append_op: CFunctionDescription,
-    extend_op: CFunctionDescription,
+    append_op: PrimitiveDescription,
+    extend_op: PrimitiveDescription,
     line: int,
     is_list: bool,
 ) -> Value:
@@ -994,7 +1042,7 @@ def _visit_display(
         if result is None:
             result = constructor_op(initial_items, line)
 
-        builder.call_c(extend_op if starred else append_op, [result, value], line)
+        builder.primitive_op(extend_op if starred else append_op, [result, value], line)
 
     if result is None:
         result = constructor_op(initial_items, line)
@@ -1014,13 +1062,16 @@ def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Valu
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, o):
+        return builder.none()
+
     d = builder.maybe_spill(builder.call_c(dict_new_op, [], o.line))
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.call_c(dict_set_item_op, [builder.read(d), k, v], o.line)
+        builder.call_c(exact_dict_set_item_op, [builder.read(d), k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return builder.read(d)
@@ -1037,12 +1088,12 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
             return builder.accept(arg)
 
     args = [get_arg(expr.begin_index), get_arg(expr.end_index), get_arg(expr.stride)]
-    return builder.call_c(new_slice_op, args, expr.line)
+    return builder.primitive_op(new_slice_op, args, expr.line)
 
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     builder.warning("Treating generator comprehension as list", o.line)
-    return builder.call_c(iter_op, [translate_list_comprehension(builder, o)], o.line)
+    return builder.primitive_op(iter_op, [translate_list_comprehension(builder, o)], o.line)
 
 
 def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:

@@ -97,8 +97,7 @@ assert f(Sub(3, 2)) == 3
 
 -- Ref: https://github.com/mypyc/mypyc/issues/924
 [case testNamedTupleClassSyntax]
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
-from typing_extensions import final
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union, final
 
 class FuncIR: pass
 
@@ -128,8 +127,29 @@ class Inextensible(NamedTuple):
     x: int
 
 [file driver.py]
-from typing import ForwardRef, Optional
+import sys
+from typing import Optional
 from native import ClassIR, FuncIR, Record
+
+HAVE_TEST = False
+if sys.version_info >= (3, 14):
+    try:
+        from test.support import EqualToForwardRef
+        type_forward_ref = EqualToForwardRef
+        HAVE_TEST = True
+    except ImportError as e:
+        # catch the case of a pymanager installed Python
+        # without the test module. It is excluded by default
+        # on Windows.
+        msg = 'Missing "test" module.'
+        if sys.platform == "win32":
+            msg += (' Please install a version of Python with the test module.'
+                   ' If you are using pymanager, try running pymanager install --force PythonTest\\<version>')
+        raise ImportError(msg) from e
+
+if not HAVE_TEST:
+    from typing import ForwardRef
+    type_forward_ref = ForwardRef
 
 assert Record.__annotations__ == {
     'st_mtime': float,
@@ -137,7 +157,7 @@ assert Record.__annotations__ == {
     'is_borrowed': bool,
     'hash': str,
     'python_path': tuple,
-    'type': ForwardRef('ClassIR'),
+    'type': type_forward_ref('ClassIR'),
     'method': FuncIR,
     'shadow_method': type,
     'classes': dict,
@@ -147,8 +167,8 @@ assert Record.__annotations__ == {
 }, Record.__annotations__
 
 [case testTupleOps]
-from typing import Tuple, List, Any, Optional
-from typing_extensions import Final
+from typing import Tuple, Final, List, Any, Optional, cast
+from testutil import assertRaises
 
 def f() -> Tuple[()]:
     return ()
@@ -196,6 +216,22 @@ def f7(x: List[Tuple[int, int]]) -> int:
 def test_unbox_tuple() -> None:
     assert f7([(5, 6)]) == 11
 
+def test_comparison() -> None:
+    assert ('x','y') == ('x','y')
+    assert not(('x','y') != ('x','y'))
+
+    assert ('x','y') != ('x','y',1)
+    assert not(('x','y') == ('x','y',1))
+
+    assert ('x','y',1) != ('x','y')
+    assert not(('x','y',1) == ('x','y'))
+
+    assert ('x','y') != ()
+    assert not(('x','y') == ())
+
+    assert () != ('x','y')
+    assert not(() == ('x','y'))
+
 # Test that order is irrelevant to unions. Really I only care that this builds.
 
 class A:
@@ -234,6 +270,11 @@ def test_slicing() -> None:
 def f8(val: int) -> bool:
     return val % 2 == 0
 
+abc: Final = "abc"
+
+def known_length() -> tuple[str, ...]:
+    return tuple(str(x) for x in [*abc, *"def", *b"ghi", ("j", "k"), *("l", "m", "n")])
+
 def test_sequence_generator() -> None:
     source_list = [1, 2, 3]
     a = tuple(f8(x) for x in source_list)
@@ -251,8 +292,140 @@ def test_sequence_generator() -> None:
     b = tuple('s:' + x for x in source_str)
     assert b == ('s:a', 's:b', 's:b', 's:c')
 
+    assert known_length() == ('a', 'b', 'c', 'd', 'e', 'f', '103', '104', '105', "('j', 'k')", 'l', 'm', 'n')
+
 TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 
 def test_final_boxed_tuple() -> None:
     t = TUPLE
     assert t == ('x', 'y')
+    assert 'x' in TUPLE
+    assert 'y' in TUPLE
+    b: object = 'z' in TUPLE
+    assert not b
+    assert 'z' not in TUPLE
+    b2: object = 'x' not in TUPLE
+    assert not b2
+    b3: object = 'y' not in TUPLE
+    assert not b3
+
+TUP2: Final = ('x', 'y')
+TUP1: Final = ('x',)
+TUP0: Final = ()
+
+def test_final_tuple_in() -> None:
+    assert 'x' + str() in TUP2
+    assert 'y' + str() in TUP2
+    b: object = 'z' + str() in TUP2
+    assert not b
+
+    assert 'x' + str() in TUP1
+    b2: object = 'y' in TUP1
+    assert not b2
+
+    b3: object = 'x' in TUP0
+    assert not b3
+
+def test_final_tuple_not_in() -> None:
+    assert 'z' + str() not in TUP2
+    b: object = 'x' + str() not in TUP2
+    assert not b
+    b2: object = 'y' + str() not in TUP2
+    assert not b2
+
+    assert 'y' + str() not in TUP1
+    b3: object = 'x' not in TUP1
+    assert not b2
+
+    assert 'x' not in TUP0
+
+log = []
+
+def f_a() -> str:
+    log.append('f_a')
+    return 'a'
+
+def f_a2() -> str:
+    log.append('f_a2')
+    return 'a'
+
+def f_b() -> str:
+    log.append('f_b')
+    return 'b'
+
+def f_c() -> str:
+    log.append('f_c')
+    return 'c'
+
+def test_tuple_in_order_of_evaluation() -> None:
+    log.clear()
+    assert f_a() in (f_b(), f_a2())
+    assert log ==["f_a", "f_b", "f_a2"]
+
+    log.clear()
+    assert f_a() not in (f_b(), f_c())
+    assert log ==["f_a", "f_b", "f_c"]
+
+    log.clear()
+    assert f_a() in (f_b(), f_a2(), f_c())
+    assert log ==["f_a", "f_b", "f_a2", "f_c"]
+
+def f_t() -> tuple[str, ...]:
+    log.append('f_t')
+    return ('x', 'a')
+
+def test_tuple_in_non_specialized() -> None:
+    log.clear()
+    assert f_a() in f_t()
+    assert log == ["f_a", "f_t"]
+
+    log.clear()
+    assert f_b() not in f_t()
+    assert log == ["f_b", "f_t"]
+
+def test_add() -> None:
+    res = (1, 2, 3, 4)
+    assert (1, 2) + (3, 4) == res
+    with assertRaises(TypeError, 'can only concatenate tuple (not "list") to tuple'):
+        assert (1, 2) + cast(Any, [3, 4]) == res
+
+def multiply(a: Tuple[Any, ...], b: int) -> Tuple[Any, ...]:
+    return a * b
+
+def test_multiply() -> None:
+    res = (1, 1, 1)
+    assert (1,) * 3 == res
+    assert 3 * (1,) == res
+    assert multiply((1,), 3) == res
+
+[case testIsInstance]
+from copysubclass import subc
+def test_built_in() -> None:
+    assert isinstance((), tuple)
+    assert isinstance((1, 2), tuple)
+    assert isinstance(('a', 'b', 'c'), tuple)
+    assert isinstance(subc(()), tuple)
+    assert isinstance(subc((1, 2)), tuple)
+    assert isinstance(subc(('a', 'b', 'c')), tuple)
+
+    assert not isinstance(set(), tuple)
+    assert not isinstance({}, tuple)
+    assert not isinstance([1,2,3], tuple)
+    assert not isinstance({'a','b'}, tuple)
+    assert not isinstance(int() + 1, tuple)
+    assert not isinstance(str() + 'a', tuple)
+
+def test_user_defined() -> None:
+    from userdefinedtuple import tuple
+
+    assert isinstance(tuple(), tuple)
+    assert not isinstance((1, tuple()), tuple)
+
+[file copysubclass.py]
+from typing import Any
+class subc(tuple[Any]):
+    pass
+
+[file userdefinedtuple.py]
+class tuple:
+    pass

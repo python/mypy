@@ -3,47 +3,24 @@ A "meta test" which tests the `--update-data` feature for updating .test files.
 Updating the expected output, especially when it's in the form of inline (comment) assertions,
 can be brittle, which is why we're "meta-testing" here.
 """
-import shlex
-import subprocess
-import sys
-import textwrap
-import uuid
-from pathlib import Path
 
-from mypy.test.config import test_data_prefix
 from mypy.test.helpers import Suite
+from mypy.test.meta._pytest import PytestResult, dedent_docstring, run_pytest_data_suite
+
+
+def _run_pytest_update_data(data_suite: str) -> PytestResult:
+    """
+    Runs a suite of data test cases through 'pytest --update-data' until either tests pass
+    or until a maximum number of attempts (needed for incremental tests).
+    """
+    return run_pytest_data_suite(data_suite, extra_args=["--update-data"], max_attempts=3)
 
 
 class UpdateDataSuite(Suite):
-    def _run_pytest_update_data(self, data_suite: str, *, max_attempts: int) -> str:
-        """
-        Runs a suite of data test cases through 'pytest --update-data' until either tests pass
-        or until a maximum number of attempts (needed for incremental tests).
-        """
-        p_test_data = Path(test_data_prefix)
-        p_root = p_test_data.parent.parent
-        p = p_test_data / f"check-meta-{uuid.uuid4()}.test"
-        assert not p.exists()
-        try:
-            p.write_text(textwrap.dedent(data_suite).lstrip())
-
-            test_nodeid = f"mypy/test/testcheck.py::TypeCheckSuite::{p.name}"
-            args = [sys.executable, "-m", "pytest", "-n", "0", "-s", "--update-data", test_nodeid]
-            cmd = shlex.join(args)
-            for i in range(max_attempts - 1, -1, -1):
-                res = subprocess.run(args, cwd=p_root)
-                if res.returncode == 0:
-                    break
-                print(f"`{cmd}` returned {res.returncode}: {i} attempts remaining")
-
-            return p.read_text()
-        finally:
-            p.unlink()
-
     def test_update_data(self) -> None:
         # Note: We test multiple testcases rather than 'test case per test case'
         #       so we could also exercise rewriting multiple testcases at once.
-        actual = self._run_pytest_update_data(
+        result = _run_pytest_update_data(
             """
             [case testCorrect]
             s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
@@ -97,12 +74,12 @@ class UpdateDataSuite(Suite):
             [file b.py]
             s2: str = 43  # E: baz
             [builtins fixtures/list.pyi]
-            """,
-            max_attempts=3,
+            """
         )
 
         # Assert
-        expected = """
+        expected = dedent_docstring(
+            """
         [case testCorrect]
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -154,4 +131,5 @@ class UpdateDataSuite(Suite):
         s2: str = 43  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         [builtins fixtures/list.pyi]
         """
-        assert actual == textwrap.dedent(expected).lstrip()
+        )
+        assert result.input_updated == expected

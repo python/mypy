@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 import re
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 import mypy.nodes
 from mypy.options import Options
@@ -86,6 +87,9 @@ class StrConv(NodeVisitor[str]):
             elif kind == mypy.nodes.ARG_STAR2:
                 extra.append(("DictVarArg", [arg.variable]))
         a: list[Any] = []
+        if o.type_args:
+            for p in o.type_args:
+                a.append(self.type_param(p))
         if args:
             a.append(("Args", args))
         if o.type:
@@ -109,7 +113,7 @@ class StrConv(NodeVisitor[str]):
         if o.path != "main":
             # Insert path. Normalize directory separators to / to unify test
             # case# output in all platforms.
-            a.insert(0, o.path.replace(os.sep, "/"))
+            a.insert(0, o.path.replace(os.getcwd() + os.sep, "").replace(os.sep, "/"))
         if o.ignored_lines:
             a.append("IgnoredLines(%s)" % ", ".join(str(line) for line in sorted(o.ignored_lines)))
         return self.dump(a, o)
@@ -187,6 +191,9 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, ("TupleType", [o.info.tuple_type]))
         if o.info and o.info.fallback_to_any:
             a.insert(1, "FallbackToAny")
+        if o.type_args:
+            for p in reversed(o.type_args):
+                a.insert(1, self.type_param(p))
         return self.dump(a, o)
 
     def visit_var(self, o: mypy.nodes.Var) -> str:
@@ -323,6 +330,30 @@ class StrConv(NodeVisitor[str]):
             a.append(("Body", o.bodies[i].body))
         return self.dump(a, o)
 
+    def visit_type_alias_stmt(self, o: mypy.nodes.TypeAliasStmt) -> str:
+        a: list[Any] = [o.name]
+        for p in o.type_args:
+            a.append(self.type_param(p))
+        a.append(o.value)
+        return self.dump(a, o)
+
+    def type_param(self, p: mypy.nodes.TypeParam) -> list[Any]:
+        a: list[Any] = []
+        if p.kind == mypy.nodes.PARAM_SPEC_KIND:
+            prefix = "**"
+        elif p.kind == mypy.nodes.TYPE_VAR_TUPLE_KIND:
+            prefix = "*"
+        else:
+            prefix = ""
+        a.append(prefix + p.name)
+        if p.upper_bound:
+            a.append(p.upper_bound)
+        if p.values:
+            a.append(("Values", p.values))
+        if p.default:
+            a.append(("Default", [p.default]))
+        return [("TypeParam", a)]
+
     # Expressions
 
     # Simple expressions
@@ -357,7 +388,9 @@ class StrConv(NodeVisitor[str]):
             o.name, o.kind, o.fullname, o.is_inferred_def or o.is_special_form, o.node
         )
         if isinstance(o.node, mypy.nodes.Var) and o.node.is_final:
-            pretty += f" = {o.node.final_value}"
+            final_value = o.node.final_value
+            if final_value is not None:
+                pretty += f" = {o.node.final_value}"
         return short_type(o) + "(" + pretty + ")"
 
     def pretty_name(
@@ -511,7 +544,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_type_alias_expr(self, o: mypy.nodes.TypeAliasExpr) -> str:
-        return f"TypeAliasExpr({self.stringify_type(o.type)})"
+        return f"TypeAliasExpr({self.stringify_type(o.node.target)})"
 
     def visit_namedtuple_expr(self, o: mypy.nodes.NamedTupleExpr) -> str:
         return f"NamedTupleExpr:{o.line}({o.info.name}, {self.stringify_type(o.info.tuple_type) if o.info.tuple_type is not None else None})"

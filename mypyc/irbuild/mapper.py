@@ -15,15 +15,17 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeType,
-    TypeVarType,
+    TypeVarLikeType,
     UnboundType,
     UninhabitedType,
     UnionType,
+    find_unpack_in_list,
     get_proper_type,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     RInstance,
     RTuple,
     RType,
@@ -32,6 +34,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
+    frozenset_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -61,6 +64,9 @@ class Mapper:
         self.group_map = group_map
         self.type_to_ir: dict[TypeInfo, ClassIR] = {}
         self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
+        self.symbol_fullnames: set[str] = set()
+        # The corresponding generator class that implements a generator/async function
+        self.fdef_to_generator: dict[FuncDef, ClassIR] = {}
 
     def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
@@ -68,6 +74,10 @@ class Mapper:
 
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
+            if typ.type.is_newtype:
+                # Unwrap NewType to its base type for rprimitive mapping
+                assert len(typ.type.bases) == 1, typ.type.bases
+                return self.type_to_rtype(typ.type.bases[0])
             if typ.type.fullname == "builtins.int":
                 return int_rprimitive
             elif typ.type.fullname == "builtins.float":
@@ -87,6 +97,8 @@ class Mapper:
                 return dict_rprimitive
             elif typ.type.fullname == "builtins.set":
                 return set_rprimitive
+            elif typ.type.fullname == "builtins.frozenset":
+                return frozenset_rprimitive
             elif typ.type.fullname == "builtins.tuple":
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type.fullname == "builtins.range":
@@ -108,12 +120,17 @@ class Mapper:
                 return int16_rprimitive
             elif typ.type.fullname == "mypy_extensions.u8":
                 return uint8_rprimitive
+            elif typ.type.fullname in KNOWN_NATIVE_TYPES:
+                return KNOWN_NATIVE_TYPES[typ.type.fullname]
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):
             # Use our unboxed tuples for raw tuples but fall back to
-            # being boxed for NamedTuple.
-            if typ.partial_fallback.type.fullname == "builtins.tuple":
+            # being boxed for NamedTuple or for variadic tuples.
+            if (
+                typ.partial_fallback.type.fullname == "builtins.tuple"
+                and find_unpack_in_list(typ.items) is None
+            ):
                 return RTuple([self.type_to_rtype(t) for t in typ.items])
             else:
                 return tuple_rprimitive
@@ -127,7 +144,7 @@ class Mapper:
             return object_rprimitive
         elif isinstance(typ, TypeType):
             return object_rprimitive
-        elif isinstance(typ, TypeVarType):
+        elif isinstance(typ, TypeVarLikeType):
             # Erase type variable to upper bound.
             # TODO: Erase to union if object has value restriction?
             return self.type_to_rtype(typ.upper_bound)
@@ -156,14 +173,21 @@ class Mapper:
         else:
             return self.type_to_rtype(typ)
 
-    def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
+    def fdef_to_sig(self, fdef: FuncDef, strict_dunders_typing: bool) -> FuncSignature:
         if isinstance(fdef.type, CallableType):
             arg_types = [
                 self.get_arg_rtype(typ, kind)
                 for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)
             ]
             arg_pos_onlys = [name is None for name in fdef.type.arg_names]
-            ret = self.type_to_rtype(fdef.type.ret_type)
+            # TODO: We could probably support decorators sometimes (static and class method?)
+            if (fdef.is_coroutine or fdef.is_generator) and not fdef.is_decorated:
+                # Give a more precise type for generators, so that we can optimize
+                # code that uses them. They return a generator object, which has a
+                # specific class. Without this, the type would have to be 'object'.
+                ret: RType = RInstance(self.fdef_to_generator[fdef])
+            else:
+                ret = self.type_to_rtype(fdef.type.ret_type)
         else:
             # Handle unannotated functions
             arg_types = [object_rprimitive for _ in fdef.arguments]
@@ -195,11 +219,14 @@ class Mapper:
             )
         ]
 
-        # We force certain dunder methods to return objects to support letting them
-        # return NotImplemented. It also avoids some pointless boxing and unboxing,
-        # since tp_richcompare needs an object anyways.
-        if fdef.name in ("__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"):
-            ret = object_rprimitive
+        if not strict_dunders_typing:
+            # We force certain dunder methods to return objects to support letting them
+            # return NotImplemented. It also avoids some pointless boxing and unboxing,
+            # since tp_richcompare needs an object anyways.
+            # However, it also prevents some optimizations.
+            if fdef.name in ("__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"):
+                ret = object_rprimitive
+
         return FuncSignature(args, ret)
 
     def is_native_module(self, module: str) -> bool:
@@ -210,7 +237,8 @@ class Mapper:
         if expr.node is None:
             return False
         if "." in expr.node.fullname:
-            return self.is_native_module(expr.node.fullname.rpartition(".")[0])
+            name = expr.node.fullname.rpartition(".")[0]
+            return self.is_native_module(name) or name in self.symbol_fullnames
         return True
 
     def is_native_module_ref_expr(self, expr: RefExpr) -> bool:

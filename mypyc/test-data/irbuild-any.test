@@ -37,7 +37,6 @@ def f(a: Any, n: int, c: C) -> None:
     c.n = a
     a = n
     n = a
-    a.a = n
 [out]
 def f(a, n, c):
     a :: object
@@ -49,10 +48,6 @@ def f(a, n, c):
     r3 :: bool
     r4 :: object
     r5 :: int
-    r6 :: str
-    r7 :: object
-    r8 :: i32
-    r9 :: bit
 L0:
     r0 = box(int, n)
     c.a = r0; r1 = is_error
@@ -62,10 +57,6 @@ L0:
     a = r4
     r5 = unbox(int, a)
     n = r5
-    r6 = 'a'
-    r7 = box(int, n)
-    r8 = PyObject_SetAttr(a, r6, r7)
-    r9 = r8 >= 0 :: signed
     return 1
 
 [case testCoerceAnyInOps]
@@ -106,7 +97,7 @@ def f2(a, n, l):
     r9, r10 :: bit
     r11 :: list
     r12 :: object
-    r13, r14, r15 :: ptr
+    r13 :: ptr
 L0:
     r0 = box(int, n)
     r1 = PyObject_GetItem(a, r0)
@@ -121,11 +112,9 @@ L0:
     r10 = CPyList_SetItem(l, n, a)
     r11 = PyList_New(2)
     r12 = box(int, n)
-    r13 = get_element_ptr r11 ob_item :: PyListObject
-    r14 = load_mem r13 :: ptr*
-    set_mem r14, a :: builtins.object*
-    r15 = r14 + WORD_SIZE*1
-    set_mem r15, r12 :: builtins.object*
+    r13 = list_items r11
+    buf_init_item r13, 0, a
+    buf_init_item r13, 1, r12
     keep_alive r11
     return 1
 def f3(a, n):
@@ -153,7 +142,9 @@ def f4(a, n, b):
     a :: object
     n :: int
     b :: bool
-    r0, r1, r2, r3 :: object
+    r0 :: union[object, int]
+    r1, r2 :: object
+    r3 :: union[int, object]
     r4 :: int
 L0:
     if b goto L1 else goto L2 :: bool

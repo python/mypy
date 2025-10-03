@@ -24,11 +24,15 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 {
     // Do a send, or a next if second arg is None.
     // (This behavior is to match the PEP 380 spec for yield from.)
-    _Py_IDENTIFIER(send);
     if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
-        return _PyObject_CallMethodIdOneArg(iter, &PyId_send, val);
+        _Py_IDENTIFIER(send);
+        PyObject *name = _PyUnicode_FromId(&PyId_send); /* borrowed */
+        if (name == NULL) {
+            return NULL;
+        }
+        return PyObject_CallMethodOneArg(iter, name, val);
     }
 }
 
@@ -131,6 +135,52 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     return matches;
 }
 
+#if CPY_3_13_FEATURES
+
+// Adapted from CPython 3.13.0b3
+/* Determine the most derived metatype. */
+PyObject *CPy_CalculateMetaclass(PyObject *metatype, PyObject *bases)
+{
+    Py_ssize_t i, nbases;
+    PyTypeObject *winner;
+    PyObject *tmp;
+    PyTypeObject *tmptype;
+
+    /* Determine the proper metatype to deal with this,
+       and check for metatype conflicts while we're at it.
+       Note that if some other metatype wins to contract,
+       it's possible that its instances are not types. */
+
+    nbases = PyTuple_GET_SIZE(bases);
+    winner = (PyTypeObject *)metatype;
+    for (i = 0; i < nbases; i++) {
+        tmp = PyTuple_GET_ITEM(bases, i);
+        tmptype = Py_TYPE(tmp);
+        if (PyType_IsSubtype(winner, tmptype))
+            continue;
+        if (PyType_IsSubtype(tmptype, winner)) {
+            winner = tmptype;
+            continue;
+        }
+        /* else: */
+        PyErr_SetString(PyExc_TypeError,
+                        "metaclass conflict: "
+                        "the metaclass of a derived class "
+                        "must be a (non-strict) subclass "
+                        "of the metaclasses of all its bases");
+        return NULL;
+    }
+    return (PyObject *)winner;
+}
+
+#else
+
+PyObject *CPy_CalculateMetaclass(PyObject *metatype, PyObject *bases) {
+    return (PyObject *)_PyType_CalculateMetaclass((PyTypeObject *)metatype, bases);
+}
+
+#endif
+
 // Create a heap type based on a template non-heap type.
 // This is super hacky and maybe we should suck it up and use PyType_FromSpec instead.
 // We allow bases to be NULL to represent just inheriting from object.
@@ -163,7 +213,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         // Find the appropriate metaclass from our base classes. We
         // care about this because Generic uses a metaclass prior to
         // Python 3.7.
-        metaclass = _PyType_CalculateMetaclass(metaclass, bases);
+        metaclass = (PyTypeObject *)CPy_CalculateMetaclass((PyObject *)metaclass, bases);
         if (!metaclass)
             goto error;
 
@@ -176,6 +226,17 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     name = PyUnicode_FromString(template_->tp_name);
     if (!name)
         goto error;
+
+    if (template_->tp_doc) {
+        // cpython expects tp_doc to be heap-allocated so convert it here to
+        // avoid segfaults on deallocation.
+        Py_ssize_t size = strlen(template_->tp_doc) + 1;
+        char *doc = (char *)PyMem_Malloc(size);
+        if (!doc)
+            goto error;
+        memcpy(doc, template_->tp_doc, size);
+        template_->tp_doc = doc;
+    }
 
     // Allocate the type and then copy the main stuff in.
     t = (PyHeapTypeObject*)PyType_GenericAlloc(&PyType_Type, 0);
@@ -250,6 +311,21 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     Py_XDECREF(dummy_class);
 
+    // Unlike the tp_doc slots of most other object, a heap type's tp_doc
+    // must be heap allocated.
+    if (template_->tp_doc) {
+        // Silently truncate the docstring if it contains a null byte
+        Py_ssize_t size = strlen(template_->tp_doc) + 1;
+        char *tp_doc = (char *)PyMem_Malloc(size);
+        if (tp_doc == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
+
+        memcpy(tp_doc, template_->tp_doc, size);
+        t->ht_type.tp_doc = tp_doc;
+    }
+
 #if PY_MINOR_VERSION == 11
     // This is a hack. Python 3.11 doesn't include good public APIs to work with managed
     // dicts, which are the default for heap types. So we try to opt-out until Python 3.12.
@@ -301,13 +377,15 @@ static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
  *   tp: The class we are making a dataclass
  *   dict: The dictionary containing values that dataclasses needs
  *   annotations: The type annotation dictionary
+ *   dataclass_type: A str object with the return value of util.py:dataclass_type()
  */
 int
 CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
-                           PyObject *dict, PyObject *annotations) {
+                           PyObject *dict, PyObject *annotations,
+                           PyObject *dataclass_type) {
     PyTypeObject *ttp = (PyTypeObject *)tp;
     Py_ssize_t pos;
-    PyObject *res;
+    PyObject *res = NULL;
 
     /* Make a copy of the original class __dict__ */
     PyObject *orig_dict = PyDict_Copy(ttp->tp_dict);
@@ -319,7 +397,8 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     pos = 0;
     PyObject *key;
     while (PyDict_Next(annotations, &pos, &key, NULL)) {
-        if (PyObject_DelAttr(tp, key) != 0) {
+        // Check and delete key. Key may be absent from tp for InitVar variables.
+        if (PyObject_HasAttr(tp, key) == 1 && PyObject_DelAttr(tp, key) != 0) {
             goto fail;
         }
     }
@@ -334,17 +413,37 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     if (!res) {
         goto fail;
     }
-    Py_DECREF(res);
+    const char *dataclass_type_ptr = PyUnicode_AsUTF8(dataclass_type);
+    if (dataclass_type_ptr == NULL) {
+        goto fail;
+    }
+    if (strcmp(dataclass_type_ptr, "attr") == 0 ||
+        strcmp(dataclass_type_ptr, "attr-auto") == 0) {
+        // These attributes are added or modified by @attr.s(slots=True).
+        const char * const keys[] = {"__attrs_attrs__", "__attrs_own_setattr__", "__init__", ""};
+        for (const char * const *key_iter = keys; **key_iter != '\0'; key_iter++) {
+            PyObject *value = NULL;
+            int rv = PyObject_GetOptionalAttrString(res, *key_iter, &value);
+            if (rv == 1) {
+                PyObject_SetAttrString(tp, *key_iter, value);
+                Py_DECREF(value);
+            } else if (rv == -1) {
+              goto fail;
+            }
+        }
+    }
 
     /* Copy back the original contents of the dict */
     if (_CPy_UpdateObjFromDict(tp, orig_dict) != 0) {
         goto fail;
     }
 
+    Py_DECREF(res);
     Py_DECREF(orig_dict);
     return 1;
 
 fail:
+    Py_XDECREF(res);
     Py_XDECREF(orig_dict);
     return 0;
 }
@@ -466,6 +565,22 @@ void CPyDebug_Print(const char *msg) {
     fflush(stdout);
 }
 
+void CPyDebug_PrintObject(PyObject *obj) {
+    // Printing can cause errors. We don't want this to affect any existing
+    // state so we'll save any existing error and restore it at the end.
+    PyObject *exc_type, *exc_value, *exc_traceback;
+    PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
+
+    if (PyObject_Print(obj, stderr, 0) == -1) {
+        PyErr_Print();
+    } else {
+        fprintf(stderr, "\n");
+    }
+    fflush(stderr);
+
+    PyErr_Restore(exc_type, exc_value, exc_traceback);
+}
+
 int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
     Py_ssize_t actual = Py_SIZE(sequence);
     if (unlikely(actual != expected)) {
@@ -517,7 +632,7 @@ int CPyStatics_Initialize(PyObject **statics,
             while (num-- > 0) {
                 size_t len;
                 data = parse_int(data, &len);
-                PyObject *obj = PyUnicode_FromStringAndSize(data, len);
+                PyObject *obj = PyUnicode_DecodeUTF8(data, len, "surrogatepass");
                 if (obj == NULL) {
                     return -1;
                 }
@@ -851,7 +966,7 @@ fail:
 
 }
 
-// Adapated from ceval.c GET_AITER
+// Adapted from ceval.c GET_AITER
 PyObject *CPy_GetAIter(PyObject *obj)
 {
     unaryfunc getter = NULL;
@@ -889,7 +1004,7 @@ PyObject *CPy_GetAIter(PyObject *obj)
     return iter;
 }
 
-// Adapated from ceval.c GET_ANEXT
+// Adapted from ceval.c GET_ANEXT
 PyObject *CPy_GetANext(PyObject *aiter)
 {
     unaryfunc getter = NULL;
@@ -940,3 +1055,86 @@ PyObject *CPy_GetANext(PyObject *aiter)
 error:
     return NULL;
 }
+
+#if CPY_3_11_FEATURES
+
+// Return obj.__name__ (specialized to type objects, which are the most common target).
+PyObject *CPy_GetName(PyObject *obj) {
+    if (PyType_Check(obj)) {
+        return PyType_GetName((PyTypeObject *)obj);
+    }
+    _Py_IDENTIFIER(__name__);
+    PyObject *name = _PyUnicode_FromId(&PyId___name__); /* borrowed */
+    return PyObject_GetAttr(obj, name);
+}
+
+#endif
+
+#ifdef MYPYC_LOG_TRACE
+
+// This is only compiled in if trace logging is enabled by user
+
+static int TraceCounter = 0;
+static const int TRACE_EVERY_NTH = 1009;  // Should be a prime number
+#define TRACE_LOG_FILE_NAME "mypyc_trace.txt"
+static FILE *TraceLogFile = NULL;
+
+// Log a tracing event on every Nth call
+void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details) {
+    if (TraceLogFile == NULL) {
+        if ((TraceLogFile = fopen(TRACE_LOG_FILE_NAME, "w")) == NULL) {
+            fprintf(stderr, "error: Could not open trace file %s\n", TRACE_LOG_FILE_NAME);
+            abort();
+        }
+    }
+    if (TraceCounter == 0) {
+        fprintf(TraceLogFile, "%s:%s:%s:%s\n", location, line, op, details);
+    }
+    TraceCounter++;
+    if (TraceCounter == TRACE_EVERY_NTH) {
+        TraceCounter = 0;
+    }
+}
+
+#endif
+
+#if CPY_3_12_FEATURES
+
+// Copied from Python 3.12.3, since this struct is internal to CPython. It defines
+// the structure of typing.TypeAliasType objects. We need it since compute_value is
+// not part of the public API, and we need to set it to match Python runtime semantics.
+//
+// IMPORTANT: This needs to be kept in sync with CPython!
+typedef struct {
+    PyObject_HEAD
+    PyObject *name;
+    PyObject *type_params;
+    PyObject *compute_value;
+    PyObject *value;
+    PyObject *module;
+} typealiasobject;
+
+void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value) {
+    typealiasobject *obj = (typealiasobject *)alias;
+    if (obj->value != NULL) {
+        Py_DECREF(obj->value);
+    }
+    obj->value = NULL;
+    Py_INCREF(compute_value);
+    if (obj->compute_value != NULL) {
+        Py_DECREF(obj->compute_value);
+    }
+    obj->compute_value = compute_value;
+}
+
+#endif
+
+#if CPY_3_14_FEATURES
+
+#include "internal/pycore_object.h"
+
+void CPy_SetImmortal(PyObject *obj) {
+    _Py_SetImmortal(obj);
+}
+
+#endif

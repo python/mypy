@@ -9,9 +9,13 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from typing import Callable, Sequence
+from collections.abc import Sequence
+from typing import Callable
 
+import mypy.nodes
 from mypy.nodes import (
+    ARG_NAMED,
+    ARG_POS,
     AssertStmt,
     AssignmentStmt,
     AwaitExpr,
@@ -29,6 +33,7 @@ from mypy.nodes import (
     ListExpr,
     Lvalue,
     MatchStmt,
+    NameExpr,
     OperatorAssignmentStmt,
     RaiseStmt,
     ReturnStmt,
@@ -37,17 +42,21 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
     WhileStmt,
     WithStmt,
     YieldExpr,
     YieldFromExpr,
 )
+from mypyc.common import TEMP_ATTR_NAME
 from mypyc.ir.ops import (
+    ERR_NEVER,
     NAMESPACE_MODULE,
     NO_TRACEBACK_LINE_NO,
     Assign,
     BasicBlock,
     Branch,
+    Call,
     InitStatic,
     Integer,
     LoadAddress,
@@ -55,15 +64,18 @@ from mypyc.ir.ops import (
     LoadLiteral,
     LoadStatic,
     MethodCall,
+    PrimitiveDescription,
     RaiseStandardError,
     Register,
     Return,
     TupleGet,
+    Unborrow,
     Unreachable,
     Value,
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    RTuple,
     c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
@@ -72,7 +84,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.builder import IRBuilder, create_type_params, int_borrow_friendly_op
 from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
@@ -80,6 +92,7 @@ from mypyc.irbuild.nonlocalcontrol import (
     FinallyNonlocalControl,
     TryFinallyNonlocalControl,
 )
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import (
     AssignmentTarget,
     AssignmentTargetAttr,
@@ -93,6 +106,8 @@ from mypyc.primitives.exc_ops import (
     get_exc_info_op,
     get_exc_value_op,
     keep_propagating_op,
+    no_err_occurred_op,
+    propagate_if_error_op,
     raise_exception_op,
     reraise_exception_op,
     restore_exc_info_op,
@@ -103,7 +118,9 @@ from mypyc.primitives.misc_ops import (
     coro_op,
     import_from_many_op,
     import_many_op,
+    import_op,
     send_op,
+    set_type_alias_compute_function_op,
     type_op,
     yield_from_except_op,
 )
@@ -116,8 +133,13 @@ ValueGenFunc = Callable[[], Value]
 
 def transform_block(builder: IRBuilder, block: Block) -> None:
     if not block.is_unreachable:
+        builder.block_reachable_stack.append(True)
         for stmt in block.body:
             builder.accept(stmt)
+            if not builder.block_reachable_stack[-1]:
+                # The rest of the block is unreachable, so skip it
+                break
+        builder.block_reachable_stack.pop()
     # Raise a RuntimeError if we hit a non-empty unreachable block.
     # Don't complain about empty unreachable blocks, since mypy inserts
     # those after `if MYPY`.
@@ -149,10 +171,43 @@ def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
     builder.nonlocal_control[-1].gen_return(builder, retval, stmt.line)
 
 
+def check_unsupported_cls_assignment(builder: IRBuilder, stmt: AssignmentStmt) -> None:
+    fn = builder.fn_info
+    method_args = fn.fitem.arg_names
+    if fn.name != "__new__" or len(method_args) == 0:
+        return
+
+    ir = builder.get_current_class_ir()
+    if ir is None or ir.inherits_python or not ir.is_ext_class:
+        return
+
+    cls_arg = method_args[0]
+
+    def flatten(lvalues: list[Expression]) -> list[Expression]:
+        flat = []
+        for lvalue in lvalues:
+            if isinstance(lvalue, (TupleExpr, ListExpr)):
+                flat += flatten(lvalue.items)
+            else:
+                flat.append(lvalue)
+        return flat
+
+    lvalues = flatten(stmt.lvalues)
+
+    for lvalue in lvalues:
+        if isinstance(lvalue, NameExpr) and lvalue.name == cls_arg:
+            # Disallowed because it could break the transformation of object.__new__ calls
+            # inside __new__ methods.
+            builder.error(
+                f'Assignment to argument "{cls_arg}" in "__new__" method unsupported', stmt.line
+            )
+
+
 def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     lvalues = stmt.lvalues
     assert lvalues
     builder.disallow_class_assignments(lvalues, stmt.line)
+    check_unsupported_cls_assignment(builder, stmt)
     first_lvalue = lvalues[0]
     if stmt.type and isinstance(stmt.rvalue, TempNode):
         # This is actually a variable annotation without initializer. Don't generate
@@ -183,8 +238,28 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
 
     line = stmt.rvalue.line
     rvalue_reg = builder.accept(stmt.rvalue)
+
     if builder.non_function_scope() and stmt.is_final_def:
         builder.init_final_static(first_lvalue, rvalue_reg)
+
+    # Special-case multiple assignments like 'x, y = expr' to reduce refcount ops.
+    if (
+        isinstance(first_lvalue, (TupleExpr, ListExpr))
+        and isinstance(rvalue_reg.type, RTuple)
+        and len(rvalue_reg.type.types) == len(first_lvalue.items)
+        and len(lvalues) == 1
+        and all(is_simple_lvalue(item) for item in first_lvalue.items)
+        and any(t.is_refcounted for t in rvalue_reg.type.types)
+    ):
+        n = len(first_lvalue.items)
+        borrows = [builder.add(TupleGet(rvalue_reg, i, borrow=True)) for i in range(n)]
+        builder.builder.keep_alive([rvalue_reg], steal=True)
+        for lvalue_item, rvalue_item in zip(first_lvalue.items, borrows):
+            rvalue_item = builder.add(Unborrow(rvalue_item))
+            builder.assign(builder.get_assignment_target(lvalue_item), rvalue_item, line)
+        builder.flush_keep_alives()
+        return
+
     for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
@@ -314,10 +389,10 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
         return
 
     module_state = builder.graph[builder.module_name]
-    if module_state.ancestors is not None and module_state.ancestors:
-        module_package = module_state.ancestors[0]
-    elif builder.module_path.endswith("__init__.py"):
+    if builder.module_path.endswith("__init__.py"):
         module_package = builder.module_name
+    elif module_state.ancestors is not None and module_state.ancestors:
+        module_package = module_state.ancestors[0]
     else:
         module_package = ""
 
@@ -619,10 +694,15 @@ def try_finally_resolve_control(
     if ret_reg:
         builder.activate_block(rest)
         return_block, rest = BasicBlock(), BasicBlock()
-        builder.add(Branch(builder.read(ret_reg), rest, return_block, Branch.IS_ERROR))
+        # For spill targets in try/finally, use nullable read to avoid AttributeError
+        if isinstance(ret_reg, AssignmentTargetAttr) and ret_reg.attr.startswith(TEMP_ATTR_NAME):
+            ret_val = builder.read_nullable_attr(ret_reg.obj, ret_reg.attr, -1)
+        else:
+            ret_val = builder.read(ret_reg)
+        builder.add(Branch(ret_val, rest, return_block, Branch.IS_ERROR))
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)
+        builder.nonlocal_control[-1].gen_return(builder, ret_val, -1)
 
     # TODO: handle break/continue
     builder.activate_block(rest)
@@ -639,7 +719,7 @@ def try_finally_resolve_control(
 
 
 def transform_try_finally_stmt(
-    builder: IRBuilder, try_body: GenFunc, finally_body: GenFunc
+    builder: IRBuilder, try_body: GenFunc, finally_body: GenFunc, line: int = -1
 ) -> None:
     """Generalized try/finally handling that takes functions to gen the bodies.
 
@@ -675,6 +755,125 @@ def transform_try_finally_stmt(
     builder.activate_block(out_block)
 
 
+def transform_try_finally_stmt_async(
+    builder: IRBuilder, try_body: GenFunc, finally_body: GenFunc, line: int = -1
+) -> None:
+    """Async-aware try/finally handling for when finally contains await.
+
+    This version uses a modified approach that preserves exceptions across await."""
+
+    # We need to handle returns properly, so we'll use TryFinallyNonlocalControl
+    # to track return values, similar to the regular try/finally implementation
+
+    err_handler, main_entry, return_entry, finally_entry = (
+        BasicBlock(),
+        BasicBlock(),
+        BasicBlock(),
+        BasicBlock(),
+    )
+
+    # Track if we're returning from the try block
+    control = TryFinallyNonlocalControl(return_entry)
+    builder.builder.push_error_handler(err_handler)
+    builder.nonlocal_control.append(control)
+    builder.goto_and_activate(BasicBlock())
+    try_body()
+    builder.goto(main_entry)
+    builder.nonlocal_control.pop()
+    builder.builder.pop_error_handler()
+    ret_reg = control.ret_reg
+
+    # Normal case - no exception or return
+    builder.activate_block(main_entry)
+    builder.goto(finally_entry)
+
+    # Return case
+    builder.activate_block(return_entry)
+    builder.goto(finally_entry)
+
+    # Exception case - need to catch to clear the error indicator
+    builder.activate_block(err_handler)
+    # Catch the error to clear Python's error indicator
+    builder.call_c(error_catch_op, [], line)
+    # We're not going to use old_exc since it won't survive await
+    # The exception is now in sys.exc_info()
+    builder.goto(finally_entry)
+
+    # Finally block
+    builder.activate_block(finally_entry)
+
+    # Execute finally body
+    finally_body()
+
+    # After finally, we need to handle exceptions carefully:
+    # 1. If finally raised a new exception, it's in the error indicator - let it propagate
+    # 2. If finally didn't raise, check if we need to reraise the original from sys.exc_info()
+    # 3. If there was a return, return that value
+    # 4. Otherwise, normal exit
+
+    # First, check if there's a current exception in the error indicator
+    # (this would be from the finally block)
+    no_current_exc = builder.call_c(no_err_occurred_op, [], line)
+    finally_raised = BasicBlock()
+    check_original = BasicBlock()
+    builder.add(Branch(no_current_exc, check_original, finally_raised, Branch.BOOL))
+
+    # Finally raised an exception - let it propagate naturally
+    builder.activate_block(finally_raised)
+    builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
+    builder.add(Unreachable())
+
+    # No exception from finally, check if we need to handle return or original exception
+    builder.activate_block(check_original)
+
+    # Check if we have a return value
+    if ret_reg:
+        return_block, check_old_exc = BasicBlock(), BasicBlock()
+        builder.add(
+            Branch(
+                builder.read(ret_reg, allow_error_value=True),
+                check_old_exc,
+                return_block,
+                Branch.IS_ERROR,
+            )
+        )
+
+        builder.activate_block(return_block)
+        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)
+
+        builder.activate_block(check_old_exc)
+
+    # Check if we need to reraise the original exception from sys.exc_info
+    exc_info = builder.call_c(get_exc_info_op, [], line)
+    exc_type = builder.add(TupleGet(exc_info, 0, line))
+
+    # Check if exc_type is None
+    none_obj = builder.none_object()
+    has_exc = builder.binary_op(exc_type, none_obj, "is not", line)
+
+    reraise_block, exit_block = BasicBlock(), BasicBlock()
+    builder.add(Branch(has_exc, reraise_block, exit_block, Branch.BOOL))
+
+    # Reraise the original exception
+    builder.activate_block(reraise_block)
+    builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+    builder.add(Unreachable())
+
+    # Normal exit
+    builder.activate_block(exit_block)
+
+
+# A simple visitor to detect await expressions
+class AwaitDetector(mypy.traverser.TraverserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.has_await = False
+
+    def visit_await_expr(self, o: mypy.nodes.AwaitExpr) -> None:
+        self.has_await = True
+        super().visit_await_expr(o)
+
+
 def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
     # Our compilation strategy for try/except/else/finally is to
     # treat try/except/else and try/finally as separate language
@@ -683,6 +882,17 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
     # body of a try/finally block.
     if t.is_star:
         builder.error("Exception groups and except* cannot be compiled yet", t.line)
+
+    # Check if we're in an async function with a finally block that contains await
+    use_async_version = False
+    if t.finally_body and builder.fn_info.is_coroutine:
+        detector = AwaitDetector()
+        t.finally_body.accept(detector)
+
+        if detector.has_await:
+            # Use the async version that handles exceptions correctly
+            use_async_version = True
+
     if t.finally_body:
 
         def transform_try_body() -> None:
@@ -693,7 +903,14 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
 
         body = t.finally_body
 
-        transform_try_finally_stmt(builder, transform_try_body, lambda: builder.accept(body))
+        if use_async_version:
+            transform_try_finally_stmt_async(
+                builder, transform_try_body, lambda: builder.accept(body), t.line
+            )
+        else:
+            transform_try_finally_stmt(
+                builder, transform_try_body, lambda: builder.accept(body), t.line
+            )
     else:
         transform_try_except_stmt(builder, t)
 
@@ -724,7 +941,7 @@ def transform_with(
         value = builder.add(MethodCall(mgr_v, f"__{al}enter__", args=[], line=line))
         exit_ = None
     else:
-        typ = builder.call_c(type_op, [mgr_v], line)
+        typ = builder.primitive_op(type_op, [mgr_v], line)
         exit_ = builder.maybe_spill(builder.py_get_attr(typ, f"__{al}exit__", line))
         value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
 
@@ -741,7 +958,7 @@ def transform_with(
             args = [none, none, none]
 
         if is_native:
-            assert isinstance(mgr_v.type, RInstance)
+            assert isinstance(mgr_v.type, RInstance), mgr_v.type
             exit_val = builder.gen_method_call(
                 builder.read(mgr),
                 f"__{al}exit__",
@@ -784,6 +1001,7 @@ def transform_with(
         builder,
         lambda: transform_try_except(builder, try_body, [(None, None, except_body)], None, line),
         finally_body,
+        line,
     )
 
 
@@ -843,7 +1061,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
                     line,
                 )
         key = builder.load_str(target.attr)
-        builder.call_c(py_delattr_op, [target.obj, key], line)
+        builder.primitive_op(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.
@@ -871,7 +1089,7 @@ def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     next_label = len(cls.continuation_blocks)
     cls.continuation_blocks.append(next_block)
     builder.assign(cls.next_label_target, Integer(next_label), line)
-    builder.add(Return(retval))
+    builder.add(Return(retval, yield_target=next_block))
     builder.activate_block(next_block)
 
     add_raise_exception_blocks_to_generator_class(builder, line)
@@ -890,19 +1108,64 @@ def emit_yield_from_or_await(
     to_yield_reg = Register(object_rprimitive)
     received_reg = Register(object_rprimitive)
 
-    get_op = coro_op if is_await else iter_op
-    iter_val = builder.call_c(get_op, [val], line)
+    helper_method = GENERATOR_HELPER_NAME
+    if (
+        isinstance(val, (Call, MethodCall))
+        and isinstance(val.type, RInstance)
+        and val.type.class_ir.has_method(helper_method)
+    ):
+        # This is a generated native generator class, and we can use a fast path.
+        # This allows two optimizations:
+        # 1) No need to call CPy_GetCoro() or iter() since for native generators
+        #    it just returns the generator object (implemented here).
+        # 2) Instead of calling next(), call generator helper method directly,
+        #    since next() just calls __next__ which calls the helper method.
+        iter_val: Value = val
+    else:
+        get_op = coro_op if is_await else iter_op
+        if isinstance(get_op, PrimitiveDescription):
+            iter_val = builder.primitive_op(get_op, [val], line)
+        else:
+            iter_val = builder.call_c(get_op, [val], line)
 
     iter_reg = builder.maybe_spill_assignable(iter_val)
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
-    _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+
+    if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
+        # Second fast path optimization: call helper directly (see also comment above).
+        #
+        # Calling a generated generator, so avoid raising StopIteration by passing
+        # an extra PyObject ** argument to helper where the stop iteration value is stored.
+        fast_path = True
+        obj = builder.read(iter_reg)
+        nn = builder.none_object()
+        stop_iter_val = Register(object_rprimitive)
+        err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
+        builder.assign(stop_iter_val, err, line)
+        ptr = builder.add(LoadAddress(object_pointer_rprimitive, stop_iter_val))
+        m = MethodCall(obj, helper_method, [nn, nn, nn, nn, ptr], line)
+        # Generators have custom error handling, so disable normal error handling.
+        m.error_kind = ERR_NEVER
+        _y_init = builder.add(m)
+    else:
+        fast_path = False
+        _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
-    # Try extracting a return value from a StopIteration and return it.
-    # If it wasn't, this reraises the exception.
     builder.activate_block(stop_block)
-    builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+    if fast_path:
+        builder.primitive_op(propagate_if_error_op, [stop_iter_val], line)
+        builder.assign(result, stop_iter_val, line)
+    else:
+        # Try extracting a return value from a StopIteration and return it.
+        # If it wasn't, this reraises the exception.
+        builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+    # Clear the spilled iterator/coroutine so that it will be freed.
+    # Otherwise, the freeing of the spilled register would likely be delayed.
+    err = builder.add(LoadErrorValue(iter_reg.type))
+    builder.assign(iter_reg, err, line)
     builder.goto(done_block)
 
     builder.activate_block(main_block)
@@ -987,3 +1250,30 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
     m.accept(MatchVisitor(builder, m))
+
+
+def transform_type_alias_stmt(builder: IRBuilder, s: TypeAliasStmt) -> None:
+    line = s.line
+    # Use "_typing" to avoid importing "typing", as the latter can be expensive.
+    # "_typing" includes everything we need here.
+    mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
+    type_params = create_type_params(builder, mod, s.type_args, s.line)
+
+    type_alias_type = builder.py_get_attr(mod, "TypeAliasType", line)
+    args = [builder.load_str(s.name.name), builder.none()]
+    arg_names: list[str | None] = [None, None]
+    arg_kinds = [ARG_POS, ARG_POS]
+    if s.type_args:
+        args.append(builder.new_tuple(type_params, line))
+        arg_names.append("type_params")
+        arg_kinds.append(ARG_NAMED)
+    alias = builder.py_call(type_alias_type, args, line, arg_names=arg_names, arg_kinds=arg_kinds)
+
+    # Use primitive to set function used to lazily compute type alias type value.
+    # The value needs to be lazily computed to match Python runtime behavior, but
+    # Python public APIs don't support this, so we use a C primitive.
+    compute_fn = s.value.accept(builder.visitor)
+    builder.builder.primitive_op(set_type_alias_compute_function_op, [alias, compute_fn], line)
+
+    target = builder.get_assignment_target(s.name)
+    builder.assign(target, alias, line)

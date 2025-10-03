@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_MAGIC
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RUnion,
+    bit_rprimitive,
     bytes_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -35,6 +36,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# translate isinstance(obj, bytes)
+isinstance_bytes = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyBytes_Check",
+    error_kind=ERR_NEVER,
+)
+
 # bytearray(obj)
 function_op(
     name="builtins.bytearray",
@@ -42,6 +52,15 @@ function_op(
     return_type=bytes_rprimitive,
     c_function_name="PyByteArray_FromObject",
     error_kind=ERR_MAGIC,
+)
+
+# translate isinstance(obj, bytearray)
+isinstance_bytearray = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyByteArray_Check",
+    error_kind=ERR_NEVER,
 )
 
 # bytes ==/!= (return -1/0/1)
@@ -98,4 +117,12 @@ bytes_build_op = custom_op(
     c_function_name="CPyBytes_Build",
     error_kind=ERR_MAGIC,
     var_arg_type=bytes_rprimitive,
+)
+
+function_op(
+    name="builtins.ord",
+    arg_types=[bytes_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyBytes_Ord",
+    error_kind=ERR_MAGIC,
 )

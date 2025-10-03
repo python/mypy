@@ -11,11 +11,12 @@ from __future__ import annotations
 from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes
+from mypy.errorcodes import ErrorCode
 
 
 class ErrorMessage(NamedTuple):
     value: str
-    code: codes.ErrorCode | None = None
+    code: ErrorCode | None = None
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
@@ -52,7 +53,7 @@ RETURN_IN_ASYNC_GENERATOR: Final = ErrorMessage(
     '"return" with value in async generator is not allowed'
 )
 INVALID_RETURN_TYPE_FOR_GENERATOR: Final = ErrorMessage(
-    'The return type of a generator function should be "Generator"' " or one of its supertypes"
+    'The return type of a generator function should be "Generator" or one of its supertypes'
 )
 INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
     'The return type of an async generator function should be "AsyncGenerator" or one of its '
@@ -62,6 +63,9 @@ YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
 INCOMPATIBLE_TYPES: Final = ErrorMessage("Incompatible types")
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = ErrorMessage(
     "Incompatible types in assignment", code=codes.ASSIGNMENT
+)
+COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE: Final = ErrorMessage(
+    "Covariant override of a mutable attribute", code=codes.MUTABLE_OVERRIDE
 )
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")
@@ -83,6 +87,10 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string i
 INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage("Incompatible types in capture pattern")
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
+AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE: Final = ErrorMessage("Ambiguous slice of a variadic tuple")
+TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK: Final = ErrorMessage(
+    "Too many assignment targets for variadic unpack"
+)
 INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer, SupportsIndex or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
@@ -131,6 +139,7 @@ INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage(
     "Expected TypedDict key to be string literal"
 )
+TYPEDDICT_OVERRIDE_MERGE: Final = 'Overwriting TypedDict field "{}" while merging'
 MALFORMED_ASSERT: Final = ErrorMessage("Assertion is always true, perhaps remove parentheses?")
 DUPLICATE_TYPE_SIGNATURES: Final = ErrorMessage("Function has duplicate type signatures")
 DESCRIPTOR_SET_NOT_CALLABLE: Final = ErrorMessage("{}.__set__ is not callable")
@@ -171,11 +180,15 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
-INVALID_UNPACK = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
+INVALID_PARAM_SPEC_LOCATION: Final = "Invalid location for ParamSpec {}"
+INVALID_PARAM_SPEC_LOCATION_NOTE: Final = (
+    'You can use ParamSpec as the first argument to Callable, e.g., "Callable[{}, int]"'
+)
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
-CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used as an expression'
 INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argument value for "{}"'
 INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
 INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
@@ -183,8 +196,10 @@ TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
 TYPEVAR_ARG_MUST_BE_TYPE: Final = '{} "{}" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
-    "A function returning TypeVar should receive at least "
-    "one argument containing the same TypeVar"
+    "A function returning TypeVar should receive at least one argument containing the same TypeVar"
+)
+TYPE_PARAMETERS_SHOULD_BE_DECLARED: Final = (
+    "All type parameters should be declared ({} not declared)"
 )
 
 # Super
@@ -201,10 +216,10 @@ SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = ErrorMessage(
 )
 TARGET_CLASS_HAS_NO_BASE_CLASS: Final = ErrorMessage("Target class has no base class")
 SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = ErrorMessage(
-    "super() outside of a method is not supported"
+    '"super()" outside of a method is not supported'
 )
 SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
-    "super() requires one or more positional arguments in enclosing function"
+    '"super()" requires one or two positional arguments in enclosing function'
 )
 
 # Self-type
@@ -225,8 +240,11 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
 )
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
+# Disjoint bases
+INCOMPATIBLE_DISJOINT_BASES: Final = ErrorMessage('Class "{}" has incompatible disjoint bases')
+
 # Enum
-ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
+ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN: Final = ErrorMessage(
     'Assigned "__members__" will be overridden by "Enum" internally'
 )
 
@@ -239,7 +257,6 @@ CANNOT_OVERRIDE_CLASS_VAR: Final = ErrorMessage(
     'Cannot override class variable (previously declared on base class "{}") with instance '
     "variable"
 )
-CLASS_VAR_WITH_TYPEVARS: Final = "ClassVar cannot contain type variables"
 CLASS_VAR_WITH_GENERIC_SELF: Final = "ClassVar cannot contain Self type in generic classes"
 CLASS_VAR_OUTSIDE_OF_CLASS: Final = "ClassVar can only be used for assignments in class body"
 
@@ -254,7 +271,7 @@ TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage(
 
 CONTIGUOUS_ITERABLE_EXPECTED: Final = ErrorMessage("Contiguous iterable with same type expected")
 ITERABLE_TYPE_EXPECTED: Final = ErrorMessage("Invalid type '{}' for *expr (iterable expected)")
-TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type guard requires positional argument")
+TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type {} requires positional argument")
 
 # Match Statement
 MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'
@@ -315,4 +332,42 @@ ARG_CONSTRUCTOR_UNEXPECTED_ARG: Final = ErrorMessage(
 )
 ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
     "Expected string literal for argument name, got {}", codes.SYNTAX
+)
+NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorMessage(
+    "Narrowed type {} is not a subtype of input type {}", codes.NARROWED_TYPE_NOT_SUBTYPE
+)
+TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES: Final = ErrorMessage(
+    "Type variable must have at least two constrained types", codes.MISC
+)
+
+TYPE_VAR_YIELD_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Yield expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_NAMED_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Named expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Await expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_GENERIC_CONSTRAINT_TYPE: Final = ErrorMessage(
+    "TypeVar constraint type cannot be parametrized by type variables", codes.MISC
+)
+
+TYPE_VAR_REDECLARED_IN_NESTED_CLASS: Final = ErrorMessage(
+    'Type variable "{}" is bound by an outer class', codes.VALID_TYPE
+)
+
+TYPE_ALIAS_WITH_YIELD_EXPRESSION: Final = ErrorMessage(
+    "Yield expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_NAMED_EXPRESSION: Final = ErrorMessage(
+    "Named expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
+    "Await expression cannot be used within a type alias", codes.SYNTAX
 )

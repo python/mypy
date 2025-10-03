@@ -1,0 +1,36 @@
+From 16b0b50ec77e470f24145071acde5274a1de53a0 Mon Sep 17 00:00:00 2001
+From: Shantanu <12621235+hauntsaninja@users.noreply.github.com>
+Date: Sat, 29 Oct 2022 12:47:21 -0700
+Subject: [PATCH] Revert sum literal integer change (#13961)
+
+This is allegedly causing large performance problems, see 13821
+
+typeshed/8231 had zero hits on mypy_primer, so it's not the worst thing
+to undo. Patching this in typeshed also feels weird, since there's a
+more general soundness issue. If a typevar has a bound or constraint, we
+might not want to solve it to a Literal.
+
+If we can confirm the performance regression or fix the unsoundness
+within mypy, I might pursue upstreaming this in typeshed.
+
+(Reminder: add this to the sync_typeshed script once merged)
+---
+ mypy/typeshed/stdlib/builtins.pyi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
+index 900c4c93f..d874edd8f 100644
+--- a/mypy/typeshed/stdlib/builtins.pyi
++++ b/mypy/typeshed/stdlib/builtins.pyi
+@@ -1782,7 +1782,7 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
+ # without creating many false-positive errors (see #7578).
+ # Instead, we special-case the most common examples of this: bool and literal integers.
+ @overload
+-def sum(iterable: Iterable[bool | _LiteralInteger], /, start: int = 0) -> int: ...
++def sum(iterable: Iterable[bool], /, start: int = 0) -> int: ...
+ @overload
+ def sum(iterable: Iterable[_SupportsSumNoDefaultT], /) -> _SupportsSumNoDefaultT | Literal[0]: ...
+ @overload
+-- 
+2.49.0
+

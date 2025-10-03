@@ -69,7 +69,6 @@ reveal_type(join(a, n64))  # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntMeets]
-# flags: --strict-optional
 from typing import TypeVar, Callable, Any
 from mypy_extensions import i32, i64
 
@@ -88,9 +87,9 @@ reveal_type(meet(f, f32))  # N: Revealed type is "mypy_extensions.i32"
 reveal_type(meet(f64, f))  # N: Revealed type is "mypy_extensions.i64"
 reveal_type(meet(f, f64))  # N: Revealed type is "mypy_extensions.i64"
 if object():
-    reveal_type(meet(f32, f64))  # N: Revealed type is "<nothing>"
+    reveal_type(meet(f32, f64))  # N: Revealed type is "Never"
 if object():
-    reveal_type(meet(f64, f32))  # N: Revealed type is "<nothing>"
+    reveal_type(meet(f64, f32))  # N: Revealed type is "Never"
 
 reveal_type(meet(f, fa))    # N: Revealed type is "builtins.int"
 reveal_type(meet(f32, fa))  # N: Revealed type is "mypy_extensions.i32"
@@ -130,7 +129,6 @@ reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntFloatConversion]
-# flags: --strict-optional
 from typing import TypeVar, Callable
 from mypy_extensions import i32
 
@@ -151,9 +149,9 @@ def ff(x: float) -> None: pass
 def fi32(x: i32) -> None: pass
 
 if object():
-    reveal_type(meet(ff, fi32))  # N: Revealed type is "<nothing>"
+    reveal_type(meet(ff, fi32))  # N: Revealed type is "Never"
 if object():
-    reveal_type(meet(fi32, ff))  # N: Revealed type is "<nothing>"
+    reveal_type(meet(fi32, ff))  # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntForLoopRange]

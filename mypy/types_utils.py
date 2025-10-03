@@ -8,13 +8,15 @@ meet_types(), join_types() etc. We don't want to keep them in mypy/types.py for 
 
 from __future__ import annotations
 
-from typing import Callable, Iterable, cast
+from collections.abc import Iterable
+from typing import Callable, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2, FuncItem, TypeAlias
 from mypy.types import (
     AnyType,
     CallableType,
     Instance,
+    LiteralType,
     NoneType,
     Overloaded,
     ParamSpecType,
@@ -54,7 +56,7 @@ def strip_type(typ: Type) -> Type:
 
 
 def is_invalid_recursive_alias(seen_nodes: set[TypeAlias], target: Type) -> bool:
-    """Flag aliases like A = Union[int, A] (and similar mutual aliases).
+    """Flag aliases like A = Union[int, A], T = tuple[int, *T] (and similar mutual aliases).
 
     Such aliases don't make much sense, and cause problems in later phases.
     """
@@ -64,26 +66,44 @@ def is_invalid_recursive_alias(seen_nodes: set[TypeAlias], target: Type) -> bool
         assert target.alias, f"Unfixed type alias {target.type_ref}"
         return is_invalid_recursive_alias(seen_nodes | {target.alias}, get_proper_type(target))
     assert isinstance(target, ProperType)
-    if not isinstance(target, UnionType):
+    if not isinstance(target, (UnionType, TupleType)):
         return False
-    return any(is_invalid_recursive_alias(seen_nodes, item) for item in target.items)
+    if isinstance(target, UnionType):
+        return any(is_invalid_recursive_alias(seen_nodes, item) for item in target.items)
+    for item in target.items:
+        if isinstance(item, UnpackType):
+            if is_invalid_recursive_alias(seen_nodes, item.type):
+                return True
+    return False
 
 
-def is_bad_type_type_item(item: Type) -> bool:
+def get_bad_type_type_item(item: Type) -> str | None:
     """Prohibit types like Type[Type[...]].
 
     Such types are explicitly prohibited by PEP 484. Also, they cause problems
     with recursive types like T = Type[T], because internal representation of
     TypeType item is normalized (i.e. always a proper type).
+
+    Also forbids `Type[Literal[...]]`, because typing spec does not allow it.
     """
+    # TODO: what else cannot be present in `type[...]`?
     item = get_proper_type(item)
     if isinstance(item, TypeType):
-        return True
+        return "Type[...]"
+    if isinstance(item, LiteralType):
+        return "Literal[...]"
     if isinstance(item, UnionType):
-        return any(
-            isinstance(get_proper_type(i), TypeType) for i in flatten_nested_unions(item.items)
-        )
-    return False
+        items = [
+            bad_item
+            for typ in flatten_nested_unions(item.items)
+            if (bad_item := get_bad_type_type_item(typ)) is not None
+        ]
+        if not items:
+            return None
+        if len(items) == 1:
+            return items[0]
+        return f"Union[{', '.join(items)}]"
+    return None
 
 
 def is_union_with_any(tp: Type) -> bool:
@@ -101,10 +121,10 @@ def is_generic_instance(tp: Type) -> bool:
     return isinstance(tp, Instance) and bool(tp.args)
 
 
-def is_optional(t: Type) -> bool:
+def is_overlapping_none(t: Type) -> bool:
     t = get_proper_type(t)
-    return isinstance(t, UnionType) and any(
-        isinstance(get_proper_type(e), NoneType) for e in t.items
+    return isinstance(t, NoneType) or (
+        isinstance(t, UnionType) and any(isinstance(get_proper_type(e), NoneType) for e in t.items)
     )
 
 
@@ -138,8 +158,7 @@ def store_argument_type(
         elif isinstance(arg_type, UnpackType):
             unpacked_type = get_proper_type(arg_type.type)
             if isinstance(unpacked_type, TupleType):
-                # Instead of using Tuple[Unpack[Tuple[...]]], just use
-                # Tuple[...]
+                # Instead of using Tuple[Unpack[Tuple[...]]], just use Tuple[...]
                 arg_type = unpacked_type
             elif (
                 isinstance(unpacked_type, Instance)
@@ -147,6 +166,7 @@ def store_argument_type(
             ):
                 arg_type = unpacked_type
             else:
+                # TODO: verify that we can only have a TypeVarTuple here.
                 arg_type = TupleType(
                     [arg_type],
                     fallback=named_type("builtins.tuple", [named_type("builtins.object", [])]),

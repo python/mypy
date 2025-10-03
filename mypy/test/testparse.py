@@ -8,7 +8,7 @@ from pytest import skip
 
 from mypy import defaults
 from mypy.config_parser import parse_mypy_comments
-from mypy.errors import CompileError
+from mypy.errors import CompileError, Errors
 from mypy.options import Options
 from mypy.parse import parse
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -23,6 +23,12 @@ class ParserSuite(DataSuite):
 
     if sys.version_info < (3, 10):
         files.remove("parse-python310.test")
+    if sys.version_info < (3, 12):
+        files.remove("parse-python312.test")
+    if sys.version_info < (3, 13):
+        files.remove("parse-python313.test")
+    if sys.version_info < (3, 14):
+        files.remove("parse-python314.test")
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -34,11 +40,16 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     The argument contains the description of the test case.
     """
     options = Options()
-    options.force_uppercase_builtins = True
     options.hide_error_codes = True
 
     if testcase.file.endswith("python310.test"):
         options.python_version = (3, 10)
+    elif testcase.file.endswith("python312.test"):
+        options.python_version = (3, 12)
+    elif testcase.file.endswith("python313.test"):
+        options.python_version = (3, 13)
+    elif testcase.file.endswith("python314.test"):
+        options.python_version = (3, 14)
     else:
         options.python_version = defaults.PYTHON3_VERSION
 
@@ -51,7 +62,12 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     try:
         n = parse(
-            bytes(source, "ascii"), fnam="main", module="__main__", errors=None, options=options
+            bytes(source, "ascii"),
+            fnam="main",
+            module="__main__",
+            errors=Errors(options),
+            options=options,
+            raise_on_error=True,
         )
         a = n.str_with_options(options).split("\n")
     except CompileError as e:
@@ -82,7 +98,12 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
             skip()
         # Compile temporary file. The test file contains non-ASCII characters.
         parse(
-            bytes("\n".join(testcase.input), "utf-8"), INPUT_FILE_NAME, "__main__", None, options
+            bytes("\n".join(testcase.input), "utf-8"),
+            INPUT_FILE_NAME,
+            "__main__",
+            errors=Errors(options),
+            options=options,
+            raise_on_error=True,
         )
         raise AssertionError("No errors reported")
     except CompileError as e:

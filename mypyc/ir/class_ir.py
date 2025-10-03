@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
-from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import DeserMaps, Value
-from mypyc.ir.rtypes import RInstance, RType, deserialize_type
+from mypyc.ir.rtypes import RInstance, RType, deserialize_type, object_rprimitive
 from mypyc.namegen import NameGenerator, exported_name
 
 # Some notes on the vtable layout: Each concrete class has a vtable
@@ -70,13 +70,13 @@ from mypyc.namegen import NameGenerator, exported_name
 
 
 class VTableMethod(NamedTuple):
-    cls: "ClassIR"
+    cls: "ClassIR"  # noqa: UP037
     name: str
     method: FuncIR
     shadow_method: FuncIR | None
 
 
-VTableEntries = List[VTableMethod]
+VTableEntries = list[VTableMethod]
 
 
 class ClassIR:
@@ -93,6 +93,7 @@ class ClassIR:
         is_generated: bool = False,
         is_abstract: bool = False,
         is_ext_class: bool = True,
+        is_final_class: bool = False,
     ) -> None:
         self.name = name
         self.module_name = module_name
@@ -100,6 +101,7 @@ class ClassIR:
         self.is_generated = is_generated
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
+        self.is_final_class = is_final_class
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
@@ -131,6 +133,16 @@ class ClassIR:
         self.builtin_base: str | None = None
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
+        # Declare setup method that allocates and initializes an object. type is the
+        # type of the class being initialized, which could be another class if there
+        # is an interpreted subclass.
+        # TODO: Make it a regular method and generate its body in IR
+        self.setup = FuncDecl(
+            "__mypyc__" + name + "_setup",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("type", object_rprimitive)], RInstance(self)),
+        )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
         # Deletable attributes
@@ -178,7 +190,12 @@ class ClassIR:
         self.attrs_with_defaults: set[str] = set()
 
         # Attributes that are always initialized in __init__ or class body
-        # (inferred in mypyc.analysis.attrdefined using interprocedural analysis)
+        # (inferred in mypyc.analysis.attrdefined using interprocedural analysis).
+        # These can never raise AttributeError when accessed. If an attribute
+        # is *not* always initialized, we normally use the error value for
+        # an undefined value. If the attribute byte has an overlapping error value
+        # (the error_overlap attribute is true for the RType), we use a bitmap
+        # to track if the attribute is defined instead (see bitmap_attrs).
         self._always_initialized_attrs: set[str] = set()
 
         # Attributes that are sometimes initialized in __init__
@@ -189,17 +206,30 @@ class ClassIR:
 
         # Definedness of these attributes is backed by a bitmap. Index in the list
         # indicates the bit number. Includes inherited attributes. We need the
-        # bitmap for types such as native ints that can't have a dedicated error
-        # value that doesn't overlap a valid value. The bitmap is used if the
+        # bitmap for types such as native ints (i64 etc.) that can't have a dedicated
+        # error value that doesn't overlap a valid value. The bitmap is used if the
         # value of an attribute is the same as the error value.
         self.bitmap_attrs: list[str] = []
+
+        # If this is a generator environment class, what is the actual method for it
+        self.env_user_function: FuncIR | None = None
+
+        # If True, keep one freed, cleared instance available for immediate reuse to
+        # speed up allocations. This helps if many objects are freed quickly, before
+        # other instances of the same class are allocated. This is effectively a
+        # per-type free "list" of up to length 1.
+        self.reuse_freed_instance = False
+
+        # Is this a class inheriting from enum.Enum? Such classes can be special-cased.
+        self.is_enum = False
 
     def __repr__(self) -> str:
         return (
             "ClassIR("
             "name={self.name}, module_name={self.module_name}, "
             "is_trait={self.is_trait}, is_generated={self.is_generated}, "
-            "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}"
+            "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}, "
+            "is_final_class={self.is_final_class}"
             ")".format(self=self)
         )
 
@@ -248,8 +278,7 @@ class ClassIR:
     def is_method_final(self, name: str) -> bool:
         subs = self.subclasses()
         if subs is None:
-            # TODO: Look at the final attribute!
-            return False
+            return self.is_final_class
 
         if self.has_method(name):
             method_decl = self.method_decl(name)
@@ -349,6 +378,7 @@ class ClassIR:
             "is_abstract": self.is_abstract,
             "is_generated": self.is_generated,
             "is_augmented": self.is_augmented,
+            "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
             "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
@@ -383,14 +413,17 @@ class ClassIR:
             "traits": [cir.fullname for cir in self.traits],
             "mro": [cir.fullname for cir in self.mro],
             "base_mro": [cir.fullname for cir in self.base_mro],
-            "children": [cir.fullname for cir in self.children]
-            if self.children is not None
-            else None,
+            "children": (
+                [cir.fullname for cir in self.children] if self.children is not None else None
+            ),
             "deletable": self.deletable,
             "attrs_with_defaults": sorted(self.attrs_with_defaults),
             "_always_initialized_attrs": sorted(self._always_initialized_attrs),
             "_sometimes_initialized_attrs": sorted(self._sometimes_initialized_attrs),
             "init_self_leak": self.init_self_leak,
+            "env_user_function": self.env_user_function.id if self.env_user_function else None,
+            "reuse_freed_instance": self.reuse_freed_instance,
+            "is_enum": self.is_enum,
         }
 
     @classmethod
@@ -404,6 +437,7 @@ class ClassIR:
         ir.is_abstract = data["is_abstract"]
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
+        ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]
         ir.allow_interpreted_subclasses = data["allow_interpreted_subclasses"]
@@ -442,6 +476,11 @@ class ClassIR:
         ir._always_initialized_attrs = set(data["_always_initialized_attrs"])
         ir._sometimes_initialized_attrs = set(data["_sometimes_initialized_attrs"])
         ir.init_self_leak = data["init_self_leak"]
+        ir.env_user_function = (
+            ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
+        )
+        ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.is_enum = data["is_enum"]
 
         return ir
 

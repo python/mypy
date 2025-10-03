@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import sys
-from typing import Dict
 
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource
 from mypy.nodes import TypeInfo
-from mypy.options import TYPE_VAR_TUPLE, UNPACK, Options
+from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
@@ -45,8 +44,6 @@ def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Opti
     options.semantic_analysis_only = True
     options.show_traceback = True
     options.python_version = PYTHON3_VERSION
-    options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
-    options.force_uppercase_builtins = True
     return options
 
 
@@ -200,7 +197,7 @@ class SemAnalTypeInfoSuite(DataSuite):
         )
 
 
-class TypeInfoMap(Dict[str, TypeInfo]):
+class TypeInfoMap(dict[str, TypeInfo]):
     def __str__(self) -> str:
         a: list[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):

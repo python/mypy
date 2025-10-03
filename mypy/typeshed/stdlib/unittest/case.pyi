@@ -2,58 +2,48 @@ import logging
 import sys
 import unittest.result
 from _typeshed import SupportsDunderGE, SupportsDunderGT, SupportsDunderLE, SupportsDunderLT, SupportsRSub, SupportsSub
+from builtins import _ClassInfo
 from collections.abc import Callable, Container, Iterable, Mapping, Sequence, Set as AbstractSet
 from contextlib import AbstractContextManager
 from re import Pattern
-from types import TracebackType
-from typing import Any, AnyStr, ClassVar, Generic, NamedTuple, NoReturn, Protocol, SupportsAbs, SupportsRound, TypeVar, overload
-from typing_extensions import ParamSpec, Self, TypeAlias
+from types import GenericAlias, TracebackType
+from typing import Any, AnyStr, Final, Generic, NoReturn, Protocol, SupportsAbs, SupportsRound, TypeVar, overload, type_check_only
+from typing_extensions import Never, ParamSpec, Self
+from unittest._log import _AssertLogsContext, _LoggingWatcher
 from warnings import WarningMessage
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
-
-if sys.version_info >= (3, 10):
-    from types import UnionType
 
 _T = TypeVar("_T")
 _S = TypeVar("_S", bound=SupportsSub[Any, Any])
 _E = TypeVar("_E", bound=BaseException)
 _FT = TypeVar("_FT", bound=Callable[..., Any])
+_SB = TypeVar("_SB", str, bytes, bytearray)
 _P = ParamSpec("_P")
 
-DIFF_OMITTED: str
+DIFF_OMITTED: Final[str]
 
 class _BaseTestCaseContext:
+    test_case: TestCase
     def __init__(self, test_case: TestCase) -> None: ...
 
-if sys.version_info >= (3, 9):
-    from unittest._log import _AssertLogsContext, _LoggingWatcher
-else:
-    # Unused dummy for _AssertLogsContext. Starting with Python 3.10,
-    # this is generic over the logging watcher, but in lower versions
-    # the watcher is hard-coded.
-    _L = TypeVar("_L")
+class _AssertRaisesBaseContext(_BaseTestCaseContext):
+    expected: type[BaseException] | tuple[type[BaseException], ...]
+    expected_regex: Pattern[str] | None
+    obj_name: str | None
+    msg: str | None
 
-    class _LoggingWatcher(NamedTuple):
-        records: list[logging.LogRecord]
-        output: list[str]
+    def __init__(
+        self,
+        expected: type[BaseException] | tuple[type[BaseException], ...],
+        test_case: TestCase,
+        expected_regex: str | Pattern[str] | None = None,
+    ) -> None: ...
 
-    class _AssertLogsContext(_BaseTestCaseContext, Generic[_L]):
-        LOGGING_FORMAT: ClassVar[str]
-        test_case: TestCase
-        logger_name: str
-        level: int
-        msg: None
-        def __init__(self, test_case: TestCase, logger_name: str, level: int) -> None: ...
-        def __enter__(self) -> _LoggingWatcher: ...
-        def __exit__(
-            self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
-        ) -> bool | None: ...
+    # This returns Self if args is the empty list, and None otherwise.
+    # but it's not possible to construct an overload which expresses that
+    def handle(self, name: str, args: list[Any], kwargs: dict[str, Any]) -> Any: ...
 
-if sys.version_info >= (3, 8):
-    def addModuleCleanup(__function: Callable[_P, Any], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
-    def doModuleCleanups() -> None: ...
+def addModuleCleanup(function: Callable[_P, object], /, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+def doModuleCleanups() -> None: ...
 
 if sys.version_info >= (3, 11):
     def enterModuleContext(cm: AbstractContextManager[_T]) -> _T: ...
@@ -66,15 +56,8 @@ def skipUnless(condition: object, reason: str) -> Callable[[_FT], _FT]: ...
 class SkipTest(Exception):
     def __init__(self, reason: str) -> None: ...
 
+@type_check_only
 class _SupportsAbsAndDunderGE(SupportsDunderGE[Any], SupportsAbs[Any], Protocol): ...
-
-# Keep this alias in sync with builtins._ClassInfo
-# We can't import it from builtins or pytype crashes,
-# due to the fact that pytype uses a custom builtins stub rather than typeshed's builtins stub
-if sys.version_info >= (3, 10):
-    _ClassInfo: TypeAlias = type | UnionType | tuple[_ClassInfo, ...]
-else:
-    _ClassInfo: TypeAlias = type | tuple[_ClassInfo, ...]
 
 class TestCase:
     failureException: type[BaseException]
@@ -86,6 +69,7 @@ class TestCase:
     _testMethodDoc: str
     def __init__(self, methodName: str = "runTest") -> None: ...
     def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
     def setUp(self) -> None: ...
     def tearDown(self) -> None: ...
     @classmethod
@@ -125,9 +109,9 @@ class TestCase:
     @overload
     def assertLess(self, a: _T, b: SupportsDunderGT[_T], msg: Any = None) -> None: ...
     @overload
-    def assertLessEqual(self, a: SupportsDunderLT[_T], b: _T, msg: Any = None) -> None: ...
+    def assertLessEqual(self, a: SupportsDunderLE[_T], b: _T, msg: Any = None) -> None: ...
     @overload
-    def assertLessEqual(self, a: _T, b: SupportsDunderGT[_T], msg: Any = None) -> None: ...
+    def assertLessEqual(self, a: _T, b: SupportsDunderGE[_T], msg: Any = None) -> None: ...
     # `assertRaises`, `assertRaisesRegex`, and `assertRaisesRegexp`
     # are not using `ParamSpec` intentionally,
     # because they might be used with explicitly wrong arg types to raise some error in tests.
@@ -135,7 +119,7 @@ class TestCase:
     def assertRaises(
         self,
         expected_exception: type[BaseException] | tuple[type[BaseException], ...],
-        callable: Callable[..., Any],
+        callable: Callable[..., object],
         *args: Any,
         **kwargs: Any,
     ) -> None: ...
@@ -148,7 +132,7 @@ class TestCase:
         self,
         expected_exception: type[BaseException] | tuple[type[BaseException], ...],
         expected_regex: str | Pattern[str],
-        callable: Callable[..., Any],
+        callable: Callable[..., object],
         *args: Any,
         **kwargs: Any,
     ) -> None: ...
@@ -160,7 +144,7 @@ class TestCase:
     def assertWarns(
         self,
         expected_warning: type[Warning] | tuple[type[Warning], ...],
-        callable: Callable[_P, Any],
+        callable: Callable[_P, object],
         *args: _P.args,
         **kwargs: _P.kwargs,
     ) -> None: ...
@@ -173,7 +157,7 @@ class TestCase:
         self,
         expected_warning: type[Warning] | tuple[type[Warning], ...],
         expected_regex: str | Pattern[str],
-        callable: Callable[_P, Any],
+        callable: Callable[_P, object],
         *args: _P.args,
         **kwargs: _P.kwargs,
     ) -> None: ...
@@ -248,26 +232,24 @@ class TestCase:
     def assertListEqual(self, list1: list[Any], list2: list[Any], msg: Any = None) -> None: ...
     def assertTupleEqual(self, tuple1: tuple[Any, ...], tuple2: tuple[Any, ...], msg: Any = None) -> None: ...
     def assertSetEqual(self, set1: AbstractSet[object], set2: AbstractSet[object], msg: Any = None) -> None: ...
+    # assertDictEqual accepts only true dict instances. We can't use that here, since that would make
+    # assertDictEqual incompatible with TypedDict.
     def assertDictEqual(self, d1: Mapping[Any, object], d2: Mapping[Any, object], msg: Any = None) -> None: ...
     def fail(self, msg: Any = None) -> NoReturn: ...
     def countTestCases(self) -> int: ...
     def defaultTestResult(self) -> unittest.result.TestResult: ...
     def id(self) -> str: ...
     def shortDescription(self) -> str | None: ...
-    if sys.version_info >= (3, 8):
-        def addCleanup(self, __function: Callable[_P, Any], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
-    else:
-        def addCleanup(self, function: Callable[_P, Any], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+    def addCleanup(self, function: Callable[_P, object], /, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
 
     if sys.version_info >= (3, 11):
         def enterContext(self, cm: AbstractContextManager[_T]) -> _T: ...
 
     def doCleanups(self) -> None: ...
-    if sys.version_info >= (3, 8):
-        @classmethod
-        def addClassCleanup(cls, __function: Callable[_P, Any], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
-        @classmethod
-        def doClassCleanups(cls) -> None: ...
+    @classmethod
+    def addClassCleanup(cls, function: Callable[_P, object], /, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+    @classmethod
+    def doClassCleanups(cls) -> None: ...
 
     if sys.version_info >= (3, 11):
         @classmethod
@@ -295,26 +277,41 @@ class TestCase:
             self, subset: Mapping[Any, Any], dictionary: Mapping[Any, Any], msg: object = None
         ) -> None: ...
 
+    if sys.version_info >= (3, 10):
+        # Runtime has *args, **kwargs, but will error if any are supplied
+        def __init_subclass__(cls, *args: Never, **kwargs: Never) -> None: ...
+
+    if sys.version_info >= (3, 14):
+        def assertIsSubclass(self, cls: type, superclass: type | tuple[type, ...], msg: Any = None) -> None: ...
+        def assertNotIsSubclass(self, cls: type, superclass: type | tuple[type, ...], msg: Any = None) -> None: ...
+        def assertHasAttr(self, obj: object, name: str, msg: Any = None) -> None: ...
+        def assertNotHasAttr(self, obj: object, name: str, msg: Any = None) -> None: ...
+        def assertStartsWith(self, s: _SB, prefix: _SB | tuple[_SB, ...], msg: Any = None) -> None: ...
+        def assertNotStartsWith(self, s: _SB, prefix: _SB | tuple[_SB, ...], msg: Any = None) -> None: ...
+        def assertEndsWith(self, s: _SB, suffix: _SB | tuple[_SB, ...], msg: Any = None) -> None: ...
+        def assertNotEndsWith(self, s: _SB, suffix: _SB | tuple[_SB, ...], msg: Any = None) -> None: ...
+
 class FunctionTestCase(TestCase):
     def __init__(
         self,
-        testFunc: Callable[[], Any],
-        setUp: Callable[[], Any] | None = None,
-        tearDown: Callable[[], Any] | None = None,
+        testFunc: Callable[[], object],
+        setUp: Callable[[], object] | None = None,
+        tearDown: Callable[[], object] | None = None,
         description: str | None = None,
     ) -> None: ...
     def runTest(self) -> None: ...
+    def __hash__(self) -> int: ...
+    def __eq__(self, other: object) -> bool: ...
 
-class _AssertRaisesContext(Generic[_E]):
+class _AssertRaisesContext(_AssertRaisesBaseContext, Generic[_E]):
     exception: _E
     def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
     ) -> bool: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class _AssertWarnsContext:
+class _AssertWarnsContext(_AssertRaisesBaseContext):
     warning: WarningMessage
     filename: str
     lineno: int

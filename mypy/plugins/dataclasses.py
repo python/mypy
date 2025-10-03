@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, Iterator, Literal
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Final, Literal
 
 from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -23,6 +24,8 @@ from mypy.nodes import (
     ClassDef,
     Context,
     DataclassTransformSpec,
+    Decorator,
+    EllipsisExpr,
     Expression,
     FuncDef,
     FuncItem,
@@ -63,6 +66,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeOfAny,
+    TypeVarId,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -75,6 +79,8 @@ if TYPE_CHECKING:
 
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
+# Default field specifiers for dataclasses
+DATACLASS_FIELD_SPECIFIERS: Final = ("dataclasses.Field", "dataclasses.field")
 
 
 SELF_TVAR_NAME: Final = "_DT"
@@ -83,7 +89,7 @@ _TRANSFORM_SPEC_FOR_DATACLASSES: Final = DataclassTransformSpec(
     order_default=False,
     kw_only_default=False,
     frozen_default=False,
-    field_specifiers=("dataclasses.Field", "dataclasses.field"),
+    field_specifiers=DATACLASS_FIELD_SPECIFIERS,
 )
 _INTERNAL_REPLACE_SYM_NAME: Final = "__mypy-replace"
 _INTERNAL_POST_INIT_SYM_NAME: Final = "__mypy-post_init"
@@ -148,13 +154,13 @@ class DataclassAttribute:
         return Argument(
             variable=self.to_var(current_info),
             type_annotation=self.expand_type(current_info),
-            initializer=None,
+            initializer=EllipsisExpr() if self.has_default else None,  # Only used by stubgen
             kind=arg_kind,
         )
 
     def expand_type(self, current_info: TypeInfo) -> Type | None:
         if self.type is not None and self.info.self_type is not None:
-            # In general, it is not safe to call `expand_type()` during semantic analyzis,
+            # In general, it is not safe to call `expand_type()` during semantic analysis,
             # however this plugin is called very late, so all types should be fully ready.
             # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
             # we serialize attributes).
@@ -268,11 +274,17 @@ class DataclassTransformer:
                     if arg.kind == ARG_POS:
                         arg.kind = ARG_OPT
 
-                nameless_var = Var("")
+                existing_args_names = {arg.variable.name for arg in args}
+                gen_args_name = "generated_args"
+                while gen_args_name in existing_args_names:
+                    gen_args_name += "_"
+                gen_kwargs_name = "generated_kwargs"
+                while gen_kwargs_name in existing_args_names:
+                    gen_kwargs_name += "_"
                 args = [
-                    Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR),
+                    Argument(Var(gen_args_name), AnyType(TypeOfAny.explicit), None, ARG_STAR),
                     *args,
-                    Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR2),
+                    Argument(Var(gen_kwargs_name), AnyType(TypeOfAny.explicit), None, ARG_STAR2),
                 ]
 
             add_method_to_class(
@@ -306,8 +318,8 @@ class DataclassTransformer:
                 obj_type = self._api.named_type("builtins.object")
                 order_tvar_def = TypeVarType(
                     SELF_TVAR_NAME,
-                    info.fullname + "." + SELF_TVAR_NAME,
-                    id=-1,
+                    f"{info.fullname}.{SELF_TVAR_NAME}",
+                    id=TypeVarId(-1, namespace=f"{info.fullname}.{method_name}"),
                     values=[],
                     upper_bound=obj_type,
                     default=AnyType(TypeOfAny.from_omitted_generics),
@@ -347,12 +359,12 @@ class DataclassTransformer:
 
         if decorator_arguments["frozen"]:
             if any(not parent["frozen"] for parent in parent_decorator_arguments):
-                self._api.fail("Cannot inherit frozen dataclass from a non-frozen one", info)
+                self._api.fail("Frozen dataclass cannot inherit from a non-frozen dataclass", info)
             self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
             if any(parent["frozen"] for parent in parent_decorator_arguments):
-                self._api.fail("Cannot inherit non-frozen dataclass from a frozen one", info)
+                self._api.fail("Non-frozen dataclass cannot inherit from a frozen dataclass", info)
             self._propertize_callables(attributes)
 
         if decorator_arguments["slots"]:
@@ -365,20 +377,22 @@ class DataclassTransformer:
             and (
                 "__match_args__" not in info.names or info.names["__match_args__"].plugin_generated
             )
-            and attributes
             and py_version >= (3, 10)
         ):
             str_type = self._api.named_type("builtins.str")
             literals: list[Type] = [
-                LiteralType(attr.name, str_type) for attr in attributes if attr.is_in_init
+                LiteralType(attr.name, str_type)
+                for attr in attributes
+                if attr.is_in_init and not attr.kw_only
             ]
             match_args_type = TupleType(literals, self._api.named_type("builtins.tuple"))
             add_attribute_to_class(self._api, self._cls, "__match_args__", match_args_type)
 
         self._add_dataclass_fields_magic_attribute()
+        self._add_internal_replace_method(attributes)
+        if self._api.options.python_version >= (3, 13):
+            self._add_dunder_replace(attributes)
 
-        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
-            self._add_internal_replace_method(attributes)
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
@@ -388,6 +402,21 @@ class DataclassTransformer:
         }
 
         return True
+
+    def _add_dunder_replace(self, attributes: list[DataclassAttribute]) -> None:
+        """Add a `__replace__` method to the class, which is used to replace attributes in the `copy` module."""
+        args = [
+            attr.to_argument(self._cls.info, of="replace")
+            for attr in attributes
+            if attr.is_in_init
+        ]
+        add_method_to_class(
+            self._api,
+            self._cls,
+            "__replace__",
+            args=args,
+            return_type=fill_typevars(self._cls.info),
+        )
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
         """
@@ -423,8 +452,7 @@ class DataclassTransformer:
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._api.fail(
-                'Keyword argument "slots" for "dataclass" '
-                "is only valid in Python 3.10 and higher",
+                'Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher',
                 self._reason,
             )
             return
@@ -444,6 +472,12 @@ class DataclassTransformer:
                 self._cls,
             )
             return
+
+        if any(p.slots is None for p in info.mro[1:-1]):
+            # At least one type in mro (excluding `self` and `object`)
+            # does not have concrete `__slots__` defined. Ignoring.
+            return
+
         info.slots = generated_slots
 
         # Now, insert `.__slots__` attribute to class namespace:
@@ -511,7 +545,6 @@ class DataclassTransformer:
         # in the parent. We can implement this via a dict without disrupting the attr order
         # because dicts preserve insertion order in Python 3.7+.
         found_attrs: dict[str, DataclassAttribute] = {}
-        found_dataclass_supertype = False
         for info in reversed(cls.info.mro[1:-1]):
             if "dataclass_tag" in info.metadata and "dataclass" not in info.metadata:
                 # We haven't processed the base class yet. Need another pass.
@@ -521,7 +554,6 @@ class DataclassTransformer:
 
             # Each class depends on the set of attributes in its dataclass ancestors.
             self._api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
-            found_dataclass_supertype = True
 
             for data in info.metadata["dataclass"]["attributes"]:
                 name: str = data["name"]
@@ -572,8 +604,12 @@ class DataclassTransformer:
                 # but the only alternative would be to modify the SymbolTable,
                 # and it's a little hairy to do that in a plugin.
                 continue
+            if isinstance(node, Decorator):
+                # This might be a property / field name clash.
+                # We will issue an error later.
+                continue
 
-            assert isinstance(node, Var)
+            assert isinstance(node, Var), node
 
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:
@@ -681,8 +717,7 @@ class DataclassTransformer:
             )
 
         all_attrs = list(found_attrs.values())
-        if found_dataclass_supertype:
-            all_attrs.sort(key=lambda a: a.kw_only)
+        all_attrs.sort(key=lambda a: a.kw_only)
 
         # Third, ensure that arguments without a default don't follow
         # arguments that have a default and that the KW_ONLY sentinel
@@ -722,7 +757,7 @@ class DataclassTransformer:
         for attr in attributes:
             # Classes that directly specify a dataclass_transform metaclass must be neither frozen
             # non non-frozen per PEP681. Though it is surprising, this means that attributes from
-            # such a class must be writable even if the rest of the class heirarchy is frozen. This
+            # such a class must be writable even if the rest of the class hierarchy is frozen. This
             # matches the behavior of Pyright (the reference implementation).
             if attr.is_neither_frozen_nor_nonfrozen:
                 continue
@@ -731,6 +766,8 @@ class DataclassTransformer:
             if sym_node is not None:
                 var = sym_node.node
                 if isinstance(var, Var):
+                    if var.is_final:
+                        continue  # do not turn `Final` attrs to `@property`
                     var.is_property = True
             else:
                 var = attr.to_var(info)
@@ -926,6 +963,9 @@ def dataclass_tag_callback(ctx: ClassDefContext) -> None:
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> bool:
     """Hooks into the class typechecking process to add support for dataclasses."""
+    if any(i.is_named_tuple for i in ctx.cls.info.mro):
+        ctx.api.fail("A NamedTuple cannot be a dataclass", ctx=ctx.cls.info)
+        return True
     transformer = DataclassTransformer(
         ctx.cls, ctx.reason, _get_transform_spec(ctx.reason), ctx.api
     )
@@ -967,25 +1007,6 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
     )
 
 
-def _fail_not_dataclass(ctx: FunctionSigContext, t: Type, parent_t: Type) -> None:
-    t_name = format_type_bare(t, ctx.api.options)
-    if parent_t is t:
-        msg = (
-            f'Argument 1 to "replace" has a variable type "{t_name}" not bound to a dataclass'
-            if isinstance(t, TypeVarType)
-            else f'Argument 1 to "replace" has incompatible type "{t_name}"; expected a dataclass'
-        )
-    else:
-        pt_name = format_type_bare(parent_t, ctx.api.options)
-        msg = (
-            f'Argument 1 to "replace" has type "{pt_name}" whose item "{t_name}" is not bound to a dataclass'
-            if isinstance(t, TypeVarType)
-            else f'Argument 1 to "replace" has incompatible type "{pt_name}" whose item "{t_name}" is not a dataclass'
-        )
-
-    ctx.api.fail(msg, ctx.context)
-
-
 def _get_expanded_dataclasses_fields(
     ctx: FunctionSigContext, typ: ProperType, display_typ: ProperType, parent_typ: ProperType
 ) -> list[CallableType] | None:
@@ -994,9 +1015,7 @@ def _get_expanded_dataclasses_fields(
     For generic classes, the field types are expanded.
     If the type contains Any or a non-dataclass, returns None; in the latter case, also reports an error.
     """
-    if isinstance(typ, AnyType):
-        return None
-    elif isinstance(typ, UnionType):
+    if isinstance(typ, UnionType):
         ret: list[CallableType] | None = []
         for item in typ.relevant_items():
             item = get_proper_type(item)
@@ -1013,14 +1032,12 @@ def _get_expanded_dataclasses_fields(
     elif isinstance(typ, Instance):
         replace_sym = typ.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
         if replace_sym is None:
-            _fail_not_dataclass(ctx, display_typ, parent_typ)
             return None
         replace_sig = replace_sym.type
         assert isinstance(replace_sig, ProperType)
         assert isinstance(replace_sig, CallableType)
         return [expand_type_by_instance(replace_sig, typ)]
     else:
-        _fail_not_dataclass(ctx, display_typ, parent_typ)
         return None
 
 
@@ -1088,8 +1105,8 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     )
 
 
-def is_processed_dataclass(info: TypeInfo | None) -> bool:
-    return info is not None and "dataclass" in info.metadata
+def is_processed_dataclass(info: TypeInfo) -> bool:
+    return bool(info) and "dataclass" in info.metadata
 
 
 def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:

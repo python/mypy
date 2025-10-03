@@ -1,0 +1,952 @@
+[case testTypeIsBasic]
+from typing_extensions import TypeIs
+class Point: pass
+def is_point(a: object) -> TypeIs[Point]: pass
+def main(a: object) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsElif]
+from typing_extensions import TypeIs
+from typing import Union
+class Point: pass
+def is_point(a: object) -> TypeIs[Point]: pass
+class Line: pass
+def is_line(a: object) -> TypeIs[Line]: pass
+def main(a: Union[Point, Line, int]) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+    elif is_line(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Line"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsTypeArgsNone]
+from typing_extensions import TypeIs
+def foo(a: object) -> TypeIs:  # E: TypeIs must have exactly one type argument
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsTypeArgsTooMany]
+from typing_extensions import TypeIs
+def foo(a: object) -> TypeIs[int, int]:  # E: TypeIs must have exactly one type argument
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsTypeArgType]
+from typing_extensions import TypeIs
+def foo(a: object) -> TypeIs[42]:  # E: Invalid type: try using Literal[42] instead?
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsRepr]
+from typing_extensions import TypeIs
+def foo(a: object) -> TypeIs[int]:
+    pass
+reveal_type(foo)  # N: Revealed type is "def (a: builtins.object) -> TypeIs[builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsCallArgsNone]
+from typing_extensions import TypeIs
+class Point: pass
+
+def is_point() -> TypeIs[Point]: pass  # E: "TypeIs" functions must have a positional argument
+def main(a: object) -> None:
+    if is_point():
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsCallArgsMultiple]
+from typing_extensions import TypeIs
+class Point: pass
+def is_point(a: object, b: object) -> TypeIs[Point]: pass
+def main(a: object, b: object) -> None:
+    if is_point(a, b):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+        reveal_type(b)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsIsBool]
+from typing_extensions import TypeIs
+def f(a: TypeIs[int]) -> None: pass
+reveal_type(f)  # N: Revealed type is "def (a: builtins.bool)"
+a: TypeIs[int]
+reveal_type(a)  # N: Revealed type is "builtins.bool"
+class C:
+    a: TypeIs[int]
+reveal_type(C().a)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsWithTypeVar]
+from typing import TypeVar, Tuple, Type
+from typing_extensions import TypeIs
+T = TypeVar('T')
+def is_tuple_of_type(a: Tuple[object, ...], typ: Type[T]) -> TypeIs[Tuple[T, ...]]: pass
+def main(a: Tuple[object, ...]):
+    if is_tuple_of_type(a, int):
+        reveal_type(a)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsTypeVarReturn]
+from typing import Callable, Optional, TypeVar
+from typing_extensions import TypeIs
+T = TypeVar('T')
+def is_str(x: object) -> TypeIs[str]: pass
+def main(x: object, type_check_func: Callable[[object], TypeIs[T]]) -> T:
+    if not type_check_func(x):
+        raise Exception()
+    return x
+reveal_type(main("a", is_str))  # N: Revealed type is "builtins.str"
+[builtins fixtures/exception.pyi]
+
+[case testTypeIsPassedAsTypeVarIsBool]
+from typing import Callable, TypeVar
+from typing_extensions import TypeIs
+T = TypeVar('T')
+def is_str(x: object) -> TypeIs[str]: pass
+def main(f: Callable[[object], T]) -> T: pass
+reveal_type(main(is_str))  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsUnionIn]
+from typing import Union
+from typing_extensions import TypeIs
+def is_foo(a: Union[int, str]) -> TypeIs[str]: pass
+def main(a: Union[str, int]) -> None:
+    if is_foo(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsUnionOut]
+from typing import Union
+from typing_extensions import TypeIs
+def is_foo(a: object) -> TypeIs[Union[int, str]]: pass
+def main(a: object) -> None:
+    if is_foo(a):
+        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsUnionWithGeneric]
+from typing import Any, List, Sequence, Union
+from typing_extensions import TypeIs
+
+def is_int_list(a: object) -> TypeIs[List[int]]: pass
+def is_int_seq(a: object) -> TypeIs[Sequence[int]]: pass
+def is_seq(a: object) -> TypeIs[Sequence[Any]]: pass
+
+def f1(a: Union[List[int], List[str]]) -> None:
+    if is_int_list(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+
+def f2(a: Union[List[int], int]) -> None:
+    if is_int_list(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.int]"
+
+def f3(a: Union[List[bool], List[str]]) -> None:
+    if is_int_seq(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.bool]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.bool], builtins.list[builtins.str]]"
+
+def f4(a: Union[List[int], int]) -> None:
+    if is_seq(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsTupleGeneric]
+# flags: --warn-unreachable
+from __future__ import annotations
+from typing_extensions import TypeIs, Unpack
+
+class A: ...
+class B: ...
+
+def is_tuple_of_B(v: tuple[A | B, ...]) -> TypeIs[tuple[B, ...]]: ...
+
+def test1(t: tuple[A]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # E: Statement is unreachable
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.A]"
+
+def test2(t: tuple[B, A]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # E: Statement is unreachable
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, __main__.A]"
+
+def test3(t: tuple[A | B]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[Union[__main__.A, __main__.B]]"
+
+def test4(t: tuple[A | B, A | B]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, __main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[Union[__main__.A, __main__.B], Union[__main__.A, __main__.B]]"
+
+def test5(t: tuple[A | B, ...]) -> None:
+    if is_tuple_of_B(t):
+        reveal_type(t)  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
+    else:
+        reveal_type(t)  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+
+def test6(t: tuple[B, Unpack[tuple[A | B, ...]], B]) -> None:
+    if is_tuple_of_B(t):
+        # Should this be tuple[B, *tuple[B, ...], B]
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Never, __main__.B]"
+    else:
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Unpack[builtins.tuple[Union[__main__.A, __main__.B], ...]], __main__.B]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsNonzeroFloat]
+from typing_extensions import TypeIs
+def is_nonzero(a: object) -> TypeIs[float]: pass
+def main(a: int):
+    if is_nonzero(a):
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsHigherOrder]
+from typing import Callable, TypeVar, Iterable, List
+from typing_extensions import TypeIs
+T = TypeVar('T')
+R = TypeVar('R')
+def filter(f: Callable[[T], TypeIs[R]], it: Iterable[T]) -> Iterable[R]: pass
+def is_float(a: object) -> TypeIs[float]: pass
+a: List[object] = ["a", 0, 0.0]
+b = filter(is_float, a)
+reveal_type(b)  # N: Revealed type is "typing.Iterable[builtins.float]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsMethod]
+from typing_extensions import TypeIs
+class C:
+    def main(self, a: object) -> None:
+        if self.is_float(a):
+            reveal_type(self)  # N: Revealed type is "__main__.C"
+            reveal_type(a)  # N: Revealed type is "builtins.float"
+    def is_float(self, a: object) -> TypeIs[float]: pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsCrossModule]
+import guard
+from points import Point
+def main(a: object) -> None:
+    if guard.is_point(a):
+        reveal_type(a)  # N: Revealed type is "points.Point"
+[file guard.py]
+from typing_extensions import TypeIs
+import points
+def is_point(a: object) -> TypeIs[points.Point]: pass
+[file points.py]
+class Point: pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsBodyRequiresBool]
+from typing_extensions import TypeIs
+def is_float(a: object) -> TypeIs[float]:
+    return "not a bool"  # E: Incompatible return value type (got "str", expected "bool")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsNarrowToTypedDict]
+from typing import Mapping, TypedDict
+from typing_extensions import TypeIs
+class User(TypedDict):
+    name: str
+    id: int
+def is_user(a: Mapping[str, object]) -> TypeIs[User]:
+    return isinstance(a.get("name"), str) and isinstance(a.get("id"), int)
+def main(a: Mapping[str, object]) -> None:
+    if is_user(a):
+        reveal_type(a)  # N: Revealed type is "TypedDict('__main__.User', {'name': builtins.str, 'id': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypeIsInAssert]
+from typing_extensions import TypeIs
+def is_float(a: object) -> TypeIs[float]: pass
+def main(a: object) -> None:
+    assert is_float(a)
+    reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsFromAny]
+from typing import Any
+from typing_extensions import TypeIs
+def is_objfloat(a: object) -> TypeIs[float]: pass
+def is_anyfloat(a: Any) -> TypeIs[float]: pass
+def objmain(a: object) -> None:
+    if is_objfloat(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+    if is_anyfloat(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+def anymain(a: Any) -> None:
+    if is_objfloat(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+    if is_anyfloat(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsNegatedAndElse]
+from typing import Union
+from typing_extensions import TypeIs
+def is_int(a: object) -> TypeIs[int]: pass
+def is_str(a: object) -> TypeIs[str]: pass
+def intmain(a: Union[int, str]) -> None:
+    if not is_int(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+def strmain(a: Union[int, str]) -> None:
+    if is_str(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsClassMethod]
+from typing_extensions import TypeIs
+class C:
+    @classmethod
+    def is_float(cls, a: object) -> TypeIs[float]: pass
+    def method(self, a: object) -> None:
+        if self.is_float(a):
+            reveal_type(a)  # N: Revealed type is "builtins.float"
+def main(a: object) -> None:
+    if C.is_float(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeIsRequiresPositionalArgs]
+from typing_extensions import TypeIs
+def is_float(a: object, b: object = 0) -> TypeIs[float]: pass
+def main1(a: object) -> None:
+    if is_float(a=a, b=1):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+
+    if is_float(b=1, a=a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsOverload]
+from typing import overload, Any, Callable, Iterable, Iterator, List, Optional, TypeVar
+from typing_extensions import TypeIs
+
+T = TypeVar("T")
+R = TypeVar("R")
+
+@overload
+def filter(f: Callable[[T], TypeIs[R]], it: Iterable[T]) -> Iterator[R]: ...
+@overload
+def filter(f: Callable[[T], bool], it: Iterable[T]) -> Iterator[T]: ...
+def filter(*args): pass
+
+def is_int_typeis(a: object) -> TypeIs[int]: pass
+def is_int_bool(a: object) -> bool: pass
+
+def main(a: List[Optional[int]]) -> None:
+    bb = filter(lambda x: x is not None, a)
+    reveal_type(bb)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
+    # Also, if you replace 'bool' with 'Any' in the second overload, bb is Iterator[Any]
+    cc = filter(is_int_typeis, a)
+    reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int]"
+    dd = filter(is_int_bool, a)
+    reveal_type(dd)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypeIsDecorated]
+from typing import TypeVar
+from typing_extensions import TypeIs
+T = TypeVar("T")
+def decorator(f: T) -> T: pass
+@decorator
+def is_float(a: object) -> TypeIs[float]:
+    pass
+def main(a: object) -> None:
+    if is_float(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsMethodOverride]
+from typing_extensions import TypeIs
+class C:
+    def is_float(self, a: object) -> TypeIs[float]: pass
+class D(C):
+    def is_float(self, a: object) -> bool: pass  # Fail
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: Signature of "is_float" incompatible with supertype "C"
+main:5: note:      Superclass:
+main:5: note:          def is_float(self, a: object) -> TypeIs[float]
+main:5: note:      Subclass:
+main:5: note:          def is_float(self, a: object) -> bool
+
+[case testTypeIsInAnd]
+from typing import Any
+from typing_extensions import TypeIs
+def isclass(a: object) -> bool:
+    pass
+def isfloat(a: object) -> TypeIs[float]:
+    pass
+def isstr(a: object) -> TypeIs[str]:
+    pass
+
+def coverage1(obj: Any) -> bool:
+    if isfloat(obj) and obj.__self__ is not None and isclass(obj.__self__):  # E: "float" has no attribute "__self__"
+        reveal_type(obj)  # N: Revealed type is "builtins.float"
+        return True
+    reveal_type(obj)  # N: Revealed type is "Any"
+    return False
+
+def coverage2(obj: Any) -> bool:
+    if not (isfloat(obj) or isstr(obj)):
+        reveal_type(obj)  # N: Revealed type is "Any"
+        return True
+    reveal_type(obj)  # N: Revealed type is "Union[builtins.float, builtins.str]"
+    return False
+[builtins fixtures/classmethod.pyi]
+
+[case testAssignToTypeIsedVariable1]
+from typing_extensions import TypeIs
+
+class A: pass
+class B(A): pass
+
+def guard(a: A) -> TypeIs[B]:
+    pass
+
+a = A()
+if not guard(a):
+    a = A()
+[builtins fixtures/tuple.pyi]
+
+[case testAssignToTypeIsedVariable2]
+from typing_extensions import TypeIs
+
+class A: pass
+class B: pass
+
+def guard(a: object) -> TypeIs[B]:
+    pass
+
+a = A()
+if not guard(a):
+    a = A()
+[builtins fixtures/tuple.pyi]
+
+[case testAssignToTypeIsedVariable3]
+from typing_extensions import TypeIs
+
+class A: pass
+class B: pass
+
+def guard(a: object) -> TypeIs[B]:
+    pass
+
+a = A()
+if guard(a):
+    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
+    a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
+    a = A()
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+reveal_type(a)  # N: Revealed type is "__main__.A"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsNestedRestrictionAny]
+from typing_extensions import TypeIs
+from typing import Any
+
+class A: ...
+def f(x: object) -> TypeIs[A]: ...
+def g(x: object) -> None: ...
+
+def test(x: Any) -> None:
+    if not(f(x) or x):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsNestedRestrictionUnionOther]
+from typing_extensions import TypeIs
+from typing import Any
+
+class A: ...
+class B: ...
+def f(x: object) -> TypeIs[A]: ...
+def f2(x: object) -> TypeIs[B]: ...
+def g(x: object) -> None: ...
+
+def test(x: object) -> None:
+    if not(f(x) or f2(x)):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, __main__.B]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsComprehensionSubtype]
+from typing import List
+from typing_extensions import TypeIs
+
+class Base: ...
+class Foo(Base): ...
+class Bar(Base): ...
+
+def is_foo(item: object) -> TypeIs[Foo]:
+    return isinstance(item, Foo)
+
+def is_bar(item: object) -> TypeIs[Bar]:
+    return isinstance(item, Bar)
+
+def foobar(items: List[object]):
+    a: List[Base] = [x for x in items if is_foo(x) or is_bar(x)]
+    b: List[Base] = [x for x in items if is_foo(x)]
+    c: List[Foo] = [x for x in items if is_foo(x)]
+    d: List[Bar] = [x for x in items if is_foo(x)]  # E: List comprehension has incompatible type List[Foo]; expected List[Bar]
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsNestedRestrictionUnionIsInstance]
+from typing_extensions import TypeIs
+from typing import Any, List
+
+class A: ...
+def f(x: List[Any]) -> TypeIs[List[str]]: ...
+def g(x: object) -> None: ...
+
+def test(x: List[Any]) -> None:
+    if not(f(x) or isinstance(x, A)):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "builtins.list[Any]" and "__main__.A">]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsMultipleCondition]
+from typing_extensions import TypeIs
+from typing import Any, List
+
+class Foo: ...
+class Bar: ...
+
+def is_foo(item: object) -> TypeIs[Foo]:
+    return isinstance(item, Foo)
+
+def is_bar(item: object) -> TypeIs[Bar]:
+    return isinstance(item, Bar)
+
+def foobar(x: object):
+    if not isinstance(x, Foo) or not isinstance(x, Bar):
+        return
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.Foo" and "__main__.Bar">"
+
+def foobar_typeis(x: object):
+    if not is_foo(x) or not is_bar(x):
+        return
+    # Looks like a typo but this is what our unique name generation produces
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.Foo" and "__main__.Bar">"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsAsFunctionArgAsBoolSubtype]
+from typing import Callable
+from typing_extensions import TypeIs
+
+def accepts_bool(f: Callable[[object], bool]): pass
+
+def with_bool_typeis(o: object) -> TypeIs[bool]: pass
+def with_str_typeis(o: object) -> TypeIs[str]: pass
+def with_bool(o: object) -> bool: pass
+
+accepts_bool(with_bool_typeis)
+accepts_bool(with_str_typeis)
+accepts_bool(with_bool)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsAsFunctionArg]
+from typing import Callable
+from typing_extensions import TypeIs
+
+def accepts_typeis(f: Callable[[object], TypeIs[bool]]): pass
+def different_typeis(f: Callable[[object], TypeIs[str]]): pass
+
+def with_typeis(o: object) -> TypeIs[bool]: pass
+def with_bool(o: object) -> bool: pass
+
+accepts_typeis(with_typeis)
+accepts_typeis(with_bool)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[bool]]"
+
+different_typeis(with_typeis)  # E: Argument 1 to "different_typeis" has incompatible type "Callable[[object], TypeIs[bool]]"; expected "Callable[[object], TypeIs[str]]"
+different_typeis(with_bool)  # E: Argument 1 to "different_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[str]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsAsGenericFunctionArg]
+from typing import Callable, TypeVar
+from typing_extensions import TypeIs
+
+T = TypeVar('T')
+
+def accepts_typeis(f: Callable[[object], TypeIs[T]]): pass
+
+def with_bool_typeis(o: object) -> TypeIs[bool]: pass
+def with_str_typeis(o: object) -> TypeIs[str]: pass
+def with_bool(o: object) -> bool: pass
+
+accepts_typeis(with_bool_typeis)
+accepts_typeis(with_str_typeis)
+accepts_typeis(with_bool)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[Never]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsAsOverloadedFunctionArg]
+# https://github.com/python/mypy/issues/11307
+from typing import Callable, TypeVar, Generic, Any, overload
+from typing_extensions import TypeIs
+
+_T = TypeVar('_T')
+
+class filter(Generic[_T]):
+    @overload
+    def __init__(self, function: Callable[[object], TypeIs[_T]]) -> None: pass
+    @overload
+    def __init__(self, function: Callable[[_T], Any]) -> None: pass
+    def __init__(self, function): pass
+
+def is_int_typeis(a: object) -> TypeIs[int]: pass
+def returns_bool(a: object) -> bool: pass
+
+reveal_type(filter(is_int_typeis))  # N: Revealed type is "__main__.filter[builtins.int]"
+reveal_type(filter(returns_bool))  # N: Revealed type is "__main__.filter[builtins.object]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsSubtypingVariance]
+from typing import Callable
+from typing_extensions import TypeIs
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+def accepts_typeis(f: Callable[[object], TypeIs[B]]): pass
+
+def with_typeis_a(o: object) -> TypeIs[A]: pass
+def with_typeis_b(o: object) -> TypeIs[B]: pass
+def with_typeis_c(o: object) -> TypeIs[C]: pass
+
+accepts_typeis(with_typeis_a)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], TypeIs[A]]"; expected "Callable[[object], TypeIs[B]]"
+accepts_typeis(with_typeis_b)
+accepts_typeis(with_typeis_c)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], TypeIs[C]]"; expected "Callable[[object], TypeIs[B]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsWithIdentityGeneric]
+from typing import TypeVar
+from typing_extensions import TypeIs
+
+_T = TypeVar("_T")
+
+def identity(val: _T) -> TypeIs[_T]:
+    pass
+
+def func1(name: _T):
+    reveal_type(name)  # N: Revealed type is "_T`-1"
+    if identity(name):
+        reveal_type(name)  # N: Revealed type is "_T`-1"
+
+def func2(name: str):
+    reveal_type(name)  # N: Revealed type is "builtins.str"
+    if identity(name):
+        reveal_type(name)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsWithGenericOnSecondParam]
+from typing import TypeVar
+from typing_extensions import TypeIs
+
+_R = TypeVar("_R")
+
+def guard(val: object, param: _R) -> TypeIs[_R]:
+    pass
+
+def func1(name: object):
+    reveal_type(name)  # N: Revealed type is "builtins.object"
+    if guard(name, name):
+        reveal_type(name)  # N: Revealed type is "builtins.object"
+    if guard(name, 1):
+        reveal_type(name)  # N: Revealed type is "builtins.int"
+
+def func2(name: int):
+    reveal_type(name)  # N: Revealed type is "builtins.int"
+    if guard(name, True):
+        reveal_type(name)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsWithGenericInstance]
+from typing import TypeVar, List, Iterable
+from typing_extensions import TypeIs
+
+_T = TypeVar("_T")
+
+def is_list_of_str(val: Iterable[_T]) -> TypeIs[List[_T]]:
+    pass
+
+def func(name: Iterable[str]):
+    reveal_type(name)  # N: Revealed type is "typing.Iterable[builtins.str]"
+    if is_list_of_str(name):
+        reveal_type(name)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsWithTupleGeneric]
+from typing import TypeVar, Tuple
+from typing_extensions import TypeIs
+
+_T = TypeVar("_T")
+
+def is_two_element_tuple(val: Tuple[_T, ...]) -> TypeIs[Tuple[_T, _T]]:
+    pass
+
+def func(names: Tuple[str, ...]):
+    reveal_type(names)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+    if is_two_element_tuple(names):
+        reveal_type(names)  # N: Revealed type is "tuple[builtins.str, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsErroneousDefinitionFails]
+from typing_extensions import TypeIs
+
+class Z:
+    def typeis1(self, *, x: object) -> TypeIs[int]:  # E: "TypeIs" functions must have a positional argument
+        ...
+
+    @staticmethod
+    def typeis2(x: object) -> TypeIs[int]:
+        ...
+
+    @staticmethod
+    def typeis3(*, x: object) -> TypeIs[int]:  # E: "TypeIs" functions must have a positional argument
+        ...
+
+def bad_typeis(*, x: object) -> TypeIs[int]:  # E: "TypeIs" functions must have a positional argument
+    ...
+
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeIsWithKeywordArg]
+from typing_extensions import TypeIs
+
+class Z:
+    def typeis(self, x: object) -> TypeIs[int]:
+        ...
+
+def typeis(x: object) -> TypeIs[int]:
+    ...
+
+n: object
+if typeis(x=n):
+    reveal_type(n)  # N: Revealed type is "builtins.int"
+
+if Z().typeis(x=n):
+    reveal_type(n)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testStaticMethodTypeIs]
+from typing_extensions import TypeIs
+
+class Y:
+    @staticmethod
+    def typeis(h: object) -> TypeIs[int]:
+        ...
+
+x: object
+if Y().typeis(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+if Y.typeis(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeIsKwargFollowingThroughOverloaded]
+from typing import overload, Union
+from typing_extensions import TypeIs
+
+@overload
+def typeis(x: object, y: str) -> TypeIs[str]:
+    ...
+
+@overload
+def typeis(x: object, y: int) -> TypeIs[int]:
+    ...
+
+def typeis(x: object, y: Union[int, str]) -> Union[TypeIs[int], TypeIs[str]]:
+    ...
+
+x: object
+if typeis(x=x, y=42):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if typeis(y=42, x=x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if typeis(x=x, y="42"):
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if typeis(y="42", x=x):
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testGenericAliasWithTypeIs]
+from typing import Callable, List, TypeVar
+from typing_extensions import TypeIs
+
+T = TypeVar('T')
+A = Callable[[object], TypeIs[List[T]]]
+def foo(x: object) -> TypeIs[List[str]]: ...
+
+def test(f: A[T]) -> T: ...
+reveal_type(test(foo))  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testNoCrashOnDunderCallTypeIs]
+from typing_extensions import TypeIs
+
+class A:
+    def __call__(self, x) -> TypeIs[int]:
+        return True
+
+a: A
+assert a(x=1)
+
+x: object
+assert a(x=x)
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsMustBeSubtypeFunctions]
+from typing_extensions import TypeIs
+from typing import List, Sequence, TypeVar
+
+def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"
+    pass
+
+T = TypeVar('T')
+
+def g(x: List[T]) -> TypeIs[Sequence[T]]:  # E: Narrowed type "Sequence[T]" is not a subtype of input type "list[T]"
+    pass
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsMustBeSubtypeMethods]
+from typing_extensions import TypeIs
+
+class NarrowHolder:
+    @classmethod
+    def cls_narrower_good(cls, x: object) -> TypeIs[int]:
+        pass
+
+    @classmethod
+    def cls_narrower_bad(cls, x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"
+        pass
+
+    @staticmethod
+    def static_narrower_good(x: object) -> TypeIs[int]:
+        pass
+
+    @staticmethod
+    def static_narrower_bad(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"
+        pass
+
+    def inst_narrower_good(self, x: object) -> TypeIs[int]:
+        pass
+
+    def inst_narrower_bad(self, x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"
+        pass
+
+
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeIsTypeGuardNoSubtyping]
+from typing_extensions import TypeGuard, TypeIs
+from typing import Callable
+
+def accept_typeis(x: Callable[[object], TypeIs[str]]):
+    pass
+
+def accept_typeguard(x: Callable[[object], TypeGuard[str]]):
+    pass
+
+def typeis(x: object) -> TypeIs[str]:
+    pass
+
+def typeguard(x: object) -> TypeGuard[str]:
+    pass
+
+accept_typeis(typeis)
+accept_typeis(typeguard)  # E: Argument 1 to "accept_typeis" has incompatible type "Callable[[object], TypeGuard[str]]"; expected "Callable[[object], TypeIs[str]]"
+accept_typeguard(typeis)  # E: Argument 1 to "accept_typeguard" has incompatible type "Callable[[object], TypeIs[str]]"; expected "Callable[[object], TypeGuard[str]]"
+accept_typeguard(typeguard)
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsEnumOverlappingUnionExcludesIrrelevant]
+from enum import Enum
+from typing import Literal
+from typing_extensions import TypeIs
+
+class Model(str, Enum):
+    A = 'a'
+    B = 'a'
+
+def is_model_a(model: str) -> TypeIs[Literal[Model.A, "foo"]]:
+    return True
+
+def handle(model: Model) -> None:
+    if is_model_a(model):
+        reveal_type(model)  # N: Revealed type is "Literal[__main__.Model.A]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsAwaitableAny]
+from __future__ import annotations
+from typing import Any, Awaitable, Callable
+from typing_extensions import TypeIs
+
+def is_async_callable(obj: Any) -> TypeIs[Callable[..., Awaitable[Any]]]: ...
+
+def main(f: Callable[[], int | Awaitable[int]]) -> None:
+    if is_async_callable(f):
+        reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> typing.Awaitable[Any]"
+    else:
+        reveal_type(f)  # N: Revealed type is "def () -> Union[builtins.int, typing.Awaitable[builtins.int]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsWithDefer]
+from typing import Union
+from typing_extensions import TypeIs
+
+class A: ...
+class B: ...
+
+def is_a(x: object) -> TypeIs[A]:
+    return defer_not_defined()  # E: Name "defer_not_defined" is not defined
+
+def main(x: Union[A, B]) -> None:
+    if is_a(x):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+[builtins fixtures/tuple.pyi]

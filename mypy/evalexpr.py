@@ -6,6 +6,7 @@ Used by stubtest; in a separate file because things break if we don't
 put it in a mypyc-compiled file.
 
 """
+
 import ast
 from typing import Final
 

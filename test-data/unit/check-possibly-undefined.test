@@ -1026,3 +1026,20 @@ class B:
         else:
             # Same as above but in a loop.
             b = a  # E: Name "a" may be undefined
+
+[case testUnreachableCausingMissingTypeMap]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def --no-warn-unreachable
+# Regression test for https://github.com/python/mypy/issues/15958
+from typing import Union, NoReturn
+
+def assert_never(__x: NoReturn) -> NoReturn: ...
+
+def foo(x: Union[int, str]) -> None:
+    if isinstance(x, str):
+        f = "foo"
+    elif isinstance(x, int):
+        f = "bar"
+    else:
+        assert_never(x)
+    f  # OK
+[builtins fixtures/tuple.pyi]

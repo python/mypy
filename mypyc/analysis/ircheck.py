@@ -1,4 +1,5 @@
 """Utilities for checking that internal ir is valid and consistent."""
+
 from __future__ import annotations
 
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR
@@ -16,6 +17,7 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    Float,
     FloatComparisonOp,
     FloatNeg,
     FloatOp,
@@ -36,20 +38,25 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
     RArray,
     RInstance,
     RPrimitive,
@@ -145,7 +152,7 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
     for block in fn.blocks:
         for op in block.ops:
             for source in op.sources():
-                if isinstance(source, Integer):
+                if isinstance(source, (Integer, Float, Undef)):
                     pass
                 elif isinstance(source, Op):
                     if source not in valid_ops:
@@ -175,7 +182,7 @@ disjoint_types = {
     set_rprimitive.name,
     tuple_rprimitive.name,
     range_rprimitive.name,
-}
+} | set(KNOWN_NATIVE_TYPES)
 
 
 def can_coerce_to(src: RType, dest: RType) -> bool:
@@ -379,6 +386,9 @@ class OpChecker(OpVisitor[None]):
     def visit_call_c(self, op: CallC) -> None:
         pass
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> None:
+        pass
+
     def visit_truncate(self, op: Truncate) -> None:
         pass
 
@@ -417,8 +427,14 @@ class OpChecker(OpVisitor[None]):
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         pass
 
+    def visit_set_element(self, op: SetElement) -> None:
+        pass
+
     def visit_load_address(self, op: LoadAddress) -> None:
         pass
 
     def visit_keep_alive(self, op: KeepAlive) -> None:
+        pass
+
+    def visit_unborrow(self, op: Unborrow) -> None:
         pass

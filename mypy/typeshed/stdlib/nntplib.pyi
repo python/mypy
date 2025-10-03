@@ -1,12 +1,11 @@
 import datetime
 import socket
 import ssl
-import sys
 from _typeshed import Unused
 from builtins import list as _list  # conflicts with a method named "list"
 from collections.abc import Iterable
-from typing import IO, Any, NamedTuple
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Final, NamedTuple
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "NNTP",
@@ -31,8 +30,8 @@ class NNTPPermanentError(NNTPError): ...
 class NNTPProtocolError(NNTPError): ...
 class NNTPDataError(NNTPError): ...
 
-NNTP_PORT: Literal[119]
-NNTP_SSL_PORT: Literal[563]
+NNTP_PORT: Final = 119
+NNTP_SSL_PORT: Final = 563
 
 class GroupInfo(NamedTuple):
     group: str
@@ -98,10 +97,6 @@ class NNTP:
     def over(
         self, message_spec: None | str | _list[Any] | tuple[Any, ...], *, file: _File = None
     ) -> tuple[str, _list[tuple[int, dict[str, str]]]]: ...
-    if sys.version_info < (3, 9):
-        def xgtitle(self, group: str, *, file: _File = None) -> tuple[str, _list[tuple[str, str]]]: ...
-        def xpath(self, id: Any) -> tuple[str, str]: ...
-
     def date(self) -> tuple[str, datetime.datetime]: ...
     def post(self, data: bytes | Iterable[bytes]) -> str: ...
     def ihave(self, message_id: Any, data: bytes | Iterable[bytes]) -> str: ...

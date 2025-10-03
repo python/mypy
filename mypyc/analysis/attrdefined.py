@@ -63,7 +63,7 @@ run this on __init__ methods, this analysis pass will be fairly quick.
 
 from __future__ import annotations
 
-from typing import Final, Set, Tuple
+from typing import Final
 
 from mypyc.analysis.dataflow import (
     CFG,
@@ -138,6 +138,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> No
         or cl.builtin_base is not None
         or cl.children is None
         or cl.is_serializable()
+        or cl.has_method("__new__")
     ):
         # Give up -- we can't enforce that attributes are always defined.
         return
@@ -176,7 +177,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> No
         m.blocks, self_reg, maybe_defined, dirty
     )
 
-    mark_attr_initialiation_ops(m.blocks, self_reg, maybe_defined, dirty)
+    mark_attr_initialization_ops(m.blocks, self_reg, maybe_defined, dirty)
 
     # Check if __init__ can run unpredictable code (leak 'self').
     any_dirty = False
@@ -260,7 +261,7 @@ def find_sometimes_defined_attributes(
     return attrs
 
 
-def mark_attr_initialiation_ops(
+def mark_attr_initialization_ops(
     blocks: list[BasicBlock],
     self_reg: Register,
     maybe_defined: AnalysisResult[str],
@@ -279,13 +280,13 @@ def mark_attr_initialiation_ops(
                     op.mark_as_initializer()
 
 
-GenAndKill = Tuple[Set[str], Set[str]]
+GenAndKill = tuple[set[str], set[str]]
 
 
 def attributes_initialized_by_init_call(op: Call) -> set[str]:
     """Calculate attributes that are always initialized by a super().__init__ call."""
     self_type = op.fn.sig.args[0].type
-    assert isinstance(self_type, RInstance)
+    assert isinstance(self_type, RInstance), self_type
     cl = self_type.class_ir
     return {a for base in cl.mro for a in base.attributes if base.is_always_defined(a)}
 
@@ -293,7 +294,7 @@ def attributes_initialized_by_init_call(op: Call) -> set[str]:
 def attributes_maybe_initialized_by_init_call(op: Call) -> set[str]:
     """Calculate attributes that may be initialized by a super().__init__ call."""
     self_type = op.fn.sig.args[0].type
-    assert isinstance(self_type, RInstance)
+    assert isinstance(self_type, RInstance), self_type
     cl = self_type.class_ir
     return attributes_initialized_by_init_call(op) | cl._sometimes_initialized_attrs
 
@@ -421,7 +422,7 @@ def detect_undefined_bitmap(cl: ClassIR, seen: set[ClassIR]) -> None:
         return
     seen.add(cl)
     for base in cl.base_mro[1:]:
-        detect_undefined_bitmap(cl, seen)
+        detect_undefined_bitmap(base, seen)
 
     if len(cl.base_mro) > 1:
         cl.bitmap_attrs.extend(cl.base_mro[1].bitmap_attrs)

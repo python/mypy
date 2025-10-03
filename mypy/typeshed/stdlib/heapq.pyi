@@ -1,8 +1,7 @@
 from _heapq import *
 from _typeshed import SupportsRichComparison
-from collections.abc import Callable, Iterable
-from typing import Any, TypeVar
-from typing_extensions import Final
+from collections.abc import Callable, Generator, Iterable
+from typing import Any, Final, TypeVar
 
 __all__ = ["heappush", "heappop", "heapify", "heapreplace", "merge", "nlargest", "nsmallest", "heappushpop"]
 
@@ -12,7 +11,7 @@ __about__: Final[str]
 
 def merge(
     *iterables: Iterable[_S], key: Callable[[_S], SupportsRichComparison] | None = None, reverse: bool = False
-) -> Iterable[_S]: ...
+) -> Generator[_S]: ...
 def nlargest(n: int, iterable: Iterable[_S], key: Callable[[_S], SupportsRichComparison] | None = None) -> list[_S]: ...
 def nsmallest(n: int, iterable: Iterable[_S], key: Callable[[_S], SupportsRichComparison] | None = None) -> list[_S]: ...
-def _heapify_max(__heap: list[Any]) -> None: ...  # undocumented
+def _heapify_max(heap: list[Any], /) -> None: ...  # undocumented

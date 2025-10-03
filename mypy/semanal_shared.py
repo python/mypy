@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, Final, overload
-from typing_extensions import Literal, Protocol
+from typing import Callable, Final, Literal, Protocol, overload
 
 from mypy_extensions import trait
 
-from mypy import join
 from mypy.errorcodes import LITERAL_REQ, ErrorCode
 from mypy.nodes import (
     CallExpr,
@@ -30,6 +28,7 @@ from mypy.nodes import (
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
+from mypy.typeops import make_simplified_union
 from mypy.types import (
     TPDICT_FB_NAMES,
     AnyType,
@@ -45,6 +44,9 @@ from mypy.types import (
     TypeOfAny,
     TypeVarId,
     TypeVarLikeType,
+    TypeVarTupleType,
+    UnpackType,
+    flatten_nested_tuples,
     get_proper_type,
 )
 
@@ -56,7 +58,7 @@ ALLOW_INCOMPATIBLE_OVERRIDE: Final = ("__slots__", "__deletable__", "__match_arg
 # Priorities for ordering of patches within the "patch" phase of semantic analysis
 # (after the main pass):
 
-# Fix fallbacks (does joins)
+# Fix fallbacks (does subtype checks).
 PRIORITY_FALLBACKS: Final = 1
 
 
@@ -74,11 +76,11 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+    def lookup_fully_qualified(self, fullname: str, /) -> SymbolTableNode:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode | None:
+    def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -174,15 +176,17 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @abstractmethod
     def anal_type(
         self,
-        t: Type,
+        typ: Type,
+        /,
         *,
         tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
-        allow_required: bool = False,
+        allow_typed_dict_special_forms: bool = False,
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        prohibit_special_class_field_types: str | None = None,
     ) -> Type | None:
         raise NotImplementedError
 
@@ -195,11 +199,11 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def schedule_patch(self, priority: int, fn: Callable[[], None]) -> None:
+    def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> bool:
+    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode) -> bool:
         """Add node to the current symbol table."""
         raise NotImplementedError
 
@@ -239,7 +243,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def qualified_name(self, n: str) -> str:
+    def qualified_name(self, name: str) -> str:
         raise NotImplementedError
 
     @property
@@ -286,18 +290,35 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     """
     fallback = typ.partial_fallback
     assert fallback.type.fullname == "builtins.tuple"
-    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]
+    items = []
+    for item in flatten_nested_tuples(typ.items):
+        # TODO: this duplicates some logic in typeops.tuple_fallback().
+        if isinstance(item, UnpackType):
+            unpacked_type = get_proper_type(item.type)
+            if isinstance(unpacked_type, TypeVarTupleType):
+                unpacked_type = get_proper_type(unpacked_type.upper_bound)
+            if (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                items.append(unpacked_type.args[0])
+            else:
+                # This is called before semanal_typeargs.py fixes broken unpacks,
+                # where the error should also be generated.
+                items.append(AnyType(TypeOfAny.from_error))
+        else:
+            items.append(item)
+    fallback.args = (make_simplified_union(items),)
 
 
 class _NamedTypeCallback(Protocol):
-    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance:
-        ...
+    def __call__(self, fullname: str, args: list[Type] | None = None) -> Instance: ...
 
 
 def paramspec_args(
     name: str,
     fullname: str,
-    id: TypeVarId | int,
+    id: TypeVarId,
     *,
     named_type_func: _NamedTypeCallback,
     line: int = -1,
@@ -320,7 +341,7 @@ def paramspec_args(
 def paramspec_kwargs(
     name: str,
     fullname: str,
-    id: TypeVarId | int,
+    id: TypeVarId,
     *,
     named_type_func: _NamedTypeCallback,
     line: int = -1,
@@ -434,9 +455,8 @@ def require_bool_literal_argument(
     api: SemanticAnalyzerInterface | SemanticAnalyzerPluginInterface,
     expression: Expression,
     name: str,
-    default: Literal[True] | Literal[False],
-) -> bool:
-    ...
+    default: Literal[True, False],
+) -> bool: ...
 
 
 @overload
@@ -445,8 +465,7 @@ def require_bool_literal_argument(
     expression: Expression,
     name: str,
     default: None = None,
-) -> bool | None:
-    ...
+) -> bool | None: ...
 
 
 def require_bool_literal_argument(

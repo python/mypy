@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
-from typing import Any, Dict, Final
+from typing import Any, Final
 
 from mypy.util import unnamed_function
 
@@ -13,7 +13,9 @@ REG_PREFIX: Final = "cpy_r_"  # Registers
 STATIC_PREFIX: Final = "CPyStatic_"  # Static variables (for literals etc.)
 TYPE_PREFIX: Final = "CPyType_"  # Type object struct
 MODULE_PREFIX: Final = "CPyModule_"  # Cached modules
+TYPE_VAR_PREFIX: Final = "CPyTypeVar_"  # Type variables when using new-style Python 3.12 syntax
 ATTR_PREFIX: Final = "_"  # Attributes
+FAST_PREFIX: Final = "__mypyc_fast_"  # Optimized methods in non-extension classes
 
 ENV_ATTR_NAME: Final = "__mypyc_env__"
 NEXT_LABEL_ATTR_NAME: Final = "__mypyc_next_label__"
@@ -21,6 +23,7 @@ TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
+GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
@@ -78,10 +81,21 @@ RUNTIME_C_FILES: Final = [
     "exc_ops.c",
     "misc_ops.c",
     "generic_ops.c",
+    "pythonsupport.c",
 ]
 
+# Python 3.12 introduced immortal objects, specified via a special reference count
+# value. The reference counts of immortal objects are normally not modified, but it's
+# not strictly wrong to modify them. See PEP 683 for more information, but note that
+# some details in the PEP are out of date.
+HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)
 
-JsonDict = Dict[str, Any]
+# Are we running on a free-threaded build (GIL disabled)? This implies that
+# we are on Python 3.13 or later.
+IS_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
+
+JsonDict = dict[str, Any]
 
 
 def shared_lib_name(group_name: str) -> str:
@@ -96,21 +110,6 @@ def short_name(name: str) -> str:
     if name.startswith("builtins."):
         return name[9:]
     return name
-
-
-def use_fastcall(capi_version: tuple[int, int]) -> bool:
-    # We can use METH_FASTCALL for faster wrapper functions on Python 3.7+.
-    return capi_version >= (3, 7)
-
-
-def use_vectorcall(capi_version: tuple[int, int]) -> bool:
-    # We can use vectorcalls to make calls on Python 3.8+ (PEP 590).
-    return capi_version >= (3, 8)
-
-
-def use_method_vectorcall(capi_version: tuple[int, int]) -> bool:
-    # We can use a dedicated vectorcall API to call methods on Python 3.9+.
-    return capi_version >= (3, 9)
 
 
 def get_id_from_name(name: str, fullname: str, line: int) -> str:

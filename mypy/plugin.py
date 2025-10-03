@@ -114,22 +114,19 @@ a forward reference to a class in a top-level annotation. Example:
 Note that a forward reference in a function signature won't trigger another
 pass, since all functions are processed only after the top level has been fully
 analyzed.
-
-You can use `api.options.new_semantic_analyzer` to check whether the new
-semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Callable, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, TypeVar
 
 from mypy_extensions import mypyc_attr, trait
 
 from mypy.errorcodes import ErrorCode
+from mypy.errors import ErrorInfo
 from mypy.lookup import lookup_fully_qualified
 from mypy.message_registry import ErrorMessage
-from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ArgKind,
     CallExpr,
@@ -141,7 +138,6 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     CallableType,
     FunctionLike,
@@ -151,6 +147,10 @@ from mypy.types import (
     TypeList,
     UnboundType,
 )
+
+if TYPE_CHECKING:
+    from mypy.messages import MessageBuilder
+    from mypy.tvar_scope import TypeVarLikeScope
 
 
 @trait
@@ -173,12 +173,12 @@ class TypeAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, name: str, args: list[Type]) -> Instance:
+    def named_type(self, fullname: str, args: list[Type], /) -> Instance:
         """Construct an instance of a builtin type with given name."""
         raise NotImplementedError
 
     @abstractmethod
-    def analyze_type(self, typ: Type) -> Type:
+    def analyze_type(self, typ: Type, /) -> Type:
         """Analyze an unbound type using the default mypy logic."""
         raise NotImplementedError
 
@@ -240,14 +240,14 @@ class CheckerPluginInterface:
 
     @abstractmethod
     def fail(
-        self, msg: str | ErrorMessage, ctx: Context, *, code: ErrorCode | None = None
-    ) -> None:
+        self, msg: str | ErrorMessage, ctx: Context, /, *, code: ErrorCode | None = None
+    ) -> ErrorInfo | None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
     def named_generic_type(self, name: str, args: list[Type]) -> Instance:
-        """Construct an instance of a builtin type with given type arguments."""
+        """Construct an instance of a generic type with given type arguments."""
         raise NotImplementedError
 
     @abstractmethod
@@ -322,13 +322,13 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def anal_type(
         self,
-        t: Type,
+        typ: Type,
+        /,
         *,
         tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         report_invalid_types: bool = True,
-        third_pass: bool = False,
     ) -> Type | None:
         """Analyze an unbound type.
 
@@ -344,7 +344,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+    def lookup_fully_qualified(self, fullname: str, /) -> SymbolTableNode:
         """Lookup a symbol by its fully qualified name.
 
         Raise an error if not found.
@@ -352,7 +352,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode | None:
+    def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
         """Lookup a symbol by its fully qualified name.
 
         Return None if not found.
@@ -388,12 +388,12 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> Any:
+    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode) -> Any:
         """Add node to global symbol table (or to nearest class if there is one)."""
         raise NotImplementedError
 
     @abstractmethod
-    def qualified_name(self, n: str) -> str:
+    def qualified_name(self, name: str) -> str:
         """Make qualified name using current module and enclosing class (if any)."""
         raise NotImplementedError
 
@@ -496,6 +496,7 @@ class MethodContext(NamedTuple):
 class AttributeContext(NamedTuple):
     type: ProperType  # Type of object with attribute
     default_attr_type: Type  # Original attribute type
+    is_lvalue: bool  # Whether the attribute is the target of an assignment
     context: Context  # Relevant location context (e.g. for error messages)
     api: CheckerPluginInterface
 
@@ -845,12 +846,22 @@ class ChainedPlugin(Plugin):
         return deps
 
     def get_type_analyze_hook(self, fullname: str) -> Callable[[AnalyzeTypeContext], Type] | None:
-        return self._find_hook(lambda plugin: plugin.get_type_analyze_hook(fullname))
+        # Micro-optimization: Inline iteration over plugins
+        for plugin in self._plugins:
+            hook = plugin.get_type_analyze_hook(fullname)
+            if hook is not None:
+                return hook
+        return None
 
     def get_function_signature_hook(
         self, fullname: str
     ) -> Callable[[FunctionSigContext], FunctionLike] | None:
-        return self._find_hook(lambda plugin: plugin.get_function_signature_hook(fullname))
+        # Micro-optimization: Inline iteration over plugins
+        for plugin in self._plugins:
+            hook = plugin.get_function_signature_hook(fullname)
+            if hook is not None:
+                return hook
+        return None
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         return self._find_hook(lambda plugin: plugin.get_function_hook(fullname))
@@ -858,13 +869,28 @@ class ChainedPlugin(Plugin):
     def get_method_signature_hook(
         self, fullname: str
     ) -> Callable[[MethodSigContext], FunctionLike] | None:
-        return self._find_hook(lambda plugin: plugin.get_method_signature_hook(fullname))
+        # Micro-optimization: Inline iteration over plugins
+        for plugin in self._plugins:
+            hook = plugin.get_method_signature_hook(fullname)
+            if hook is not None:
+                return hook
+        return None
 
     def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
-        return self._find_hook(lambda plugin: plugin.get_method_hook(fullname))
+        # Micro-optimization: Inline iteration over plugins
+        for plugin in self._plugins:
+            hook = plugin.get_method_hook(fullname)
+            if hook is not None:
+                return hook
+        return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
-        return self._find_hook(lambda plugin: plugin.get_attribute_hook(fullname))
+        # Micro-optimization: Inline iteration over plugins
+        for plugin in self._plugins:
+            hook = plugin.get_attribute_hook(fullname)
+            if hook is not None:
+                return hook
+        return None
 
     def get_class_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         return self._find_hook(lambda plugin: plugin.get_class_attribute_hook(fullname))
@@ -896,6 +922,6 @@ class ChainedPlugin(Plugin):
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> T | None:
         for plugin in self._plugins:
             hook = lookup(plugin)
-            if hook:
+            if hook is not None:
                 return hook
         return None

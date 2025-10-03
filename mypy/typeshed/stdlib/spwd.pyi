@@ -1,7 +1,6 @@
 import sys
 from _typeshed import structseq
-from typing import Any
-from typing_extensions import Final, final
+from typing import Any, Final, final
 
 if sys.platform != "win32":
     @final
@@ -18,6 +17,7 @@ if sys.platform != "win32":
                 "sp_expire",
                 "sp_flag",
             )
+
         @property
         def sp_namp(self) -> str: ...
         @property
@@ -36,6 +36,11 @@ if sys.platform != "win32":
         def sp_expire(self) -> int: ...
         @property
         def sp_flag(self) -> int: ...
+        # Deprecated aliases below.
+        @property
+        def sp_nam(self) -> str: ...
+        @property
+        def sp_pwd(self) -> str: ...
 
     def getspall() -> list[struct_spwd]: ...
-    def getspnam(__arg: str) -> struct_spwd: ...
+    def getspnam(arg: str, /) -> struct_spwd: ...

@@ -1,0 +1,41 @@
+[case testInferTupleType]
+from typing import TypeVar, Generic, Type
+from abc import abstractmethod
+import types  # Explicitly bring in stubs for 'types'
+
+T = TypeVar('T')
+class E(Generic[T]):
+    @abstractmethod
+    def e(self, t: T) -> str:
+        ...
+
+class F:
+    @abstractmethod
+    def f(self, tp: Type[T]) -> E[T]:
+        ...
+
+def g(f: F):
+    f.f(int).e(7)
+    f.f(tuple[int,str])
+    f.f(tuple[int,str]).e('x')  # E: Argument 1 to "e" of "E" has incompatible type "str"; expected "tuple[int, str]"
+    f.f(tuple[int,str]).e( (7,8) )  # E: Argument 1 to "e" of "E" has incompatible type "tuple[int, int]"; expected "tuple[int, str]"
+    f.f(tuple[int,str]).e( (7,'x') )  # OK
+    reveal_type(f.f(tuple[int,str]).e)  # N: Revealed type is "def (t: tuple[builtins.int, builtins.str]) -> builtins.str"
+
+def h(f: F):
+    f.f(int).e(7)
+    f.f(tuple)
+    f.f(tuple).e('y') # E: Argument 1 to "e" of "E" has incompatible type "str"; expected "tuple[Any, ...]"
+    f.f(tuple).e( (8,'y') )  # OK
+    reveal_type(f.f(tuple).e)  # N: Revealed type is "def (t: builtins.tuple[Any, ...]) -> builtins.str"
+
+def i(f: F):
+    f.f(tuple[int,tuple[int,str]])
+    f.f(tuple[int,tuple[int,str]]).e('z')  # E: Argument 1 to "e" of "E" has incompatible type "str"; expected "tuple[int, tuple[int, str]]"
+    f.f(tuple[int,tuple[int,str]]).e( (8,9) )  # E: Argument 1 to "e" of "E" has incompatible type "tuple[int, int]"; expected "tuple[int, tuple[int, str]]"
+    f.f(tuple[int,tuple[int,str]]).e( (17, (28, 29)) )  # E: Argument 1 to "e" of "E" has incompatible type "tuple[int, tuple[int, int]]"; expected "tuple[int, tuple[int, str]]"
+    f.f(tuple[int,tuple[int,str]]).e( (27,(28,'z')) )  # OK
+    reveal_type(f.f(tuple[int,tuple[int,str]]).e)  # N: Revealed type is "def (t: tuple[builtins.int, tuple[builtins.int, builtins.str]]) -> builtins.str"
+
+x = tuple[int,str][str]  # False negative
+[builtins fixtures/tuple.pyi]
