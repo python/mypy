@@ -58,6 +58,7 @@ from mypyc.ir.rtypes import (
     RInstance,
     bool_rprimitive,
     c_int_rprimitive,
+    dict_rprimitive,
     exact_dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
