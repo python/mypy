@@ -2698,7 +2698,6 @@ class InvalidArg:
                                  # N: supported keys: 'allow_interpreted_subclasses', 'free_list_len', 'native_class', 'serializable'
 class InvalidKwarg:
     pass
-@mypyc_attr(str())  # E: All `mypyc_attr` positional arguments must be string literals. \
-                    # N: supported keys: 'allow_interpreted_subclasses', 'free_list_len', 'native_class', 'serializable'
+@mypyc_attr(str())  # E: All `mypyc_attr` positional arguments must be string literals.
 class InvalidLiteral:
     pass
