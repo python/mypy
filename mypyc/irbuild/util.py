@@ -142,7 +142,7 @@ def get_mypyc_attrs(
             attrs[key] = value
             lines[key] = line
         else:
-            errors.error(f"{key} is not a supported `mypyc_attrs` key.", path, line)
+            errors.error(f"{key!r} is not a supported `mypyc_attr`", path, line)
             errors.note(f"supported keys: {', '.join(map(repr, sorted(MYPYC_ATTRS)))}", path, line)
 
     for dec in stmt.decorators:
