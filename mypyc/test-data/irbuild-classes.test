@@ -2688,6 +2688,8 @@ L0:
     return 1
 
 [case testInvalidMypycAttr]
+from mypy_extensions import mypyc_attr
+
 @mypyc_attr("allow_interpreted_subclasses", "invalid_arg")  # E: 'invalid_arg' is not a supported `mypyc_attr`
 class InvalidArg:
     pass
