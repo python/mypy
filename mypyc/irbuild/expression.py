@@ -518,6 +518,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     return builder.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
 
 
+@folding_candidate
 def translate_cast_expr(builder: IRBuilder, expr: CastExpr) -> Value:
     src = builder.accept(expr.expr)
     target_type = builder.type_to_rtype(expr.type)
