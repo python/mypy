@@ -19,6 +19,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -80,20 +81,21 @@ isinstance_dict = function_op(
     error_kind=ERR_NEVER,
 )
 
-# dict[key]
-exact_dict_get_item_op = custom_op(
-    arg_types=[dict_rprimitive, object_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyDict_GetItemUnsafe",
-    error_kind=ERR_MAGIC,
-)
-
-# dictsubclass[key]
+# dict[key] = value
 dict_get_item_op = method_op(
     name="__getitem__",
     arg_types=[dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyDict_GetItem",
+    error_kind=ERR_MAGIC,
+)
+
+# dict[key] = value (exact dict only, no subclasses)
+# NOTE: this is currently for internal use only, and not used for CallExpr specialization
+exact_dict_get_item_op = custom_primitive_op(
+    arg_types=[dict_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyDict_GetItemUnsafe",
     error_kind=ERR_MAGIC,
 )
 
