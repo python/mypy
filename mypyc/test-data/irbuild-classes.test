@@ -1064,7 +1064,7 @@ L0:
     return 1
 def B.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.B
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: str

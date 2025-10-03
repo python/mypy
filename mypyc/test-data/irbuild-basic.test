@@ -1672,7 +1672,7 @@ L0:
     return r0
 def g():
     r0 :: tuple[int, int, int]
-    r1 :: dict
+    r1 :: dict[exact]
     r2 :: str
     r3, r4, r5 :: object
     r6 :: tuple[int, int, int]
@@ -1687,7 +1687,7 @@ L0:
     return r6
 def h():
     r0 :: tuple[int, int]
-    r1 :: dict
+    r1 :: dict[exact]
     r2 :: str
     r3 :: object
     r4 :: list
@@ -1732,7 +1732,7 @@ L0:
 def g():
     r0, r1, r2 :: str
     r3, r4, r5 :: object
-    r6, r7 :: dict
+    r6, r7 :: dict[exact]
     r8 :: str
     r9 :: object
     r10 :: tuple
@@ -1758,7 +1758,7 @@ L0:
 def h():
     r0, r1 :: str
     r2, r3 :: object
-    r4, r5 :: dict
+    r4, r5 :: dict[exact]
     r6 :: str
     r7 :: object
     r8 :: dict
@@ -2149,7 +2149,7 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: object
     r9, r10 :: str
     r11 :: object
@@ -2161,53 +2161,53 @@ def __top_level__():
     r17 :: object
     r18 :: tuple[object, object]
     r19 :: object
-    r20 :: dict
+    r20 :: dict[exact]
     r21 :: str
     r22 :: object
     r23 :: object[2]
     r24 :: object_ptr
     r25 :: object
-    r26 :: dict
+    r26 :: dict[exact]
     r27 :: str
     r28 :: i32
     r29 :: bit
     r30 :: str
-    r31 :: dict
+    r31 :: dict[exact]
     r32 :: str
     r33, r34 :: object
     r35 :: object[2]
     r36 :: object_ptr
     r37 :: object
     r38 :: tuple
-    r39 :: dict
+    r39 :: dict[exact]
     r40 :: str
     r41 :: i32
     r42 :: bit
-    r43 :: dict
+    r43 :: dict[exact]
     r44 :: str
     r45, r46, r47 :: object
-    r48 :: dict
+    r48 :: dict[exact]
     r49 :: str
     r50 :: i32
     r51 :: bit
     r52 :: str
-    r53 :: dict
+    r53 :: dict[exact]
     r54 :: str
     r55 :: object
-    r56 :: dict
+    r56 :: dict[exact]
     r57 :: str
     r58 :: object
     r59 :: object[2]
     r60 :: object_ptr
     r61 :: object
-    r62 :: dict
+    r62 :: dict[exact]
     r63 :: str
     r64 :: i32
     r65 :: bit
     r66 :: list
     r67, r68, r69 :: object
     r70 :: ptr
-    r71 :: dict
+    r71 :: dict[exact]
     r72 :: str
     r73 :: i32
     r74 :: bit
@@ -2784,7 +2784,7 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: object
 L0:
     r0 = builtins :: module
@@ -3284,7 +3284,7 @@ x = 1
 [file p/m.py]
 [out]
 def root():
-    r0 :: dict
+    r0 :: dict[exact]
     r1, r2 :: object
     r3 :: bit
     r4 :: str
@@ -3295,7 +3295,7 @@ def root():
     r9 :: object
     r10 :: i32
     r11 :: bit
-    r12 :: dict
+    r12 :: dict[exact]
     r13, r14 :: object
     r15 :: bit
     r16 :: str
@@ -3341,7 +3341,7 @@ L4:
     r23 = r22 >= 0 :: signed
     return 1
 def submodule():
-    r0 :: dict
+    r0 :: dict[exact]
     r1, r2 :: object
     r3 :: bit
     r4 :: str
