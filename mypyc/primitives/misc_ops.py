@@ -189,6 +189,15 @@ fast_isinstance_op = function_op(
     priority=0,
 )
 
+# bool(dict)
+dict_is_true_op = function_op(
+    name="builtins.bool",
+    arg_types=[exact_dict_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyDict_IsTrue",
+    error_kind=ERR_NEVER,
+)
+
 # bool(obj) with unboxed result
 bool_op = function_op(
     name="builtins.bool",
