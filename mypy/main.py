@@ -1458,7 +1458,7 @@ def process_options(
 
     options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
 
-    def _bad_error_code_flags(msg: str):
+    def _bad_error_code_flags(msg: str) -> None:
         raise CompileError([msg])
 
     # Processing error codes after plugins have loaded since plugins may
