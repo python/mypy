@@ -282,7 +282,7 @@ L2:
     r13 = 'T'
     r14 = __main__.globals :: static
     r15 = 'TypeVar'
-    r16 = CPyDict_GetItem(r14, r15)
+    r16 = CPyDict_GetItemUnsafe(r14, r15)
     r17 = [r13]
     r18 = load_address r17
     r19 = PyObject_Vectorcall(r16, r18, 1, 0)
@@ -322,11 +322,11 @@ L2:
     r50 = __main__.S :: type
     r51 = __main__.globals :: static
     r52 = 'Generic'
-    r53 = CPyDict_GetItem(r51, r52)
+    r53 = CPyDict_GetItemUnsafe(r51, r52)
     r54 = __main__.globals :: static
     r55 = 'T'
     r56 = CPyDict_GetItem(r54, r55)
-    r57 = PyObject_GetItem(r53, r56)
+    r57 = PyObject_GetItemUnsafe(r53, r56)
     r58 = PyTuple_Pack(3, r49, r50, r57)
     r59 = '__main__'
     r60 = __main__.D_template :: type
@@ -1073,7 +1073,7 @@ L0:
     __mypyc_self__.x = 20
     r0 = __main__.globals :: static
     r1 = 'LOL'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = cast(str, r2)
     __mypyc_self__.y = r3
     r4 = box(None, 1)

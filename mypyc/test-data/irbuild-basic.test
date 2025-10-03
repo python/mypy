@@ -622,7 +622,7 @@ def f(x):
 L0:
     r0 = __main__.globals :: static
     r1 = 'g'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = box(int, x)
     r4 = [r3]
     r5 = load_address r4
@@ -637,7 +637,7 @@ L0:
     r13 = CPyTagged_Add(r7, r12)
     r14 = __main__.globals :: static
     r15 = 'two'
-    r16 = CPyDict_GetItem(r14, r15)
+    r16 = CPyDict_GetItemUnsafe(r14, r15)
     r17 = PyObject_Vectorcall(r16, 0, 0, 0)
     r18 = unbox(int, r17)
     r19 = CPyTagged_Add(r13, r18)
@@ -1147,7 +1147,7 @@ def call_python_function(x):
 L0:
     r0 = __main__.globals :: static
     r1 = 'f'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = box(int, x)
     r4 = [r3]
     r5 = load_address r4
@@ -1165,7 +1165,7 @@ def return_callable_type():
 L0:
     r0 = __main__.globals :: static
     r1 = 'return_float'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     return r2
 def call_callable_type():
     r0, f, r1 :: object
@@ -1436,7 +1436,7 @@ def f():
 L0:
     r0 = __main__.globals :: static
     r1 = 'x'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = unbox(int, r2)
     r4 = builtins :: module
     r5 = 'print'
@@ -1680,7 +1680,7 @@ L0:
     r0 = (2, 4, 6)
     r1 = __main__.globals :: static
     r2 = 'f'
-    r3 = CPyDict_GetItem(r1, r2)
+    r3 = CPyDict_GetItemUnsafe(r1, r2)
     r4 = box(tuple[int, int, int], r0)
     r5 = PyObject_CallObject(r3, r4)
     r6 = unbox(tuple[int, int, int], r5)
@@ -1701,7 +1701,7 @@ L0:
     r0 = (4, 6)
     r1 = __main__.globals :: static
     r2 = 'f'
-    r3 = CPyDict_GetItem(r1, r2)
+    r3 = CPyDict_GetItemUnsafe(r1, r2)
     r4 = PyList_New(1)
     r5 = object 1
     r6 = list_items r4
@@ -1749,7 +1749,7 @@ L0:
     r6 = CPyDict_Build(3, r0, r3, r1, r4, r2, r5)
     r7 = __main__.globals :: static
     r8 = 'f'
-    r9 = CPyDict_GetItem(r7, r8)
+    r9 = CPyDict_GetItemUnsafe(r7, r8)
     r10 = CPyTuple_LoadEmptyTupleConstant()
     r11 = PyDict_Copy(r6)
     r12 = PyObject_Call(r9, r10, r11)
@@ -1776,7 +1776,7 @@ L0:
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
     r5 = __main__.globals :: static
     r6 = 'f'
-    r7 = CPyDict_GetItem(r5, r6)
+    r7 = CPyDict_GetItemUnsafe(r5, r6)
     r8 = PyDict_New()
     r9 = CPyDict_UpdateInDisplay(r8, r4)
     r10 = r9 >= 0 :: signed
@@ -2239,7 +2239,7 @@ L2:
     r19 = box(tuple[object, object], r18)
     r20 = __main__.globals :: static
     r21 = 'NamedTuple'
-    r22 = CPyDict_GetItem(r20, r21)
+    r22 = CPyDict_GetItemUnsafe(r20, r21)
     r23 = [r9, r19]
     r24 = load_address r23
     r25 = PyObject_Vectorcall(r22, r24, 2, 0)
@@ -2251,7 +2251,7 @@ L2:
     r30 = ''
     r31 = __main__.globals :: static
     r32 = 'Lol'
-    r33 = CPyDict_GetItem(r31, r32)
+    r33 = CPyDict_GetItemUnsafe(r31, r32)
     r34 = object 1
     r35 = [r34, r30]
     r36 = load_address r35
@@ -2264,7 +2264,7 @@ L2:
     r42 = r41 >= 0 :: signed
     r43 = __main__.globals :: static
     r44 = 'List'
-    r45 = CPyDict_GetItem(r43, r44)
+    r45 = CPyDict_GetItemUnsafe(r43, r44)
     r46 = load_address PyLong_Type
     r47 = PyObject_GetItem(r45, r46)
     r48 = __main__.globals :: static
@@ -2277,7 +2277,7 @@ L2:
     r55 = CPyDict_GetItem(r53, r54)
     r56 = __main__.globals :: static
     r57 = 'NewType'
-    r58 = CPyDict_GetItem(r56, r57)
+    r58 = CPyDict_GetItemUnsafe(r56, r57)
     r59 = [r52, r55]
     r60 = load_address r59
     r61 = PyObject_Vectorcall(r58, r60, 2, 0)
@@ -2610,14 +2610,14 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = __main__.globals :: static
     r4 = 'b'
-    r5 = CPyDict_GetItem(r3, r4)
+    r5 = CPyDict_GetItemUnsafe(r3, r4)
     r6 = [r1]
     r7 = load_address r6
     r8 = PyObject_Vectorcall(r5, r7, 1, 0)
     keep_alive r1
     r9 = __main__.globals :: static
     r10 = 'a'
-    r11 = CPyDict_GetItem(r9, r10)
+    r11 = CPyDict_GetItemUnsafe(r9, r10)
     r12 = [r8]
     r13 = load_address r12
     r14 = PyObject_Vectorcall(r11, r13, 1, 0)
@@ -2681,17 +2681,17 @@ L2:
     typing = r8 :: module
     r9 = __main__.globals :: static
     r10 = 'c'
-    r11 = CPyDict_GetItem(r9, r10)
+    r11 = CPyDict_GetItemUnsafe(r9, r10)
     r12 = __main__.globals :: static
     r13 = 'b'
-    r14 = CPyDict_GetItem(r12, r13)
+    r14 = CPyDict_GetItemUnsafe(r12, r13)
     r15 = [r11]
     r16 = load_address r15
     r17 = PyObject_Vectorcall(r14, r16, 1, 0)
     keep_alive r11
     r18 = __main__.globals :: static
     r19 = 'a'
-    r20 = CPyDict_GetItem(r18, r19)
+    r20 = CPyDict_GetItemUnsafe(r18, r19)
     r21 = [r17]
     r22 = load_address r21
     r23 = PyObject_Vectorcall(r20, r22, 1, 0)
@@ -3320,7 +3320,7 @@ L2:
     r6 = 'dataclasses'
     r7 = PyImport_GetModuleDict()
     r8 = 'dataclasses'
-    r9 = CPyDict_GetItem(r7, r8)
+    r9 = CPyDict_GetItemUnsafe(r7, r8)
     r10 = CPyDict_SetItem(r0, r6, r9)
     r11 = r10 >= 0 :: signed
     r12 = __main__.globals :: static
@@ -3336,7 +3336,7 @@ L4:
     r18 = 'enum'
     r19 = PyImport_GetModuleDict()
     r20 = 'enum'
-    r21 = CPyDict_GetItem(r19, r20)
+    r21 = CPyDict_GetItemUnsafe(r19, r20)
     r22 = CPyDict_SetItem(r12, r18, r21)
     r23 = r22 >= 0 :: signed
     return 1
@@ -3377,7 +3377,7 @@ L2:
     r11 = r10 >= 0 :: signed
     r12 = PyImport_GetModuleDict()
     r13 = 'p'
-    r14 = CPyDict_GetItem(r12, r13)
+    r14 = CPyDict_GetItemUnsafe(r12, r13)
     r15 = 'x'
     r16 = CPyObject_GetAttr(r14, r15)
     r17 = unbox(int, r16)
