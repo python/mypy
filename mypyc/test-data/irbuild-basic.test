@@ -526,11 +526,11 @@ def __top_level__():
     r11 :: native_int[4]
     r12 :: c_ptr
     r13 :: object
-    r14 :: dict
+    r14 :: dict[exact]
     r15, r16 :: str
     r17 :: bit
     r18 :: str
-    r19 :: dict
+    r19 :: dict[exact]
     r20 :: str
     r21 :: i32
     r22 :: bit
@@ -540,7 +540,7 @@ def __top_level__():
     r26 :: native_int[1]
     r27 :: c_ptr
     r28 :: object
-    r29 :: dict
+    r29 :: dict[exact]
     r30, r31 :: str
     r32 :: bit
     r33 :: object
@@ -604,18 +604,18 @@ def h() -> int:
 [out]
 def f(x):
     x :: int
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2, r3 :: object
     r4 :: object[1]
     r5 :: object_ptr
     r6 :: object
     r7 :: int
-    r8 :: dict
+    r8 :: dict[exact]
     r9 :: str
     r10, r11 :: object
     r12, r13 :: int
-    r14 :: dict
+    r14 :: dict[exact]
     r15 :: str
     r16, r17 :: object
     r18, r19 :: int
@@ -648,10 +648,10 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8, r9, r10 :: object
     r11 :: str
-    r12 :: dict
+    r12 :: dict[exact]
     r13 :: object
 L0:
     r0 = builtins :: module
@@ -1137,7 +1137,7 @@ L0:
     return r0
 def call_python_function(x):
     x :: int
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2, r3 :: object
     r4 :: object[1]
@@ -1159,7 +1159,7 @@ def return_float():
 L0:
     return 5.0
 def return_callable_type():
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
 L0:
@@ -1423,7 +1423,7 @@ def f() -> None:
     print(x)
 [out]
 def f():
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: int
@@ -1452,12 +1452,12 @@ def __top_level__():
     r2 :: bit
     r3 :: str
     r4 :: object
-    r5 :: dict
+    r5 :: dict[exact]
     r6 :: str
     r7 :: object
     r8 :: i32
     r9 :: bit
-    r10 :: dict
+    r10 :: dict[exact]
     r11 :: str
     r12 :: object
     r13 :: int
@@ -1732,7 +1732,8 @@ L0:
 def g():
     r0, r1, r2 :: str
     r3, r4, r5 :: object
-    r6, r7 :: dict[exact]
+    r6 :: dict
+    r7 :: dict[exact]
     r8 :: str
     r9 :: object
     r10 :: tuple
@@ -1758,7 +1759,8 @@ L0:
 def h():
     r0, r1 :: str
     r2, r3 :: object
-    r4, r5 :: dict[exact]
+    r4 :: dict
+    r5 :: dict[exact]
     r6 :: str
     r7 :: object
     r8 :: dict
@@ -2581,19 +2583,19 @@ def c():
     r0 :: __main__.c_env
     r1 :: __main__.d_c_obj
     r2 :: bool
-    r3 :: dict
+    r3 :: dict[exact]
     r4 :: str
     r5 :: object
     r6 :: object[1]
     r7 :: object_ptr
     r8 :: object
-    r9 :: dict
+    r9 :: dict[exact]
     r10 :: str
     r11 :: object
     r12 :: object[1]
     r13 :: object_ptr
     r14, d :: object
-    r15 :: dict
+    r15 :: dict[exact]
     r16 :: str
     r17 :: i32
     r18 :: bit
@@ -2643,24 +2645,24 @@ def __top_level__():
     r3 :: str
     r4, r5 :: object
     r6 :: str
-    r7 :: dict
+    r7 :: dict[exact]
     r8 :: object
-    r9 :: dict
+    r9 :: dict[exact]
     r10 :: str
     r11 :: object
-    r12 :: dict
+    r12 :: dict[exact]
     r13 :: str
     r14 :: object
     r15 :: object[1]
     r16 :: object_ptr
     r17 :: object
-    r18 :: dict
+    r18 :: dict[exact]
     r19 :: str
     r20 :: object
     r21 :: object[1]
     r22 :: object_ptr
     r23 :: object
-    r24 :: dict
+    r24 :: dict[exact]
     r25 :: str
     r26 :: i32
     r27 :: bit
