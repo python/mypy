@@ -325,8 +325,8 @@ L2:
     r53 = CPyDict_GetItemUnsafe(r51, r52)
     r54 = __main__.globals :: static
     r55 = 'T'
-    r56 = CPyDict_GetItem(r54, r55)
-    r57 = PyObject_GetItemUnsafe(r53, r56)
+    r56 = CPyDict_GetItemUnsafe(r54, r55)
+    r57 = PyObject_GetItem(r53, r56)
     r58 = PyTuple_Pack(3, r49, r50, r57)
     r59 = '__main__'
     r60 = __main__.D_template :: type

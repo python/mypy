@@ -631,7 +631,7 @@ L0:
     r7 = unbox(int, r6)
     r8 = __main__.globals :: static
     r9 = 'h'
-    r10 = CPyDict_GetItem(r8, r9)
+    r10 = CPyDict_GetItemUnsafe(r8, r9)
     r11 = PyObject_Vectorcall(r10, 0, 0, 0)
     r12 = unbox(int, r11)
     r13 = CPyTagged_Add(r7, r12)
@@ -1484,7 +1484,7 @@ L2:
     r9 = r8 >= 0 :: signed
     r10 = __main__.globals :: static
     r11 = 'x'
-    r12 = CPyDict_GetItem(r10, r11)
+    r12 = CPyDict_GetItemUnsafe(r10, r11)
     r13 = unbox(int, r12)
     r14 = builtins :: module
     r15 = 'print'
@@ -2274,7 +2274,7 @@ L2:
     r52 = 'Bar'
     r53 = __main__.globals :: static
     r54 = 'Foo'
-    r55 = CPyDict_GetItem(r53, r54)
+    r55 = CPyDict_GetItemUnsafe(r53, r54)
     r56 = __main__.globals :: static
     r57 = 'NewType'
     r58 = CPyDict_GetItemUnsafe(r56, r57)
@@ -3372,7 +3372,7 @@ L2:
     r6 = 'p'
     r7 = PyImport_GetModuleDict()
     r8 = 'p'
-    r9 = CPyDict_GetItem(r7, r8)
+    r9 = CPyDict_GetItemUnsafe(r7, r8)
     r10 = CPyDict_SetItem(r0, r6, r9)
     r11 = r10 >= 0 :: signed
     r12 = PyImport_GetModuleDict()
