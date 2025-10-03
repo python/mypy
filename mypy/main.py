@@ -1464,8 +1464,9 @@ def process_options(
     # Processing error codes after plugins have loaded since plugins may
     # register custom error codes that we don't know about until plugins
     # have loaded.
-    options._on_plugins_loaded = \
-        lambda: options.process_error_codes(error_callback=_bad_error_code_flags)
+    options._on_plugins_loaded = lambda: options.process_error_codes(
+        error_callback=_bad_error_code_flags
+    )
 
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:
