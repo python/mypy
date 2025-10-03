@@ -93,7 +93,7 @@ from mypyc.ir.rtypes import (
     bitmap_rprimitive,
     bytes_rprimitive,
     c_pyssize_t_rprimitive,
-    dict_rprimitive,
+    exact_dict_rprimitive,
     int_rprimitive,
     is_float_rprimitive,
     is_list_rprimitive,
@@ -437,6 +437,8 @@ class IRBuilder:
     ) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
+        # must use `dict_set_item_op` instead of `exact_dict_set_item_op` because
+        # it breaks enums, and probably other stuff, if we take the fast path.
         self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
         # It's important that accessing class dictionary items from multiple threads
@@ -1409,7 +1411,7 @@ class IRBuilder:
         return self.primitive_op(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
-        return self.add(LoadStatic(dict_rprimitive, "globals", self.module_name))
+        return self.add(LoadStatic(exact_dict_rprimitive, "globals", self.module_name))
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition(".")
