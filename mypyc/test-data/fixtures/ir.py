@@ -46,6 +46,7 @@ class object:
     def __ne__(self, x: object) -> bool: pass
     def __str__(self) -> str: pass
     def __setattr__(self, k: str, v: object) -> None: pass
+    def __delattr__(self, k: str) -> None: pass
 
 class type:
     def __init__(self, o: object) -> None: ...
