@@ -627,7 +627,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 for p in self.chk.options.untyped_calls_exclude
             ):
                 self.msg.untyped_function_call(callee_type, e)
-
+        if isinstance(callee_type, Instance) and callee_type.type.has_base("enum.Enum"):
+            if e.args:
+                arg_type = get_proper_type(self.accept(e.args[0]))
+                if (
+                    isinstance(arg_type, LiteralType)
+                    and arg_type.fallback.type == callee_type.type
+                ):
+                    return arg_type
         ret_type = self.check_call_expr_with_callee_type(
             callee_type, e, fullname, object_type, member
         )
