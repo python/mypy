@@ -242,7 +242,9 @@ def sequence_from_generator_preallocate_helper(
         rtype = builder.node_type(sequence_expr)
         if is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple):
             sequence = builder.accept(sequence_expr)
-            length = get_expr_length_value(builder, sequence_expr, sequence, line, use_pyssize_t=True)
+            length = get_expr_length_value(
+                builder, sequence_expr, sequence, line, use_pyssize_t=True
+            )
             if isinstance(rtype, RTuple):
                 # If input is RTuple, box it to tuple_rprimitive for generic iteration
                 # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
@@ -271,7 +273,7 @@ def sequence_from_generator_preallocate_helper(
             )
 
             return target_op
-        
+
         elif (expr_length := get_expr_length(sequence_expr)) is not None:
             item_index = Register(int_rprimitive)
             builder.assign(item_index, Integer(0), line)
@@ -289,7 +291,7 @@ def sequence_from_generator_preallocate_helper(
                 builder, gen.indices[0], sequence_expr, set_item_noindex, None, False, line
             )
             return target_op
-          
+
     return None
 
 
