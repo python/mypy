@@ -31,7 +31,14 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     void_rtype,
 )
-from mypyc.primitives.registry import binary_op, custom_op, function_op, load_address_op, unary_op
+from mypyc.primitives.registry import (
+    binary_op,
+    custom_op,
+    function_op,
+    load_address_op,
+    method_op,
+    unary_op,
+)
 
 # Constructors for builtins.int and native int types have the same behavior. In
 # interpreted mode, native int types are just aliases to 'int'.
@@ -304,4 +311,13 @@ isinstance_int = function_op(
     return_type=bit_rprimitive,
     c_function_name="PyLong_Check",
     error_kind=ERR_NEVER,
+)
+
+# int.bit_length()
+method_op(
+    name="bit_length",
+    arg_types=[int_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyTagged_BitLength",
+    error_kind=ERR_MAGIC,
 )
