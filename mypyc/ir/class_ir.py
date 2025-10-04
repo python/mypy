@@ -239,12 +239,14 @@ class ClassIR:
 
     @property
     def allow_interpreted_subclasses(self) -> bool:
-        return self._allow_interpreted_subclasses or not self.is_ext_class and not self.is_final_class
-        
+        return (
+            self._allow_interpreted_subclasses or not self.is_ext_class and not self.is_final_class
+        )
+
     @allow_interpreted_subclasses.setter
     def _(self, value: bool) -> None:
         self._allow_interpreted_subclasses = value
-        
+
     def real_base(self) -> ClassIR | None:
         """Return the actual concrete base class, if there is one."""
         if len(self.mro) > 1 and not self.mro[1].is_trait:
