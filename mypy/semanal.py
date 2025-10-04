@@ -91,6 +91,7 @@ from mypy.nodes import (
     TYPE_VAR_TUPLE_KIND,
     VARIANCE_NOT_READY,
     ArgKind,
+    ArgKinds,
     AssertStmt,
     AssertTypeExpr,
     AssignmentExpr,
@@ -4786,7 +4787,7 @@ class SemanticAnalyzer(
         self,
         args: list[Expression],
         names: list[str | None],
-        kinds: list[ArgKind],
+        kinds: ArgKinds,
         num_values: int,
         context: Context,
     ) -> tuple[int, Type, Type] | None:

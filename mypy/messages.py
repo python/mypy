@@ -41,6 +41,7 @@ from mypy.nodes import (
     COVARIANT,
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
+    ArgKinds,
     CallExpr,
     ClassDef,
     Context,
@@ -2528,7 +2529,7 @@ def quote_type_string(type_string: str) -> str:
 
 def format_callable_args(
     arg_types: list[Type],
-    arg_kinds: list[ArgKind],
+    arg_kinds: ArgKinds,
     arg_names: list[str | None],
     format: Callable[[Type], str],
     verbosity: int,

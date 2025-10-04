@@ -21,6 +21,7 @@ from mypy.nodes import (
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
     ArgKind,
+    ArgKinds,
     Argument,
     AssertStmt,
     AssignmentExpr,
@@ -1634,9 +1635,10 @@ class ASTConverter:
         arg_types = self.translate_expr_list(
             [a.value if isinstance(a, Starred) else a for a in args] + [k.value for k in keywords]
         )
-        arg_kinds = [ARG_STAR if type(a) is Starred else ARG_POS for a in args] + [
-            ARG_STAR2 if arg is None else ARG_NAMED for arg in keyword_names
-        ]
+        arg_kinds = ArgKinds(
+            [ARG_STAR if type(a) is Starred else ARG_POS for a in args]
+            + [ARG_STAR2 if arg is None else ARG_NAMED for arg in keyword_names]
+        )
         e = CallExpr(
             self.visit(n.func),
             arg_types,
@@ -1688,7 +1690,7 @@ class ASTConverter:
                 del strs_to_join.items[-1:]
         join_method = MemberExpr(empty_string, "join")
         join_method.set_line(empty_string)
-        result_expression = CallExpr(join_method, [strs_to_join], [ARG_POS], [None])
+        result_expression = CallExpr(join_method, [strs_to_join], ArgKinds([ARG_POS]), [None])
         return self.set_line(result_expression, n)
 
     # FormattedValue(expr value)
