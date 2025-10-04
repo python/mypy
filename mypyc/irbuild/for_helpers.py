@@ -7,7 +7,6 @@ such special case.
 
 from __future__ import annotations
 
-import contextlib
 from typing import Callable, ClassVar
 
 from mypy.nodes import (
@@ -17,7 +16,6 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
-    IntExpr,
     ListExpr,
     Lvalue,
     MemberExpr,
