@@ -101,6 +101,7 @@ from mypyc.irbuild.specialize import (
     apply_function_specialization,
     apply_method_specialization,
     translate_object_new,
+    translate_object_setattr,
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
@@ -480,6 +481,12 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             result = translate_object_new(builder, expr, MemberExpr(callee.call, "__new__"))
             if result:
                 return result
+        elif callee.name == "__setattr__":
+            result = translate_object_setattr(
+                builder, expr, MemberExpr(callee.call, "__setattr__")
+            )
+            if result:
+                return result
         if ir.is_ext_class and ir.builtin_base is None and not ir.inherits_python:
             if callee.name == "__init__" and len(expr.args) == 0:
                 # Call translates to object.__init__(self), which is a
@@ -551,7 +558,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     # Special case some int ops to allow borrowing operands.
     if is_int_rprimitive(ltype) and is_int_rprimitive(rtype):
         if expr.op == "//":
-            expr = try_optimize_int_floor_divide(expr)
+            expr = try_optimize_int_floor_divide(builder, expr)
         if expr.op in int_borrow_friendly_op:
             borrow_left = is_borrow_friendly_expr(builder, expr.right)
             borrow_right = True
@@ -564,11 +571,11 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     return builder.binary_op(left, right, expr.op, expr.line)
 
 
-def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:
+def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
     """Replace // with a power of two with a right shift, if possible."""
-    if not isinstance(expr.right, IntExpr):
+    divisor = constant_fold_expr(builder, expr.right)
+    if not isinstance(divisor, int):
         return expr
-    divisor = expr.right.value
     shift = divisor.bit_length() - 1
     if 0 < shift < 28 and divisor == (1 << shift):
         return OpExpr(">>", expr.left, IntExpr(shift))
