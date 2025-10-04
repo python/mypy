@@ -19,7 +19,6 @@ from typing import Callable, Final, Optional, cast
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
-    BytesExpr,
     CallExpr,
     DictExpr,
     Expression,
@@ -79,6 +78,7 @@ from mypyc.ir.rtypes import (
     uint8_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
     sequence_from_generator_preallocate_helper,
@@ -720,21 +720,18 @@ def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExp
 
 @specialize_function("format", str_rprimitive)
 def translate_str_format(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
-    if (
-        isinstance(callee, MemberExpr)
-        and isinstance(callee.expr, StrExpr)
-        and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)
-    ):
-        format_str = callee.expr.value
-        tokens = tokenizer_format_call(format_str)
-        if tokens is None:
-            return None
-        literals, format_ops = tokens
-        # Convert variables to strings
-        substitutions = convert_format_expr_to_str(builder, format_ops, expr.args, expr.line)
-        if substitutions is None:
-            return None
-        return join_formatted_strings(builder, literals, substitutions, expr.line)
+    if isinstance(callee, MemberExpr):
+        folded_callee = constant_fold_expr(builder, callee.expr)
+        if isinstance(folded_callee, str) and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds):
+            tokens = tokenizer_format_call(folded_callee)
+            if tokens is None:
+                return None
+            literals, format_ops = tokens
+            # Convert variables to strings
+            substitutions = convert_format_expr_to_str(builder, format_ops, expr.args, expr.line)
+            if substitutions is None:
+                return None
+            return join_formatted_strings(builder, literals, substitutions, expr.line)
     return None
 
 
@@ -1063,9 +1060,9 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
 def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
         return None
-    arg = expr.args[0]
-    if isinstance(arg, (StrExpr, BytesExpr)) and len(arg.value) == 1:
-        return Integer(ord(arg.value))
+    arg = constant_fold_expr(builder, expr.args[0])
+    if isinstance(arg, (str, bytes)) and len(arg) == 1:
+        return Integer(ord(arg))
     return None
 
 
