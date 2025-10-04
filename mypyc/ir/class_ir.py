@@ -239,6 +239,7 @@ class ClassIR:
 
     @property
     def allow_interpreted_subclasses(self) -> bool:
+        return self._allow_interpreted_subclasses or not self.is_ext_class and not self.is_final_class
         
     @allow_interpreted_subclasses.setter
     def _(self, value: bool) -> None:
