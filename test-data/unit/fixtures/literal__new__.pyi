@@ -1,5 +1,8 @@
 from typing import Literal, Protocol, overload
 
+class object:
+    def __init__(self) -> None: pass
+
 class str: pass
 class dict: pass
 class float: pass
