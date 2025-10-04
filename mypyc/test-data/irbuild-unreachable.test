@@ -20,7 +20,7 @@ L0:
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = cast(str, r2)
     r4 = 'x'
-    r5 = CPyStr_Equal(r3, r4)
+    r5 = CPyStr_EqualLiteral(r3, r4, 1)
     if r5 goto L2 else goto L1 :: bool
 L1:
     r6 = r5
@@ -54,7 +54,7 @@ L0:
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = cast(str, r2)
     r4 = 'x'
-    r5 = CPyStr_Equal(r3, r4)
+    r5 = CPyStr_EqualLiteral(r3, r4, 1)
     if r5 goto L2 else goto L1 :: bool
 L1:
     r6 = r5
