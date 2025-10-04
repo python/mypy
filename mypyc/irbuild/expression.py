@@ -653,6 +653,7 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Value
     return None
 
 
+@folding_candidate
 def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Value:
     if_body, else_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
 
