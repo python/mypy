@@ -1525,6 +1525,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
 [typing fixtures/typing-medium.pyi]
 
 [case testMatchSequencePatternNegativeNarrowing]
+# flags: --warn-unreachable
 from typing import Literal, Union, Sequence, Tuple
 
 m1: Sequence[int | str]
@@ -1577,7 +1578,22 @@ match m6:
     case _:
         reveal_type(m6)  # N: Revealed type is "tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
 
-[builtins fixtures/tuple.pyi]
+m7: dict[str, str]
+
+match (m7, m7):
+    case ({"a": "1"}, _):
+        reveal_type(m7)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+    case (_, {"a": "2"}):
+        reveal_type(m7)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+
+m8: list[int]
+
+match (m8, m8):
+    case ([1], _):
+        reveal_type(m8)  # N: Revealed type is "builtins.list[builtins.int]"
+    case (_, [2]):
+        reveal_type(m8)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/dict.pyi]
 
 [case testMatchEnumSingleChoice]
 from enum import Enum

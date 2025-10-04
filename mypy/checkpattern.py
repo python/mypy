@@ -313,7 +313,21 @@ class PatternChecker(PatternVisitor[PatternType]):
                     )
                 )
                 narrowed_inner_types.append(narrowed_inner_type)
-                inner_rest_types.append(inner_rest_type)
+                narrowed_ptype = get_proper_type(narrowed_inner_type)
+                if (
+                    is_uninhabited(inner_rest_type)
+                    and isinstance(narrowed_ptype, Instance)
+                    and (
+                        narrowed_ptype.type.fullname == "builtins.dict"
+                        or narrowed_ptype.type.fullname == "builtins.list"
+                    )
+                ):
+                    # Can't narrow rest type to uninhabited
+                    # if narrowed_type is dict or list.
+                    # Those can be matched by Mapping or Sequence patterns.
+                    inner_rest_types.append(narrowed_inner_type)
+                else:
+                    inner_rest_types.append(inner_rest_type)
             if all(not is_uninhabited(typ) for typ in narrowed_inner_types):
                 new_type = TupleType(narrowed_inner_types, current_type.partial_fallback)
             else:
