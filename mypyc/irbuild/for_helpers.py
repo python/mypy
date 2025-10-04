@@ -7,6 +7,7 @@ such special case.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Callable, ClassVar
 
 from mypy.nodes import (
@@ -68,6 +69,7 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.primitives.dict_ops import (
@@ -1204,18 +1206,18 @@ class ForZip(ForGenerator):
             gen.gen_cleanup()
 
 
-def get_expr_length(expr: Expression) -> int | None:
+def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
     if isinstance(expr, (StrExpr, BytesExpr)):
         return len(expr.value)
     elif isinstance(expr, (ListExpr, TupleExpr)):
         # if there are no star expressions, or we know the length of them,
         # we know the length of the expression
-        stars = [get_expr_length(i) for i in expr.items if isinstance(i, StarExpr)]
+        stars = [get_expr_length(builder, i) for i in expr.items if isinstance(i, StarExpr)]
         if None not in stars:
             other = sum(not isinstance(i, StarExpr) for i in expr.items)
             return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
-        return get_expr_length(expr.expr)
+        return get_expr_length(builder, expr.expr)
     elif (
         isinstance(expr, RefExpr)
         and isinstance(expr.node, Var)
@@ -1241,19 +1243,20 @@ def get_expr_length(expr: Expression) -> int | None:
             )
             and len(expr.args) == 1
         ):
-            return get_expr_length(expr.args[0])
+            return get_expr_length(builder, expr.args[0])
         elif fullname == "builtins.map" and len(expr.args) == 2:
-            return get_expr_length(expr.args[1])
+            return get_expr_length(builder, expr.args[1])
         elif fullname == "builtins.zip" and expr.args:
-            arg_lengths = [get_expr_length(arg) for arg in expr.args]
+            arg_lengths = [get_expr_length(builder, arg) for arg in expr.args]
             if all(arg is not None for arg in arg_lengths):
                 return min(arg_lengths)  # type: ignore [type-var]
-        elif (
-            fullname == "builtins.range"
-            and len(expr.args) <= 3
-            and all(isinstance(arg, IntExpr) for arg in expr.args)
-        ):
-            return len(range(*(arg.value for arg in expr.args)))  # type: ignore [attr-defined]
+        elif fullname == "builtins.range" and len(expr.args) <= 3:
+            folded_args = [constant_fold_expr(builder, arg) for arg in args]
+            if all(isinstance(arg, int) for arg in folded_args):
+                try:
+                    return len(range(*folded_args))
+                except ValueError:  # prevent crash if invalid args
+                    pass
 
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
