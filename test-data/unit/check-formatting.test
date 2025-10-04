@@ -103,14 +103,27 @@ a = None # type: Any
 [typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationC]
+from typing import Final
+
+final_int: Final = 1
+final_float: Final = 1.0
+final_char_string: Final = 's'
+final_empty_string: Final = ''
+final_string: Final = 'ab'
+
 '%c' % 1
-'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
+'%c' % final_int
+'%c' % 1.0                 # E: "%c" requires int or char (expression has type "float")
+'%c' % final_float         # E: "%c" requires int or char (expression has type "float")
 '%c' % 's'
-'%c' % ''    # E: "%c" requires int or char
-'%c' % 'ab'  # E: "%c" requires int or char
-'%c' % b'a'  # E: "%c" requires int or char (expression has type "bytes")
-'%c' % b''   # E: "%c" requires int or char (expression has type "bytes")
-'%c' % b'ab' # E: "%c" requires int or char (expression has type "bytes")
+'%c' % final_char_string
+'%c' % ''                  # E: "%c" requires int or char
+'%c' % final_empty_string  # E: "%c" requires int or char
+'%c' % 'ab'                # E: "%c" requires int or char
+'%c' % final_string        # E: "%c" requires int or char
+'%c' % b'a'                # E: "%c" requires int or char (expression has type "bytes")
+'%c' % b''                 # E: "%c" requires int or char (expression has type "bytes")
+'%c' % b'ab'               # E: "%c" requires int or char (expression has type "bytes")
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationMappingTypes]
