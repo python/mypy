@@ -9,6 +9,7 @@ from __future__ import annotations
 from mypy.nodes import (
     LDEF,
     BytesExpr,
+    CallExpr,
     ComparisonExpr,
     Expression,
     FloatExpr,
@@ -109,7 +110,7 @@ def is_borrow_friendly_expr(self: IRBuilder, expr: Expression) -> bool:
         # Literals are immortal and can always be borrowed
         return True
     if (
-        isinstance(expr, (UnaryExpr, OpExpr, NameExpr, MemberExpr))
+        isinstance(expr, (UnaryExpr, OpExpr, NameExpr, MemberExpr, CallExpr))
         and constant_fold_expr(self, expr) is not None
     ):
         # Literal expressions are similar to literals
