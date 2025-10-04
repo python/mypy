@@ -960,8 +960,6 @@ src/foo/bar.py: note: Common resolutions include: a) adding `__init__.py` somewh
 [file test.py]
 x = 1
 [out]
-usage: mypy [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
 mypy: error: Invalid error code(s): YOLO
 == Return code: 2
 
@@ -970,8 +968,6 @@ mypy: error: Invalid error code(s): YOLO
 [file test.py]
 x = 1
 [out]
-usage: mypy [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
 mypy: error: Invalid error code(s): YOLO
 == Return code: 2
 
@@ -980,8 +976,6 @@ mypy: error: Invalid error code(s): YOLO
 [file test.py]
 x = 1
 [out]
-usage: mypy [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
 mypy: error: Invalid error code(s): YOLO, YOLO2
 == Return code: 2
 
@@ -990,8 +984,6 @@ mypy: error: Invalid error code(s): YOLO, YOLO2
 [file test.py]
 x = 1
 [out]
-usage: mypy [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
 mypy: error: Invalid error code(s): YOLO
 == Return code: 2
 
@@ -1000,8 +992,6 @@ mypy: error: Invalid error code(s): YOLO
 [file test.py]
 x = 1
 [out]
-usage: mypy [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
 mypy: error: Invalid error code(s): YOLO
 == Return code: 2
 

@@ -1462,7 +1462,6 @@ def process_options(
     validate_package_allow_list(options.untyped_calls_exclude)
     validate_package_allow_list(options.deprecated_calls_exclude)
 
-    options.process_error_codes(error_callback=parser.error)
     options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
 
     # Compute absolute path for custom typeshed (if present).
