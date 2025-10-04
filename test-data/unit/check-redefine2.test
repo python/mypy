@@ -628,8 +628,7 @@ def f1() -> None:
 def f2() -> None:
     x = None
     while int():
-        reveal_type(x) # N: Revealed type is "None" \
-                       # N: Revealed type is "Union[None, builtins.str]"
+        reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
         if int():
             x = ""
     reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
@@ -709,8 +708,7 @@ def b() -> None:
 def c() -> None:
     x = 0
     while int():
-        reveal_type(x) # N: Revealed type is "builtins.int" \
-                       # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
         if int():
             x = ""
             continue
@@ -793,8 +791,7 @@ def f3() -> None:
             x = ""
             return
     finally:
-        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]" \
-            # N: Revealed type is "builtins.int"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
     reveal_type(x) # N: Revealed type is "builtins.int"
 
 def f4() -> None:
@@ -810,8 +807,7 @@ def f4() -> None:
                         x = None
                         break
         finally:
-            reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]" \
-                # N: Revealed type is "Union[builtins.int, None]"
+            reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
         reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/exception.pyi]
 
@@ -1077,7 +1073,7 @@ def f() -> None:
         while int():
             x = [x]
 
-    reveal_type(x) # N: Revealed type is "Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]]]]]]]"
+    reveal_type(x) # N: Revealed type is "Union[Any, builtins.list[Any]]"
 
 [case testNewRedefinePartialNoneEmptyList]
 # flags: --allow-redefinition-new --local-partial-types
@@ -1118,13 +1114,13 @@ def f1() -> None:
     reveal_type(x) # N: Revealed type is "builtins.int"
 
 def f2() -> None:
-    x, *y = t() # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
+    x, *y = t() # E: Need type annotation for "y" (hint: "y: list[<type>] = ...")
 
 def f3() -> None:
     x, _ = 1, []
 
 def f4() -> None:
-    a, b = 1, [] # E: Need type annotation for "b" (hint: "b: List[<type>] = ...")
+    a, b = 1, [] # E: Need type annotation for "b" (hint: "b: list[<type>] = ...")
 [builtins fixtures/tuple.pyi]
 
 [case testNewRedefineUseInferredTypedDictTypeForContext]

@@ -66,7 +66,7 @@ def is_dunder(name: str, exclude_special: bool = False) -> bool:
 
 
 def is_sunder(name: str) -> bool:
-    return not is_dunder(name) and name.startswith("_") and name.endswith("_")
+    return not is_dunder(name) and name.startswith("_") and name.endswith("_") and name != "_"
 
 
 def split_module_names(mod_name: str) -> list[str]:

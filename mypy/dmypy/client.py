@@ -29,8 +29,8 @@ from mypy.version import __version__
 
 
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=30)
+    def __init__(self, prog: str, **kwargs: Any) -> None:
+        super().__init__(prog=prog, max_help_position=30, **kwargs)
 
 
 parser = argparse.ArgumentParser(
@@ -559,6 +559,10 @@ def check_output(
 
     Call sys.exit() unless the status code is zero.
     """
+    if os.name == "nt":
+        # Enable ANSI color codes for Windows cmd using this strange workaround
+        # ( see https://github.com/python/cpython/issues/74261 )
+        os.system("")
     if "error" in response:
         fail(response["error"])
     try:

@@ -8,17 +8,27 @@ from typing import Any, BinaryIO, Literal, TextIO
 from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 11):
+    from importlib.resources.abc import Traversable
+else:
+    from importlib.abc import Traversable
+
+if sys.version_info >= (3, 11):
     from importlib.resources._common import Package as Package
 else:
     Package: TypeAlias = str | ModuleType
 
-if sys.version_info >= (3, 9):
-    from importlib.abc import Traversable
-
-__all__ = ["Package", "contents", "is_resource", "open_binary", "open_text", "path", "read_binary", "read_text"]
-
-if sys.version_info >= (3, 9):
-    __all__ += ["as_file", "files"]
+__all__ = [
+    "Package",
+    "as_file",
+    "contents",
+    "files",
+    "is_resource",
+    "open_binary",
+    "open_text",
+    "path",
+    "read_binary",
+    "read_text",
+]
 
 if sys.version_info >= (3, 10):
     __all__ += ["ResourceReader"]
@@ -31,11 +41,12 @@ if sys.version_info < (3, 11):
 elif sys.version_info < (3, 13):
     Resource: TypeAlias = str
 
-if sys.version_info >= (3, 13):
+if sys.version_info >= (3, 12):
     from importlib.resources._common import Anchor as Anchor
 
     __all__ += ["Anchor"]
 
+if sys.version_info >= (3, 13):
     from importlib.resources._functional import (
         contents as contents,
         is_resource as is_resource,
@@ -57,14 +68,15 @@ else:
 
 if sys.version_info >= (3, 11):
     from importlib.resources._common import as_file as as_file
-elif sys.version_info >= (3, 9):
+else:
     def as_file(path: Traversable) -> AbstractContextManager[Path, Literal[False]]: ...
 
 if sys.version_info >= (3, 11):
     from importlib.resources._common import files as files
-
-elif sys.version_info >= (3, 9):
+else:
     def files(package: Package) -> Traversable: ...
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 11):
+    from importlib.resources.abc import ResourceReader as ResourceReader
+elif sys.version_info >= (3, 10):
     from importlib.abc import ResourceReader as ResourceReader

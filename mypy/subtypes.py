@@ -8,6 +8,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 import mypy.applytype
 import mypy.constraints
 import mypy.typeops
+from mypy.checker_state import checker_state
 from mypy.erasetype import erase_type
 from mypy.expandtype import (
     expand_self_type,
@@ -26,6 +27,7 @@ from mypy.nodes import (
     COVARIANT,
     INVARIANT,
     VARIANCE_NOT_READY,
+    Context,
     Decorator,
     FuncBase,
     OverloadedFuncDef,
@@ -143,6 +145,8 @@ def is_subtype(
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
+    if left == right:
+        return True
     if subtype_context is None:
         subtype_context = SubtypeContext(
             ignore_type_params=ignore_type_params,
@@ -153,15 +157,13 @@ def is_subtype(
             options=options,
         )
     else:
-        assert not any(
-            {
-                ignore_type_params,
-                ignore_pos_arg_names,
-                ignore_declared_variance,
-                always_covariant,
-                ignore_promotions,
-                options,
-            }
+        assert (
+            not ignore_type_params
+            and not ignore_pos_arg_names
+            and not ignore_declared_variance
+            and not always_covariant
+            and not ignore_promotions
+            and options is None
         ), "Don't pass both context and individual flags"
     if type_state.is_assumed_subtype(left, right):
         return True
@@ -206,6 +208,8 @@ def is_proper_subtype(
     (this is useful for runtime isinstance() checks). If keep_erased_types is True,
     do not consider ErasedType a subtype of all types (used by type inference against unions).
     """
+    if left == right:
+        return True
     if subtype_context is None:
         subtype_context = SubtypeContext(
             ignore_promotions=ignore_promotions,
@@ -213,8 +217,8 @@ def is_proper_subtype(
             keep_erased_types=keep_erased_types,
         )
     else:
-        assert not any(
-            {ignore_promotions, erase_instances, keep_erased_types}
+        assert (
+            not ignore_promotions and not erase_instances and not keep_erased_types
         ), "Don't pass both context and individual flags"
     if type_state.is_assumed_proper_subtype(left, right):
         return True
@@ -390,6 +394,15 @@ def check_type_parameter(
 
 
 class SubtypeVisitor(TypeVisitor[bool]):
+    __slots__ = (
+        "right",
+        "orig_right",
+        "proper_subtype",
+        "subtype_context",
+        "options",
+        "_subtype_kind",
+    )
+
     def __init__(self, right: Type, subtype_context: SubtypeContext, proper_subtype: bool) -> None:
         self.right = get_proper_type(right)
         self.orig_right = right
@@ -630,7 +643,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
-            return True
+            # Fast path for most common case.
+            if left.upper_bound == right.upper_bound:
+                return True
+            # Corner case for self-types in classes generic in type vars
+            # with value restrictions.
+            if left.id.is_self():
+                return True
+            return self._is_subtype(left.upper_bound, right.upper_bound)
         if left.values and self._is_subtype(UnionType.make_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
@@ -717,8 +737,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Instance):
             if right.type.is_protocol and "__call__" in right.type.protocol_members:
                 # OK, a callable can implement a protocol with a `__call__` member.
-                # TODO: we should probably explicitly exclude self-types in this case.
-                call = find_member("__call__", right, left, is_operator=True)
+                call = find_member("__call__", right, right, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
                     if len(right.type.protocol_members) == 1:
@@ -954,7 +973,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if right.type.is_protocol and "__call__" in right.type.protocol_members:
                 # same as for CallableType
-                call = find_member("__call__", right, left, is_operator=True)
+                call = find_member("__call__", right, right, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
                     if len(right.type.protocol_members) == 1:
@@ -1091,6 +1110,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeType):
             return self._is_subtype(left.item, right.item)
+        if isinstance(right, Overloaded) and right.is_type_obj():
+            # Same as in other direction: if it's a constructor callable, all
+            # items should belong to the same class' constructor, so it's enough
+            # to check one of them.
+            return self._is_subtype(left, right.items[0])
         if isinstance(right, CallableType):
             if self.proper_subtype and not right.is_type_obj():
                 # We can't accept `Type[X]` as a *proper* subtype of Callable[P, X]
@@ -1262,13 +1286,86 @@ def find_member(
     class_obj: bool = False,
     is_lvalue: bool = False,
 ) -> Type | None:
+    type_checker = checker_state.type_checker
+    if type_checker is None:
+        # Unfortunately, there are many scenarios where someone calls is_subtype() before
+        # type checking phase. In this case we fallback to old (incomplete) logic.
+        # TODO: reduce number of such cases (e.g. semanal_typeargs, post-semanal plugins).
+        return find_member_simple(
+            name, itype, subtype, is_operator=is_operator, class_obj=class_obj, is_lvalue=is_lvalue
+        )
+
+    # We don't use ATTR_DEFINED error code below (since missing attributes can cause various
+    # other error codes), instead we perform quick node lookup with all the fallbacks.
+    info = itype.type
+    sym = info.get(name)
+    node = sym.node if sym else None
+    if not node:
+        name_not_found = True
+        if (
+            name not in ["__getattr__", "__setattr__", "__getattribute__"]
+            and not is_operator
+            and not class_obj
+            and itype.extra_attrs is None  # skip ModuleType.__getattr__
+        ):
+            for method_name in ("__getattribute__", "__getattr__"):
+                method = info.get_method(method_name)
+                if method and method.info.fullname != "builtins.object":
+                    name_not_found = False
+                    break
+        if name_not_found:
+            if info.fallback_to_any or class_obj and info.meta_fallback_to_any:
+                return AnyType(TypeOfAny.special_form)
+            if itype.extra_attrs and name in itype.extra_attrs.attrs:
+                return itype.extra_attrs.attrs[name]
+            return None
+
+    from mypy.checkmember import (
+        MemberContext,
+        analyze_class_attribute_access,
+        analyze_instance_member_access,
+    )
+
+    mx = MemberContext(
+        is_lvalue=is_lvalue,
+        is_super=False,
+        is_operator=is_operator,
+        original_type=TypeType.make_normalized(itype) if class_obj else itype,
+        self_type=TypeType.make_normalized(subtype) if class_obj else subtype,
+        context=Context(),  # all errors are filtered, but this is a required argument
+        chk=type_checker,
+        suppress_errors=True,
+        # This is needed to avoid infinite recursion in situations involving protocols like
+        #     class P(Protocol[T]):
+        #         def combine(self, other: P[S]) -> P[Tuple[T, S]]: ...
+        # Normally we call freshen_all_functions_type_vars() during attribute access,
+        # to avoid type variable id collisions, but for protocols this means we can't
+        # use the assumption stack, that will grow indefinitely.
+        # TODO: find a cleaner solution that doesn't involve massive perf impact.
+        preserve_type_var_ids=True,
+    )
+    with type_checker.msg.filter_errors(filter_deprecated=True):
+        if class_obj:
+            fallback = itype.type.metaclass_type or mx.named_type("builtins.type")
+            return analyze_class_attribute_access(itype, name, mx, mcs_fallback=fallback)
+        else:
+            return analyze_instance_member_access(name, itype, mx, info)
+
+
+def find_member_simple(
+    name: str,
+    itype: Instance,
+    subtype: Type,
+    *,
+    is_operator: bool = False,
+    class_obj: bool = False,
+    is_lvalue: bool = False,
+) -> Type | None:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
     Find the member type after applying type arguments from 'itype', and binding
     'self' to 'subtype'. Return None if member was not found.
     """
-    # TODO: this code shares some logic with checkmember.analyze_member_access,
-    # consider refactoring.
     info = itype.type
     method = info.get_method(name)
     if method:
@@ -1371,12 +1468,22 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
         flags = {IS_VAR}
         if not v.is_final:
             flags.add(IS_SETTABLE)
-        if v.is_classvar:
+        # TODO: define cleaner rules for class vs instance variables.
+        if v.is_classvar and not is_descriptor(v.type):
             flags.add(IS_CLASSVAR)
         if class_obj and v.is_inferred:
             flags.add(IS_CLASSVAR)
         return flags
     return set()
+
+
+def is_descriptor(typ: Type | None) -> bool:
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return typ.type.get("__get__") is not None
+    if isinstance(typ, UnionType):
+        return all(is_descriptor(item) for item in typ.relevant_items())
+    return False
 
 
 def find_node_type(
@@ -1978,7 +2085,7 @@ def try_restrict_literal_union(t: UnionType, s: Type) -> list[Type] | None:
     return new_items
 
 
-def restrict_subtype_away(t: Type, s: Type) -> Type:
+def restrict_subtype_away(t: Type, s: Type, *, consider_runtime_isinstance: bool = True) -> Type:
     """Return t minus s for runtime type assertions.
 
     If we can't determine a precise result, return a supertype of the
@@ -1992,16 +2099,27 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
         new_items = try_restrict_literal_union(p_t, s)
         if new_items is None:
             new_items = [
-                restrict_subtype_away(item, s)
+                restrict_subtype_away(
+                    item, s, consider_runtime_isinstance=consider_runtime_isinstance
+                )
                 for item in p_t.relevant_items()
-                if (isinstance(get_proper_type(item), AnyType) or not covers_at_runtime(item, s))
             ]
-        return UnionType.make_union(new_items)
+        return UnionType.make_union(
+            [item for item in new_items if not isinstance(get_proper_type(item), UninhabitedType)]
+        )
     elif isinstance(p_t, TypeVarType):
         return p_t.copy_modified(upper_bound=restrict_subtype_away(p_t.upper_bound, s))
-    elif covers_at_runtime(t, s):
-        return UninhabitedType()
+
+    if consider_runtime_isinstance:
+        if covers_at_runtime(t, s):
+            return UninhabitedType()
+        else:
+            return t
     else:
+        if is_proper_subtype(t, s, ignore_promotions=True):
+            return UninhabitedType()
+        if is_proper_subtype(t, s, ignore_promotions=True, erase_instances=True):
+            return UninhabitedType()
         return t
 
 
@@ -2011,7 +2129,8 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
     supertype = get_proper_type(supertype)
 
     # Since runtime type checks will ignore type arguments, erase the types.
-    supertype = erase_type(supertype)
+    if not (isinstance(supertype, FunctionLike) and supertype.is_type_obj()):
+        supertype = erase_type(supertype)
     if is_proper_subtype(
         erase_type(item), supertype, ignore_promotions=True, erase_instances=True
     ):

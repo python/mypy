@@ -214,7 +214,7 @@ f(
   B())
 [builtins fixtures/tuple-simple.pyi]
 [out]
-CallExpr(6) : Tuple[A, B]
+CallExpr(6) : tuple[A, B]
 CallExpr(7) : A
 CallExpr(8) : B
 
@@ -294,8 +294,8 @@ import typing
 x = ()
 [builtins fixtures/primitives.pyi]
 [out]
-NameExpr(2) : Tuple[()]
-TupleExpr(2) : Tuple[()]
+NameExpr(2) : tuple[()]
+TupleExpr(2) : tuple[()]
 
 [case testInferTwoTypes]
 ## NameExpr
@@ -313,8 +313,8 @@ def f() -> None:
     x = ()
 [builtins fixtures/primitives.pyi]
 [out]
-NameExpr(3) : Tuple[()]
-TupleExpr(3) : Tuple[()]
+NameExpr(3) : tuple[()]
+TupleExpr(3) : tuple[()]
 
 
 -- Basic generics

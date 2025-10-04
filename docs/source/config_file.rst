@@ -713,6 +713,44 @@ section of the command line docs.
     Causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
 
+.. confval:: allow_redefinition_new
+
+    :type: boolean
+    :default: False
+
+    By default, mypy won't allow a variable to be redefined with an
+    unrelated type. This *experimental* flag enables the redefinition of
+    unannotated variables with an arbitrary type. You will also need to enable
+    :confval:`local_partial_types`.
+    Example:
+
+    .. code-block:: python
+
+        def maybe_convert(n: int, b: bool) -> int | str:
+            if b:
+                x = str(n)  # Assign "str"
+            else:
+                x = n       # Assign "int"
+            # Type of "x" is "int | str" here.
+            return x
+
+    This also enables an unannotated variable to have different types in different
+    code locations:
+
+    .. code-block:: python
+
+        if check():
+            for x in range(n):
+                # Type of "x" is "int" here.
+                ...
+        else:
+            for x in ['a', 'b']:
+                # Type of "x" is "str" here.
+                ...
+
+    Note: We are planning to turn this flag on by default in a future mypy
+    release, along with :confval:`local_partial_types`.
+
 .. confval:: allow_redefinition
 
     :type: boolean
@@ -746,6 +784,7 @@ section of the command line docs.
 
     Disallows inferring variable type for ``None`` from two assignments in different scopes.
     This is always implicitly enabled when using the :ref:`mypy daemon <mypy_daemon>`.
+    This will be enabled by default in a future mypy release.
 
 .. confval:: disable_error_code
 
@@ -795,7 +834,15 @@ section of the command line docs.
    :default: False
 
    Prohibit equality checks, identity checks, and container checks between
-   non-overlapping types.
+   non-overlapping types (except ``None``).
+
+.. confval:: strict_equality_for_none
+
+   :type: boolean
+   :default: False
+
+   Include ``None`` in strict equality checks (requires :confval:`strict_equality`
+   to be activated).
 
 .. confval:: strict_bytes
 
@@ -882,14 +929,6 @@ These options may only be set in the global section (``[mypy]``).
     :default: False
 
     Show absolute paths to files.
-
-.. confval:: force_uppercase_builtins
-
-    :type: boolean
-    :default: False
-
-    Always use ``List`` instead of ``list`` in error messages,
-    even on Python 3.9+.
 
 .. confval:: force_union_syntax
 
@@ -1113,6 +1152,15 @@ These options may only be set in the global section (``[mypy]``).
     Causes mypy to generate a JUnit XML test result document with
     type checking results. This can make it easier to integrate mypy
     with continuous integration (CI) tools.
+
+.. confval:: junit_format
+
+    :type: string
+    :default: ``global``
+
+    If junit_xml is set, specifies format.
+    global (default): single test with all errors;
+    per_file: one test entry per file with failures.
 
 .. confval:: scripts_are_modules
 

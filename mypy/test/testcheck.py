@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 import re
 import sys
+import tempfile
+from pathlib import Path
 
 from mypy import build
-from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -45,16 +46,19 @@ if sys.version_info < (3, 12):
     typecheck_files.remove("check-python312.test")
 if sys.version_info < (3, 13):
     typecheck_files.remove("check-python313.test")
-
-# Special tests for platforms with case-insensitive filesystems.
-if sys.platform not in ("darwin", "win32"):
-    typecheck_files.remove("check-modules-case.test")
+if sys.version_info < (3, 14):
+    typecheck_files.remove("check-python314.test")
 
 
 class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if os.path.basename(testcase.file) == "check-modules-case.test":
+            with tempfile.NamedTemporaryFile(prefix="test", dir=".") as temp_file:
+                temp_path = Path(temp_file.name)
+                if not temp_path.with_name(temp_path.name.upper()).exists():
+                    pytest.skip("File system is not case‐insensitive")
         if lxml is None and os.path.basename(testcase.file) == "check-reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
         incremental = (
@@ -136,8 +140,6 @@ class TypeCheckSuite(DataSuite):
             options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
-        if "lowercase" not in testcase.file:
-            options.force_uppercase_builtins = True
         if "union-error" not in testcase.file:
             options.force_union_syntax = True
 
@@ -161,11 +163,13 @@ class TypeCheckSuite(DataSuite):
         sys.path.insert(0, plugin_dir)
 
         res = None
+        blocker = False
         try:
             res = build.build(sources=sources, options=options, alt_lib_path=test_temp_dir)
             a = res.errors
         except CompileError as e:
             a = e.messages
+            blocker = True
         finally:
             assert sys.path[0] == plugin_dir
             del sys.path[0]
@@ -196,7 +200,7 @@ class TypeCheckSuite(DataSuite):
 
         if res:
             if options.cache_dir != os.devnull:
-                self.verify_cache(module_data, res.errors, res.manager, res.graph)
+                self.verify_cache(module_data, res.manager, blocker)
 
             name = "targets"
             if incremental_step:
@@ -226,41 +230,22 @@ class TypeCheckSuite(DataSuite):
             check_test_output_files(testcase, incremental_step, strip_prefix="tmp/")
 
     def verify_cache(
-        self,
-        module_data: list[tuple[str, str, str]],
-        a: list[str],
-        manager: build.BuildManager,
-        graph: Graph,
+        self, module_data: list[tuple[str, str, str]], manager: build.BuildManager, blocker: bool
     ) -> None:
-        # There should be valid cache metadata for each module except
-        # for those that had an error in themselves or one of their
-        # dependencies.
-        error_paths = self.find_error_message_paths(a)
-        busted_paths = {m.path for id, m in manager.modules.items() if graph[id].transitive_error}
-        modules = self.find_module_files(manager)
-        modules.update({module_name: path for module_name, path, text in module_data})
-        missing_paths = self.find_missing_cache_files(modules, manager)
-        # We would like to assert error_paths.issubset(busted_paths)
-        # but this runs into trouble because while some 'notes' are
-        # really errors that cause an error to be marked, many are
-        # just notes attached to other errors.
-        assert error_paths or not busted_paths, "Some modules reported error despite no errors"
-        if not missing_paths == busted_paths:
-            raise AssertionError(f"cache data discrepancy {missing_paths} != {busted_paths}")
+        if not blocker:
+            # There should be valid cache metadata for each module except
+            # in case of a blocking error in themselves or one of their
+            # dependencies.
+            modules = self.find_module_files(manager)
+            modules.update({module_name: path for module_name, path, text in module_data})
+            missing_paths = self.find_missing_cache_files(modules, manager)
+            if missing_paths:
+                raise AssertionError(f"cache data missing for {missing_paths}")
         assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
         cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
         assert os.path.isfile(cachedir_tag)
         with open(cachedir_tag) as f:
             assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
-
-    def find_error_message_paths(self, a: list[str]) -> set[str]:
-        hits = set()
-        for line in a:
-            m = re.match(r"([^\s:]+):(\d+:)?(\d+:)? (error|warning|note):", line)
-            if m:
-                p = m.group(1)
-                hits.add(p)
-        return hits
 
     def find_module_files(self, manager: build.BuildManager) -> dict[str, str]:
         return {id: module.path for id, module in manager.modules.items()}

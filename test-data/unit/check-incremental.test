@@ -124,7 +124,7 @@ class A: pass
 def func1() -> A: pass
 
 [rechecked mod1]
-[stale]
+[stale mod1]
 [out2]
 tmp/mod1.py:1: error: Name "A" is not defined
 
@@ -205,7 +205,7 @@ def foo() -> int:
         return "foo"
     return inner2()
 
-[rechecked mod1, mod2]
+[rechecked mod2]
 [stale]
 [out2]
 tmp/mod2.py:4: error: Incompatible return value type (got "str", expected "int")
@@ -428,7 +428,7 @@ class CustomType:
     def foo(self) -> str: return "a"
 
 [rechecked mod1, mod2, mod2.mod3]
-[stale mod2, mod2.mod3]
+[stale mod1, mod2, mod2.mod3]
 [builtins fixtures/module.pyi]
 [out1]
 [out2]
@@ -466,7 +466,7 @@ class CustomType:
     def foo(self) -> str: return "a"
 
 [rechecked mod1, mod2, mod2.mod3]
-[stale mod2.mod3]
+[stale mod1, mod2.mod3]
 [builtins fixtures/module.pyi]
 [out1]
 [out2]
@@ -541,7 +541,7 @@ def func2() -> str:
     return "foo"
 
 [rechecked mod0, mod1, mod2]
-[stale mod2]
+[stale mod0, mod2]
 [out2]
 tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
 
@@ -952,7 +952,7 @@ reveal_type(b.x)
 [file parent/b.py.2]
 x = 10
 
-[stale parent.b]
+[stale parent.a, parent.b]
 [rechecked parent.a, parent.b]
 [out2]
 tmp/parent/a.py:2: note: Revealed type is "builtins.int"
@@ -1080,7 +1080,7 @@ class Class: pass
 
 [builtins fixtures/args.pyi]
 [rechecked collections, main, package.subpackage.mod1]
-[stale collections, package.subpackage.mod1]
+[stale collections, main, package.subpackage.mod1]
 [out2]
 tmp/main.py:4: error: "Class" has no attribute "some_attribute"
 
@@ -1120,7 +1120,7 @@ if int():
 
 [builtins fixtures/module_all.pyi]
 [rechecked main, c, c.submodule]
-[stale c]
+[stale main, c, c.submodule]
 [out2]
 tmp/c/submodule.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/main.py:7: error: "C" has no attribute "foo"
@@ -1174,7 +1174,7 @@ reveal_type(foo)
 foo = 3.14
 reveal_type(foo)
 [rechecked m, n]
-[stale]
+[stale n]
 [out1]
 tmp/n.py:2: note: Revealed type is "builtins.str"
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
@@ -1204,7 +1204,7 @@ from bad import foo
 foo(3)
 
 [rechecked client]
-[stale]
+[stale client]
 [out2]
 tmp/client.py:4: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 
@@ -1316,7 +1316,7 @@ reveal_type(bar)
 bar = "str"
 
 [rechecked main]
-[stale]
+[stale main]
 [out1]
 tmp/main.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 tmp/main.py:4: note: Revealed type is "builtins.str"
@@ -1354,8 +1354,8 @@ class B:
 class C:
     def foo(self) -> int: return 1
 
-[rechecked mod3, mod2, mod1]
-[stale mod3, mod2]
+[rechecked mod3]
+[stale]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: note: Revealed type is "builtins.int"
@@ -1393,8 +1393,8 @@ class C:
 class C:
     def foo(self) -> str: return 'a'
 
-[rechecked mod4, mod3, mod2, mod1]
-[stale mod4]
+[rechecked mod4, mod3, mod1]
+[stale mod1, mod4]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: note: Revealed type is "builtins.int"
@@ -1438,8 +1438,8 @@ class C:
 class C:
     def foo(self) -> str: return 'a'
 
-[rechecked mod4, mod3, mod2, mod1]
-[stale mod4, mod3, mod2]
+[rechecked mod4, mod3, mod1]
+[stale mod1, mod4]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: note: Revealed type is "builtins.int"
@@ -2051,7 +2051,7 @@ warn_no_return = True
 [case testIncrementalClassVar]
 from typing import ClassVar
 class A:
-    x = None  # type: ClassVar
+    x: ClassVar
 A().x = 0
 [out1]
 main:4: error: Cannot assign to class variable "x" via instance
@@ -2173,7 +2173,7 @@ import m
 x = 1
 [delete m.py.2]
 [rechecked n]
-[stale]
+[stale n]
 [out2]
 tmp/n.py:1: error: Cannot find implementation or library stub for module named "m"
 tmp/n.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -2224,7 +2224,7 @@ def foo() -> int:
 [rechecked m]
 [stale m]
 [rechecked2 m]
-[stale2]
+[stale2 m]
 [out3]
 tmp/m.py:2: error: Incompatible return value type (got "str", expected "int")
 
@@ -2243,7 +2243,7 @@ def foo() -> str:
 def foo(x) -> int:
     pass
 [rechecked m, n]
-[stale m]
+[stale m, n]
 [rechecked2 m, n]
 [stale2 m, n]
 [out2]
@@ -2577,6 +2577,13 @@ C(1)[0]
 [builtins fixtures/list.pyi]
 [out]
 
+[case testSerializeRecursiveAlias]
+from typing import Callable, Union
+
+Node = Union[str, int, Callable[[], "Node"]]
+n: Node
+[out]
+
 [case testSerializeRecursiveAliases1]
 
 from typing import Type, Callable, Union
@@ -2894,7 +2901,7 @@ extra = 1
 import m.a  # Depends on module with error
 [file m/c.py]
 import m  # No error here
-[rechecked m.a, m.b]
+[rechecked]
 [out1]
 tmp/m/a.py:1: error: Unsupported operand types for + ("int" and "str")
 [out2]
@@ -3091,10 +3098,10 @@ class A:
 [stale]
 [out2]
 main:2: note: Revealed type is "def (a: builtins.int) -> a.A"
-main:3: note: Revealed type is "def [_AT] (self: _AT`1, other: _AT`1) -> builtins.bool"
-main:4: note: Revealed type is "def [_AT] (self: _AT`2, other: _AT`2) -> builtins.bool"
-main:5: note: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
-main:6: note: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
+main:3: note: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
+main:4: note: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
+main:5: note: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
+main:6: note: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
 main:15: error: Unsupported operand types for < ("A" and "int")
 main:16: error: Unsupported operand types for <= ("A" and "int")
 main:17: error: Unsupported operand types for > ("A" and "int")
@@ -3170,13 +3177,13 @@ C(5, 'foo', True)
 
 [file a.py]
 import attrs
-@attrs.define
+@attrs.define(slots=False)
 class A:
     a: int
 
 [file b.py]
 import attrs
-@attrs.define
+@attrs.define(slots=False)
 class B:
     b: str
 
@@ -3184,7 +3191,7 @@ class B:
 from a import A
 from b import B
 import attrs
-@attrs.define
+@attrs.define(slots=False)
 class C(A, B):
     c: bool
 
@@ -3517,7 +3524,7 @@ class M(type):
     y: int
 [out]
 [out2]
-tmp/a.py:2: error: "Type[B]" has no attribute "x"
+tmp/a.py:2: error: "type[B]" has no attribute "x"
 
 [case testIncrementalLotsOfInheritance]
 import a
@@ -4654,7 +4661,7 @@ B = TypedDict('B', {'x': A})
 [typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "Tuple[TypedDict('other.B', {'x': Tuple[..., fallback=lib.A]}), fallback=lib.A]"
+tmp/a.py:3: note: Revealed type is "tuple[TypedDict('other.B', {'x': tuple[..., fallback=lib.A]}), fallback=lib.A]"
 
 [case testFollowImportSkipNotInvalidatedOnPresent]
 # flags: --follow-imports=skip
@@ -5123,7 +5130,7 @@ NT = NamedTuple('BadName', [('x', int)])
 tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
 [out2]
 tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
-tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.NT]"
+tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.NT]"
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
 
@@ -5164,7 +5171,7 @@ class C:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.C.Hidden@5]"
+tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.C.Hidden@5]"
 
 [case testIncrementalNodeCreatedFromGetattr]
 import a
@@ -5314,7 +5321,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/b.py:2: note: Revealed type is "a.<subclass of "Tuple[builtins.int, ...]" and "a.B">"
+tmp/b.py:2: note: Revealed type is "a.<subclass of "tuple[builtins.int, ...]" and "a.B">"
 
 [case testIsInstanceAdHocIntersectionIncrementalIsInstanceChange]
 import c
@@ -5675,10 +5682,12 @@ class FinalEnum(Enum):
 [builtins fixtures/isinstance.pyi]
 [out]
 main:3: error: Cannot override writable attribute "x" with a final one
+main:3: error: Incompatible types in assignment (expression has type "Ok", base class "RegularEnum" defined the type as "int")
 main:4: error: Cannot extend enum with existing members: "FinalEnum"
 main:5: error: Cannot override final attribute "x" (previously declared in base class "FinalEnum")
 [out2]
 main:3: error: Cannot override writable attribute "x" with a final one
+main:3: error: Incompatible types in assignment (expression has type "Ok", base class "RegularEnum" defined the type as "int")
 main:4: error: Cannot extend enum with existing members: "FinalEnum"
 main:5: error: Cannot override final attribute "x" (previously declared in base class "FinalEnum")
 
@@ -5845,9 +5854,9 @@ reveal_type(a.n)
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
-tmp/c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:7: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
 import c
@@ -5878,7 +5887,7 @@ def f(x: a.N) -> None:
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
@@ -5910,7 +5919,7 @@ def f(x: a.N) -> None:
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int], None], builtins.int]"
+tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int], None], builtins.int]"
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictUpdateNonRecursiveToRecursiveCoarse]
@@ -6169,6 +6178,118 @@ class Base:
 [out2]
 main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
+[case testLiteralCoarseGrainedChainedAliases]
+from mod1 import Alias1
+from typing import Literal
+x: Alias1
+def expect_int(x: int) -> None: pass
+expect_int(x)
+[file mod1.py]
+from mod2 import Alias2
+Alias1 = Alias2
+[file mod2.py]
+from mod3 import Alias3
+Alias2 = Alias3
+[file mod3.py]
+from typing import Literal
+Alias3 = int
+[file mod3.py.2]
+from typing import Literal
+Alias3 = str
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+main:5: error: Argument 1 to "expect_int" has incompatible type "str"; expected "int"
+
+[case testLiteralCoarseGrainedChainedAliases2]
+from mod1 import Alias1
+from typing import Literal
+x: Alias1
+def expect_3(x: Literal[3]) -> None: pass
+expect_3(x)
+[file mod1.py]
+from mod2 import Alias2
+Alias1 = Alias2
+[file mod2.py]
+from mod3 import Alias3
+Alias2 = Alias3
+[file mod3.py]
+from typing import Literal
+Alias3 = Literal[3]
+[file mod3.py.2]
+from typing import Literal
+Alias3 = Literal[4]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
+
+[case testDoubleReexportFunctionUpdated]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+reveal_type(f.foo)
+
+[file f.py]
+import c
+def foo(arg: c.C) -> None: pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py]
+class C: ...
+[out]
+[out2]
+[out3]
+tmp/m.py:2: note: Revealed type is "def (arg: pb2.C)"
+
+[case testDoubleReexportGenericUpdated]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+x: f.F
+reveal_type(x[0])
+
+[file f.py]
+import c
+class FB(list[c.C]): ...
+class F(FB): ...
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py]
+class C: ...
+[out]
+[out2]
+[out3]
+tmp/m.py:3: note: Revealed type is "pb2.C"
+
 [case testNoCrashDoubleReexportFunctionEmpty]
 import m
 
@@ -6190,6 +6311,38 @@ import pb1
 C = pb1.C
 [file types.py.2]
 import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportAliasEmpty]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+D = list[c.C]
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb2
 C = pb2.C
 
 [file pb1.py]
@@ -6233,6 +6386,69 @@ class C: ...
 [out2]
 [out3]
 
+[case testNoCrashDoubleReexportBaseEmpty2]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+class D(c.C): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb2
+C = pb2.C
+
+[file pb1.py]
+class C: ...
+[file pb2.py.2]
+class C: ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testDoubleReexportMetaUpdated]
+import m
+class C(metaclass=m.M): ...
+
+[file m.py]
+from types import M
+
+[file types.py]
+class M(type): ...
+[file types.py.2]
+class M: ...
+[out]
+[out2]
+main:2: error: Metaclasses not inheriting from "type" are not supported
+
+[case testIncrementalOkChangeWithSave2]
+import mod1
+x: int = mod1.x
+
+[file mod1.py]
+from mod2 import x
+
+[file mod2.py]
+x = 1
+
+[file mod2.py.2]
+x = "no way"
+[out]
+[out2]
+main:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testNoCrashDoubleReexportMetaEmpty]
 import m
 
@@ -6254,6 +6470,38 @@ import pb1
 C = pb1.C
 [file types.py.2]
 import pb1, pb2
+C = pb2.C
+
+[file pb1.py]
+class C(type): ...
+[file pb2.py.2]
+class C(type): ...
+[file pb1.py.2]
+[out]
+[out2]
+[out3]
+
+[case testNoCrashDoubleReexportMetaEmpty2]
+import m
+
+[file m.py]
+import f
+[file m.py.3]
+import f
+# modify
+
+[file f.py]
+import c
+class D(metaclass=c.C): pass
+
+[file c.py]
+from types import C
+
+[file types.py]
+import pb1
+C = pb1.C
+[file types.py.2]
+import pb2
 C = pb2.C
 
 [file pb1.py]
@@ -6862,3 +7110,204 @@ if int():
 [out]
 [out2]
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testUntypedCallsExcludeAffectsCache]
+# flags: --disallow-untyped-calls --untyped-calls-exclude=mod.Super
+# flags2: --disallow-untyped-calls --untyped-calls-exclude=mod
+# flags3: --disallow-untyped-calls --untyped-calls-exclude=mod.Super
+import mod
+[file mod.py]
+class Super:
+    def draw(self):
+        ...
+class Class(Super):
+    ...
+Class().draw()
+[out]
+tmp/mod.py:6: error: Call to untyped function "draw" in typed context
+[out2]
+[out3]
+tmp/mod.py:6: error: Call to untyped function "draw" in typed context
+
+[case testMethodMakeBoundIncremental]
+from a import A
+a = A()
+a.f()
+[file a.py]
+class B:
+    def f(self, s: A) -> int: ...
+
+def f(s: A) -> int: ...
+
+class A:
+    f = f
+[file a.py.2]
+class B:
+    def f(self, s: A) -> int: ...
+
+def f(s: A) -> int: ...
+
+class A:
+    f = B().f
+[out]
+[out2]
+main:3: error: Too few arguments
+
+[case testUnreachableAfterToplevelAssertImportThirdParty]
+# flags: --platform unknown
+import sys
+assert sys.platform == 'linux'
+import does_not_exist
+[builtins fixtures/ops.pyi]
+[out]
+[out2]
+
+[case testIncrementalNoCrashOnParamSpecPrefixUpdateMethod]
+import impl
+[file impl.py]
+from typing_extensions import ParamSpec
+from lib import Sub
+
+P = ParamSpec("P")
+class Impl(Sub[P]):
+    def test(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.meth(1, *args, **kwargs)
+
+[file impl.py.2]
+from typing_extensions import ParamSpec
+from lib import Sub
+
+P = ParamSpec("P")
+class Impl(Sub[P]):
+    def test(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.meth("no", *args, **kwargs)
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+class Base(Generic[P]):
+    def meth(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+class Sub(Base[Concatenate[int, P]]): ...
+[builtins fixtures/paramspec.pyi]
+[out]
+[out2]
+tmp/impl.py:7: error: Argument 1 to "meth" of "Base" has incompatible type "str"; expected "int"
+
+[case testIncrementalNoCrashOnParamSpecPrefixUpdateMethodAlias]
+import impl
+[file impl.py]
+from typing_extensions import ParamSpec
+from lib import Sub
+
+P = ParamSpec("P")
+class Impl(Sub[P]):
+    def test(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.alias(1, *args, **kwargs)
+
+[file impl.py.2]
+from typing_extensions import ParamSpec
+from lib import Sub
+
+P = ParamSpec("P")
+class Impl(Sub[P]):
+    def test(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.alias("no", *args, **kwargs)
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+class Base(Generic[P]):
+    def meth(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+    alias = meth
+class Sub(Base[Concatenate[int, P]]): ...
+[builtins fixtures/paramspec.pyi]
+[out]
+[out2]
+tmp/impl.py:7: error: Argument 1 has incompatible type "str"; expected "int"
+
+[case testIncrementalDifferentSourcesFreshnessCorrect]
+# cmd: mypy -m foo bar
+# cmd2: mypy -m foo
+# cmd3: mypy -m foo bar
+[file foo.py]
+foo = 5
+[file foo.py.2]
+foo = None
+[file bar.py]
+from foo import foo
+bar: int = foo
+[out]
+[out2]
+[out3]
+tmp/bar.py:2: error: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+[case testIncrementalBlockingErrorRepeatAndUndo]
+import m
+[file m.py]
+import f
+reveal_type(f.x)
+[file m.py.3]
+import f
+reveal_type(f.x)
+# touch
+[file f.py]
+x = 1
+[file f.py.2]
+no way
+[file f.py.4]
+x = 1
+[out]
+tmp/m.py:2: note: Revealed type is "builtins.int"
+[out2]
+tmp/f.py:1: error: Invalid syntax
+[out3]
+tmp/f.py:1: error: Invalid syntax
+[out4]
+tmp/m.py:2: note: Revealed type is "builtins.int"
+
+[case testIncrementalSameErrorOrder]
+import m
+[file m.py]
+import n
+def accept_int(x: int) -> None: pass
+accept_int(n.foo)
+[file n.py]
+import other
+foo = "hello"
+reveal_type(foo)
+[file other.py]
+[file other.py.2]
+# touch
+[rechecked other]
+[stale]
+[out]
+tmp/n.py:3: note: Revealed type is "builtins.str"
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+[out2]
+tmp/n.py:3: note: Revealed type is "builtins.str"
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalNoIndirectDepFromLocal]
+import foo
+import bar
+
+[file foo.py]
+# Having a local named 'bar' shouldn't generate a dependency on module 'bar'
+def f(bar: int) -> int:
+    return bar
+
+[file bar.py]
+import foo
+x = 1
+
+[file bar.py.2]
+import foo
+x = 2
+
+[out]
+[rechecked bar]
+[stale]

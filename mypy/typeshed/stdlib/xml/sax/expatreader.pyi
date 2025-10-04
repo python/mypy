@@ -1,7 +1,7 @@
 import sys
 from _typeshed import ReadableBuffer
 from collections.abc import Mapping
-from typing import Any, Literal, overload
+from typing import Any, Final, Literal, overload
 from typing_extensions import TypeAlias
 from xml.sax import _Source, xmlreader
 from xml.sax.handler import _ContentHandlerProtocol
@@ -11,7 +11,7 @@ if sys.version_info >= (3, 10):
 
 _BoolType: TypeAlias = Literal[0, 1] | bool
 
-version: str
+version: Final[str]
 AttributesImpl = xmlreader.AttributesImpl
 AttributesNSImpl = xmlreader.AttributesNSImpl
 
@@ -53,11 +53,7 @@ class ExpatParser(xmlreader.IncrementalParser, xmlreader.Locator):
     ) -> None: ...
     @overload
     def setProperty(self, name: str, value: object) -> None: ...
-    if sys.version_info >= (3, 9):
-        def feed(self, data: str | ReadableBuffer, isFinal: bool = False) -> None: ...
-    else:
-        def feed(self, data: str | ReadableBuffer, isFinal: _BoolType = 0) -> None: ...
-
+    def feed(self, data: str | ReadableBuffer, isFinal: bool = False) -> None: ...
     def flush(self) -> None: ...
     def close(self) -> None: ...
     def reset(self) -> None: ...

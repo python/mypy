@@ -11,11 +11,11 @@ import itertools
 from collections.abc import Iterable, Sequence
 from typing import Any, Callable, TypeVar, cast
 
+from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
-    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -63,6 +63,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    remove_dups,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
@@ -125,7 +126,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
     )
 
 
-def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
+def get_self_type(func: CallableType, def_info: TypeInfo) -> Type | None:
+    default_self = fill_typevars(def_info)
     if isinstance(get_proper_type(func.ret_type), UninhabitedType):
         return func.ret_type
     elif func.arg_types and func.arg_types[0] != default_self and func.arg_kinds[0] == ARG_POS:
@@ -144,6 +146,15 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     where ... are argument types for the __init__/__new__ method (without the self
     argument). Also, the fallback type will be 'type' instead of 'function'.
     """
+    allow_cache = (
+        checker_state.type_checker is not None
+        and checker_state.type_checker.allow_constructor_cache
+    )
+
+    if info.type_object_type is not None:
+        if allow_cache:
+            return info.type_object_type
+        info.type_object_type = None
 
     # We take the type from whichever of __init__ and __new__ is first
     # in the MRO, preferring __init__ if there is a tie.
@@ -166,7 +177,15 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     init_index = info.mro.index(init_method.node.info)
     new_index = info.mro.index(new_method.node.info)
 
-    fallback = info.metaclass_type or named_type("builtins.type")
+    if info.metaclass_type is not None:
+        fallback = info.metaclass_type
+    elif checker_state.type_checker:
+        # Prefer direct call when it is available. It is faster, and,
+        # unfortunately, some callers provide bogus callback.
+        fallback = checker_state.type_checker.named_type("builtins.type")
+    else:
+        fallback = named_type("builtins.type")
+
     if init_index < new_index:
         method: FuncBase | Decorator = init_method.node
         is_new = False
@@ -185,9 +204,13 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     arg_kinds=[ARG_STAR, ARG_STAR2],
                     arg_names=["_args", "_kwds"],
                     ret_type=any_type,
+                    is_bound=True,
                     fallback=named_type("builtins.function"),
                 )
-                return class_callable(sig, info, fallback, None, is_new=False)
+                result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
+                if allow_cache and state.strict_optional:
+                    info.type_object_type = result
+                return result
 
         # Otherwise prefer __init__ in a tie. It isn't clear that this
         # is the right thing, but __new__ caused problems with
@@ -197,12 +220,21 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     # Construct callable type based on signature of __init__. Adjust
     # return type and insert type arguments.
     if isinstance(method, FuncBase):
+        if isinstance(method, OverloadedFuncDef) and not method.type:
+            # Do not cache if the type is not ready. Same logic for decorators is
+            # achieved in early return above because is_valid_constructor() is False.
+            allow_cache = False
         t = function_type(method, fallback)
     else:
         assert isinstance(method.type, ProperType)
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
-    return type_object_type_from_function(t, info, method.info, fallback, is_new)
+    result = type_object_type_from_function(t, info, method.info, fallback, is_new)
+    # Only write cached result is strict_optional=True, otherwise we may get
+    # inconsistent behaviour because of union simplification.
+    if allow_cache and state.strict_optional:
+        info.type_object_type = result
+    return result
 
 
 def is_valid_constructor(n: SymbolNode | None) -> bool:
@@ -226,9 +258,8 @@ def type_object_type_from_function(
     # self-types only in the defining class, similar to __new__ (but not exactly the same,
     # see comment in class_callable below). This is mostly useful for annotating library
     # classes such as subprocess.Popen.
-    default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
-        orig_self_types = [get_self_type(it, default_self) for it in signature.items]
+        orig_self_types = [get_self_type(it, def_info) for it in signature.items]
     else:
         orig_self_types = [None] * len(signature.items)
 
@@ -244,7 +275,7 @@ def type_object_type_from_function(
     # We need to map B's __init__ to the type (List[T]) -> None.
     signature = bind_self(
         signature,
-        original_type=default_self,
+        original_type=fill_typevars(info),
         is_classmethod=is_new,
         # Explicit instance self annotations have special handling in class_callable(),
         # we don't need to bind any type variables in them if they are generic.
@@ -288,7 +319,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType, LiteralType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -392,33 +423,15 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = []
-        original_type = get_proper_type(original_type)
-        for c in method.items:
-            if isinstance(original_type, Instance):
-                # Filter based on whether declared self type can match actual object type.
-                # For example, if self has type C[int] and method is accessed on a C[str] value,
-                # omit this item. This is best effort since bind_self can be called in many
-                # contexts, and doing complete validation might trigger infinite recursion.
-                #
-                # Note that overload item filtering normally happens elsewhere. This is needed
-                # at least during constraint inference.
-                keep = is_valid_self_type_best_effort(c, original_type)
-            else:
-                keep = True
-            if keep:
-                items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
-        if len(items) == 0:
-            # If no item matches, returning all items helps avoid some spurious errors
-            items = [
-                bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-            ]
+        items = [
+            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+        ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    func = method
+    func: CallableType = method
     if not func.arg_types:
         # Invalid method, return something.
-        return cast(F, func)
+        return method
     if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
@@ -427,7 +440,7 @@ def bind_self(
 
         # In the case of **kwargs we should probably emit an error, but
         # for now we simply skip it, to avoid crashes down the line.
-        return cast(F, func)
+        return method
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
@@ -471,54 +484,14 @@ def bind_self(
     else:
         variables = func.variables
 
-    original_type = get_proper_type(original_type)
-    if isinstance(original_type, CallableType) and original_type.is_type_obj():
-        original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
         arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
         arg_names=func.arg_names[1:],
         variables=variables,
-        bound_args=[original_type],
+        is_bound=True,
     )
     return cast(F, res)
-
-
-def is_valid_self_type_best_effort(c: CallableType, self_type: Instance) -> bool:
-    """Quickly check if self_type might match the self in a callable.
-
-    Avoid performing any complex type operations. This is performance-critical.
-
-    Default to returning True if we don't know (or it would be too expensive).
-    """
-    if (
-        self_type.args
-        and c.arg_types
-        and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
-        and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
-        and arg_type.args
-        and self_type.type.fullname != "functools._SingleDispatchCallable"
-    ):
-        if self_type.type is not arg_type.type:
-            # We can't map to supertype, since it could trigger expensive checks for
-            # protocol types, so we consevatively assume this is fine.
-            return True
-
-        # Fast path: no explicit annotation on self
-        if all(
-            (
-                type(arg) is TypeVarType
-                and type(arg.upper_bound) is Instance
-                and arg.upper_bound.type.fullname == "builtins.object"
-            )
-            for arg in arg_type.args
-        ):
-            return True
-
-        from mypy.meet import is_overlapping_types
-
-        return is_overlapping_types(self_type, c.arg_types[0])
-    return True
 
 
 def erase_to_bound(t: Type) -> Type:
@@ -550,15 +523,16 @@ def callable_corresponding_argument(
 
         # def right(a: int = ...) -> None: ...
         # def left(__a: int = ..., *, a: int = ...) -> None: ...
-        from mypy.subtypes import is_equivalent
+        from mypy.meet import meet_types
 
         if (
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
-            and is_equivalent(by_name.typ, by_pos.typ)
         ):
-            return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
+            return FormalArgument(
+                by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
+            )
     return by_name if by_name is not None else by_pos
 
 
@@ -867,8 +841,8 @@ def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
         if isinstance(func, FuncItem):
             return callable_type(func, fallback)
         else:
-            # Broken overloads can have self.type set to None.
-            # TODO: should we instead always set the type in semantic analyzer?
+            # Either a broken overload, or decorated overload type is not ready.
+            # TODO: make sure the caller defers if possible.
             assert isinstance(func, OverloadedFuncDef)
             any_type = AnyType(TypeOfAny.from_error)
             dummy = CallableType(
@@ -889,7 +863,7 @@ def callable_type(
     fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and (not fdef.is_static or fdef.name == "__new__") and fdef.arg_names:
+    if fdef.info and fdef.has_self_or_cls_argument and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == "__new__":
             self_type = TypeType.make_normalized(self_type)
@@ -1025,7 +999,7 @@ def is_singleton_type(typ: Type) -> bool:
     return typ.is_singleton_type()
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1047,21 +1021,22 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
+        # Non-empty enums cannot subclass each other so simply removing duplicates is enough.
         items = [
-            try_expanding_sum_type_to_union(item, target_fullname) for item in typ.relevant_items()
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in remove_dups(flatten_nested_unions(typ.relevant_items()))
         ]
-        return make_simplified_union(items, contract_literals=False)
+        return UnionType.make_union(items)
 
     if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.fullname == "builtins.bool":
-            items = [LiteralType(True, typ), LiteralType(False, typ)]
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
         if typ.type.is_enum:
             items = [LiteralType(name, typ) for name in typ.type.enum_members]
             if not items:
                 return typ
-            return make_simplified_union(items, contract_literals=False)
+            return UnionType.make_union(items)
 
     return typ
 
@@ -1139,12 +1114,12 @@ def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
 
 class TypeVarExtractor(TypeQuery[list[TypeVarLikeType]]):
     def __init__(self, include_all: bool = False) -> None:
-        super().__init__(self._merge)
+        super().__init__()
         self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
+    def strategy(self, items: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
-        for item in iter:
+        for item in items:
             out.extend(item)
         return out
 
@@ -1190,6 +1165,10 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
     if isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Look up __method__ on the metaclass for class objects.
         return custom_special_method(typ.fallback, name, check_all)
+    if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+        if typ.item.type.metaclass_type:
+            # Look up __method__ on the metaclass for class objects.
+            return custom_special_method(typ.item.type.metaclass_type, name, check_all)
     if isinstance(typ, AnyType):
         # Avoid false positives in uncertain cases.
         return True
@@ -1252,12 +1231,14 @@ def get_protocol_member(
     if member == "__call__" and class_obj:
         # Special case: class objects always have __call__ that is just the constructor.
 
+        # TODO: this is wrong, it creates callables that are not recognized as type objects.
+        # Long-term, we should probably get rid of this callback argument altogether.
         def named_type(fullname: str) -> Instance:
             return Instance(left.type.mro[-1], [])
 
         return type_object_type(left.type, named_type)
 
-    if member == "__call__" and left.type.is_metaclass():
+    if member == "__call__" and left.type.is_metaclass(precise=True):
         # Special case: we want to avoid falling back to metaclass __call__
         # if constructor signature didn't match, this can cause many false negatives.
         return None
@@ -1274,3 +1255,54 @@ def get_protocol_member(
             )
         )
     return subtype
+
+
+def _is_disjoint_base(info: TypeInfo) -> bool:
+    # It either has the @disjoint_base decorator or defines nonempty __slots__.
+    if info.is_disjoint_base:
+        return True
+    if not info.slots:
+        return False
+    own_slots = {
+        slot
+        for slot in info.slots
+        if not any(
+            base_info.type.slots is not None and slot in base_info.type.slots
+            for base_info in info.bases
+        )
+    }
+    return bool(own_slots)
+
+
+def _get_disjoint_base_of(instance: Instance) -> TypeInfo | None:
+    """Returns the disjoint base of the given instance, if it exists."""
+    if _is_disjoint_base(instance.type):
+        return instance.type
+    for base in instance.type.mro:
+        if _is_disjoint_base(base):
+            return base
+    return None
+
+
+def can_have_shared_disjoint_base(instances: list[Instance]) -> bool:
+    """Returns whether the given instances can share a disjoint base.
+
+    This means that a child class of these classes can exist at runtime.
+    """
+    # Ignore None disjoint bases (which are `object`).
+    disjoint_bases = [
+        base for instance in instances if (base := _get_disjoint_base_of(instance)) is not None
+    ]
+    if not disjoint_bases:
+        # All are `object`.
+        return True
+
+    candidate = disjoint_bases[0]
+    for base in disjoint_bases[1:]:
+        if candidate.has_base(base.fullname):
+            continue
+        elif base.has_base(candidate.fullname):
+            candidate = base
+        else:
+            return False
+    return True
