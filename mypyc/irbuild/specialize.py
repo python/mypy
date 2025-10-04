@@ -80,6 +80,7 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    for_loop_helper,
     sequence_from_generator_preallocate_helper,
     translate_list_comprehension,
     translate_set_comprehension,
@@ -101,7 +102,7 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr
 from mypyc.primitives.int_ops import isinstance_int
-from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
+from mypyc.primitives.list_ops import isinstance_list, list_append_op, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
@@ -268,7 +269,7 @@ def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) 
 
 
 @specialize_function("builtins.list")
-def translate_list_from_generator_call(
+def translate_list_from_generator_expr(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
     """Special case for simplest list comprehension.
@@ -288,6 +289,50 @@ def translate_list_from_generator_call(
             expr.args[0],
             empty_op_llbuilder=builder.builder.new_list_op_with_length,
             set_item_op=new_list_set_item_op,
+        )
+    return None
+
+
+@specialize_function("builtins.list")
+def translate_list_from_generator_call(
+    builder: IRBuilder, expr: CallExpr, callee: RefExpr
+) -> Value | None:
+    """Special case for simplest list construction using one of our for_helpers.
+
+    For example:
+        list(map(f, some_list/some_tuple/some_str))
+    """
+    if (
+        len(expr.args) == 1
+        and expr.arg_kinds[0] == ARG_POS
+        and isinstance(expr.args[0], CallExpr)
+        and isinstance(expr.args[0].callee, NameExpr)
+        and expr.args[0].callee.fullname
+        in (
+            # TODO: make constant for these vals
+            "builtins.map",
+            "builtins.filter",
+            "builtins.filterfalse",
+        )
+    ):
+        call_expr = expr.args[0]
+        itemtype = builder._analyze_iterable_item_type(call_expr)
+        indextype = builder.type_to_rtype(itemtype)
+        index = Register(indextype, "__mypyc_list_helper__", line=call_expr.line)
+
+        result = builder.new_list_op([], expr.line)
+
+        def body_insts() -> None:
+            builder.primitive_op(list_append_op, [result, index], expr.line)
+
+        for_loop_helper(
+            builder=builder,
+            index=index,
+            expr=call_expr,
+            body_insts=body_insts,
+            else_insts=None,
+            is_async=False,
+            line=expr.line,
         )
     return None
 

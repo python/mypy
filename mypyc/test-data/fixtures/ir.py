@@ -7,6 +7,8 @@ from typing import (
     overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
 )
 
+from typing_extensions import Self
+
 _T = TypeVar('_T')
 T_co = TypeVar('T_co', covariant=True)
 T_contra = TypeVar('T_contra', contravariant=True)
@@ -411,3 +413,17 @@ class classmethod: pass
 class staticmethod: pass
 
 NotImplemented: Any = ...
+
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+_T3 = TypeVar("_T3")
+
+class map(Generic[_S]):
+    @overload
+    def __new__(cls, func: Callable[[_T1], _S], iterable: Iterable[_T1], /) -> Self: ...
+    @overload
+    def __new__(cls, func: Callable[[_T1, _T2], _S], iterable: Iterable[_T1], iter2: Iterable[_T2], /) -> Self: ...
+    @overload
+    def __new__(cls, func: Callable[[_T1, _T2, _T3], _S], iterable: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], /) -> Self: ...
+    def __iter__(self) -> Self: ...
+    def __next__(self) -> _S: ...
