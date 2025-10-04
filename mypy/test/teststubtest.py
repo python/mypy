@@ -12,6 +12,8 @@ import unittest
 from collections.abc import Iterator
 from typing import Any, Callable
 
+from pytest import raises
+
 import mypy.stubtest
 from mypy import build, nodes
 from mypy.modulefinder import BuildSource
@@ -171,7 +173,12 @@ def build_helper(source: str) -> build.BuildResult:
 
 
 def run_stubtest_with_stderr(
-    stub: str, runtime: str, options: list[str], config_file: str | None = None
+    stub: str,
+    runtime: str,
+    options: list[str],
+    config_file: str | None = None,
+    output: io.StringIO | None = None,
+    outerr: io.StringIO | None = None,
 ) -> tuple[str, str]:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
@@ -188,8 +195,8 @@ def run_stubtest_with_stderr(
             with open(f"{TEST_MODULE_NAME}_config.ini", "w") as f:
                 f.write(config_file)
             options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
-        output = io.StringIO()
-        outerr = io.StringIO()
+        output = io.StringIO() if output is None else output
+        outerr = io.StringIO() if outerr is None else outerr
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
     filtered_output = remove_color_code(
@@ -2888,14 +2895,20 @@ class StubtestMiscUnit(unittest.TestCase):
         runtime = "temp = 5\n"
         stub = "temp: int\n"
         config_file = "[mypy]\ndisable_error_code = not-a-valid-name\n"
-        output, outerr = run_stubtest_with_stderr(
-            stub=stub, runtime=runtime, options=[], config_file=config_file
-        )
-        assert output == "Success: no issues found in 1 module\n"
-        assert outerr == (
-            "test_module_config.ini: [mypy]: disable_error_code: "
-            "Invalid error code(s): not-a-valid-name\n"
-        )
+        output = io.StringIO()
+        outerr = io.StringIO()
+        with raises(SystemExit):
+            run_stubtest_with_stderr(
+                stub=stub,
+                runtime=runtime,
+                options=[],
+                config_file=config_file,
+                output=output,
+                outerr=outerr,
+            )
+
+        assert output.getvalue() == "error: Invalid error code(s): not-a-valid-name\n"
+        assert outerr.getvalue() == ""
 
     def test_config_file_wrong_incomplete_feature(self) -> None:
         runtime = "x = 1\n"
