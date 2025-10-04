@@ -144,6 +144,10 @@ class BuildResult:
         self.errors: list[str] = []  # Filled in by build if desired
 
 
+def build_error(msg: str) -> NoReturn:
+    raise CompileError([f"mypy: error: {msg}"])
+
+
 def build(
     sources: list[BuildSource],
     options: Options,
@@ -238,6 +242,9 @@ def _build(
     cached_read = fscache.read
     errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
+
+    # Validate error codes after plugins are loaded.
+    options.process_error_codes(error_callback=build_error)
 
     # Add catch-all .gitignore to cache dir if we created it
     cache_dir_existed = os.path.isdir(options.cache_dir)
@@ -503,9 +510,6 @@ def load_plugins(
     plugins (for cache validation).
     """
     custom_plugins, snapshot = load_plugins_from_config(options, errors, stdout)
-
-    if options._on_plugins_loaded is not None:
-        options._on_plugins_loaded()
 
     custom_plugins += extra_plugins
 
