@@ -2705,8 +2705,21 @@ def isinstance_interpreted_subclasses(x: Any) -> bool:
     return isinstance(x, InterpSubclasses)
 [out]
 def isinstance_nonnative(x):
-    x :: Any
+    x, r0 :: object
+    r1 :: ptr
+    r2 :: object
+    r3 :: r2 == r0
+    return r3
 L0:
+    r0 = __main__.NonNative :: type
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 :: borrow load_mem r1 :: builtins.object*
+    r3 :: r2 == r0
+    return r3
 def isinstance_interpreted_subclasses(x):
-    x :: Any
+    x, r0 :: object
+    r1 :: bool
 L0:
+    r0 = __main__.InterpSubclasses :: type
+    r1 = CPy_TypeCheck(x, r0)
+    return r1
