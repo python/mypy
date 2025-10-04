@@ -2688,19 +2688,21 @@ L0:
     return 1
 
 [case testIsInstanceInterpretedSubclasses]
+from typing import Any
 from mypy_extensions import mypyc_attr
 
 @mypyc_attr(native_class=False)
 class NonNative:
     pass
+
 @mypyc_attr(allow_interpreted_subclasses=True)
 class InterpSubclasses:
     pass
+
 def isinstance_nonnative(x: Any) -> bool:
     return isinstance(x, NonNative)
 def isinstance_interpreted_subclasses(x: Any) -> None:
     return isinstance(x, InterpSubclasses)
-
 [out]
 def isinstance_nonnative(x):
     x :: Any
