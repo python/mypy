@@ -2492,3 +2492,16 @@ x + T  # E: Unsupported left operand type for + ("int")
 T()  # E: "TypeVar" not callable
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testEnumIdempotency]
+[builtins fixtures/tuple.pyi]
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+def f() -> Color:
+    return Color(Color.RED)
+
+[out]
