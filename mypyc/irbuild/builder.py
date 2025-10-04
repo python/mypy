@@ -126,7 +126,7 @@ from mypyc.irbuild.targets import (
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
 from mypyc.options import CompilerOptions
-from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
+from mypyc.primitives.dict_ops import dict_set_item_op, exact_dict_get_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
 from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
@@ -472,7 +472,7 @@ class IRBuilder:
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
         mod_dict = self.call_c(get_module_dict_op, [], line)
         # Get module object from modules dict.
-        return self.primitive_op(dict_get_item_op, [mod_dict, self.load_str(module)], line)
+        return self.primitive_op(exact_dict_get_item_op, [mod_dict, self.load_str(module)], line)
 
     def get_module_attr(self, module: str, attr: str, line: int) -> Value:
         """Look up an attribute of a module without storing it in the local namespace.
@@ -1406,7 +1406,7 @@ class IRBuilder:
     def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
         reg = self.load_str(name)
-        return self.primitive_op(dict_get_item_op, [_globals, reg], line)
+        return self.primitive_op(exact_dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
         return self.add(LoadStatic(dict_rprimitive, "globals", self.module_name))

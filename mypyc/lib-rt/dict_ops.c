@@ -15,15 +15,7 @@
 // some indirections.
 PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     if (PyDict_CheckExact(dict)) {
-        PyObject *res = PyDict_GetItemWithError(dict, key);
-        if (!res) {
-            if (!PyErr_Occurred()) {
-                PyErr_SetObject(PyExc_KeyError, key);
-            }
-        } else {
-            Py_INCREF(res);
-        }
-        return res;
+        return CPyDict_GetItemUnsafe(dict, key);
     } else {
         return PyObject_GetItem(dict, key);
     }
@@ -488,4 +480,23 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
 
 int CPyMapping_Check(PyObject *obj) {
     return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_MAPPING;
+}
+
+// =======================
+// Unsafe dict operations
+// =======================
+
+// Unsafe: assumes dict is a true dict (PyDict_CheckExact(dict) is always true)
+
+PyObject *CPyDict_GetItemUnsafe(PyObject *dict, PyObject *key) {
+    // No type check, direct call
+    PyObject *res = PyDict_GetItemWithError(dict, key);
+    if (!res) {
+        if (!PyErr_Occurred()) {
+            PyErr_SetObject(PyExc_KeyError, key);
+        }
+    } else {
+        Py_INCREF(res);
+    }
+    return res;
 }
