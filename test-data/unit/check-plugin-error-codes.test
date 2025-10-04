@@ -1,0 +1,32 @@
+[case testCustomErrorCodeFromPluginIsTargetable]
+# flags: --config-file tmp/mypy.ini --show-error-codes
+
+def main() -> None:
+    return
+main() # E: Custom error  [custom]
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/custom_errorcode.py
+
+[case testCustomErrorCodeCanBeDisabled]
+# flags: --config-file tmp/mypy.ini --show-error-codes --disable-error-code=custom
+
+def main() -> None:
+    return
+main()  # no output expected when disabled
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/custom_errorcode.py
+
+[case testCustomErrorCodeCanBeReenabled]
+# flags: --config-file tmp/mypy.ini --show-error-codes --disable-error-code=custom --enable-error-code=custom
+
+def main() -> None:
+    return
+main() # E: Custom error  [custom]
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/custom_errorcode.py
