@@ -244,7 +244,7 @@ class ClassIR:
         )
 
     @allow_interpreted_subclasses.setter
-    def _(self, value: bool) -> None:
+    def allow_interpreted_subclasses(self, value: bool) -> None:
         self._allow_interpreted_subclasses = value
 
     def real_base(self) -> ClassIR | None:
