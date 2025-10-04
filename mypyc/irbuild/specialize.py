@@ -19,7 +19,6 @@ from typing import Callable, Final, Optional, cast
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
-    BytesExpr,
     CallExpr,
     DictExpr,
     Expression,
@@ -1057,9 +1056,9 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
 def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
         return None
-    arg = expr.args[0]
-    if isinstance(arg, (StrExpr, BytesExpr)) and len(arg.value) == 1:
-        return Integer(ord(arg.value))
+    arg = constant_fold_expr(builder, expr.args[0])
+    if isinstance(arg, (str, bytes)) and len(arg) == 1:
+        return Integer(ord(arg))
     return None
 
 
