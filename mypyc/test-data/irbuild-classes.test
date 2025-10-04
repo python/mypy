@@ -2701,7 +2701,7 @@ class InterpSubclasses:
 
 def isinstance_nonnative(x: Any) -> bool:
     return isinstance(x, NonNative)
-def isinstance_interpreted_subclasses(x: Any) -> None:
+def isinstance_interpreted_subclasses(x: Any) -> bool:
     return isinstance(x, InterpSubclasses)
 [out]
 def isinstance_nonnative(x):
