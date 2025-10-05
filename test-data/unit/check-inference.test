@@ -2174,8 +2174,8 @@ class A:
 [out]
 
 [case testMultipassAndTopLevelVariable]
-y = x # E: Cannot determine type of "x"  # E: Name "x" is used before definition
-y()
+y = x # E: Name "x" is used before definition
+y() # E: "int" not callable
 x = 1+int()
 [out]
 
