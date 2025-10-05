@@ -150,6 +150,18 @@ To fix this, you can add an ``allowlist`` entry:
 And now when running stubtest with ``--allowlist=allowlist.txt``,
 no errors will be generated anymore.
 
+Allowlists also support regular expressions.
+They might be useful to ignore many similar errors at once.
+If some CI workers have ``optional_expensive_dep`` installed stubtest will complain:
+
+.. code-block: ini
+
+   note: unused allowlist entry ex.second
+   Found 1 error (checked 1 module)
+
+Changing ``ex.second`` to be ``(ex\.second)?`` will make this error optional.
+And stubtest will not fail with and without ``optional_expensive_dep``.
+
 CLI
 ***
 
