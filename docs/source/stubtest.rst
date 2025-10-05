@@ -135,7 +135,7 @@ In this case stubtest will correctly complain:
    builtins.int
    Runtime:
    MISSING
-    
+
    Found 1 error (checked 1 module)
 
 To fix this, you can add an ``allowlist`` entry:
