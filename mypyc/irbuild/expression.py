@@ -324,6 +324,10 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         # A call to a NewType type is a no-op at runtime.
         return builder.accept(expr.args[0])
 
+    folded = try_constant_fold(builder, expr)
+    if folded is not None:
+        return folded
+
     if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
         callee = callee.analyzed.expr  # Unwrap type application
 

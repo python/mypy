@@ -217,3 +217,25 @@ L2:
 L3:
     keep_alive y
     return r2
+
+[case testBytesJoinConstantFold]
+from typing import Final
+
+# TODO: this is not currently supported but probably should be
+constant: Final = b"constant"
+
+def fold_tuple() -> bytes:
+    return b" ".join((b"constant", b"folded"))
+def fold_list() -> bytes:
+    return b" ".join([b"constant", b"folded"])
+[out]
+def fold_tuple():
+    r0 :: bytes
+L0:
+    r0 = b'constant folded'
+    return r0
+def fold_list():
+    r0 :: bytes
+L0:
+    r0 = b'constant folded'
+    return r0

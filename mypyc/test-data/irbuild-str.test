@@ -740,3 +740,32 @@ L2:
 L3:
     keep_alive x
     return r2
+
+[case testStrJoinConstantFold]
+from typing import Final
+
+constant: Final = "constant"
+tuple_of_literals = "tuple", "of", "literals"
+
+def fold_tuple() -> str:
+    return " ".join((constant, "folded"))
+def fold_tuple_var() -> str:
+    return " ".join(tuple_of_literals)
+def fold_list() -> str:
+    return " ".join([constant, "folded"])
+[out]
+def fold_tuple():
+    r0 :: str
+L0:
+    r0 = 'constant folded'
+    return r0
+def fold_tuple_var():
+    r0 :: str
+L0:
+    r0 = 'tuple of literals'
+    return r0
+def fold_list():
+    r0 :: str
+L0:
+    r0 = 'constant folded'
+    return r0
