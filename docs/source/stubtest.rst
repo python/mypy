@@ -140,7 +140,7 @@ In this case stubtest will correctly complain:
 
 To fix this, you can add an ``allowlist`` entry:
 
-.. code-block: ini
+.. code-block:: ini
 
    # Allowlist entries in `allowlist.txt` file:
 
@@ -150,17 +150,21 @@ To fix this, you can add an ``allowlist`` entry:
 And now when running stubtest with ``--allowlist=allowlist.txt``,
 no errors will be generated anymore.
 
-Allowlists also support regular expressions.
-They might be useful to ignore many similar errors at once.
-If some CI workers have ``optional_expensive_dep`` installed stubtest will complain:
+Allowlists also support regular expressions,
+which can be useful to ignore many similar errors at once.
+They can also be useful for suppressing stubtest errors that occur sometimes,
+but not on every CI run. For example, if some CI workers have
+``optional_expensive_dep`` installed, stubtest might complain with this message
+on those workers if you had the ``ex.second`` allowlist entry:
 
-.. code-block: ini
+.. code-block:: ini
 
    note: unused allowlist entry ex.second
    Found 1 error (checked 1 module)
 
-Changing ``ex.second`` to be ``(ex\.second)?`` will make this error optional.
-And stubtest will not fail with and without ``optional_expensive_dep``.
+Changing ``ex.second`` to be ``(ex\.second)?`` will make this error optional,
+meaning that stubtest will pass whether or not a CI runner
+has``optional_expensive_dep`` installed.
 
 CLI
 ***
