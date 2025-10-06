@@ -1221,6 +1221,7 @@ class CallC(RegisterOp):
         var_arg_idx: int = -1,
         *,
         is_pure: bool = False,
+        returns_null: bool = False,
     ) -> None:
         self.error_kind = error_kind
         super().__init__(line)
@@ -1235,7 +1236,10 @@ class CallC(RegisterOp):
         # and all the arguments are immutable. Pure functions support
         # additional optimizations. Pure functions never fail.
         self.is_pure = is_pure
-        if is_pure:
+        # The function might return a null value that does not indicate
+        # an error.
+        self.returns_null = returns_null
+        if is_pure or returns_null:
             assert error_kind == ERR_NEVER
 
     def sources(self) -> list[Value]:

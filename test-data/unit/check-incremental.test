@@ -7290,3 +7290,24 @@ tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expec
 [out2]
 tmp/n.py:3: note: Revealed type is "builtins.str"
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalNoIndirectDepFromLocal]
+import foo
+import bar
+
+[file foo.py]
+# Having a local named 'bar' shouldn't generate a dependency on module 'bar'
+def f(bar: int) -> int:
+    return bar
+
+[file bar.py]
+import foo
+x = 1
+
+[file bar.py.2]
+import foo
+x = 2
+
+[out]
+[rechecked bar]
+[stale]

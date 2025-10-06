@@ -1153,6 +1153,15 @@ These options may only be set in the global section (``[mypy]``).
     type checking results. This can make it easier to integrate mypy
     with continuous integration (CI) tools.
 
+.. confval:: junit_format
+
+    :type: string
+    :default: ``global``
+
+    If junit_xml is set, specifies format.
+    global (default): single test with all errors;
+    per_file: one test entry per file with failures.
+
 .. confval:: scripts_are_modules
 
     :type: boolean

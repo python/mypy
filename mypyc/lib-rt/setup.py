@@ -73,8 +73,6 @@ else:
     # TODO: we need a way to share our preferred C flags and get_extension() logic with
     # mypyc/build.py without code duplication.
     setup(
-        name="mypy-native",
-        version="0.0.1",
         ext_modules=[
             Extension(
                 "native_internal",
@@ -88,5 +86,5 @@ else:
                 ],
                 include_dirs=["."],
             )
-        ],
+        ]
     )

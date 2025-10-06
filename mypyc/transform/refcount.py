@@ -33,6 +33,7 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     Branch,
+    CallC,
     ControlOp,
     DecRef,
     Goto,
@@ -89,7 +90,9 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
 
 
 def is_maybe_undefined(post_must_defined: set[Value], src: Value) -> bool:
-    return isinstance(src, Register) and src not in post_must_defined
+    return (isinstance(src, Register) and src not in post_must_defined) or (
+        isinstance(src, CallC) and src.returns_null
+    )
 
 
 def maybe_append_dec_ref(
