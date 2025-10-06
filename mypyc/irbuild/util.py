@@ -154,7 +154,7 @@ def get_mypyc_attrs(
                         set_mypyc_attr(arg.value, True, line)
                     else:
                         errors.error(
-                            "All `mypyc_attr` positional arguments must be string literals.",
+                            'All "mypyc_attr" positional arguments must be string literals.',
                             path,
                             line,
                         )
