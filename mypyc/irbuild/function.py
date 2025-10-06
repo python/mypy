@@ -438,17 +438,6 @@ def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDe
     if ir.inherits_python:
         builder.error(error_base + "it inherits from a non-native class", line)
 
-    delattr_symbol = cdef.info.get("__delattr__")
-    delattr = delattr_symbol.node if delattr_symbol else None
-    delattr_override = delattr is not None and not delattr.fullname.startswith("builtins.")
-    if not delattr_override:
-        builder.warning(
-            f'Native class "{ir.name}" overrides "__setattr__" but not "__delattr__". '
-            + "At runtime, deleting attributes from this class will likely not work as expected. "
-            + 'Consider also defining "__delattr__".',
-            line,
-        )
-
     with builder.enter_method(ir, name, c_int_rprimitive, internal=True):
         attr_arg = builder.add_argument("attr", object_rprimitive)
         value_arg = builder.add_argument("value", object_rprimitive)
@@ -459,6 +448,9 @@ def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDe
         builder.add_bool_branch(is_delattr, call_delattr, call_setattr)
 
         builder.activate_block(call_delattr)
+        delattr_symbol = cdef.info.get("__delattr__")
+        delattr = delattr_symbol.node if delattr_symbol else None
+        delattr_override = delattr is not None and not delattr.fullname.startswith("builtins.")
         if delattr_override:
             builder.gen_method_call(builder.self(), "__delattr__", [attr_arg], None, line)
         else:

@@ -2246,8 +2246,7 @@ class InheritsNonNative(NonNative):
 
 [case testUnsupportedDelAttr]
 class SetAttr:
-    def __setattr__(self, attr: str, val: object) -> None:  # W: Native class "SetAttr" overrides "__setattr__" but not "__delattr__". \
-At runtime, deleting attributes from this class will likely not work as expected. Consider also defining "__delattr__".
+    def __setattr__(self, attr: str, val: object) -> None:
         pass
 
 class NoSetAttr:
