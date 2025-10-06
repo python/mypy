@@ -388,7 +388,9 @@ class StrConv(NodeVisitor[str]):
             o.name, o.kind, o.fullname, o.is_inferred_def or o.is_special_form, o.node
         )
         if isinstance(o.node, mypy.nodes.Var) and o.node.is_final:
-            pretty += f" = {o.node.final_value}"
+            final_value = o.node.final_value
+            if final_value is not None:
+                pretty += f" = {o.node.final_value}"
         return short_type(o) + "(" + pretty + ")"
 
     def pretty_name(
