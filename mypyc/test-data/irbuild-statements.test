@@ -757,49 +757,35 @@ def delDictMultiple() -> None:
     del d["one"], d["four"]
 [out]
 def delDict():
-    r0, r1 :: str
-    r2, r3 :: object
-    r4, d :: dict
-    r5 :: str
+    r0, r1, d :: dict
+    r2 :: str
+    r3 :: i32
+    r4 :: bit
+L0:
+    r0 = {'one': 1, 'two': 2}
+    r1 = PyDict_Copy(r0)
+    d = r1
+    r2 = 'one'
+    r3 = PyObject_DelItem(d, r2)
+    r4 = r3 >= 0 :: signed
+    return 1
+def delDictMultiple():
+    r0, r1, d :: dict
+    r2, r3 :: str
+    r4 :: i32
+    r5 :: bit
     r6 :: i32
     r7 :: bit
 L0:
-    r0 = 'one'
-    r1 = 'two'
-    r2 = object 1
-    r3 = object 2
-    r4 = CPyDict_Build(2, r0, r2, r1, r3)
-    d = r4
-    r5 = 'one'
-    r6 = PyObject_DelItem(d, r5)
-    r7 = r6 >= 0 :: signed
-    return 1
-def delDictMultiple():
-    r0, r1, r2, r3 :: str
-    r4, r5, r6, r7 :: object
-    r8, d :: dict
-    r9, r10 :: str
-    r11 :: i32
-    r12 :: bit
-    r13 :: i32
-    r14 :: bit
-L0:
-    r0 = 'one'
-    r1 = 'two'
-    r2 = 'three'
+    r0 = {'one': 1, 'two': 2, 'three': 3, 'four': 4}
+    r1 = PyDict_Copy(r0)
+    d = r1
+    r2 = 'one'
     r3 = 'four'
-    r4 = object 1
-    r5 = object 2
-    r6 = object 3
-    r7 = object 4
-    r8 = CPyDict_Build(4, r0, r4, r1, r5, r2, r6, r3, r7)
-    d = r8
-    r9 = 'one'
-    r10 = 'four'
-    r11 = PyObject_DelItem(d, r9)
-    r12 = r11 >= 0 :: signed
-    r13 = PyObject_DelItem(d, r10)
-    r14 = r13 >= 0 :: signed
+    r4 = PyObject_DelItem(d, r2)
+    r5 = r4 >= 0 :: signed
+    r6 = PyObject_DelItem(d, r3)
+    r7 = r6 >= 0 :: signed
     return 1
 
 [case testDelAttribute]
