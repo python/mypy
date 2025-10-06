@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, cast
 
 from mypy.nodes import (
     ARG_POS,
@@ -1249,10 +1249,10 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
             if all(arg is not None for arg in arg_lengths):
                 return min(arg_lengths)  # type: ignore [type-var]
         elif fullname == "builtins.range" and len(expr.args) <= 3:
-            folded_args = [constant_fold_expr(builder, arg) for arg in args]
+            folded_args = [constant_fold_expr(builder, arg) for arg in expr.args]
             if all(isinstance(arg, int) for arg in folded_args):
                 try:
-                    return len(range(*folded_args))
+                    return len(range(*cast(list[int], folded_args)))
                 except ValueError:  # prevent crash if invalid args
                     pass
 
