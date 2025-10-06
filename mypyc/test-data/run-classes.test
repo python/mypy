@@ -4566,6 +4566,9 @@ class SetAttrOverridden(SetAttr):
         else:
             super().__setattr__(key, val)
 
+    def __delattr__(self, key: str) -> None:
+        del self._attributes[key]
+
 @mypyc_attr(native_class=False)
 class SetAttrNonNative:
     _attributes: dict[str, object]
@@ -4645,6 +4648,10 @@ def test_setattr() -> None:
     with assertRaises(AttributeError):
         i.const = 45
 
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
+
 def test_setattr_inherited() -> None:
     i = SetAttrInherited(99, {"one": 1})
     assert i.class_var == "x"
@@ -4677,6 +4684,10 @@ def test_setattr_inherited() -> None:
     assert i.regular_attr == 103
     with assertRaises(AttributeError):
         i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
 
 def test_setattr_overridden() -> None:
     i = SetAttrOverridden(99, 1, {"one": 1})
@@ -4723,6 +4734,15 @@ def test_setattr_overridden() -> None:
     with assertRaises(AttributeError):
         i.const = 45
 
+    del i.four
+    assert "four" not in i._attributes
+
+    delattr(i, "three")
+    assert "three" not in i._attributes
+
+    i.__delattr__("two")
+    assert "two" not in i._attributes
+
     base_ref: SetAttr = i
     setattr(base_ref, "sub_attr", 5)
     assert base_ref.sub_attr == 5
@@ -4732,6 +4752,12 @@ def test_setattr_overridden() -> None:
 
     with assertRaises(AttributeError):
         setattr(base_ref, "subclass_var", "c")
+
+    base_ref.new_attr = "new_attr"
+    assert base_ref.new_attr == "new_attr"
+
+    del base_ref.new_attr
+    assert "new_attr" not in base_ref._attributes
 
 def test_setattr_nonnative() -> None:
     i = SetAttrNonNative(99, {"one": 1})
@@ -4765,6 +4791,10 @@ def test_setattr_nonnative() -> None:
     assert i.regular_attr == 103
     with assertRaises(AttributeError):
         i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
 
 def test_no_setattr() -> None:
     i = NoSetAttr(99)
@@ -4805,6 +4835,15 @@ def test_no_setattr_nonnative() -> None:
 
     object.__setattr__(i, "three", 102)
     assert i.three == 102
+
+    del i.three
+    assert i.three == None
+
+    delattr(i, "two")
+    assert i.two == None
+
+    object.__delattr__(i, "one")
+    assert i.one == None
 
 [typing fixtures/typing-full.pyi]
 
@@ -4852,6 +4891,9 @@ class SetAttrOverridden(SetAttr):
             raise AttributeError()
         else:
             super().__setattr__(key, val)
+
+    def __delattr__(self, key: str) -> None:
+        del self._attributes[key]
 
 @mypyc_attr(native_class=False)
 class SetAttrNonNative:
@@ -4936,6 +4978,10 @@ def test_setattr() -> None:
     with assertRaises(AttributeError):
         i.const = 45
 
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
+
 def test_setattr_inherited() -> None:
     i = SetAttrInherited(99, {"one": 1})
     assert i.class_var == "x"
@@ -4968,6 +5014,10 @@ def test_setattr_inherited() -> None:
     assert i.regular_attr == 103
     with assertRaises(AttributeError):
         i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
 
 def test_setattr_overridden() -> None:
     i = SetAttrOverridden(99, 1, {"one": 1})
@@ -5014,6 +5064,15 @@ def test_setattr_overridden() -> None:
     with assertRaises(AttributeError):
         i.const = 45
 
+    del i.four
+    assert "four" not in i._attributes
+
+    delattr(i, "three")
+    assert "three" not in i._attributes
+
+    i.__delattr__("two")
+    assert "two" not in i._attributes
+
     base_ref: SetAttr = i
     setattr(base_ref, "sub_attr", 5)
     assert base_ref.sub_attr == 5
@@ -5023,6 +5082,12 @@ def test_setattr_overridden() -> None:
 
     with assertRaises(AttributeError):
         setattr(base_ref, "subclass_var", "c")
+
+    base_ref.new_attr = "new_attr"
+    assert base_ref.new_attr == "new_attr"
+
+    del base_ref.new_attr
+    assert "new_attr" not in base_ref._attributes
 
 def test_setattr_nonnative() -> None:
     i = SetAttrNonNative(99, {"one": 1})
@@ -5056,6 +5121,10 @@ def test_setattr_nonnative() -> None:
     assert i.regular_attr == 103
     with assertRaises(AttributeError):
         i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
 
 def test_no_setattr() -> None:
     i = NoSetAttr(99)
@@ -5097,6 +5166,15 @@ def test_no_setattr_nonnative() -> None:
     object.__setattr__(i, "three", 102)
     assert i.three == 102
 
+    del i.three
+    assert i.three == None
+
+    delattr(i, "two")
+    assert i.two == None
+
+    object.__delattr__(i, "one")
+    assert i.one == None
+
 test_setattr()
 test_setattr_inherited()
 test_setattr_overridden()
@@ -5105,3 +5183,67 @@ test_no_setattr()
 test_no_setattr_nonnative()
 
 [typing fixtures/typing-full.pyi]
+
+[case testDelAttrWithDeletableAttr]
+from testutil import assertRaises
+
+class DelAttr:
+    __deletable__ = ["del_counter"]
+
+    _attributes: dict[str, object]
+    del_counter: int = 0
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "_attributes", {})
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "del_counter":
+            object.__setattr__(self, "del_counter", val)
+        else:
+            self._attributes[key] = val
+
+    def __delattr__(self, key: str) -> None:
+        if key == "del_counter":
+            self.del_counter += 1
+        else:
+            del self._attributes[key]
+
+def test_deletable_attr() -> None:
+    i = DelAttr()
+    assert i.del_counter == 0
+    del i.del_counter
+    assert i.del_counter == 1
+
+[case testDelAttrWithDeletableAttrInterpreted]
+class DelAttr:
+    __deletable__ = ["del_counter"]
+
+    _attributes: dict[str, object]
+    del_counter: int = 0
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "_attributes", {})
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "del_counter":
+            object.__setattr__(self, "del_counter", val)
+        else:
+            self._attributes[key] = val
+
+    def __delattr__(self, key: str) -> None:
+        if key == "del_counter":
+            self.del_counter += 1
+        else:
+            del self._attributes[key]
+
+[file driver.py]
+from native import DelAttr
+from testutil import assertRaises
+
+def test_deletable_attr() -> None:
+    i = DelAttr()
+    assert i.del_counter == 0
+    del i.del_counter
+    assert i.del_counter == 1
+
+test_deletable_attr()

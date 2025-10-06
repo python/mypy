@@ -2222,16 +2222,39 @@ class AllowsInterpreted:
     def __setattr__(self, attr: str, val: object) -> None:  # E: "__setattr__" not supported in class "AllowsInterpreted" because it allows interpreted subclasses
         pass
 
+    def __delattr__(self, attr: str) -> None:
+        pass
+
 class InheritsInterpreted(dict):
     def __setattr__(self, attr: str, val: object) -> None:  # E: "__setattr__" not supported in class "InheritsInterpreted" because it inherits from a non-native class
         pass
 
+    def __delattr__(self, attr: str) -> None:
+        pass
+
 @mypyc_attr(native_class=False)
 class NonNative:
-    pass
+    def __setattr__(self, attr: str, val: object) -> None:
+        pass
 
 class InheritsNonNative(NonNative):
     def __setattr__(self, attr: str, val: object) -> None:  # E: "__setattr__" not supported in class "InheritsNonNative" because it inherits from a non-native class
+        pass
+
+    def __delattr__(self, attr: str) -> None:
+        pass
+
+[case testUnsupportedDelAttr]
+class SetAttr:
+    def __setattr__(self, attr: str, val: object) -> None:
+        pass
+
+class NoSetAttr:
+    def __delattr__(self, attr: str) -> None:  # E: "__delattr__" supported only in classes that also override "__setattr__", or inherit from a native class that overrides it.
+        pass
+
+class InheritedSetAttr(SetAttr):
+    def __delattr__(self, attr: str) -> None:
         pass
 
 [case testSetAttr]
@@ -2329,11 +2352,21 @@ L6:
 def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
     __mypyc_self__ :: __main__.SetAttr
     attr, value :: object
-    r0 :: str
-    r1 :: None
+    r0 :: bit
+    r1 :: i32
+    r2 :: bit
+    r3 :: str
+    r4 :: None
 L0:
-    r0 = cast(str, attr)
-    r1 = __mypyc_self__.__setattr__(r0, value)
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = CPyObject_GenericSetAttr(__mypyc_self__, attr, 0)
+    r2 = r1 >= 0 :: signed
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
     return 0
 def test(attr, val):
     attr :: str
@@ -2370,6 +2403,124 @@ L0:
     r12 = r11 >= 0 :: signed
     r13 = CPyObject_GenericSetAttr(i, attr, val)
     r14 = r13 >= 0 :: signed
+    return 1
+
+[case testSetAttrAndDelAttr]
+from typing import ClassVar
+class SetAttr:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object], new_attr: str, new_val: object) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        object.__setattr__(self, "regular_attr", regular_attr)
+
+        super().__setattr__(new_attr, new_val)
+        object.__setattr__(self, new_attr, new_val)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __delattr__(self, key: str) -> None:
+        del self._attributes[key]
+
+[typing fixtures/typing-full.pyi]
+[out]
+def SetAttr.__init__(self, regular_attr, extra_attrs, new_attr, new_val):
+    self :: __main__.SetAttr
+    regular_attr :: int
+    extra_attrs :: dict
+    new_attr :: str
+    new_val :: object
+    r0 :: i32
+    r1 :: bit
+    r2 :: i32
+    r3 :: bit
+L0:
+    self._attributes = extra_attrs
+    self.regular_attr = regular_attr
+    r0 = CPyObject_GenericSetAttr(self, new_attr, new_val)
+    r1 = r0 >= 0 :: signed
+    r2 = CPyObject_GenericSetAttr(self, new_attr, new_val)
+    r3 = r2 >= 0 :: signed
+    return 1
+def SetAttr.__setattr__(self, key, val):
+    self :: __main__.SetAttr
+    key :: str
+    val :: object
+    r0 :: str
+    r1 :: bool
+    r2 :: int
+    r3 :: bool
+    r4 :: str
+    r5 :: bool
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
+    r10 :: dict
+    r11 :: i32
+    r12 :: bit
+L0:
+    r0 = 'regular_attr'
+    r1 = CPyStr_Equal(key, r0)
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = unbox(int, val)
+    self.regular_attr = r2; r3 = is_error
+    goto L6
+L2:
+    r4 = 'class_var'
+    r5 = CPyStr_Equal(key, r4)
+    if r5 goto L3 else goto L4 :: bool
+L3:
+    r6 = builtins :: module
+    r7 = 'AttributeError'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
+    CPy_Raise(r9)
+    unreachable
+L4:
+    r10 = self._attributes
+    r11 = CPyDict_SetItem(r10, key, val)
+    r12 = r11 >= 0 :: signed
+L5:
+L6:
+    return 1
+def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.SetAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: str
+    r2 :: None
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = cast(str, attr)
+    r2 = __mypyc_self__.__delattr__(r1)
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+def SetAttr.__delattr__(self, key):
+    self :: __main__.SetAttr
+    key :: str
+    r0 :: dict
+    r1 :: i32
+    r2 :: bit
+L0:
+    r0 = self._attributes
+    r1 = PyObject_DelItem(r0, key)
+    r2 = r1 >= 0 :: signed
     return 1
 
 [case testUntransformedSetAttr_64bit]
