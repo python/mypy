@@ -156,8 +156,6 @@ if USE_MYPYC:
         log_trace=log_trace,
         # Mypy itself is allowed to use native_internal extension.
         depends_on_native_internal=True,
-        # TODO: temporary, remove this after we publish mypy-native on PyPI.
-        install_native_libs=True,
     )
 
 else:

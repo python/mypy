@@ -1234,3 +1234,60 @@ def test_callable_arg_same_name_as_helper() -> None:
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
+
+[case testRunAsyncCancelFinallySpecialCase]
+import asyncio
+
+from testutil import assertRaises
+
+# Greatly simplified from asyncio.Condition
+class Condition:
+    async def acquire(self) -> None: pass
+
+    async def wait(self) -> bool:
+         l = asyncio.get_running_loop()
+         fut = l.create_future()
+         a = []
+         try:
+             try:
+                 a.append(fut)
+                 try:
+                     await fut
+                     return True
+                 finally:
+                     a.pop()
+             finally:
+                err = None
+                while True:
+                    try:
+                        await self.acquire()
+                        break
+                    except asyncio.CancelledError as e:
+                        err = e
+
+                if err is not None:
+                    try:
+                        raise err
+                    finally:
+                        err = None
+         except BaseException:
+             raise
+
+async def do_cancel() -> None:
+    cond = Condition()
+    wait = asyncio.create_task(cond.wait())
+    asyncio.get_running_loop().call_soon(wait.cancel)
+    with assertRaises(asyncio.CancelledError):
+        await wait
+
+def test_cancel_special_case() -> None:
+    asyncio.run(do_cancel())
+
+[file asyncio/__init__.pyi]
+from typing import Any
+
+class CancelledError(Exception): ...
+
+def run(x: object) -> object: ...
+def get_running_loop() -> Any: ...
+def create_task(x: object) -> Any: ...

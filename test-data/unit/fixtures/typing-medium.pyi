@@ -32,10 +32,8 @@ Self = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
-T_contra = TypeVar('T_contra', contravariant=True)
-U = TypeVar('U')
-V = TypeVar('V')
-S = TypeVar('S')
+R_co = TypeVar('R_co', covariant=True)
+S_contra = TypeVar('S_contra', contravariant=True)
 
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
@@ -49,8 +47,8 @@ class Iterable(Protocol[T_co]):
 class Iterator(Iterable[T_co], Protocol):
     def __next__(self) -> T_co: pass
 
-class Generator(Iterator[T], Generic[T, U, V]):
-    def __iter__(self) -> 'Generator[T, U, V]': pass
+class Generator(Iterator[T_co], Generic[T_co, S_contra, R_co]):
+    def __iter__(self) -> 'Generator[T_co, S_contra, R_co]': pass
 
 class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
@@ -65,8 +63,8 @@ class SupportsInt(Protocol):
 class SupportsFloat(Protocol):
     def __float__(self) -> float: pass
 
-class ContextManager(Generic[T]):
-    def __enter__(self) -> T: pass
+class ContextManager(Generic[T_co]):
+    def __enter__(self) -> T_co: pass
     # Use Any because not all the precise types are in the fixtures.
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
 

@@ -2121,3 +2121,13 @@ class A: ...
 
 x1: Alias1[A]  # ok
 x2: Alias2[A]  # ok
+
+[case testUndefinedUnpackInPEP696Base]
+# Typo below is intentional.
+class MyTuple[*Ts](tuple[*TS]):  # E: Name "TS" is not defined
+    ...
+
+x: MyTuple[int, str]
+reveal_type(x[0])  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

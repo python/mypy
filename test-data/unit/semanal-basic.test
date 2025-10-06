@@ -521,7 +521,7 @@ MypyFile:1(
     NameExpr(True [builtins.True])
     Literal[True]?)
   AssignmentStmt:8(
-    NameExpr(n* [__main__.n] = None)
+    NameExpr(n* [__main__.n])
     CallExpr:8(
       NameExpr(func [__main__.func])
       Args())))
