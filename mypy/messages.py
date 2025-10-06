@@ -2008,7 +2008,11 @@ class MessageBuilder:
             )
 
     def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
-        self.fail(f'Untyped decorator makes function "{func_name}" untyped', context)
+        self.fail(
+            f'Untyped decorator makes function "{func_name}" untyped',
+            context,
+            code=codes.UNTYPED_DECORATOR,
+        )
 
     def bad_proto_variance(
         self, actual: int, tvar_name: str, expected: int, context: Context
