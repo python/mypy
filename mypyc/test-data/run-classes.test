@@ -5183,3 +5183,79 @@ test_no_setattr()
 test_no_setattr_nonnative()
 
 [typing fixtures/typing-full.pyi]
+
+[case testDelAttrWithDeletableAttr]
+from testutil import assertRaises
+
+class DelAttr:
+    __deletable__ = ["regular_attr"]
+
+    _attributes: dict[str, object]
+    regular_attr: int
+
+    def __init__(self, regular_attr: int) -> None:
+        object.__setattr__(self, "regular_attr", regular_attr)
+        object.__setattr__(self, "_attributes", {})
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            object.__setattr__(self, key, val)
+        else:
+            self._attributes[key] = val
+
+    def __delattr__(self, key: str) -> None:
+        if key == "regular_attr":
+            object.__delattr__(self, "regular_attr")
+        else:
+            del self._attributes[key]
+
+def test_deletable_attr() -> None:
+    i = DelAttr(101)
+    assert i.regular_attr == 101
+
+    del i.regular_attr
+    with assertRaises(AttributeError):
+        i.regular_attr
+
+    i.regular_attr = 102
+    assert i.regular_attr == 102
+
+[case testDelAttrWithDeletableAttrInterpreted]
+class DelAttr:
+    __deletable__ = ["regular_attr"]
+
+    _attributes: dict[str, object]
+    regular_attr: int
+
+    def __init__(self, regular_attr: int) -> None:
+        object.__setattr__(self, "regular_attr", regular_attr)
+        object.__setattr__(self, "_attributes", {})
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            object.__setattr__(self, key, val)
+        else:
+            self._attributes[key] = val
+
+    def __delattr__(self, key: str) -> None:
+        if key == "regular_attr":
+            object.__delattr__(self, "regular_attr")
+        else:
+            del self._attributes[key]
+
+[file driver.py]
+from native import DelAttr
+from testutil import assertRaises
+
+def test_deletable_attr() -> None:
+    i = DelAttr(101)
+    assert i.regular_attr == 101
+
+    del i.regular_attr
+    with assertRaises(AttributeError):
+        i.regular_attr
+
+    i.regular_attr = 102
+    assert i.regular_attr == 102
+
+test_deletable_attr()
