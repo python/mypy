@@ -1238,13 +1238,11 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
     return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"
 
 
-class _mypyc_safe_key(pprint._safe_key):  # type: ignore [name-defined, misc]
+def _mypyc_safe_key(obj: object) -> str:
     """A custom sort key implementation for pprint that makes the output deterministic
     for all literal types supported by mypyc.
 
     This is NOT safe for use as a sort key for other types, so we MUST replace the
     original pprint._safe_key once we've pprinted our object.
     """
-
-    def __lt__(self, other: _mypyc_safe_key) -> bool:
-        return str(type(self.obj)) + repr(self.obj) < str(type(other.obj)) + repr(other.obj)
+    return str(type(obj)) + repr(obj)
