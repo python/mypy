@@ -204,18 +204,19 @@ class Emitter:
 
         If it contains illegal characters, an empty string is returned."""
         line_width = self._indent + len(line)
+
+        # temporarily override pprint._safe_key
+        default_safe_key = pprint._safe_key
+        pprint._safe_key = _mypyc_safe_key
+
+        # pretty print the object
         formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+
+        # replace the _safe_key
+        pprint._safe_key = default_safe_key
+        
         if any(x in formatted for x in ("/*", "*/", "\0")):
             return ""
-
-        # make frozenset annotations deterministic
-        if formatted.startswith("frozenset({"):
-            frozenset_items = formatted[11:-2]
-            # if our frozenset contains another frozenset or a tuple, we will need better logic
-            # here, but this rudimentary logic will still vastly improve codegen determinism.
-            if "(" not in frozenset_items:
-                sorted_items = ", ".join(sorted(frozenset_items.split(", ")))
-                formatted = "frozenset({" + sorted_items + "})"
 
         if "\n" in formatted:
             first_line, rest = formatted.split("\n", maxsplit=1)
@@ -1239,8 +1240,10 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
 
 class _mypyc_safe_key(pprint._safe_key):
     """A custom sort key implementation for pprint that makes the output deterministic
-    for all literal types supported by mypyc
-    """
+    for all literal types supported by mypyc.
 
-    def __lt__(self, other: _mypyc_safe_key) -> bool:
+    This is NOT safe for use as a sort key for other types, so we MUST replace the
+    original pprint._safe_key once we've pprinted our object.
+    """
+    def __lt__(self, other: "_mypyc_safe_key") -> bool:
         return str(type(self.obj)) + repr(self.obj) < str(type(other.obj)) + repr(other.obj)
