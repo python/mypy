@@ -42,6 +42,10 @@ static void **NativeInternal_API;
 static int
 import_librt_internal(void)
 {
+    PyObject *mod = PyImport_ImportModule("librt.internal");
+    if (mod == NULL)
+        return -1;
+    Py_DECREF(mod);  // we import just for the side effect of making the below work.
     NativeInternal_API = (void **)PyCapsule_Import("librt.internal._C_API", 0);
     if (NativeInternal_API == NULL)
         return -1;
