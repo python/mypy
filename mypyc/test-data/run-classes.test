@@ -2710,10 +2710,10 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
-[case testBufferRoundTrip_native_libs]
+[case testBufferRoundTrip_librt_internal]
 from typing import Final
 from mypy_extensions import u8
-from native_internal import (
+from librt.internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag
 )

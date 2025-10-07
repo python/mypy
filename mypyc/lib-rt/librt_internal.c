@@ -2,8 +2,8 @@
 #include <Python.h>
 #include <stdint.h>
 #include "CPy.h"
-#define NATIVE_INTERNAL_MODULE
-#include "native_internal.h"
+#define LIBRT_INTERNAL_MODULE
+#include "librt_internal.h"
 
 #define START_SIZE 512
 #define MAX_SHORT_INT_TAGGED (255 << 1)
@@ -558,7 +558,7 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     return Py_None;
 }
 
-static PyMethodDef native_internal_module_methods[] = {
+static PyMethodDef librt_internal_module_methods[] = {
     {"write_bool", (PyCFunction)write_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a bool")},
     {"read_bool", (PyCFunction)read_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a bool")},
     {"write_str", (PyCFunction)write_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a string")},
@@ -574,11 +574,11 @@ static PyMethodDef native_internal_module_methods[] = {
 
 static int
 NativeInternal_ABI_Version(void) {
-    return NATIVE_INTERNAL_ABI_VERSION;
+    return LIBRT_INTERNAL_ABI_VERSION;
 }
 
 static int
-native_internal_module_exec(PyObject *m)
+librt_internal_module_exec(PyObject *m)
 {
     if (PyType_Ready(&BufferType) < 0) {
         return -1;
@@ -604,32 +604,32 @@ native_internal_module_exec(PyObject *m)
         (void *)read_tag_internal,
         (void *)NativeInternal_ABI_Version,
     };
-    PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "native_internal._C_API", NULL);
+    PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "librt.internal._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
     return 0;
 }
 
-static PyModuleDef_Slot native_internal_module_slots[] = {
-    {Py_mod_exec, native_internal_module_exec},
+static PyModuleDef_Slot librt_internal_module_slots[] = {
+    {Py_mod_exec, librt_internal_module_exec},
 #ifdef Py_MOD_GIL_NOT_USED
     {Py_mod_gil, Py_MOD_GIL_NOT_USED},
 #endif
     {0, NULL}
 };
 
-static PyModuleDef native_internal_module = {
+static PyModuleDef librt_internal_module = {
     .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "native_internal",
+    .m_name = "internal",
     .m_doc = "Mypy cache serialization utils",
     .m_size = 0,
-    .m_methods = native_internal_module_methods,
-    .m_slots = native_internal_module_slots,
+    .m_methods = librt_internal_module_methods,
+    .m_slots = librt_internal_module_slots,
 };
 
 PyMODINIT_FUNC
-PyInit_native_internal(void)
+PyInit_internal(void)
 {
-    return PyModuleDef_Init(&native_internal_module);
+    return PyModuleDef_Init(&librt_internal_module);
 }
