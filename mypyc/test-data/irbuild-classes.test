@@ -2837,3 +2837,18 @@ L0:
     r6 = PyObject_VectorcallMethod(r3, r5, 9223372036854775812, 0)
     keep_alive r2, self, key, val
     return 1
+
+[case testInvalidMypycAttr]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr("allow_interpreted_subclasses", "invalid_arg")  # E: "invalid_arg" is not a supported "mypyc_attr" \
+                                                            # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+class InvalidArg:
+    pass
+@mypyc_attr(invalid_kwarg=True)  # E: "invalid_kwarg" is not a supported "mypyc_attr" \
+                                 # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+class InvalidKwarg:
+    pass
+@mypyc_attr(str())  # E: All "mypyc_attr" positional arguments must be string literals.
+class InvalidLiteral:
+    pass

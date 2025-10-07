@@ -1047,7 +1047,7 @@ class TupleGet(RegisterOp):
         super().__init__(line)
         assert isinstance(
             src.type, RTuple
-        ), "TupleGet only operates on tuples, not {type(src.type).__name__}"
+        ), f"TupleGet only operates on tuples, not {type(src.type).__name__}"
         src_len = len(src.type.types)
         self.src = src
         self.index = index
