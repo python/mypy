@@ -1245,4 +1245,4 @@ def _mypyc_safe_key(obj: object) -> str:
     This is NOT safe for use as a sort key for other types, so we MUST replace the
     original pprint._safe_key once we've pprinted our object.
     """
-    return str(type(obj)) + repr(obj)
+    return str(type(obj)) + pprint.pformat(obj)
