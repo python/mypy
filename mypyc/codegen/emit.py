@@ -1241,5 +1241,6 @@ class _mypyc_safe_key(pprint._safe_key):
     """A custom sort key implementation for pprint that makes the output deterministic
     for all literal types supported by mypyc
     """
-    def __lt__(self, other: "_mypyc_safe_key") -> bool:
+
+    def __lt__(self, other: _mypyc_safe_key) -> bool:
         return str(type(self.obj)) + repr(self.obj) < str(type(other.obj)) + repr(other.obj)
