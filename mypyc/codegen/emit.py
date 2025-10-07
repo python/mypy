@@ -1238,7 +1238,7 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
     return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"
 
 
-class _mypyc_safe_key(pprint._safe_key):  # type: ignore [attr-defined, name-defined, misc]
+class _mypyc_safe_key(pprint._safe_key):  # type: ignore [name-defined, misc]
     """A custom sort key implementation for pprint that makes the output deterministic
     for all literal types supported by mypyc.
 
