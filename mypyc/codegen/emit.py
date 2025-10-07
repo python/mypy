@@ -212,7 +212,7 @@ class Emitter:
         if formatted.startswith("frozenset({"):
             frozenset_items = formatted[11:-2]
             # if our frozenset contains another frozenset or a tuple, we will need better logic
-            # here, but this redimentary logic will still vastly improve codegen determinism.
+            # here, but this rudimentary logic will still vastly improve codegen determinism.
             if "(" not in frozenset_items:
                 sorted_items = ", ".join(sorted(frozenset_items.split(", ")))
                 formatted = "frozenset({" + sorted_items + "})"
