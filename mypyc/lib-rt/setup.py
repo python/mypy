@@ -8,9 +8,11 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from distutils import ccompiler, sysconfig
 from distutils.command.build_ext import build_ext
-from distutils.core import Extension, setup
 from typing import Any
+
+from setuptools import Extension, setup
 
 C_APIS_TO_TEST = [
     "init.c",
@@ -72,6 +74,14 @@ if "--run-capi-tests" in sys.argv:
 else:
     # TODO: we need a way to share our preferred C flags and get_extension() logic with
     # mypyc/build.py without code duplication.
+    compiler = ccompiler.new_compiler()
+    sysconfig.customize_compiler(compiler)
+    cflags: list[str] = []
+    if compiler.compiler_type == "unix":
+        cflags += ["-O3"]
+    elif compiler.compiler_type == "msvc":
+        cflags += ["/O2"]
+
     setup(
         ext_modules=[
             Extension(
@@ -85,6 +95,7 @@ else:
                     "getargsfast.c",
                 ],
                 include_dirs=["."],
+                extra_compile_args=cflags,
             )
         ]
     )
