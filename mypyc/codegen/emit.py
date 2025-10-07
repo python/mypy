@@ -206,14 +206,14 @@ class Emitter:
         line_width = self._indent + len(line)
 
         # temporarily override pprint._safe_key
-        default_safe_key = pprint._safe_key
-        pprint._safe_key = _mypyc_safe_key
+        default_safe_key = pprint._safe_key  # type: ignore [attr-defined]
+        pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
 
         # pretty print the object
         formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
 
         # replace the _safe_key
-        pprint._safe_key = default_safe_key
+        pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
 
         if any(x in formatted for x in ("/*", "*/", "\0")):
             return ""
@@ -1238,7 +1238,7 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
     return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"
 
 
-class _mypyc_safe_key(pprint._safe_key):
+def _mypyc_safe_key(pprint._safe_key):  # type: ignore [attr-defined, misc]
     """A custom sort key implementation for pprint that makes the output deterministic
     for all literal types supported by mypyc.
 
