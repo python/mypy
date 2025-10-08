@@ -232,9 +232,12 @@ def parse(
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
     try:
-        # Disable deprecation warnings about \u
+        # Disable
+        # - deprecation warnings about \u
+        # - syntax warnings for 'invalid escape sequence' (3.12+)  and 'return in finally' (3.14+)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
+            warnings.filterwarnings("ignore", category=SyntaxWarning)
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
         tree = ASTConverter(
