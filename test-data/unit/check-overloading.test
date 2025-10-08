@@ -6852,3 +6852,14 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iterable[tuple[builtins.bytes, builtins.bytes]]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testOverloadMultipleArgMessages]
+from typing import overload, Literal
+
+@overload
+def foo(x: list[Literal['str']]) -> None: ...
+@overload
+def foo(x: int) -> None: ...
+def foo(x) -> None: pass
+
+foo(reveal_type(['str']))  # N: Revealed type is "builtins.list[Literal['str']]"

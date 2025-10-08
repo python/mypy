@@ -2682,7 +2682,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """Checks a call to an overloaded function."""
         # Normalize unpacked kwargs before checking the call.
         callee = callee.with_unpacked_kwargs()
-        arg_types = self.infer_arg_types_in_empty_context(args)
+        with self.msg.filter_errors():
+            arg_types = self.infer_arg_types_in_empty_context(args)
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(
             arg_types, arg_kinds, arg_names, callee
@@ -2704,7 +2705,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         union_interrupted = False  # did we try all union combinations?
         if any(self.real_union(arg) for arg in arg_types):
             try:
-                with self.msg.filter_errors():
+                with self.msg.filter_errors(
+                    filter_errors=True, save_filtered_errors=True
+                ) as union_msgs:
                     unioned_return = self.union_overload_result(
                         plausible_targets,
                         args,
@@ -2760,6 +2763,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 for inferred_type in inferred_types:
                     if isinstance(c := get_proper_type(inferred_type), CallableType):
                         self.chk.warn_deprecated(c.definition, context)
+            # Use the errors the union result caused
+            self.msg.add_errors(union_msgs.filtered_errors())
             return unioned_result
         if inferred_result is not None:
             if isinstance(c := get_proper_type(inferred_result[1]), CallableType):
@@ -2900,17 +2905,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
-            with self.msg.filter_errors() as w:
-                with self.chk.local_type_map as m:
-                    ret_type, infer_type = self.check_call(
-                        callee=typ,
-                        args=args,
-                        arg_kinds=arg_kinds,
-                        arg_names=arg_names,
-                        context=context,
-                        callable_name=callable_name,
-                        object_type=object_type,
-                    )
+            with self.msg.filter_errors() as w, self.chk.local_type_map as m:
+                ret_type, infer_type = self.check_call(
+                    callee=typ,
+                    args=args,
+                    arg_kinds=arg_kinds,
+                    arg_names=arg_names,
+                    context=context,
+                    callable_name=callable_name,
+                    object_type=object_type,
+                )
             is_match = not w.has_new_errors()
             if is_match:
                 # Return early if possible; otherwise record info, so we can
@@ -3078,6 +3082,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if direct is not None and not isinstance(
                 get_proper_type(direct[0]), (UnionType, AnyType)
             ):
+                # Make sure arguments get messages
+                self.infer_arg_types_in_empty_context(args)
+
                 # We only return non-unions soon, to avoid greedy match.
                 return [direct]
 
