@@ -741,7 +741,7 @@ L4:
     a = r11
     return 1
 
-[case testTupleBuiltFromFinalFixedLengthTuple]
+[case testTupleBuiltFromModLevelFixedLengthTuple]
 from typing import Final
 
 def varint() -> int:
