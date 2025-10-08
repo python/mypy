@@ -2866,6 +2866,15 @@ test_buffer_roundtrip_interpreted()
 test_buffer_int_size_interpreted()
 test_buffer_str_size_interpreted()
 
+[case testBufferEmpty_librt_internal]
+from librt.internal import Buffer, write_int, read_int
+
+def test_empty() -> None:
+    b = Buffer(b"")
+    write_int(b, 42)
+    b1 = Buffer(b.getvalue())
+    assert read_int(b1) == 42
+
 [case testEnumMethodCalls]
 from enum import Enum
 from typing import overload, Optional, Union

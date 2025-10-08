@@ -664,7 +664,6 @@ def mypycify(
             )
 
     if install_librt:
-        os.makedirs("librt", exist_ok=True)
         for name in RUNTIME_C_FILES:
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
