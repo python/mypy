@@ -744,14 +744,24 @@ L4:
 [case testTupleBuiltFromFinalFixedLengthTuple]
 from typing import Final
 
-source: Final = (1, 2, 3)
+def varint() -> int:
+    # this helper lets us break constant folding for this test
+    return 2
+
+source_final: Final = (1, varint(), 3)
+source_var = (1, varint(), 3)
 
 def f(val: int) -> bool:
     return val % 2 == 0
 
-def test() -> None:
-    a = tuple(f(x) for x in source)
+def test_final_can_fold() -> None:
+    a = tuple(f(x) for x in source_final)
+def test_var_can_not_fold() -> None:
+    a = tuple(f(x) for x in source_var)
 [out]
+def varint():
+L0:
+    return 4
 def f(val):
     val, r0 :: int
     r1 :: bit
@@ -759,58 +769,89 @@ L0:
     r0 = CPyTagged_Remainder(val, 4)
     r1 = int_eq r0, 0
     return r1
-def test():
+def test_final_can_fold():
     r0 :: tuple[int, int, int]
     r1 :: bool
     r2 :: object
     r3 :: native_int
     r4 :: bit
-    r5, r6, r7 :: int
-    r8, r9, r10 :: object
-    r11, r12 :: tuple
-    r13 :: native_int
-    r14 :: bit
-    r15 :: object
-    r16, x :: int
-    r17 :: bool
-    r18 :: object
-    r19 :: native_int
+    r5 :: object
+    r6 :: int
+    r7, r8 :: object
+    r9, r10 :: tuple
+    r11 :: native_int
+    r12 :: bit
+    r13 :: object
+    r14, x :: int
+    r15 :: bool
+    r16 :: object
+    r17 :: native_int
     a :: tuple
 L0:
-    r0 = __main__.source :: static
+    r0 = __main__.source_final :: static
     if is_error(r0) goto L1 else goto L2
 L1:
-    r1 = raise NameError('value for final name "source" was not set')
+    r1 = raise NameError('value for final name "source_final" was not set')
     unreachable
 L2:
     r2 = box(tuple[int, int, int], r0)
     r3 = PyObject_Size(r2)
     r4 = r3 >= 0 :: signed
-    r5 = r0[0]
+    r5 = object 1
     r6 = r0[1]
-    r7 = r0[2]
-    r8 = box(int, r5)
-    r9 = box(int, r6)
-    r10 = box(int, r7)
-    r11 = PyTuple_Pack(3, r8, r9, r10)
-    r12 = PyTuple_New(r3)
-    r13 = 0
+    r7 = object 3
+    r8 = box(int, r6)
+    r9 = PyTuple_Pack(3, r5, r8, r7)
+    r10 = PyTuple_New(r3)
+    r11 = 0
 L3:
-    r14 = r13 < r3 :: signed
-    if r14 goto L4 else goto L6 :: bool
+    r12 = r11 < r3 :: signed
+    if r12 goto L4 else goto L6 :: bool
 L4:
-    r15 = CPySequenceTuple_GetItemUnsafe(r11, r13)
-    r16 = unbox(int, r15)
-    x = r16
-    r17 = f(x)
-    r18 = box(bool, r17)
-    CPySequenceTuple_SetItemUnsafe(r12, r13, r18)
+    r13 = CPySequenceTuple_GetItemUnsafe(r9, r11)
+    r14 = unbox(int, r13)
+    x = r14
+    r15 = f(x)
+    r16 = box(bool, r15)
+    CPySequenceTuple_SetItemUnsafe(r10, r11, r16)
 L5:
-    r19 = r13 + 1
-    r13 = r19
+    r17 = r11 + 1
+    r11 = r17
     goto L3
 L6:
-    a = r12
+    a = r10
+    return 1
+def test_var_can_not_fold():
+    source :: tuple
+    r0 :: native_int
+    r1 :: tuple
+    r2 :: native_int
+    r3 :: bit
+    r4 :: object
+    r5, x, r6 :: bool
+    r7 :: object
+    r8 :: native_int
+    a :: tuple
+L0:
+    r0 = var_object_size source
+    r1 = PyTuple_New(r0)
+    r2 = 0
+L1:
+    r3 = r2 < r0 :: signed
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = CPySequenceTuple_GetItemUnsafe(source, r2)
+    r5 = unbox(bool, r4)
+    x = r5
+    r6 = f(x)
+    r7 = box(bool, r6)
+    CPySequenceTuple_SetItemUnsafe(r1, r2, r7)
+L3:
+    r8 = r2 + 1
+    r2 = r8
+    goto L1
+L4:
+    a = r1
     return 1
 
 [case testTupleBuiltFromVariableLengthTuple]

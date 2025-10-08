@@ -29,7 +29,7 @@ from mypy.nodes import (
     TypeAlias,
     Var,
 )
-from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
+from mypy.types import LiteralType, TupleType, get_proper_type
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
