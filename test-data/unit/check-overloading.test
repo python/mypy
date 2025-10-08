@@ -6863,3 +6863,20 @@ def foo(x: int) -> None: ...
 def foo(x) -> None: pass
 
 foo(reveal_type(['str']))  # N: Revealed type is "builtins.list[Literal['str']]"
+
+[case testOverloadUnionArgumentsEvaluated]
+from typing import overload, Optional
+
+@overload
+def blah(k: str, o: None = None) -> Optional[str]: ...
+
+@overload
+def blah(k: str, o: int) -> str: ...
+
+def blah(k, o=None) -> Optional[str]: ...
+
+class X:
+    m: str
+
+x: Optional[X] = None
+blah(x.m)  # E: Item "None" of "Optional[X]" has no attribute "m"
