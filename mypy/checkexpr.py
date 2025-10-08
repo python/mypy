@@ -3062,6 +3062,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     context,
                 )
             if res is not None:
+                # Make sure arguments get messages
+                self.infer_arg_types_in_empty_context(args)
+
                 return [res]
             return None
 
