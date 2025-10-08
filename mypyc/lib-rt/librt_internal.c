@@ -70,12 +70,14 @@ Buffer_init_internal(BufferObject *self, PyObject *source) {
             PyErr_SetString(PyExc_TypeError, "source must be a bytes object");
             return -1;
         }
-        self->size = PyBytes_GET_SIZE(source);
-        self->end = self->size;
+        self->end = PyBytes_GET_SIZE(source);
+        // Allocate at least one byte to simplify resizing logic.
+        // The original bytes buffer has last null byte, so this is safe.
+        self->size = self->end + 1;
         // This returns a pointer to internal bytes data, so make our own copy.
         char *buf = PyBytes_AsString(source);
         self->buf = PyMem_Malloc(self->size);
-        memcpy(self->buf, buf, self->size);
+        memcpy(self->buf, buf, self->end);
     } else {
         self->buf = PyMem_Malloc(START_SIZE);
         self->size = START_SIZE;

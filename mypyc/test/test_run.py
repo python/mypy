@@ -285,6 +285,12 @@ class TestRun(MypycDataSuite):
                 )
             )
 
+        if librt:
+            # This hack forces Python to prefer the local "installation".
+            os.makedirs("librt", exist_ok=True)
+            with open(os.path.join("librt", "__init__.py"), "a"):
+                pass
+
         if not run_setup(setup_file, ["build_ext", "--inplace"]):
             if testcase.config.getoption("--mypyc-showc"):
                 show_c(cfiles)
