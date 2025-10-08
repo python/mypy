@@ -313,3 +313,9 @@ reveal_type(a3.x)  # N: Revealed type is "builtins.int"
 reveal_type(a3.y)  # N: Revealed type is "builtins.str"
 reveal_type(a3.z)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultToAnotherTypeVarWrong]
+class A[Y = X, X = int]: ...  # E: Name "X" is not defined
+
+class B[Y = X]: ...  # E: Name "X" is not defined
+[builtins fixtures/tuple.pyi]
