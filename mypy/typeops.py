@@ -319,7 +319,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType, LiteralType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -1114,12 +1114,12 @@ def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
 
 class TypeVarExtractor(TypeQuery[list[TypeVarLikeType]]):
     def __init__(self, include_all: bool = False) -> None:
-        super().__init__(self._merge)
+        super().__init__()
         self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
+    def strategy(self, items: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
-        for item in iter:
+        for item in items:
             out.extend(item)
         return out
 

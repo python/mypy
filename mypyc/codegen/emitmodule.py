@@ -601,12 +601,12 @@ class GroupGenerator:
         ext_declarations.emit_line(f"#define MYPYC_NATIVE{self.group_suffix}_H")
         ext_declarations.emit_line("#include <Python.h>")
         ext_declarations.emit_line("#include <CPy.h>")
-        if self.compiler_options.depends_on_native_internal:
-            ext_declarations.emit_line("#include <native_internal.h>")
+        if self.compiler_options.depends_on_librt_internal:
+            ext_declarations.emit_line("#include <librt_internal.h>")
 
         declarations = Emitter(self.context)
-        declarations.emit_line(f"#ifndef MYPYC_NATIVE_INTERNAL{self.group_suffix}_H")
-        declarations.emit_line(f"#define MYPYC_NATIVE_INTERNAL{self.group_suffix}_H")
+        declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
+        declarations.emit_line(f"#define MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
         declarations.emit_line("#include <Python.h>")
         declarations.emit_line("#include <CPy.h>")
         declarations.emit_line(f'#include "__native{self.short_group_suffix}.h"')
@@ -1029,8 +1029,8 @@ class GroupGenerator:
         declaration = f"int CPyExec_{exported_name(module_name)}(PyObject *module)"
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
-        if self.compiler_options.depends_on_native_internal:
-            emitter.emit_line("if (import_native_internal() < 0) {")
+        if self.compiler_options.depends_on_librt_internal:
+            emitter.emit_line("if (import_librt_internal() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")

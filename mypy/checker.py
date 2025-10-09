@@ -378,11 +378,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     inferred_attribute_types: dict[Var, Type] | None = None
     # Don't infer partial None types if we are processing assignment from Union
     no_partial_types: bool = False
-
-    # The set of all dependencies (suppressed or not) that this module accesses, either
-    # directly or indirectly.
+    # Extra module references not detected during semantic analysis (these are rare cases
+    # e.g. access to class-level import via instance).
     module_refs: set[str]
-
     # A map from variable nodes to a snapshot of the frame ids of the
     # frames that were active when the variable was declared. This can
     # be used to determine nearest common ancestor frame of a variable's
@@ -1803,7 +1801,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 "but must return a subtype of",
             )
         elif not isinstance(
-            get_proper_type(bound_type.ret_type), (AnyType, Instance, TupleType, UninhabitedType)
+            get_proper_type(bound_type.ret_type),
+            (AnyType, Instance, TupleType, UninhabitedType, LiteralType),
         ):
             self.fail(
                 message_registry.NON_INSTANCE_NEW_TYPE.format(
