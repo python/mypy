@@ -4,7 +4,7 @@
 -r mypy-requirements.txt
 -r build-requirements.txt
 attrs>=18.0
-filelock>=3.3.0
+filelock>=3.3.0,<3.20.0  # latest version is not available on 3.9 that we still support
 lxml>=5.3.0; python_version<'3.15'
 psutil>=4.0
 pytest>=8.1.0

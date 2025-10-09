@@ -14,7 +14,7 @@ distlib==0.4.0
     # via virtualenv
 execnet==2.1.1
     # via pytest-xdist
-filelock==3.20.0
+filelock==3.19.1
     # via
     #   -r test-requirements.in
     #   virtualenv
