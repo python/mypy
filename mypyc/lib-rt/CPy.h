@@ -711,6 +711,9 @@ tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset);
 tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
 int CPyMapping_Check(PyObject *obj);
 
+// Unsafe dict operations (assume PyDict_CheckExact(dict) is always true)
+PyObject *CPyDict_GetItemUnsafe(PyObject *dict, PyObject *key);
+
 // Check that dictionary didn't change size during iteration.
 static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
     if (!PyDict_CheckExact(dict)) {
