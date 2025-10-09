@@ -69,7 +69,7 @@ from mypyc.irbuild.callable_class import (
     instantiate_callable_class,
     setup_callable_class,
 )
-from mypyc.irbuild.context import FuncInfo
+from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_vars_to_env,
     finalize_env_class,
@@ -245,6 +245,10 @@ def gen_func_item(
     )
     is_generator = fn_info.is_generator
     builder.enter(fn_info, ret_type=sig.ret_type)
+
+    if is_generator:
+        generator_class_ir = builder.mapper.fdef_to_generator[builder.fn_info.fitem]
+        builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to

@@ -166,10 +166,8 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
         builder.fn_info.env_class = generator_class_ir
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
-    generator_class_ir.mro = [generator_class_ir]
 
     builder.classes.append(generator_class_ir)
-    builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
     return generator_class_ir
 
 

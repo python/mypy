@@ -217,7 +217,7 @@ def create_generator_class_for_func(
     """
     assert fdef.is_coroutine or fdef.is_generator
     name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen" + name_suffix
-    cir = ClassIR(name, module_name, is_generated=True, is_final_class=True)
+    cir = ClassIR(name, module_name, is_generated=True, is_final_class=class_name is None)
     cir.reuse_freed_instance = True
     mapper.fdef_to_generator[fdef] = cir
 
@@ -816,6 +816,9 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
     This is a separate pass after type map has been built, since we need all classes
     to be processed to analyze class hierarchies.
     """
+
+    generator_methods = []
+
     for fdef, ir in mapper.func_to_decl.items():
         if isinstance(fdef, FuncDef) and (fdef.is_coroutine or fdef.is_generator):
             gen_ir = create_generator_class_for_func(ir.module_name, ir.class_name, fdef, mapper)
@@ -825,5 +828,30 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
                 # code that uses them. They return a generator object, which has a
                 # specific class. Without this, the type would have to be 'object'.
                 ir.sig.ret_type = RInstance(gen_ir)
+                if ir.class_name is not None:
+                    generator_methods.append((ir.name, mapper.type_to_ir[fdef.info], gen_ir))
                 if ir.bound_sig:
                     ir.bound_sig.ret_type = RInstance(gen_ir)
+
+    new_bases = {}
+
+    for name, class_ir, gen in generator_methods:
+        # For generator methods, we need have subclass generator classes inherit from
+        # baseclass generator classes when there are overrides to maintain LSP.
+        base = class_ir.real_base()
+        if base is not None:
+            if base.has_method(name):
+                base_sig = base.method_sig(name)
+                if isinstance(base_sig.ret_type, RInstance):
+                    base_gen = base_sig.ret_type.class_ir
+                    new_bases[gen] = base_gen
+
+    for deriv, base in new_bases.items():
+        if base.children is not None:
+            base.children.append(deriv)
+        while True:
+            deriv.mro.append(base)
+            deriv.base_mro.append(base)
+            if base not in new_bases:
+                break
+            base = new_bases[base]
