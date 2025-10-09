@@ -39,6 +39,7 @@ from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.irbuild.prepare import (
     build_type_map,
+    gen_generator_types,
     create_generator_class_if_needed,
     find_singledispatch_register_impls,
 )
@@ -68,6 +69,7 @@ def build_ir(
     """
 
     build_type_map(mapper, modules, graph, types, options, errors)
+    gen_generator_types(mapper, modules)
     singledispatch_info = find_singledispatch_register_impls(modules, errors)
 
     result: ModuleIRs = {}

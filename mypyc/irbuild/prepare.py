@@ -196,7 +196,8 @@ def prepare_func_def(
     mapper: Mapper,
     options: CompilerOptions,
 ) -> FuncDecl:
-    create_generator_class_if_needed(module_name, class_name, fdef, mapper)
+    #create_generator_class_if_needed(module_name, class_name, fdef, mapper)
+    #assert False
 
     kind = (
         FUNC_CLASSMETHOD
@@ -811,3 +812,9 @@ def registered_impl_from_possible_register_call(
         if isinstance(node, Decorator):
             return RegisteredImpl(node.func, dispatch_type)
     return None
+
+
+def gen_generator_types(mapper: Mapper, modules: list[MypyFile]) -> None:
+    for fdef, ir in mapper.func_to_decl.items():
+        if isinstance(fdef, FuncDef):
+            create_generator_class_if_needed(ir.module_name, ir.class_name, fdef, mapper)
