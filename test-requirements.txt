@@ -67,7 +67,7 @@ types-setuptools==80.9.0.20250822
     # via -r build-requirements.txt
 typing-extensions==4.15.0
     # via -r mypy-requirements.txt
-virtualenv==20.35.0
+virtualenv==20.34.0
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
