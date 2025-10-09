@@ -233,8 +233,8 @@ def parse(
         feature_version = options.python_version[1]
     try:
         # Disable
-        # - deprecation warnings about \u
-        # - syntax warnings for 'invalid escape sequence' (3.12+)  and 'return in finally' (3.14+)
+        # - deprecation warnings for 'invalid escape sequence' (Python 3.11 and below)
+        # - syntax warnings for 'invalid escape sequence' (3.12+) and 'return in finally' (3.14+)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             warnings.filterwarnings("ignore", category=SyntaxWarning)
