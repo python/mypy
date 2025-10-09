@@ -42,7 +42,7 @@ class Scope:
         """Return the current target (may be a class)."""
         assert self.module
         if self.function:
-            return self.function.fullname
+            return self.function.fullname or ""
         if self.classes:
             return self.classes[-1].fullname
         return self.module
