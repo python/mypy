@@ -34,8 +34,10 @@ packaging==25.0
     # via pytest
 pathspec==0.12.1
     # via -r mypy-requirements.txt
-platformdirs==4.5.0
-    # via virtualenv
+platformdirs==4.4.0
+    # via
+    #   -r test-requirements.in
+    #   virtualenv
 pluggy==1.6.0
     # via
     #   pytest
