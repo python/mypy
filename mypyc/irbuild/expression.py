@@ -10,6 +10,7 @@ import math
 from collections.abc import Sequence
 from typing import Callable
 
+from mypy.checkexpr import try_getting_literal
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -50,7 +51,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
+from mypy.types import Instance, LiteralType, ProperType, TupleType, TypeType, get_proper_type
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
@@ -786,7 +787,12 @@ def try_specialize_in_expr(
         left = builder.accept(lhs)
         tuple_val = builder.accept(rhs)
         assert isinstance(tuple_val.type, RTuple)
-        items = [builder.add(TupleGet(tuple_val, i)) for i in range(len(tuple_val.type.types))]
+        proper_type = get_proper_type(builder.types[rhs])
+        assert isinstance(proper_type, TupleType)
+        items = [
+            LoadLiteral(typ.value, object_rprimitive) if isinstance(typ, LiteralType) else builder.add(TupleGet(tuple_val, i))
+            for i, typ in enumerate(map(try_getting_literal, proper_type.items))
+        ]
 
     if items is not None:
         assert left is not None
