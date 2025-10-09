@@ -785,18 +785,22 @@ def try_specialize_in_expr(
         items = [builder.accept(item) for item in rhs.items]
     elif isinstance(builder.node_type(rhs), RTuple):
         left = builder.accept(lhs)
-        tuple_val = builder.accept(rhs)
-        assert isinstance(tuple_val.type, RTuple)
         proper_type = get_proper_type(builder.types[rhs])
         assert isinstance(proper_type, TupleType)
-        items = [
-            (
-                LoadLiteral(typ.value, object_rprimitive)
-                if isinstance(typ, LiteralType)
-                else builder.add(TupleGet(tuple_val, i))
-            )
-            for i, typ in enumerate(map(try_getting_literal, proper_type.items))
-        ]
+        literal_items = list(map(try_getting_literal, proper_type.items))
+        if None not in literal_items:
+            # If all tuple items are literals we don't even need to accept the tuple
+            # TODO: should we use object_rprimitive? prob not, what do?
+            items = [LoadLiteral(literal.value, object_rprimitive) for literal in literal_items]
+        else:
+            tuple_val = builder.accept(rhs)
+            assert isinstance(tuple_val.type, RTuple)
+            proper_type = get_proper_type(builder.types[rhs])
+            items = [
+                # TODO: should we use object_rprimitive? prob not, what do?
+                LoadLiteral(typ.value, object_rprimitive) if isinstance(typ, LiteralType) else builder.add(TupleGet(tuple_val, i))
+                for i, typ in enumerate(map(try_getting_literal, proper_type.items))
+            ]
 
     if items is not None:
         assert left is not None
