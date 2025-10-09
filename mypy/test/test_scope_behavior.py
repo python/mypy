@@ -1,5 +1,6 @@
+from mypy.nodes import FuncDef, SymbolTable, TypeInfo
 from mypy.scope import Scope
-from mypy.nodes import FuncDef, TypeInfo, SymbolTable
+
 
 def test_scope_module_and_function_behavior() -> None:
     scope = Scope()
