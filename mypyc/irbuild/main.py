@@ -39,9 +39,9 @@ from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.irbuild.prepare import (
     build_type_map,
-    gen_generator_types,
-    create_generator_class_if_needed,
+    create_generator_class_for_func,
     find_singledispatch_register_impls,
+    gen_generator_types,
 )
 from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.vtable import compute_vtable
@@ -89,9 +89,11 @@ def build_ir(
             if isinstance(fdef, FuncDef):
                 # Make generator class name sufficiently unique.
                 suffix = f"___{fdef.line}"
-                create_generator_class_if_needed(
-                    module.fullname, None, fdef, mapper, name_suffix=suffix
-                )
+                # TODO: decorated?
+                if fdef.is_coroutine or fdef.is_generator:
+                    create_generator_class_for_func(
+                        module.fullname, None, fdef, mapper, name_suffix=suffix
+                    )
 
         # Construct and configure builder objects (cyclic runtime dependency).
         visitor = IRBuilderVisitor()
