@@ -367,7 +367,10 @@ command line flags. For more details, see:
 
 FOOTER: Final = """Environment variables:
   Define MYPYPATH for additional module search path entries.
-  Define MYPY_CACHE_DIR to override configuration cache_dir path."""
+  Define MYPY_CACHE_DIR to override configuration cache_dir path.
+  Define MYPY_FORCE_COLOR (or, failing that, FORCE_COLOR) to a non-zero integer
+  (or any non-empty non-integer string) to force mypy to output in color.
+  """
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
