@@ -60,7 +60,7 @@ class Scope:
         self.module = prefix
         self.classes = []
         self.function = None
-        self.functions=[]  # reset the function stack when entering a new module
+        self.functions = []  # reset the function stack when entering a new module
         self.ignored = 0
         yield
         assert self.module
