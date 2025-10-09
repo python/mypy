@@ -646,7 +646,7 @@ L0:
     return r3
 def not_precomputed_non_final_name(i):
     i :: int
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: int
@@ -766,7 +766,7 @@ L4:
 L5:
     return 1
 def not_precomputed():
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: int

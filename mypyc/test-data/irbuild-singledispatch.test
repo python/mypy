@@ -124,7 +124,7 @@ L0:
     return r0
 def f(arg):
     arg :: object
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: bool
@@ -255,7 +255,7 @@ L0:
     return r0
 def f(x):
     x :: object
-    r0 :: dict
+    r0 :: dict[exact]
     r1 :: str
     r2 :: object
     r3 :: None
