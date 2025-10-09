@@ -798,7 +798,11 @@ def try_specialize_in_expr(
             proper_type = get_proper_type(builder.types[rhs])
             items = [
                 # TODO: should we use object_rprimitive? prob not, what do?
-                LoadLiteral(typ.value, object_rprimitive) if isinstance(typ, LiteralType) else builder.add(TupleGet(tuple_val, i))
+                (
+                    LoadLiteral(typ.value, object_rprimitive)
+                    if isinstance(typ, LiteralType)
+                    else builder.add(TupleGet(tuple_val, i))
+                )
                 for i, typ in enumerate(map(try_getting_literal, proper_type.items))
             ]
 
