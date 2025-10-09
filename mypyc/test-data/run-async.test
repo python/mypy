@@ -1291,3 +1291,48 @@ class CancelledError(Exception): ...
 def run(x: object) -> object: ...
 def get_running_loop() -> Any: ...
 def create_task(x: object) -> Any: ...
+
+[case testAsyncInheritance1]
+import asyncio
+
+class Base:
+    async def foo(self) -> int:
+        return 1
+
+class Derived(Base):
+    async def foo(self) -> int:
+        return 2
+
+async def base_foo(b: Base) -> int:
+    return await b.foo()
+
+def test_foo() -> None:
+     assert asyncio.run(base_foo(Base())) == 1
+     assert asyncio.run(base_foo(Derived())) == 2
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+
+[case testAsyncInheritance2]
+import asyncio
+
+class Base:
+    async def foo(self) -> int:
+        return 1
+
+class Derived(Base):
+    async def foo(self) -> int:
+        return 2
+
+async def base_foo(b: Base) -> int:
+    return await b.foo()
+
+#async def deriv_foo(b: Derived) -> int:
+#    return await b.foo()
+
+def test_foo() -> None:
+     assert asyncio.run(base_foo(Base())) == 1
+     #assert asyncio.run(deriv_foo(Derived())) == 2
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
