@@ -13,6 +13,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     cstring_rprimitive,
     dict_rprimitive,
+    exact_dict_rprimitive,
     float_rprimitive,
     int_rprimitive,
     none_rprimitive,
@@ -161,7 +162,7 @@ import_from_many_op = custom_op(
 # Get the sys.modules dictionary
 get_module_dict_op = custom_op(
     arg_types=[],
-    return_type=dict_rprimitive,
+    return_type=exact_dict_rprimitive,
     c_function_name="PyImport_GetModuleDict",
     error_kind=ERR_NEVER,
     is_borrowed=True,
