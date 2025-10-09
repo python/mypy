@@ -2990,3 +2990,11 @@ def foo(e: Literal[0, 1]) -> None:
             ...
 
 defer = unknown_module.foo
+
+[case testMatchErrorsIncorrectName]
+class A:
+    pass
+
+match 5:
+    case A.blah():  # E: "type[A]" has no attribute "blah"
+        pass
