@@ -247,7 +247,9 @@ def gen_func_item(
     builder.enter(fn_info, ret_type=sig.ret_type)
 
     if is_generator:
-        generator_class_ir = builder.mapper.fdef_to_generator[builder.fn_info.fitem]
+        fitem = builder.fn_info.fitem
+        assert isinstance(fitem, FuncDef), fitem
+        generator_class_ir = builder.mapper.fdef_to_generator[fitem]
         builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
 
     # Functions that contain nested functions need an environment class to store variables that
