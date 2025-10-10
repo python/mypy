@@ -838,16 +838,21 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
                 precise_ret_type = True
                 if fn_ir.class_name is not None:
                     class_ir = mapper.type_to_ir[fdef.info]
-                    for s in class_ir.subclasses():
-                        if name in s.method_decls:
-                            m = s.method_decls[name]
-                            if (
-                                m.is_generator != fn_ir.is_generator
-                                or m.is_coroutine != fn_ir.is_coroutine
-                            ):
-                                # Override is of a different kind, and  the optimization
-                                # to use a precise generator return type doesn't work.
-                                precise_ret_type = False
+                    subcls = class_ir.subclasses()
+                    if subcls is None:
+                        # Override could be of a different type, so we can't make assumptions.
+                        precise_ret_type = False
+                    else:
+                        for s in subcls:
+                            if name in s.method_decls:
+                                m = s.method_decls[name]
+                                if (
+                                    m.is_generator != fn_ir.is_generator
+                                    or m.is_coroutine != fn_ir.is_coroutine
+                                ):
+                                    # Override is of a different kind, and  the optimization
+                                    # to use a precise generator return type doesn't work.
+                                    precise_ret_type = False
                 else:
                     class_ir = None
 
