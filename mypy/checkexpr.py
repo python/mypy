@@ -2902,6 +2902,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             assert self.msg is self.chk.msg
             with self.msg.filter_errors() as w:
                 with self.chk.local_type_map as m:
+                    # Overload selection should not depend on the context.
+                    # During this step pretend that we do not have any external information.
+                    self.type_context.append(None)
                     ret_type, infer_type = self.check_call(
                         callee=typ,
                         args=args,
@@ -2911,13 +2914,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         callable_name=callable_name,
                         object_type=object_type,
                     )
+                    self.type_context.pop()
             is_match = not w.has_new_errors()
             if is_match:
                 # Return early if possible; otherwise record info, so we can
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
-                    self.chk.store_types(m)
-                    return ret_type, infer_type
+                    # Yes, just again
+                    # FIXME: find a way to avoid doing this
+                    return self.check_call(
+                        callee=typ,
+                        args=args,
+                        arg_kinds=arg_kinds,
+                        arg_names=arg_names,
+                        context=context,
+                        callable_name=callable_name,
+                        object_type=object_type,
+                    )
                 p_infer_type = get_proper_type(infer_type)
                 if isinstance(p_infer_type, CallableType):
                     # Prefer inferred types if possible, this will avoid false triggers for
