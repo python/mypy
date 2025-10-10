@@ -53,7 +53,6 @@ from mypyc.ir.func_ir import (
 from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import (
     RInstance,
-    RPrimitive,
     RType,
     dict_rprimitive,
     none_rprimitive,
@@ -203,7 +202,15 @@ def prepare_func_def(
         else (FUNC_STATICMETHOD if fdef.is_static else FUNC_NORMAL)
     )
     sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
-    decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
+    decl = FuncDecl(
+        fdef.name,
+        class_name,
+        module_name,
+        sig,
+        kind,
+        is_generator=fdef.is_generator,
+        is_coroutine=fdef.is_coroutine,
+    )
     mapper.func_to_decl[fdef] = decl
     return decl
 
@@ -834,9 +841,12 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
                     for s in class_ir.subclasses():
                         if name in s.method_decls:
                             m = s.method_decls[name]
-                            if isinstance(m.sig.ret_type, RPrimitive):
-                                # Subclass method has a non-generator return type, so we
-                                # can't use a generator return type for the base class method.
+                            if (
+                                m.is_generator != fn_ir.is_generator
+                                or m.is_coroutine != fn_ir.is_coroutine
+                            ):
+                                # Override is of a different kind, and  the optimization
+                                # to use a precise generator return type doesn't work.
                                 precise_ret_type = False
                 else:
                     class_ir = None
