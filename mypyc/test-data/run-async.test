@@ -1293,7 +1293,7 @@ def get_running_loop() -> Any: ...
 def create_task(x: object) -> Any: ...
 
 [case testAsyncInheritance1]
-from typing import final, Coroutine, Any
+from typing import final, Coroutine, Any, TypeVar
 
 import asyncio
 

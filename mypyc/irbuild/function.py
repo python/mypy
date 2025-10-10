@@ -361,8 +361,8 @@ def gen_func_ir(
                 builder.module_name,
                 sig,
                 func_decl.kind,
-                func_decl.is_prop_getter,
-                func_decl.is_prop_setter,
+                is_prop_getter=func_decl.is_prop_getter,
+                is_prop_setter=func_decl.is_prop_setter,
             )
             func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:
