@@ -819,19 +819,22 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
 
     generator_methods = []
 
-    for fdef, ir in mapper.func_to_decl.items():
+    for fdef, fn_ir in mapper.func_to_decl.items():
         if isinstance(fdef, FuncDef) and (fdef.is_coroutine or fdef.is_generator):
-            gen_ir = create_generator_class_for_func(ir.module_name, ir.class_name, fdef, mapper)
+            gen_ir = create_generator_class_for_func(fn_ir.module_name, fn_ir.class_name, fdef, mapper)
             # TODO: We could probably support decorators sometimes (static and class method?)
             if not fdef.is_decorated:
                 # Give a more precise type for generators, so that we can optimize
                 # code that uses them. They return a generator object, which has a
                 # specific class. Without this, the type would have to be 'object'.
-                ir.sig.ret_type = RInstance(gen_ir)
-                if ir.class_name is not None:
-                    generator_methods.append((ir.name, mapper.type_to_ir[fdef.info], gen_ir))
-                if ir.bound_sig:
-                    ir.bound_sig.ret_type = RInstance(gen_ir)
+                fn_ir.sig.ret_type = RInstance(gen_ir)
+                if fn_ir.bound_sig:
+                    fn_ir.bound_sig.ret_type = RInstance(gen_ir)
+                if fn_ir.class_name is not None:
+                    class_ir = mapper.type_to_ir[fdef.info]
+                    if class_ir.is_method_final(fn_ir.name):
+                        gen_ir.is_final_class = True
+                    generator_methods.append((fn_ir.name, class_ir, gen_ir))
 
     new_bases = {}
 
