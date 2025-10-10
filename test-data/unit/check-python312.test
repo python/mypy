@@ -2038,12 +2038,13 @@ class Z: ...  # E: Name "Z" already defined on line 2
 # https://github.com/python/mypy/issues/18856
 class A[*Ts]: ...
 
-A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
-a: A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
-def foo(a: A[*tuple[int, ...], *tuple[int, ...]]): ...  # E: More than one Unpack in a type is not allowed
+A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one variadic Unpack in a type is not allowed
+A[*tuple[*tuple[int, ...]], *tuple[*tuple[int, ...]]]  # E: More than one variadic Unpack in a type is not allowed
+a: A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one variadic Unpack in a type is not allowed
+def foo(a: A[*tuple[int, ...], *tuple[int, ...]]): ...  # E: More than one variadic Unpack in a type is not allowed
 
-tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
-b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
+tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one variadic Unpack in a type is not allowed
+b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one variadic Unpack in a type is not allowed
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2084,3 +2085,49 @@ reveal_type(A1().x)  # N: Revealed type is "builtins.int"
 reveal_type(A2().x)  # N: Revealed type is "builtins.int"
 reveal_type(A3().x)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/tuple.pyi]
+
+[case testDataclassWithTypeVarTuple]
+# flags: --python-version 3.13
+# https://github.com/python/mypy/issues/19559
+from typing import Callable
+from dataclasses import dataclass
+
+@dataclass
+class Test[*Ts, R]:
+    a: Callable[[*Ts], R]
+[builtins fixtures/dict.pyi]
+
+[case testPEP695AliasDoesNotReferToFullname]
+# https://github.com/python/mypy/issues/19698
+from typing import TypeAliasType
+type D = dict
+type T = type
+type TA = TypeAliasType
+
+D()          # E: "TypeAliasType" not callable
+X = TA("Y")  # E: "TypeAliasType" not callable
+
+x: object
+if T(x) is str:     # E: "TypeAliasType" not callable
+    reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasForwardReferenceInUnusedTypeVar]
+# https://discuss.python.org/t/103305
+type Alias1[T: "A"] = int
+type Alias2[T: ("A", int)] = int
+class A: ...
+
+x1: Alias1[A]  # ok
+x2: Alias2[A]  # ok
+
+[case testUndefinedUnpackInPEP696Base]
+# Typo below is intentional.
+class MyTuple[*Ts](tuple[*TS]):  # E: Name "TS" is not defined
+    ...
+
+x: MyTuple[int, str]
+reveal_type(x[0])  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

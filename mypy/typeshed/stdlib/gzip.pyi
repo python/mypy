@@ -1,9 +1,9 @@
 import sys
 import zlib
-from _typeshed import ReadableBuffer, SizedBuffer, StrOrBytesPath
+from _typeshed import ReadableBuffer, SizedBuffer, StrOrBytesPath, WriteableBuffer
 from io import FileIO, TextIOWrapper
-from typing import Final, Literal, Protocol, overload
-from typing_extensions import TypeAlias
+from typing import Final, Literal, Protocol, overload, type_check_only
+from typing_extensions import TypeAlias, deprecated
 
 if sys.version_info >= (3, 14):
     from compression._common._streams import BaseStream, DecompressReader
@@ -25,6 +25,7 @@ FEXTRA: Final[int]  # actually Literal[4] # undocumented
 FNAME: Final[int]  # actually Literal[8] # undocumented
 FCOMMENT: Final[int]  # actually Literal[16] # undocumented
 
+@type_check_only
 class _ReadableFileobj(Protocol):
     def read(self, n: int, /) -> bytes: ...
     def seek(self, n: int, /) -> object: ...
@@ -33,6 +34,7 @@ class _ReadableFileobj(Protocol):
     # mode: str
     # def fileno() -> int: ...
 
+@type_check_only
 class _WritableFileobj(Protocol):
     def write(self, b: bytes, /) -> object: ...
     def flush(self) -> object: ...
@@ -141,6 +143,7 @@ class GzipFile(BaseStream):
     ) -> None: ...
     if sys.version_info < (3, 12):
         @property
+        @deprecated("Deprecated since Python 2.6; removed in Python 3.12. Use `name` attribute instead.")
         def filename(self) -> str: ...
 
     @property
@@ -157,8 +160,17 @@ class GzipFile(BaseStream):
     def seek(self, offset: int, whence: int = 0) -> int: ...
     def readline(self, size: int | None = -1) -> bytes: ...
 
+    if sys.version_info >= (3, 14):
+        def readinto(self, b: WriteableBuffer) -> int: ...
+        def readinto1(self, b: WriteableBuffer) -> int: ...
+
 class _GzipReader(DecompressReader):
     def __init__(self, fp: _ReadableFileobj) -> None: ...
 
-def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float | None = None) -> bytes: ...
+if sys.version_info >= (3, 14):
+    def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float = 0) -> bytes: ...
+
+else:
+    def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float | None = None) -> bytes: ...
+
 def decompress(data: ReadableBuffer) -> bytes: ...

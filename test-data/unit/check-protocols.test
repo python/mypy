@@ -4255,10 +4255,10 @@ def g2(a: Input[bytes], b: Output[bytes]) -> None:
     f(a, b)
 
 def g3(a: Input[str], b: Output[bytes]) -> None:
-    f(a, b)  # E: Cannot infer type argument 1 of "f"
+    f(a, b)  # E: Cannot infer value of type parameter "AnyStr" of "f"
 
 def g4(a: Input[bytes], b: Output[str]) -> None:
-    f(a, b)  # E: Cannot infer type argument 1 of "f"
+    f(a, b)  # E: Cannot infer value of type parameter "AnyStr" of "f"
 
 [builtins fixtures/tuple.pyi]
 
@@ -4684,3 +4684,17 @@ reveal_type(t.bar)  # N: Revealed type is "def () -> builtins.int"
 tt: Type[P] = C
 reveal_type(tt.foo)  # N: Revealed type is "def (builtins.object) -> builtins.int"
 reveal_type(tt.bar)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+
+[case testProtocolDecoratedSelfBound]
+from abc import abstractmethod
+from typing import Protocol, Self
+
+class Proto(Protocol):
+    @abstractmethod
+    def foo(self, x: Self) -> None: ...
+
+class Impl:
+    def foo(self, x: Self) -> None:
+        pass
+
+x: Proto = Impl()

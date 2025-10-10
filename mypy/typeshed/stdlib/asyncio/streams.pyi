@@ -3,7 +3,7 @@ import sys
 from _typeshed import ReadableBuffer, StrPath
 from collections.abc import Awaitable, Callable, Iterable, Sequence, Sized
 from types import ModuleType
-from typing import Any, Protocol, SupportsIndex
+from typing import Any, Protocol, SupportsIndex, type_check_only
 from typing_extensions import Self, TypeAlias
 
 from . import events, protocols, transports
@@ -25,6 +25,7 @@ else:
 
 _ClientConnectedCallback: TypeAlias = Callable[[StreamReader, StreamWriter], Awaitable[None] | None]
 
+@type_check_only
 class _ReaduntilBuffer(ReadableBuffer, Sized, Protocol): ...
 
 if sys.version_info >= (3, 10):
@@ -33,7 +34,7 @@ if sys.version_info >= (3, 10):
         port: int | str | None = None,
         *,
         limit: int = 65536,
-        ssl_handshake_timeout: float | None = ...,
+        ssl_handshake_timeout: float | None = None,
         **kwds: Any,
     ) -> tuple[StreamReader, StreamWriter]: ...
     async def start_server(
@@ -42,7 +43,7 @@ if sys.version_info >= (3, 10):
         port: int | str | None = None,
         *,
         limit: int = 65536,
-        ssl_handshake_timeout: float | None = ...,
+        ssl_handshake_timeout: float | None = None,
         **kwds: Any,
     ) -> Server: ...
 
@@ -53,7 +54,7 @@ else:
         *,
         loop: events.AbstractEventLoop | None = None,
         limit: int = 65536,
-        ssl_handshake_timeout: float | None = ...,
+        ssl_handshake_timeout: float | None = None,
         **kwds: Any,
     ) -> tuple[StreamReader, StreamWriter]: ...
     async def start_server(
@@ -63,7 +64,7 @@ else:
         *,
         loop: events.AbstractEventLoop | None = None,
         limit: int = 65536,
-        ssl_handshake_timeout: float | None = ...,
+        ssl_handshake_timeout: float | None = None,
         **kwds: Any,
     ) -> Server: ...
 
