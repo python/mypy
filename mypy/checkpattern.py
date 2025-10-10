@@ -541,14 +541,12 @@ class PatternChecker(PatternVisitor[PatternType]):
         type_info = o.class_ref.node
         typ = self.chk.expr_checker.accept(o.class_ref)
         p_typ = get_proper_type(typ)
-        if isinstance(p_typ, AnyType):
-            pass
-        elif isinstance(type_info, TypeAlias) and not type_info.no_args:
+        if isinstance(type_info, TypeAlias) and not type_info.no_args:
             self.msg.fail(message_registry.CLASS_PATTERN_GENERIC_TYPE_ALIAS, o)
             return self.early_non_match()
         elif isinstance(p_typ, FunctionLike) and p_typ.is_type_obj():
             typ = fill_typevars_with_any(p_typ.type_object())
-        else:
+        elif not isinstance(p_typ, AnyType):
             self.msg.fail(
                 message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(
                     typ.str_with_options(self.options)
