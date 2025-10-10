@@ -634,7 +634,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             )
         elif fullname == "typing.Union":
             items = self.anal_array(t.args)
-            return UnionType.make_union(items)
+            return UnionType.make_union(items, line=t.line, column=t.column)
         elif fullname == "typing.Optional":
             if len(t.args) != 1:
                 self.fail(
