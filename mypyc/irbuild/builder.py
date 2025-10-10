@@ -20,6 +20,7 @@ from mypy.nodes import (
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
     ArgKind,
+    ArgKinds,
     CallExpr,
     Decorator,
     Expression,
@@ -371,7 +372,7 @@ class IRBuilder:
         function: Value,
         arg_values: list[Value],
         line: int,
-        arg_kinds: list[ArgKind] | None = None,
+        arg_kinds: ArgKinds | None = None,
         arg_names: Sequence[str | None] | None = None,
     ) -> Value:
         return self.builder.py_call(function, arg_values, line, arg_kinds, arg_names)
@@ -389,7 +390,7 @@ class IRBuilder:
         arg_values: list[Value],
         result_type: RType | None,
         line: int,
-        arg_kinds: list[ArgKind] | None = None,
+        arg_kinds: ArgKinds | None = None,
         arg_names: list[str | None] | None = None,
     ) -> Value:
         return self.builder.gen_method_call(
