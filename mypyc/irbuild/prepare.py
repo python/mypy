@@ -850,7 +850,7 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
                                     m.is_generator != fn_ir.is_generator
                                     or m.is_coroutine != fn_ir.is_coroutine
                                 ):
-                                    # Override is of a different kind, and  the optimization
+                                    # Override is of a different kind, and the optimization
                                     # to use a precise generator return type doesn't work.
                                     precise_ret_type = False
                 else:
@@ -871,7 +871,7 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
     new_bases = {}
 
     for name, class_ir, gen in generator_methods:
-        # For generator methods, we need have subclass generator classes inherit from
+        # For generator methods, we need to have subclass generator classes inherit from
         # baseclass generator classes when there are overrides to maintain LSP.
         base = class_ir.real_base()
         if base is not None:
@@ -881,6 +881,7 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
                     base_gen = base_sig.ret_type.class_ir
                     new_bases[gen] = base_gen
 
+    # Add generator inheritance relationships by adjusting MROs.
     for deriv, base in new_bases.items():
         if base.children is not None:
             base.children.append(deriv)
