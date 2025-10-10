@@ -2947,39 +2947,42 @@ reveal_type(C().word)  # N: Revealed type is "Literal['word']"
 [builtins fixtures/tuple.pyi]
 
 [case testStringLiteralTernary]
+# https://github.com/python/mypy/issues/19534
 def test(b: bool) -> None:
     l = "foo" if b else "bar"
     reveal_type(l)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testintLiteralTernary]
+# https://github.com/python/mypy/issues/19534
 def test(b: bool) -> None:
     l = 0 if b else 1
     reveal_type(l)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testStringIntUnionTernary]
+# https://github.com/python/mypy/issues/19534
 def test(b: bool) -> None:
     l = 1 if b else "a"
     reveal_type(l)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testListComprehensionTernary]
-# gh-19534
+# https://github.com/python/mypy/issues/19534
 def test(b: bool) -> None:
     l = [1] if b else ["a"]
     reveal_type(l)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
 [builtins fixtures/list.pyi]
 
 [case testSetComprehensionTernary]
-# gh-19534
+# https://github.com/python/mypy/issues/19534
 def test(b: bool) -> None:
     s = {1} if b else {"a"}
     reveal_type(s)  # N: Revealed type is "Union[builtins.set[builtins.int], builtins.set[builtins.str]]"
 [builtins fixtures/set.pyi]
 
 [case testDictComprehensionTernary]
-# gh-19534
+# https://github.com/python/mypy/issues/19534
 def test(b: bool) -> None:
     d = {1:1} if "" else {"a": "a"}
     reveal_type(d)  # N: Revealed type is "Union[builtins.dict[builtins.int, builtins.int], builtins.dict[builtins.str, builtins.str]]"
@@ -3017,7 +3020,7 @@ def test_generic(x: Union[A, None]) -> None:
 
 [case testLambdaTernaryIndirectAttribute]
 # fails due to binder issue inside `check_func_def`
-# gh-19561
+# https://github.com/python/mypy/issues/19561
 from typing import TypeVar, Union, Callable, reveal_type
 
 NOOP = lambda: None
@@ -3048,7 +3051,7 @@ def test_generic_with_attr(x: B) -> None:
 
 [case testLambdaTernaryDoubleIndirectAttribute]
 # fails due to binder issue inside `check_func_def`
-# gh-19561
+# https://github.com/python/mypy/issues/19561
 from typing import TypeVar, Union, Callable, reveal_type
 
 NOOP = lambda: None
