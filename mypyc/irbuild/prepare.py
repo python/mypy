@@ -53,6 +53,7 @@ from mypyc.ir.func_ir import (
 from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import (
     RInstance,
+    RPrimitive,
     RType,
     dict_rprimitive,
     none_rprimitive,
@@ -821,20 +822,36 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
 
     for fdef, fn_ir in mapper.func_to_decl.items():
         if isinstance(fdef, FuncDef) and (fdef.is_coroutine or fdef.is_generator):
-            gen_ir = create_generator_class_for_func(fn_ir.module_name, fn_ir.class_name, fdef, mapper)
+            gen_ir = create_generator_class_for_func(
+                fn_ir.module_name, fn_ir.class_name, fdef, mapper
+            )
             # TODO: We could probably support decorators sometimes (static and class method?)
             if not fdef.is_decorated:
-                # Give a more precise type for generators, so that we can optimize
-                # code that uses them. They return a generator object, which has a
-                # specific class. Without this, the type would have to be 'object'.
-                fn_ir.sig.ret_type = RInstance(gen_ir)
-                if fn_ir.bound_sig:
-                    fn_ir.bound_sig.ret_type = RInstance(gen_ir)
+                name = fn_ir.name
+                precise_ret_type = True
                 if fn_ir.class_name is not None:
                     class_ir = mapper.type_to_ir[fdef.info]
-                    if class_ir.is_method_final(fn_ir.name):
-                        gen_ir.is_final_class = True
-                    generator_methods.append((fn_ir.name, class_ir, gen_ir))
+                    for s in class_ir.subclasses():
+                        if name in s.method_decls:
+                            m = s.method_decls[name]
+                            if isinstance(m.sig.ret_type, RPrimitive):
+                                # Subclass method has a non-generator return type, so we
+                                # can't use a generator return type for the base class method.
+                                precise_ret_type = False
+                else:
+                    class_ir = None
+
+                if precise_ret_type:
+                    # Give a more precise type for generators, so that we can optimize
+                    # code that uses them. They return a generator object, which has a
+                    # specific class. Without this, the type would have to be 'object'.
+                    fn_ir.sig.ret_type = RInstance(gen_ir)
+                    if fn_ir.bound_sig:
+                        fn_ir.bound_sig.ret_type = RInstance(gen_ir)
+                    if class_ir is not None:
+                        if class_ir.is_method_final(name):
+                            gen_ir.is_final_class = True
+                        generator_methods.append((name, class_ir, gen_ir))
 
     new_bases = {}
 

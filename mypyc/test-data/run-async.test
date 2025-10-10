@@ -1293,7 +1293,7 @@ def get_running_loop() -> Any: ...
 def create_task(x: object) -> Any: ...
 
 [case testAsyncInheritance1]
-from typing import final
+from typing import final, Coroutine, Any
 
 import asyncio
 
@@ -1345,6 +1345,23 @@ async def base2_foo(b: Base2) -> int:
 def test_no_override() -> None:
      assert asyncio.run(base2_foo(Base2())) == 4
      assert asyncio.run(base2_foo(Derived2())) == 4
+
+class Base3:
+    async def foo(self) -> int:
+        return 7
+
+class Derived3(Base3):
+    def foo(self) -> Coroutine[Any, Any, int]:
+        async def inner() -> int:
+            return 8
+        return inner()
+
+async def base3_foo(b: Base3) -> int:
+    return await b.foo()
+
+def test_override_non_async() -> None:
+     assert asyncio.run(base3_foo(Base3())) == 7
+     assert asyncio.run(base3_foo(Derived3())) == 8
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...

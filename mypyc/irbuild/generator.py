@@ -39,7 +39,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
-from mypyc.irbuild.context import FuncInfo, GeneratorClass
+from mypyc.irbuild.context import FuncInfo
 from mypyc.irbuild.env_class import (
     add_args_to_env,
     add_vars_to_env,
