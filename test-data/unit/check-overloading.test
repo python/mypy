@@ -6852,3 +6852,18 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iterable[tuple[builtins.bytes, builtins.bytes]]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testOverloadSelectionIgnoresContext]
+from typing import TypeVar, overload
+
+_T = TypeVar("_T")
+
+@overload  # type: ignore[no-overload-impl]
+def gather(f1: _T) -> tuple[_T]: ...
+@overload
+def gather(*fns: object) -> int: ...
+
+def crash() -> None:
+    foo: str
+    (foo,) = gather(0)
+[builtins fixtures/tuple.pyi]
