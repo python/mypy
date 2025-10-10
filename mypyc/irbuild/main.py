@@ -38,8 +38,9 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.irbuild.prepare import (
+    adjust_generator_classes_of_methods,
     build_type_map,
-    create_generator_class_if_needed,
+    create_generator_class_for_func,
     find_singledispatch_register_impls,
 )
 from mypyc.irbuild.visitor import IRBuilderVisitor
@@ -68,6 +69,7 @@ def build_ir(
     """
 
     build_type_map(mapper, modules, graph, types, options, errors)
+    adjust_generator_classes_of_methods(mapper)
     singledispatch_info = find_singledispatch_register_impls(modules, errors)
 
     result: ModuleIRs = {}
@@ -87,9 +89,10 @@ def build_ir(
             if isinstance(fdef, FuncDef):
                 # Make generator class name sufficiently unique.
                 suffix = f"___{fdef.line}"
-                create_generator_class_if_needed(
-                    module.fullname, None, fdef, mapper, name_suffix=suffix
-                )
+                if fdef.is_coroutine or fdef.is_generator:
+                    create_generator_class_for_func(
+                        module.fullname, None, fdef, mapper, name_suffix=suffix
+                    )
 
         # Construct and configure builder objects (cyclic runtime dependency).
         visitor = IRBuilderVisitor()
