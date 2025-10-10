@@ -196,9 +196,6 @@ def prepare_func_def(
     mapper: Mapper,
     options: CompilerOptions,
 ) -> FuncDecl:
-    # create_generator_class_if_needed(module_name, class_name, fdef, mapper)
-    # assert False
-
     kind = (
         FUNC_CLASSMETHOD
         if fdef.is_class
@@ -813,7 +810,12 @@ def registered_impl_from_possible_register_call(
     return None
 
 
-def gen_generator_types(mapper: Mapper, modules: list[MypyFile]) -> None:
+def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
+    """Make optimizations and adjustments to generated generator classes of methods.
+
+    This is a separate pass after type map has been built, since we need all classes
+    to be processed to analyze class hierarchies.
+    """
     for fdef, ir in mapper.func_to_decl.items():
         if isinstance(fdef, FuncDef) and (fdef.is_coroutine or fdef.is_generator):
             gen_ir = create_generator_class_for_func(ir.module_name, ir.class_name, fdef, mapper)
