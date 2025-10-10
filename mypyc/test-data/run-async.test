@@ -1293,46 +1293,58 @@ def get_running_loop() -> Any: ...
 def create_task(x: object) -> Any: ...
 
 [case testAsyncInheritance1]
+from typing import final
+
 import asyncio
 
-class Base:
+class Base1:
     async def foo(self) -> int:
         return 1
 
-class Derived(Base):
+class Derived1(Base1):
     async def foo(self) -> int:
-        return 2
+        return await super().foo() + 1
 
-async def base_foo(b: Base) -> int:
+async def base1_foo(b: Base1) -> int:
     return await b.foo()
 
-def test_foo() -> None:
-     assert asyncio.run(base_foo(Base())) == 1
-     assert asyncio.run(base_foo(Derived())) == 2
-
-[file asyncio/__init__.pyi]
-def run(x: object) -> object: ...
-
-[case testAsyncInheritance2]
-import asyncio
-
-class Base:
-    async def foo(self) -> int:
-        return 1
-
-class Derived(Base):
-    async def foo(self) -> int:
-        return 2
-
-async def base_foo(b: Base) -> int:
+async def derived1_foo(b: Derived1) -> int:
     return await b.foo()
 
-#async def deriv_foo(b: Derived) -> int:
-#    return await b.foo()
+def test_async_inheritance() -> None:
+     assert asyncio.run(base1_foo(Base1())) == 1
+     assert asyncio.run(base1_foo(Derived1())) == 2
+     assert asyncio.run(derived1_foo(Derived1())) == 2
 
-def test_foo() -> None:
-     assert asyncio.run(base_foo(Base())) == 1
-     #assert asyncio.run(deriv_foo(Derived())) == 2
+@final
+class FinalClass:
+    async def foo(self) -> int:
+        return 3
+
+async def final_class_foo(b: FinalClass) -> int:
+    return await b.foo()
+
+def test_final_class() -> None:
+     assert asyncio.run(final_class_foo(FinalClass())) == 3
+
+class Base2:
+    async def foo(self) -> int:
+        return 4
+
+    async def bar(self) -> int:
+        return 5
+
+class Derived2(Base2):
+    # Does not override "foo"
+    async def bar(self) -> int:
+        return 6
+
+async def base2_foo(b: Base2) -> int:
+    return await b.foo()
+
+def test_no_override() -> None:
+     assert asyncio.run(base2_foo(Base2())) == 4
+     assert asyncio.run(base2_foo(Derived2())) == 4
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
