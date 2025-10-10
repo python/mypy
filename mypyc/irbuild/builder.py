@@ -40,7 +40,6 @@ from mypy.nodes import (
     TypeAlias,
     TypeInfo,
     TypeParam,
-    UnaryExpr,
     Var,
 )
 from mypy.types import (
@@ -106,6 +105,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     str_rprimitive,
 )
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.mapper import Mapper
@@ -965,12 +965,8 @@ class IRBuilder:
         return reg
 
     def extract_int(self, e: Expression) -> int | None:
-        if isinstance(e, IntExpr):
-            return e.value
-        elif isinstance(e, UnaryExpr) and e.op == "-" and isinstance(e.expr, IntExpr):
-            return -e.expr.value
-        else:
-            return None
+        folded = constant_fold_expr(self, e)
+        return folded if isinstance(folded, int) else None
 
     def get_sequence_type(self, expr: Expression) -> RType:
         return self.get_sequence_type_from_type(self.types[expr])
