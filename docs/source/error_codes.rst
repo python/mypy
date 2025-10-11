@@ -99,6 +99,8 @@ So one can e.g. enable some code globally, disable it for all tests in
 the corresponding config section, and then re-enable it with an inline
 comment in some specific test.
 
+.. _subcodes-of-error-codes:
+
 Subcodes of error codes
 -----------------------
 
@@ -110,7 +112,9 @@ is a subcode of another one, it will be mentioned in the documentation for the n
 code. This hierarchy is not nested: there cannot be subcodes of other
 subcodes.
 
-If a narrower code is ignored by specifying a wider code, this counts as an instance of :ref:`unused-ignore<code-unused-ignore>`. (The wider code is, conceptually, partially unused.)
+If a narrower code is ignored by specifying a wider code, this counts as an instance of
+:ref:`unused-ignore<code-unused-ignore>`. (The wider code is, conceptually, partially
+unused.)
 
 Requiring error codes
 ---------------------

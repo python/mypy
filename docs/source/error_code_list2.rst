@@ -506,7 +506,9 @@ Example:
         # Python 3.8, or Python 3.9
         42 + "testing..."  # type: ignore
 
-If a narrower code is ignored by specifying a wider code, this counts as an instance of unused-ignore. (The wider code is, conceptually, partially unused.) For more information about the concepts of codes that contain each other, see :ref:`subcodes-of-error-codes`.
+If a narrower code (a subcode) is ignored by specifying a wider code, this counts
+as an instance of unused-ignore. (The wider code is, conceptually, partially unused.)
+For more information about subcodes, see :ref:`subcodes-of-error-codes`.
 
 .. _code-explicit-override:
 
