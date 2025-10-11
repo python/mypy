@@ -67,7 +67,7 @@ typedef struct tuple_T4CIOO {
 // System-wide empty tuple constant
 extern PyObject * __mypyc_empty_tuple__;
 
-static inline PyObject *CPyTuple_LoadEmptyTupleConstant() {
+static inline PyObject *CPyTuple_LoadEmptyTupleConstant(void) {
 #if !CPY_3_12_FEATURES
     Py_INCREF(__mypyc_empty_tuple__);
 #endif
@@ -948,6 +948,13 @@ PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
 void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
 void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details);
+
+static inline PyObject *CPyObject_GenericGetAttr(PyObject *self, PyObject *name) {
+    return _PyObject_GenericGetAttrWithDict(self, name, NULL, 1);
+}
+static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObject *value) {
+    return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
+}
 
 #if CPY_3_11_FEATURES
 PyObject *CPy_GetName(PyObject *obj);

@@ -347,6 +347,7 @@ class TypeFixer(TypeVisitor[None]):
     def visit_param_spec(self, p: ParamSpecType) -> None:
         p.upper_bound.accept(self)
         p.default.accept(self)
+        p.prefix.accept(self)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
         t.tuple_fallback.accept(self)
@@ -440,4 +441,4 @@ def missing_info(modules: dict[str, MypyFile]) -> TypeInfo:
 
 def missing_alias() -> TypeAlias:
     suggestion = _SUGGESTION.format("alias")
-    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, line=-1, column=-1)
+    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, "<missing>", line=-1, column=-1)

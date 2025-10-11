@@ -74,6 +74,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "disable_memoryview_promotion",
         "strict_bytes",
         "fixed_format_cache",
+        "untyped_calls_exclude",
     }
 ) - {"debug_cache"}
 
@@ -231,7 +232,7 @@ class Options:
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
-        # Extend the logic of `scrict_equality` for comparisons with `None`.
+        # Extend the logic of `strict_equality` to comparisons with `None`.
         self.strict_equality_for_none = False
 
         # Disable treating bytearray and memoryview as subtypes of bytes

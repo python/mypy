@@ -159,7 +159,13 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
         for node in module.names.values():
-            if isinstance(node.node, TypeInfo) and is_from_module(node.node, module):
+            if (
+                isinstance(node.node, TypeInfo)
+                and is_from_module(node.node, module)
+                and not node.node.is_newtype
+                and not node.node.is_named_tuple
+                and node.node.typeddict_type is None
+            ):
                 ir = deser_ctx.classes[node.node.fullname]
                 mapper.type_to_ir[node.node] = ir
                 mapper.symbol_fullnames.add(node.node.fullname)
@@ -190,8 +196,6 @@ def prepare_func_def(
     mapper: Mapper,
     options: CompilerOptions,
 ) -> FuncDecl:
-    create_generator_class_if_needed(module_name, class_name, fdef, mapper)
-
     kind = (
         FUNC_CLASSMETHOD
         if fdef.is_class
@@ -203,38 +207,37 @@ def prepare_func_def(
     return decl
 
 
-def create_generator_class_if_needed(
+def create_generator_class_for_func(
     module_name: str, class_name: str | None, fdef: FuncDef, mapper: Mapper, name_suffix: str = ""
-) -> None:
-    """If function is a generator/async function, declare a generator class.
+) -> ClassIR:
+    """For a generator/async function, declare a generator class.
 
     Each generator and async function gets a dedicated class that implements the
     generator protocol with generated methods.
     """
-    if fdef.is_coroutine or fdef.is_generator:
-        name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen" + name_suffix
-        cir = ClassIR(name, module_name, is_generated=True, is_final_class=True)
-        cir.reuse_freed_instance = True
-        mapper.fdef_to_generator[fdef] = cir
+    assert fdef.is_coroutine or fdef.is_generator
+    name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen" + name_suffix
+    cir = ClassIR(name, module_name, is_generated=True, is_final_class=True)
+    cir.reuse_freed_instance = True
+    mapper.fdef_to_generator[fdef] = cir
 
-        helper_sig = FuncSignature(
-            (
-                RuntimeArg(SELF_NAME, object_rprimitive),
-                RuntimeArg("type", object_rprimitive),
-                RuntimeArg("value", object_rprimitive),
-                RuntimeArg("traceback", object_rprimitive),
-                RuntimeArg("arg", object_rprimitive),
-                # If non-NULL, used to store return value instead of raising StopIteration(retv)
-                RuntimeArg("stop_iter_ptr", object_pointer_rprimitive),
-            ),
-            object_rprimitive,
-        )
+    helper_sig = FuncSignature(
+        (
+            RuntimeArg(SELF_NAME, object_rprimitive),
+            RuntimeArg("type", object_rprimitive),
+            RuntimeArg("value", object_rprimitive),
+            RuntimeArg("traceback", object_rprimitive),
+            RuntimeArg("arg", object_rprimitive),
+            # If non-NULL, used to store return value instead of raising StopIteration(retv)
+            RuntimeArg("stop_iter_ptr", object_pointer_rprimitive),
+        ),
+        object_rprimitive,
+    )
 
-        # The implementation of most generator functionality is behind this magic method.
-        helper_fn_decl = FuncDecl(
-            GENERATOR_HELPER_NAME, name, module_name, helper_sig, internal=True
-        )
-        cir.method_decls[helper_fn_decl.name] = helper_fn_decl
+    # The implementation of most generator functionality is behind this magic method.
+    helper_fn_decl = FuncDecl(GENERATOR_HELPER_NAME, name, module_name, helper_sig, internal=True)
+    cir.method_decls[helper_fn_decl.name] = helper_fn_decl
+    return cir
 
 
 def prepare_method_def(
@@ -351,12 +354,28 @@ def prepare_class_def(
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    attrs = get_mypyc_attrs(cdef)
+    attrs, attrs_lines = get_mypyc_attrs(cdef, path, errors)
     if attrs.get("allow_interpreted_subclasses") is True:
         ir.allow_interpreted_subclasses = True
     if attrs.get("serializable") is True:
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
+
+    free_list_len = attrs.get("free_list_len")
+    if free_list_len is not None:
+        line = attrs_lines["free_list_len"]
+        if ir.is_trait:
+            errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if ir.allow_interpreted_subclasses:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
+                path,
+                line,
+            )
+        if free_list_len == 1:
+            ir.reuse_freed_instance = True
+        else:
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Check for subclassing from builtin types
     for cls in info.mro:
@@ -789,3 +808,22 @@ def registered_impl_from_possible_register_call(
         if isinstance(node, Decorator):
             return RegisteredImpl(node.func, dispatch_type)
     return None
+
+
+def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
+    """Make optimizations and adjustments to generated generator classes of methods.
+
+    This is a separate pass after type map has been built, since we need all classes
+    to be processed to analyze class hierarchies.
+    """
+    for fdef, ir in mapper.func_to_decl.items():
+        if isinstance(fdef, FuncDef) and (fdef.is_coroutine or fdef.is_generator):
+            gen_ir = create_generator_class_for_func(ir.module_name, ir.class_name, fdef, mapper)
+            # TODO: We could probably support decorators sometimes (static and class method?)
+            if not fdef.is_decorated:
+                # Give a more precise type for generators, so that we can optimize
+                # code that uses them. They return a generator object, which has a
+                # specific class. Without this, the type would have to be 'object'.
+                ir.sig.ret_type = RInstance(gen_ir)
+                if ir.bound_sig:
+                    ir.bound_sig.ret_type = RInstance(gen_ir)
