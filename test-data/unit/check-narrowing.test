@@ -2639,7 +2639,7 @@ def baz(item: Base) -> None:
 
     reveal_type(item)  # N: Revealed type is "Union[__main__.<subclass of "__main__.Base" and "__main__.FooMixin">, __main__.<subclass of "__main__.Base" and "__main__.BarMixin">]"
     if isinstance(item, FooMixin):
-        reveal_type(item)  # N: Revealed type is "__main__.FooMixin"
+        reveal_type(item)  # N: Revealed type is "__main__.<subclass of "__main__.Base" and "__main__.FooMixin">"
         item.foo()
     else:
         reveal_type(item)  # N: Revealed type is "__main__.<subclass of "__main__.Base" and "__main__.BarMixin">"
