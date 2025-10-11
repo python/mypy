@@ -8176,10 +8176,12 @@ def conditional_types(
 
     Returns a 2-tuple:
         The first element is the proposed type, if the expression can be the proposed type.
+            (or default, if default is set and the expression is a subtype of the proposed type).
         The second element is the type it would hold if it was not the proposed type, if any.
+            (or default, if default is set and the expression is not a subtype of the proposed type).
+
         UninhabitedType means unreachable.
         None means no new information can be inferred.
-        If default is set it is returned instead.
     """
     if proposed_type_ranges:
         if len(proposed_type_ranges) == 1:
