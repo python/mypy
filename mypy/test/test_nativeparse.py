@@ -13,7 +13,7 @@ class TestNativeParse(unittest.TestCase):
     def test_trivial_binary_data(self) -> None:
         with temp_source("print('hello')") as fnam:
             b = parse_to_binary_ast(fnam)
-            assert list(b) == [nodes.EXPR_STMT, nodes.CALL_EXPR, nodes.NAME_EXPR, 10] + list(
+            assert list(b) == [22, nodes.EXPR_STMT, nodes.CALL_EXPR, nodes.NAME_EXPR, 10] + list(
                 b"print"
             ) + [22, nodes.STR_EXPR, 10] + list(b"hello")
 
