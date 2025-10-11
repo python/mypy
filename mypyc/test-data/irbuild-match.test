@@ -563,10 +563,9 @@ def f():
 def f():
     r0, r1 :: object
     r2 :: bool
-    i :: int
-    r3 :: object
-    r4 :: str
-    r5, r6 :: object
+    r3, i, r4 :: object
+    r5 :: str
+    r6 :: object
     r7 :: object[1]
     r8 :: object_ptr
     r9, r10 :: object
@@ -576,21 +575,22 @@ L0:
     r2 = CPy_TypeCheck(r1, r0)
     if r2 goto L1 else goto L3 :: bool
 L1:
-    i = 246
+    r3 = object 123
+    i = r3
 L2:
-    r3 = builtins :: module
-    r4 = 'print'
-    r5 = CPyObject_GetAttr(r3, r4)
-    r6 = box(int, i)
-    r7 = [r6]
+    r4 = builtins :: module
+    r5 = 'print'
+    r6 = CPyObject_GetAttr(r4, r5)
+    r7 = [i]
     r8 = load_address r7
-    r9 = PyObject_Vectorcall(r5, r8, 1, 0)
-    keep_alive r6
+    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
+    keep_alive i
     goto L4
 L3:
 L4:
     r10 = box(None, 1)
     return r10
+
 [case testMatchClassPatternWithPositionalArgs_python3_10]
 class Position:
     __match_args__ = ("x", "y", "z")
@@ -599,7 +599,7 @@ class Position:
     y: int
     z: int
 
-def f(x):
+def f(x) -> None:
     match x:
         case Position(1, 2, 3):
             print("matched")
@@ -641,7 +641,7 @@ def f(x):
     r28 :: object
     r29 :: object[1]
     r30 :: object_ptr
-    r31, r32 :: object
+    r31 :: object
 L0:
     r0 = __main__.Position :: type
     r1 = PyObject_IsInstance(x, r0)
@@ -687,8 +687,8 @@ L4:
     goto L6
 L5:
 L6:
-    r32 = box(None, 1)
-    return r32
+    return 1
+
 [case testMatchClassPatternWithKeywordPatterns_python3_10]
 class Position:
     x: int
@@ -848,7 +848,7 @@ class C:
     a: int
     b: int
 
-def f(x):
+def f(x) -> None:
     match x:
         case C(1, 2) as y:
             print("matched")
@@ -885,7 +885,7 @@ def f(x):
     r22 :: object
     r23 :: object[1]
     r24 :: object_ptr
-    r25, r26 :: object
+    r25 :: object
 L0:
     r0 = __main__.C :: type
     r1 = PyObject_IsInstance(x, r0)
@@ -925,8 +925,8 @@ L4:
     goto L6
 L5:
 L6:
-    r26 = box(None, 1)
-    return r26
+    return 1
+
 [case testMatchClassPatternPositionalCapture_python3_10]
 class C:
     __match_args__ = ("x",)
@@ -953,15 +953,14 @@ def f(x):
     r2 :: bit
     r3 :: bool
     r4 :: str
-    r5 :: object
-    r6, num :: int
-    r7 :: str
-    r8 :: object
-    r9 :: str
-    r10 :: object
-    r11 :: object[1]
-    r12 :: object_ptr
-    r13, r14 :: object
+    r5, num :: object
+    r6 :: str
+    r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: object[1]
+    r11 :: object_ptr
+    r12, r13 :: object
 L0:
     r0 = __main__.C :: type
     r1 = PyObject_IsInstance(x, r0)
@@ -971,22 +970,22 @@ L0:
 L1:
     r4 = 'x'
     r5 = CPyObject_GetAttr(x, r4)
-    r6 = unbox(int, r5)
-    num = r6
+    num = r5
 L2:
-    r7 = 'matched'
-    r8 = builtins :: module
-    r9 = 'print'
-    r10 = CPyObject_GetAttr(r8, r9)
-    r11 = [r7]
-    r12 = load_address r11
-    r13 = PyObject_Vectorcall(r10, r12, 1, 0)
-    keep_alive r7
+    r6 = 'matched'
+    r7 = builtins :: module
+    r8 = 'print'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = [r6]
+    r11 = load_address r10
+    r12 = PyObject_Vectorcall(r9, r11, 1, 0)
+    keep_alive r6
     goto L4
 L3:
 L4:
-    r14 = box(None, 1)
-    return r14
+    r13 = box(None, 1)
+    return r13
+
 [case testMatchMappingEmpty_python3_10]
 def f(x):
     match x:
@@ -1601,35 +1600,35 @@ def f(x):
 def f(x):
     x, r0 :: object
     r1 :: bool
-    r2, y :: int
-    r3 :: str
-    r4 :: object
-    r5 :: str
-    r6 :: object
-    r7 :: object[1]
-    r8 :: object_ptr
-    r9, r10 :: object
+    y :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8, r9 :: object
 L0:
     r0 = load_address PyLong_Type
     r1 = CPy_TypeCheck(x, r0)
     if r1 goto L1 else goto L3 :: bool
 L1:
-    r2 = unbox(int, x)
-    y = r2
+    y = x
 L2:
-    r3 = 'matched'
-    r4 = builtins :: module
-    r5 = 'print'
-    r6 = CPyObject_GetAttr(r4, r5)
-    r7 = [r3]
-    r8 = load_address r7
-    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
-    keep_alive r3
+    r2 = 'matched'
+    r3 = builtins :: module
+    r4 = 'print'
+    r5 = CPyObject_GetAttr(r3, r4)
+    r6 = [r2]
+    r7 = load_address r6
+    r8 = PyObject_Vectorcall(r5, r7, 1, 0)
+    keep_alive r2
     goto L4
 L3:
 L4:
-    r10 = box(None, 1)
-    return r10
+    r9 = box(None, 1)
+    return r9
+
 [case testMatchSequenceCaptureAll_python3_10]
 def f(x):
     match x:
