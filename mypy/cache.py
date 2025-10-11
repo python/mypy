@@ -3,8 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Final
 
-from mypy_extensions import u8
-from native_internal import (
+from librt.internal import (
     Buffer as Buffer,
     read_bool as read_bool,
     read_float as read_float,
@@ -17,6 +16,7 @@ from native_internal import (
     write_str as write_str,
     write_tag as write_tag,
 )
+from mypy_extensions import u8
 
 # Always use this type alias to refer to type tags.
 Tag = u8
