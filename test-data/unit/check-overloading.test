@@ -6865,5 +6865,5 @@ def gather(*fns: object) -> int: ...
 
 def crash() -> None:
     foo: str
-    (foo,) = gather(0)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    (foo,) = gather(0)  # E: Argument 1 to "gather" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]
