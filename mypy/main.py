@@ -1066,11 +1066,7 @@ def define_options(
     incremental_group.add_argument(
         "--fixed-format-cache",
         action="store_true",
-        help=(
-            "Use experimental fast and compact fixed format cache"
-            if compilation_status == "yes"
-            else argparse.SUPPRESS
-        ),
+        help="Use new fast and compact fixed format cache",
     )
     incremental_group.add_argument(
         "--skip-version-check",
@@ -1165,12 +1161,16 @@ def define_options(
 
     misc_group = parser.add_argument_group(title="Miscellaneous")
     misc_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
-    misc_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
-    imports_group.add_argument(
+    misc_group.add_argument(
+        "--junit-xml",
+        metavar="JUNIT_XML_OUTPUT_FILE",
+        help="Write a JUnit XML test result document with type checking results to the given file",
+    )
+    misc_group.add_argument(
         "--junit-format",
         choices=["global", "per_file"],
         default="global",
-        help="If --junit-xml is set, specifies format. global: single test with all errors; per_file: one test entry per file with failures",
+        help="If --junit-xml is set, specifies format. global (default): single test with all errors; per_file: one test entry per file with failures",
     )
     misc_group.add_argument(
         "--find-occurrences",
@@ -1462,7 +1462,6 @@ def process_options(
     validate_package_allow_list(options.untyped_calls_exclude)
     validate_package_allow_list(options.deprecated_calls_exclude)
 
-    options.process_error_codes(error_callback=parser.error)
     options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
 
     # Compute absolute path for custom typeshed (if present).
