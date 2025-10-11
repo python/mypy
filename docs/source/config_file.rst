@@ -834,7 +834,15 @@ section of the command line docs.
    :default: False
 
    Prohibit equality checks, identity checks, and container checks between
-   non-overlapping types.
+   non-overlapping types (except ``None``).
+
+.. confval:: strict_equality_for_none
+
+   :type: boolean
+   :default: False
+
+   Include ``None`` in strict equality checks (requires :confval:`strict_equality`
+   to be activated).
 
 .. confval:: strict_bytes
 
@@ -1144,6 +1152,15 @@ These options may only be set in the global section (``[mypy]``).
     Causes mypy to generate a JUnit XML test result document with
     type checking results. This can make it easier to integrate mypy
     with continuous integration (CI) tools.
+
+.. confval:: junit_format
+
+    :type: string
+    :default: ``global``
+
+    If junit_xml is set, specifies format.
+    global (default): single test with all errors;
+    per_file: one test entry per file with failures.
 
 .. confval:: scripts_are_modules
 

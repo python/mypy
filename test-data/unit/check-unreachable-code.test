@@ -778,6 +778,22 @@ assert sys.platform == 'lol'
 def bar() -> None: pass
 [builtins fixtures/ops.pyi]
 
+[case testUnreachableAfterToplevelAssertImportThirdParty]
+# flags: --platform unknown
+import sys
+assert sys.platform == 'linux'
+import does_not_exist
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertImportThirdParty2]
+# flags: --platform unknown
+import sys
+import bad; assert sys.platform == 'linux'; import does_not_exist
+[builtins fixtures/ops.pyi]
+[out]
+main:3: error: Cannot find implementation or library stub for module named "bad"
+main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
 [case testUnreachableAfterToplevelAssertNotInsideIf]
 import sys
 if sys.version_info[0] >= 2:

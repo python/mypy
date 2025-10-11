@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Callable
 
+from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_doc_initializer, native_function_header
@@ -38,6 +39,12 @@ def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
 
 
+def dunder_attr_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    wrapper_fn = cl.get_method(fn.name + "__wrapper")
+    assert wrapper_fn
+    return f"{NATIVE_PREFIX}{wrapper_fn.cname(emitter.names)}"
+
+
 # We maintain a table from dunder function names to struct slots they
 # correspond to and functions that generate a wrapper (if necessary)
 # and return the function name to stick in the slot.
@@ -54,6 +61,8 @@ SLOT_DEFS: SlotTable = {
     "__iter__": ("tp_iter", native_slot),
     "__hash__": ("tp_hash", generate_hash_wrapper),
     "__get__": ("tp_descr_get", generate_get_wrapper),
+    "__getattr__": ("tp_getattro", dunder_attr_slot),
+    "__setattr__": ("tp_setattro", dunder_attr_slot),
 }
 
 AS_MAPPING_SLOT_DEFS: SlotTable = {
@@ -204,10 +213,6 @@ def generate_class_reuse(
     TODO: Generalize to support a free list with up to N objects.
     """
     assert cl.reuse_freed_instance
-
-    # The free list implementation doesn't support class hierarchies
-    assert cl.is_final_class or cl.children == []
-
     context = c_emitter.context
     name = cl.name_prefix(c_emitter.names) + "_free_instance"
     struct_name = cl.struct_name(c_emitter.names)
@@ -224,7 +229,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     name = cl.name
     name_prefix = cl.name_prefix(emitter.names)
 
-    setup_name = f"{name_prefix}_setup"
+    setup_name = emitter.native_function_name(cl.setup)
     new_name = f"{name_prefix}_new"
     finalize_name = f"{name_prefix}_finalize"
     members_name = f"{name_prefix}_members"
@@ -317,10 +322,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         fields["tp_basicsize"] = base_size
 
     if generate_full:
-        # Declare setup method that allocates and initializes an object. type is the
-        # type of the class being initialized, which could be another class if there
-        # is an interpreted subclass.
-        emitter.emit_line(f"static PyObject *{setup_name}(PyTypeObject *type);")
+        assert cl.setup is not None
+        emitter.emit_line(native_function_header(cl.setup, emitter) + ";")
         assert cl.ctor is not None
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ";")
 
@@ -390,9 +393,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     emitter.emit_line()
     if generate_full:
-        generate_setup_for_class(
-            cl, setup_name, defaults_fn, vtable_name, shadow_vtable_name, emitter
-        )
+        generate_setup_for_class(cl, defaults_fn, vtable_name, shadow_vtable_name, emitter)
         emitter.emit_line()
         generate_constructor_for_class(cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
@@ -579,16 +580,16 @@ def generate_vtable(
 
 def generate_setup_for_class(
     cl: ClassIR,
-    func_name: str,
     defaults_fn: FuncIR | None,
     vtable_name: str,
     shadow_vtable_name: str | None,
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
-    emitter.emit_line("static PyObject *")
-    emitter.emit_line(f"{func_name}(PyTypeObject *type)")
+    emitter.emit_line(native_function_header(cl.setup, emitter))
     emitter.emit_line("{")
+    type_arg_name = REG_PREFIX + cl.setup.sig.args[0].name
+    emitter.emit_line(f"PyTypeObject *type = (PyTypeObject*){type_arg_name};")
     struct_name = cl.struct_name(emitter.names)
     emitter.emit_line(f"{struct_name} *self;")
 
@@ -663,6 +664,35 @@ def emit_attr_defaults_func_call(defaults_fn: FuncIR, self_name: str, emitter: E
     )
 
 
+def emit_setup_or_dunder_new_call(
+    cl: ClassIR,
+    setup_name: str,
+    type_arg: str,
+    native_prefix: bool,
+    new_args: str,
+    emitter: Emitter,
+) -> None:
+    def emit_null_check() -> None:
+        emitter.emit_line("if (self == NULL)")
+        emitter.emit_line("    return NULL;")
+
+    new_fn = cl.get_method("__new__")
+    if not new_fn:
+        emitter.emit_line(f"PyObject *self = {setup_name}({type_arg});")
+        emit_null_check()
+        return
+    prefix = emitter.get_group_prefix(new_fn.decl) + NATIVE_PREFIX if native_prefix else PREFIX
+    all_args = type_arg
+    if new_args != "":
+        all_args += ", " + new_args
+    emitter.emit_line(f"PyObject *self = {prefix}{new_fn.cname(emitter.names)}({all_args});")
+    emit_null_check()
+
+    # skip __init__ if __new__ returns some other type
+    emitter.emit_line(f"if (Py_TYPE(self) != {emitter.type_struct_name(cl)})")
+    emitter.emit_line("    return self;")
+
+
 def generate_constructor_for_class(
     cl: ClassIR,
     fn: FuncDecl,
@@ -674,17 +704,30 @@ def generate_constructor_for_class(
     """Generate a native function that allocates and initializes an instance of a class."""
     emitter.emit_line(f"{native_function_header(fn, emitter)}")
     emitter.emit_line("{")
-    emitter.emit_line(f"PyObject *self = {setup_name}({emitter.type_struct_name(cl)});")
-    emitter.emit_line("if (self == NULL)")
-    emitter.emit_line("    return NULL;")
-    args = ", ".join(["self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
+
+    fn_args = [REG_PREFIX + arg.name for arg in fn.sig.args]
+    type_arg = "(PyObject *)" + emitter.type_struct_name(cl)
+    new_args = ", ".join(fn_args)
+
+    use_wrapper = (
+        cl.has_method("__new__")
+        and len(fn.sig.args) == 2
+        and fn.sig.args[0].kind == ARG_STAR
+        and fn.sig.args[1].kind == ARG_STAR2
+    )
+    emit_setup_or_dunder_new_call(cl, setup_name, type_arg, not use_wrapper, new_args, emitter)
+
+    args = ", ".join(["self"] + fn_args)
     if init_fn is not None:
+        prefix = PREFIX if use_wrapper else NATIVE_PREFIX
+        cast = "!= NULL ? 0 : -1" if use_wrapper else ""
         emitter.emit_line(
-            "char res = {}{}{}({});".format(
+            "char res = {}{}{}({}){};".format(
                 emitter.get_group_prefix(init_fn.decl),
-                NATIVE_PREFIX,
+                prefix,
                 init_fn.cname(emitter.names),
                 args,
+                cast,
             )
         )
         emitter.emit_line("if (res == 2) {")
@@ -717,7 +760,7 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     emitter.emit_line("static int")
     emitter.emit_line(f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)")
     emitter.emit_line("{")
-    if cl.allow_interpreted_subclasses or cl.builtin_base:
+    if cl.allow_interpreted_subclasses or cl.builtin_base or cl.has_method("__new__"):
         emitter.emit_line(
             "return {}{}(self, args, kwds) != NULL ? 0 : -1;".format(
                 PREFIX, init_fn.cname(emitter.names)
@@ -750,15 +793,22 @@ def generate_new_for_class(
         emitter.emit_line("return NULL;")
         emitter.emit_line("}")
 
-    if not init_fn or cl.allow_interpreted_subclasses or cl.builtin_base or cl.is_serializable():
+    type_arg = "(PyObject*)type"
+    new_args = "args, kwds"
+    emit_setup_or_dunder_new_call(cl, setup_name, type_arg, False, new_args, emitter)
+    if (
+        not init_fn
+        or cl.allow_interpreted_subclasses
+        or cl.builtin_base
+        or cl.is_serializable()
+        or cl.has_method("__new__")
+    ):
         # Match Python semantics -- __new__ doesn't call __init__.
-        emitter.emit_line(f"return {setup_name}(type);")
+        emitter.emit_line("return self;")
     else:
         # __new__ of a native class implicitly calls __init__ so that we
         # can enforce that instances are always properly initialized. This
         # is needed to support always defined attributes.
-        emitter.emit_line(f"PyObject *self = {setup_name}(type);")
-        emitter.emit_lines("if (self == NULL)", "    return NULL;")
         emitter.emit_line(
             f"PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);"
         )
@@ -843,8 +893,21 @@ def generate_dealloc_for_class(
     emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
     emitter.emit_line("{")
     if has_tp_finalize:
-        emitter.emit_line("if (!PyObject_GC_IsFinalized((PyObject *)self)) {")
-        emitter.emit_line("Py_TYPE(self)->tp_finalize((PyObject *)self);")
+        emitter.emit_line("PyObject *type, *value, *traceback;")
+        emitter.emit_line("PyErr_Fetch(&type, &value, &traceback);")
+        emitter.emit_line("int res = PyObject_CallFinalizerFromDealloc((PyObject *)self);")
+        # CPython interpreter uses PyErr_WriteUnraisable: https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable
+        # However, the message is slightly different due to the way mypyc compiles classes.
+        # CPython interpreter prints: Exception ignored in: <function F.__del__ at 0x100aed940>
+        # mypyc prints: Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+        emitter.emit_line("if (PyErr_Occurred() != NULL) {")
+        # Don't untrack instance if error occurred
+        emitter.emit_line("PyErr_WriteUnraisable((PyObject *)self);")
+        emitter.emit_line("res = -1;")
+        emitter.emit_line("}")
+        emitter.emit_line("PyErr_Restore(type, value, traceback);")
+        emitter.emit_line("if (res < 0) {")
+        emitter.emit_line("goto done;")
         emitter.emit_line("}")
     emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:
@@ -854,6 +917,7 @@ def generate_dealloc_for_class(
     emitter.emit_line(f"{clear_func_name}(self);")
     emitter.emit_line("Py_TYPE(self)->tp_free((PyObject *)self);")
     emitter.emit_line("CPy_TRASHCAN_END(self)")
+    emitter.emit_line("done: ;")
     emitter.emit_line("}")
 
 
@@ -884,8 +948,6 @@ def generate_finalize_for_class(
     emitter.emit_line("static void")
     emitter.emit_line(f"{finalize_func_name}(PyObject *self)")
     emitter.emit_line("{")
-    emitter.emit_line("PyObject *type, *value, *traceback;")
-    emitter.emit_line("PyErr_Fetch(&type, &value, &traceback);")
     emitter.emit_line(
         "{}{}{}(self);".format(
             emitter.get_group_prefix(del_method.decl),
@@ -893,21 +955,6 @@ def generate_finalize_for_class(
             del_method.cname(emitter.names),
         )
     )
-    emitter.emit_line("if (PyErr_Occurred() != NULL) {")
-    emitter.emit_line('PyObject *del_str = PyUnicode_FromString("__del__");')
-    emitter.emit_line(
-        "PyObject *del_method = (del_str == NULL) ? NULL : _PyType_Lookup(Py_TYPE(self), del_str);"
-    )
-    # CPython interpreter uses PyErr_WriteUnraisable: https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable
-    # However, the message is slightly different due to the way mypyc compiles classes.
-    # CPython interpreter prints: Exception ignored in: <function F.__del__ at 0x100aed940>
-    # mypyc prints: Exception ignored in: <slot wrapper '__del__' of 'F' objects>
-    emitter.emit_line("PyErr_WriteUnraisable(del_method);")
-    emitter.emit_line("Py_XDECREF(del_method);")
-    emitter.emit_line("Py_XDECREF(del_str);")
-    emitter.emit_line("}")
-    # PyErr_Restore also clears exception raised in __del__.
-    emitter.emit_line("PyErr_Restore(type, value, traceback);")
     emitter.emit_line("}")
 
 

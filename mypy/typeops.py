@@ -208,7 +208,7 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     fallback=named_type("builtins.function"),
                 )
                 result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
-                if allow_cache:
+                if allow_cache and state.strict_optional:
                     info.type_object_type = result
                 return result
 
@@ -230,7 +230,9 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
     result = type_object_type_from_function(t, info, method.info, fallback, is_new)
-    if allow_cache:
+    # Only write cached result is strict_optional=True, otherwise we may get
+    # inconsistent behaviour because of union simplification.
+    if allow_cache and state.strict_optional:
         info.type_object_type = result
     return result
 
@@ -317,7 +319,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType, LiteralType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -1112,12 +1114,12 @@ def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
 
 class TypeVarExtractor(TypeQuery[list[TypeVarLikeType]]):
     def __init__(self, include_all: bool = False) -> None:
-        super().__init__(self._merge)
+        super().__init__()
         self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
+    def strategy(self, items: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
-        for item in iter:
+        for item in items:
             out.extend(item)
         return out
 
@@ -1253,3 +1255,54 @@ def get_protocol_member(
             )
         )
     return subtype
+
+
+def _is_disjoint_base(info: TypeInfo) -> bool:
+    # It either has the @disjoint_base decorator or defines nonempty __slots__.
+    if info.is_disjoint_base:
+        return True
+    if not info.slots:
+        return False
+    own_slots = {
+        slot
+        for slot in info.slots
+        if not any(
+            base_info.type.slots is not None and slot in base_info.type.slots
+            for base_info in info.bases
+        )
+    }
+    return bool(own_slots)
+
+
+def _get_disjoint_base_of(instance: Instance) -> TypeInfo | None:
+    """Returns the disjoint base of the given instance, if it exists."""
+    if _is_disjoint_base(instance.type):
+        return instance.type
+    for base in instance.type.mro:
+        if _is_disjoint_base(base):
+            return base
+    return None
+
+
+def can_have_shared_disjoint_base(instances: list[Instance]) -> bool:
+    """Returns whether the given instances can share a disjoint base.
+
+    This means that a child class of these classes can exist at runtime.
+    """
+    # Ignore None disjoint bases (which are `object`).
+    disjoint_bases = [
+        base for instance in instances if (base := _get_disjoint_base_of(instance)) is not None
+    ]
+    if not disjoint_bases:
+        # All are `object`.
+        return True
+
+    candidate = disjoint_bases[0]
+    for base in disjoint_bases[1:]:
+        if candidate.has_base(base.fullname):
+            continue
+        elif base.has_base(candidate.fullname):
+            candidate = base
+        else:
+            return False
+    return True

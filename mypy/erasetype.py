@@ -222,6 +222,7 @@ class TypeVarEraser(TypeTranslator):
         return t
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
+        # TODO: we should probably preserve prefix here.
         if self.erase_id is None or self.erase_id(t.id):
             return self.replacement
         return t

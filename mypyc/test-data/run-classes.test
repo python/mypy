@@ -2710,6 +2710,171 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
+[case testBufferRoundTrip_librt_internal]
+from typing import Final
+from mypy_extensions import u8
+from librt.internal import (
+    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
+    write_int, read_int, write_tag, read_tag
+)
+
+Tag = u8
+TAG_A: Final[Tag] = 33
+TAG_B: Final[Tag] = 255
+TAG_SPECIAL: Final[Tag] = 239
+
+def test_buffer_basic() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+    write_int(b, 0)
+    write_int(b, 1)
+    write_tag(b, TAG_A)
+    write_tag(b, TAG_SPECIAL)
+    write_tag(b, TAG_B)
+    write_int(b, 2)
+    write_int(b, 2 ** 85)
+    write_int(b, 255)
+    write_int(b, -1)
+    write_int(b, -255)
+    write_int(b, 1234512344)
+    write_int(b, 1234512345)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+    assert read_int(b) == 0
+    assert read_int(b) == 1
+    assert read_tag(b) == TAG_A
+    assert read_tag(b) == TAG_SPECIAL
+    assert read_tag(b) == TAG_B
+    assert read_int(b) == 2
+    assert read_int(b) == 2 ** 85
+    assert read_int(b) == 255
+    assert read_int(b) == -1
+    assert read_int(b) == -255
+    assert read_int(b) == 1234512344
+    assert read_int(b) == 1234512345
+
+def test_buffer_int_size() -> None:
+    for i in (-10, -9, 0, 116, 117):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) == 1
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+    for i in (-12345, -12344, -11, 118, 12344, 12345):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) <= 9  # sizeof(size_t) + 1
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+
+def test_buffer_str_size() -> None:
+    for s in ("", "a", "a" * 127):
+        b = Buffer()
+        write_str(b, s)
+        assert len(b.getvalue()) == len(s) + 1
+        b = Buffer(b.getvalue())
+        assert read_str(b) == s
+
+[file driver.py]
+from native import *
+
+test_buffer_basic()
+test_buffer_roundtrip()
+test_buffer_int_size()
+test_buffer_str_size()
+
+def test_buffer_basic_interpreted() -> None:
+    b = Buffer(b"foo")
+    assert b.getvalue() == b"foo"
+
+def test_buffer_roundtrip_interpreted() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_str(b, "bar" * 1000)
+    write_bool(b, False)
+    write_float(b, 0.1)
+    write_int(b, 0)
+    write_int(b, 1)
+    write_tag(b, 33)
+    write_tag(b, 239)
+    write_tag(b, 255)
+    write_int(b, 2)
+    write_int(b, 2 ** 85)
+    write_int(b, 255)
+    write_int(b, -1)
+    write_int(b, -255)
+    write_int(b, 1234512344)
+    write_int(b, 1234512345)
+
+    b = Buffer(b.getvalue())
+    assert read_str(b) == "foo"
+    assert read_bool(b) is True
+    assert read_str(b) == "bar" * 1000
+    assert read_bool(b) is False
+    assert read_float(b) == 0.1
+    assert read_int(b) == 0
+    assert read_int(b) == 1
+    assert read_tag(b) == 33
+    assert read_tag(b) == 239
+    assert read_tag(b) == 255
+    assert read_int(b) == 2
+    assert read_int(b) == 2 ** 85
+    assert read_int(b) == 255
+    assert read_int(b) == -1
+    assert read_int(b) == -255
+    assert read_int(b) == 1234512344
+    assert read_int(b) == 1234512345
+
+def test_buffer_int_size_interpreted() -> None:
+    for i in (-10, -9, 0, 116, 117):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) == 1
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+    for i in (-12345, -12344, -11, 118, 12344, 12345):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) <= 9  # sizeof(size_t) + 1
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+
+def test_buffer_str_size_interpreted() -> None:
+    for s in ("", "a", "a" * 127):
+        b = Buffer()
+        write_str(b, s)
+        assert len(b.getvalue()) == len(s) + 1
+        b = Buffer(b.getvalue())
+        assert read_str(b) == s
+
+test_buffer_basic_interpreted()
+test_buffer_roundtrip_interpreted()
+test_buffer_int_size_interpreted()
+test_buffer_str_size_interpreted()
+
+[case testBufferEmpty_librt_internal]
+from librt.internal import Buffer, write_int, read_int
+
+def test_empty() -> None:
+    b = Buffer(b"")
+    write_int(b, 42)
+    b1 = Buffer(b.getvalue())
+    assert read_int(b1) == 42
+
 [case testEnumMethodCalls]
 from enum import Enum
 from typing import overload, Optional, Union
@@ -2954,7 +3119,7 @@ f = native.F()
 del f
 
 [out]
-Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+Exception ignored in: <native.F object at 0x000000000000>
 Traceback (most recent call last):
   File "native.py", line 5, in __del__
     raise Exception("e2")
@@ -3115,3 +3280,1979 @@ f(C(1, "yes"))
 [out]
 B 1
 C yes
+
+[case testTypeObjectName]
+from typing import Any
+import re
+
+from dynamic import E, foo, Thing
+
+class C: pass
+class D(C): pass
+
+def type_name(t: type[object]) -> str:
+    return t.__name__
+
+def any_name(x: Any) -> str:
+    return x.__name__
+
+def assert_type_name(x: Any) -> None:
+    assert type_name(x) == getattr(x, "__name__")
+    assert any_name(x) == getattr(x, "__name__")
+
+def assert_any_name(x: Any) -> None:
+    assert any_name(x) == getattr(x, "__name__")
+
+def test_type_name() -> None:
+    assert_type_name(C)
+    assert_type_name(D)
+    assert_type_name(int)
+    assert_type_name(E)
+    assert_type_name(re.Pattern)
+
+def test_module_name() -> None:
+    assert_any_name(re)
+
+def test_function_name() -> None:
+    assert_any_name(any_name)
+    assert_any_name(foo)
+
+def test_obj_name() -> None:
+    assert_any_name(Thing())
+
+[file dynamic.py]
+class E: pass
+
+def foo(): pass
+
+class Thing:
+    def __init__(self):
+        self.__name__ = "xyz"
+
+[case testTypeOfObject]
+from typing import Any
+
+from dynamic import Dyn
+
+class Foo: pass
+class Bar(Foo): pass
+
+def generic_type(x) -> type[object]:
+    return x.__class__
+
+def test_built_in_type() -> None:
+    i: Any = int
+    l: Any = list
+    assert type(i()) is i().__class__
+    assert type(i()) is int
+    assert type(l()) is list
+    n = 5
+    assert n.__class__ is i
+
+def test_native_class() -> None:
+    f_any: Any = Foo()
+    b_any: Any = Bar()
+    f: Foo = f_any
+    b: Foo = b_any
+    if int("1"):  # use int("1") to avoid constant folding
+        assert type(f) is Foo
+        assert type(b) is Bar
+    if int("2"):
+        assert f.__class__ is Foo
+        assert b.__class__ is Bar
+    if int("3"):
+        assert f_any.__class__ is Foo
+        assert b_any.__class__ is Bar
+    if int("4"):
+        assert type(f_any) is Foo
+        assert type(b_any) is Bar
+
+def test_python_class() -> None:
+    d = Dyn()
+    assert type(d) is Dyn
+    assert d.__class__ is Dyn
+
+[file dynamic.py]
+class Dyn: pass
+
+[case testDunderNew]
+from __future__ import annotations
+from typing import Any, Union
+
+from testutil import assertRaises
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> Any:
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            super().__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+IntLike = Union[int, Add]
+
+class RaisesException:
+    def __new__(cls, val: int) -> RaisesException:
+        if val == 0:
+            raise RuntimeError("Invalid value!")
+        return super().__new__(cls)
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return super().__new__(str)
+
+def test_dunder_new() -> None:
+    add_instance: Any = Add(1, 5)
+    assert type(add_instance) == Add
+    assert add_instance.l == 1
+    assert add_instance.r == 5
+
+    # TODO: explicit types should not be needed but mypy does not use
+    # the return type of __new__ which makes mypyc add casts to Add.
+    right_int: Any = Add(0, 5)
+    assert type(right_int) == int
+    assert right_int == 5
+
+    left_int: Any = Add(1, 0)
+    assert type(left_int) == int
+    assert left_int == 1
+
+    with assertRaises(RuntimeError, "Invalid value!"):
+        raised = RaisesException(0)
+
+    not_raised = RaisesException(1)
+    assert not_raised.val == 1
+
+    with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+        str_as_cls = ClsArgNotPassed()
+
+
+[case testDunderNewInInterpreted]
+from __future__ import annotations
+from typing import Any, Union
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> Any:
+        print(f'running __new__ with {l} and {r}')
+
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            super().__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+    def __repr__(self) -> str:
+        return f'({self.l} + {self.r})'
+
+IntLike = Union[int, Add]
+
+class RaisesException:
+    def __new__(cls, val: int) -> RaisesException:
+        if val == 0:
+            raise RuntimeError("Invalid value!")
+        return super().__new__(cls)
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return super().__new__(str)
+
+[file driver.py]
+from native import Add, ClsArgNotPassed, RaisesException
+
+from testutil import assertRaises
+
+print(f'{Add(1, 5)=}')
+print(f'{Add(0, 5)=}')
+print(f'{Add(1, 0)=}')
+
+with assertRaises(RuntimeError, "Invalid value!"):
+    raised = RaisesException(0)
+
+not_raised = RaisesException(1)
+assert not_raised.val == 1
+
+with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+    str_as_cls = ClsArgNotPassed()
+
+[out]
+running __new__ with 1 and 5
+Add(1, 5)=(1 + 5)
+running __new__ with 0 and 5
+Add(0, 5)=5
+running __new__ with 1 and 0
+Add(1, 0)=1
+
+[case testObjectDunderNew]
+from __future__ import annotations
+from typing import Any, Union
+
+from testutil import assertRaises
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> Any:
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            object.__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+IntLike = Union[int, Add]
+
+class RaisesException:
+    def __new__(cls, val: int) -> RaisesException:
+        if val == 0:
+            raise RuntimeError("Invalid value!")
+        return object.__new__(cls)
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return object.__new__(str)
+
+class SkipsBase(Add):
+    def __new__(cls) -> Any:
+        obj = object.__new__(cls)
+        obj.l = 0
+        obj.r = 0
+        return obj
+
+def test_dunder_new() -> None:
+    add_instance: Any = Add(1, 5)
+    assert type(add_instance) == Add
+    assert add_instance.l == 1
+    assert add_instance.r == 5
+
+    # TODO: explicit types should not be needed but mypy does not use
+    # the return type of __new__ which makes mypyc add casts to Add.
+    right_int: Any = Add(0, 5)
+    assert type(right_int) == int
+    assert right_int == 5
+
+    left_int: Any = Add(1, 0)
+    assert type(left_int) == int
+    assert left_int == 1
+
+    with assertRaises(RuntimeError, "Invalid value!"):
+        _ = RaisesException(0)
+
+    not_raised = RaisesException(1)
+    assert not_raised.val == 1
+
+    with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+        _ = ClsArgNotPassed()
+
+    skip = SkipsBase.__new__(SkipsBase)
+    assert type(skip) == SkipsBase
+    assert skip.l == 0
+    assert skip.r == 0
+
+[case testObjectDunderNewInInterpreted]
+from __future__ import annotations
+from typing import Any, Union
+
+class Add:
+    l: IntLike
+    r: IntLike
+
+    def __new__(cls, l: IntLike, r: IntLike) -> Any:
+        print(f'running __new__ with {l} and {r}')
+
+        return (
+            l if r == 0 else
+            r if l == 0 else
+            object.__new__(cls)
+        )
+
+    def __init__(self, l: IntLike, r: IntLike):
+        self.l = l
+        self.r = r
+
+    def __repr__(self) -> str:
+        return f'({self.l} + {self.r})'
+
+IntLike = Union[int, Add]
+
+class RaisesException:
+    def __new__(cls, val: int) -> RaisesException:
+        if val == 0:
+            raise RuntimeError("Invalid value!")
+        return object.__new__(cls)
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+class ClsArgNotPassed:
+    def __new__(cls) -> Any:
+        return object.__new__(str)
+
+class SkipsBase(Add):
+    def __new__(cls) -> Any:
+        obj = object.__new__(cls)
+        obj.l = 0
+        obj.r = 0
+        return obj
+
+[file driver.py]
+from native import Add, ClsArgNotPassed, RaisesException, SkipsBase
+
+from testutil import assertRaises
+
+print(f'{Add(1, 5)=}')
+print(f'{Add(0, 5)=}')
+print(f'{Add(1, 0)=}')
+
+with assertRaises(RuntimeError, "Invalid value!"):
+    raised = RaisesException(0)
+
+not_raised = RaisesException(1)
+assert not_raised.val == 1
+
+with assertRaises(TypeError, "object.__new__(str) is not safe, use str.__new__()"):
+    str_as_cls = ClsArgNotPassed()
+
+skip = SkipsBase.__new__(SkipsBase)
+assert type(skip) == SkipsBase
+assert skip.l == 0
+assert skip.r == 0
+
+[out]
+running __new__ with 1 and 5
+Add(1, 5)=(1 + 5)
+running __new__ with 0 and 5
+Add(0, 5)=5
+running __new__ with 1 and 0
+Add(1, 0)=1
+
+[case testInheritedDunderNew]
+from __future__ import annotations
+from mypy_extensions import mypyc_attr
+from typing_extensions import Self
+
+from m import interpreted_subclass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    val: int
+
+    def __new__(cls, val: int) -> Self:
+        obj = super().__new__(cls)
+        obj.val = val + 1
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.init_val = val
+
+class Sub(Base):
+    def __new__(cls, val: int) -> Self:
+        return super().__new__(cls, val + 1)
+
+    def __init__(self, val: int) -> None:
+        super().__init__(val)
+        self.init_val = self.init_val * 2
+
+class SubWithoutNew(Base):
+    def __init__(self, val: int) -> None:
+        super().__init__(val)
+        self.init_val = self.init_val * 2
+
+class BaseWithoutInterpretedSubclasses:
+    val: int
+
+    def __new__(cls, val: int) -> Self:
+        obj = super().__new__(cls)
+        obj.val = val + 1
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.init_val = val
+
+class SubNoInterpreted(BaseWithoutInterpretedSubclasses):
+    def __new__(cls, val: int) -> Self:
+        return super().__new__(cls, val + 1)
+
+    def __init__(self, val: int) -> None:
+        super().__init__(val)
+        self.init_val = self.init_val * 2
+
+class SubNoInterpretedWithoutNew(BaseWithoutInterpretedSubclasses):
+    def __init__(self, val: int) -> None:
+        super().__init__(val)
+        self.init_val = self.init_val * 2
+
+def test_inherited_dunder_new() -> None:
+    b = Base(42)
+    assert type(b) == Base
+    assert b.val == 43
+    assert b.init_val == 42
+
+    s = Sub(42)
+    assert type(s) == Sub
+    assert s.val == 44
+    assert s.init_val == 84
+
+    s2 = SubWithoutNew(42)
+    assert type(s2) == SubWithoutNew
+    assert s2.val == 43
+    assert s2.init_val == 84
+
+def test_inherited_dunder_new_without_interpreted_subclasses() -> None:
+    b = BaseWithoutInterpretedSubclasses(42)
+    assert type(b) == BaseWithoutInterpretedSubclasses
+    assert b.val == 43
+    assert b.init_val == 42
+
+    s = SubNoInterpreted(42)
+    assert type(s) == SubNoInterpreted
+    assert s.val == 44
+    assert s.init_val == 84
+
+    s2 = SubNoInterpretedWithoutNew(42)
+    assert type(s2) == SubNoInterpretedWithoutNew
+    assert s2.val == 43
+    assert s2.init_val == 84
+
+def test_interpreted_subclass() -> None:
+    interpreted_subclass(Base)
+
+[file m.py]
+from __future__ import annotations
+from typing_extensions import Self
+
+def interpreted_subclass(base) -> None:
+    b = base(42)
+    assert type(b) == base
+    assert b.val == 43
+    assert b.init_val == 42
+
+    class InterpretedSub(base):
+        def __new__(cls, val: int) -> Self:
+            return super().__new__(cls, val + 1)
+
+        def __init__(self, val: int) -> None:
+            super().__init__(val)
+            self.init_val : int = self.init_val * 2
+
+    s = InterpretedSub(42)
+    assert type(s) == InterpretedSub
+    assert s.val == 44
+    assert s.init_val == 84
+
+    class InterpretedSubWithoutNew(base):
+        def __init__(self, val: int) -> None:
+            super().__init__(val)
+            self.init_val : int = self.init_val * 2
+
+    s2 = InterpretedSubWithoutNew(42)
+    assert type(s2) == InterpretedSubWithoutNew
+    assert s2.val == 43
+    assert s2.init_val == 84
+
+[typing fixtures/typing-full.pyi]
+
+[case testDunderNewInitArgMismatch]
+from __future__ import annotations
+from testutil import assertRaises
+
+class Test0:
+    @classmethod
+    def __new__(cls, val: int = 42) -> Test0:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test1:
+    def __new__(cls, val: int) -> Test1:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test2:
+    def __new__(cls) -> Test2:
+        obj = super().__new__(cls)
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+def test_arg_mismatch() -> None:
+    t0 = Test0()
+    assert t0.val == 0
+    t0 = Test0.__new__(1)
+    assert t0.val == 1
+    with assertRaises(TypeError, "__new__() missing required argument 'val'"):
+        t1 = Test1()
+    t1 = Test1.__new__(Test1, 2)
+    assert t1.val == 2
+    with assertRaises(TypeError, "__new__() takes at most 0 arguments"):
+        t2 = Test2(42)
+    t2 = Test2.__new__(Test2)
+    with assertRaises(AttributeError, "attribute 'val' of 'Test2' undefined"):
+        print(t2.val)
+
+[case testDunderNewInitArgMismatchInInterpreted]
+from __future__ import annotations
+
+class Test0:
+    # TODO: It should be possible to annotate '@classmethod' here
+    # but when it's added calling __new__ in interpreted code
+    # without the explicit type param results in a TypeError.
+    def __new__(cls, val: int = 42) -> Test0:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test1:
+    def __new__(cls, val: int) -> Test1:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+    def __init__(self) -> None:
+        self.val = 0
+
+class Test2:
+    def __new__(cls) -> Test2:
+        obj = super().__new__(cls)
+        return obj
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+[file driver.py]
+from native import Test0, Test1, Test2
+from testutil import assertRaises
+
+t0 = Test0()
+assert t0.val == 0
+t0 = Test0.__new__(Test0, 1)
+assert t0.val == 1
+with assertRaises(TypeError, "__new__() missing required argument 'val'"):
+    t1 = Test1()
+t1 = Test1.__new__(Test1, 2)
+assert t1.val == 2
+with assertRaises(TypeError, "__new__() takes at most 0 arguments"):
+    t2 = Test2(42)
+t2 = Test2.__new__(Test2)
+with assertRaises(AttributeError, "attribute 'val' of 'Test2' undefined"):
+    print(t2.val)
+
+[case testDunderNewAttributeAccess]
+from __future__ import annotations
+
+from mypy_extensions import u8
+from testutil import assertRaises
+
+class Test:
+    native: int
+    generic: object
+    bitfield: u8
+    default: int = 5
+
+    def __new__(cls, native: int, generic: object, bitfield: u8) -> Test:
+        obj = super().__new__(cls)
+
+        with assertRaises(AttributeError, "attribute 'native' of 'Test' undefined"):
+            print(obj.native)
+        with assertRaises(AttributeError, "attribute 'generic' of 'Test' undefined"):
+            print(obj.generic)
+        with assertRaises(AttributeError, "attribute 'bitfield' of 'Test' undefined"):
+            print(obj.bitfield)
+
+        obj.native = native
+        obj.generic = generic
+        obj.bitfield = bitfield
+
+        obj.native = obj.native + 1
+        obj.generic = obj.generic.__str__()
+        obj.bitfield = obj.bitfield & 0x0F
+        obj.default = obj.default * 2
+        return obj
+
+def test_attribute_access() -> None:
+    t = Test(42, {}, 0xCC)
+    assert t.native == 43
+    assert t.generic == "{}"
+    assert t.bitfield == 0x0C
+    assert t.default == 10
+
+[case testDunderNewAttributeAccessInInterpreted]
+from __future__ import annotations
+
+from mypy_extensions import u8
+from testutil import assertRaises
+
+class Test:
+    native: int
+    generic: object
+    bitfield: u8
+    default: int = 5
+
+    def __new__(cls, native: int, generic: object, bitfield: u8) -> Test:
+        obj = super().__new__(cls)
+
+        with assertRaises(AttributeError, "attribute 'native' of 'Test' undefined"):
+            print(obj.native)
+        with assertRaises(AttributeError, "attribute 'generic' of 'Test' undefined"):
+            print(obj.generic)
+        with assertRaises(AttributeError, "attribute 'bitfield' of 'Test' undefined"):
+            print(obj.bitfield)
+
+        obj.native = native
+        obj.generic = generic
+        obj.bitfield = bitfield
+
+        obj.native = obj.native + 1
+        obj.generic = obj.generic.__str__()
+        obj.bitfield = obj.bitfield & 0x0F
+        obj.default = obj.default * 2
+        return obj
+
+[file driver.py]
+from native import Test
+
+t = Test(42, {}, 0xCC)
+assert t.native == 43
+assert t.generic == "{}"
+assert t.bitfield == 0x0C
+assert t.default == 10
+
+[case testUntransformedDunderNewCalls]
+from testutil import assertRaises
+from typing import Any
+
+class TestStrCls:
+    def __new__(cls):
+        return str.__new__(cls)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(cls)
+
+class TestStrStr:
+    def __new__(cls):
+        return str.__new__(str)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(str)
+
+class TestStrInt:
+    def __new__(cls):
+        return str.__new__(int)
+
+    @classmethod
+    def factory(cls):
+        return str.__new__(int)
+
+def test_untransformed_dunder_new() -> None:
+    with assertRaises(TypeError, "str.__new__(TestStrCls): TestStrCls is not a subtype of str"):
+        i = TestStrCls()
+
+    j: Any = TestStrStr()
+    assert j == ""
+
+    with assertRaises(TypeError, "str.__new__(int): int is not a subtype of str"):
+        k = TestStrInt()
+
+    with assertRaises(TypeError, "str.__new__(TestStrCls): TestStrCls is not a subtype of str"):
+        i = TestStrCls.factory()
+
+    j = TestStrStr.factory()
+    assert j == ""
+
+    with assertRaises(TypeError, "str.__new__(int): int is not a subtype of str"):
+        k = TestStrInt.factory()
+
+[case testPerTypeFreeList]
+from __future__ import annotations
+
+from mypy_extensions import mypyc_attr
+
+a = []
+
+@mypyc_attr(free_list_len=1)
+class Foo:
+    def __init__(self, x: int) -> None:
+        self.x = x
+        a.append(x)
+
+def test_alloc() -> None:
+    x: Foo | None
+    y: Foo | None
+
+    x = Foo(1)
+    assert x.x == 1
+    x = None
+
+    x = Foo(2)
+    assert x.x == 2
+    y = Foo(3)
+    assert x.x == 2
+    assert y.x == 3
+    x = None
+    y = None
+    assert a == [1, 2, 3]
+
+    x = Foo(4)
+    assert x.x == 4
+    y = Foo(5)
+    assert x.x == 4
+    assert y.x == 5
+
+@mypyc_attr(free_list_len=1)
+class Base:
+    def __init__(self, x: str) -> None:
+        self.x = x
+
+class Deriv(Base):
+    def __init__(self, x: str, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+@mypyc_attr(free_list_len=1)
+class Deriv2(Base):
+    def __init__(self, x: str, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+def test_inheritance() -> None:
+    x: Base | None
+    y: Base | None
+    x = Base('x' + str())
+    y = Base('y' + str())
+    y = None
+    d = Deriv('a' + str(), 'b' + str())
+    assert type(d) is Deriv
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert x.x == 'x'
+    y = Base('z' + str())
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert y.x == 'z'
+    x = None
+    y = None
+
+def test_inheritance_2() -> None:
+    x: Base | None
+    y: Base | None
+    d: Deriv2 | None
+    x = Base('x' + str())
+    y = Base('y' + str())
+    y = None
+    d = Deriv2('a' + str(), 'b' + str())
+    assert type(d) is Deriv2
+    assert d.x == 'a'
+    assert d.y == 'b'
+    assert x.x == 'x'
+    d = None
+    d = Deriv2('c' + str(), 'd' + str())
+    assert type(d) is Deriv2
+    assert d.x == 'c'
+    assert d.y == 'd'
+    assert x.x == 'x'
+    y = Base('z' + str())
+    assert type(y) is Base
+    assert d.x == 'c'
+    assert d.y == 'd'
+    assert y.x == 'z'
+    x = None
+    y = None
+    d = None
+
+[case testDunderGetAttr]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar
+
+class GetAttr:
+    class_var = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return self.extra_attrs.get(attr)
+
+class GetAttrDefault:
+    class_var: ClassVar[str] = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str, default: int = 8, mult: int = 1) -> object:
+        return self.extra_attrs.get(attr, default * mult)
+
+class GetAttrInherited(GetAttr):
+    subclass_var = "y"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
+        super().__init__(extra_attrs, regular_attr)
+        self.sub_attr = sub_attr
+
+class GetAttrOverridden(GetAttr):
+    subclass_var: ClassVar[str] = "y"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
+        super().__init__(extra_attrs, regular_attr)
+        self.sub_attr = sub_attr
+
+    def __getattr__(self, attr: str) -> str:
+        return attr
+
+@mypyc_attr(native_class=False)
+class GetAttrNonNative:
+    class_var = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return self.extra_attrs.get(attr)
+
+def test_getattr() -> None:
+    i = GetAttr({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == None
+
+    assert i.__class__ == GetAttr
+
+    i.extra_attrs["regular_attr"] = (4, 4, 4)
+    assert i.__getattr__("regular_attr") == (4, 4, 4)
+    assert getattr(i, "regular_attr") == 42
+    assert i.regular_attr == 42
+
+def test_getattr_default() -> None:
+    i = GetAttrDefault({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == 8
+    assert i.__getattr__("class_var") == 8
+    assert i.__getattr__("four", 4, 3) == 12
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == 8
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == 8
+
+    assert i.__class__ == GetAttrDefault
+
+    i.extra_attrs["class_var"] = (4, 4, 4)
+    assert i.__getattr__("class_var") == (4, 4, 4)
+    assert getattr(i, "class_var") == "x"
+    assert i.class_var == "x"
+
+def test_getattr_inherited() -> None:
+    i = GetAttrInherited({"one": 1, "two": "two", "three": 3.14}, 42, 24)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("sub_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("subclass_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "sub_attr") == 24
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "subclass_var") == "y"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.sub_attr == 24
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.four == None
+
+    assert i.__class__ == GetAttrInherited
+
+    i.extra_attrs["sub_attr"] = (4, 4, 4)
+    assert i.__getattr__("sub_attr") == (4, 4, 4)
+    assert getattr(i, "sub_attr") == 24
+    assert i.sub_attr == 24
+
+    base_ref: GetAttr = i
+    assert getattr(base_ref, "sub_attr") == 24
+    assert base_ref.sub_attr == 24
+
+    assert getattr(base_ref, "subclass_var") == "y"
+    assert base_ref.subclass_var == "y"
+
+    assert getattr(base_ref, "new") == None
+    assert base_ref.new == None
+
+    assert base_ref.__class__ == GetAttrInherited
+
+
+def test_getattr_overridden() -> None:
+    i = GetAttrOverridden({"one": 1, "two": "two", "three": 3.14}, 42, 24)
+    assert i.__getattr__("one") == "one"
+    assert i.__getattr__("regular_attr") == "regular_attr"
+    assert i.__getattr__("sub_attr") == "sub_attr"
+    assert i.__getattr__("class_var") == "class_var"
+    assert i.__getattr__("subclass_var") == "subclass_var"
+    assert i.__getattr__("four") == "four"
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "sub_attr") == 24
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "subclass_var") == "y"
+    assert getattr(i, "four") == "four"
+
+    assert i.three == "three"
+    assert i.regular_attr == 42
+    assert i.sub_attr == 24
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.four == "four"
+
+    assert i.__class__ == GetAttrOverridden
+
+    i.extra_attrs["subclass_var"] = (4, 4, 4)
+    assert i.__getattr__("subclass_var") == "subclass_var"
+    assert getattr(i, "subclass_var") == "y"
+    assert i.subclass_var == "y"
+
+    base_ref: GetAttr = i
+    assert getattr(base_ref, "sub_attr") == 24
+    assert base_ref.sub_attr == 24
+
+    assert getattr(base_ref, "subclass_var") == "y"
+    assert base_ref.subclass_var == "y"
+
+    assert getattr(base_ref, "new") == "new"
+    assert base_ref.new == "new"
+
+    assert base_ref.__class__ == GetAttrOverridden
+
+def test_getattr_nonnative() -> None:
+    i = GetAttr({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == None
+
+    assert i.__class__ == GetAttr
+
+    i.extra_attrs["regular_attr"] = (4, 4, 4)
+    assert i.__getattr__("regular_attr") == (4, 4, 4)
+    assert getattr(i, "regular_attr") == 42
+    assert i.regular_attr == 42
+
+[typing fixtures/typing-full.pyi]
+
+[case testDunderGetAttrInterpreted]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar
+
+class GetAttr:
+    class_var = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return self.extra_attrs.get(attr)
+
+class GetAttrDefault:
+    class_var: ClassVar[str] = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str, default: int = 8, mult: int = 1) -> object:
+        return self.extra_attrs.get(attr, default * mult)
+
+class GetAttrInherited(GetAttr):
+    subclass_var = "y"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
+        super().__init__(extra_attrs, regular_attr)
+        self.sub_attr = sub_attr
+
+class GetAttrOverridden(GetAttr):
+    subclass_var: ClassVar[str] = "y"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int, sub_attr: int):
+        super().__init__(extra_attrs, regular_attr)
+        self.sub_attr = sub_attr
+
+    def __getattr__(self, attr: str) -> str:
+        return attr
+
+@mypyc_attr(native_class=False)
+class GetAttrNonNative:
+    class_var = "x"
+
+    def __init__(self, extra_attrs: dict[str, object], regular_attr: int):
+        self.extra_attrs = extra_attrs
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return self.extra_attrs.get(attr)
+
+[file driver.py]
+from native import GetAttr, GetAttrDefault, GetAttrInherited, GetAttrOverridden, GetAttrNonNative
+
+def test_getattr() -> None:
+    i = GetAttr({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == None
+
+    assert i.__class__ == GetAttr
+
+    i.extra_attrs["regular_attr"] = (4, 4, 4)
+    assert i.__getattr__("regular_attr") == (4, 4, 4)
+    assert getattr(i, "regular_attr") == 42
+    assert i.regular_attr == 42
+
+def test_getattr_default() -> None:
+    i = GetAttrDefault({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == 8
+    assert i.__getattr__("class_var") == 8
+    assert i.__getattr__("four", 4, 3) == 12
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == 8
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == 8
+
+    assert i.__class__ == GetAttrDefault
+
+    i.extra_attrs["class_var"] = (4, 4, 4)
+    assert i.__getattr__("class_var") == (4, 4, 4)
+    assert getattr(i, "class_var") == "x"
+    assert i.class_var == "x"
+
+def test_getattr_inherited() -> None:
+    i = GetAttrInherited({"one": 1, "two": "two", "three": 3.14}, 42, 24)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("sub_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("subclass_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "sub_attr") == 24
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "subclass_var") == "y"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.sub_attr == 24
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.four == None
+
+    assert i.__class__ == GetAttrInherited
+
+    i.extra_attrs["sub_attr"] = (4, 4, 4)
+    assert i.__getattr__("sub_attr") == (4, 4, 4)
+    assert getattr(i, "sub_attr") == 24
+    assert i.sub_attr == 24
+
+    base_ref: GetAttr = i
+    assert getattr(base_ref, "sub_attr") == 24
+    assert base_ref.sub_attr == 24
+
+    assert getattr(base_ref, "subclass_var") == "y"
+    assert base_ref.subclass_var == "y"
+
+    assert getattr(base_ref, "new") == None
+    assert base_ref.new == None
+
+    assert base_ref.__class__ == GetAttrInherited
+
+
+def test_getattr_overridden() -> None:
+    i = GetAttrOverridden({"one": 1, "two": "two", "three": 3.14}, 42, 24)
+    assert i.__getattr__("one") == "one"
+    assert i.__getattr__("regular_attr") == "regular_attr"
+    assert i.__getattr__("sub_attr") == "sub_attr"
+    assert i.__getattr__("class_var") == "class_var"
+    assert i.__getattr__("subclass_var") == "subclass_var"
+    assert i.__getattr__("four") == "four"
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "sub_attr") == 24
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "subclass_var") == "y"
+    assert getattr(i, "four") == "four"
+
+    assert i.three == "three"
+    assert i.regular_attr == 42
+    assert i.sub_attr == 24
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.four == "four"
+
+    assert i.__class__ == GetAttrOverridden
+
+    i.extra_attrs["subclass_var"] = (4, 4, 4)
+    assert i.__getattr__("subclass_var") == "subclass_var"
+    assert getattr(i, "subclass_var") == "y"
+    assert i.subclass_var == "y"
+
+    base_ref: GetAttr = i
+    assert getattr(base_ref, "sub_attr") == 24
+    assert base_ref.sub_attr == 24
+
+    assert getattr(base_ref, "subclass_var") == "y"
+    assert base_ref.subclass_var == "y"
+
+    assert getattr(base_ref, "new") == "new"
+    assert base_ref.new == "new"
+
+    assert base_ref.__class__ == GetAttrOverridden
+
+def test_getattr_nonnative() -> None:
+    i = GetAttr({"one": 1, "two": "two", "three": 3.14}, 42)
+    assert i.__getattr__("one") == 1
+    assert i.__getattr__("regular_attr") == None
+    assert i.__getattr__("class_var") == None
+    assert i.__getattr__("four") == None
+
+    assert getattr(i, "two") == "two"
+    assert getattr(i, "regular_attr") == 42
+    assert getattr(i, "class_var") == "x"
+    assert getattr(i, "four") == None
+
+    assert i.three == 3.14
+    assert i.regular_attr == 42
+    assert i.class_var == "x"
+    assert i.four == None
+
+    assert i.__class__ == GetAttr
+
+    i.extra_attrs["regular_attr"] = (4, 4, 4)
+    assert i.__getattr__("regular_attr") == (4, 4, 4)
+    assert getattr(i, "regular_attr") == 42
+    assert i.regular_attr == 42
+
+test_getattr()
+test_getattr_default()
+test_getattr_inherited()
+test_getattr_overridden()
+test_getattr_nonnative()
+
+[typing fixtures/typing-full.pyi]
+
+[case testDunderSetAttr]
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+from typing import ClassVar
+
+class SetAttr:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+    const: int = 42
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        super().__setattr__("regular_attr", regular_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var" or key == "const":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __getattr__(self, key: str) -> object:
+        return self._attributes.get(key)
+
+class SetAttrInherited(SetAttr):
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__init__(regular_attr, extra_attrs)
+
+class SetAttrOverridden(SetAttr):
+    sub_attr: int
+    subclass_var: ClassVar[str] = "y"
+
+    def __init__(self, regular_attr: int, sub_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__init__(regular_attr, extra_attrs)
+        object.__setattr__(self, "sub_attr", sub_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "sub_attr":
+            object.__setattr__(self, "sub_attr", val)
+        elif key == "subclass_var":
+            raise AttributeError()
+        else:
+            super().__setattr__(key, val)
+
+    def __delattr__(self, key: str) -> None:
+        del self._attributes[key]
+
+@mypyc_attr(native_class=False)
+class SetAttrNonNative:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+    const: int = 42
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        super().__setattr__("regular_attr", regular_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var" or key == "const":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __getattr__(self, key: str) -> object:
+        return self._attributes.get(key)
+
+class NoSetAttr:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+@mypyc_attr(native_class=False)
+class NoSetAttrNonNative:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+    def __getattr__(self, attr: str) -> object:
+        pass
+
+def test_setattr() -> None:
+    i = SetAttr(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
+
+def test_setattr_inherited() -> None:
+    i = SetAttrInherited(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
+
+def test_setattr_overridden() -> None:
+    i = SetAttrOverridden(99, 1, {"one": 1})
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.regular_attr == 99
+    assert i.sub_attr == 1
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    i.__setattr__("sub_attr", 2)
+    assert i.sub_attr == 2
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("subclass_var", "a")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    setattr(i, "sub_attr", 3)
+    assert i.sub_attr == 3
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "subclass_var", "b")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    i.sub_attr = 4
+    assert i.sub_attr == 4
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    del i.four
+    assert "four" not in i._attributes
+
+    delattr(i, "three")
+    assert "three" not in i._attributes
+
+    i.__delattr__("two")
+    assert "two" not in i._attributes
+
+    base_ref: SetAttr = i
+    setattr(base_ref, "sub_attr", 5)
+    assert base_ref.sub_attr == 5
+
+    base_ref.sub_attr = 6
+    assert base_ref.sub_attr == 6
+
+    with assertRaises(AttributeError):
+        setattr(base_ref, "subclass_var", "c")
+
+    base_ref.new_attr = "new_attr"
+    assert base_ref.new_attr == "new_attr"
+
+    del base_ref.new_attr
+    assert "new_attr" not in base_ref._attributes
+
+def test_setattr_nonnative() -> None:
+    i = SetAttrNonNative(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
+
+def test_no_setattr() -> None:
+    i = NoSetAttr(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    with assertRaises(AttributeError):
+        i.super_setattr("not_attr", 100)
+
+    with assertRaises(AttributeError):
+        i.object_setattr("not_attr", 101)
+
+    with assertRaises(AttributeError):
+        object.__setattr__(i, "not_attr", 102)
+
+def test_no_setattr_nonnative() -> None:
+    i = NoSetAttrNonNative(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    i.super_setattr("one", 100)
+    assert i.one == 100
+
+    i.object_setattr("two", 101)
+    assert i.two == 101
+
+    object.__setattr__(i, "three", 102)
+    assert i.three == 102
+
+    del i.three
+    assert i.three == None
+
+    delattr(i, "two")
+    assert i.two == None
+
+    object.__delattr__(i, "one")
+    assert i.one == None
+
+[typing fixtures/typing-full.pyi]
+
+[case testDunderSetAttrInterpreted]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar
+
+class SetAttr:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+    const: int = 42
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        super().__setattr__("regular_attr", regular_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var" or key == "const":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __getattr__(self, key: str) -> object:
+        return self._attributes.get(key)
+
+class SetAttrInherited(SetAttr):
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__init__(regular_attr, extra_attrs)
+
+class SetAttrOverridden(SetAttr):
+    sub_attr: int
+    subclass_var: ClassVar[str] = "y"
+
+    def __init__(self, regular_attr: int, sub_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__init__(regular_attr, extra_attrs)
+        object.__setattr__(self, "sub_attr", sub_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "sub_attr":
+            object.__setattr__(self, "sub_attr", val)
+        elif key == "subclass_var":
+            raise AttributeError()
+        else:
+            super().__setattr__(key, val)
+
+    def __delattr__(self, key: str) -> None:
+        del self._attributes[key]
+
+@mypyc_attr(native_class=False)
+class SetAttrNonNative:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+    const: int = 42
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object]) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        super().__setattr__("regular_attr", regular_attr)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var" or key == "const":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __getattr__(self, key: str) -> object:
+        return self._attributes.get(key)
+
+class NoSetAttr:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+@mypyc_attr(native_class=False)
+class NoSetAttrNonNative:
+    def __init__(self, attr: int) -> None:
+        self.attr = attr
+
+    def object_setattr(self, attr: str, val: object) -> None:
+        object.__setattr__(self, attr, val)
+
+    def super_setattr(self, attr: str, val: object) -> None:
+        super().__setattr__(attr, val)
+
+    def __getattr__(self, attr: str) -> object:
+        pass
+
+[file driver.py]
+from native import SetAttr, SetAttrInherited, SetAttrOverridden, SetAttrNonNative, NoSetAttr, NoSetAttrNonNative
+from testutil import assertRaises
+
+def test_setattr() -> None:
+    i = SetAttr(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
+
+def test_setattr_inherited() -> None:
+    i = SetAttrInherited(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
+
+def test_setattr_overridden() -> None:
+    i = SetAttrOverridden(99, 1, {"one": 1})
+    assert i.class_var == "x"
+    assert i.subclass_var == "y"
+    assert i.regular_attr == 99
+    assert i.sub_attr == 1
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    i.__setattr__("sub_attr", 2)
+    assert i.sub_attr == 2
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("subclass_var", "a")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    setattr(i, "sub_attr", 3)
+    assert i.sub_attr == 3
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "subclass_var", "b")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    i.sub_attr = 4
+    assert i.sub_attr == 4
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    del i.four
+    assert "four" not in i._attributes
+
+    delattr(i, "three")
+    assert "three" not in i._attributes
+
+    i.__delattr__("two")
+    assert "two" not in i._attributes
+
+    base_ref: SetAttr = i
+    setattr(base_ref, "sub_attr", 5)
+    assert base_ref.sub_attr == 5
+
+    base_ref.sub_attr = 6
+    assert base_ref.sub_attr == 6
+
+    with assertRaises(AttributeError):
+        setattr(base_ref, "subclass_var", "c")
+
+    base_ref.new_attr = "new_attr"
+    assert base_ref.new_attr == "new_attr"
+
+    del base_ref.new_attr
+    assert "new_attr" not in base_ref._attributes
+
+def test_setattr_nonnative() -> None:
+    i = SetAttrNonNative(99, {"one": 1})
+    assert i.class_var == "x"
+    assert i.regular_attr == 99
+    assert i.one == 1
+    assert i.two == None
+    assert i.const == 42
+
+    i.__setattr__("two", "2")
+    assert i.two == "2"
+    i.__setattr__("regular_attr", 101)
+    assert i.regular_attr == 101
+    with assertRaises(AttributeError):
+        i.__setattr__("class_var", "y")
+    with assertRaises(AttributeError):
+        i.__setattr__("const", 43)
+
+    setattr(i, "three", (3,3,3))
+    assert i.three == (3,3,3)
+    setattr(i, "regular_attr", 102)
+    assert i.regular_attr == 102
+    with assertRaises(AttributeError):
+        setattr(i, "class_var", "z")
+    with assertRaises(AttributeError):
+        setattr(i, "const", 44)
+
+    i.four = [4,4]
+    assert i.four == [4,4]
+    i.regular_attr = 103
+    assert i.regular_attr == 103
+    with assertRaises(AttributeError):
+        i.const = 45
+
+    # Doesn't work because there's no __delattr__.
+    with assertRaises(AttributeError):
+        del i.four
+
+def test_no_setattr() -> None:
+    i = NoSetAttr(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    with assertRaises(AttributeError):
+        i.super_setattr("not_attr", 100)
+
+    with assertRaises(AttributeError):
+        i.object_setattr("not_attr", 101)
+
+    with assertRaises(AttributeError):
+        object.__setattr__(i, "not_attr", 102)
+
+def test_no_setattr_nonnative() -> None:
+    i = NoSetAttrNonNative(99)
+    i.super_setattr("attr", 100)
+    assert i.attr == 100
+
+    i.object_setattr("attr", 101)
+    assert i.attr == 101
+
+    object.__setattr__(i, "attr", 102)
+    assert i.attr == 102
+
+    i.super_setattr("one", 100)
+    assert i.one == 100
+
+    i.object_setattr("two", 101)
+    assert i.two == 101
+
+    object.__setattr__(i, "three", 102)
+    assert i.three == 102
+
+    del i.three
+    assert i.three == None
+
+    delattr(i, "two")
+    assert i.two == None
+
+    object.__delattr__(i, "one")
+    assert i.one == None
+
+test_setattr()
+test_setattr_inherited()
+test_setattr_overridden()
+test_setattr_nonnative()
+test_no_setattr()
+test_no_setattr_nonnative()
+
+[typing fixtures/typing-full.pyi]
+
+[case testDelAttrWithDeletableAttr]
+from testutil import assertRaises
+
+class DelAttr:
+    __deletable__ = ["del_counter"]
+
+    _attributes: dict[str, object]
+    del_counter: int = 0
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "_attributes", {})
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "del_counter":
+            object.__setattr__(self, "del_counter", val)
+        else:
+            self._attributes[key] = val
+
+    def __delattr__(self, key: str) -> None:
+        if key == "del_counter":
+            self.del_counter += 1
+        else:
+            del self._attributes[key]
+
+def test_deletable_attr() -> None:
+    i = DelAttr()
+    assert i.del_counter == 0
+    del i.del_counter
+    assert i.del_counter == 1
+
+[case testDelAttrWithDeletableAttrInterpreted]
+class DelAttr:
+    __deletable__ = ["del_counter"]
+
+    _attributes: dict[str, object]
+    del_counter: int = 0
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "_attributes", {})
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "del_counter":
+            object.__setattr__(self, "del_counter", val)
+        else:
+            self._attributes[key] = val
+
+    def __delattr__(self, key: str) -> None:
+        if key == "del_counter":
+            self.del_counter += 1
+        else:
+            del self._attributes[key]
+
+[file driver.py]
+from native import DelAttr
+from testutil import assertRaises
+
+def test_deletable_attr() -> None:
+    i = DelAttr()
+    assert i.del_counter == 0
+    del i.del_counter
+    assert i.del_counter == 1
+
+test_deletable_attr()

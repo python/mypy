@@ -472,6 +472,27 @@ class B(A):
     def __new__(cls) -> B:
         pass
 
+[case testOverride__new__WithLiteralReturnPassing]
+from typing import Literal
+
+class Falsy:
+    def __bool__(self) -> Literal[False]: pass
+
+reveal_type(bool(Falsy()))  # N: Revealed type is "Literal[False]"
+reveal_type(int())  # N: Revealed type is "Literal[0]"
+
+[builtins fixtures/literal__new__.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testOverride__new__WithLiteralReturnFailing]
+from typing import Literal
+
+class Foo:
+    def __new__(cls) -> Literal[1]: pass # E: Incompatible return type for "__new__" (returns "Literal[1]", but must return a subtype of "Foo")
+
+[builtins fixtures/__new__.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testOverride__new__AndCallObject]
 from typing import TypeVar, Generic
 
@@ -6137,7 +6158,7 @@ class B(A):
     __slots__ = ('a', 'b')
 class C:
     __slots__ = ('x',)
-class D(B, C):
+class D(B, C):  # E: Class "D" has incompatible disjoint bases
     __slots__ = ('aa', 'bb', 'cc')
 [builtins fixtures/tuple.pyi]
 
@@ -9350,3 +9371,19 @@ class Bar:
 [file foo.py]
 class Bar:
     ...
+
+[case testConstructorWithoutStrictOptionalNoCache]
+import mod
+a = mod.NT(x=None)  # OK
+
+[file typ.py]
+from typing import NamedTuple, Optional
+NT = NamedTuple("NT", [("x", Optional[str])])
+
+[file mod.py]
+# mypy: no-strict-optional
+from typ import NT
+
+def f() -> NT:
+    return NT(x='')
+[builtins fixtures/tuple.pyi]

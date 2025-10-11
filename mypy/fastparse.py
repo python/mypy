@@ -129,9 +129,7 @@ from mypy.util import bytes_to_human_readable_repr, unnamed_function
 PY_MINOR_VERSION: Final = sys.version_info[1]
 
 import ast as ast3
-
-# TODO: Index, ExtSlice are deprecated in 3.9.
-from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UAdd, UnaryOp, USub
+from ast import AST, Attribute, Call, FunctionType, Name, Starred, UAdd, UnaryOp, USub
 
 
 def ast3_parse(
@@ -188,6 +186,13 @@ else:
     ast_TypeVar = Any
     ast_TypeVarTuple = Any
 
+if sys.version_info >= (3, 14):
+    ast_TemplateStr = ast3.TemplateStr
+    ast_Interpolation = ast3.Interpolation
+else:
+    ast_TemplateStr = Any
+    ast_Interpolation = Any
+
 N = TypeVar("N", bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
@@ -227,9 +232,12 @@ def parse(
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
     try:
-        # Disable deprecation warnings about \u
+        # Disable
+        # - deprecation warnings for 'invalid escape sequence' (Python 3.11 and below)
+        # - syntax warnings for 'invalid escape sequence' (3.12+) and 'return in finally' (3.14+)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
+            warnings.filterwarnings("ignore", category=SyntaxWarning)
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
         tree = ASTConverter(
@@ -1705,6 +1713,21 @@ class ASTConverter:
         )
         return self.set_line(result_expression, n)
 
+    # TemplateStr(expr* values)
+    def visit_TemplateStr(self, n: ast_TemplateStr) -> Expression:
+        self.fail(
+            ErrorMessage("PEP 750 template strings are not yet supported"),
+            n.lineno,
+            n.col_offset,
+            blocker=False,
+        )
+        e = TempNode(AnyType(TypeOfAny.from_error))
+        return self.set_line(e, n)
+
+    # Interpolation(expr value, constant str, int conversion, expr? format_spec)
+    def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
+        assert False, "Unreachable"
+
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:
         value = n.value
@@ -1756,18 +1779,6 @@ class ASTConverter:
     def visit_Slice(self, n: ast3.Slice) -> SliceExpr:
         e = SliceExpr(self.visit(n.lower), self.visit(n.upper), self.visit(n.step))
         return self.set_line(e, n)
-
-    # ExtSlice(slice* dims)
-    def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
-        # cast for mypyc's benefit on Python 3.9
-        return TupleExpr(self.translate_expr_list(cast(Any, n).dims))
-
-    # Index(expr value)
-    def visit_Index(self, n: Index) -> Node:
-        # cast for mypyc's benefit on Python 3.9
-        value = self.visit(cast(Any, n).value)
-        assert isinstance(value, Node)
-        return value
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
     def visit_Match(self, n: Match) -> MatchStmt:

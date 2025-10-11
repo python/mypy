@@ -206,7 +206,8 @@ class ErrorWatcher:
         """
         if info.code == codes.DEPRECATED:
             # Deprecated is not a type error, so it is handled on opt-in basis here.
-            return self._filter_deprecated
+            if not self._filter_deprecated:
+                return False
 
         self._has_new_errors = True
         if isinstance(self._filter, bool):
@@ -805,8 +806,8 @@ class Errors:
                 continue
             if codes.UNUSED_IGNORE.code in ignored_codes:
                 continue
-            used_ignored_codes = used_ignored_lines[line]
-            unused_ignored_codes = set(ignored_codes) - set(used_ignored_codes)
+            used_ignored_codes = set(used_ignored_lines[line])
+            unused_ignored_codes = [c for c in ignored_codes if c not in used_ignored_codes]
             # `ignore` is used
             if not ignored_codes and used_ignored_codes:
                 continue
@@ -816,7 +817,7 @@ class Errors:
             # Display detail only when `ignore[...]` specifies more than one error code
             unused_codes_message = ""
             if len(ignored_codes) > 1 and unused_ignored_codes:
-                unused_codes_message = f"[{', '.join(sorted(unused_ignored_codes))}]"
+                unused_codes_message = f"[{', '.join(unused_ignored_codes)}]"
             message = f'Unused "type: ignore{unused_codes_message}" comment'
             for unused in unused_ignored_codes:
                 narrower = set(used_ignored_codes) & codes.sub_code_map[unused]

@@ -21,6 +21,7 @@ from mypy.nodes import (
     ArgKind,
     TypeInfo,
 )
+from mypy.type_visitor import ALL_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -41,7 +42,6 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
-    TypeQuery,
     TypeType,
     TypeVarId,
     TypeVarLikeType,
@@ -670,9 +670,9 @@ def is_complete_type(typ: Type) -> bool:
     return typ.accept(CompleteTypeVisitor())
 
 
-class CompleteTypeVisitor(TypeQuery[bool]):
+class CompleteTypeVisitor(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(all)
+        super().__init__(ALL_STRATEGY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return False

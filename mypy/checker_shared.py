@@ -275,6 +275,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         raise NotImplementedError
 
     @abstractmethod
+    def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
     def get_property_instance(
         self, method: Var | Decorator | OverloadedFuncDef
     ) -> Instance | None:
