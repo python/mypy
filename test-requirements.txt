@@ -24,7 +24,7 @@ iniconfig==2.1.0
     # via pytest
 librt==0.2.3
     # via -r mypy-requirements.txt
-lxml==6.0.2 ; python_version < "3.15"
+lxml==6.0.2 ; python_version < "3.14"
     # via -r test-requirements.in
 mypy-extensions==1.1.0
     # via -r mypy-requirements.txt
