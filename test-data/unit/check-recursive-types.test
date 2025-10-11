@@ -690,10 +690,11 @@ class TD(TypedDict, total=False):
     y: TD
 
 td: TD
+reveal_type(td.get("y"))  # N: Revealed type is "Union[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: ...}), None]"
 td["y"] = {"x": 0, "y": {}}
 td["y"] = {"x": 0, "y": {"x": 0, "y": 42}}  # E: Incompatible types (expression has type "int", TypedDict item "y" has type "TD")
 
-reveal_type(td.get("y"))  # N: Revealed type is "Union[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: ...})}), None]"
+reveal_type(td.get("y"))  # N: Revealed type is "Union[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: ...}), None]"
 s: str = td.get("y")  # E: Incompatible types in assignment (expression has type "Optional[TD]", variable has type "str")
 
 td.update({"x": 0, "y": {"x": 1, "y": {}}})
