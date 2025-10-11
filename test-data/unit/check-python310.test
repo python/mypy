@@ -11,11 +11,30 @@ match m:
 -- Literal Pattern --
 
 [case testMatchLiteralPatternNarrows]
+# flags: --warn-unreachable
 m: object
 
 match m:
     case 1:
         reveal_type(m)  # N: Revealed type is "Literal[1]"
+    case 2:
+        reveal_type(m)  # N: Revealed type is "Literal[2]"
+    case other:
+        reveal_type(other)  # N: Revealed type is "builtins.object"
+
+[case testMatchLiteralPatternNarrows2]
+# flags: --warn-unreachable
+from typing import Any
+
+m: Any
+
+match m:
+    case 1:
+        reveal_type(m)  # N: Revealed type is "Literal[1]"
+    case 2:
+        reveal_type(m)  # N: Revealed type is "Literal[2]"
+    case other:
+        reveal_type(other)  # N: Revealed type is "Any"
 
 [case testMatchLiteralPatternAlreadyNarrower-skip]
 m: bool
@@ -1078,6 +1097,143 @@ m: object
 match m:
     case Foo():
         pass
+
+[case testMatchClassPatternCallable]
+# flags: --warn-unreachable
+from typing import Callable, Any
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_any(x: Any) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
+        case other:
+            reveal_type(other)  # N: Revealed type is "Any"
+
+def test_object(x: object) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (*Any, **Any) -> Any"
+        case other:
+            reveal_type(other)  # N: Revealed type is "builtins.object"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case Callable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+[case testMatchClassPatternCallbackProtocol]
+# flags: --warn-unreachable
+from typing import Any, Callable
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class FnProto(Protocol):
+    def __call__(self, x: int, /) -> object: ...
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_any(x: Any) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnProto"
+        case other:
+            reveal_type(other)  # N: Revealed type is "Any"
+
+def test_object(x: object) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnProto"
+        case other:
+            reveal_type(other)  # N: Revealed type is "builtins.object"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case FnProto() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchClassPatternAnyCallableProtocol]
+# flags: --warn-unreachable
+from typing import Any, Callable
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class AnyCallable(Protocol):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+class FnImpl:
+    def __call__(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.AnyCallable"
+        case other:
+            reveal_type(other)  # N: Revealed type is "builtins.object"
+
+def test_impl(x: FnImpl) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "__main__.FnImpl"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+def test_callable(x: Callable[[object], int]) -> None:
+    match x:
+        case AnyCallable() as fn:
+            reveal_type(fn)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+
+[builtins fixtures/dict.pyi]
+
+
+[case testMatchClassPatternProtocol]
+from typing import Any
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class Proto(Protocol):
+    def foo(self, x: int, /) -> object: ...
+
+class Impl:
+    def foo(self, x: object, /) -> int: ...
+
+def test_object(x: object) -> None:
+    match x:
+        case Proto() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.Proto"
+
+def test_impl(x: Impl) -> None:
+    match x:
+        case Proto() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.Impl"
+
+[builtins fixtures/dict.pyi]
+
 
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
