@@ -791,7 +791,7 @@ def false_only(t: Type) -> ProperType:
         elif isinstance(t, Instance):
             if (t.type.is_final or t.type.is_enum) and state.strict_optional:
                 return UninhabitedType(line=t.line)
-        elif isinstance(t, LiteralType) and t.is_enum_literal():
+        elif isinstance(t, LiteralType) and t.is_enum_literal() and state.strict_optional:
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
