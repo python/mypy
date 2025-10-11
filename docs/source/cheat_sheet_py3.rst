@@ -89,7 +89,7 @@ Functions
 .. code-block:: python
 
    from collections.abc import Iterator, Callable
-   from typing import Union, Optional
+   from typing import Union, Optional, reveal_type
 
    # This is how you annotate a function definition
    def stringify(num: int) -> str:
@@ -222,7 +222,7 @@ When you're puzzled or when things are complicated
 
 .. code-block:: python
 
-   from typing import Union, Any, Optional, TYPE_CHECKING, cast
+   from typing import Union, Any, Optional, TYPE_CHECKING, cast, reveal_type
 
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type().  Mypy will print an error
