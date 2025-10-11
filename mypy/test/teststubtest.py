@@ -1483,6 +1483,30 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            class HasCompatibleValue(enum.Enum):
+                _value_: str
+                FOO = ...
+            """,
+            runtime="""
+            class HasCompatibleValue(enum.Enum):
+                FOO = "foo"
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class HasIncompatibleValue(enum.Enum):
+                _value_: int
+                FOO = ...
+            """,
+            runtime="""
+            class HasIncompatibleValue(enum.Enum):
+                FOO = "foo"
+            """,
+            error="HasIncompatibleValue.FOO",
+        )
 
     @collect_cases
     def test_decorator(self) -> Iterator[Case]:
