@@ -129,8 +129,8 @@ class SCC:
         self.id = SCC.id_counter
         SCC.id_counter += 1
         self.mod_ids = ids
+        self.deps: set[int] = set()
         self.not_ready_deps: set[int] = set()
-        self.transitive_deps: list[int] = []
         self.direct_dependents: list[int] = []
 
 
@@ -738,8 +738,9 @@ class BuildManager:
         # Number of times we used GC optimization hack for fresh SCCs.
         self.gc_freeze_cycles = 0
         self.scc_by_id: dict[int, SCC] = {}
+        self.top_order: list[int] = []
         self.scc_queue: list[SCC] = []
-        self.done_sccs: set[SCC] = set()
+        self.done_sccs: set[int] = set()
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -3326,15 +3327,16 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         "Found %d SCCs; largest has %d nodes" % (len(sccs), max(len(scc.mod_ids) for scc in sccs))
     )
     for scc in sccs:
-        pass  # print("SCC", scc.id, scc.mod_ids, scc.transitive_deps, scc.direct_dependents)
+        pass  # print("SCC", scc.id, scc.mod_ids, scc.deps, scc.direct_dependents)
 
     scc_by_id = {scc.id: scc for scc in sccs}
     manager.scc_by_id = scc_by_id
+    manager.top_order = [scc.id for scc in sccs]
 
     ready = []
     not_ready = []
     for scc in sccs:
-        if not scc.transitive_deps:
+        if not scc.deps:
             ready.append(scc)
         else:
             not_ready.append(scc)
@@ -3423,13 +3425,20 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
 
 def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
     """Process the modules in one SCC from source code."""
-    fresh_sccs = [
-        dep
-        for id in ascc.transitive_deps
-        if (dep := manager.scc_by_id[id]) not in manager.done_sccs
-    ]
-    if fresh_sccs:
-        manager.log(f"Processing {len(fresh_sccs)} fresh SCCs")
+    missing_sccs = set()
+    sccs_to_find = ascc.deps.copy()
+    while sccs_to_find:
+        dep_scc = sccs_to_find.pop()
+        if dep_scc in manager.done_sccs or dep_scc in missing_sccs:
+            continue
+        missing_sccs.add(dep_scc)
+        sccs_to_find.update(manager.scc_by_id[dep_scc].deps)
+
+    if missing_sccs:
+        fresh_sccs_to_load = [
+            manager.scc_by_id[sid] for sid in manager.top_order if sid in missing_sccs
+        ]
+        manager.log(f"Processing {len(fresh_sccs_to_load)} fresh SCCs")
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
@@ -3444,9 +3453,9 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
             # libraries, like torch.
             gc.collect()
             gc.disable()
-        for prev_scc in fresh_sccs:
-            manager.done_sccs.add(prev_scc)
-            process_fresh_modules(graph, list(prev_scc.mod_ids), manager)
+        for prev_scc in fresh_sccs_to_load:
+            manager.done_sccs.add(prev_scc.id)
+            process_fresh_modules(graph, sorted(prev_scc.mod_ids), manager)
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
@@ -3514,7 +3523,7 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
         }
         meta["error_lines"] = errors_by_id.get(id, [])
         write_cache_meta(meta, manager, meta_json)
-    manager.done_sccs.add(ascc)
+    manager.done_sccs.add(ascc.id)
 
 
 def prepare_sccs(raw_sccs: Iterator[set[str]], edges: dict[str, list[str]]) -> dict[SCC, set[SCC]]:
@@ -3530,6 +3539,7 @@ def prepare_sccs(raw_sccs: Iterator[set[str]], edges: dict[str, list[str]]) -> d
     for scc in sccs:
         scc_deps_map[scc].discard(scc)
         for dep_scc in scc_deps_map[scc]:
+            scc.deps.add(dep_scc.id)
             scc.not_ready_deps.add(dep_scc.id)
     return scc_deps_map
 
@@ -3566,10 +3576,6 @@ def sorted_components(
         for scc in sorted_ready:
             for dep in scc_dep_map[scc]:
                 dep.direct_dependents.append(scc.id)
-                new_trans_deps = [d for d in dep.transitive_deps if d not in scc.transitive_deps]
-                scc.transitive_deps.extend(new_trans_deps)
-                if dep.id not in scc.transitive_deps:
-                    scc.transitive_deps.append(dep.id)
         res.extend(sorted_ready)
     return res
 
