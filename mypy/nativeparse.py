@@ -34,7 +34,6 @@ from mypy.nodes import (
 
 def native_parse(filename: str) -> MypyFile:
     b = parse_to_binary_ast(filename)
-    print(repr(b))
     data = Buffer(b)
     n = read_int(data)
     defs = []
