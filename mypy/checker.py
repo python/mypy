@@ -3223,10 +3223,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(
-        self,
-        lvalue: Lvalue,
-        rvalue: Expression,
-        infer_lvalue_type: bool = True,
+        self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True
     ) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, (TupleExpr, ListExpr)):
@@ -5046,9 +5043,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # There is no __ifoo__, treat as x = x <foo> y
             expr = OpExpr(s.op, s.lvalue, s.rvalue)
             expr.set_line(s)
-            self.check_assignment(
-                lvalue=s.lvalue, rvalue=expr, infer_lvalue_type=True
-            )
+            self.check_assignment(lvalue=s.lvalue, rvalue=expr, infer_lvalue_type=True)
         self.check_final(s)
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
