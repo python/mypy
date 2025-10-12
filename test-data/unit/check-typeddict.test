@@ -1007,12 +1007,12 @@ class D(TypedDict):
     b: NotRequired[str]
 
 def test(d: D) -> None:
-    reveal_type(d.get)  # N: Revealed type is \
-        "Overload(\
-        def (Literal['a'], builtins.object =) -> builtins.int, \
-        def (Literal['b']) -> Union[builtins.str, None], \
-        def [T] (Literal['b'], T`-1) -> Union[builtins.str, T`-1], \
-        def (builtins.str, builtins.object =) -> builtins.object)"
+    reveal_type(d.get)  # N: Revealed type is "Overload(def (k: builtins.str) -> builtins.object, def (builtins.str, builtins.object) -> builtins.object, def [V] (builtins.str, V`4) -> builtins.object)"
+
+
+
+
+
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -1155,21 +1155,29 @@ reveal_type(d.get('x', a)) # N: Revealed type is "Union[builtins.list[builtins.i
 from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
-d.get() # E: All overload variants of "get" require at least one argument \
+d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
         # N: Possible overload variants: \
-        # N:     def get(Literal['x'], object = ..., /) -> int \
-        # N:     def get(Literal['y'], object = ..., /) -> str \
-        # N:     def get(str, object = ..., /) -> object
-d.get('x', 1, 2) # E: No overload variant of "get" matches argument types "str", "int", "int" \
+        # N:     def get(self, k: str) -> object \
+        # N:     def get(self, str, object, /) -> object \
+        # N:     def [V] get(self, str, V, /) -> object
+d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
                  # N: Possible overload variants: \
-                 # N:     def get(Literal['x'], object = ..., /) -> int \
-                 # N:     def get(Literal['y'], object = ..., /) -> str \
-                 # N:     def get(str, object = ..., /) -> object
+                 # N:     def get(self, k: str) -> object \
+                 # N:     def get(self, str, object, /) -> object \
+                 # N:     def [V] get(self, str, Union[int, V], /) -> object
 x = d.get('z')
 reveal_type(x) # N: Revealed type is "builtins.object"
 s = ''
 y = d.get(s)
 reveal_type(y) # N: Revealed type is "builtins.object"
+
+
+
+
+
+
+
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
