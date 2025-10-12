@@ -118,6 +118,20 @@ x              # type: ignore[name-defined]                # E: Unused "type: ig
 "x"  # type: ignore[xyz, unused-ignore]
 x    # type: ignore[name-defined, unused-ignore]
 
+[case testErrorCodeWarnUnusedIgnores9_SloppyFormattingNotEmptyBrackets]
+# flags: --warn-unused-ignores
+1 + "ok" + "ok".foo # type: ignore[  operator,attr-defined]
+1 + "ok" + "ok".foo # type: ignore[  ,operator,attr-defined]
+1 + "ok" + "ok".foo # type: ignore[  operator,attr-defined,]
+1 + "ok" + "ok".foo # type: ignore[  operator,attr-defined,,]
+
+[case testErrorCodeWarnUnusedIgnores10_SloppyFormattingEmptyBrackets]
+# flags: --warn-unused-ignores
+1+1 # type: ignore    # E: Unused "type: ignore" comment  [unused-ignore]
+1+1 # type: ignore[]  # E: Unused "type: ignore" comment  [unused-ignore]
+1+1 # type: ignore[ ] # E: Unused "type: ignore" comment  [unused-ignore]
+1+1 # type: ignore[,,, ] # E: Unused "type: ignore" comment  [unused-ignore]
+
 [case testErrorCodeMissingWhenRequired]
 # flags: --enable-error-code ignore-without-code
 "x" # type: ignore # E: "type: ignore" comment without error code  [ignore-without-code]
