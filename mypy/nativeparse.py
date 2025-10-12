@@ -26,6 +26,7 @@ from mypy.nodes import (
     ExpressionStmt,
     MypyFile,
     NameExpr,
+    Node,
     Statement,
     StrExpr,
 )
@@ -51,7 +52,12 @@ def parse_to_binary_ast(filename: str) -> bytes:
 def read_statement(data: Buffer) -> Statement:
     tag = read_tag(data)
     if tag == nodes.EXPR_STMT:
-        return ExpressionStmt(read_expression(data))
+        es = ExpressionStmt(read_expression(data))
+        es.line = es.expr.line
+        es.column = es.expr.column
+        es.end_line = es.expr.end_line
+        es.end_column = es.expr.end_column
+        return es
     else:
         assert False
 
@@ -62,11 +68,25 @@ def read_expression(data: Buffer) -> Expression:
         callee = read_expression(data)
         n = read_int(data)
         args = [read_expression(data) for i in range(n)]
-        return CallExpr(callee, args, [ARG_POS] * n, [None] * n)
+        ce = CallExpr(callee, args, [ARG_POS] * n, [None] * n)
+        read_loc(data, ce)
+        return ce
     elif tag == nodes.NAME_EXPR:
         n = read_str(data)
-        return NameExpr(n)
+        ne = NameExpr(n)
+        read_loc(data, ne)
+        return ne
     elif tag == nodes.STR_EXPR:
-        return StrExpr(read_str(data))
+        se = StrExpr(read_str(data))
+        read_loc(data, se)
+        return se
     else:
         assert False
+
+
+def read_loc(data: Buffer, node: Node) -> None:
+    line = read_int(data)
+    node.line = line
+    node.column = read_int(data)
+    node.end_line = line + read_int(data)
+    node.end_column = read_int(data)
