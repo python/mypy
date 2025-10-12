@@ -43,7 +43,7 @@ from mypy.cache import Buffer
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
-from mypy.graph_utils import strongly_connected_components, topsort
+from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
@@ -3360,7 +3360,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                     ready.append(scc_by_id[dependent])
 
 
-def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> list[str]:
+def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_INDIRECT) -> list[str]:
     """Come up with the ideal processing order within an SCC.
 
     Using the priorities assigned by all_imported_modules_in_file(),
@@ -3402,9 +3402,9 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
         # Filtered dependencies are uniform -- order by global order.
         return sorted(ascc, key=lambda id: -graph[id].order)
     pri_max = max(pri_spread)
-    sccs = sorted_components(graph, ascc, pri_max)
+    sccs = sorted_components_inner(graph, ascc, pri_max)
     # The recursion is bounded by the len(pri_spread) check above.
-    return [s for ss in sccs for s in order_ascc(graph, ss.mod_ids, pri_max)]
+    return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
 
 
 def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManager) -> None:
@@ -3526,7 +3526,9 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
     manager.done_sccs.add(ascc.id)
 
 
-def prepare_sccs(raw_sccs: Iterator[set[str]], edges: dict[str, list[str]]) -> dict[SCC, set[SCC]]:
+def prepare_sccs_full(
+    raw_sccs: Iterator[set[str]], edges: dict[str, list[str]]
+) -> dict[SCC, set[SCC]]:
     sccs = [SCC(raw_scc) for raw_scc in raw_sccs]
     scc_map = {}
     for scc in sccs:
@@ -3544,10 +3546,7 @@ def prepare_sccs(raw_sccs: Iterator[set[str]], edges: dict[str, list[str]]) -> d
     return scc_deps_map
 
 
-# TODO: add version just for sorting (no sense to create all the other infra there).
-def sorted_components(
-    graph: Graph, vertices: AbstractSet[str] | None = None, pri_max: int = PRI_INDIRECT
-) -> list[SCC]:
+def sorted_components(graph: Graph) -> list[SCC]:
     """Return the graph's SCCs, topologically sorted by dependencies.
 
     The sort order is from leaves (nodes without dependencies) to
@@ -3557,10 +3556,9 @@ def sorted_components(
     dependencies that aren't present in graph.keys() are ignored.
     """
     # Compute SCCs.
-    if vertices is None:
-        vertices = set(graph)
-    edges = {id: deps_filtered(graph, vertices, id, pri_max) for id in vertices}
-    scc_dep_map = prepare_sccs(strongly_connected_components(vertices, edges), edges)
+    vertices = set(graph)
+    edges = {id: deps_filtered(graph, vertices, id, PRI_INDIRECT) for id in vertices}
+    scc_dep_map = prepare_sccs_full(strongly_connected_components(vertices, edges), edges)
     # Topsort.
     res = []
     for ready in topsort(scc_dep_map):
@@ -3577,6 +3575,17 @@ def sorted_components(
             for dep in scc_dep_map[scc]:
                 dep.direct_dependents.append(scc.id)
         res.extend(sorted_ready)
+    return res
+
+
+def sorted_components_inner(
+    graph: Graph, vertices: AbstractSet[str], pri_max: int
+) -> list[AbstractSet[str]]:
+    edges = {id: deps_filtered(graph, vertices, id, pri_max) for id in vertices}
+    sccs = list(strongly_connected_components(vertices, edges))
+    res = []
+    for ready in topsort(prepare_sccs(sccs, edges)):
+        res.extend(sorted(ready, key=lambda scc: -min(graph[id].order for id in scc)))
     return res
 
 
