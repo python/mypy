@@ -3175,7 +3175,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # as X | Y.
         if not (s.is_alias_def and self.is_stub):
             with self.enter_final_context(s.is_final_def):
-                self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
+                self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None)
 
         if s.is_alias_def:
             self.check_type_alias_rvalue(s)
@@ -3227,7 +3227,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         lvalue: Lvalue,
         rvalue: Expression,
         infer_lvalue_type: bool = True,
-        new_syntax: bool = False,
     ) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, (TupleExpr, ListExpr)):
@@ -3295,15 +3294,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # Try to infer a partial type. No need to check the return value, as
                         # an error will be reported elsewhere.
                         self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
-                elif (
-                    is_literal_none(rvalue)
-                    and isinstance(lvalue, NameExpr)
-                    and isinstance(lvalue.node, Var)
-                    and lvalue.node.is_initialized_in_class
-                    and not new_syntax
-                ):
-                    # Allow None's to be assigned to class variables with non-Optional types.
-                    rvalue_type = lvalue_type
                 elif (
                     isinstance(lvalue, MemberExpr) and lvalue.kind is None
                 ):  # Ignore member access to modules
@@ -5057,7 +5047,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             expr = OpExpr(s.op, s.lvalue, s.rvalue)
             expr.set_line(s)
             self.check_assignment(
-                lvalue=s.lvalue, rvalue=expr, infer_lvalue_type=True, new_syntax=False
+                lvalue=s.lvalue, rvalue=expr, infer_lvalue_type=True
             )
         self.check_final(s)
 
