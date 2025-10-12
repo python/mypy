@@ -200,7 +200,7 @@ class TypeCheckSuite(DataSuite):
 
         if res:
             if options.cache_dir != os.devnull:
-                self.verify_cache(module_data, res.manager, blocker)
+                self.verify_cache(module_data, res.manager, blocker, incremental_step)
 
             name = "targets"
             if incremental_step:
@@ -230,7 +230,11 @@ class TypeCheckSuite(DataSuite):
             check_test_output_files(testcase, incremental_step, strip_prefix="tmp/")
 
     def verify_cache(
-        self, module_data: list[tuple[str, str, str]], manager: build.BuildManager, blocker: bool
+        self,
+        module_data: list[tuple[str, str, str]],
+        manager: build.BuildManager,
+        blocker: bool,
+        step: int,
     ) -> None:
         if not blocker:
             # There should be valid cache metadata for each module except
@@ -240,7 +244,7 @@ class TypeCheckSuite(DataSuite):
             modules.update({module_name: path for module_name, path, text in module_data})
             missing_paths = self.find_missing_cache_files(modules, manager)
             if missing_paths:
-                raise AssertionError(f"cache data missing for {missing_paths}")
+                raise AssertionError(f"cache data missing for {missing_paths} on run {step}")
         assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
         cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
         assert os.path.isfile(cachedir_tag)

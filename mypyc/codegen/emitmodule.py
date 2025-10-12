@@ -280,13 +280,13 @@ def compile_modules_to_ir(
 
     # Process the graph by SCC in topological order, like we do in mypy.build
     for scc in sorted_components(result.graph):
-        scc_states = [result.graph[id] for id in scc]
+        scc_states = [result.graph[id] for id in scc.mod_ids]
         trees = [st.tree for st in scc_states if st.id in mapper.group_map and st.tree]
 
         if not trees:
             continue
 
-        fresh = all(id not in result.manager.rechecked_modules for id in scc)
+        fresh = all(id not in result.manager.rechecked_modules for id in scc.mod_ids)
         if fresh:
             load_scc_from_cache(trees, result, mapper, deser_ctx)
         else:

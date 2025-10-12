@@ -43,7 +43,7 @@ from mypy.cache import Buffer
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
-from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
+from mypy.graph_utils import strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
@@ -120,6 +120,18 @@ CORE_BUILTIN_MODULES: Final = {
 MAX_GC_FREEZE_CYCLES = 1
 
 Graph: _TypeAlias = dict[str, "State"]
+
+
+class SCC:
+    id_counter: ClassVar[int] = 0
+
+    def __init__(self, ids: set[str]) -> None:
+        self.id = SCC.id_counter
+        SCC.id_counter += 1
+        self.mod_ids = ids
+        self.not_ready_deps: set[int] = set()
+        self.transitive_deps: list[int] = []
+        self.direct_dependents: list[int] = []
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -725,6 +737,9 @@ class BuildManager:
         self.ast_cache: dict[str, tuple[MypyFile, list[ErrorInfo]]] = {}
         # Number of times we used GC optimization hack for fresh SCCs.
         self.gc_freeze_cycles = 0
+        self.scc_by_id: dict[int, SCC] = {}
+        self.scc_queue: list[SCC] = []
+        self.done_sccs: set[SCC] = set()
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -924,6 +939,16 @@ class BuildManager:
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
+
+    def submit(self, sccs: list[SCC]) -> None:
+        self.scc_queue.extend(sccs)
+
+    def get_done(self, graph: Graph) -> tuple[list[SCC], bool]:
+        if not self.scc_queue:
+            return [], False
+        next_scc = self.scc_queue.pop(0)
+        process_stale_scc(graph, next_scc, self)
+        return [next_scc], bool(self.scc_queue)
 
 
 def deps_to_json(x: dict[str, set[str]]) -> bytes:
@@ -3012,7 +3037,7 @@ def dump_graph(graph: Graph, stdout: TextIO | None = None) -> None:
     nodes = []
     sccs = sorted_components(graph)
     for i, ascc in enumerate(sccs):
-        scc = order_ascc(graph, ascc)
+        scc = order_ascc(graph, ascc.mod_ids)
         node = NodeInfo(i, scc)
         nodes.append(node)
     inv_nodes = {}  # module -> node_id
@@ -3203,58 +3228,47 @@ def load_graph(
     return graph
 
 
-def process_graph(graph: Graph, manager: BuildManager) -> None:
-    """Process everything in dependency order."""
-    sccs = sorted_components(graph)
-    manager.log("Found %d SCCs; largest has %d nodes" % (len(sccs), max(len(scc) for scc in sccs)))
+def order_ascc_ex(graph: Graph, ascc: SCC) -> list[str]:
+    # Order the SCC's nodes using a heuristic.
+    # Note that ascc is a set, and scc is a list.
+    scc = order_ascc(graph, ascc.mod_ids)
+    # Make the order of the SCC that includes 'builtins' and 'typing',
+    # among other things, predictable. Various things may  break if
+    # the order changes.
+    if "builtins" in ascc.mod_ids:
+        scc = sorted(scc, reverse=True)
+        # If builtins is in the list, move it last.  (This is a bit of
+        # a hack, but it's necessary because the builtins module is
+        # part of a small cycle involving at least {builtins, abc,
+        # typing}.  Of these, builtins must be processed last or else
+        # some builtin objects will be incompletely processed.)
+        scc.remove("builtins")
+        scc.append("builtins")
+    return scc
 
-    fresh_scc_queue: list[list[str]] = []
 
-    # We're processing SCCs from leaves (those without further
-    # dependencies) to roots (those from which everything else can be
-    # reached).
+def find_stale_sccs(
+    sccs: list[SCC], graph: Graph, manager: BuildManager
+) -> tuple[list[SCC], list[SCC]]:
+    stale_sccs = []
+    fresh_sccs = []
     for ascc in sccs:
-        # Order the SCC's nodes using a heuristic.
-        # Note that ascc is a set, and scc is a list.
-        scc = order_ascc(graph, ascc)
-        # Make the order of the SCC that includes 'builtins' and 'typing',
-        # among other things, predictable. Various things may  break if
-        # the order changes.
-        if "builtins" in ascc:
-            scc = sorted(scc, reverse=True)
-            # If builtins is in the list, move it last.  (This is a bit of
-            # a hack, but it's necessary because the builtins module is
-            # part of a small cycle involving at least {builtins, abc,
-            # typing}.  Of these, builtins must be processed last or else
-            # some builtin objects will be incompletely processed.)
-            scc.remove("builtins")
-            scc.append("builtins")
-        if manager.options.verbosity >= 2:
-            for id in scc:
-                manager.trace(
-                    f"Priorities for {id}:",
-                    " ".join(
-                        "%s:%d" % (x, graph[id].priorities[x])
-                        for x in graph[id].dependencies
-                        if x in ascc and x in graph[id].priorities
-                    ),
-                )
         # Because the SCCs are presented in topological sort order, we
         # don't need to look at dependencies recursively for staleness
         # -- the immediate dependencies are sufficient.
-        stale_scc = {id for id in scc if not graph[id].is_fresh()}
+        stale_scc = {id for id in ascc.mod_ids if not graph[id].is_fresh()}
         fresh = not stale_scc
         deps = set()
-        for id in scc:
+        for id in ascc.mod_ids:
             deps.update(graph[id].dependencies)
-        deps -= ascc
+        deps -= ascc.mod_ids
 
         # Verify that interfaces of dependencies still present in graph are up-to-date (fresh).
         # Note: if a dependency is not in graph anymore, it should be considered interface-stale.
         # This is important to trigger any relevant updates from indirect dependencies that were
         # removed in load_graph().
         stale_deps = set()
-        for id in ascc:
+        for id in ascc.mod_ids:
             for dep in graph[id].dep_hashes:
                 if dep not in graph:
                     stale_deps.add(dep)
@@ -3267,7 +3281,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # Check if any dependencies that were suppressed according
             # to the cache have been added back in this run.
             # NOTE: Newly suppressed dependencies are handled by is_fresh().
-            for id in scc:
+            for id in ascc.mod_ids:
                 undeps.update(graph[id].suppressed)
             undeps &= graph.keys()
             if undeps:
@@ -3278,79 +3292,70 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             fresh_msg = f"stale due to changed suppression ({' '.join(sorted(undeps))})"
         elif stale_scc:
             fresh_msg = "inherently stale"
-            if stale_scc != ascc:
+            if stale_scc != ascc.mod_ids:
                 fresh_msg += f" ({' '.join(sorted(stale_scc))})"
             if stale_deps:
                 fresh_msg += f" with stale deps ({' '.join(sorted(stale_deps))})"
         else:
             fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
 
-        scc_str = " ".join(scc)
+        scc_str = " ".join(ascc.mod_ids)
         if fresh:
-            manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
+            manager.trace(f"Found {fresh_msg} SCC ({scc_str})")
+            scc = order_ascc_ex(graph, ascc)
             for id in scc:
                 if graph[id].error_lines:
                     manager.flush_errors(
                         manager.errors.simplify_path(graph[id].xpath), graph[id].error_lines, False
                     )
-            fresh_scc_queue.append(scc)
+            fresh_sccs.append(ascc)
         else:
-            if fresh_scc_queue:
-                manager.log(f"Processing {len(fresh_scc_queue)} queued fresh SCCs")
-                # Defer processing fresh SCCs until we actually run into a stale SCC
-                # and need the earlier modules to be loaded.
-                #
-                # Note that `process_graph` may end with us not having processed every
-                # single fresh SCC. This is intentional -- we don't need those modules
-                # loaded if there are no more stale SCCs to be rechecked.
-                #
-                # TODO: see if it's possible to determine if we need to process only a
-                # _subset_ of the past SCCs instead of having to process them all.
-                if (
-                    not manager.options.test_env
-                    and platform.python_implementation() == "CPython"
-                    and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
-                ):
-                    # When deserializing cache we create huge amount of new objects, so even
-                    # with our generous GC thresholds, GC is still doing a lot of pointless
-                    # work searching for garbage. So, we temporarily disable it when
-                    # processing fresh SCCs, and then move all the new objects to the oldest
-                    # generation with the freeze()/unfreeze() trick below. This is arguably
-                    # a hack, but it gives huge performance wins for large third-party
-                    # libraries, like torch.
-                    gc.collect()
-                    gc.disable()
-                for prev_scc in fresh_scc_queue:
-                    process_fresh_modules(graph, prev_scc, manager)
-                if (
-                    not manager.options.test_env
-                    and platform.python_implementation() == "CPython"
-                    and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
-                ):
-                    manager.gc_freeze_cycles += 1
-                    gc.freeze()
-                    gc.unfreeze()
-                    gc.enable()
-                fresh_scc_queue = []
-            size = len(scc)
+            size = len(ascc.mod_ids)
             if size == 1:
-                manager.log(f"Processing SCC singleton ({scc_str}) as {fresh_msg}")
+                manager.log(f"Scheduling SCC singleton ({scc_str}) as {fresh_msg}")
             else:
-                manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
-            process_stale_scc(graph, scc, manager)
+                manager.log("Scheduling SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
+            stale_sccs.append(ascc)
+    return stale_sccs, fresh_sccs
 
-    sccs_left = len(fresh_scc_queue)
-    nodes_left = sum(len(scc) for scc in fresh_scc_queue)
-    manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
-    if sccs_left:
-        manager.log(
-            "{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)".format(
-                sccs_left, nodes_left
-            )
-        )
-        manager.trace(str(fresh_scc_queue))
-    else:
-        manager.log("No fresh SCCs left in queue")
+
+def process_graph(graph: Graph, manager: BuildManager) -> None:
+    """Process everything in dependency order."""
+    sccs = sorted_components(graph)
+    manager.log(
+        "Found %d SCCs; largest has %d nodes" % (len(sccs), max(len(scc.mod_ids) for scc in sccs))
+    )
+    for scc in sccs:
+        pass  # print("SCC", scc.id, scc.mod_ids, scc.transitive_deps, scc.direct_dependents)
+
+    scc_by_id = {scc.id: scc for scc in sccs}
+    manager.scc_by_id = scc_by_id
+
+    ready = []
+    not_ready = []
+    for scc in sccs:
+        if not scc.transitive_deps:
+            ready.append(scc)
+        else:
+            not_ready.append(scc)
+
+    processing = False
+    while ready or not_ready or processing:
+        stale, fresh = find_stale_sccs(ready, graph, manager)
+        if stale:
+            manager.submit(stale)
+            processing = True
+        if fresh:
+            done = fresh
+        else:
+            done, processing = manager.get_done(graph)
+        ready = []
+        for done_scc in done:
+            for dependent in done_scc.direct_dependents:
+                scc_by_id[dependent].not_ready_deps.discard(done_scc.id)
+                if not scc_by_id[dependent].not_ready_deps:
+                    not_ready.remove(scc_by_id[dependent])
+                    ready.append(scc_by_id[dependent])
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> list[str]:
@@ -3377,7 +3382,7 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
 
     In practice there are only a few priority levels (less than a
     dozen) and in the worst case we just carry out the same algorithm
-    for finding SCCs N times.  Thus the complexity is no worse than
+    for finding SCCs N times.  Thus, the complexity is no worse than
     the complexity of the original SCC-finding algorithm -- see
     strongly_connected_components() below for a reference.
     """
@@ -3397,7 +3402,7 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     pri_max = max(pri_spread)
     sccs = sorted_components(graph, ascc, pri_max)
     # The recursion is bounded by the len(pri_spread) check above.
-    return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
+    return [s for ss in sccs for s in order_ascc(graph, ss.mod_ids, pri_max)]
 
 
 def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManager) -> None:
@@ -3416,11 +3421,42 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
 
-def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> None:
-    """Process the modules in one SCC from source code.
-
-    Exception: If quick_and_dirty is set, use the cache for fresh modules.
-    """
+def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
+    """Process the modules in one SCC from source code."""
+    fresh_sccs = [
+        dep
+        for id in ascc.transitive_deps
+        if (dep := manager.scc_by_id[id]) not in manager.done_sccs
+    ]
+    if fresh_sccs:
+        manager.log(f"Processing {len(fresh_sccs)} fresh SCCs")
+        if (
+            not manager.options.test_env
+            and platform.python_implementation() == "CPython"
+            and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
+        ):
+            # When deserializing cache we create huge amount of new objects, so even
+            # with our generous GC thresholds, GC is still doing a lot of pointless
+            # work searching for garbage. So, we temporarily disable it when
+            # processing fresh SCCs, and then move all the new objects to the oldest
+            # generation with the freeze()/unfreeze() trick below. This is arguably
+            # a hack, but it gives huge performance wins for large third-party
+            # libraries, like torch.
+            gc.collect()
+            gc.disable()
+        for prev_scc in fresh_sccs:
+            manager.done_sccs.add(prev_scc)
+            process_fresh_modules(graph, list(prev_scc.mod_ids), manager)
+        if (
+            not manager.options.test_env
+            and platform.python_implementation() == "CPython"
+            and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
+        ):
+            manager.gc_freeze_cycles += 1
+            gc.freeze()
+            gc.unfreeze()
+            gc.enable()
+    scc = order_ascc_ex(graph, ascc)
     stale = scc
     for id in stale:
         # We may already have parsed the module, or not.
@@ -3434,7 +3470,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         assert typing_mod, "The typing module was not parsed"
     mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
 
-    # Track what modules aren't yet done so we can finish them as soon
+    # Track what modules aren't yet done, so we can finish them as soon
     # as possible, saving memory.
     unfinished_modules = set(stale)
     for id in stale:
@@ -3478,11 +3514,30 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         }
         meta["error_lines"] = errors_by_id.get(id, [])
         write_cache_meta(meta, manager, meta_json)
+    manager.done_sccs.add(ascc)
 
 
+def prepare_sccs(raw_sccs: Iterator[set[str]], edges: dict[str, list[str]]) -> dict[SCC, set[SCC]]:
+    sccs = [SCC(raw_scc) for raw_scc in raw_sccs]
+    scc_map = {}
+    for scc in sccs:
+        for id in scc.mod_ids:
+            scc_map[id] = scc
+    scc_deps_map: dict[SCC, set[SCC]] = {}
+    for scc in sccs:
+        for id in scc.mod_ids:
+            scc_deps_map.setdefault(scc, set()).update(scc_map[dep] for dep in edges[id])
+    for scc in sccs:
+        scc_deps_map[scc].discard(scc)
+        for dep_scc in scc_deps_map[scc]:
+            scc.not_ready_deps.add(dep_scc.id)
+    return scc_deps_map
+
+
+# TODO: add version just for sorting (no sense to create all the other infra there).
 def sorted_components(
     graph: Graph, vertices: AbstractSet[str] | None = None, pri_max: int = PRI_INDIRECT
-) -> list[AbstractSet[str]]:
+) -> list[SCC]:
     """Return the graph's SCCs, topologically sorted by dependencies.
 
     The sort order is from leaves (nodes without dependencies) to
@@ -3495,10 +3550,10 @@ def sorted_components(
     if vertices is None:
         vertices = set(graph)
     edges = {id: deps_filtered(graph, vertices, id, pri_max) for id in vertices}
-    sccs = list(strongly_connected_components(vertices, edges))
+    scc_dep_map = prepare_sccs(strongly_connected_components(vertices, edges), edges)
     # Topsort.
     res = []
-    for ready in topsort(prepare_sccs(sccs, edges)):
+    for ready in topsort(scc_dep_map):
         # Sort the sets in ready by reversed smallest State.order.  Examples:
         #
         # - If ready is [{x}, {y}], x.order == 1, y.order == 2, we get
@@ -3507,7 +3562,15 @@ def sorted_components(
         # - If ready is [{a, b}, {c, d}], a.order == 1, b.order == 3,
         #   c.order == 2, d.order == 4, the sort keys become [1, 2]
         #   and the result is [{c, d}, {a, b}].
-        res.extend(sorted(ready, key=lambda scc: -min(graph[id].order for id in scc)))
+        sorted_ready = sorted(ready, key=lambda scc: -min(graph[id].order for id in scc.mod_ids))
+        for scc in sorted_ready:
+            for dep in scc_dep_map[scc]:
+                dep.direct_dependents.append(scc.id)
+                new_trans_deps = [d for d in dep.transitive_deps if d not in scc.transitive_deps]
+                scc.transitive_deps.extend(new_trans_deps)
+                if dep.id not in scc.transitive_deps:
+                    scc.transitive_deps.append(dep.id)
+        res.extend(sorted_ready)
     return res
 
 
