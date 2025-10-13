@@ -435,7 +435,7 @@ def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
                 builder.activate_block(false_block)
 
             index_type = builder._analyze_iterable_item_type(arg)
-            index = create_synthetic_nameexpr(index_name, index_type)
+            index = create_synthetic_nameexpr(builder, index_name, index_type)
             index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
 
             for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
@@ -473,7 +473,7 @@ def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
                 builder.activate_block(true_block)
 
             index_type = builder._analyze_iterable_item_type(arg)
-            index = create_synthetic_nameexpr(index_name, index_type)
+            index = create_synthetic_nameexpr(builder, index_name, index_type)
             index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
 
             for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
