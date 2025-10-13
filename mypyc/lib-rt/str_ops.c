@@ -64,7 +64,7 @@ make_bloom_mask(int kind, const void* ptr, Py_ssize_t len)
 #undef BLOOM_UPDATE
 }
 
-static char _CPyStr_Equal_NoIdentCheck(PyObject *str1, PyObject *str2, Py_ssize_t str2_length) {
+static inline char _CPyStr_Equal_NoIdentCheck(PyObject *str1, PyObject *str2, Py_ssize_t str2_length) {
     // This helper function only exists to deduplicate code in CPyStr_Equal and CPyStr_EqualLiteral
     Py_ssize_t str1_length = PyUnicode_GET_LENGTH(str1);
     if (str1_length != str2_length)
