@@ -1232,9 +1232,6 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
     rtype = builder.node_type(expr)
     if isinstance(rtype, RTuple):
         return len(rtype.types)
-    proper_type = get_proper_type(builder.types[expr])
-    if isinstance(proper_type, TupleType):
-        return len(proper_type.items)
     return None
 
 
