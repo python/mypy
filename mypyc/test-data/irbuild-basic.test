@@ -2888,7 +2888,7 @@ def call_any_helper(l):
     r8, r9, r10 :: native_int
     r11 :: bit
     r12 :: object
-    r13, __mypyc_any_item__ :: str
+    r13, __mypyc_any_item__0 :: str
     r14 :: bit
     r15 :: native_int
 L0:
@@ -2918,8 +2918,8 @@ L5:
 L6:
     r12 = list_get_item_unsafe r2, r9
     r13 = cast(str, r12)
-    __mypyc_any_item__ = r13
-    r14 = CPyStr_IsTrue(__mypyc_any_item__)
+    __mypyc_any_item__0 = r13
+    r14 = CPyStr_IsTrue(__mypyc_any_item__0)
     if r14 goto L7 else goto L8 :: bool
 L7:
     r0 = 1
@@ -2944,7 +2944,7 @@ def call_all_helper(l):
     r8, r9, r10 :: native_int
     r11 :: bit
     r12 :: object
-    r13, __mypyc_all_item__ :: str
+    r13, __mypyc_all_item__1 :: str
     r14 :: bit
     r15 :: native_int
 L0:
@@ -2974,8 +2974,8 @@ L5:
 L6:
     r12 = list_get_item_unsafe r2, r9
     r13 = cast(str, r12)
-    __mypyc_all_item__ = r13
-    r14 = CPyStr_IsTrue(__mypyc_all_item__)
+    __mypyc_all_item__1 = r13
+    r14 = CPyStr_IsTrue(__mypyc_all_item__1)
     if r14 goto L8 else goto L7 :: bool
 L7:
     r0 = 0
