@@ -305,7 +305,7 @@ def parse_type_ignore_tag(tag: str | None) -> list[str] | None:
     if m is None:
         # Invalid "# type: ignore" comment.
         return None
-    return [code.strip() for code in m.group(1).split(",") if code.strip()]
+    return [stripped_code for code in m.group(1).split(",") if (stripped_code := code.strip())]
 
 
 def parse_type_comment(
