@@ -963,10 +963,10 @@ class BuildManager:
         """Submit a stale SCC for processing in current process."""
         self.scc_queue.extend(sccs)
 
-    def get_done(self, graph: Graph) -> tuple[list[SCC], bool]:
+    def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool]:
         """Wait for a stale SCC processing (in process) to finish.
 
-        Return nest processed SCC amd whether we have more in the queue.
+        Return next processed SCC and whether we have more in the queue.
         This emulates the API we will have for parallel processing
         in multiple worker processes.
         """
@@ -3371,12 +3371,12 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         else:
             not_ready.append(scc)
 
-    processing = False
-    while ready or not_ready or processing:
+    still_working = False
+    while ready or not_ready or still_working:
         stale, fresh = find_stale_sccs(ready, graph, manager)
         if stale:
             manager.submit(stale)
-            processing = True
+            still_working = True
         # We eagerly walk over fresh SCCs to reach as many stale SCCs as soon
         # as possible. Only when there are no fresh SCCs, we wait on scheduled stale ones.
         # This strategy, similar to a naive strategy in minesweeper game, will allow us
@@ -3384,7 +3384,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if fresh:
             done = fresh
         else:
-            done, processing = manager.get_done(graph)
+            done, still_working = manager.wait_for_done(graph)
         ready = []
         for done_scc in done:
             for dependent in done_scc.direct_dependents:
