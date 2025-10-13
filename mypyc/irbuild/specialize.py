@@ -30,6 +30,7 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     SuperExpr,
+    SymbolNode,
     TupleExpr,
     Var,
 )
@@ -436,7 +437,10 @@ def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
 
             index_type = builder._analyze_iterable_item_type(arg)
             index = create_synthetic_nameexpr(builder, index_name, index_type)
-            index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
+            index_reg = builder.add_local_reg(
+                cast(SymbolNode, index.node),
+                builder.type_to_rtype(index_type),
+            )
 
             for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
             builder.goto_and_activate(loop_exit)
@@ -474,7 +478,10 @@ def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
 
             index_type = builder._analyze_iterable_item_type(arg)
             index = create_synthetic_nameexpr(builder, index_name, index_type)
-            index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))
+            index_reg = builder.add_local_reg(
+                cast(SymbolNode, index.node),
+                builder.type_to_rtype(index_type),
+            )
 
             for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
             builder.goto_and_activate(loop_exit)
