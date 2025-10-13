@@ -1260,9 +1260,11 @@ def expr_has_specialized_for_helper(builder: IRBuilder, expr: Expression) -> boo
     return False
 
 
-def create_synthetic_nameexpr(index_name: str, index_type: Type) -> NameExpr:
+def create_synthetic_nameexpr(builder: IRBuilder, index_name: str, index_type: Type) -> NameExpr:
     """This helper spoofs a NameExpr to use as the lvalue in one of the for loop helpers."""
-    index = NameExpr(index_name)
+    unique_name = f"{index_name}_{builder.temp_counter}"
+    builder.temp_counter += 1
+    index = NameExpr(unique_name)
     index.kind = LDEF
-    index.node = Var(index_name, index_type)
+    index.node = Var(unique_name, index_type)
     return index
