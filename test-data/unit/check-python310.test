@@ -2990,3 +2990,19 @@ def foo(e: Literal[0, 1]) -> None:
             ...
 
 defer = unknown_module.foo
+
+[case testMatchErrorsIncorrectName]
+class A:
+    pass
+
+match 5:
+    case A.blah():  # E: "type[A]" has no attribute "blah"
+        pass
+
+[case testMatchAllowsAnyClassArgsForAny]
+match 5:
+    case BlahBlah(a, b):  # E: Name "BlahBlah" is not defined
+        reveal_type(a)  # N: Revealed type is "Any"
+        reveal_type(b)  # N: Revealed type is "Any"
+    case BlahBlah(c=c):  # E: Name "BlahBlah" is not defined
+        reveal_type(c)  # N: Revealed type is "Any"

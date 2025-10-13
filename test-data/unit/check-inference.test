@@ -1964,6 +1964,31 @@ if 'x' in d:  # E: "None" has no attribute "__iter__" (not iterable)
 reveal_type(d)  # N: Revealed type is "None"
 [builtins fixtures/dict.pyi]
 
+[case testNoWrongUnreachableWarningWithNoStrictOptionalAndFinalInstance]
+# flags: --no-strict-optional --warn-unreachable
+from typing import final, Optional
+
+@final
+class C: ...
+
+x: Optional[C]
+if not x:
+    x = C()
+[builtins fixtures/dict.pyi]
+
+[case testNoWrongUnreachableWarningWithNoStrictOptionalAndEnumLiteral]
+# flags: --no-strict-optional --warn-unreachable
+from enum import Enum
+from typing import Literal, Optional
+
+class E(Enum):
+    a = 1
+
+x: Optional[Literal[E.a]]
+if not x:
+    x = E.a
+[builtins fixtures/dict.pyi]
+
 [case testInferFromEmptyListWhenUsingInWithStrictEquality]
 # flags: --strict-equality
 def f() -> None:
