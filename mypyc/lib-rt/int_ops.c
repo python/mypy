@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 #ifndef _WIN32
 // On 64-bit Linux and macOS, ssize_t and long are both 64 bits, and
 // PyLong_FromLong is faster than PyLong_FromSsize_t, so use the faster one
@@ -14,6 +18,17 @@
 // can't use the above trick
 #define CPyLong_FromSsize_t PyLong_FromSsize_t
 #endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#  if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__) || (defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8)
+#    define CPY_CLZ(x) __builtin_clzll((unsigned long long)(x))
+#    define CPY_BITS 64
+#  else
+#    define CPY_CLZ(x) __builtin_clz((unsigned int)(x))
+#    define CPY_BITS 32
+#  endif
+#endif
+
 
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     // We use a Python object if the value shifted left by 1 is too
@@ -580,4 +595,53 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
         return PyFloat_AsDouble(result);
     }
     return 1.0;
+}
+
+// int.bit_length()
+CPyTagged CPyTagged_BitLength(CPyTagged self) {
+    // Handle zero
+    if (self == 0) {
+        return 0;
+    }
+
+    // Fast path for small (tagged) ints
+    if (CPyTagged_CheckShort(self)) {
+        Py_ssize_t val = CPyTagged_ShortAsSsize_t(self);
+        Py_ssize_t absval = val < 0 ? -val : val;
+        int bits = 0;
+        if (absval) {
+#if defined(_MSC_VER)
+    #if defined(_WIN64)
+            unsigned long idx;
+            if (_BitScanReverse64(&idx, (unsigned __int64)absval)) {
+                bits = (int)(idx + 1);
+            }
+    #else
+            unsigned long idx;
+            if (_BitScanReverse(&idx, (unsigned long)absval)) {
+                bits = (int)(idx + 1);
+            }
+    #endif
+#elif defined(__GNUC__) || defined(__clang__)
+            bits = (int)(CPY_BITS - CPY_CLZ(absval));
+#else
+            // Fallback to loop if no builtin
+            while (absval) {
+                absval >>= 1;
+                bits++;
+            }
+#endif
+        }
+        return bits << 1;
+    }
+
+    // Slow path for big ints
+    PyObject *pyint = CPyTagged_AsObject(self);
+    int bits = _PyLong_NumBits(pyint);
+    Py_DECREF(pyint);
+    if (bits < 0) {
+        // _PyLong_NumBits sets an error on failure
+        return CPY_INT_TAG;
+    }
+    return bits << 1;
 }

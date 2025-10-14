@@ -2710,10 +2710,10 @@ from native import Player
 [out]
 Player.MIN = <Player.MIN: 1>
 
-[case testBufferRoundTrip_native_libs]
+[case testBufferRoundTrip_librt_internal]
 from typing import Final
 from mypy_extensions import u8
-from native_internal import (
+from librt.internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag
 )
@@ -2865,6 +2865,15 @@ test_buffer_basic_interpreted()
 test_buffer_roundtrip_interpreted()
 test_buffer_int_size_interpreted()
 test_buffer_str_size_interpreted()
+
+[case testBufferEmpty_librt_internal]
+from librt.internal import Buffer, write_int, read_int
+
+def test_empty() -> None:
+    b = Buffer(b"")
+    write_int(b, 42)
+    b1 = Buffer(b.getvalue())
+    assert read_int(b1) == 42
 
 [case testEnumMethodCalls]
 from enum import Enum
