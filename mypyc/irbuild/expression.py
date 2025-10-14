@@ -1030,7 +1030,9 @@ def dict_literal_values(
             return value
         if not isinstance(expr, TupleExpr):
             return None
-        folded = tuple(map(partial(constant_fold_expr_or_tuple, builder), expr.items))
+        folded: ConstantValueTuple = tuple(
+            map(partial(constant_fold_expr_or_tuple, builder), expr.items)
+        )
         return folded if None not in folded else None
 
     result = {}
