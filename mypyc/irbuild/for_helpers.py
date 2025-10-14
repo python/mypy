@@ -274,7 +274,7 @@ def sequence_from_generator_preallocate_helper(
 
             return target_op
 
-        elif (expr_length := get_expr_length(sequence_expr)) is not None:
+        elif (expr_length := get_expr_length(builder, sequence_expr)) is not None:
             item_index = Register(int_rprimitive)
             builder.assign(item_index, Integer(0), line)
 
