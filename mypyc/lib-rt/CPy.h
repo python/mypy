@@ -148,6 +148,7 @@ CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_BitLength(CPyTagged self);
 
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
@@ -734,6 +735,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
 #define BOTHSTRIP  2
 
 char CPyStr_Equal(PyObject *str1, PyObject *str2);
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);

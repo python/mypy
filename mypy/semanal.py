@@ -1791,11 +1791,10 @@ class SemanticAnalyzer(
                 return None
             tvs.append((p.name, tv))
 
-        for name, tv in tvs:
-            if self.is_defined_type_param(name):
-                self.fail(f'"{name}" already defined as a type parameter', context)
+            if self.is_defined_type_param(p.name):
+                self.fail(f'"{p.name}" already defined as a type parameter', context)
             else:
-                self.add_symbol(name, tv, context, no_progress=True, type_param=True)
+                self.add_symbol(p.name, tv, context, no_progress=True, type_param=True)
 
         return tvs
 

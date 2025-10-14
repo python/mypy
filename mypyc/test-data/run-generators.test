@@ -907,3 +907,32 @@ def test_same_names() -> None:
         # matches the variable name in the input code, since internally it's generated
         # with a prefix.
         list(undefined())
+
+[case testGeneratorInheritance]
+from typing import Iterator
+
+class Base1:
+    def foo(self) -> Iterator[int]:
+        yield 1
+
+class Derived1(Base1):
+    def foo(self) -> Iterator[int]:
+        yield 2
+        yield 3
+
+def base1_foo(b: Base1) -> list[int]:
+    a = []
+    for x in b.foo():
+        a.append(x)
+    return a
+
+def derived1_foo(b: Derived1) -> list[int]:
+    a = []
+    for x in b.foo():
+        a.append(x)
+    return a
+
+def test_generator_override() -> None:
+     assert base1_foo(Base1()) == [1]
+     assert base1_foo(Derived1()) == [2, 3]
+     assert derived1_foo(Derived1()) == [2, 3]

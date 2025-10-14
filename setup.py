@@ -155,7 +155,7 @@ if USE_MYPYC:
         multi_file=sys.platform == "win32" or force_multifile,
         log_trace=log_trace,
         # Mypy itself is allowed to use native_internal extension.
-        depends_on_native_internal=True,
+        depends_on_librt_internal=True,
     )
 
 else:
