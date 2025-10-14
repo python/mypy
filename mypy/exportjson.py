@@ -17,19 +17,52 @@ import argparse
 import json
 from typing import Any, TypeAlias as _TypeAlias
 
-from mypy.types import (
-    Type, get_proper_type, Instance, AnyType, UnionType, TupleType, CallableType,
-    Overloaded, TypeVarType, TypeAliasType, LiteralType, NoneType, TypeType,
-    UninhabitedType, UnpackType, TypeVarTupleType, ParamSpecType, Parameters,
-    TypedDictType
-)
-from mypy.nodes import (
-    MypyFile, SymbolTable, SymbolTableNode, node_kinds, SymbolNode, FuncDef, TypeInfo,
-    TypeAlias, TypeVarExpr, Var, OverloadedFuncDef, get_flags, FUNCDEF_FLAGS,
-    DataclassTransformSpec, FUNCBASE_FLAGS, OverloadPart, Decorator, VAR_FLAGS,
-    ParamSpecExpr, TypeVarTupleExpr, ClassDef
-)
 from librt.internal import Buffer
+
+from mypy.nodes import (
+    FUNCBASE_FLAGS,
+    FUNCDEF_FLAGS,
+    VAR_FLAGS,
+    ClassDef,
+    DataclassTransformSpec,
+    Decorator,
+    FuncDef,
+    MypyFile,
+    OverloadedFuncDef,
+    OverloadPart,
+    ParamSpecExpr,
+    SymbolNode,
+    SymbolTable,
+    SymbolTableNode,
+    TypeAlias,
+    TypeInfo,
+    TypeVarExpr,
+    TypeVarTupleExpr,
+    Var,
+    get_flags,
+    node_kinds,
+)
+from mypy.types import (
+    AnyType,
+    CallableType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
+)
 
 JsonDict: _TypeAlias = dict[str, Any]
 
@@ -357,11 +390,7 @@ def convert_tuple_type(self: TupleType) -> JsonDict:
 
 
 def convert_literal_type(self: LiteralType) -> JsonDict:
-    return {
-        ".class": "LiteralType",
-        "value": self.value,
-        "fallback": convert_type(self.fallback),
-    }
+    return {".class": "LiteralType", "value": self.value, "fallback": convert_type(self.fallback)}
 
 
 def convert_type_var_type(self: TypeVarType) -> JsonDict:
