@@ -20,13 +20,14 @@ from typing import Any, TypeAlias as _TypeAlias
 from mypy.types import (
     Type, get_proper_type, Instance, AnyType, UnionType, TupleType, CallableType,
     Overloaded, TypeVarType, TypeAliasType, LiteralType, NoneType, TypeType,
-    UninhabitedType, UnpackType, TypeVarTupleType, ParamSpecType, Parameters
+    UninhabitedType, UnpackType, TypeVarTupleType, ParamSpecType, Parameters,
+    TypedDictType
 )
 from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, node_kinds, SymbolNode, FuncDef, TypeInfo,
     TypeAlias, TypeVarExpr, Var, OverloadedFuncDef, get_flags, FUNCDEF_FLAGS,
     DataclassTransformSpec, FUNCBASE_FLAGS, OverloadPart, Decorator, VAR_FLAGS,
-    ParamSpecExpr, TypeVarTupleExpr
+    ParamSpecExpr, TypeVarTupleExpr, ClassDef
 )
 from librt.internal import Buffer
 
@@ -177,6 +178,45 @@ def convert_var(self: Var) -> JsonDict:
 
 
 def convert_type_info(self: TypeInfo) -> JsonDict:
+    data = {
+        ".class": "TypeInfo",
+        "module_name": self.module_name,
+        "fullname": self.fullname,
+        "names": convert_symbol_table(self.names, self.fullname),
+        "defn": convert_class_def(self.defn),
+        "abstract_attributes": self.abstract_attributes,
+        "type_vars": self.type_vars,
+        "has_param_spec_type": self.has_param_spec_type,
+        "bases": [convert_type(b) for b in self.bases],
+        "mro": [c.fullname for c in self.mro],
+        "_promote": [convert_type(p) for p in self._promote],
+        "alt_promote": None if self.alt_promote is None else convert_type(self.alt_promote),
+        "declared_metaclass": (
+            None if self.declared_metaclass is None else convert_type(self.declared_metaclass)
+        ),
+        "metaclass_type": (
+            None if self.metaclass_type is None else convert_type(self.metaclass_type)
+        ),
+        "tuple_type": None if self.tuple_type is None else convert_type(self.tuple_type),
+        "typeddict_type": (
+            None if self.typeddict_type is None else convert_typeddict_type(self.typeddict_type)
+        ),
+        "flags": get_flags(self, TypeInfo.FLAGS),
+        "metadata": self.metadata,
+        "slots": sorted(self.slots) if self.slots is not None else None,
+        "deletable_attributes": self.deletable_attributes,
+        "self_type": convert_type(self.self_type) if self.self_type is not None else None,
+        "dataclass_transform_spec": (
+            convert_dataclass_transform_spec(self.dataclass_transform_spec)
+            if self.dataclass_transform_spec is not None
+            else None
+        ),
+        "deprecated": self.deprecated,
+    }
+    return data
+
+
+def convert_class_def(self: ClassDef) -> JsonDict:
     return {}
 
 
@@ -263,6 +303,8 @@ def convert_type(typ: Type) -> JsonDict:
         return convert_type_var_tuple_type(typ)
     elif isinstance(typ, Parameters):
         return convert_parameters(typ)
+    elif isinstance(typ, TypedDictType):
+        return convert_typeddict_type(typ)
     assert False, type(typ)
 
 
@@ -413,6 +455,16 @@ def convert_parameters(self: Parameters) -> JsonDict:
         "arg_names": self.arg_names,
         "variables": [convert_type(tv) for tv in self.variables],
         "imprecise_arg_kinds": self.imprecise_arg_kinds,
+    }
+
+
+def convert_typeddict_type(self: TypedDictType) -> JsonDict:
+    return {
+        ".class": "TypedDictType",
+        "items": [[n, convert_type(t)] for (n, t) in self.items.items()],
+        "required_keys": sorted(self.required_keys),
+        "readonly_keys": sorted(self.readonly_keys),
+        "fallback": convert_type(self.fallback),
     }
 
 
