@@ -1452,7 +1452,7 @@ class TestOverload:
 [case testNativeBufferFastPath]
 from typing import Final
 from mypy_extensions import u8
-from native_internal import (
+from librt.internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag
 )
@@ -1476,11 +1476,11 @@ def foo() -> None:
     u = read_tag(b)
 [out]
 def foo():
-    r0, b :: native_internal.Buffer
+    r0, b :: librt.internal.Buffer
     r1 :: str
     r2, r3, r4, r5, r6 :: None
     r7 :: bytes
-    r8 :: native_internal.Buffer
+    r8 :: librt.internal.Buffer
     r9, x :: str
     r10, y :: bool
     r11, z :: float
