@@ -1224,9 +1224,9 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
     ):
         return len(expr.node.final_value)
     elif isinstance(expr, ListComprehension):
-        return get_expr_length(expr.generator)
+        return get_expr_length(builder, expr.generator)
     elif isinstance(expr, GeneratorExpr) and not expr.condlists:
-        sequence_lengths = [get_expr_length(seq) for seq in expr.sequences]
+        sequence_lengths = [get_expr_length(builder, seq) for seq in expr.sequences]
         if None not in sequence_lengths:
             if len(sequence_lengths) == 1:
                 return sequence_lengths[0]
