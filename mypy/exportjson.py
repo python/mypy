@@ -19,7 +19,8 @@ from typing import Any, TypeAlias as _TypeAlias
 
 from mypy.types import (
     Type, get_proper_type, Instance, AnyType, UnionType, TupleType, CallableType,
-    Overloaded, TypeVarType, TypeAliasType, LiteralType
+    Overloaded, TypeVarType, TypeAliasType, LiteralType, NoneType, TypeType,
+    UninhabitedType, UnpackType, TypeVarTupleType, ParamSpecType, Parameters
 )
 from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, node_kinds, SymbolNode, FuncDef, TypeInfo,
@@ -236,6 +237,8 @@ def convert_type(typ: Type) -> JsonDict:
         return convert_instance(typ)
     elif isinstance(typ, AnyType):
         return convert_any_type(typ)
+    elif isinstance(typ, NoneType):
+        return convert_none_type(typ)
     elif isinstance(typ, UnionType):
         return convert_union_type(typ)
     elif isinstance(typ, TupleType):
@@ -248,6 +251,18 @@ def convert_type(typ: Type) -> JsonDict:
         return convert_literal_type(typ)
     elif isinstance(typ, TypeVarType):
         return convert_type_var_type(typ)
+    elif isinstance(typ, TypeType):
+        return convert_type_type(typ)
+    elif isinstance(typ, UninhabitedType):
+        return convert_uninhabited_type(typ)
+    elif isinstance(typ, UnpackType):
+        return convert_unpack_type(typ)
+    elif isinstance(typ, ParamSpecType):
+        return convert_param_spec_type(typ)
+    elif isinstance(typ, TypeVarTupleType):
+        return convert_type_var_tuple_type(typ)
+    elif isinstance(typ, Parameters):
+        return convert_parameters(typ)
     assert False, type(typ)
 
 
@@ -278,6 +293,10 @@ def convert_any_type(self: AnyType) -> JsonDict:
     }
 
 
+def convert_none_type(self: NoneType) -> JsonDict:
+    return {".class": "NoneType"}
+
+
 def convert_union_type(self: UnionType) -> JsonDict:
     return {
         ".class": "UnionType",
@@ -304,7 +323,18 @@ def convert_literal_type(self: LiteralType) -> JsonDict:
 
 
 def convert_type_var_type(self: TypeVarType) -> JsonDict:
-    return {}
+    assert not self.id.is_meta_var()
+    return {
+        ".class": "TypeVarType",
+        "name": self.name,
+        "fullname": self.fullname,
+        "id": self.id.raw_id,
+        "namespace": self.id.namespace,
+        "values": [convert_type(v) for v in self.values],
+        "upper_bound": convert_type(self.upper_bound),
+        "default": convert_type(self.default),
+        "variance": self.variance,
+    }
 
 
 def convert_callable_type(self: CallableType) -> JsonDict:
@@ -330,7 +360,60 @@ def convert_callable_type(self: CallableType) -> JsonDict:
 
 
 def convert_overloaded(self: Overloaded) -> JsonDict:
-    return {}
+    return {".class": "Overloaded", "items": [convert_type(t) for t in self.items]}
+
+
+def convert_type_type(self: TypeType) -> JsonDict:
+    return {".class": "TypeType", "item": convert_type(self.item)}
+
+
+def convert_uninhabited_type(self: UninhabitedType) -> JsonDict:
+    return {".class": "UninhabitedType"}
+
+
+def convert_unpack_type(self: UnpackType) -> JsonDict:
+    return {".class": "UnpackType", "type": convert_type(self.type)}
+
+
+def convert_param_spec_type(self: ParamSpecType) -> JsonDict:
+    assert not self.id.is_meta_var()
+    return {
+        ".class": "ParamSpecType",
+        "name": self.name,
+        "fullname": self.fullname,
+        "id": self.id.raw_id,
+        "namespace": self.id.namespace,
+        "flavor": self.flavor,
+        "upper_bound": convert_type(self.upper_bound),
+        "default": convert_type(self.default),
+        "prefix": convert_type(self.prefix),
+    }
+
+
+def convert_type_var_tuple_type(self: TypeVarTupleType) -> JsonDict:
+    assert not self.id.is_meta_var()
+    return {
+        ".class": "TypeVarTupleType",
+        "name": self.name,
+        "fullname": self.fullname,
+        "id": self.id.raw_id,
+        "namespace": self.id.namespace,
+        "upper_bound": convert_type(self.upper_bound),
+        "tuple_fallback": convert_type(self.tuple_fallback),
+        "default": convert_type(self.default),
+        "min_len": self.min_len,
+    }
+
+
+def convert_parameters(self: Parameters) -> JsonDict:
+    return {
+        ".class": "Parameters",
+        "arg_types": [convert_type(t) for t in self.arg_types],
+        "arg_kinds": [int(x.value) for x in self.arg_kinds],
+        "arg_names": self.arg_names,
+        "variables": [convert_type(tv) for tv in self.variables],
+        "imprecise_arg_kinds": self.imprecise_arg_kinds,
+    }
 
 
 def main() -> None:
