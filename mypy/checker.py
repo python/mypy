@@ -5019,12 +5019,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if_map, else_map = self.find_isinstance_check(e)
 
-                # XXX Issue a warning if condition is always False?
+                if codes.REDUNDANT_EXPR in self.options.enabled_error_codes:
+                    if if_map is None:
+                        self.msg.redundant_condition_in_if(False, e)
+                    if else_map is None:
+                        self.msg.redundant_condition_in_if(True, e)
+
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     self.push_type_map(if_map, from_assignment=False)
                     self.accept(b)
 
-                # XXX Issue a warning if condition is always True?
                 self.push_type_map(else_map, from_assignment=False)
 
             with self.binder.frame_context(can_skip=False, fall_through=2):

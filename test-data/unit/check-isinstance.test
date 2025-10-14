@@ -3033,3 +3033,35 @@ if isinstance(a, B):
     c = a
 
 [builtins fixtures/isinstance.pyi]
+
+[case testRedundantExpressionWarningsForIfStatements]
+# flags: --enable-error-code=redundant-expr
+from typing import Literal
+
+if True:  # E: If condition is always true
+    ...
+
+if False:  # E: If condition is always false
+    ...
+
+class W:
+    ...
+if W():
+    ...
+
+class X:
+    def __bool__(self) -> bool: ...
+if X():
+    ...
+
+class Y:
+    def __bool__(self) -> Literal[True]: ...
+if Y():  # E: If condition is always true
+    ...
+
+class Z:
+    def __bool__(self) -> Literal[False]: ...
+if Z():  # E: If condition is always false
+    ...
+
+[builtins fixtures/bool.pyi]
