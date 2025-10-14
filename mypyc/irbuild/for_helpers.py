@@ -1261,11 +1261,11 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
             )
             and len(expr.args) == 1
         ):
-            return get_expr_length(expr.args[0])
+            return get_expr_length(builder, expr.args[0])
         elif fullname == "builtins.map" and len(expr.args) == 2:
-            return get_expr_length(expr.args[1])
+            return get_expr_length(builder, expr.args[1])
         elif fullname == "builtins.zip" and expr.args:
-            arg_lengths = [get_expr_length(arg) for arg in expr.args]
+            arg_lengths = [get_expr_length(builder, arg) for arg in expr.args]
             if all(arg is not None for arg in arg_lengths):
                 return min(arg_lengths)  # type: ignore [type-var]
         elif fullname == "builtins.range" and all(isinstance(arg, IntExpr) for arg in expr.args):
