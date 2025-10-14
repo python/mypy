@@ -89,7 +89,7 @@ Functions
 .. code-block:: python
 
    from collections.abc import Iterator, Callable
-   from typing import Union, Optional, reveal_type
+   from typing import Union, Optional
 
    # This is how you annotate a function definition
    def stringify(num: int) -> str:
@@ -222,11 +222,12 @@ When you're puzzled or when things are complicated
 
 .. code-block:: python
 
-   from typing import Union, Any, Optional, TYPE_CHECKING, cast, reveal_type
+   from typing import Union, Any, Optional, TYPE_CHECKING, cast
 
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type().  Mypy will print an error
-   # message with the type; remove it again before running the code.
+   # message with the type; remove it again before running the code, or
+   # import reveal_type from typing_extensions or typing (on Python 3.11 and newer)
    reveal_type(1)  # Revealed type is "builtins.int"
 
    # If you initialize a variable with an empty container or "None"
