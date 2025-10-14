@@ -27,20 +27,22 @@ _TrapType: TypeAlias = type[DecimalException]
 __version__: Final[str]
 __libmpdec_version__: Final[str]
 
-ROUND_DOWN: Final[str]
-ROUND_HALF_UP: Final[str]
-ROUND_HALF_EVEN: Final[str]
-ROUND_CEILING: Final[str]
-ROUND_FLOOR: Final[str]
-ROUND_UP: Final[str]
-ROUND_HALF_DOWN: Final[str]
-ROUND_05UP: Final[str]
+ROUND_DOWN: Final = "ROUND_DOWN"
+ROUND_HALF_UP: Final = "ROUND_HALF_UP"
+ROUND_HALF_EVEN: Final = "ROUND_HALF_EVEN"
+ROUND_CEILING: Final = "ROUND_CEILING"
+ROUND_FLOOR: Final = "ROUND_FLOOR"
+ROUND_UP: Final = "ROUND_UP"
+ROUND_HALF_DOWN: Final = "ROUND_HALF_DOWN"
+ROUND_05UP: Final = "ROUND_05UP"
 HAVE_CONTEXTVAR: Final[bool]
 HAVE_THREADS: Final[bool]
 MAX_EMAX: Final[int]
 MAX_PREC: Final[int]
 MIN_EMIN: Final[int]
 MIN_ETINY: Final[int]
+if sys.version_info >= (3, 14):
+    IEEE_CONTEXT_MAX_BITS: Final[int]
 
 def setcontext(context: Context, /) -> None: ...
 def getcontext() -> Context: ...
@@ -49,18 +51,21 @@ if sys.version_info >= (3, 11):
     def localcontext(
         ctx: Context | None = None,
         *,
-        prec: int | None = ...,
-        rounding: str | None = ...,
-        Emin: int | None = ...,
-        Emax: int | None = ...,
-        capitals: int | None = ...,
-        clamp: int | None = ...,
-        traps: dict[_TrapType, bool] | None = ...,
-        flags: dict[_TrapType, bool] | None = ...,
+        prec: int | None = None,
+        rounding: str | None = None,
+        Emin: int | None = None,
+        Emax: int | None = None,
+        capitals: int | None = None,
+        clamp: int | None = None,
+        traps: dict[_TrapType, bool] | None = None,
+        flags: dict[_TrapType, bool] | None = None,
     ) -> _ContextManager: ...
 
 else:
     def localcontext(ctx: Context | None = None) -> _ContextManager: ...
+
+if sys.version_info >= (3, 14):
+    def IEEEContext(bits: int, /) -> Context: ...
 
 DefaultContext: Context
 BasicContext: Context

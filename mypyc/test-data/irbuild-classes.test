@@ -180,7 +180,7 @@ L0:
     o.x = r1; r2 = is_error
     return o
 
-[case testSubclass_toplevel]
+[case testSubclass_withgil_toplevel]
 from typing import TypeVar, Generic
 from mypy_extensions import trait
 T = TypeVar('T')
@@ -209,53 +209,56 @@ def __top_level__():
     r13 :: str
     r14 :: dict
     r15 :: str
-    r16, r17 :: object
-    r18 :: dict
-    r19 :: str
-    r20 :: i32
-    r21 :: bit
-    r22 :: object
-    r23 :: str
-    r24, r25 :: object
-    r26 :: bool
-    r27 :: str
-    r28 :: tuple
-    r29 :: i32
-    r30 :: bit
-    r31 :: dict
-    r32 :: str
-    r33 :: i32
-    r34 :: bit
-    r35 :: object
-    r36 :: str
-    r37, r38 :: object
-    r39 :: str
-    r40 :: tuple
-    r41 :: i32
-    r42 :: bit
-    r43 :: dict
-    r44 :: str
-    r45 :: i32
-    r46 :: bit
-    r47, r48 :: object
-    r49 :: dict
-    r50 :: str
-    r51 :: object
-    r52 :: dict
-    r53 :: str
-    r54, r55 :: object
-    r56 :: tuple
-    r57 :: str
-    r58, r59 :: object
-    r60 :: bool
-    r61, r62 :: str
-    r63 :: tuple
-    r64 :: i32
-    r65 :: bit
-    r66 :: dict
-    r67 :: str
-    r68 :: i32
-    r69 :: bit
+    r16 :: object
+    r17 :: object[1]
+    r18 :: object_ptr
+    r19 :: object
+    r20 :: dict
+    r21 :: str
+    r22 :: i32
+    r23 :: bit
+    r24 :: object
+    r25 :: str
+    r26, r27 :: object
+    r28 :: bool
+    r29 :: str
+    r30 :: tuple
+    r31 :: i32
+    r32 :: bit
+    r33 :: dict
+    r34 :: str
+    r35 :: i32
+    r36 :: bit
+    r37 :: object
+    r38 :: str
+    r39, r40 :: object
+    r41 :: str
+    r42 :: tuple
+    r43 :: i32
+    r44 :: bit
+    r45 :: dict
+    r46 :: str
+    r47 :: i32
+    r48 :: bit
+    r49, r50 :: object
+    r51 :: dict
+    r52 :: str
+    r53 :: object
+    r54 :: dict
+    r55 :: str
+    r56, r57 :: object
+    r58 :: tuple
+    r59 :: str
+    r60, r61 :: object
+    r62 :: bool
+    r63, r64 :: str
+    r65 :: tuple
+    r66 :: i32
+    r67 :: bit
+    r68 :: dict
+    r69 :: str
+    r70 :: i32
+    r71 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -280,62 +283,65 @@ L2:
     r14 = __main__.globals :: static
     r15 = 'TypeVar'
     r16 = CPyDict_GetItem(r14, r15)
-    r17 = PyObject_CallFunctionObjArgs(r16, r13, 0)
-    r18 = __main__.globals :: static
-    r19 = 'T'
-    r20 = CPyDict_SetItem(r18, r19, r17)
-    r21 = r20 >= 0 :: signed
-    r22 = <error> :: object
-    r23 = '__main__'
-    r24 = __main__.C_template :: type
-    r25 = CPyType_FromTemplate(r24, r22, r23)
-    r26 = C_trait_vtable_setup()
-    r27 = '__mypyc_attrs__'
-    r28 = PyTuple_Pack(0)
-    r29 = PyObject_SetAttr(r25, r27, r28)
-    r30 = r29 >= 0 :: signed
-    __main__.C = r25 :: type
-    r31 = __main__.globals :: static
-    r32 = 'C'
-    r33 = CPyDict_SetItem(r31, r32, r25)
-    r34 = r33 >= 0 :: signed
-    r35 = <error> :: object
-    r36 = '__main__'
-    r37 = __main__.S_template :: type
-    r38 = CPyType_FromTemplate(r37, r35, r36)
-    r39 = '__mypyc_attrs__'
-    r40 = PyTuple_Pack(0)
-    r41 = PyObject_SetAttr(r38, r39, r40)
-    r42 = r41 >= 0 :: signed
-    __main__.S = r38 :: type
-    r43 = __main__.globals :: static
-    r44 = 'S'
-    r45 = CPyDict_SetItem(r43, r44, r38)
-    r46 = r45 >= 0 :: signed
-    r47 = __main__.C :: type
-    r48 = __main__.S :: type
-    r49 = __main__.globals :: static
-    r50 = 'Generic'
-    r51 = CPyDict_GetItem(r49, r50)
-    r52 = __main__.globals :: static
-    r53 = 'T'
-    r54 = CPyDict_GetItem(r52, r53)
-    r55 = PyObject_GetItem(r51, r54)
-    r56 = PyTuple_Pack(3, r47, r48, r55)
-    r57 = '__main__'
-    r58 = __main__.D_template :: type
-    r59 = CPyType_FromTemplate(r58, r56, r57)
-    r60 = D_trait_vtable_setup()
-    r61 = '__mypyc_attrs__'
-    r62 = '__dict__'
-    r63 = PyTuple_Pack(1, r62)
-    r64 = PyObject_SetAttr(r59, r61, r63)
-    r65 = r64 >= 0 :: signed
-    __main__.D = r59 :: type
-    r66 = __main__.globals :: static
-    r67 = 'D'
-    r68 = CPyDict_SetItem(r66, r67, r59)
-    r69 = r68 >= 0 :: signed
+    r17 = [r13]
+    r18 = load_address r17
+    r19 = PyObject_Vectorcall(r16, r18, 1, 0)
+    keep_alive r13
+    r20 = __main__.globals :: static
+    r21 = 'T'
+    r22 = CPyDict_SetItem(r20, r21, r19)
+    r23 = r22 >= 0 :: signed
+    r24 = <error> :: object
+    r25 = '__main__'
+    r26 = __main__.C_template :: type
+    r27 = CPyType_FromTemplate(r26, r24, r25)
+    r28 = C_trait_vtable_setup()
+    r29 = '__mypyc_attrs__'
+    r30 = CPyTuple_LoadEmptyTupleConstant()
+    r31 = PyObject_SetAttr(r27, r29, r30)
+    r32 = r31 >= 0 :: signed
+    __main__.C = r27 :: type
+    r33 = __main__.globals :: static
+    r34 = 'C'
+    r35 = PyDict_SetItem(r33, r34, r27)
+    r36 = r35 >= 0 :: signed
+    r37 = <error> :: object
+    r38 = '__main__'
+    r39 = __main__.S_template :: type
+    r40 = CPyType_FromTemplate(r39, r37, r38)
+    r41 = '__mypyc_attrs__'
+    r42 = CPyTuple_LoadEmptyTupleConstant()
+    r43 = PyObject_SetAttr(r40, r41, r42)
+    r44 = r43 >= 0 :: signed
+    __main__.S = r40 :: type
+    r45 = __main__.globals :: static
+    r46 = 'S'
+    r47 = PyDict_SetItem(r45, r46, r40)
+    r48 = r47 >= 0 :: signed
+    r49 = __main__.C :: type
+    r50 = __main__.S :: type
+    r51 = __main__.globals :: static
+    r52 = 'Generic'
+    r53 = CPyDict_GetItem(r51, r52)
+    r54 = __main__.globals :: static
+    r55 = 'T'
+    r56 = CPyDict_GetItem(r54, r55)
+    r57 = PyObject_GetItem(r53, r56)
+    r58 = PyTuple_Pack(3, r49, r50, r57)
+    r59 = '__main__'
+    r60 = __main__.D_template :: type
+    r61 = CPyType_FromTemplate(r60, r58, r59)
+    r62 = D_trait_vtable_setup()
+    r63 = '__mypyc_attrs__'
+    r64 = '__dict__'
+    r65 = PyTuple_Pack(1, r64)
+    r66 = PyObject_SetAttr(r61, r63, r65)
+    r67 = r66 >= 0 :: signed
+    __main__.D = r61 :: type
+    r68 = __main__.globals :: static
+    r69 = 'D'
+    r70 = PyDict_SetItem(r68, r69, r61)
+    r71 = r70 >= 0 :: signed
     return 1
 
 [case testIsInstance]
@@ -357,7 +363,7 @@ def f(x):
 L0:
     r0 = __main__.B :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -396,7 +402,7 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -406,7 +412,7 @@ L1:
 L2:
     r5 = __main__.B :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6 :: builtins.object*
+    r7 = borrow load_mem r6 :: builtins.object*
     keep_alive x
     r8 = r7 == r5
     r4 = r8
@@ -443,7 +449,7 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -453,7 +459,7 @@ L1:
 L2:
     r5 = __main__.R :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6 :: builtins.object*
+    r7 = borrow load_mem r6 :: builtins.object*
     keep_alive x
     r8 = r7 == r5
     r4 = r8
@@ -494,7 +500,7 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -504,7 +510,7 @@ L1:
 L2:
     r5 = __main__.C :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6 :: builtins.object*
+    r7 = borrow load_mem r6 :: builtins.object*
     keep_alive x
     r8 = r7 == r5
     r4 = r8
@@ -600,7 +606,7 @@ L0:
     r3 = CPyTagged_Add(r0, r2)
     return r3
 
-[case testCallClassMethodViaCls]
+[case testCallClassMethodViaCls_64bit]
 class C:
     @classmethod
     def f(cls, x: int) -> int:
@@ -641,14 +647,20 @@ def D.f(cls, x):
     cls :: object
     x :: int
     r0 :: str
-    r1, r2 :: object
-    r3 :: int
+    r1 :: object
+    r2 :: object[2]
+    r3 :: object_ptr
+    r4 :: object
+    r5 :: int
 L0:
     r0 = 'g'
     r1 = box(int, x)
-    r2 = CPyObject_CallMethodObjArgs(cls, r0, r1, 0)
-    r3 = unbox(int, r2)
-    return r3
+    r2 = [cls, r1]
+    r3 = load_address r2
+    r4 = PyObject_VectorcallMethod(r0, r3, 9223372036854775810, 0)
+    keep_alive cls, r1
+    r5 = unbox(int, r4)
+    return r5
 def D.g(cls, x):
     cls :: object
     x :: int
@@ -747,18 +759,24 @@ def DictSubclass.__init__(self):
     self :: dict
     r0 :: object
     r1 :: str
-    r2, r3, r4 :: object
-    r5 :: str
-    r6, r7 :: object
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
 L0:
     r0 = builtins :: module
     r1 = 'super'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = __main__.DictSubclass :: type
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, self, 0)
-    r5 = '__init__'
-    r6 = CPyObject_GetAttr(r4, r5)
-    r7 = PyObject_CallFunctionObjArgs(r6, 0)
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__init__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
     return 1
 
 [case testClassVariable]
@@ -836,22 +854,42 @@ def Base.__ne__(__mypyc_self__, rhs):
     __mypyc_self__ :: __main__.Base
     rhs, r0, r1 :: object
     r2 :: bit
-    r3 :: i32
-    r4 :: bit
-    r5 :: bool
+    r3 :: object
+    r4, r5 :: bit
     r6 :: object
+    r7 :: bit
+    r8 :: i32
+    r9 :: bit
+    r10 :: bool
+    r11 :: object
 L0:
     r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
-    if r2 goto L2 else goto L1 :: bool
+    if r2 goto L7 else goto L1 :: bool
 L1:
-    r3 = PyObject_Not(r0)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: i32 to builtins.bool
-    r6 = box(bool, r5)
-    return r6
+    r3 = load_global Py_True :: static
+    r4 = r0 == r3
+    if r4 goto L2 else goto L3 :: bool
 L2:
+    r5 = 0
+    goto L6
+L3:
+    r6 = load_global Py_False :: static
+    r7 = r0 == r6
+    if r7 goto L4 else goto L5 :: bool
+L4:
+    r5 = 1
+    goto L6
+L5:
+    r8 = PyObject_Not(r0)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: i32 to builtins.bool
+    r5 = r10
+L6:
+    r11 = box(bit, r5)
+    return r11
+L7:
     return r1
 def Derived.__eq__(self, other):
     self :: __main__.Derived
@@ -892,7 +930,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 
-[case testEqDefinedLater]
+[case testEqDefinedLater_64bit]
 def f(a: 'Base', b: 'Base') -> bool:
     return a == b
 
@@ -939,13 +977,18 @@ L0:
 def fOpt2(a, b):
     a, b :: __main__.Derived
     r0 :: str
-    r1 :: object
-    r2 :: bool
+    r1 :: object[2]
+    r2 :: object_ptr
+    r3 :: object
+    r4 :: bool
 L0:
     r0 = '__ne__'
-    r1 = CPyObject_CallMethodObjArgs(a, r0, b, 0)
-    r2 = unbox(bool, r1)
-    return r2
+    r1 = [a, b]
+    r2 = load_address r1
+    r3 = PyObject_VectorcallMethod(r0, r2, 9223372036854775810, 0)
+    keep_alive a, b
+    r4 = unbox(bool, r3)
+    return r4
 def Derived.__eq__(self, other):
     self :: __main__.Derived
     other, r0 :: object
@@ -956,22 +999,42 @@ def Derived.__ne__(__mypyc_self__, rhs):
     __mypyc_self__ :: __main__.Derived
     rhs, r0, r1 :: object
     r2 :: bit
-    r3 :: i32
-    r4 :: bit
-    r5 :: bool
+    r3 :: object
+    r4, r5 :: bit
     r6 :: object
+    r7 :: bit
+    r8 :: i32
+    r9 :: bit
+    r10 :: bool
+    r11 :: object
 L0:
     r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
-    if r2 goto L2 else goto L1 :: bool
+    if r2 goto L7 else goto L1 :: bool
 L1:
-    r3 = PyObject_Not(r0)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: i32 to builtins.bool
-    r6 = box(bool, r5)
-    return r6
+    r3 = load_global Py_True :: static
+    r4 = r0 == r3
+    if r4 goto L2 else goto L3 :: bool
 L2:
+    r5 = 0
+    goto L6
+L3:
+    r6 = load_global Py_False :: static
+    r7 = r0 == r6
+    if r7 goto L4 else goto L5 :: bool
+L4:
+    r5 = 1
+    goto L6
+L5:
+    r8 = PyObject_Not(r0)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: i32 to builtins.bool
+    r5 = r10
+L6:
+    r11 = box(bit, r5)
+    return r11
+L7:
     return r1
 
 [case testDefaultVars]
@@ -1312,3 +1375,1480 @@ def outer():
 if True:
     class OtherInner:  # E: Nested class definitions not supported
         pass
+
+[case testEnumClassAlias]
+from enum import Enum
+from typing import Literal, Union
+
+class SomeEnum(Enum):
+    AVALUE = "a"
+
+ALIAS = Literal[SomeEnum.AVALUE]
+ALIAS2 = Union[Literal[SomeEnum.AVALUE], None]
+
+[case testMypycAttrNativeClassErrors]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class AnnontatedNonExtensionClass:
+    pass
+
+@mypyc_attr(native_class=False)
+class DerivedExplicitNonNativeClass(AnnontatedNonExtensionClass):
+    pass
+
+
+def decorator(cls):
+    return cls
+
+@mypyc_attr(native_class=True)
+@decorator
+class NonNativeClassContradiction():  # E: Class is marked as native_class=True but it can't be a native class. Classes that have decorators other than supported decorators can't be native classes.
+    pass
+
+
+@mypyc_attr(native_class="yes")
+class BadUse():  # E: native_class must be used with True or False only
+    pass
+
+[case testMypycAttrNativeClassMetaError]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=True)
+class M(type):  # E: Inheriting from most builtin types is unimplemented \
+                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+@mypyc_attr(native_class=True)
+class A(metaclass=M):  # E: Class is marked as native_class=True but it can't be a native class. Classes with a metaclass other than ABCMeta, TypingMeta or GenericMeta can't be native classes.
+    pass
+
+[case testReservedName]
+from typing import Any, overload
+
+def decorator(cls):
+    return cls
+
+class TestMethod:
+    def __mypyc_generator_helper__(self) -> None:  # E: Method name "__mypyc_generator_helper__" is reserved for mypyc internal use
+        pass
+
+class TestDecorator:
+    @decorator  # E: Method name "__mypyc_generator_helper__" is reserved for mypyc internal use
+    def __mypyc_generator_helper__(self) -> None:
+        pass
+
+class TestOverload:
+    @overload # E: Method name "__mypyc_generator_helper__" is reserved for mypyc internal use
+    def __mypyc_generator_helper__(self, x: int) -> int: ...
+
+    @overload
+    def __mypyc_generator_helper__(self, x: str) -> str: ...
+
+    def __mypyc_generator_helper__(self, x: Any) -> Any:
+        return x
+
+[case testNativeBufferFastPath]
+from typing import Final
+from mypy_extensions import u8
+from librt.internal import (
+    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
+    write_int, read_int, write_tag, read_tag
+)
+
+Tag = u8
+TAG: Final[Tag] = 1
+
+def foo() -> None:
+    b = Buffer()
+    write_str(b, "foo")
+    write_bool(b, True)
+    write_float(b, 0.1)
+    write_int(b, 1)
+    write_tag(b, TAG)
+
+    b = Buffer(b.getvalue())
+    x = read_str(b)
+    y = read_bool(b)
+    z = read_float(b)
+    t = read_int(b)
+    u = read_tag(b)
+[out]
+def foo():
+    r0, b :: librt.internal.Buffer
+    r1 :: str
+    r2, r3, r4, r5, r6 :: None
+    r7 :: bytes
+    r8 :: librt.internal.Buffer
+    r9, x :: str
+    r10, y :: bool
+    r11, z :: float
+    r12, t :: int
+    r13, u :: u8
+L0:
+    r0 = Buffer_internal_empty()
+    b = r0
+    r1 = 'foo'
+    r2 = write_str_internal(b, r1)
+    r3 = write_bool_internal(b, 1)
+    r4 = write_float_internal(b, 0.1)
+    r5 = write_int_internal(b, 2)
+    r6 = write_tag_internal(b, 1)
+    r7 = Buffer_getvalue_internal(b)
+    r8 = Buffer_internal(r7)
+    b = r8
+    r9 = read_str_internal(b)
+    x = r9
+    r10 = read_bool_internal(b)
+    y = r10
+    r11 = read_float_internal(b)
+    z = r11
+    r12 = read_int_internal(b)
+    t = r12
+    r13 = read_tag_internal(b)
+    u = r13
+    return 1
+
+[case testEnumFastPath]
+from enum import Enum
+
+def test(e: E) -> bool:
+    return e.is_one()
+
+class E(Enum):
+    ONE = 1
+    TWO = 2
+
+    def is_one(self) -> bool:
+        return self == E.ONE
+[out]
+def test(e):
+    e :: __main__.E
+    r0 :: bool
+L0:
+    r0 = e.__mypyc_fast_is_one()
+    return r0
+def is_one_E_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def is_one_E_obj.__call__(__mypyc_self__, self):
+    __mypyc_self__ :: __main__.is_one_E_obj
+    self, r0 :: __main__.E
+    r1 :: bool
+    r2 :: bit
+L0:
+    r0 = __main__.E.ONE :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "ONE" was not set')
+    unreachable
+L2:
+    r2 = self == r0
+    return r2
+def E.__mypyc_fast_is_one(self):
+    self, r0 :: __main__.E
+    r1 :: bool
+    r2 :: bit
+L0:
+    r0 = __main__.E.ONE :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "ONE" was not set')
+    unreachable
+L2:
+    r2 = self == r0
+    return r2
+
+[case testTypeObjectName_python3_11]
+from typing import Any
+
+class C: pass
+class D(C): pass
+
+def n1(t: type[object]) -> str:
+    return t.__name__
+
+def n2(t: Any) -> str:
+    return t.__name__
+
+def n3() -> str:
+    return C.__name__
+
+def n4(t: type[C]) -> str:
+    return t.__name__
+[out]
+def n1(t):
+    t, r0 :: object
+    r1 :: str
+L0:
+    r0 = CPy_GetName(t)
+    r1 = cast(str, r0)
+    return r1
+def n2(t):
+    t, r0 :: object
+    r1 :: str
+L0:
+    r0 = CPy_GetName(t)
+    r1 = cast(str, r0)
+    return r1
+def n3():
+    r0, r1 :: object
+    r2 :: str
+L0:
+    r0 = __main__.C :: type
+    r1 = CPy_GetName(r0)
+    r2 = cast(str, r1)
+    return r2
+def n4(t):
+    t, r0 :: object
+    r1 :: str
+L0:
+    r0 = CPy_GetName(t)
+    r1 = cast(str, r0)
+    return r1
+
+[case testTypeOfObject]
+class C: pass
+class D(C): pass
+
+def generic_type(x: object) -> type[object]:
+    return type(x)
+
+def generic_class(x: object) -> type[object]:
+    return x.__class__
+
+def native_type(x: C) -> type[object]:
+    return type(x)
+
+def native_class(x: C) -> type[object]:
+    return x.__class__
+[out]
+def generic_type(x):
+    x, r0 :: object
+L0:
+    r0 = CPy_TYPE(x)
+    return r0
+def generic_class(x):
+    x :: object
+    r0 :: str
+    r1 :: object
+L0:
+    r0 = '__class__'
+    r1 = CPyObject_GetAttr(x, r0)
+    return r1
+def native_type(x):
+    x :: __main__.C
+    r0 :: object
+L0:
+    r0 = CPy_TYPE(x)
+    return r0
+def native_class(x):
+    x :: __main__.C
+    r0 :: object
+L0:
+    r0 = CPy_TYPE(x)
+    return r0
+
+[case testDunderNew]
+from __future__ import annotations
+from typing import Any
+
+class Test:
+    val: int
+
+    def __new__(cls, val: int) -> Test:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+def fn() -> Test:
+    return Test.__new__(Test, 42)
+
+class NewClassMethod:
+    val: int
+
+    @classmethod
+    def __new__(cls, val: int) -> NewClassMethod:
+        obj = super().__new__(cls)
+        obj.val = val
+        return obj
+
+def fn2() -> NewClassMethod:
+    return NewClassMethod.__new__(42)
+
+class NotTransformed:
+    def __new__(cls, val: int) -> Any:
+        return super().__new__(str)
+
+    def factory(cls: Any, val: int) -> Any:
+        cls = str
+        return super().__new__(cls)
+
+[out]
+def Test.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.Test
+    r1 :: bool
+L0:
+    r0 = __mypyc__Test_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn():
+    r0 :: object
+    r1 :: __main__.Test
+L0:
+    r0 = __main__.Test :: type
+    r1 = Test.__new__(r0, 84)
+    return r1
+def NewClassMethod.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.NewClassMethod
+    r1 :: bool
+L0:
+    r0 = __mypyc__NewClassMethod_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn2():
+    r0 :: object
+    r1 :: __main__.NewClassMethod
+L0:
+    r0 = __main__.NewClassMethod :: type
+    r1 = NewClassMethod.__new__(r0, 84)
+    return r1
+def NotTransformed.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
+    r10 :: object[1]
+    r11 :: object_ptr
+    r12 :: object
+    r13 :: str
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.NotTransformed :: type
+    r4 = [r3, cls]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, cls
+    r7 = '__new__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = load_address PyUnicode_Type
+    r10 = [r9]
+    r11 = load_address r10
+    r12 = PyObject_Vectorcall(r8, r11, 1, 0)
+    keep_alive r9
+    r13 = cast(str, r12)
+    return r13
+def NotTransformed.factory(cls, val):
+    cls :: object
+    val :: int
+    r0, r1 :: object
+    r2 :: str
+    r3, r4 :: object
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: object[1]
+    r11 :: object_ptr
+    r12 :: object
+L0:
+    r0 = load_address PyUnicode_Type
+    cls = r0
+    r1 = builtins :: module
+    r2 = 'super'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = __main__.NotTransformed :: type
+    r5 = [r4, cls]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r3, r6, 2, 0)
+    keep_alive r4, cls
+    r8 = '__new__'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = [cls]
+    r11 = load_address r10
+    r12 = PyObject_Vectorcall(r9, r11, 1, 0)
+    keep_alive cls
+    return r12
+
+[case testObjectDunderNew_64bit]
+from __future__ import annotations
+from mypy_extensions import mypyc_attr
+from typing import Any
+
+class Test:
+    val: int
+
+    def __new__(cls, val: int) -> Test:
+        obj = object.__new__(cls)
+        obj.val = val
+        return obj
+
+def fn() -> Test:
+    return Test.__new__(Test, 42)
+
+class NewClassMethod:
+    val: int
+
+    @classmethod
+    def __new__(cls, val: int) -> NewClassMethod:
+        obj = object.__new__(cls)
+        obj.val = val
+        return obj
+
+def fn2() -> NewClassMethod:
+    return NewClassMethod.__new__(42)
+
+class NotTransformed:
+    def __new__(cls, val: int) -> Any:
+        return object.__new__(str)
+
+    def factory(cls: Any, val: int) -> Any:
+        cls = str
+        return object.__new__(cls)
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __new__(cls: Any) -> Any:
+        cls = str
+        return cls("str")
+
+class InheritsPython(dict):
+    def __new__(cls: Any) -> Any:
+        cls = dict
+        return cls({})
+
+class ObjectNewOutsideDunderNew:
+    def __init__(self) -> None:
+        object.__new__(ObjectNewOutsideDunderNew)
+
+def object_new_outside_class() -> None:
+    object.__new__(Test)
+
+[out]
+def Test.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.Test
+    r1 :: bool
+L0:
+    r0 = __mypyc__Test_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn():
+    r0 :: object
+    r1 :: __main__.Test
+L0:
+    r0 = __main__.Test :: type
+    r1 = Test.__new__(r0, 84)
+    return r1
+def NewClassMethod.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0, obj :: __main__.NewClassMethod
+    r1 :: bool
+L0:
+    r0 = __mypyc__NewClassMethod_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def fn2():
+    r0 :: object
+    r1 :: __main__.NewClassMethod
+L0:
+    r0 = __main__.NewClassMethod :: type
+    r1 = NewClassMethod.__new__(r0, 84)
+    return r1
+def NotTransformed.__new__(cls, val):
+    cls :: object
+    val :: int
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: str
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+    r8 :: str
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = load_address PyUnicode_Type
+    r4 = '__new__'
+    r5 = [r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
+    keep_alive r2, r3
+    r8 = cast(str, r7)
+    return r8
+def NotTransformed.factory(cls, val):
+    cls :: object
+    val :: int
+    r0, r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+L0:
+    r0 = load_address PyUnicode_Type
+    cls = r0
+    r1 = builtins :: module
+    r2 = 'object'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = '__new__'
+    r5 = [r3, cls]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
+    keep_alive r3, cls
+    return r7
+def __new___NonNative_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def __new___NonNative_obj.__call__(__mypyc_self__, cls):
+    __mypyc_self__ :: __main__.__new___NonNative_obj
+    cls, r0 :: object
+    r1 :: str
+    r2 :: object[1]
+    r3 :: object_ptr
+    r4 :: object
+L0:
+    r0 = load_address PyUnicode_Type
+    cls = r0
+    r1 = 'str'
+    r2 = [r1]
+    r3 = load_address r2
+    r4 = PyObject_Vectorcall(cls, r3, 1, 0)
+    keep_alive r1
+    return r4
+def InheritsPython.__new__(cls):
+    cls, r0 :: object
+    r1 :: dict
+    r2 :: object[1]
+    r3 :: object_ptr
+    r4 :: object
+L0:
+    r0 = load_address PyDict_Type
+    cls = r0
+    r1 = PyDict_New()
+    r2 = [r1]
+    r3 = load_address r2
+    r4 = PyObject_Vectorcall(cls, r3, 1, 0)
+    keep_alive r1
+    return r4
+def ObjectNewOutsideDunderNew.__init__(self):
+    self :: __main__.ObjectNewOutsideDunderNew
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: str
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.ObjectNewOutsideDunderNew :: type
+    r4 = '__new__'
+    r5 = [r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
+    keep_alive r2, r3
+    return 1
+def object_new_outside_class():
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: str
+    r5 :: object[2]
+    r6 :: object_ptr
+    r7 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.Test :: type
+    r4 = '__new__'
+    r5 = [r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
+    keep_alive r2, r3
+    return 1
+
+[case testUnsupportedDunderNew]
+from __future__ import annotations
+from mypy_extensions import mypyc_attr
+from typing import Any
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __new__(cls) -> NonNative:
+        return super().__new__(cls)  # E: "object.__new__()" not supported for non-extension classes
+
+class InheritsPython(dict):
+    def __new__(cls) -> InheritsPython:
+        return super().__new__(cls)  # E: "object.__new__()" not supported for classes inheriting from non-native classes
+
+@mypyc_attr(native_class=False)
+class NonNativeObjectNew:
+    def __new__(cls) -> NonNativeObjectNew:
+        return object.__new__(cls)  # E: "object.__new__()" not supported for non-extension classes
+
+class InheritsPythonObjectNew(dict):
+    def __new__(cls) -> InheritsPythonObjectNew:
+        return object.__new__(cls)  # E: "object.__new__()" not supported for classes inheriting from non-native classes
+
+class ClsAssignment:
+    def __new__(cls: Any) -> Any:
+        cls = str  # E: Assignment to argument "cls" in "__new__" method unsupported
+        return super().__new__(cls)
+
+class ClsTupleAssignment:
+    def __new__(class_i_want: Any, val: int) -> Any:
+        class_i_want, val = dict, 1  # E: Assignment to argument "class_i_want" in "__new__" method unsupported
+        return object.__new__(class_i_want)
+
+class ClsListAssignment:
+    def __new__(cls: Any, val: str) -> Any:
+        [cls, val] = [object, "object"]  # E: Assignment to argument "cls" in "__new__" method unsupported
+        return object.__new__(cls)
+
+class ClsNestedAssignment:
+    def __new__(cls: Any, val1: str, val2: int) -> Any:
+        [val1, [val2, cls]] = ["val1", [2, int]]  # E: Assignment to argument "cls" in "__new__" method unsupported
+        return object.__new__(cls)
+
+class WrongNumberOfArgs:
+    def __new__(cls):
+        return super().__new__()  # E: "object.__new__()" supported only with 1 argument, got 0
+
+class WrongNumberOfArgsObjectNew:
+    def __new__(cls):
+        return object.__new__(cls, 1)  # E: "object.__new__()" supported only with 1 argument, got 2
+
+[case testClassWithFreeList]
+from mypy_extensions import mypyc_attr, trait
+
+@mypyc_attr(free_list_len=1)
+class UsesFreeList:
+    pass
+
+@mypyc_attr(free_list_len=None)
+class NoFreeList:
+    pass
+
+@mypyc_attr(free_list_len=2)  # E: Unsupported value for "free_list_len": 2
+class FreeListError:
+    pass
+
+@trait
+@mypyc_attr(free_list_len=1)  # E: "free_list_len" can't be used with traits
+class NonNative:
+    pass
+
+@mypyc_attr(free_list_len=1, allow_interpreted_subclasses=True)  # E: "free_list_len" can't be used in a class that allows interpreted subclasses
+class InterpSub:
+    pass
+
+[case testUnsupportedGetAttr]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class AllowsInterpreted:
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "AllowsInterpreted" because it allows interpreted subclasses
+        return 0
+
+class InheritsInterpreted(dict):
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "InheritsInterpreted" because it inherits from a non-native class
+        return 0
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    pass
+
+class InheritsNonNative(NonNative):
+    def __getattr__(self, attr: str) -> object:  # E: "__getattr__" not supported in class "InheritsNonNative" because it inherits from a non-native class
+        return 0
+
+[case testGetAttr]
+from typing import ClassVar
+
+class GetAttr:
+    class_var = "x"
+    class_var_annotated: ClassVar[int] = 99
+
+    def __init__(self, regular_attr: int):
+        self.regular_attr = regular_attr
+
+    def __getattr__(self, attr: str) -> object:
+        return attr
+
+    def method(self) -> int:
+        return 0
+
+def test_getattr() -> list[object]:
+    i = GetAttr(42)
+    one = i.one
+    two = i.regular_attr
+    three = i.class_var
+    four = i.class_var_annotated
+    five = i.method()
+    return [one, two, three, four, five]
+
+[typing fixtures/typing-full.pyi]
+[out]
+def GetAttr.__init__(self, regular_attr):
+    self :: __main__.GetAttr
+    regular_attr :: int
+L0:
+    self.regular_attr = regular_attr
+    return 1
+def GetAttr.__getattr__(self, attr):
+    self :: __main__.GetAttr
+    attr :: str
+L0:
+    return attr
+def GetAttr.__getattr____wrapper(__mypyc_self__, attr):
+    __mypyc_self__ :: __main__.GetAttr
+    attr, r0 :: object
+    r1 :: bit
+    r2 :: str
+    r3 :: object
+L0:
+    r0 = CPyObject_GenericGetAttr(__mypyc_self__, attr)
+    r1 = r0 != 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return r0
+L2:
+    r2 = cast(str, attr)
+    r3 = __mypyc_self__.__getattr__(r2)
+    return r3
+def GetAttr.method(self):
+    self :: __main__.GetAttr
+L0:
+    return 0
+def GetAttr.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.GetAttr
+    r0 :: str
+L0:
+    r0 = 'x'
+    __mypyc_self__.class_var = r0
+    return 1
+def test_getattr():
+    r0, i :: __main__.GetAttr
+    r1 :: str
+    r2, one :: object
+    r3, two :: int
+    r4, three, r5 :: str
+    r6 :: object
+    r7, four, r8, five :: int
+    r9 :: list
+    r10, r11, r12 :: object
+    r13 :: ptr
+L0:
+    r0 = GetAttr(84)
+    i = r0
+    r1 = 'one'
+    r2 = CPyObject_GetAttr(i, r1)
+    one = r2
+    r3 = i.regular_attr
+    two = r3
+    r4 = i.class_var
+    three = r4
+    r5 = 'class_var_annotated'
+    r6 = CPyObject_GetAttr(i, r5)
+    r7 = unbox(int, r6)
+    four = r7
+    r8 = i.method()
+    five = r8
+    r9 = PyList_New(5)
+    r10 = box(int, two)
+    r11 = box(int, four)
+    r12 = box(int, five)
+    r13 = list_items r9
+    buf_init_item r13, 0, one
+    buf_init_item r13, 1, r10
+    buf_init_item r13, 2, three
+    buf_init_item r13, 3, r11
+    buf_init_item r13, 4, r12
+    keep_alive r9
+    return r9
+
+[case testUnsupportedSetAttr]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class AllowsInterpreted:
+    def __setattr__(self, attr: str, val: object) -> None:  # E: "__setattr__" not supported in class "AllowsInterpreted" because it allows interpreted subclasses
+        pass
+
+    def __delattr__(self, attr: str) -> None:
+        pass
+
+class InheritsInterpreted(dict):
+    def __setattr__(self, attr: str, val: object) -> None:  # E: "__setattr__" not supported in class "InheritsInterpreted" because it inherits from a non-native class
+        pass
+
+    def __delattr__(self, attr: str) -> None:
+        pass
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __setattr__(self, attr: str, val: object) -> None:
+        pass
+
+class InheritsNonNative(NonNative):
+    def __setattr__(self, attr: str, val: object) -> None:  # E: "__setattr__" not supported in class "InheritsNonNative" because it inherits from a non-native class
+        pass
+
+    def __delattr__(self, attr: str) -> None:
+        pass
+
+[case testUnsupportedDelAttr]
+class SetAttr:
+    def __setattr__(self, attr: str, val: object) -> None:
+        pass
+
+class NoSetAttr:
+    def __delattr__(self, attr: str) -> None:  # E: "__delattr__" supported only in classes that also override "__setattr__", or inherit from a native class that overrides it.
+        pass
+
+class InheritedSetAttr(SetAttr):
+    def __delattr__(self, attr: str) -> None:
+        pass
+
+[case testSetAttr]
+from typing import ClassVar
+class SetAttr:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object], new_attr: str, new_val: object) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        object.__setattr__(self, "regular_attr", regular_attr)
+
+        super().__setattr__(new_attr, new_val)
+        object.__setattr__(self, new_attr, new_val)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+def test(attr: str, val: object) -> None:
+    i = SetAttr(99, {}, attr, val)
+    i.regular_attr = 100
+    i.new_attr = 101
+
+    object.__setattr__(i, "regular_attr", 11)
+    object.__setattr__(i, attr, val)
+
+[typing fixtures/typing-full.pyi]
+[out]
+def SetAttr.__init__(self, regular_attr, extra_attrs, new_attr, new_val):
+    self :: __main__.SetAttr
+    regular_attr :: int
+    extra_attrs :: dict
+    new_attr :: str
+    new_val :: object
+    r0 :: i32
+    r1 :: bit
+    r2 :: i32
+    r3 :: bit
+L0:
+    self._attributes = extra_attrs
+    self.regular_attr = regular_attr
+    r0 = CPyObject_GenericSetAttr(self, new_attr, new_val)
+    r1 = r0 >= 0 :: signed
+    r2 = CPyObject_GenericSetAttr(self, new_attr, new_val)
+    r3 = r2 >= 0 :: signed
+    return 1
+def SetAttr.__setattr__(self, key, val):
+    self :: __main__.SetAttr
+    key :: str
+    val :: object
+    r0 :: str
+    r1 :: bool
+    r2 :: int
+    r3 :: bool
+    r4 :: str
+    r5 :: bool
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
+    r10 :: dict
+    r11 :: i32
+    r12 :: bit
+L0:
+    r0 = 'regular_attr'
+    r1 = CPyStr_Equal(key, r0)
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = unbox(int, val)
+    self.regular_attr = r2; r3 = is_error
+    goto L6
+L2:
+    r4 = 'class_var'
+    r5 = CPyStr_Equal(key, r4)
+    if r5 goto L3 else goto L4 :: bool
+L3:
+    r6 = builtins :: module
+    r7 = 'AttributeError'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
+    CPy_Raise(r9)
+    unreachable
+L4:
+    r10 = self._attributes
+    r11 = CPyDict_SetItem(r10, key, val)
+    r12 = r11 >= 0 :: signed
+L5:
+L6:
+    return 1
+def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.SetAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: i32
+    r2 :: bit
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = CPyObject_GenericSetAttr(__mypyc_self__, attr, 0)
+    r2 = r1 >= 0 :: signed
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+def test(attr, val):
+    attr :: str
+    val :: object
+    r0 :: dict
+    r1, i :: __main__.SetAttr
+    r2 :: str
+    r3 :: object
+    r4 :: None
+    r5 :: str
+    r6 :: object
+    r7 :: i32
+    r8 :: bit
+    r9 :: str
+    r10 :: object
+    r11 :: i32
+    r12 :: bit
+    r13 :: i32
+    r14 :: bit
+L0:
+    r0 = PyDict_New()
+    r1 = SetAttr(198, r0, attr, val)
+    i = r1
+    r2 = 'regular_attr'
+    r3 = object 100
+    r4 = i.__setattr__(r2, r3)
+    r5 = 'new_attr'
+    r6 = object 101
+    r7 = PyObject_SetAttr(i, r5, r6)
+    r8 = r7 >= 0 :: signed
+    r9 = 'regular_attr'
+    r10 = object 11
+    r11 = CPyObject_GenericSetAttr(i, r9, r10)
+    r12 = r11 >= 0 :: signed
+    r13 = CPyObject_GenericSetAttr(i, attr, val)
+    r14 = r13 >= 0 :: signed
+    return 1
+
+[case testSetAttrAndDelAttr]
+from typing import ClassVar
+class SetAttr:
+    _attributes: dict[str, object]
+    regular_attr: int
+    class_var: ClassVar[str] = "x"
+
+    def __init__(self, regular_attr: int, extra_attrs: dict[str, object], new_attr: str, new_val: object) -> None:
+        super().__setattr__("_attributes", extra_attrs)
+        object.__setattr__(self, "regular_attr", regular_attr)
+
+        super().__setattr__(new_attr, new_val)
+        object.__setattr__(self, new_attr, new_val)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        if key == "regular_attr":
+            super().__setattr__("regular_attr", val)
+        elif key == "class_var":
+            raise AttributeError()
+        else:
+            self._attributes[key] = val
+
+    def __delattr__(self, key: str) -> None:
+        del self._attributes[key]
+
+[typing fixtures/typing-full.pyi]
+[out]
+def SetAttr.__init__(self, regular_attr, extra_attrs, new_attr, new_val):
+    self :: __main__.SetAttr
+    regular_attr :: int
+    extra_attrs :: dict
+    new_attr :: str
+    new_val :: object
+    r0 :: i32
+    r1 :: bit
+    r2 :: i32
+    r3 :: bit
+L0:
+    self._attributes = extra_attrs
+    self.regular_attr = regular_attr
+    r0 = CPyObject_GenericSetAttr(self, new_attr, new_val)
+    r1 = r0 >= 0 :: signed
+    r2 = CPyObject_GenericSetAttr(self, new_attr, new_val)
+    r3 = r2 >= 0 :: signed
+    return 1
+def SetAttr.__setattr__(self, key, val):
+    self :: __main__.SetAttr
+    key :: str
+    val :: object
+    r0 :: str
+    r1 :: bool
+    r2 :: int
+    r3 :: bool
+    r4 :: str
+    r5 :: bool
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
+    r10 :: dict
+    r11 :: i32
+    r12 :: bit
+L0:
+    r0 = 'regular_attr'
+    r1 = CPyStr_Equal(key, r0)
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = unbox(int, val)
+    self.regular_attr = r2; r3 = is_error
+    goto L6
+L2:
+    r4 = 'class_var'
+    r5 = CPyStr_Equal(key, r4)
+    if r5 goto L3 else goto L4 :: bool
+L3:
+    r6 = builtins :: module
+    r7 = 'AttributeError'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
+    CPy_Raise(r9)
+    unreachable
+L4:
+    r10 = self._attributes
+    r11 = CPyDict_SetItem(r10, key, val)
+    r12 = r11 >= 0 :: signed
+L5:
+L6:
+    return 1
+def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.SetAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: str
+    r2 :: None
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = cast(str, attr)
+    r2 = __mypyc_self__.__delattr__(r1)
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+def SetAttr.__delattr__(self, key):
+    self :: __main__.SetAttr
+    key :: str
+    r0 :: dict
+    r1 :: i32
+    r2 :: bit
+L0:
+    r0 = self._attributes
+    r1 = PyObject_DelItem(r0, key)
+    r2 = r1 >= 0 :: signed
+    return 1
+
+[case testUntransformedSetAttr_64bit]
+from mypy_extensions import mypyc_attr
+
+class SetAttr:
+    def super_missing_args(self):
+        super().__setattr__()
+        super().__setattr__("attr")
+
+    def object_missing_args(self):
+        object.__setattr__()
+        object.__setattr__(self)
+        object.__setattr__(self, "attr")
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def super_setattr(self, key: str, val: object) -> None:
+        super().__setattr__(key, val)
+
+    def object_setattr(self, key: str, val: object) -> None:
+        object.__setattr__(self, key, val)
+
+class InheritsPython(NonNative):
+    def super_setattr(self, key: str, val: object) -> None:
+        super().__setattr__(key, val)
+
+    def object_setattr(self, key: str, val: object) -> None:
+        object.__setattr__(self, key, val)
+
+class BuiltInBase(dict):
+    def super_setattr(self, key: str, val: object) -> None:
+        super().__setattr__(key, val)
+
+    def object_setattr(self, key: str, val: object) -> None:
+        object.__setattr__(self, key, val)
+
+[typing fixtures/typing-full.pyi]
+[out]
+def SetAttr.super_missing_args(self):
+    self :: __main__.SetAttr
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8, r9, r10 :: object
+    r11 :: str
+    r12, r13 :: object
+    r14 :: object[2]
+    r15 :: object_ptr
+    r16 :: object
+    r17 :: str
+    r18 :: object
+    r19 :: str
+    r20 :: object[1]
+    r21 :: object_ptr
+    r22, r23 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.SetAttr :: type
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__setattr__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
+    r10 = builtins :: module
+    r11 = 'super'
+    r12 = CPyObject_GetAttr(r10, r11)
+    r13 = __main__.SetAttr :: type
+    r14 = [r13, self]
+    r15 = load_address r14
+    r16 = PyObject_Vectorcall(r12, r15, 2, 0)
+    keep_alive r13, self
+    r17 = '__setattr__'
+    r18 = CPyObject_GetAttr(r16, r17)
+    r19 = 'attr'
+    r20 = [r19]
+    r21 = load_address r20
+    r22 = PyObject_Vectorcall(r18, r21, 1, 0)
+    keep_alive r19
+    r23 = box(None, 1)
+    return r23
+def SetAttr.object_missing_args(self):
+    self :: __main__.SetAttr
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6, r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: str
+    r11 :: object[2]
+    r12 :: object_ptr
+    r13, r14 :: object
+    r15 :: str
+    r16 :: object
+    r17, r18 :: str
+    r19 :: object[3]
+    r20 :: object_ptr
+    r21, r22 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = '__setattr__'
+    r4 = [r2]
+    r5 = load_address r4
+    r6 = PyObject_VectorcallMethod(r3, r5, 9223372036854775809, 0)
+    keep_alive r2
+    r7 = builtins :: module
+    r8 = 'object'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = '__setattr__'
+    r11 = [r9, self]
+    r12 = load_address r11
+    r13 = PyObject_VectorcallMethod(r10, r12, 9223372036854775810, 0)
+    keep_alive r9, self
+    r14 = builtins :: module
+    r15 = 'object'
+    r16 = CPyObject_GetAttr(r14, r15)
+    r17 = 'attr'
+    r18 = '__setattr__'
+    r19 = [r16, self, r17]
+    r20 = load_address r19
+    r21 = PyObject_VectorcallMethod(r18, r20, 9223372036854775811, 0)
+    keep_alive r16, self, r17
+    r22 = box(None, 1)
+    return r22
+def super_setattr_NonNative_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def super_setattr_NonNative_obj.__call__(__mypyc_self__, self, key, val):
+    __mypyc_self__ :: __main__.super_setattr_NonNative_obj
+    self :: __main__.NonNative
+    key :: str
+    val, r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[2]
+    r10 :: object_ptr
+    r11 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.NonNative :: type
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__setattr__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [key, val]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 2, 0)
+    keep_alive key, val
+    return 1
+def object_setattr_NonNative_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def object_setattr_NonNative_obj.__call__(__mypyc_self__, self, key, val):
+    __mypyc_self__ :: __main__.object_setattr_NonNative_obj
+    self :: __main__.NonNative
+    key :: str
+    val, r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object[4]
+    r5 :: object_ptr
+    r6 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = '__setattr__'
+    r4 = [r2, self, key, val]
+    r5 = load_address r4
+    r6 = PyObject_VectorcallMethod(r3, r5, 9223372036854775812, 0)
+    keep_alive r2, self, key, val
+    return 1
+def InheritsPython.super_setattr(self, key, val):
+    self :: __main__.InheritsPython
+    key :: str
+    val, r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[2]
+    r10 :: object_ptr
+    r11 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.InheritsPython :: type
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__setattr__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [key, val]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 2, 0)
+    keep_alive key, val
+    return 1
+def InheritsPython.object_setattr(self, key, val):
+    self :: __main__.InheritsPython
+    key :: str
+    val, r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object[4]
+    r5 :: object_ptr
+    r6 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = '__setattr__'
+    r4 = [r2, self, key, val]
+    r5 = load_address r4
+    r6 = PyObject_VectorcallMethod(r3, r5, 9223372036854775812, 0)
+    keep_alive r2, self, key, val
+    return 1
+def BuiltInBase.super_setattr(self, key, val):
+    self :: dict
+    key :: str
+    val, r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[2]
+    r10 :: object_ptr
+    r11 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.BuiltInBase :: type
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__setattr__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [key, val]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 2, 0)
+    keep_alive key, val
+    return 1
+def BuiltInBase.object_setattr(self, key, val):
+    self :: dict
+    key :: str
+    val, r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object[4]
+    r5 :: object_ptr
+    r6 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = '__setattr__'
+    r4 = [r2, self, key, val]
+    r5 = load_address r4
+    r6 = PyObject_VectorcallMethod(r3, r5, 9223372036854775812, 0)
+    keep_alive r2, self, key, val
+    return 1
+
+[case testInvalidMypycAttr]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr("allow_interpreted_subclasses", "invalid_arg")  # E: "invalid_arg" is not a supported "mypyc_attr" \
+                                                            # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+class InvalidArg:
+    pass
+@mypyc_attr(invalid_kwarg=True)  # E: "invalid_kwarg" is not a supported "mypyc_attr" \
+                                 # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+class InvalidKwarg:
+    pass
+@mypyc_attr(str())  # E: All "mypyc_attr" positional arguments must be string literals.
+class InvalidLiteral:
+    pass

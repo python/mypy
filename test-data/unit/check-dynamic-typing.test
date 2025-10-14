@@ -252,7 +252,7 @@ if int():
 if int():
     a = d.foo(a, a)
 d.x = a
-d.x.y.z  # E: "A" has no attribute "y"
+d.x.y.z
 
 class A: pass
 [out]
@@ -279,7 +279,7 @@ t2: Tuple[A, A]
 d: Any
 
 if int():
-    t2 = (d, d, d)  # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[A, A]")
+    t2 = (d, d, d)  # E: Incompatible types in assignment (expression has type "tuple[Any, Any, Any]", variable has type "tuple[A, A]")
 if int():
     t2 = (d, d)
 
@@ -320,8 +320,10 @@ d = None # All ok
 d = t
 d = g
 d = A
-t = d
-f = d
+
+d1: Any
+t = d1
+f = d1
 [builtins fixtures/tuple.pyi]
 
 
@@ -569,7 +571,7 @@ a: A
 
 A(a)   # E: Missing positional argument "b" in call to "A"
 if int():
-    f1 = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "Callable[[A], A]")
+    f1 = A # E: Incompatible types in assignment (expression has type "type[A]", variable has type "Callable[[A], A]")
 
 A(a, a)
 if int():
@@ -597,8 +599,8 @@ t5: Tuple[Any, Any, Any]
 
 def f(): t1, t2, t3, t4, t5 # Prevent redefinition
 
-t3 = t5 # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[Any, Any]")
-t5 = t4 # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[Any, Any, Any]")
+t3 = t5 # E: Incompatible types in assignment (expression has type "tuple[Any, Any, Any]", variable has type "tuple[Any, Any]")
+t5 = t4 # E: Incompatible types in assignment (expression has type "tuple[A, A]", variable has type "tuple[Any, Any, Any]")
 
 t1 = t1
 t1 = t2

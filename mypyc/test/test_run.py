@@ -61,6 +61,7 @@ files = [
     "run-classes.test",
     "run-traits.test",
     "run-generators.test",
+    "run-generics.test",
     "run-multimodule.test",
     "run-bench.test",
     "run-mypy-sim.test",
@@ -68,6 +69,8 @@ files = [
     "run-dunders-special.test",
     "run-singledispatch.test",
     "run-attrs.test",
+    "run-signatures.test",
+    "run-weakref.test",
     "run-python37.test",
     "run-python38.test",
 ]
@@ -83,7 +86,7 @@ from mypyc.build import mypycify
 
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
-                           multi_file={}, opt_level='{}'),
+                           multi_file={}, opt_level='{}', install_librt={}),
 )
 """
 
@@ -234,13 +237,18 @@ class TestRun(MypycDataSuite):
             else False
         )
 
-        groups = construct_groups(sources, separate, len(module_names) > 1)
+        groups = construct_groups(sources, separate, len(module_names) > 1, None)
 
+        # Use _librt_internal to test mypy-specific parts of librt (they have
+        # some special-casing in mypyc), for everything else use _librt suffix.
+        librt_internal = testcase.name.endswith("_librt_internal")
+        librt = librt_internal or testcase.name.endswith("_librt")
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file,
                 separate=self.separate,
                 strict_dunder_typing=self.strict_dunder_typing,
+                depends_on_librt_internal=librt_internal,
             )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
@@ -250,7 +258,7 @@ class TestRun(MypycDataSuite):
                 alt_lib_path=".",
             )
             errors = Errors(options)
-            ir, cfiles = emitmodule.compile_modules_to_c(
+            ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
             if errors.num_errors:
@@ -267,16 +275,21 @@ class TestRun(MypycDataSuite):
             check_serialization_roundtrip(ir)
 
         opt_level = int(os.environ.get("MYPYC_OPT_LEVEL", 0))
-        debug_level = int(os.environ.get("MYPYC_DEBUG_LEVEL", 0))
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, "setup.py"))
         # We pass the C file information to the build script via setup.py unfortunately
         with open(setup_file, "w", encoding="utf-8") as f:
             f.write(
                 setup_format.format(
-                    module_paths, separate, cfiles, self.multi_file, opt_level, debug_level
+                    module_paths, separate, cfiles, self.multi_file, opt_level, librt
                 )
             )
+
+        if librt:
+            # This hack forces Python to prefer the local "installation".
+            os.makedirs("librt", exist_ok=True)
+            with open(os.path.join("librt", "__init__.py"), "a"):
+                pass
 
         if not run_setup(setup_file, ["build_ext", "--inplace"]):
             if testcase.config.getoption("--mypyc-showc"):
@@ -344,7 +357,7 @@ class TestRun(MypycDataSuite):
                     f'hint: Use "pytest -n0 -s --mypyc-debug={debugger} -k <name-substring>" to run test in debugger'
                 )
                 print("hint: You may need to build a debug version of Python first and use it")
-                print('hint: See also "Debuggging Segfaults" in mypyc/doc/dev-intro.md')
+                print('hint: See also "Debugging Segfaults" in mypyc/doc/dev-intro.md')
             copy_output_files(mypyc_output_dir)
 
         # Verify output.

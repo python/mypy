@@ -23,6 +23,31 @@
 #define CPy_NOINLINE
 #endif
 
+#ifndef Py_GIL_DISABLED
+
+// Everything is running in the same thread, so no need for thread locals
+#define CPyThreadLocal
+
+#else
+
+// 1. Use C11 standard thread_local storage, if available
+#if defined(__STDC_VERSION__)  && __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_THREADS__)
+#define CPyThreadLocal _Thread_local
+
+// 2. Microsoft Visual Studio fallback
+#elif defined(_MSC_VER)
+#define CPyThreadLocal __declspec(thread)
+
+// 3. GNU thread local storage for GCC/Clang targets that still need it
+#elif defined(__GNUC__) || defined(__clang__)
+#define CPyThreadLocal __thread
+
+#else
+#error "Can't define CPyThreadLocal for this compiler/target (consider using a non-free-threaded Python build)"
+#endif
+
+#endif // Py_GIL_DISABLED
+
 // INCREF and DECREF that assert the pointer is not NULL.
 // asserts are disabled in release builds so there shouldn't be a perf hit.
 // I'm honestly kind of surprised that this isn't done by default.
@@ -31,11 +56,16 @@
 // Here just for consistency
 #define CPy_XDECREF(p) Py_XDECREF(p)
 
+#ifndef Py_GIL_DISABLED
+
 // The *_NO_IMM operations below perform refcount manipulation for
 // non-immortal objects (Python 3.12 and later).
 //
 // Py_INCREF and other CPython operations check for immortality. This
 // can be expensive when we know that an object cannot be immortal.
+//
+// This optimization cannot be performed in free-threaded mode so we
+// fall back to just calling the normal incref/decref operations.
 
 static inline void CPy_INCREF_NO_IMM(PyObject *op)
 {
@@ -59,6 +89,14 @@ static inline void CPy_XDECREF_NO_IMM(PyObject *op)
 #define CPy_INCREF_NO_IMM(op) CPy_INCREF_NO_IMM((PyObject *)(op))
 #define CPy_DECREF_NO_IMM(op) CPy_DECREF_NO_IMM((PyObject *)(op))
 #define CPy_XDECREF_NO_IMM(op) CPy_XDECREF_NO_IMM((PyObject *)(op))
+
+#else
+
+#define CPy_INCREF_NO_IMM(op) CPy_INCREF(op)
+#define CPy_DECREF_NO_IMM(op) CPy_DECREF(op)
+#define CPy_XDECREF_NO_IMM(op) CPy_XDECREF(op)
+
+#endif
 
 // Tagged integer -- our representation of Python 'int' objects.
 // Small enough integers are represented as unboxed integers (shifted
@@ -101,8 +139,10 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
     return x << 1;
 }
 
-// Are we targeting Python 3.12 or newer?
+// Are we targeting Python 3.X or newer?
+#define CPY_3_11_FEATURES (PY_VERSION_HEX >= 0x030b0000)
 #define CPY_3_12_FEATURES (PY_VERSION_HEX >= 0x030c0000)
+#define CPY_3_14_FEATURES (PY_VERSION_HEX >= 0x030e0000)
 
 #if CPY_3_12_FEATURES
 
@@ -124,13 +164,6 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
 // Number of digits, assuming int is non-negative
 #define CPY_LONG_SIZE_UNSIGNED(o) CPY_LONG_SIZE(o)
 
-static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
-    if (n == 0)
-        o->long_value.lv_tag = CPY_SIGN_ZERO;
-    else
-        o->long_value.lv_tag = n << CPY_NON_SIZE_BITS;
-}
-
 #else
 
 #define CPY_LONG_DIGIT(o, n) ((o)->ob_digit[n])
@@ -138,13 +171,12 @@ static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
 #define CPY_LONG_SIZE_SIGNED(o) ((o)->ob_base.ob_size)
 #define CPY_LONG_SIZE_UNSIGNED(o) ((o)->ob_base.ob_size)
 
-static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
-    o->ob_base.ob_size = n;
-}
-
 #endif
 
 // Are we targeting Python 3.13 or newer?
 #define CPY_3_13_FEATURES (PY_VERSION_HEX >= 0x030d0000)
+
+// Are we targeting Python 3.14 or newer?
+#define CPY_3_14_FEATURES (PY_VERSION_HEX >= 0x030e0000)
 
 #endif

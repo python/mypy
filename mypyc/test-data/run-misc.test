@@ -109,10 +109,11 @@ def gen(b: bool) -> Generator[Any, None, None]:
         y = None
     yield y
 
-assert f(False) == ((1, None), (None, 1))
-assert f(True) == ((None, 1), (1, None))
-assert next(gen(False)) is None
-assert next(gen(True)) == 1
+def test_inferred() -> None:
+    assert f(False) == ((1, None), (None, 1))
+    assert f(True) == ((None, 1), (1, None))
+    assert next(gen(False)) is None
+    assert next(gen(True)) == 1
 
 [case testWith]
 from typing import Any
@@ -612,8 +613,7 @@ for a in sorted(s):
 9     8   72
 
 [case testDummyTypes]
-from typing import Tuple, List, Dict, NamedTuple
-from typing_extensions import Literal, TypedDict, NewType
+from typing import Tuple, List, Dict, Literal, NamedTuple, NewType, TypedDict
 
 class A:
     pass
@@ -664,6 +664,7 @@ except Exception as e:
     print(type(e).__name__)
 # ... but not that it is a valid literal value
 take_literal(10)
+[typing fixtures/typing-full.pyi]
 [out]
 Lol(a=1, b=[])
 10
@@ -675,7 +676,7 @@ TypeError
 10
 
 [case testClassBasedTypedDict]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class TD(TypedDict):
     a: int
@@ -707,6 +708,7 @@ def test_non_total_typed_dict() -> None:
     d4 = TD4(a=1, b=2, c=3, d=4)
     assert d3['c'] == 3
     assert d4['d'] == 4
+[typing fixtures/typing-full.pyi]
 
 [case testClassBasedNamedTuple]
 from typing import NamedTuple
@@ -828,23 +830,23 @@ assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
 [case testSum]
-[typing fixtures/typing-full.pyi]
-from typing import Any, List
+from typing import List
 
+empty: List[int] = []
 def test_sum_of_numbers() -> None:
     assert sum(x for x in [1, 2, 3]) == 6
-    assert sum(x for x in [0.0, 1.2, 2]) == 6.2
+    assert sum(x for x in [0.0, 1.2, 2]) == 3.2
     assert sum(x for x in [1, 1j]) == 1 + 1j
 
 def test_sum_callables() -> None:
-    assert sum((lambda x: x == 0)(x) for x in []) == 0
+    assert sum((lambda x: x == 0)(x) for x in empty) == 0
     assert sum((lambda x: x == 0)(x) for x in [0]) == 1
     assert sum((lambda x: x == 0)(x) for x in [0, 0, 0]) == 3
     assert sum((lambda x: x == 0)(x) for x in [0, 1, 0]) == 2
     assert sum((lambda x: x % 2 == 0)(x) for x in range(2**10)) == 2**9
 
 def test_sum_comparisons() -> None:
-    assert sum(x == 0 for x in []) == 0
+    assert sum(x == 0 for x in empty) == 0
     assert sum(x == 0 for x in [0]) == 1
     assert sum(x == 0 for x in [0, 0, 0]) == 3
     assert sum(x == 0 for x in [0, 1, 0]) == 2
@@ -864,13 +866,14 @@ def test_sum_misc() -> None:
 def test_sum_start_given() -> None:
     a = 1
     assert sum((x == 0 for x in [0, 1]), a) == 2
-    assert sum(((lambda x: x == 0)(x) for x in []), 1) == 1
+    assert sum(((lambda x: x == 0)(x) for x in empty), 1) == 1
     assert sum(((lambda x: x == 0)(x) for x in [0]), 1) == 2
     assert sum(((lambda x: x == 0)(x) for x in [0, 0, 0]), 1) == 4
     assert sum(((lambda x: x == 0)(x) for x in [0, 1, 0]), 1) == 3
     assert sum(((lambda x: x % 2 == 0)(x) for x in range(2**10)), 1) == 2**9 + 1
     assert sum((x for x in [1, 1j]), 2j) == 1 + 3j
     assert sum((c == 'd' for c in 'abcdd'), 1) == 3
+[typing fixtures/typing-full.pyi]
 
 [case testNoneStuff]
 from typing import Optional
@@ -968,7 +971,10 @@ print(z)
 [case testCheckVersion]
 import sys
 
-if sys.version_info[:2] == (3, 13):
+if sys.version_info[:2] == (3, 14):
+    def version() -> int:
+        return 14
+elif sys.version_info[:2] == (3, 13):
     def version() -> int:
         return 13
 elif sys.version_info[:2] == (3, 12):
@@ -983,15 +989,6 @@ elif sys.version_info[:2] == (3, 10):
 elif sys.version_info[:2] == (3, 9):
     def version() -> int:
         return 9
-elif sys.version_info[:2] == (3, 8):
-    def version() -> int:
-        return 8
-elif sys.version_info[:2] == (3, 7):
-    def version() -> int:
-        return 7
-elif sys.version_info[:2] == (3, 6):
-    def version() -> int:
-        return 6
 else:
     raise Exception("we don't support this version yet!")
 
@@ -1095,19 +1092,20 @@ def test_complex() -> None:
 from typing import cast
 import sys
 
-A = sys.platform == 'x' and foobar
-B = sys.platform == 'x' and sys.foobar
-C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
-C = sys.platform == 'x' and cast(a, b[c])
-C = sys.platform == 'x' and (lambda x: y + x)
-C = sys.platform == 'x' and (x for y in z)
-C = sys.platform == 'x' and [x for y in z]
-C = sys.platform == 'x' and {x: x for y in z}
-C = sys.platform == 'x' and {x for y in z}
+def test_unreachable() -> None:
+    A = sys.platform == 'x' and foobar
+    B = sys.platform == 'x' and sys.foobar
+    C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
+    C = sys.platform == 'x' and cast(a, b[c])
+    C = sys.platform == 'x' and (lambda x: y + x)
+    C = sys.platform == 'x' and (x for y in z)
+    C = sys.platform == 'x' and [x for y in z]
+    C = sys.platform == 'x' and {x: x for y in z}
+    C = sys.platform == 'x' and {x for y in z}
 
-assert not A
-assert not B
-assert not C
+    assert not A
+    assert not B
+    assert not C
 
 [case testDoesntSegfaultWhenTopLevelFails]
 # make the initial import fail
@@ -1130,6 +1128,10 @@ class A:
 class B(A):
     def _(arg): pass
     def _(arg): pass
+
+def test_underscore() -> None:
+    A()
+    B()
 
 [case testGlobalRedefinition_toplevel]
 # mypy: allow-redefinition
@@ -1171,3 +1173,26 @@ def test_dummy_context() -> None:
     with c:
         assert c.c == 1
     assert c.c == 0
+
+[case testIsInstanceTuple]
+from typing import Any
+
+def isinstance_empty(x: Any) -> bool:
+    return isinstance(x, ())
+def isinstance_single(x: Any) -> bool:
+    return isinstance(x, (str,))
+def isinstance_multi(x: Any) -> bool:
+    return isinstance(x, (str, int))
+
+def test_isinstance_empty() -> None:
+    assert isinstance_empty("a") is False
+    assert isinstance_empty(1) is False
+    assert isinstance_empty(None) is False
+def test_isinstance_single() -> None:
+    assert isinstance_single("a") is True
+    assert isinstance_single(1) is False
+    assert isinstance_single(None) is False
+def test_isinstance_multi() -> None:
+    assert isinstance_multi("a") is True
+    assert isinstance_multi(1) is True
+    assert isinstance_multi(None) is False

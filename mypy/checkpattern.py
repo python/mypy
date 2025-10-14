@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Final, NamedTuple
 
-import mypy.checker
 from mypy import message_registry
+from mypy.checker_shared import TypeCheckerSharedApi, TypeRange
 from mypy.checkmember import analyze_member_access
 from mypy.expandtype import expand_type_by_instance
 from mypy.join import join_types
@@ -14,7 +14,7 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, TypeInfo, Var
+from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, Var
 from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
@@ -37,6 +37,7 @@ from mypy.typeops import (
 )
 from mypy.types import (
     AnyType,
+    FunctionLike,
     Instance,
     LiteralType,
     NoneType,
@@ -54,7 +55,7 @@ from mypy.types import (
     get_proper_type,
     split_with_prefix_and_suffix,
 )
-from mypy.typevars import fill_typevars
+from mypy.typevars import fill_typevars, fill_typevars_with_any
 from mypy.visitor import PatternVisitor
 
 self_match_type_names: Final = [
@@ -91,7 +92,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: mypy.checker.TypeChecker
+    chk: TypeCheckerSharedApi
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Currently unused
@@ -112,7 +113,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     options: Options
 
     def __init__(
-        self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin, options: Options
+        self, chk: TypeCheckerSharedApi, msg: MessageBuilder, plugin: Plugin, options: Options
     ) -> None:
         self.chk = chk
         self.msg = msg
@@ -192,7 +193,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         for capture_list in capture_types.values():
             typ = UninhabitedType()
             for _, other in capture_list:
-                typ = join_types(typ, other)
+                typ = make_simplified_union([typ, other])
 
             captures[capture_list[0][0]] = typ
 
@@ -538,36 +539,20 @@ class PatternChecker(PatternVisitor[PatternType]):
         # Check class type
         #
         type_info = o.class_ref.node
-        if type_info is None:
-            return PatternType(AnyType(TypeOfAny.from_error), AnyType(TypeOfAny.from_error), {})
+        typ = self.chk.expr_checker.accept(o.class_ref)
+        p_typ = get_proper_type(typ)
         if isinstance(type_info, TypeAlias) and not type_info.no_args:
             self.msg.fail(message_registry.CLASS_PATTERN_GENERIC_TYPE_ALIAS, o)
             return self.early_non_match()
-        if isinstance(type_info, TypeInfo):
-            any_type = AnyType(TypeOfAny.implementation_artifact)
-            args: list[Type] = []
-            for tv in type_info.defn.type_vars:
-                if isinstance(tv, TypeVarTupleType):
-                    args.append(
-                        UnpackType(self.chk.named_generic_type("builtins.tuple", [any_type]))
-                    )
-                else:
-                    args.append(any_type)
-            typ: Type = Instance(type_info, args)
-        elif isinstance(type_info, TypeAlias):
-            typ = type_info.target
-        elif (
-            isinstance(type_info, Var)
-            and type_info.type is not None
-            and isinstance(get_proper_type(type_info.type), AnyType)
-        ):
-            typ = type_info.type
-        else:
-            if isinstance(type_info, Var) and type_info.type is not None:
-                name = type_info.type.str_with_options(self.options)
-            else:
-                name = type_info.name
-            self.msg.fail(message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(name), o)
+        elif isinstance(p_typ, FunctionLike) and p_typ.is_type_obj():
+            typ = fill_typevars_with_any(p_typ.type_object())
+        elif not isinstance(p_typ, AnyType):
+            self.msg.fail(
+                message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(
+                    typ.str_with_options(self.options)
+                ),
+                o,
+            )
             return self.early_non_match()
 
         new_type, rest_type = self.chk.conditional_types_with_intersection(
@@ -607,7 +592,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                         is_lvalue=False,
                         is_super=False,
                         is_operator=False,
-                        msg=self.msg,
                         original_type=typ,
                         chk=self.chk,
                     )
@@ -673,7 +657,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                         is_lvalue=False,
                         is_super=False,
                         is_operator=False,
-                        msg=self.msg,
                         original_type=new_type,
                         chk=self.chk,
                     )
@@ -682,12 +665,15 @@ class PatternChecker(PatternVisitor[PatternType]):
                 has_local_errors = local_errors.has_new_errors()
             if has_local_errors or key_type is None:
                 key_type = AnyType(TypeOfAny.from_error)
-                self.msg.fail(
-                    message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(
-                        typ.str_with_options(self.options), keyword
-                    ),
-                    pattern,
-                )
+                if not (type_info and type_info.fullname == "builtins.object"):
+                    self.msg.fail(
+                        message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(
+                            typ.str_with_options(self.options), keyword
+                        ),
+                        pattern,
+                    )
+                elif keyword is not None:
+                    new_type = self.chk.add_any_attribute_to_type(new_type, keyword)
 
             inner_type, inner_rest_type, inner_captures = self.accept(pattern, key_type)
             if is_uninhabited(inner_type):
@@ -703,6 +689,10 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     def should_self_match(self, typ: Type) -> bool:
         typ = get_proper_type(typ)
+        if isinstance(typ, TupleType):
+            typ = typ.partial_fallback
+        if isinstance(typ, AnyType):
+            return False
         if isinstance(typ, Instance) and typ.type.get("__match_args__") is not None:
             # Named tuples and other subtypes of builtins that define __match_args__
             # should not self match.
@@ -805,13 +795,13 @@ def get_var(expr: Expression) -> Var:
     Warning: this in only true for expressions captured by a match statement.
     Don't call it from anywhere else
     """
-    assert isinstance(expr, NameExpr)
+    assert isinstance(expr, NameExpr), expr
     node = expr.node
-    assert isinstance(node, Var)
+    assert isinstance(node, Var), node
     return node
 
 
-def get_type_range(typ: Type) -> mypy.checker.TypeRange:
+def get_type_range(typ: Type) -> TypeRange:
     typ = get_proper_type(typ)
     if (
         isinstance(typ, Instance)
@@ -819,7 +809,7 @@ def get_type_range(typ: Type) -> mypy.checker.TypeRange:
         and isinstance(typ.last_known_value.value, bool)
     ):
         typ = typ.last_known_value
-    return mypy.checker.TypeRange(typ, is_upper_bound=False)
+    return TypeRange(typ, is_upper_bound=False)
 
 
 def is_uninhabited(typ: Type) -> bool:

@@ -20,6 +20,7 @@ from typing import Any, Callable, NoReturn
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
 from mypy.ipc import IPCClient, IPCException
+from mypy.main import RECURSION_LIMIT
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
@@ -28,8 +29,8 @@ from mypy.version import __version__
 
 
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=30)
+    def __init__(self, prog: str, **kwargs: Any) -> None:
+        super().__init__(prog=prog, max_help_position=30, **kwargs)
 
 
 parser = argparse.ArgumentParser(
@@ -268,6 +269,10 @@ class BadStatus(Exception):
 def main(argv: list[str]) -> None:
     """The code is top-down."""
     check_python_version("dmypy")
+
+    # set recursion limit consistent with mypy/main.py
+    sys.setrecursionlimit(RECURSION_LIMIT)
+
     args = parser.parse_args(argv)
     if not args.action:
         parser.print_usage()
@@ -554,6 +559,10 @@ def check_output(
 
     Call sys.exit() unless the status code is zero.
     """
+    if os.name == "nt":
+        # Enable ANSI color codes for Windows cmd using this strange workaround
+        # ( see https://github.com/python/cpython/issues/74261 )
+        os.system("")
     if "error" in response:
         fail(response["error"])
     try:

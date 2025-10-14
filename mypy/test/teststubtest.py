@@ -12,8 +12,14 @@ import unittest
 from collections.abc import Iterator
 from typing import Any, Callable
 
+from pytest import raises
+
 import mypy.stubtest
+from mypy import build, nodes
+from mypy.modulefinder import BuildSource
+from mypy.options import Options
 from mypy.stubtest import parse_options, test_stubs
+from mypy.test.config import test_temp_dir
 from mypy.test.data import root_dir
 
 
@@ -48,6 +54,11 @@ Callable: _SpecialForm = ...
 Generic: _SpecialForm = ...
 Protocol: _SpecialForm = ...
 Union: _SpecialForm = ...
+ClassVar: _SpecialForm = ...
+
+Final = 0
+Literal = 0
+TypedDict = 0
 
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
@@ -71,6 +82,14 @@ class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
 class NamedTuple(tuple[Any, ...]): ...
+class _TypedDict(Mapping[str, object]):
+    __required_keys__: ClassVar[frozenset[str]]
+    __optional_keys__: ClassVar[frozenset[str]]
+    __total__: ClassVar[bool]
+    __readonly_keys__: ClassVar[frozenset[str]]
+    __mutable_keys__: ClassVar[frozenset[str]]
+    __closed__: ClassVar[bool | None]
+    __extra_items__: ClassVar[Any]
 def overload(func: _T) -> _T: ...
 def type_check_only(func: _T) -> _T: ...
 def final(func: _T) -> _T: ...
@@ -94,6 +113,8 @@ class tuple(Sequence[T_co], Generic[T_co]):
     def __ge__(self, __other: tuple[T_co, ...]) -> bool: pass
 
 class dict(Mapping[KT, VT]): ...
+
+class frozenset(Generic[T]): ...
 
 class function: pass
 class ellipsis: pass
@@ -145,8 +166,21 @@ class Flag(Enum):
 """
 
 
+def build_helper(source: str) -> build.BuildResult:
+    return build.build(
+        sources=[BuildSource("main.pyi", None, textwrap.dedent(source))],
+        options=Options(),
+        alt_lib_path=test_temp_dir,
+    )
+
+
 def run_stubtest_with_stderr(
-    stub: str, runtime: str, options: list[str], config_file: str | None = None
+    stub: str,
+    runtime: str,
+    options: list[str],
+    config_file: str | None = None,
+    output: io.StringIO | None = None,
+    outerr: io.StringIO | None = None,
 ) -> tuple[str, str]:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
@@ -163,8 +197,8 @@ def run_stubtest_with_stderr(
             with open(f"{TEST_MODULE_NAME}_config.ini", "w") as f:
                 f.write(config_file)
             options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
-        output = io.StringIO()
-        outerr = io.StringIO()
+        output = io.StringIO() if output is None else output
+        outerr = io.StringIO() if outerr is None else outerr
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
     filtered_output = remove_color_code(
@@ -325,6 +359,21 @@ class StubtestUnit(unittest.TestCase):
                 def __exit__(self, exc_type, exc_val, exc_tb): pass
             """,
             error=None,
+        )
+        yield Case(
+            stub="""def dunder_name(__x: int) -> None: ...""",
+            runtime="""def dunder_name(__x: int) -> None: ...""",
+            error=None,
+        )
+        yield Case(
+            stub="""def dunder_name_posonly(__x: int, /) -> None: ...""",
+            runtime="""def dunder_name_posonly(__x: int) -> None: ...""",
+            error=None,
+        )
+        yield Case(
+            stub="""def dunder_name_bad(x: int) -> None: ...""",
+            runtime="""def dunder_name_bad(__x: int) -> None: ...""",
+            error="dunder_name_bad",
         )
 
     @collect_cases
@@ -814,6 +863,18 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            @overload
+            def f(a: int) -> int: ...
+            @overload
+            def f(a: int, b: str, /) -> str: ...
+            """,
+            runtime="""
+            def f(a, *args): ...
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_property(self) -> Iterator[Case]:
@@ -822,11 +883,13 @@ class StubtestUnit(unittest.TestCase):
             class Good:
                 @property
                 def read_only_attr(self) -> int: ...
+                read_only_attr_alias = read_only_attr
             """,
             runtime="""
             class Good:
                 @property
                 def read_only_attr(self): return 1
+                read_only_attr_alias = read_only_attr
             """,
             error=None,
         )
@@ -888,6 +951,7 @@ class StubtestUnit(unittest.TestCase):
                 def read_write_attr(self) -> int: ...
                 @read_write_attr.setter
                 def read_write_attr(self, val: int) -> None: ...
+                read_write_attr_alias = read_write_attr
             """,
             runtime="""
             class Z:
@@ -895,6 +959,7 @@ class StubtestUnit(unittest.TestCase):
                 def read_write_attr(self): return self._val
                 @read_write_attr.setter
                 def read_write_attr(self, val): self._val = val
+                read_write_attr_alias = read_write_attr
             """,
             error=None,
         )
@@ -1373,9 +1438,11 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            from typing_extensions import Final, Literal
+            import sys
+            from typing import Final, Literal
             class BytesEnum(bytes, enum.Enum):
                 a = b'foo'
+
             FOO: Literal[BytesEnum.a]
             BAR: Final = BytesEnum.a
             BAZ: BytesEnum
@@ -1388,6 +1455,31 @@ class StubtestUnit(unittest.TestCase):
             BAR = BytesEnum.a
             BAZ = BytesEnum.a
             EGGS = BytesEnum.a
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class HasSlotsAndNothingElse:
+                __slots__ = ("x",)
+                x: int
+
+            class HasInheritedSlots(HasSlotsAndNothingElse):
+                pass
+
+            class HasEmptySlots:
+                __slots__ = ()
+            """,
+            runtime="""
+            class HasSlotsAndNothingElse:
+                __slots__ = ("x",)
+                x: int
+
+            class HasInheritedSlots(HasSlotsAndNothingElse):
+                pass
+
+            class HasEmptySlots:
+                __slots__ = ()
             """,
             error=None,
         )
@@ -1483,6 +1575,24 @@ class StubtestUnit(unittest.TestCase):
             runtime="class ClassWithMetaclassOverride: ...",
             error="ClassWithMetaclassOverride.__call__",
         )
+        # Test that we ignore object.__setattr__ and object.__delattr__ inheritance
+        yield Case(
+            stub="""
+            from typing import Any
+            class FakeSetattrClass:
+                def __setattr__(self, name: str, value: Any, /) -> None: ...
+            """,
+            runtime="class FakeSetattrClass: ...",
+            error="FakeSetattrClass.__setattr__",
+        )
+        yield Case(
+            stub="""
+            class FakeDelattrClass:
+                def __delattr__(self, name: str, /) -> None: ...
+            """,
+            runtime="class FakeDelattrClass: ...",
+            error="FakeDelattrClass.__delattr__",
+        )
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
@@ -1561,6 +1671,107 @@ assert annotations
             stub="class CannotBeSubclassed:\n  def __init_subclass__(cls) -> None: ...",
             runtime="class CannotBeSubclassed:\n  def __init_subclass__(cls): raise TypeError",
             error="CannotBeSubclassed",
+        )
+
+    @collect_cases
+    def test_disjoint_base(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class A: pass
+            """,
+            runtime="""
+            class A: pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import disjoint_base
+
+            @disjoint_base
+            class B: pass
+            """,
+            runtime="""
+            class B: pass
+            """,
+            error="test_module.B",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Self
+
+            class mytakewhile:
+                def __new__(cls, predicate: object, iterable: object, /) -> Self: ...
+                def __iter__(self) -> Self: ...
+                def __next__(self) -> object: ...
+            """,
+            runtime="""
+            from itertools import takewhile as mytakewhile
+            """,
+            # Should have @disjoint_base
+            error="test_module.mytakewhile",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import disjoint_base, Self
+
+            @disjoint_base
+            class mycorrecttakewhile:
+                def __new__(cls, predicate: object, iterable: object, /) -> Self: ...
+                def __iter__(self) -> Self: ...
+                def __next__(self) -> object: ...
+            """,
+            runtime="""
+            from itertools import takewhile as mycorrecttakewhile
+            """,
+            error=None,
+        )
+        yield Case(
+            runtime="""
+            class IsDisjointBaseBecauseItHasSlots:
+                __slots__ = ("a",)
+                a: int
+            """,
+            stub="""
+            from typing_extensions import disjoint_base
+
+            @disjoint_base
+            class IsDisjointBaseBecauseItHasSlots:
+                a: int
+            """,
+            error="test_module.IsDisjointBaseBecauseItHasSlots",
+        )
+        yield Case(
+            runtime="""
+            class IsFinalSoDisjointBaseIsRedundant: ...
+            """,
+            stub="""
+            from typing_extensions import disjoint_base, final
+
+            @final
+            @disjoint_base
+            class IsFinalSoDisjointBaseIsRedundant: ...
+            """,
+            error="test_module.IsFinalSoDisjointBaseIsRedundant",
+        )
+        yield Case(
+            runtime="""
+            import enum
+
+            class IsEnumWithMembersSoDisjointBaseIsRedundant(enum.Enum):
+                A = 1
+                B = 2
+            """,
+            stub="""
+            from typing_extensions import disjoint_base
+            import enum
+
+            @disjoint_base
+            class IsEnumWithMembersSoDisjointBaseIsRedundant(enum.Enum):
+                A = 1
+                B = 2
+            """,
+            error="test_module.IsEnumWithMembersSoDisjointBaseIsRedundant",
         )
 
     @collect_cases
@@ -1915,7 +2126,7 @@ assert annotations
     def test_good_literal(self) -> Iterator[Case]:
         yield Case(
             stub=r"""
-            from typing_extensions import Literal
+            from typing import Literal
 
             import enum
             class Color(enum.Enum):
@@ -1947,7 +2158,7 @@ assert annotations
 
     @collect_cases
     def test_bad_literal(self) -> Iterator[Case]:
-        yield Case("from typing_extensions import Literal", "", None)  # dummy case
+        yield Case("from typing import Literal", "", None)  # dummy case
         yield Case(
             stub="INT_FLOAT_MISMATCH: Literal[1]",
             runtime="INT_FLOAT_MISMATCH = 1.0",
@@ -1998,7 +2209,7 @@ assert annotations
         )
         yield Case(
             stub="""
-            from typing_extensions import TypedDict
+            from typing import TypedDict
 
             class _Options(TypedDict):
                 a: str
@@ -2019,8 +2230,8 @@ assert annotations
     @collect_cases
     def test_runtime_typing_objects(self) -> Iterator[Case]:
         yield Case(
-            stub="from typing_extensions import Protocol, TypedDict",
-            runtime="from typing_extensions import Protocol, TypedDict",
+            stub="from typing import Protocol, TypedDict",
+            runtime="from typing import Protocol, TypedDict",
             error=None,
         )
         yield Case(
@@ -2385,8 +2596,8 @@ assert annotations
         )
         # The same is true for NamedTuples and TypedDicts:
         yield Case(
-            stub="from typing_extensions import NamedTuple, TypedDict",
-            runtime="from typing_extensions import NamedTuple, TypedDict",
+            stub="from typing import NamedTuple, TypedDict",
+            runtime="from typing import NamedTuple, TypedDict",
             error=None,
         )
         yield Case(
@@ -2422,6 +2633,42 @@ assert annotations
             runtime="def func2() -> None: ...",
             error="func2",
         )
+        # A type that exists at runtime is allowed to alias a type marked
+        # as '@type_check_only' in the stubs.
+        yield Case(
+            stub="""
+            @type_check_only
+            class _X1: ...
+            X2 = _X1
+            """,
+            runtime="class X2: ...",
+            error=None,
+        )
+
+    @collect_cases
+    def test_type_default_protocol(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing import Protocol
+
+            class _FormatterClass(Protocol):
+                def __call__(self, *, prog: str) -> HelpFormatter: ...
+
+            class ArgumentParser:
+                def __init__(self, formatter_class: _FormatterClass = ...) -> None: ...
+
+            class HelpFormatter:
+                def __init__(self, prog: str, indent_increment: int = 2) -> None: ...
+            """,
+            runtime="""
+            class HelpFormatter:
+                def __init__(self, prog, indent_increment=2) -> None: ...
+
+            class ArgumentParser:
+                def __init__(self, formatter_class=HelpFormatter): ...
+            """,
+            error=None,
+        )
 
 
 def remove_color_code(s: str) -> str:
@@ -2436,8 +2683,8 @@ class StubtestMiscUnit(unittest.TestCase):
             options=[],
         )
         expected = (
-            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
-            'from runtime argument "num"\n'
+            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub parameter "number" differs '
+            'from runtime parameter "num"\n'
             f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
             "def (number: builtins.int, text: builtins.str)\n"
             f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
@@ -2452,7 +2699,9 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         expected = (
             "{}.bad is inconsistent, "
-            'stub argument "number" differs from runtime argument "num"\n'.format(TEST_MODULE_NAME)
+            'stub parameter "number" differs from runtime parameter "num"\n'.format(
+                TEST_MODULE_NAME
+            )
         )
         assert output == expected
 
@@ -2535,7 +2784,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub="+", runtime="", options=[])
         assert output == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
-            "error: invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
+            "error: Invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
@@ -2599,6 +2848,25 @@ class StubtestMiscUnit(unittest.TestCase):
             == "def (self, sep = ..., bytes_per_sep = ...)"
         )
 
+    def test_overload_signature(self) -> None:
+        # The same argument as both positional-only and pos-or-kw in
+        # different overloads previously produced incorrect signatures
+        source = """
+        from typing import overload
+        @overload
+        def myfunction(arg: int) -> None: ...
+        @overload
+        def myfunction(arg: str, /) -> None: ...
+        """
+        result = build_helper(source)
+        stub = result.files["__main__"].names["myfunction"].node
+        assert isinstance(stub, nodes.OverloadedFuncDef)
+        sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
+        if sys.version_info >= (3, 10):
+            assert str(sig) == "def (arg: builtins.int | builtins.str)"
+        else:
+            assert str(sig) == "def (arg: Union[builtins.int, builtins.str])"
+
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"
         stub = "from decimal import Decimal\ntemp: Decimal\n"
@@ -2629,14 +2897,20 @@ class StubtestMiscUnit(unittest.TestCase):
         runtime = "temp = 5\n"
         stub = "temp: int\n"
         config_file = "[mypy]\ndisable_error_code = not-a-valid-name\n"
-        output, outerr = run_stubtest_with_stderr(
-            stub=stub, runtime=runtime, options=[], config_file=config_file
-        )
-        assert output == "Success: no issues found in 1 module\n"
-        assert outerr == (
-            "test_module_config.ini: [mypy]: disable_error_code: "
-            "Invalid error code(s): not-a-valid-name\n"
-        )
+        output = io.StringIO()
+        outerr = io.StringIO()
+        with raises(SystemExit):
+            run_stubtest_with_stderr(
+                stub=stub,
+                runtime=runtime,
+                options=[],
+                config_file=config_file,
+                output=output,
+                outerr=outerr,
+            )
+
+        assert output.getvalue() == "error: Invalid error code(s): not-a-valid-name\n"
+        assert outerr.getvalue() == ""
 
     def test_config_file_wrong_incomplete_feature(self) -> None:
         runtime = "x = 1\n"

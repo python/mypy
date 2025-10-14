@@ -8,10 +8,9 @@ version of Python considers legal code. This section describes these scenarios
 and explains how to get your code running again. Generally speaking, we have
 three tools at our disposal:
 
-* Use of ``from __future__ import annotations`` (:pep:`563`)
-  (this behaviour may eventually be made the default in a future Python version)
 * Use of string literal types or type comments
 * Use of ``typing.TYPE_CHECKING``
+* Use of ``from __future__ import annotations`` (:pep:`563`)
 
 We provide a description of these before moving onto discussion of specific
 problems you may encounter.
@@ -274,7 +273,7 @@ libraries if types are generic only in stubs.
 Using types defined in stubs but not at runtime
 -----------------------------------------------
 
-Sometimes stubs that you're using may define types you wish to re-use that do
+Sometimes stubs that you're using may define types you wish to reuse that do
 not exist at runtime. Importing these types naively will cause your code to fail
 at runtime with ``ImportError`` or ``ModuleNotFoundError``. Similar to previous
 sections, these can be dealt with by using :ref:`typing.TYPE_CHECKING

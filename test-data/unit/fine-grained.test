@@ -1051,9 +1051,9 @@ class A:
 [file n.py.3]
 [out]
 ==
-main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "m.A"
 ==
-main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "m.A"
 
 [case testModifyBaseClassMethodCausingInvalidOverride]
 import m
@@ -1067,7 +1067,7 @@ class A:
     def f(self) -> int: pass
 [out]
 ==
-main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "m.A"
 
 [case testAddBaseClassAttributeCausingErrorInSubclass]
 import m
@@ -1340,7 +1340,7 @@ class A:
 [out]
 ==
 -- This is a bad error message
-main:7: error: Argument 1 to "use" has incompatible type "Type[A]"; expected "Callable[[], A]"
+main:7: error: Argument 1 to "use" has incompatible type "type[A]"; expected "Callable[[], A]"
 
 [case testConstructorSignatureChanged3]
 from a import C
@@ -1720,7 +1720,7 @@ from typing import Iterator, Callable, List, Optional
 from a import f
 import a
 
-def dec(f: Callable[['A'], Optional[Iterator[int]]]) -> Callable[[int], int]: pass
+def dec(f: Callable[['A'], Optional[Iterator[int]]]) -> Callable[['A', int], int]: pass
 
 class A:
     @dec
@@ -1974,11 +1974,11 @@ class B:
 class B:
     def foo(self) -> int: return 12
 [out]
-a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "b.B"
 ==
-a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "b.B"
 ==
-a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "b.B"
 ==
 
 [case testPreviousErrorInMethodSemanal1]
@@ -2674,9 +2674,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:7: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+main:7: error: Need type annotation for "x" (hint: "x: dict[<type>, <type>] = ...")
 ==
-main:7: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+main:7: error: Need type annotation for "x" (hint: "x: dict[<type>, <type>] = ...")
 
 [case testRefreshPartialTypeInClass]
 import a
@@ -2692,9 +2692,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:5: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+main:5: error: Need type annotation for "x" (hint: "x: dict[<type>, <type>] = ...")
 ==
-main:5: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+main:5: error: Need type annotation for "x" (hint: "x: dict[<type>, <type>] = ...")
 
 [case testRefreshPartialTypeInferredAttributeIndex]
 from c import C
@@ -2833,7 +2833,7 @@ class M(type):
 ==
 a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 ==
-a.py:4: error: "Type[C]" has no attribute "x"
+a.py:4: error: "type[C]" has no attribute "x"
 ==
 
 [case testMetaclassAttributesDirect]
@@ -2862,7 +2862,7 @@ class M(type):
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 ==
-a.py:3: error: "Type[C]" has no attribute "x"
+a.py:3: error: "type[C]" has no attribute "x"
 ==
 
 [case testMetaclassOperators]
@@ -2886,7 +2886,7 @@ class M(type):
         pass
 [out]
 ==
-a.py:4: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+a.py:4: error: Unsupported operand types for + ("type[C]" and "type[C]")
 
 [case testMetaclassOperatorsDirect]
 import a
@@ -2907,7 +2907,7 @@ class M(type):
     def __add__(self, other: M) -> M:
         pass
 [out]
-a.py:3: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+a.py:3: error: Unsupported operand types for + ("type[C]" and "type[C]")
 ==
 
 [case testFineMetaclassUpdate]
@@ -2931,15 +2931,17 @@ class B(metaclass=c.M): pass
 class M(type):
     pass
 [out]
-a.py:6: error: Argument 1 to "f" has incompatible type "Type[B]"; expected "M"
+a.py:6: error: Argument 1 to "f" has incompatible type "type[B]"; expected "M"
 ==
 
 [case testFineMetaclassRecalculation]
 import a
+
 [file a.py]
 from b import B
 class M2(type): pass
 class D(B, metaclass=M2): pass
+
 [file b.py]
 import c
 class B: pass
@@ -2949,27 +2951,31 @@ import c
 class B(metaclass=c.M): pass
 
 [file c.py]
-class M(type):
-    pass
+class M(type): pass
 [out]
 ==
 a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+a.py:3: note: "a.M2" (metaclass of "a.D") conflicts with "c.M" (metaclass of "b.B")
 
 [case testFineMetaclassDeclaredUpdate]
 import a
+
 [file a.py]
 import b
 class B(metaclass=b.M): pass
 class D(B, metaclass=b.M2): pass
+
 [file b.py]
 class M(type): pass
 class M2(M): pass
+
 [file b.py.2]
 class M(type): pass
 class M2(type): pass
 [out]
 ==
 a.py:3: error: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+a.py:3: note: "b.M2" (metaclass of "a.D") conflicts with "b.M" (metaclass of "a.B")
 
 [case testFineMetaclassRemoveFromClass]
 import a
@@ -2990,7 +2996,7 @@ class M(type):
     x: int
 [out]
 ==
-a.py:3: error: "Type[B]" has no attribute "x"
+a.py:3: error: "type[B]" has no attribute "x"
 
 [case testFineMetaclassRemoveFromClass2]
 import a
@@ -3015,7 +3021,7 @@ class M(type):
     x: int
 [out]
 ==
-a.py:3: error: Argument 1 to "test" has incompatible type "Type[B]"; expected "M"
+a.py:3: error: Argument 1 to "test" has incompatible type "type[B]"; expected "M"
 
 [case testBadMetaclassCorrected]
 import a
@@ -3052,7 +3058,7 @@ class C(metaclass=c.M):
 class M(type):
     x: int
 [out]
-a.py:3: error: "Type[C]" has no attribute "x"
+a.py:3: error: "type[C]" has no attribute "x"
 ==
 
 [case testIndirectSubclassReferenceMetaclass]
@@ -3088,7 +3094,7 @@ class M(type):
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 ==
-b.py:2: error: "Type[D]" has no attribute "x"
+b.py:2: error: "type[D]" has no attribute "x"
 ==
 
 [case testMetaclassDeletion]
@@ -3407,8 +3413,8 @@ lol(b.x)
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
-c.py:9: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
+c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "tuple[tuple[int]]"
+c.py:9: error: Argument 1 to "lol" has incompatible type "M"; expected "tuple[tuple[int]]"
 
 [case testNamedTupleUpdate4]
 import b
@@ -3522,9 +3528,9 @@ reveal_type(a.n)
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:4: note: Revealed type is "tuple[Union[tuple[Union[tuple[Union[..., None], builtins.int, fallback=a.N], None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
-c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:7: note: Revealed type is "tuple[Union[tuple[Union[tuple[Union[..., None], builtins.int, fallback=a.N], None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveFine]
 import c
@@ -3555,7 +3561,7 @@ def f(x: a.N) -> None:
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveFine]
@@ -3587,7 +3593,7 @@ def f(x: a.N) -> None:
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int], None], builtins.int]"
+c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int], None], builtins.int]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictRefresh]
@@ -3710,17 +3716,20 @@ b.py:4: error: Incompatible types in assignment (expression has type "str", vari
 [case testTypedDictUpdateReadOnly]
 import b
 [file a.py]
-from typing_extensions import TypedDict, ReadOnly
+from typing import TypedDict
+from typing_extensions import ReadOnly
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x=1, y=2)
 [file a.py.2]
-from typing_extensions import TypedDict, ReadOnly
+from typing import TypedDict
+from typing_extensions import ReadOnly
 class Point(TypedDict):
     x: int
     y: ReadOnly[int]
 p = Point(x=1, y=2)
 [file a.py.3]
-from typing_extensions import TypedDict, ReadOnly
+from typing import TypedDict
+from typing_extensions import ReadOnly
 Point = TypedDict('Point', {'x': ReadOnly[int], 'y': int})
 p = Point(x=1, y=2)
 [file b.py]
@@ -3729,6 +3738,7 @@ def foo(x: Point) -> None:
     x['x'] = 1
     x['y'] = 2
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 b.py:4: error: ReadOnly TypedDict key "y" TypedDict is mutated
@@ -4516,9 +4526,9 @@ x = 0
 x = ''
 [builtins fixtures/tuple.pyi]
 [out]
-b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[object], int]")
 ==
-b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[object], int]")
 
 [case testReprocessEllipses1]
 import a
@@ -5418,7 +5428,7 @@ class C(Enum):
 [typing fixtures/typing-medium.pyi]
 [out]
 ==
-a.py:5: error: "Type[C]" has no attribute "Y"
+a.py:5: error: "type[C]" has no attribute "Y"
 
 [case testClassBasedEnumPropagation2]
 import a
@@ -5518,7 +5528,7 @@ C = Enum('C', 'X')
 [typing fixtures/typing-medium.pyi]
 [out]
 ==
-a.py:5: error: "Type[C]" has no attribute "Y"
+a.py:5: error: "type[C]" has no attribute "Y"
 
 [case testFuncBasedEnumPropagation2]
 import a
@@ -6163,7 +6173,7 @@ class C:
         pass
 [out]
 ==
-a.py:6: error: Argument 1 to "func" has incompatible type "Type[C]"; expected "Callable[[int], Any]"
+a.py:6: error: Argument 1 to "func" has incompatible type "type[C]"; expected "Callable[[int], Any]"
 
 [case testDunderNewDefine]
 import a
@@ -6777,7 +6787,7 @@ class M(type):
     x: int
 [out]
 ==
-a.py:4: error: Argument 1 to "func" has incompatible type "Type[B]"; expected "P"
+a.py:4: error: Argument 1 to "func" has incompatible type "type[B]"; expected "P"
 
 [case testProtocolVsProtocolSubUpdated]
 import a
@@ -7302,9 +7312,7 @@ class C:
 ==
 mod.py:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testOverloadedMethodSupertype-only_when_cache]
--- Different cache/no-cache tests because
--- CallableType.def_extras.first_arg differs ("self"/None)
+[case testOverloadedMethodSupertype]
 from typing import overload, Any
 import b
 class Child(b.Parent):
@@ -7333,7 +7341,7 @@ class Parent:
     def f(self, arg: Any) -> Any: ...
 [out]
 ==
-main:4: error: Signature of "f" incompatible with supertype "Parent"
+main:4: error: Signature of "f" incompatible with supertype "b.Parent"
 main:4: note:      Superclass:
 main:4: note:          @overload
 main:4: note:          def f(self, arg: int) -> int
@@ -7344,49 +7352,6 @@ main:4: note:          @overload
 main:4: note:          def f(self, arg: int) -> int
 main:4: note:          @overload
 main:4: note:          def f(self, arg: str) -> str
-
-[case testOverloadedMethodSupertype2-only_when_nocache]
--- Different cache/no-cache tests because
--- CallableType.def_extras.first_arg differs ("self"/None)
-from typing import overload, Any
-import b
-class Child(b.Parent):
-    @overload                           # Fail
-    def f(self, arg: int) -> int: ...
-    @overload
-    def f(self, arg: str) -> str: ...
-    def f(self, arg: Any) -> Any: ...
-[file b.py]
-from typing import overload, Any
-class C: pass
-class Parent:
-    @overload
-    def f(self, arg: int) -> int: ...
-    @overload
-    def f(self, arg: str) -> str: ...
-    def f(self, arg: Any) -> Any: ...
-[file b.py.2]
-from typing import overload, Any
-class C: pass
-class Parent:
-    @overload
-    def f(self, arg: int) -> int: ...
-    @overload
-    def f(self, arg: str) -> C: ...
-    def f(self, arg: Any) -> Any: ...
-[out]
-==
-main:4: error: Signature of "f" incompatible with supertype "Parent"
-main:4: note:      Superclass:
-main:4: note:          @overload
-main:4: note:          def f(self, arg: int) -> int
-main:4: note:          @overload
-main:4: note:          def f(self, arg: str) -> C
-main:4: note:      Subclass:
-main:4: note:          @overload
-main:4: note:          def f(arg: int) -> int
-main:4: note:          @overload
-main:4: note:          def f(arg: str) -> str
 
 [case testOverloadedInitSupertype]
 import a
@@ -7505,7 +7470,7 @@ def g() -> Tuple[str, str]: pass
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-main:5: error: Incompatible return value type (got "List[str]", expected "List[int]")
+main:5: error: Incompatible return value type (got "list[str]", expected "list[int]")
 
 [case testUnpackInExpression1-only_when_nocache]
 from typing import Tuple, List
@@ -7528,8 +7493,8 @@ def t() -> Tuple[str]: ...
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:5: error: Incompatible return value type (got "Tuple[int, str]", expected "Tuple[int, int]")
-main:8: error: List item 1 has incompatible type "Tuple[str]"; expected "int"
+main:5: error: Incompatible return value type (got "tuple[int, str]", expected "tuple[int, int]")
+main:8: error: List item 1 has incompatible type "tuple[str]"; expected "int"
 
 [case testUnpackInExpression2-only_when_nocache]
 from typing import Set
@@ -7549,7 +7514,7 @@ def t() -> Tuple[str]: pass
 [builtins fixtures/set.pyi]
 [out]
 ==
-main:5: error: Argument 2 to <set> has incompatible type "*Tuple[str]"; expected "int"
+main:5: error: Argument 2 to <set> has incompatible type "*tuple[str]"; expected "int"
 
 [case testUnpackInExpression3-only_when_nocache]
 from typing import Dict
@@ -7569,7 +7534,7 @@ def d() -> Dict[int, int]: pass
 [builtins fixtures/dict.pyi]
 [out]
 ==
-main:5: error: Unpacked dict entry 1 has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
+main:5: error: Unpacked dict entry 1 has incompatible type "dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testAwaitAndAsyncDef-only_when_nocache]
 from a import g
@@ -7761,7 +7726,7 @@ def deco(f: F) -> F:
 [out]
 main:7: error: Unsupported operand types for + ("str" and "int")
 ==
-main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "B"
+main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "b.B"
 
 [case testLiskovFineVariableClean-only_when_nocache]
 import b
@@ -7810,7 +7775,7 @@ class B:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:6: error: Incompatible types in assignment (expression has type "List[str]", base class "B" defined the type as "List[int]")
+main:6: error: Incompatible types in assignment (expression has type "list[str]", base class "B" defined the type as "list[int]")
 
 [case testLiskovFineVariableCleanDefInMethodNested-only_when_nocache]
 from b import B
@@ -7866,7 +7831,7 @@ def deco(f: F) -> F:
     pass
 [out]
 ==
-main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "B"
+main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "b.B"
 
 [case testAddAbstractMethod]
 from b import D
@@ -8056,7 +8021,7 @@ A = NamedTuple('A', F)  # type: ignore
 [builtins fixtures/list.pyi]
 [out]
 ==
-b.py:3: note: Revealed type is "Tuple[(), fallback=a.A]"
+b.py:3: note: Revealed type is "tuple[(), fallback=a.A]"
 
 [case testImportOnTopOfAlias1]
 from a import A
@@ -8096,7 +8061,7 @@ def A(x: str) -> str: pass
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "Type[List[Any]]")
+a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "type[list[Any]]")
 
 [case testFakeOverloadCrash]
 import b
@@ -8476,9 +8441,7 @@ class D:
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
 
-[case testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache]
--- Different cache/no-cache tests because
--- CallableType.def_extras.first_arg differs ("self"/None)
+[case testFinalBodyReprocessedAndStillFinalOverloaded]
 import a
 [file a.py]
 from c import C
@@ -8514,59 +8477,12 @@ class D:
 ==
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
-a.py:3: error: Signature of "meth" incompatible with supertype "C"
+a.py:3: error: Signature of "meth" incompatible with supertype "c.C"
 a.py:3: note:      Superclass:
 a.py:3: note:          @overload
 a.py:3: note:          def meth(self, x: int) -> int
 a.py:3: note:          @overload
 a.py:3: note:          def meth(self, x: str) -> str
-a.py:3: note:      Subclass:
-a.py:3: note:          def meth(self) -> None
-
-[case testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache]
--- Different cache/no-cache tests because
--- CallableType.def_extras.first_arg differs ("self"/None)
-import a
-[file a.py]
-from c import C
-class A:
-    def meth(self) -> None: ...
-
-[file a.py.3]
-from c import C
-class A(C):
-    def meth(self) -> None: ...
-
-[file c.py]
-from typing import final, overload, Union
-from d import D
-
-class C:
-    @overload
-    def meth(self, x: int) -> int: ...
-    @overload
-    def meth(self, x: str) -> str: ...
-    @final
-    def meth(self, x: Union[int, str]) -> Union[int, str]:
-        D(int())
-        return x
-[file d.py]
-class D:
-    def __init__(self, x: int) -> None: ...
-[file d.py.2]
-from typing import Optional
-class D:
-    def __init__(self, x: Optional[int]) -> None: ...
-[out]
-==
-==
-a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
-a.py:3: error: Signature of "meth" incompatible with supertype "C"
-a.py:3: note:      Superclass:
-a.py:3: note:          @overload
-a.py:3: note:          def meth(x: int) -> int
-a.py:3: note:          @overload
-a.py:3: note:          def meth(x: str) -> str
 a.py:3: note:      Subclass:
 a.py:3: note:          def meth(self) -> None
 
@@ -8715,10 +8631,10 @@ reveal_type(mod.x)
 [file mod.py]
 x = 1
 [file mod.py.2]
-from typing_extensions import Literal
+from typing import Literal
 x: Literal[1] = 1
 [file mod.py.3]
-from typing_extensions import Literal
+from typing import Literal
 x: Literal[1] = 2
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8735,10 +8651,10 @@ foo(3)
 [file mod.py]
 def foo(x: int) -> None: pass
 [file mod.py.2]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal[3]) -> None: pass
 [file mod.py.3]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal[4]) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8752,10 +8668,10 @@ a: Alias = 1
 [file mod.py]
 Alias = int
 [file mod.py.2]
-from typing_extensions import Literal
+from typing import Literal
 Alias = Literal[1]
 [file mod.py.3]
-from typing_extensions import Literal
+from typing import Literal
 Alias = Literal[2]
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8767,16 +8683,14 @@ main:2: error: Incompatible types in assignment (expression has type "Literal[1]
 from mod import foo
 reveal_type(foo(4))
 [file mod.py]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 @overload
 def foo(x: int) -> str: ...
 @overload
 def foo(x: Literal['bar']) -> int: ...
 def foo(x): pass
 [file mod.py.2]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 @overload
 def foo(x: Literal[4]) -> Literal['foo']: ...
 @overload
@@ -8792,7 +8706,7 @@ main:2: note: Revealed type is "Literal['foo']"
 
 [case testLiteralFineGrainedChainedDefinitions]
 from mod1 import foo
-from typing_extensions import Literal
+from typing import Literal
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(foo)
 [file mod1.py]
@@ -8801,10 +8715,10 @@ foo = bar
 [file mod2.py]
 from mod3 import qux as bar
 [file mod3.py]
-from typing_extensions import Literal
+from typing import Literal
 qux: Literal[3]
 [file mod3.py.2]
-from typing_extensions import Literal
+from typing import Literal
 qux: Literal[4]
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8813,7 +8727,7 @@ main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expe
 
 [case testLiteralFineGrainedChainedAliases]
 from mod1 import Alias1
-from typing_extensions import Literal
+from typing import Literal
 x: Alias1
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(x)
@@ -8824,10 +8738,10 @@ Alias1 = Alias2
 from mod3 import Alias3
 Alias2 = Alias3
 [file mod3.py]
-from typing_extensions import Literal
+from typing import Literal
 Alias3 = Literal[3]
 [file mod3.py.2]
-from typing_extensions import Literal
+from typing import Literal
 Alias3 = Literal[4]
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8836,7 +8750,7 @@ main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expe
 
 [case testLiteralFineGrainedChainedFunctionDefinitions]
 from mod1 import func1
-from typing_extensions import Literal
+from typing import Literal
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(func1())
 [file mod1.py]
@@ -8845,10 +8759,10 @@ from mod2 import func2 as func1
 from mod3 import func3
 func2 = func3
 [file mod3.py]
-from typing_extensions import Literal
+from typing import Literal
 def func3() -> Literal[3]: pass
 [file mod3.py.2]
-from typing_extensions import Literal
+from typing import Literal
 def func3() -> Literal[4]: pass
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8867,7 +8781,7 @@ foo = func(bar)
 [file mod2.py]
 bar = 3
 [file mod2.py.2]
-from typing_extensions import Literal
+from typing import Literal
 bar: Literal[3] = 3
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8877,23 +8791,23 @@ main:2: note: Revealed type is "Literal[3]"
 
 [case testLiteralFineGrainedChainedViaFinal]
 from mod1 import foo
-from typing_extensions import Literal
+from typing import Literal
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(foo)
 [file mod1.py]
-from typing_extensions import Final
+from typing import Final
 from mod2 import bar
 foo: Final = bar
 [file mod2.py]
 from mod3 import qux as bar
 [file mod3.py]
-from typing_extensions import Final
+from typing import Final
 qux: Final = 3
 [file mod3.py.2]
-from typing_extensions import Final
+from typing import Final
 qux: Final = 4
 [file mod3.py.3]
-from typing_extensions import Final
+from typing import Final
 qux: Final[int] = 4
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8909,13 +8823,13 @@ reveal_type(foo)
 from mod2 import bar
 foo = bar()
 [file mod2.py]
-from typing_extensions import Literal
+from typing import Literal
 def bar() -> Literal["foo"]: pass
 [file mod2.py.2]
-from typing_extensions import Literal
+from typing import Literal
 def bar() -> Literal[u"foo"]: pass
 [file mod2.py.3]
-from typing_extensions import Literal
+from typing import Literal
 def bar() -> Literal[b"foo"]: pass
 [builtins fixtures/tuple.pyi]
 [out]
@@ -9935,7 +9849,7 @@ x = 0  # Arbitrary change to trigger reprocessing
 [builtins fixtures/dict.pyi]
 [out]
 ==
-a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
+a.py:3: note: Revealed type is "tuple[Literal[1]?, Literal['x']?]"
 
 [case testVariadicClassFineUpdateRegularToVariadic]
 from typing import Any
@@ -10062,14 +9976,14 @@ main:4: error: "C" expects no type arguments, but 2 given
 [case testUnpackKwargsUpdateFine]
 import m
 [file shared.py]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class Person(TypedDict):
     name: str
     age: int
 
 [file shared.py.2]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class Person(TypedDict):
     name: str
@@ -10086,6 +10000,7 @@ from lib import foo
 foo(name='Jennifer', age=38)
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 m.py:2: error: Argument "age" to "foo" has incompatible type "int"; expected "str"
@@ -10230,7 +10145,7 @@ class Base(Protocol):
 main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testPrettyMessageSorting]
-# flags: --python-version 3.8 --pretty
+# flags: --pretty
 import a
 
 [file a.py]
@@ -10245,14 +10160,14 @@ object + 1
 1()
 
 [out]
-b.py:1: error: Unsupported left operand type for + ("Type[object]")
+b.py:1: error: Unsupported left operand type for + ("type[object]")
     object + 1
     ^~~~~~~~~~
 a.py:1: error: Unsupported operand types for + ("int" and "str")
     1 + ''
         ^~
 ==
-b.py:1: error: Unsupported left operand type for + ("Type[object]")
+b.py:1: error: Unsupported left operand type for + ("type[object]")
     object + 1
     ^~~~~~~~~~
 b.py:2: error: "int" not callable
@@ -10391,7 +10306,7 @@ import n
 import m
 x: m.TD
 [file m.py]
-from typing_extensions import TypedDict
+from typing import TypedDict
 from f import A
 
 class TD(TypedDict):
@@ -10404,6 +10319,7 @@ A = int
 [file f.py.2]
 A = str
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
 ==
@@ -10432,14 +10348,14 @@ D = "y"
 C = str
 D = int
 [out]
-a.py:4: note: Revealed type is "Union[builtins.int, builtins.str]"
+a.py:4: note: Revealed type is "builtins.int | builtins.str"
 ==
 a.py:2: error: Unsupported left operand type for | ("str")
 a.py:3: error: Variable "a.A" is not valid as a type
 a.py:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 a.py:4: note: Revealed type is "A?"
 ==
-a.py:4: note: Revealed type is "Union[builtins.str, builtins.int]"
+a.py:4: note: Revealed type is "builtins.str | builtins.int"
 
 [case testUnionOfSimilarCallablesCrash]
 import b
@@ -10535,6 +10451,30 @@ from pkg.sub import modb
 
 [out]
 ==
+
+[case testUnusedTypeIgnorePreservedAfterChange]
+# flags: --warn-unused-ignores --no-error-summary
+[file main.py]
+a = 1  # type: ignore
+[file main.py.2]
+a = 1  # type: ignore
+# Comment to trigger reload.
+[out]
+main.py:1: error: Unused "type: ignore" comment
+==
+main.py:1: error: Unused "type: ignore" comment
+
+[case testTypeIgnoreWithoutCodePreservedAfterChange]
+# flags: --enable-error-code ignore-without-code --no-error-summary
+[file main.py]
+a = 1  # type: ignore
+[file main.py.2]
+a = 1  # type: ignore
+# Comment to trigger reload.
+[out]
+main.py:1: error: "type: ignore" comment without error code
+==
+main.py:1: error: "type: ignore" comment without error code
 
 [case testFineGrainedFunctoolsPartial]
 import m
@@ -10999,6 +10939,314 @@ b.py:1: error: class a.C is deprecated: use C2 instead
 b.py:2: error: class a.D is deprecated: use D2 instead
 
 
+[case testDeprecatedAddKeepChangeAndRemoveOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.3]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.4]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int, please")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.5]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+==
+
+
+[case testDeprecatedRemoveOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+
+
+[case testDeprecatedKeepOverloadedFunctionDeprecation]
+# flags: --enable-error-code=deprecated
+
+from a import f
+f(1)
+f("y")
+import a
+a.f(1)
+a.f("y")
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+
+
+[case testDeprecatedAddOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+
+
+[case testDeprecatedChangeOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int, please")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int, please
+
+
+[case testDeprecatedRemoveOverloadedFunctionDeprecationIndirectImport]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import overload, Union
+from typing_extensions import deprecated
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("pass int")
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import overload, Union
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: pass int
+==
+
+
+[case testDeprecatedOverloadedFunctionAlreadyDecorated]
+# flags: --enable-error-code=deprecated
+
+from b import f
+f(1)
+f("y")
+import b
+b.f(1)
+b.f("y")
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import Callable, overload, Union
+
+def d(t: Callable[[str], str]) -> Callable[[str], str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+@d
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[file a.py.2]
+from typing import Callable, overload, Union
+from typing_extensions import deprecated
+
+def d(t: Callable[[str], str]) -> Callable[[str], str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+@deprecated("deprecated decorated overload")
+@d
+def f(x: str) -> str: ...
+def f(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: deprecated decorated overload
+main:8: error: overload def (x: builtins.str) -> builtins.str of function a.f is deprecated: deprecated decorated overload
+
+
 [case testDeprecatedChangeClassDeprecationIndirectImport]
 # flags: --enable-error-code=deprecated
 from b import C
@@ -11213,3 +11461,60 @@ class A:
 [out]
 ==
 main:3: error: Property "f" defined in "A" is read-only
+
+[case testMethodMakeBoundFineGrained]
+from a import A
+a = A()
+a.f()
+[file a.py]
+class B:
+    def f(self, s: A) -> int: ...
+
+def f(s: A) -> int: ...
+
+class A:
+    f = f
+[file a.py.2]
+class B:
+    def f(self, s: A) -> int: ...
+
+def f(s: A) -> int: ...
+
+class A:
+    f = B().f
+[out]
+==
+main:3: error: Too few arguments
+
+[case testFineGrainedParamSpecPrefixUpdateMethod]
+import impl
+[file impl.py]
+from typing_extensions import ParamSpec
+from lib import Sub
+
+P = ParamSpec("P")
+class Impl(Sub[P]):
+    def test(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.meth(1, *args, **kwargs)
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+class Base(Generic[P]):
+    def meth(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+class Sub(Base[Concatenate[int, P]]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+class Base(Generic[P]):
+    def meth(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+class Sub(Base[Concatenate[str, P]]): ...
+[builtins fixtures/paramspec.pyi]
+[out]
+==
+impl.py:7: error: Argument 1 to "meth" of "Base" has incompatible type "int"; expected "str"

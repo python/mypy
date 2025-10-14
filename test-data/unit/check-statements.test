@@ -1305,13 +1305,13 @@ def g() -> Iterator[List[int]]:
     yield [2, 3, 4]
 def f() -> Iterator[List[int]]:
     yield from g()
-    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "List[int]")
+    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "list[int]")
 [builtins fixtures/for.pyi]
 [out]
 
 [case testYieldFromNotAppliedToNothing]
 def h():
-    yield from  # E: invalid syntax
+    yield from  # E: Invalid syntax
 [out]
 
 [case testYieldFromAndYieldTogether]
@@ -1476,7 +1476,7 @@ with A():
 with A() as a:  # type: Tuple[int, int]
     pass
 
-with A() as b:  # type: Tuple[int, str]  # E: Incompatible types in assignment (expression has type "Tuple[int, int]", variable has type "Tuple[int, str]")
+with A() as b:  # type: Tuple[int, str]  # E: Incompatible types in assignment (expression has type "tuple[int, int]", variable has type "tuple[int, str]")
     pass
 
 with A() as (c, d):  # type: int, int
@@ -1527,13 +1527,13 @@ from typing import Optional
 
 class InvalidReturn1:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 
 class InvalidReturn2:
     def __exit__(self, x, y, z) -> Optional[bool]:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         if int():
             return False
@@ -1542,7 +1542,7 @@ class InvalidReturn2:
 
 class InvalidReturn3:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         def nested() -> bool:
             return True
@@ -1550,7 +1550,7 @@ class InvalidReturn3:
 [builtins fixtures/bool.pyi]
 
 [case testWithStmtBoolExitReturnOkay]
-from typing_extensions import Literal
+from typing import Literal
 
 class GoodReturn1:
     def __exit__(self, x, y, z) -> bool:
@@ -2029,7 +2029,7 @@ cs: List[B]
 if int():
     *bs, b = bs
 if int():
-    *bs, c = cs  # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
+    *bs, c = cs  # E: Incompatible types in assignment (expression has type "list[B]", variable has type "list[A]")
     if int():
         *ns, c = cs
 if int():

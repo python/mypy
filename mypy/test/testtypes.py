@@ -7,7 +7,7 @@ from unittest import TestCase, skipUnless
 
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.join import join_simple, join_types
+from mypy.join import join_types
 from mypy.meet import meet_types, narrow_declared_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -23,7 +23,6 @@ from mypy.nodes import (
     Expression,
     NameExpr,
 )
-from mypy.options import Options
 from mypy.plugins.common import find_shallow_matching_overload_item
 from mypy.state import state
 from mypy.subtypes import is_more_precise, is_proper_subtype, is_same_type, is_subtype
@@ -130,17 +129,13 @@ class TypesSuite(Suite):
         )
         assert_equal(str(c3), "def (X? =, *Y?) -> Any")
 
-    def test_tuple_type_upper(self) -> None:
-        options = Options()
-        options.force_uppercase_builtins = True
-        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[()]")
-        assert_equal(TupleType([self.x], self.fx.std_tuple).str_with_options(options), "Tuple[X?]")
-        assert_equal(
-            TupleType(
-                [self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple
-            ).str_with_options(options),
-            "Tuple[X?, Any]",
-        )
+    def test_tuple_type_str(self) -> None:
+        t1 = TupleType([], self.fx.std_tuple)
+        assert_equal(str(t1), "tuple[()]")
+        t2 = TupleType([self.x], self.fx.std_tuple)
+        assert_equal(str(t2), "tuple[X?]")
+        t3 = TupleType([self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple)
+        assert_equal(str(t3), "tuple[X?, Any]")
 
     def test_type_variable_binding(self) -> None:
         assert_equal(
@@ -205,18 +200,6 @@ class TypesSuite(Suite):
         A, target = self.fx.def_alias_2(self.fx.a)
         assert get_proper_type(A) == target
         assert get_proper_type(target) == target
-
-    def test_type_alias_expand_all(self) -> None:
-        A, _ = self.fx.def_alias_1(self.fx.a)
-        assert A.expand_all_if_possible() is None
-        A, _ = self.fx.def_alias_2(self.fx.a)
-        assert A.expand_all_if_possible() is None
-
-        B = self.fx.non_rec_alias(self.fx.a)
-        C = self.fx.non_rec_alias(TupleType([B, B], Instance(self.fx.std_tuplei, [B])))
-        assert C.expand_all_if_possible() == TupleType(
-            [self.fx.a, self.fx.a], Instance(self.fx.std_tuplei, [self.fx.a])
-        )
 
     def test_recursive_nested_in_non_recursive(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)
@@ -817,12 +800,12 @@ class JoinSuite(Suite):
             self.assert_join(t, self.fx.anyt, self.fx.anyt)
 
     def test_mixed_truth_restricted_type_simple(self) -> None:
-        # join_simple against differently restricted truthiness types drops restrictions.
+        # make_simplified_union against differently restricted truthiness types drops restrictions.
         true_a = true_only(self.fx.a)
         false_o = false_only(self.fx.o)
-        j = join_simple(self.fx.o, true_a, false_o)
-        assert j.can_be_true
-        assert j.can_be_false
+        u = make_simplified_union([true_a, false_o])
+        assert u.can_be_true
+        assert u.can_be_false
 
     def test_mixed_truth_restricted_type(self) -> None:
         # join_types against differently restricted truthiness types drops restrictions.
@@ -1021,7 +1004,7 @@ class JoinSuite(Suite):
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
@@ -1049,12 +1032,12 @@ class JoinSuite(Suite):
             self.tuple(
                 self.fx.a, UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a
             ),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a),
@@ -1063,6 +1046,10 @@ class JoinSuite(Suite):
             ),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a),
         )
+
+    def test_join_type_type_type_var(self) -> None:
+        self.assert_join(self.fx.type_a, self.fx.t, self.fx.o)
+        self.assert_join(self.fx.t, self.fx.type_a, self.fx.o)
 
     # There are additional test cases in check-inference.test.
 
@@ -1584,11 +1571,12 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
 class TestExpandTypeLimitGetProperType(TestCase):
     # WARNING: do not increase this number unless absolutely necessary,
     # and you understand what you are doing.
-    ALLOWED_GET_PROPER_TYPES = 9
+    ALLOWED_GET_PROPER_TYPES = 7
 
     @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
     def test_count_get_proper_type(self) -> None:
         with open(mypy.expandtype.__file__) as f:
             code = f.read()
-        get_proper_type_count = len(re.findall("get_proper_type", code))
+        get_proper_type_count = len(re.findall(r"get_proper_type\(", code))
+        get_proper_type_count -= len(re.findall(r"get_proper_type\(\)", code))
         assert get_proper_type_count == self.ALLOWED_GET_PROPER_TYPES

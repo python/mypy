@@ -1,12 +1,12 @@
 import sys
-from _typeshed import MaybeNone, OptExcInfo, ProfileFunction, TraceFunction, structseq
+from _typeshed import MaybeNone, OptExcInfo, ProfileFunction, StrOrBytesPath, TraceFunction, structseq
 from _typeshed.importlib import MetaPathFinderProtocol, PathEntryFinderProtocol
 from builtins import object as _object
 from collections.abc import AsyncGenerator, Callable, Sequence
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
 from typing import Any, Final, Literal, NoReturn, Protocol, TextIO, TypeVar, final, type_check_only
-from typing_extensions import LiteralString, TypeAlias
+from typing_extensions import LiteralString, TypeAlias, deprecated
 
 _T = TypeVar("_T")
 
@@ -46,8 +46,7 @@ path: list[str]
 path_hooks: list[Callable[[str], PathEntryFinderProtocol]]
 path_importer_cache: dict[str, PathEntryFinderProtocol | None]
 platform: LiteralString
-if sys.version_info >= (3, 9):
-    platlibdir: str
+platlibdir: str
 prefix: str
 pycache_prefix: str | None
 ps1: object
@@ -97,7 +96,7 @@ flags: _flags
 # This can be re-visited when typeshed drops support for 3.10,
 # at which point all supported versions will include int_max_str_digits
 # in all patch versions.
-# 3.8 and 3.9 are 15 or 16-tuple
+# 3.9 is 15 or 16-tuple
 # 3.10 is 16 or 17-tuple
 # 3.11+ is an 18-tuple.
 @final
@@ -182,10 +181,18 @@ class _flags(_UninstantiableStructseq, tuple[int, ...]):
     if sys.version_info >= (3, 11):
         @property
         def safe_path(self) -> bool: ...
+    if sys.version_info >= (3, 13):
+        @property
+        def gil(self) -> Literal[0, 1]: ...
+    if sys.version_info >= (3, 14):
+        @property
+        def thread_inherit_context(self) -> Literal[0, 1]: ...
+        @property
+        def context_aware_warnings(self) -> Literal[0, 1]: ...
     # Whether or not this exists on lower versions of Python
     # may depend on which patch release you're using
     # (it was backported to all Python versions on 3.8+ as a security fix)
-    # Added in: 3.8.14, 3.9.14, 3.10.7
+    # Added in: 3.9.14, 3.10.7
     # and present in all versions of 3.11 and later.
     @property
     def int_max_str_digits(self) -> int: ...
@@ -336,9 +343,20 @@ class _version_info(_UninstantiableStructseq, tuple[int, int, int, _ReleaseLevel
 version_info: _version_info
 
 def call_tracing(func: Callable[..., _T], args: Any, /) -> _T: ...
-def _clear_type_cache() -> None: ...
+
+if sys.version_info >= (3, 13):
+    @deprecated("Deprecated since Python 3.13. Use `_clear_internal_caches()` instead.")
+    def _clear_type_cache() -> None: ...
+
+else:
+    def _clear_type_cache() -> None: ...
+
 def _current_frames() -> dict[int, FrameType]: ...
 def _getframe(depth: int = 0, /) -> FrameType: ...
+
+if sys.version_info >= (3, 12):
+    def _getframemodulename(depth: int = 0) -> str | None: ...
+
 def _debugmallocstats() -> None: ...
 def __displayhook__(object: object, /) -> None: ...
 def __excepthook__(exctype: type[BaseException], value: BaseException, traceback: TracebackType | None, /) -> None: ...
@@ -368,6 +386,7 @@ def settrace(function: TraceFunction | None, /) -> None: ...
 if sys.platform == "win32":
     # A tuple of length 5, even though it has more than 5 attributes.
     @final
+    @type_check_only
     class _WinVersion(_UninstantiableStructseq, tuple[int, int, int, int, str]):
         @property
         def major(self) -> int: ...
@@ -396,6 +415,8 @@ def intern(string: str, /) -> str: ...
 
 if sys.version_info >= (3, 13):
     def _is_gil_enabled() -> bool: ...
+    def _clear_internal_caches() -> None: ...
+    def _is_interned(string: str, /) -> bool: ...
 
 def is_finalizing() -> bool: ...
 def breakpointhook(*args: Any, **kwargs: Any) -> Any: ...
@@ -408,14 +429,6 @@ if sys.platform != "win32":
 def setrecursionlimit(limit: int, /) -> None: ...
 def setswitchinterval(interval: float, /) -> None: ...
 def gettotalrefcount() -> int: ...  # Debug builds only
-
-if sys.version_info < (3, 9):
-    def getcheckinterval() -> int: ...  # deprecated
-    def setcheckinterval(n: int, /) -> None: ...  # deprecated
-
-if sys.version_info < (3, 9):
-    # An 11-tuple or None
-    def callstats() -> tuple[int, int, int, int, int, int, int, int, int, int, int] | None: ...
 
 # Doesn't exist at runtime, but exported in the stubs so pytest etc. can annotate their code more easily.
 @type_check_only
@@ -450,12 +463,19 @@ def get_asyncgen_hooks() -> _asyncgen_hooks: ...
 def set_asyncgen_hooks(firstiter: _AsyncgenHook = ..., finalizer: _AsyncgenHook = ...) -> None: ...
 
 if sys.platform == "win32":
-    def _enablelegacywindowsfsencoding() -> None: ...
+    if sys.version_info >= (3, 13):
+        @deprecated(
+            "Deprecated since Python 3.13; will be removed in Python 3.16. "
+            "Use the `PYTHONLEGACYWINDOWSFSENCODING` environment variable instead."
+        )
+        def _enablelegacywindowsfsencoding() -> None: ...
+    else:
+        def _enablelegacywindowsfsencoding() -> None: ...
 
 def get_coroutine_origin_tracking_depth() -> int: ...
 def set_coroutine_origin_tracking_depth(depth: int) -> None: ...
 
-# The following two functions were added in 3.11.0, 3.10.7, 3.9.14, and 3.8.14,
+# The following two functions were added in 3.11.0, 3.10.7, and 3.9.14,
 # as part of the response to CVE-2020-10735
 def set_int_max_str_digits(maxdigits: int) -> None: ...
 def get_int_max_str_digits() -> int: ...
@@ -477,3 +497,7 @@ if sys.version_info >= (3, 12):
     from . import _monitoring
 
     monitoring = _monitoring
+
+if sys.version_info >= (3, 14):
+    def is_remote_debug_enabled() -> bool: ...
+    def remote_exec(pid: int, script: StrOrBytesPath) -> None: ...

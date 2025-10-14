@@ -96,7 +96,27 @@ from mypy.visitor import ExpressionVisitor
 #   of an index expression, or the operands of an operator expression).
 
 
+Key: _TypeAlias = tuple[Any, ...]
+
+
+def literal_hash(e: Expression) -> Key | None:
+    """Generate a hashable, (mostly) opaque key for expressions supported by the binder.
+
+    These allow using expressions as dictionary keys based on structural/value
+    matching (instead of based on expression identity).
+
+    Return None if the expression type is not supported (it cannot be narrowed).
+
+    See the comment above for more information.
+
+    NOTE: This is not directly related to literal types.
+    """
+    return e.accept(_hasher)
+
+
 def literal(e: Expression) -> int:
+    """Return the literal kind for an expression."""
+
     if isinstance(e, ComparisonExpr):
         return min(literal(o) for o in e.operands)
 
@@ -129,15 +149,8 @@ def literal(e: Expression) -> int:
     return LITERAL_NO
 
 
-Key: _TypeAlias = tuple[Any, ...]
-
-
 def subkeys(key: Key) -> Iterable[Key]:
     return [elt for elt in key if isinstance(elt, tuple)]
-
-
-def literal_hash(e: Expression) -> Key | None:
-    return e.accept(_hasher)
 
 
 def extract_var_from_literal_hash(key: Key) -> Var | None:

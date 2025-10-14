@@ -1,10 +1,11 @@
 import sys
 from _typeshed import StrPath
 from py_compile import PycInvalidationMode
-from typing import Any, Protocol
+from typing import Any, Protocol, type_check_only
 
 __all__ = ["compile_dir", "compile_file", "compile_path"]
 
+@type_check_only
 class _SupportsSearch(Protocol):
     def search(self, string: str, /) -> Any: ...
 
@@ -25,7 +26,7 @@ if sys.version_info >= (3, 10):
         prependdir: StrPath | None = None,
         limit_sl_dest: StrPath | None = None,
         hardlink_dupes: bool = False,
-    ) -> int: ...
+    ) -> bool: ...
     def compile_file(
         fullname: StrPath,
         ddir: StrPath | None = None,
@@ -40,9 +41,9 @@ if sys.version_info >= (3, 10):
         prependdir: StrPath | None = None,
         limit_sl_dest: StrPath | None = None,
         hardlink_dupes: bool = False,
-    ) -> int: ...
+    ) -> bool: ...
 
-elif sys.version_info >= (3, 9):
+else:
     def compile_dir(
         dir: StrPath,
         maxlevels: int | None = None,
@@ -59,7 +60,7 @@ elif sys.version_info >= (3, 9):
         prependdir: StrPath | None = None,
         limit_sl_dest: StrPath | None = None,
         hardlink_dupes: bool = False,
-    ) -> int: ...
+    ) -> bool: ...
     def compile_file(
         fullname: StrPath,
         ddir: StrPath | None = None,
@@ -74,31 +75,7 @@ elif sys.version_info >= (3, 9):
         prependdir: StrPath | None = None,
         limit_sl_dest: StrPath | None = None,
         hardlink_dupes: bool = False,
-    ) -> int: ...
-
-else:
-    def compile_dir(
-        dir: StrPath,
-        maxlevels: int = 10,
-        ddir: StrPath | None = None,
-        force: bool = False,
-        rx: _SupportsSearch | None = None,
-        quiet: int = 0,
-        legacy: bool = False,
-        optimize: int = -1,
-        workers: int = 1,
-        invalidation_mode: PycInvalidationMode | None = None,
-    ) -> int: ...
-    def compile_file(
-        fullname: StrPath,
-        ddir: StrPath | None = None,
-        force: bool = False,
-        rx: _SupportsSearch | None = None,
-        quiet: int = 0,
-        legacy: bool = False,
-        optimize: int = -1,
-        invalidation_mode: PycInvalidationMode | None = None,
-    ) -> int: ...
+    ) -> bool: ...
 
 def compile_path(
     skip_curdir: bool = ...,
@@ -108,4 +85,4 @@ def compile_path(
     legacy: bool = False,
     optimize: int = -1,
     invalidation_mode: PycInvalidationMode | None = None,
-) -> int: ...
+) -> bool: ...

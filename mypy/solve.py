@@ -9,7 +9,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
-from mypy.join import join_types
+from mypy.join import join_type_list
 from mypy.meet import meet_type_list, meet_types
 from mypy.subtypes import is_subtype
 from mypy.typeops import get_all_type_vars
@@ -247,10 +247,18 @@ def solve_iteratively(
     return solutions
 
 
+def _join_sorted_key(t: Type) -> int:
+    t = get_proper_type(t)
+    if isinstance(t, UnionType):
+        return -2
+    if isinstance(t, NoneType):
+        return -1
+    return 0
+
+
 def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     """Solve constraints by finding by using meets of upper bounds, and joins of lower bounds."""
-    bottom: Type | None = None
-    top: Type | None = None
+
     candidate: Type | None = None
 
     # Filter out previous results of failed inference, they will only spoil the current pass...
@@ -262,24 +270,33 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     uppers = new_uppers
 
     # ...unless this is the only information we have, then we just pass it on.
+    lowers = list(lowers)
     if not uppers and not lowers:
         candidate = UninhabitedType()
         candidate.ambiguous = True
         return candidate
 
+    bottom: Type | None = None
+    top: Type | None = None
+
     # Process each bound separately, and calculate the lower and upper
     # bounds based on constraints. Note that we assume that the constraint
     # targets do not have constraint references.
-    for target in lowers:
-        if bottom is None:
-            bottom = target
-        else:
-            if type_state.infer_unions:
-                # This deviates from the general mypy semantics because
-                # recursive types are union-heavy in 95% of cases.
-                bottom = UnionType.make_union([bottom, target])
-            else:
-                bottom = join_types(bottom, target)
+    if type_state.infer_unions and lowers:
+        # This deviates from the general mypy semantics because
+        # recursive types are union-heavy in 95% of cases.
+        # Retain `None` when no bottoms were provided to avoid bogus `Never` inference.
+        bottom = UnionType.make_union(lowers)
+    else:
+        # The order of lowers is non-deterministic.
+        # We attempt to sort lowers because joins are non-associative. For instance:
+        # join(join(int, str), int | str) == join(object, int | str) == object
+        # join(int, join(str, int | str)) == join(int, int | str)    == int | str
+        # Note that joins in theory should be commutative, but in practice some bugs mean this is
+        # also a source of non-deterministic type checking results.
+        sorted_lowers = sorted(lowers, key=_join_sorted_key)
+        if sorted_lowers:
+            bottom = join_type_list(sorted_lowers)
 
     for target in uppers:
         if top is None:
@@ -350,7 +367,7 @@ def choose_free(
 
     # For convenience with current type application machinery, we use a stable
     # choice that prefers the original type variables (not polymorphic ones) in SCC.
-    best = sorted(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))[0]
+    best = min(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))
     if isinstance(best, TypeVarType):
         return best.copy_modified(values=values, upper_bound=common_upper_bound)
     if is_trivial_bound(common_upper_bound_p, allow_tuple=True):

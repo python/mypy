@@ -198,7 +198,7 @@ class NamedTupleAnalyzer:
                         # Something is incomplete. We need to defer this named tuple.
                         return None
                     types.append(analyzed)
-                # ...despite possible minor failures that allow further analyzis.
+                # ...despite possible minor failures that allow further analysis.
                 if name.startswith("_"):
                     self.fail(
                         f"NamedTuple field name cannot start with an underscore: {name}", stmt
@@ -606,7 +606,7 @@ class NamedTupleAnalyzer:
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
             signature = CallableType(cast(list[Type], types), arg_kinds, items, ret, function_type)
-            signature.variables = [self_type]
+            signature.variables = (self_type,)
             func = FuncDef(funcname, args, Block([]))
             func.info = info
             func.is_class = is_classmethod

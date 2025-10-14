@@ -6,6 +6,7 @@ The public interface is via the mypy.stubgen module.
 
 from __future__ import annotations
 
+import enum
 import glob
 import importlib
 import inspect
@@ -37,6 +38,7 @@ from mypy.stubutil import (
     infer_method_arg_types,
     infer_method_ret_type,
 )
+from mypy.util import quote_docstring
 
 
 class ExternalSignatureGenerator(SignatureGenerator):
@@ -211,6 +213,9 @@ class CFunctionStub:
         pass
 
 
+_Missing = enum.Enum("_Missing", "VALUE")
+
+
 class InspectionStubGenerator(BaseStubGenerator):
     """Stub generator that does not parse code.
 
@@ -310,14 +315,14 @@ class InspectionStubGenerator(BaseStubGenerator):
 
         # Add the arguments to the signature
         def add_args(
-            args: list[str], get_default_value: Callable[[int, str], object | None]
+            args: list[str], get_default_value: Callable[[int, str], object | _Missing]
         ) -> None:
             for i, arg in enumerate(args):
                 # Check if the argument has a default value
                 default_value = get_default_value(i, arg)
-                if default_value is not None:
+                if default_value is not _Missing.VALUE:
                     if arg in annotations:
-                        argtype = annotations[arg]
+                        argtype = get_annotation(arg)
                     else:
                         argtype = self.get_type_annotation(default_value)
                         if argtype == "None":
@@ -330,26 +335,26 @@ class InspectionStubGenerator(BaseStubGenerator):
                 else:
                     arglist.append(ArgSig(arg, get_annotation(arg), default=False))
 
-        def get_pos_default(i: int, _arg: str) -> Any | None:
+        def get_pos_default(i: int, _arg: str) -> Any | _Missing:
             if defaults and i >= len(args) - len(defaults):
                 return defaults[i - (len(args) - len(defaults))]
             else:
-                return None
+                return _Missing.VALUE
 
         add_args(args, get_pos_default)
 
         # Add *args if present
         if varargs:
             arglist.append(ArgSig(f"*{varargs}", get_annotation(varargs)))
-        # if we have keyword only args, then wee need to add "*"
+        # if we have keyword only args, then we need to add "*"
         elif kwonlyargs:
             arglist.append(ArgSig("*"))
 
-        def get_kw_default(_i: int, arg: str) -> Any | None:
-            if kwonlydefaults:
-                return kwonlydefaults.get(arg)
+        def get_kw_default(_i: int, arg: str) -> Any | _Missing:
+            if kwonlydefaults and arg in kwonlydefaults:
+                return kwonlydefaults[arg]
             else:
-                return None
+                return _Missing.VALUE
 
         add_args(kwonlyargs, get_kw_default)
 
@@ -645,8 +650,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 if inferred[0].args and inferred[0].args[0].name == "cls":
                     decorators.append("@classmethod")
 
-        if docstring:
-            docstring = self._indent_docstring(docstring)
+        docstring = self._indent_docstring(ctx.docstring) if ctx.docstring else None
         output.extend(self.format_func_def(inferred, decorators=decorators, docstring=docstring))
         self._fix_iter(ctx, inferred, output)
 
@@ -750,9 +754,14 @@ class InspectionStubGenerator(BaseStubGenerator):
             )
         else:  # regular property
             if readonly:
+                docstring = self._indent_docstring(ctx.docstring) if ctx.docstring else None
                 ro_properties.append(f"{self._indent}@property")
-                sig = FunctionSig(name, [ArgSig("self")], inferred_type)
-                ro_properties.append(sig.format_sig(indent=self._indent))
+                sig = FunctionSig(name, [ArgSig("self")], inferred_type, docstring=docstring)
+                ro_properties.append(
+                    sig.format_sig(
+                        indent=self._indent, include_docstrings=self._include_docstrings
+                    )
+                )
             else:
                 if inferred_type is None:
                     inferred_type = self.add_name("_typeshed.Incomplete")
@@ -761,11 +770,15 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def get_type_fullname(self, typ: type) -> str:
         """Given a type, return a string representation"""
-        if typ is Any:  # type: ignore[comparison-overlap]
+        if typ is Any:
             return "Any"
         typename = getattr(typ, "__qualname__", typ.__name__)
         module_name = self.get_obj_module(typ)
-        assert module_name is not None, typ
+        if module_name is None:
+            # This should not normally happen, but some types may resist our
+            # introspection attempts too hard. See
+            # https://github.com/python/mypy/issues/19031
+            return "_typeshed.Incomplete"
         if module_name != "builtins":
             typename = f"{module_name}.{typename}"
         return typename
@@ -867,8 +880,17 @@ class InspectionStubGenerator(BaseStubGenerator):
             bases_str = "(%s)" % ", ".join(bases)
         else:
             bases_str = ""
-        if types or static_properties or rw_properties or methods or ro_properties:
+
+        if class_info.docstring and self._include_docstrings:
+            doc = quote_docstring(self._indent_docstring(class_info.docstring))
+            doc = f"    {self._indent}{doc}"
+            docstring = doc.splitlines(keepends=False)
+        else:
+            docstring = []
+
+        if docstring or types or static_properties or rw_properties or methods or ro_properties:
             output.append(f"{self._indent}class {class_name}{bases_str}:")
+            output.extend(docstring)
             for line in types:
                 if (
                     output
@@ -878,14 +900,10 @@ class InspectionStubGenerator(BaseStubGenerator):
                 ):
                     output.append("")
                 output.append(line)
-            for line in static_properties:
-                output.append(line)
-            for line in rw_properties:
-                output.append(line)
-            for line in methods:
-                output.append(line)
-            for line in ro_properties:
-                output.append(line)
+            output.extend(static_properties)
+            output.extend(rw_properties)
+            output.extend(methods)
+            output.extend(ro_properties)
         else:
             output.append(f"{self._indent}class {class_name}{bases_str}: ...")
 

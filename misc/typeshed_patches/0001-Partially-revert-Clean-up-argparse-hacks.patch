@@ -1,0 +1,45 @@
+From 84a9d586544a0408d4654f57f83a93cb048070fb Mon Sep 17 00:00:00 2001
+From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
+Date: Sat, 15 Feb 2025 20:11:06 +0100
+Subject: [PATCH] Partially revert Clean up argparse hacks
+
+---
+ mypy/typeshed/stdlib/argparse.pyi | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/mypy/typeshed/stdlib/argparse.pyi b/mypy/typeshed/stdlib/argparse.pyi
+index b9fa31139..3c3ba116a 100644
+--- a/mypy/typeshed/stdlib/argparse.pyi
++++ b/mypy/typeshed/stdlib/argparse.pyi
+@@ -2,7 +2,7 @@ import sys
+ from _typeshed import SupportsWrite, sentinel
+ from collections.abc import Callable, Generator, Iterable, Sequence
+ from re import Pattern
+-from typing import IO, Any, ClassVar, Final, Generic, NoReturn, Protocol, TypeVar, overload, type_check_only
++from typing import IO, Any, ClassVar, Final, Generic, NewType, NoReturn, Protocol, TypeVar, overload, type_check_only
+ from typing_extensions import Self, TypeAlias, deprecated
+ 
+ __all__ = [
+@@ -36,7 +36,9 @@ ONE_OR_MORE: Final = "+"
+ OPTIONAL: Final = "?"
+ PARSER: Final = "A..."
+ REMAINDER: Final = "..."
+-SUPPRESS: Final = "==SUPPRESS=="
++_SUPPRESS_T = NewType("_SUPPRESS_T", str)
++SUPPRESS: _SUPPRESS_T | str  # not using Literal because argparse sometimes compares SUPPRESS with is
++# the | str is there so that foo = argparse.SUPPRESS; foo = "test" checks out in mypy
+ ZERO_OR_MORE: Final = "*"
+ _UNRECOGNIZED_ARGS_ATTR: Final = "_unrecognized_args"  # undocumented
+ 
+@@ -79,7 +81,7 @@ class _ActionsContainer:
+         # more precisely, Literal["?", "*", "+", "...", "A...", "==SUPPRESS=="],
+         # but using this would make it hard to annotate callers that don't use a
+         # literal argument and for subclasses to override this method.
+-        nargs: int | str | None = None,
++        nargs: int | str | _SUPPRESS_T | None = None,
+         const: Any = ...,
+         default: Any = ...,
+         type: _ActionType = ...,
+-- 
+2.50.1
+

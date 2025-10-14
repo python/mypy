@@ -423,7 +423,35 @@ import typing
 __all__ = [1, 2, 3]
 [builtins fixtures/module_all.pyi]
 [out]
-main:2: error: Type of __all__ must be "Sequence[str]", not "List[int]"
+main:2: error: List item 0 has incompatible type "int"; expected "str"
+main:2: error: List item 1 has incompatible type "int"; expected "str"
+main:2: error: List item 2 has incompatible type "int"; expected "str"
+
+[case testAllMustBeSequenceStr2]
+import typing
+__all__ = 1  # E: Type of __all__ must be "Sequence[str]", not "int"
+reveal_type(__all__)  # N: Revealed type is "builtins.int"
+[builtins fixtures/module_all.pyi]
+
+[case testAllMustBeSequenceStr3]
+import typing
+__all__ = set()  # E: Need type annotation for "__all__" (hint: "__all__: set[<type>] = ...") \
+                 # E: Type of __all__ must be "Sequence[str]", not "set[Any]"
+reveal_type(__all__)  # N: Revealed type is "builtins.set[Any]"
+[builtins fixtures/set.pyi]
+
+[case testModuleAllEmptyList]
+__all__ = []
+reveal_type(__all__)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/module_all.pyi]
+
+[case testDunderAllNotGlobal]
+class A:
+    __all__ = 1
+
+def foo() -> None:
+    __all__ = 1
+[builtins fixtures/module_all.pyi]
 
 [case testUnderscoreExportedValuesInImportAll]
 import typing
@@ -519,8 +547,7 @@ def bar(x: Both, y: Both = ...) -> Both:
 [out]
 
 [case testEllipsisDefaultArgValueInNonStubsMethods]
-from typing import Generic, TypeVar
-from typing_extensions import Protocol
+from typing import Generic, Protocol, TypeVar
 from abc import abstractmethod
 
 T = TypeVar('T')
@@ -667,9 +694,9 @@ import mod
 X: Type[mod.A]
 Y: Type[mod.B]
 from mod import B as X
-from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "Type[A]", local name has type "Type[B]")
+from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "type[A]", local name has type "type[B]")
 
-import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "Type[A]")
+import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "type[A]")
 
 [file mod.py]
 class A: ...
@@ -1050,7 +1077,7 @@ class z: pass
 [out]
 main:2: error: Incompatible import of "x" (imported name has type "str", local name has type "int")
 main:2: error: Incompatible import of "y" (imported name has type "Callable[[], str]", local name has type "Callable[[], int]")
-main:2: error: Incompatible import of "z" (imported name has type "Type[b.z]", local name has type "Type[a.z]")
+main:2: error: Incompatible import of "z" (imported name has type "type[b.z]", local name has type "type[a.z]")
 
 -- Misc
 
@@ -1389,14 +1416,14 @@ import b
 import b
 class C:
     def f1(self) -> None:
-        self.x2
+        reveal_type(self.x2)
     def f2(self) -> None:
         self.x2 = b.b
 [file b.py]
 import a
 b = 1 + int()
 [out]
-tmp/a.py:4: error: Cannot determine type of "x2"
+tmp/a.py:4: note: Revealed type is "builtins.int"
 
 [case testErrorInPassTwo1]
 import b
@@ -1583,8 +1610,8 @@ def f() -> types.ModuleType:
     return types
 reveal_type(f())  # N: Revealed type is "types.ModuleType"
 reveal_type(types)  # N: Revealed type is "types.ModuleType"
-
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testClassImportAccessedInMethod]
 class C:
@@ -1998,6 +2025,7 @@ from typing import TypeVar
 T = TypeVar('T')
 def whatever(x: T) -> T: pass
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testModuleAliasToQualifiedImport2]
 import mod
@@ -2013,8 +2041,8 @@ from typing import TypeVar
 T = TypeVar('T')
 def whatever(x: T) -> T: pass
 [file othermod.py]
-
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testModuleLevelGetattr]
 import has_getattr
@@ -2883,7 +2911,7 @@ CustomDict(foo="abc", bar="def")
 [file foo/__init__.py]
 [file foo/bar/__init__.py]
 [file foo/bar/custom_dict.py]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 CustomDict = TypedDict(
     "CustomDict",
@@ -3207,13 +3235,13 @@ class Bar(Foo):
     def frobnicate(self, *args: int) -> None: pass # type: ignore[override] # I know
 [builtins fixtures/dict.pyi]
 [out1]
-tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "a.Foo"
 tmp/b.py:3: note:      Superclass:
 tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
 tmp/b.py:3: note:          def frobnicate(self) -> None
 [out2]
-tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "a.Foo"
 tmp/b.py:3: note:      Superclass:
 tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
