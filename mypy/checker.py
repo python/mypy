@@ -5021,8 +5021,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if codes.REDUNDANT_EXPR in self.options.enabled_error_codes:
                     if if_map is None:
-                        self.msg.redundant_condition_in_if(False, e)
-                    if else_map is None:
+                        if s.while_stmt:
+                            self.msg.redundant_condition_in_while(e)
+                        else:
+                            self.msg.redundant_condition_in_if(False, e)
+                    if else_map is None and not s.while_stmt:
                         self.msg.redundant_condition_in_if(True, e)
 
                 with self.binder.frame_context(can_skip=True, fall_through=2):
@@ -5037,7 +5040,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""
-        if_stmt = IfStmt([s.expr], [s.body], None)
+        if_stmt = IfStmt([s.expr], [s.body], None, while_stmt=True)
         if_stmt.set_line(s)
         self.accept_loop(if_stmt, s.else_body, exit_condition=s.expr)
 

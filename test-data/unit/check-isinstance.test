@@ -3065,3 +3065,17 @@ if Z():  # E: If condition is always false
     ...
 
 [builtins fixtures/bool.pyi]
+
+[case testRedundantExpressionWarningsForWhileStatements]
+# flags: --enable-error-code=redundant-expr
+
+x = None
+while True:
+    if x:
+        break
+    x = True
+
+while False:  # E: While condition is always false
+    ...
+
+[builtins fixtures/bool.pyi]
