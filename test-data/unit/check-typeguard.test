@@ -825,6 +825,26 @@ def handle(model: Model) -> int:
     return 0
 [builtins fixtures/tuple.pyi]
 
+[case testTypeGuardedTypeDoesNotLeakTypeVar]
+# flags: --debug-serialize
+# https://github.com/python/mypy/issues/20015
+from typing import Generic, TypeVar, TypeGuard
+
+class A: ...
+class B: ...
+
+def is_a(_: object) -> TypeGuard[A]: return True
+def is_b(_: object) -> TypeGuard[B]: return True
+
+_T = TypeVar("_T")
+
+class Foo(Generic[_T]):
+    def __init__(self, v: _T) -> None:
+        if is_a(v) or is_b(v):
+            self.v = v
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testTypeGuardRestrictTypeVarUnion]
 from typing import Union, TypeVar
 from typing_extensions import TypeGuard
