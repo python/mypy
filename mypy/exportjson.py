@@ -14,14 +14,18 @@ down mypy development).
 """
 
 import argparse
-import pprint
+import json
 from typing import Any, TypeAlias as _TypeAlias
 
-from mypy.types import Type
+from mypy.types import (
+    Type, get_proper_type, Instance, AnyType, UnionType, TupleType, CallableType,
+    Overloaded, TypeVarType, TypeAliasType, LiteralType
+)
 from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, node_kinds, SymbolNode, FuncDef, TypeInfo,
     TypeAlias, TypeVarExpr, Var, OverloadedFuncDef, get_flags, FUNCDEF_FLAGS,
-    DataclassTransformSpec, FUNCBASE_FLAGS, OverloadPart, Decorator, VAR_FLAGS
+    DataclassTransformSpec, FUNCBASE_FLAGS, OverloadPart, Decorator, VAR_FLAGS,
+    ParamSpecExpr, TypeVarTupleExpr
 )
 from librt.internal import Buffer
 
@@ -90,6 +94,10 @@ def convert_symbol_node(self: SymbolNode) -> JsonDict:
         return convert_type_alias(self)
     elif isinstance(self, TypeVarExpr):
         return convert_type_var_expr(self)
+    elif isinstance(self, ParamSpecExpr):
+        return convert_param_spec_expr(self)
+    elif isinstance(self, TypeVarTupleExpr):
+        return convert_type_var_tuple_expr(self)
     assert False, type(self)
 
 
@@ -153,6 +161,20 @@ def convert_decorator(self: Decorator) -> JsonDict:
     }
 
 
+def convert_var(self: Var) -> JsonDict:
+    data: JsonDict = {
+        ".class": "Var",
+        "name": self._name,
+        "fullname": self._fullname,
+        "type": None if self.type is None else convert_type(self.type),
+        "setter_type": None if self.setter_type is None else convert_type(self.setter_type),
+        "flags": get_flags(self, VAR_FLAGS),
+    }
+    if self.final_value is not None:
+        data["final_value"] = self.final_value
+    return data
+
+
 def convert_type_info(self: TypeInfo) -> JsonDict:
     return {}
 
@@ -183,33 +205,147 @@ def convert_type_var_expr(self: TypeVarExpr) -> JsonDict:
     }
 
 
-def convert_var(self: Var) -> JsonDict:
-    data: JsonDict = {
-        ".class": "Var",
+def convert_param_spec_expr(self: ParamSpecExpr) -> JsonDict:
+    return {
+        ".class": "ParamSpecExpr",
         "name": self._name,
         "fullname": self._fullname,
-        "type": None if self.type is None else convert_type(self.type),
-        "setter_type": None if self.setter_type is None else convert_type(self.setter_type),
-        "flags": get_flags(self, VAR_FLAGS),
+        "upper_bound": convert_type(self.upper_bound),
+        "default": convert_type(self.default),
+        "variance": self.variance,
     }
-    if self.final_value is not None:
-        data["final_value"] = self.final_value
+
+
+def convert_type_var_tuple_expr(self: TypeVarTupleExpr) -> JsonDict:
+    return {
+        ".class": "TypeVarTupleExpr",
+        "name": self._name,
+        "fullname": self._fullname,
+        "upper_bound": convert_type(self.upper_bound),
+        "tuple_fallback": convert_type(self.tuple_fallback),
+        "default": convert_type(self.default),
+        "variance": self.variance,
+    }
+
+
+def convert_type(typ: Type) -> JsonDict:
+    if type(typ) is TypeAliasType:
+        return convert_type_alias_type(typ)
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        return convert_instance(typ)
+    elif isinstance(typ, AnyType):
+        return convert_any_type(typ)
+    elif isinstance(typ, UnionType):
+        return convert_union_type(typ)
+    elif isinstance(typ, TupleType):
+        return convert_tuple_type(typ)
+    elif isinstance(typ, CallableType):
+        return convert_callable_type(typ)
+    elif isinstance(typ, Overloaded):
+        return convert_overloaded(typ)
+    elif isinstance(typ, LiteralType):
+        return convert_literal_type(typ)
+    elif isinstance(typ, TypeVarType):
+        return convert_type_var_type(typ)
+    assert False, type(typ)
+
+
+def convert_instance(self: Instance) -> JsonDict:
+    data: JsonDict = {
+        ".class": "Instance",
+        "type_ref": self.type_ref,
+        "args": [convert_type(arg) for arg in self.args],
+    }
     return data
 
 
-def convert_type(self: Type) -> JsonDict:
-    return {"XXX": "YYY"}
+def convert_type_alias_type(self: TypeAliasType) -> JsonDict:
+    data: JsonDict = {
+        ".class": "TypeAliasType",
+        "type_ref": self.type_ref,
+        "args": [convert_type(arg) for arg in self.args],
+    }
+    return data
+
+
+def convert_any_type(self: AnyType) -> JsonDict:
+    return {
+        ".class": "AnyType",
+        "type_of_any": self.type_of_any,
+        "source_any": convert_type(self.source_any) if self.source_any is not None else None,
+        "missing_import_name": self.missing_import_name,
+    }
+
+
+def convert_union_type(self: UnionType) -> JsonDict:
+    return {
+        ".class": "UnionType",
+        "items": [convert_type(t) for t in self.items],
+        "uses_pep604_syntax": self.uses_pep604_syntax,
+    }
+
+
+def convert_tuple_type(self: TupleType) -> JsonDict:
+    return {
+        ".class": "TupleType",
+        "items": [convert_type(t) for t in self.items],
+        "partial_fallback": convert_type(self.partial_fallback),
+        "implicit": self.implicit,
+    }
+
+
+def convert_literal_type(self: LiteralType) -> JsonDict:
+    return {
+        ".class": "LiteralType",
+        "value": self.value,
+        "fallback": convert_type(self.fallback),
+    }
+
+
+def convert_type_var_type(self: TypeVarType) -> JsonDict:
+    return {}
+
+
+def convert_callable_type(self: CallableType) -> JsonDict:
+    return {
+        ".class": "CallableType",
+        "arg_types": [convert_type(t) for t in self.arg_types],
+        "arg_kinds": [int(x.value) for x in self.arg_kinds],
+        "arg_names": self.arg_names,
+        "ret_type": convert_type(self.ret_type),
+        "fallback": convert_type(self.fallback),
+        "name": self.name,
+        # We don't serialize the definition (only used for error messages).
+        "variables": [convert_type(v) for v in self.variables],
+        "is_ellipsis_args": self.is_ellipsis_args,
+        "implicit": self.implicit,
+        "is_bound": self.is_bound,
+        "type_guard": convert_type(self.type_guard) if self.type_guard is not None else None,
+        "type_is": convert_type(self.type_is) if self.type_is is not None else None,
+        "from_concatenate": self.from_concatenate,
+        "imprecise_arg_kinds": self.imprecise_arg_kinds,
+        "unpack_kwargs": self.unpack_kwargs,
+    }
+
+
+def convert_overloaded(self: Overloaded) -> JsonDict:
+    return {}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("path")
+    parser.add_argument("path", nargs="+")
     args = parser.parse_args()
-    fnam: str = args.path
-    with open(fnam, "rb") as f:
-        data = f.read()
-    json_data = convert_binary_cache_to_json(data)
-    pprint.pprint(json_data)
+    fnams: list[str] = args.path
+    for fnam in fnams:
+        with open(fnam, "rb") as f:
+            data = f.read()
+        json_data = convert_binary_cache_to_json(data)
+        new_fnam = fnam + ".json"
+        with open(new_fnam, "w") as f:
+            json.dump(json_data, f)
+        print(f"{fnam} -> {new_fnam}")
 
 
 if __name__ == "__main__":
