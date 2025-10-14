@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from functools import partial
-from typing import Callable, Union, cast
+from typing import Callable, Union
 
 from mypy.nodes import (
     ARG_NAMED,
