@@ -319,7 +319,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType, LiteralType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -789,9 +789,9 @@ def false_only(t: Type) -> ProperType:
             if not ret_type.can_be_false:
                 return UninhabitedType(line=t.line)
         elif isinstance(t, Instance):
-            if t.type.is_final or t.type.is_enum:
+            if (t.type.is_final or t.type.is_enum) and state.strict_optional:
                 return UninhabitedType(line=t.line)
-        elif isinstance(t, LiteralType) and t.is_enum_literal():
+        elif isinstance(t, LiteralType) and t.is_enum_literal() and state.strict_optional:
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)

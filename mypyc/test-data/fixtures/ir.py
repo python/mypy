@@ -46,6 +46,7 @@ class object:
     def __ne__(self, x: object) -> bool: pass
     def __str__(self) -> str: pass
     def __setattr__(self, k: str, v: object) -> None: pass
+    def __delattr__(self, k: str) -> None: pass
 
 class type:
     def __init__(self, o: object) -> None: ...
@@ -86,6 +87,7 @@ class int:
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
     def to_bytes(self, length: int, order: str, *, signed: bool = False) -> bytes: pass
+    def bit_length(self) -> int: pass
 
 class str:
     @overload
