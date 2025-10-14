@@ -676,3 +676,26 @@ Example:
                 print("red")
             case _:
                 print("other")
+
+.. _code-untyped-decorator:
+
+Error if an untyped decorator makes a typed function effectively untyped [untyped-decorator]
+--------------------------------------------------------------------------------------------
+
+If enabled with :option:`--disallow-untyped-decorators <mypy --disallow-untyped-decorators>`
+mypy generates an error if a typed function is wrapped by an untyped decorator
+(as this would effectively remove the benefits of typing the function).
+
+Example:
+
+.. code-block:: python
+
+        def printing_decorator(func):
+            def wrapper(*args, **kwds):
+                print("Calling", func)
+                return func(*args, **kwds)
+            return wrapper
+        # A decorated function.
+        @printing_decorator  # E: Untyped decorator makes function "add_forty_two" untyped  [untyped-decorator]
+        def add_forty_two(value: int) -> int:
+            return value + 42
