@@ -748,8 +748,15 @@ def literal_rhs(x: str) -> bool:
     return x == literal
 def literal_lhs(x: str) -> bool:
     return literal == x
+def literal_both() -> bool:
+    return literal == "literal"
 [out]
 def literal_rhs(x):
+    x :: str
 L0:
 def literal_lhs(x):
+    x :: str
+L0:
+def literal_both():
+    r0 :: bool
 L0:
