@@ -740,3 +740,16 @@ L2:
 L3:
     keep_alive x
     return r2
+
+[case testStrEqLiteral]
+from typing import Final
+literal: Final = "literal"
+def literal_rhs(x: str) -> bool:
+    return x == literal
+def literal_lhs(x: str) -> bool:
+    return literal == x
+[out]
+def literal_rhs(x):
+L0:
+def literal_lhs(x):
+L0:
