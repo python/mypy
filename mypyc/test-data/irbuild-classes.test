@@ -1452,7 +1452,7 @@ class TestOverload:
 [case testNativeBufferFastPath]
 from typing import Final
 from mypy_extensions import u8
-from native_internal import (
+from librt.internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag
 )
@@ -1476,11 +1476,11 @@ def foo() -> None:
     u = read_tag(b)
 [out]
 def foo():
-    r0, b :: native_internal.Buffer
+    r0, b :: librt.internal.Buffer
     r1 :: str
     r2, r3, r4, r5, r6 :: None
     r7 :: bytes
-    r8 :: native_internal.Buffer
+    r8 :: librt.internal.Buffer
     r9, x :: str
     r10, y :: bool
     r11, z :: float
@@ -2325,7 +2325,7 @@ def SetAttr.__setattr__(self, key, val):
     r12 :: bit
 L0:
     r0 = 'regular_attr'
-    r1 = CPyStr_Equal(key, r0)
+    r1 = CPyStr_EqualLiteral(key, r0, 12)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = unbox(int, val)
@@ -2333,7 +2333,7 @@ L1:
     goto L6
 L2:
     r4 = 'class_var'
-    r5 = CPyStr_Equal(key, r4)
+    r5 = CPyStr_EqualLiteral(key, r4, 9)
     if r5 goto L3 else goto L4 :: bool
 L3:
     r6 = builtins :: module
@@ -2468,7 +2468,7 @@ def SetAttr.__setattr__(self, key, val):
     r12 :: bit
 L0:
     r0 = 'regular_attr'
-    r1 = CPyStr_Equal(key, r0)
+    r1 = CPyStr_EqualLiteral(key, r0, 12)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = unbox(int, val)
@@ -2476,7 +2476,7 @@ L1:
     goto L6
 L2:
     r4 = 'class_var'
-    r5 = CPyStr_Equal(key, r4)
+    r5 = CPyStr_EqualLiteral(key, r4, 9)
     if r5 goto L3 else goto L4 :: bool
 L3:
     r6 = builtins :: module
@@ -2837,3 +2837,18 @@ L0:
     r6 = PyObject_VectorcallMethod(r3, r5, 9223372036854775812, 0)
     keep_alive r2, self, key, val
     return 1
+
+[case testInvalidMypycAttr]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr("allow_interpreted_subclasses", "invalid_arg")  # E: "invalid_arg" is not a supported "mypyc_attr" \
+                                                            # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+class InvalidArg:
+    pass
+@mypyc_attr(invalid_kwarg=True)  # E: "invalid_kwarg" is not a supported "mypyc_attr" \
+                                 # N: supported keys: "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+class InvalidKwarg:
+    pass
+@mypyc_attr(str())  # E: All "mypyc_attr" positional arguments must be string literals.
+class InvalidLiteral:
+    pass
