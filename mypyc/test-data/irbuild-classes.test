@@ -2325,7 +2325,7 @@ def SetAttr.__setattr__(self, key, val):
     r12 :: bit
 L0:
     r0 = 'regular_attr'
-    r1 = CPyStr_Equal(key, r0)
+    r1 = CPyStr_EqualLiteral(key, r0, 12)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = unbox(int, val)
@@ -2333,7 +2333,7 @@ L1:
     goto L6
 L2:
     r4 = 'class_var'
-    r5 = CPyStr_Equal(key, r4)
+    r5 = CPyStr_EqualLiteral(key, r4, 9)
     if r5 goto L3 else goto L4 :: bool
 L3:
     r6 = builtins :: module
@@ -2468,7 +2468,7 @@ def SetAttr.__setattr__(self, key, val):
     r12 :: bit
 L0:
     r0 = 'regular_attr'
-    r1 = CPyStr_Equal(key, r0)
+    r1 = CPyStr_EqualLiteral(key, r0, 12)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = unbox(int, val)
@@ -2476,7 +2476,7 @@ L1:
     goto L6
 L2:
     r4 = 'class_var'
-    r5 = CPyStr_Equal(key, r4)
+    r5 = CPyStr_EqualLiteral(key, r4, 9)
     if r5 goto L3 else goto L4 :: bool
 L3:
     r6 = builtins :: module

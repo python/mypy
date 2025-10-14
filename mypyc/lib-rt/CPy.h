@@ -735,6 +735,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
 #define BOTHSTRIP  2
 
 char CPyStr_Equal(PyObject *str1, PyObject *str2);
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
