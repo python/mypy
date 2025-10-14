@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from functools import partial
 from typing import Callable, Union
 
 from mypy.nodes import (
@@ -1022,17 +1021,13 @@ def dict_literal_values(
     return the Python dict value. Otherwise, return None.
     """
 
-    def constant_fold_expr_or_tuple(
-        builder: IRBuilder, expr: Expression
-    ) -> ConstantValueOrTuple | None:
+    def constant_fold_expr_or_tuple(expr: Expression) -> ConstantValueOrTuple | None:
         value = constant_fold_expr(builder, expr)
         if value is not None:
             return value
         if not isinstance(expr, TupleExpr):
             return None
-        folded: ConstantValueTuple = tuple(
-            map(partial(constant_fold_expr_or_tuple, builder), expr.items)
-        )
+        folded: ConstantValueTuple = tuple(map(constant_fold_expr_or_tuple, expr.items))
         return folded if None not in folded else None
 
     result = {}
@@ -1041,10 +1036,10 @@ def dict_literal_values(
             # ** unpacking, not a literal
             # TODO: if ** is unpacking a dict literal we can use that, we just need logic
             return None
-        key = constant_fold_expr_or_tuple(builder, key_expr)
+        key = constant_fold_expr_or_tuple(key_expr)
         if key is None:
             return None
-        value = constant_fold_expr_or_tuple(builder, value_expr)
+        value = constant_fold_expr_or_tuple(value_expr)
         if value is None:
             return None
         result[key] = value
