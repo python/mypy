@@ -170,7 +170,9 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     ):
         # We put this branch early to get T(bound=Union[A, B]) instead of
         # Union[T(bound=A), T(bound=B)] that will be confusing for users.
-        return declared.copy_modified(upper_bound=original_narrowed)
+        return declared.copy_modified(
+            upper_bound=narrow_declared_type(declared.upper_bound, original_narrowed)
+        )
     elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
         if state.strict_optional:
             return UninhabitedType()

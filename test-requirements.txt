@@ -4,11 +4,11 @@
 #
 #    pip-compile --allow-unsafe --output-file=test-requirements.txt --strip-extras test-requirements.in
 #
-attrs==25.3.0
+attrs==25.4.0
     # via -r test-requirements.in
 cfgv==3.4.0
     # via pre-commit
-coverage==7.10.5
+coverage==7.10.7
     # via pytest-cov
 distlib==0.4.0
     # via virtualenv
@@ -18,13 +18,13 @@ filelock==3.19.1
     # via
     #   -r test-requirements.in
     #   virtualenv
-identify==2.6.13
+identify==2.6.15
     # via pre-commit
 iniconfig==2.1.0
     # via pytest
-librt==0.2.1
+librt==0.2.3
     # via -r mypy-requirements.txt
-lxml==6.0.1 ; python_version < "3.15"
+lxml==6.0.2 ; python_version < "3.15"
     # via -r test-requirements.in
 mypy-extensions==1.1.0
     # via -r mypy-requirements.txt
@@ -34,36 +34,38 @@ packaging==25.0
     # via pytest
 pathspec==0.12.1
     # via -r mypy-requirements.txt
-platformdirs==4.3.8
-    # via virtualenv
+platformdirs==4.4.0
+    # via
+    #   -r test-requirements.in
+    #   virtualenv
 pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
 pre-commit==4.3.0
     # via -r test-requirements.in
-psutil==7.0.0
+psutil==7.1.0
     # via -r test-requirements.in
 pygments==2.19.2
     # via pytest
-pytest==8.4.1
+pytest==8.4.2
     # via
     #   -r test-requirements.in
     #   pytest-cov
     #   pytest-xdist
-pytest-cov==6.2.1
+pytest-cov==7.0.0
     # via -r test-requirements.in
 pytest-xdist==3.8.0
     # via -r test-requirements.in
-pyyaml==6.0.2
+pyyaml==6.0.3
     # via pre-commit
-tomli==2.2.1
+tomli==2.3.0
     # via -r test-requirements.in
-types-psutil==7.0.0.20250822
+types-psutil==7.0.0.20251001
     # via -r build-requirements.txt
 types-setuptools==80.9.0.20250822
     # via -r build-requirements.txt
-typing-extensions==4.14.1
+typing-extensions==4.15.0
     # via -r mypy-requirements.txt
 virtualenv==20.34.0
     # via pre-commit

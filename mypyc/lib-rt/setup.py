@@ -1,4 +1,4 @@
-"""Build script for mypyc C runtime library unit tests.
+"""Build script for mypyc C runtime library and C API unit tests.
 
 The tests are written in C++ and use the Google Test framework.
 """
