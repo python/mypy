@@ -210,7 +210,7 @@ def foo(a: int) -> None: ...
 [case testExportDifferentTypes]
 from __future__ import annotations
 
-from typing import Callable, Any, Literal
+from typing import Callable, Any, Literal, NoReturn
 
 list_ann: list[int]
 any_ann: Any
@@ -220,6 +220,40 @@ callable_ann: Callable[[int], str]
 type_type_ann: type[int]
 literal_ann: Literal['x', 5, False]
 
+def f() -> NoReturn:
+    assert False
+
+BadType = 1
+x: BadType  # type: ignore
+
+[builtins fixtures/tuple.pyi]
+[out]
+<not checked>
+
+[case testExportGenericTypes]
+from __future__ import annotations
+
+from typing import TypeVar, Callable
+from typing_extensions import TypeVarTuple, ParamSpec, Unpack, Concatenate
+
+T = TypeVar("T")
+
+def ident(x: T) -> T:
+    return x
+
+Ts = TypeVarTuple("Ts")
+
+def ts(t: tuple[Unpack[Ts]]) -> tuple[Unpack[Ts]]:
+    return t
+
+P = ParamSpec("P")
+
+def pspec(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
+    f(*args, **kwargs)
+
+def concat(f: Callable[Concatenate[int, P], None], *args: P.args, **kwargs: P.kwargs) -> None:
+    f(1, *args, **kwargs)
+
 [builtins fixtures/tuple.pyi]
 [out]
 <not checked>
@@ -228,7 +262,6 @@ literal_ann: Literal['x', 5, False]
 import typing
 
 from typing import overload, TypeVar
-from typing_extensions import TypeVarTuple, ParamSpec
 
 @overload
 def f(x: int) -> int: ...
@@ -246,9 +279,6 @@ def foo(x: int) -> int: ...
 
 X = int
 x: X = 2
-
-Ts = TypeVarTuple("Ts")
-P = ParamSpec("P")
 
 [builtins fixtures/tuple.pyi]
 [out]
