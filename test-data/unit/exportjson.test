@@ -1,0 +1,124 @@
+-- Test cases for exporting mypy cache files to JSON (mypy.exportjson).
+--
+-- The tool is maintained on a best effort basis so we don't attempt to have
+-- full test coverage.
+
+[case testExportVar]
+import m
+
+[file m.py]
+x = 0
+
+[out]
+{
+    ".class": "MypyFile",
+    "_fullname": "m",
+    "names": {
+        ".class": "SymbolTable",
+        "x": {
+            ".class": "SymbolTableNode",
+            "kind": "Gdef",
+            "node": {
+                ".class": "Var",
+                "name": "x",
+                "fullname": "m.x",
+                "type": {
+                    ".class": "Instance",
+                    "type_ref": null,
+                    "args": []
+                },
+                "setter_type": null,
+                "flags": [
+                    "is_ready",
+                    "is_inferred",
+                    "has_explicit_value"
+                ]
+            }
+        }
+    },
+    "is_stub": false,
+    "path": ...,
+    "is_partial_stub_package": false,
+    "future_import_flags": []
+}
+
+[case testExportClass]
+import m
+
+[file m.py]
+class C:
+    x: int
+
+[out]
+{
+    ".class": "MypyFile",
+    "_fullname": "m",
+    "names": {
+        ".class": "SymbolTable",
+        "C": {
+            ".class": "SymbolTableNode",
+            "kind": "Gdef",
+            "node": {
+                ".class": "TypeInfo",
+                "module_name": "m",
+                "fullname": "m.C",
+                "names": {
+                    ".class": "SymbolTable",
+                    "x": {
+                        ".class": "SymbolTableNode",
+                        "kind": "Mdef",
+                        "node": {
+                            ".class": "Var",
+                            "name": "x",
+                            "fullname": "m.C.x",
+                            "type": {
+                                ".class": "Instance",
+                                "type_ref": null,
+                                "args": []
+                            },
+                            "setter_type": null,
+                            "flags": [
+                                "is_initialized_in_class",
+                                "is_ready"
+                            ]
+                        }
+                    }
+                },
+                "defn": {
+                    ".class": "ClassDef",
+                    "name": "C",
+                    "fullname": "m.C",
+                    "type_vars": []
+                },
+                "abstract_attributes": [],
+                "type_vars": [],
+                "has_param_spec_type": false,
+                "bases": [
+                    {
+                        ".class": "Instance",
+                        "type_ref": "builtins.object",
+                        "args": []
+                    }
+                ],
+                "mro": [],
+                "_promote": [],
+                "alt_promote": null,
+                "declared_metaclass": null,
+                "metaclass_type": null,
+                "tuple_type": null,
+                "typeddict_type": null,
+                "flags": [],
+                "metadata": {},
+                "slots": null,
+                "deletable_attributes": [],
+                "self_type": null,
+                "dataclass_transform_spec": null,
+                "deprecated": null
+            }
+        }
+    },
+    "is_stub": false,
+    "path": ...,
+    "is_partial_stub_package": false,
+    "future_import_flags": []
+}

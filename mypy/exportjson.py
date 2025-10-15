@@ -67,16 +67,21 @@ from mypy.types import (
 JsonDict: _TypeAlias = dict[str, Any]
 
 
-def convert_binary_cache_to_json(data: bytes) -> JsonDict:
+class Config:
+    def __init__(self, *, implicit_names: bool = True) -> None:
+        self.implicit_names = implicit_names
+
+
+def convert_binary_cache_to_json(data: bytes, *, implicit_names: bool = True) -> JsonDict:
     tree = MypyFile.read(Buffer(data))
-    return convert_mypy_file_to_json(tree)
+    return convert_mypy_file_to_json(tree, Config(implicit_names=implicit_names))
 
 
-def convert_mypy_file_to_json(self: MypyFile) -> JsonDict:
+def convert_mypy_file_to_json(self: MypyFile, cfg: Config) -> JsonDict:
     return {
         ".class": "MypyFile",
         "_fullname": self._fullname,
-        "names": convert_symbol_table(self.names, self._fullname),
+        "names": convert_symbol_table(self.names, cfg),
         "is_stub": self.is_stub,
         "path": self.path,
         "is_partial_stub_package": self.is_partial_stub_package,
@@ -84,7 +89,7 @@ def convert_mypy_file_to_json(self: MypyFile) -> JsonDict:
     }
 
 
-def convert_symbol_table(self: SymbolTable, fullname: str) -> JsonDict:
+def convert_symbol_table(self: SymbolTable, cfg: Config) -> JsonDict:
     data: JsonDict = {".class": "SymbolTable"}
     for key, value in self.items():
         # Skip __builtins__: it's a reference to the builtins
@@ -93,11 +98,20 @@ def convert_symbol_table(self: SymbolTable, fullname: str) -> JsonDict:
         # accessed by users of the module.
         if key == "__builtins__" or value.no_serialize:
             continue
-        data[key] = convert_symbol_table_node(value, fullname, key)
+        if not cfg.implicit_names and key in {
+            "__spec__",
+            "__package__",
+            "__file__",
+            "__doc__",
+            "__annotations__",
+            "__name__",
+        }:
+            continue
+        data[key] = convert_symbol_table_node(value, cfg)
     return data
 
 
-def convert_symbol_table_node(self: SymbolTableNode, prefix: str | None, name: str) -> JsonDict:
+def convert_symbol_table_node(self: SymbolTableNode, cfg: Config) -> JsonDict:
     data: JsonDict = {".class": "SymbolTableNode", "kind": node_kinds[self.kind]}
     if self.module_hidden:
         data["module_hidden"] = True
@@ -110,11 +124,11 @@ def convert_symbol_table_node(self: SymbolTableNode, prefix: str | None, name: s
     if self.cross_ref:
         data["cross_ref"] = self.cross_ref
     elif self.node is not None:
-        data["node"] = convert_symbol_node(self.node)
+        data["node"] = convert_symbol_node(self.node, cfg)
     return data
 
 
-def convert_symbol_node(self: SymbolNode) -> JsonDict:
+def convert_symbol_node(self: SymbolNode, cfg: Config) -> JsonDict:
     if isinstance(self, FuncDef):
         return convert_func_def(self)
     elif isinstance(self, OverloadedFuncDef):
@@ -124,7 +138,7 @@ def convert_symbol_node(self: SymbolNode) -> JsonDict:
     elif isinstance(self, Var):
         return convert_var(self)
     elif isinstance(self, TypeInfo):
-        return convert_type_info(self)
+        return convert_type_info(self, cfg)
     elif isinstance(self, TypeAlias):
         return convert_type_alias(self)
     elif isinstance(self, TypeVarExpr):
@@ -210,12 +224,12 @@ def convert_var(self: Var) -> JsonDict:
     return data
 
 
-def convert_type_info(self: TypeInfo) -> JsonDict:
+def convert_type_info(self: TypeInfo, cfg: Config) -> JsonDict:
     data = {
         ".class": "TypeInfo",
         "module_name": self.module_name,
         "fullname": self.fullname,
-        "names": convert_symbol_table(self.names, self.fullname),
+        "names": convert_symbol_table(self.names, cfg),
         "defn": convert_class_def(self.defn),
         "abstract_attributes": self.abstract_attributes,
         "type_vars": self.type_vars,
@@ -250,7 +264,12 @@ def convert_type_info(self: TypeInfo) -> JsonDict:
 
 
 def convert_class_def(self: ClassDef) -> JsonDict:
-    return {}
+    return {
+        ".class": "ClassDef",
+        "name": self.name,
+        "fullname": self.fullname,
+        "type_vars": [convert_type(v) for v in self.type_vars],
+    }
 
 
 def convert_type_alias(self: TypeAlias) -> JsonDict:
