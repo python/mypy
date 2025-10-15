@@ -572,3 +572,17 @@ class subc(int):
 [file userdefinedint.py]
 class int:
     pass
+
+[case testBitLength]
+def bit_length(n: int) -> int:
+    return n.bit_length()
+def bit_length_python(n: int) -> int:
+    return getattr(n, "bit_length")()
+def test_bit_length() -> None:
+    for n in range(256):
+        i = 1 << n
+        assert bit_length(i) == bit_length_python(i)
+        assert bit_length(-(i)) == bit_length_python(-(i))
+        i -= 1
+        assert bit_length(i) == bit_length_python(i)
+        assert bit_length(-(i)) == bit_length_python(-(i))

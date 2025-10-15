@@ -1619,3 +1619,14 @@ reveal_type(bar().attr)  # N: Revealed type is "Never"
 1  # not unreachable
 reveal_type(foo().attr)  # N: Revealed type is "Never"
 1  # E: Statement is unreachable
+
+[case testUnreachableStatementPrettyHighlighting]
+# flags: --warn-unreachable --pretty
+def x() -> None:
+    assert False
+    if 5:
+        pass
+[out]
+main:4: error: Statement is unreachable
+        if 5:
+        ^~~~~

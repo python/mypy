@@ -1067,6 +1067,8 @@ class GroupGenerator:
                     "(PyObject *){t}_template, NULL, modname);".format(t=type_struct)
                 )
                 emitter.emit_lines(f"if (unlikely(!{type_struct}))", "    goto fail;")
+                name_prefix = cl.name_prefix(emitter.names)
+                emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
 
         emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
 

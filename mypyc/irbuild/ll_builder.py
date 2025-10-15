@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
-from typing import Callable, Final, Optional
+from typing import Callable, Final, Optional, cast
+from typing_extensions import TypeGuard
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
@@ -185,6 +186,7 @@ from mypyc.primitives.set_ops import new_set_op
 from mypyc.primitives.str_ops import (
     str_check_if_true,
     str_eq,
+    str_eq_literal,
     str_ssize_t_size_op,
     unicode_compare,
 )
@@ -1551,9 +1553,33 @@ class LowLevelIRBuilder:
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
         if op == "==":
+            # We can specialize this case if one or both values are string literals
+            literal_fastpath = False
+
+            def is_string_literal(value: Value) -> TypeGuard[LoadLiteral]:
+                return isinstance(value, LoadLiteral) and is_str_rprimitive(value.type)
+
+            if is_string_literal(lhs):
+                if is_string_literal(rhs):
+                    # we can optimize out the check entirely in some constant-folded cases
+                    return self.true() if lhs.value == rhs.value else self.false()
+
+                # if lhs argument is string literal, switch sides to match specializer C api
+                lhs, rhs = rhs, lhs
+                literal_fastpath = True
+            elif is_string_literal(rhs):
+                literal_fastpath = True
+
+            if literal_fastpath:
+                literal_string = cast(str, cast(LoadLiteral, rhs).value)
+                literal_length = Integer(len(literal_string), c_pyssize_t_rprimitive, line)
+                return self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
+
             return self.primitive_op(str_eq, [lhs, rhs], line)
+
         elif op == "!=":
-            eq = self.primitive_op(str_eq, [lhs, rhs], line)
+            # perform a standard equality check, then negate
+            eq = self.compare_strings(lhs, rhs, "==", line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
 
         # TODO: modify 'str' to use same interface as 'compare_bytes' as it would avoid
