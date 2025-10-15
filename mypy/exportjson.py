@@ -15,7 +15,8 @@ down mypy development).
 
 import argparse
 import json
-from typing import Any, TypeAlias as _TypeAlias
+from typing import Any, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from librt.internal import Buffer
 
@@ -67,7 +68,7 @@ from mypy.types import (
     get_proper_type,
 )
 
-Json: _TypeAlias = dict[str, Any] | str
+Json: _TypeAlias = Union[dict[str, Any], str]
 
 
 class Config:
@@ -93,7 +94,7 @@ def convert_mypy_file_to_json(self: MypyFile, cfg: Config) -> Json:
 
 
 def convert_symbol_table(self: SymbolTable, cfg: Config) -> Json:
-    data: Json = {".class": "SymbolTable"}
+    data: dict[str, Any] = {".class": "SymbolTable"}
     for key, value in self.items():
         # Skip __builtins__: it's a reference to the builtins
         # module that gets added to every module by
@@ -115,7 +116,7 @@ def convert_symbol_table(self: SymbolTable, cfg: Config) -> Json:
 
 
 def convert_symbol_table_node(self: SymbolTableNode, cfg: Config) -> Json:
-    data: Json = {".class": "SymbolTableNode", "kind": node_kinds[self.kind]}
+    data: dict[str, Any] = {".class": "SymbolTableNode", "kind": node_kinds[self.kind]}
     if self.module_hidden:
         data["module_hidden"] = True
     if not self.module_public:
@@ -214,7 +215,7 @@ def convert_decorator(self: Decorator) -> Json:
 
 
 def convert_var(self: Var) -> Json:
-    data: Json = {
+    data: dict[str, Any] = {
         ".class": "Var",
         "name": self._name,
         "fullname": self._fullname,
@@ -368,9 +369,12 @@ def convert_type(typ: Type) -> Json:
 def convert_instance(self: Instance) -> Json:
     ready = self.type is not NOT_READY
     if not self.args and not self.last_known_value and not self.extra_attrs:
-        return self.type.fullname if ready else self.type_ref
+        if ready:
+            return self.type.fullname
+        elif self.type_ref:
+            return self.type_ref
 
-    data: Json = {
+    data: dict[str, Any] = {
         ".class": "Instance",
         "type_ref": self.type.fullname if ready else self.type_ref,
         "args": [convert_type(arg) for arg in self.args],
