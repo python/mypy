@@ -239,7 +239,7 @@ def convert_type_info(self: TypeInfo, cfg: Config) -> Json:
         "type_vars": self.type_vars,
         "has_param_spec_type": self.has_param_spec_type,
         "bases": [convert_type(b) for b in self.bases],
-        "mro": [c.fullname for c in self.mro],
+        "mro": self._mro_refs,
         "_promote": [convert_type(p) for p in self._promote],
         "alt_promote": None if self.alt_promote is None else convert_type(self.alt_promote),
         "declared_metaclass": (

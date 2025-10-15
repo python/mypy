@@ -83,7 +83,10 @@ class C:
                 "bases": [
                     "builtins.object"
                 ],
-                "mro": [],
+                "mro": [
+                    "main.C",
+                    "builtins.object"
+                ],
                 "_promote": [],
                 "alt_promote": null,
                 "declared_metaclass": null,
