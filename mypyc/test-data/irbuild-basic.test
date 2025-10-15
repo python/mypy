@@ -3805,5 +3805,7 @@ def get_length() -> int:
     return len("https://w3id.org/cwl/salad#")
 [out]
 def get_length():
+    r0 :: str
 L0:
-    return 27
+    r0 = 'https://w3id.org/cwl/salad#'
+    return 54
