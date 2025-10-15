@@ -118,6 +118,95 @@ class C:
     "future_import_flags": []
 }
 
+[case testExportCrossRef]
+from typing import Any
+[out]
+{
+    ".class": "MypyFile",
+    "_fullname": "main",
+    "names": {
+        ".class": "SymbolTable",
+        "Any": {
+            ".class": "SymbolTableNode",
+            "kind": "Gdef",
+            "cross_ref": "typing.Any"
+        }
+    },
+    "is_stub": false,
+    "path": ...,
+    "is_partial_stub_package": false,
+    "future_import_flags": []
+}
+
+[case testExportFuncDef]
+def foo(a: int) -> None: ...
+[out]
+{
+    ".class": "MypyFile",
+    "_fullname": "main",
+    "names": {
+        ".class": "SymbolTable",
+        "foo": {
+            ".class": "SymbolTableNode",
+            "kind": "Gdef",
+            "node": {
+                ".class": "FuncDef",
+                "name": "foo",
+                "fullname": "main.foo",
+                "arg_names": [
+                    "a"
+                ],
+                "arg_kinds": [
+                    0
+                ],
+                "type": {
+                    ".class": "CallableType",
+                    "arg_types": [
+                        {
+                            ".class": "Instance",
+                            "type_ref": null,
+                            "args": []
+                        }
+                    ],
+                    "arg_kinds": [
+                        0
+                    ],
+                    "arg_names": [
+                        "a"
+                    ],
+                    "ret_type": {
+                        ".class": "NoneType"
+                    },
+                    "fallback": {
+                        ".class": "Instance",
+                        "type_ref": null,
+                        "args": []
+                    },
+                    "name": "foo",
+                    "variables": [],
+                    "is_ellipsis_args": false,
+                    "implicit": false,
+                    "is_bound": false,
+                    "type_guard": null,
+                    "type_is": null,
+                    "from_concatenate": false,
+                    "imprecise_arg_kinds": false,
+                    "unpack_kwargs": false
+                },
+                "flags": [],
+                "abstract_status": 0,
+                "dataclass_transform_spec": null,
+                "deprecated": null,
+                "original_first_arg": "a"
+            }
+        }
+    },
+    "is_stub": false,
+    "path": ...,
+    "is_partial_stub_package": false,
+    "future_import_flags": []
+}
+
 [case testExportDifferentTypes]
 from __future__ import annotations
 
