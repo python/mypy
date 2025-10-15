@@ -367,7 +367,7 @@ read_bytes_internal(PyObject *data) {
         _CHECK_READ(data, sizeof(CPyTagged), NULL)
         size = _READ(data, Py_ssize_t)
     }
-    // Read byes content.
+    // Read bytes content.
     char *buf = ((BufferObject *)data)->buf;
     _CHECK_READ(data, size, NULL)
     PyObject *res = PyBytes_FromStringAndSize(
@@ -394,10 +394,10 @@ static char
 write_bytes_internal(PyObject *data, PyObject *value) {
     _CHECK_BUFFER(data, CPY_NONE_ERROR)
 
-    Py_ssize_t size = PyBytes_GET_SIZE(value);
     const char *chunk = PyBytes_AsString(value);
     if (unlikely(chunk == NULL))
         return CPY_NONE_ERROR;
+    Py_ssize_t size = PyBytes_GET_SIZE(value);
 
     Py_ssize_t need;
     // Write length.
