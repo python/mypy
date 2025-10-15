@@ -43,8 +43,10 @@ from mypy.nodes import (
     node_kinds,
 )
 from mypy.types import (
+    NOT_READY,
     AnyType,
     CallableType,
+    ExtraAttrs,
     Instance,
     LiteralType,
     NoneType,
@@ -65,7 +67,7 @@ from mypy.types import (
     get_proper_type,
 )
 
-JsonDict: _TypeAlias = dict[str, Any]
+Json: _TypeAlias = dict[str, Any] | str
 
 
 class Config:
@@ -73,12 +75,12 @@ class Config:
         self.implicit_names = implicit_names
 
 
-def convert_binary_cache_to_json(data: bytes, *, implicit_names: bool = True) -> JsonDict:
+def convert_binary_cache_to_json(data: bytes, *, implicit_names: bool = True) -> Json:
     tree = MypyFile.read(Buffer(data))
     return convert_mypy_file_to_json(tree, Config(implicit_names=implicit_names))
 
 
-def convert_mypy_file_to_json(self: MypyFile, cfg: Config) -> JsonDict:
+def convert_mypy_file_to_json(self: MypyFile, cfg: Config) -> Json:
     return {
         ".class": "MypyFile",
         "_fullname": self._fullname,
@@ -90,8 +92,8 @@ def convert_mypy_file_to_json(self: MypyFile, cfg: Config) -> JsonDict:
     }
 
 
-def convert_symbol_table(self: SymbolTable, cfg: Config) -> JsonDict:
-    data: JsonDict = {".class": "SymbolTable"}
+def convert_symbol_table(self: SymbolTable, cfg: Config) -> Json:
+    data: Json = {".class": "SymbolTable"}
     for key, value in self.items():
         # Skip __builtins__: it's a reference to the builtins
         # module that gets added to every module by
@@ -112,8 +114,8 @@ def convert_symbol_table(self: SymbolTable, cfg: Config) -> JsonDict:
     return data
 
 
-def convert_symbol_table_node(self: SymbolTableNode, cfg: Config) -> JsonDict:
-    data: JsonDict = {".class": "SymbolTableNode", "kind": node_kinds[self.kind]}
+def convert_symbol_table_node(self: SymbolTableNode, cfg: Config) -> Json:
+    data: Json = {".class": "SymbolTableNode", "kind": node_kinds[self.kind]}
     if self.module_hidden:
         data["module_hidden"] = True
     if not self.module_public:
@@ -129,7 +131,7 @@ def convert_symbol_table_node(self: SymbolTableNode, cfg: Config) -> JsonDict:
     return data
 
 
-def convert_symbol_node(self: SymbolNode, cfg: Config) -> JsonDict:
+def convert_symbol_node(self: SymbolNode, cfg: Config) -> Json:
     if isinstance(self, FuncDef):
         return convert_func_def(self)
     elif isinstance(self, OverloadedFuncDef):
@@ -151,7 +153,7 @@ def convert_symbol_node(self: SymbolNode, cfg: Config) -> JsonDict:
     assert False, type(self)
 
 
-def convert_func_def(self: FuncDef) -> JsonDict:
+def convert_func_def(self: FuncDef) -> Json:
     return {
         ".class": "FuncDef",
         "name": self._name,
@@ -172,7 +174,7 @@ def convert_func_def(self: FuncDef) -> JsonDict:
     }
 
 
-def convert_dataclass_transform_spec(self: DataclassTransformSpec) -> JsonDict:
+def convert_dataclass_transform_spec(self: DataclassTransformSpec) -> Json:
     return {
         "eq_default": self.eq_default,
         "order_default": self.order_default,
@@ -182,7 +184,7 @@ def convert_dataclass_transform_spec(self: DataclassTransformSpec) -> JsonDict:
     }
 
 
-def convert_overloaded_func_def(self: OverloadedFuncDef) -> JsonDict:
+def convert_overloaded_func_def(self: OverloadedFuncDef) -> Json:
     return {
         ".class": "OverloadedFuncDef",
         "items": [convert_overload_part(i) for i in self.items],
@@ -195,14 +197,14 @@ def convert_overloaded_func_def(self: OverloadedFuncDef) -> JsonDict:
     }
 
 
-def convert_overload_part(self: OverloadPart) -> JsonDict:
+def convert_overload_part(self: OverloadPart) -> Json:
     if isinstance(self, FuncDef):
         return convert_func_def(self)
     else:
         return convert_decorator(self)
 
 
-def convert_decorator(self: Decorator) -> JsonDict:
+def convert_decorator(self: Decorator) -> Json:
     return {
         ".class": "Decorator",
         "func": convert_func_def(self.func),
@@ -211,8 +213,8 @@ def convert_decorator(self: Decorator) -> JsonDict:
     }
 
 
-def convert_var(self: Var) -> JsonDict:
-    data: JsonDict = {
+def convert_var(self: Var) -> Json:
+    data: Json = {
         ".class": "Var",
         "name": self._name,
         "fullname": self._fullname,
@@ -225,7 +227,7 @@ def convert_var(self: Var) -> JsonDict:
     return data
 
 
-def convert_type_info(self: TypeInfo, cfg: Config) -> JsonDict:
+def convert_type_info(self: TypeInfo, cfg: Config) -> Json:
     data = {
         ".class": "TypeInfo",
         "module_name": self.module_name,
@@ -264,7 +266,7 @@ def convert_type_info(self: TypeInfo, cfg: Config) -> JsonDict:
     return data
 
 
-def convert_class_def(self: ClassDef) -> JsonDict:
+def convert_class_def(self: ClassDef) -> Json:
     return {
         ".class": "ClassDef",
         "name": self.name,
@@ -273,8 +275,8 @@ def convert_class_def(self: ClassDef) -> JsonDict:
     }
 
 
-def convert_type_alias(self: TypeAlias) -> JsonDict:
-    data: JsonDict = {
+def convert_type_alias(self: TypeAlias) -> Json:
+    data: Json = {
         ".class": "TypeAlias",
         "fullname": self._fullname,
         "module": self.module,
@@ -287,7 +289,7 @@ def convert_type_alias(self: TypeAlias) -> JsonDict:
     return data
 
 
-def convert_type_var_expr(self: TypeVarExpr) -> JsonDict:
+def convert_type_var_expr(self: TypeVarExpr) -> Json:
     return {
         ".class": "TypeVarExpr",
         "name": self._name,
@@ -299,7 +301,7 @@ def convert_type_var_expr(self: TypeVarExpr) -> JsonDict:
     }
 
 
-def convert_param_spec_expr(self: ParamSpecExpr) -> JsonDict:
+def convert_param_spec_expr(self: ParamSpecExpr) -> Json:
     return {
         ".class": "ParamSpecExpr",
         "name": self._name,
@@ -310,7 +312,7 @@ def convert_param_spec_expr(self: ParamSpecExpr) -> JsonDict:
     }
 
 
-def convert_type_var_tuple_expr(self: TypeVarTupleExpr) -> JsonDict:
+def convert_type_var_tuple_expr(self: TypeVarTupleExpr) -> Json:
     return {
         ".class": "TypeVarTupleExpr",
         "name": self._name,
@@ -322,7 +324,7 @@ def convert_type_var_tuple_expr(self: TypeVarTupleExpr) -> JsonDict:
     }
 
 
-def convert_type(typ: Type) -> JsonDict:
+def convert_type(typ: Type) -> Json:
     if type(typ) is TypeAliasType:
         return convert_type_alias_type(typ)
     typ = get_proper_type(typ)
@@ -363,17 +365,33 @@ def convert_type(typ: Type) -> JsonDict:
     assert False, type(typ)
 
 
-def convert_instance(self: Instance) -> JsonDict:
-    data: JsonDict = {
+def convert_instance(self: Instance) -> Json:
+    ready = self.type is not NOT_READY
+    if not self.args and not self.last_known_value and not self.extra_attrs:
+        return self.type.fullname if ready else self.type_ref
+
+    data: Json = {
         ".class": "Instance",
-        "type_ref": self.type_ref,
+        "type_ref": self.type.fullname if ready else self.type_ref,
         "args": [convert_type(arg) for arg in self.args],
     }
+    if self.last_known_value is not None:
+        data["last_known_value"] = convert_type(self.last_known_value)
+    data["extra_attrs"] = convert_extra_attrs(self.extra_attrs) if self.extra_attrs else None
     return data
 
 
-def convert_type_alias_type(self: TypeAliasType) -> JsonDict:
-    data: JsonDict = {
+def convert_extra_attrs(self: ExtraAttrs) -> Json:
+    return {
+        ".class": "ExtraAttrs",
+        "attrs": {k: convert_type(v) for k, v in self.attrs.items()},
+        "immutable": sorted(self.immutable),
+        "mod_name": self.mod_name,
+    }
+
+
+def convert_type_alias_type(self: TypeAliasType) -> Json:
+    data: Json = {
         ".class": "TypeAliasType",
         "type_ref": self.type_ref,
         "args": [convert_type(arg) for arg in self.args],
@@ -381,7 +399,7 @@ def convert_type_alias_type(self: TypeAliasType) -> JsonDict:
     return data
 
 
-def convert_any_type(self: AnyType) -> JsonDict:
+def convert_any_type(self: AnyType) -> Json:
     return {
         ".class": "AnyType",
         "type_of_any": self.type_of_any,
@@ -390,11 +408,11 @@ def convert_any_type(self: AnyType) -> JsonDict:
     }
 
 
-def convert_none_type(self: NoneType) -> JsonDict:
+def convert_none_type(self: NoneType) -> Json:
     return {".class": "NoneType"}
 
 
-def convert_union_type(self: UnionType) -> JsonDict:
+def convert_union_type(self: UnionType) -> Json:
     return {
         ".class": "UnionType",
         "items": [convert_type(t) for t in self.items],
@@ -402,7 +420,7 @@ def convert_union_type(self: UnionType) -> JsonDict:
     }
 
 
-def convert_tuple_type(self: TupleType) -> JsonDict:
+def convert_tuple_type(self: TupleType) -> Json:
     return {
         ".class": "TupleType",
         "items": [convert_type(t) for t in self.items],
@@ -411,11 +429,11 @@ def convert_tuple_type(self: TupleType) -> JsonDict:
     }
 
 
-def convert_literal_type(self: LiteralType) -> JsonDict:
+def convert_literal_type(self: LiteralType) -> Json:
     return {".class": "LiteralType", "value": self.value, "fallback": convert_type(self.fallback)}
 
 
-def convert_type_var_type(self: TypeVarType) -> JsonDict:
+def convert_type_var_type(self: TypeVarType) -> Json:
     assert not self.id.is_meta_var()
     return {
         ".class": "TypeVarType",
@@ -430,7 +448,7 @@ def convert_type_var_type(self: TypeVarType) -> JsonDict:
     }
 
 
-def convert_callable_type(self: CallableType) -> JsonDict:
+def convert_callable_type(self: CallableType) -> Json:
     return {
         ".class": "CallableType",
         "arg_types": [convert_type(t) for t in self.arg_types],
@@ -452,23 +470,23 @@ def convert_callable_type(self: CallableType) -> JsonDict:
     }
 
 
-def convert_overloaded(self: Overloaded) -> JsonDict:
+def convert_overloaded(self: Overloaded) -> Json:
     return {".class": "Overloaded", "items": [convert_type(t) for t in self.items]}
 
 
-def convert_type_type(self: TypeType) -> JsonDict:
+def convert_type_type(self: TypeType) -> Json:
     return {".class": "TypeType", "item": convert_type(self.item)}
 
 
-def convert_uninhabited_type(self: UninhabitedType) -> JsonDict:
+def convert_uninhabited_type(self: UninhabitedType) -> Json:
     return {".class": "UninhabitedType"}
 
 
-def convert_unpack_type(self: UnpackType) -> JsonDict:
+def convert_unpack_type(self: UnpackType) -> Json:
     return {".class": "UnpackType", "type": convert_type(self.type)}
 
 
-def convert_param_spec_type(self: ParamSpecType) -> JsonDict:
+def convert_param_spec_type(self: ParamSpecType) -> Json:
     assert not self.id.is_meta_var()
     return {
         ".class": "ParamSpecType",
@@ -483,7 +501,7 @@ def convert_param_spec_type(self: ParamSpecType) -> JsonDict:
     }
 
 
-def convert_type_var_tuple_type(self: TypeVarTupleType) -> JsonDict:
+def convert_type_var_tuple_type(self: TypeVarTupleType) -> Json:
     assert not self.id.is_meta_var()
     return {
         ".class": "TypeVarTupleType",
@@ -498,7 +516,7 @@ def convert_type_var_tuple_type(self: TypeVarTupleType) -> JsonDict:
     }
 
 
-def convert_parameters(self: Parameters) -> JsonDict:
+def convert_parameters(self: Parameters) -> Json:
     return {
         ".class": "Parameters",
         "arg_types": [convert_type(t) for t in self.arg_types],
@@ -509,7 +527,7 @@ def convert_parameters(self: Parameters) -> JsonDict:
     }
 
 
-def convert_typeddict_type(self: TypedDictType) -> JsonDict:
+def convert_typeddict_type(self: TypedDictType) -> Json:
     return {
         ".class": "TypedDictType",
         "items": [[n, convert_type(t)] for (n, t) in self.items.items()],
@@ -519,7 +537,7 @@ def convert_typeddict_type(self: TypedDictType) -> JsonDict:
     }
 
 
-def convert_unbound_type(self: UnboundType) -> JsonDict:
+def convert_unbound_type(self: UnboundType) -> Json:
     return {
         ".class": "UnboundType",
         "name": self.name,

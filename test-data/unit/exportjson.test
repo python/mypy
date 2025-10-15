@@ -21,11 +21,7 @@ x = 0
                 ".class": "Var",
                 "name": "x",
                 "fullname": "main.x",
-                "type": {
-                    ".class": "Instance",
-                    "type_ref": null,
-                    "args": []
-                },
+                "type": "builtins.int",
                 "setter_type": null,
                 "flags": [
                     "is_ready",
@@ -66,11 +62,7 @@ class C:
                             ".class": "Var",
                             "name": "x",
                             "fullname": "main.C.x",
-                            "type": {
-                                ".class": "Instance",
-                                "type_ref": null,
-                                "args": []
-                            },
+                            "type": "builtins.int",
                             "setter_type": null,
                             "flags": [
                                 "is_initialized_in_class",
@@ -89,11 +81,7 @@ class C:
                 "type_vars": [],
                 "has_param_spec_type": false,
                 "bases": [
-                    {
-                        ".class": "Instance",
-                        "type_ref": "builtins.object",
-                        "args": []
-                    }
+                    "builtins.object"
                 ],
                 "mro": [],
                 "_promote": [],
@@ -162,11 +150,7 @@ def foo(a: int) -> None: ...
                 "type": {
                     ".class": "CallableType",
                     "arg_types": [
-                        {
-                            ".class": "Instance",
-                            "type_ref": null,
-                            "args": []
-                        }
+                        "builtins.int"
                     ],
                     "arg_kinds": [
                         0
@@ -177,11 +161,7 @@ def foo(a: int) -> None: ...
                     "ret_type": {
                         ".class": "NoneType"
                     },
-                    "fallback": {
-                        ".class": "Instance",
-                        "type_ref": null,
-                        "args": []
-                    },
+                    "fallback": "builtins.function",
                     "name": "foo",
                     "variables": [],
                     "is_ellipsis_args": false,
