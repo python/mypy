@@ -252,6 +252,8 @@ def concat(f: Callable[Concatenate[int, P], None], *args: P.args, **kwargs: P.kw
 <not checked>
 
 [case testExportDifferentNodes]
+from __future__ import annotations
+
 import typing
 
 from typing import overload, TypeVar
