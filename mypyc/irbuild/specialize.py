@@ -81,6 +81,7 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    get_expr_length_value,
     sequence_from_generator_preallocate_helper,
     translate_list_comprehension,
     translate_set_comprehension,
