@@ -4,15 +4,11 @@
 -- full test coverage.
 
 [case testExportVar]
-import m
-
-[file m.py]
 x = 0
-
 [out]
 {
     ".class": "MypyFile",
-    "_fullname": "m",
+    "_fullname": "main",
     "names": {
         ".class": "SymbolTable",
         "x": {
@@ -21,7 +17,7 @@ x = 0
             "node": {
                 ".class": "Var",
                 "name": "x",
-                "fullname": "m.x",
+                "fullname": "main.x",
                 "type": {
                     ".class": "Instance",
                     "type_ref": null,
@@ -43,16 +39,12 @@ x = 0
 }
 
 [case testExportClass]
-import m
-
-[file m.py]
 class C:
     x: int
-
 [out]
 {
     ".class": "MypyFile",
-    "_fullname": "m",
+    "_fullname": "main",
     "names": {
         ".class": "SymbolTable",
         "C": {
@@ -60,8 +52,8 @@ class C:
             "kind": "Gdef",
             "node": {
                 ".class": "TypeInfo",
-                "module_name": "m",
-                "fullname": "m.C",
+                "module_name": "main",
+                "fullname": "main.C",
                 "names": {
                     ".class": "SymbolTable",
                     "x": {
@@ -70,7 +62,7 @@ class C:
                         "node": {
                             ".class": "Var",
                             "name": "x",
-                            "fullname": "m.C.x",
+                            "fullname": "main.C.x",
                             "type": {
                                 ".class": "Instance",
                                 "type_ref": null,
@@ -87,7 +79,7 @@ class C:
                 "defn": {
                     ".class": "ClassDef",
                     "name": "C",
-                    "fullname": "m.C",
+                    "fullname": "main.C",
                     "type_vars": []
                 },
                 "abstract_attributes": [],

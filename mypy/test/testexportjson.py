@@ -30,8 +30,11 @@ class TypeExportSuite(DataSuite):
             options.show_traceback = True
             options.allow_empty_bodies = True
             options.fixed_format_cache = True
+            fnam = os.path.join(self.base_path, "main.py")
+            with open(fnam, "w") as f:
+                f.write(src)
             result = build.build(
-                sources=[BuildSource("main", None, src)],
+                sources=[BuildSource(fnam, "main")],
                 options=options,
                 alt_lib_path=test_temp_dir,
             )
@@ -41,7 +44,7 @@ class TypeExportSuite(DataSuite):
             cache_dir = os.path.join(".mypy_cache", f"{major}.{minor}")
 
             for module in result.files:
-                if module in ("builtins", "typing", "_typeshed", "__main__"):
+                if module in ("builtins", "typing", "_typeshed"):
                     continue
                 fnam = os.path.join(cache_dir, f"{module}.data.ff")
                 with open(fnam, "rb") as f:
