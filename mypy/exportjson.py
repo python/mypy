@@ -152,7 +152,7 @@ def convert_symbol_node(self: SymbolNode, cfg: Config) -> Json:
         return convert_param_spec_expr(self)
     elif isinstance(self, TypeVarTupleExpr):
         return convert_type_var_tuple_expr(self)
-    assert False, type(self)
+    return {"ERROR": f"{type(self)!r} unrecognized"}
 
 
 def convert_func_def(self: FuncDef) -> Json:
@@ -364,7 +364,7 @@ def convert_type(typ: Type) -> Json:
         return convert_typeddict_type(typ)
     elif isinstance(typ, UnboundType):
         return convert_unbound_type(typ)
-    assert False, type(typ)
+    return {"ERROR": f"{type(typ)!r} unrecognized"}
 
 
 def convert_instance(self: Instance) -> Json:

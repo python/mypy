@@ -193,7 +193,7 @@ def foo(a: int) -> None: ...
 [case testExportDifferentTypes]
 from __future__ import annotations
 
-from typing import Callable, Any, Literal, NoReturn
+from typing import Callable, Any, Literal, NoReturn, TypedDict, NamedTuple
 
 list_ann: list[int]
 any_ann: Any
@@ -209,7 +209,17 @@ def f() -> NoReturn:
 BadType = 1
 x: BadType  # type: ignore
 
+class TD(TypedDict):
+    x: int
+
+td = TD(x=1)
+
+NT = NamedTuple("NT", [("x", int)])
+
+nt = NT(x=1)
+
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 <not checked>
 

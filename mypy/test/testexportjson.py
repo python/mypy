@@ -59,6 +59,7 @@ class TypeExportSuite(DataSuite):
                     if '"path": ' in line:
                         # We source file path is unpredictable, so filter it out
                         line = re.sub(r'"[^"]+\.pyi?"', "...", line)
+                    assert "ERROR" not in line, line
                     a.append(line)
         except CompileError as e:
             a = e.messages
