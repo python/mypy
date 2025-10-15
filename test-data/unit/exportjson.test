@@ -2,6 +2,9 @@
 --
 -- The tool is maintained on a best effort basis so we don't attempt to have
 -- full test coverage.
+--
+-- Some tests only ensure that *some* JSON is generated successfully. These
+-- have <not checked> as [out].
 
 [case testExportVar]
 x = 0
@@ -114,3 +117,20 @@ class C:
     "is_partial_stub_package": false,
     "future_import_flags": []
 }
+
+[case testExportDifferentTypes]
+from __future__ import annotations
+
+from typing import Callable, Any, Literal
+
+list_ann: list[int]
+any_ann: Any
+tuple_ann: tuple[int, str]
+union_ann: int | None
+callable_ann: Callable[[int], str]
+type_type_ann: type[int]
+literal_ann: Literal['x', 5, False]
+
+[builtins fixtures/tuple.pyi]
+[out]
+<not checked>

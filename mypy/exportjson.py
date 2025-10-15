@@ -58,6 +58,7 @@ from mypy.types import (
     TypeType,
     TypeVarTupleType,
     TypeVarType,
+    UnboundType,
     UninhabitedType,
     UnionType,
     UnpackType,
@@ -357,6 +358,8 @@ def convert_type(typ: Type) -> JsonDict:
         return convert_parameters(typ)
     elif isinstance(typ, TypedDictType):
         return convert_typeddict_type(typ)
+    elif isinstance(typ, UnboundType):
+        return convert_unbound_type(typ)
     assert False, type(typ)
 
 
@@ -513,6 +516,16 @@ def convert_typeddict_type(self: TypedDictType) -> JsonDict:
         "required_keys": sorted(self.required_keys),
         "readonly_keys": sorted(self.readonly_keys),
         "fallback": convert_type(self.fallback),
+    }
+
+
+def convert_unbound_type(self: UnboundType) -> JsonDict:
+    return {
+        ".class": "UnboundType",
+        "name": self.name,
+        "args": [convert_type(a) for a in self.args],
+        "expr": self.original_str_expr,
+        "expr_fallback": self.original_str_fallback,
     }
 
 
