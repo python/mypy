@@ -5020,8 +5020,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if_map, else_map = self.find_isinstance_check(e)
 
                 if codes.REDUNDANT_EXPR in self.options.enabled_error_codes and not (
-                    isinstance(e, NameExpr)
-                    and e.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING")
+                    refers_to_fullname(
+                        e, ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING")
+                    )
                 ):
                     if if_map is None:
                         if s.while_stmt:
