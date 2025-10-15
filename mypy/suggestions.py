@@ -42,7 +42,7 @@ from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.nodes import (
     ARG_STAR,
     ARG_STAR2,
-    ArgKind,
+    ArgKinds,
     CallExpr,
     Decorator,
     Expression,
@@ -92,7 +92,7 @@ class PyAnnotateSignature(TypedDict):
 class Callsite(NamedTuple):
     path: str
     line: int
-    arg_kinds: list[list[ArgKind]]
+    arg_kinds: list[ArgKinds]
     callee_arg_names: list[str | None]
     arg_names: list[list[str | None]]
     arg_types: list[list[Type]]
@@ -521,7 +521,7 @@ class SuggestionEngine:
 
     def format_args(
         self,
-        arg_kinds: list[list[ArgKind]],
+        arg_kinds: list[ArgKinds],
         arg_names: list[list[str | None]],
         arg_types: list[list[Type]],
     ) -> str:
