@@ -1,3 +1,4 @@
+import collections
 from typing import (
     Iterable, Iterator, TypeVar, List, Mapping, overload, Tuple, Set, Union, Generic, Sequence
 )
