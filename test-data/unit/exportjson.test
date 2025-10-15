@@ -223,3 +223,33 @@ literal_ann: Literal['x', 5, False]
 [builtins fixtures/tuple.pyi]
 [out]
 <not checked>
+
+[case testExportDifferentNodes]
+import typing
+
+from typing import overload, TypeVar
+from typing_extensions import TypeVarTuple, ParamSpec
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: int | str) -> int | str: ...
+
+T = TypeVar("T")
+
+def deco(f: T) -> T:
+    return f
+
+@deco
+def foo(x: int) -> int: ...
+
+X = int
+x: X = 2
+
+Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
+
+[builtins fixtures/tuple.pyi]
+[out]
+<not checked>
