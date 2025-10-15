@@ -15,6 +15,7 @@ down mypy development).
 
 import argparse
 import json
+import sys
 from typing import Any, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -552,11 +553,18 @@ def convert_unbound_type(self: UnboundType) -> Json:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("path", nargs="+")
+    parser = argparse.ArgumentParser(
+        description="Convert binary cache files to JSON. "
+        "Create files in the same directory with extra .json extension."
+    )
+    parser.add_argument(
+        "path", nargs="+", help="mypy cache data file to convert (.data.ff extension)"
+    )
     args = parser.parse_args()
     fnams: list[str] = args.path
     for fnam in fnams:
+        if not fnam.endswith(".data.ff"):
+            sys.exit(f"error: Expected .data.ff extension, but got {fnam}")
         with open(fnam, "rb") as f:
             data = f.read()
         json_data = convert_binary_cache_to_json(data)
