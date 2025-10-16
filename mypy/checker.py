@@ -5048,9 +5048,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if codes.REDUNDANT_EXPR not in self.options.enabled_error_codes:
             return
-        if refers_to_fullname(
-            expr, ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING")
-        ):
+        if refers_to_fullname(expr, ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING")):
             return
 
         if if_map is None:
