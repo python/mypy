@@ -186,6 +186,11 @@ jobs:
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
 
+    # delete this when importing lxml.etree no longer re-enables the GIL
+    - name: Force-disable GIL in 3.14t tests
+      if: ${{ matrix.python == '3.14t' }}
+      run: echo "PYTHON_GIL=0" >> "$GITHUB_ENV"
+
     - name: Setup tox environment
       run: |
         tox run -e ${{ matrix.toxenv }} --notest
