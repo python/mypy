@@ -5042,6 +5042,41 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if s.else_body:
                     self.accept(s.else_body)
 
+    def _visit_if_stmt_redundant_expr_helper(
+        self, stmt: IfStmt, expr: Expression, body: Body, if_map, else_map
+    ) -> None:
+
+        if codes.REDUNDANT_EXPR not in self.options.enabled_error_codes:
+            return
+        if refers_to_fullname(
+            expr, ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING")
+        ):
+            return
+
+        if if_map is None:
+            if stmt.while_stmt:
+                self.msg.redundant_condition_in_while(expr)
+            else:
+                self.msg.redundant_condition_in_if(False, expr)
+
+        if else_map is None and not stmt.while_stmt:
+            if isinstance(body.body[0], ReturnStmt):
+                return
+            if (else_body := stmt.else_body) is not None:
+                s = else_body.body[0]
+                if isinstance(s, AssertStmt) and is_false_literal(s.expr):
+                    return
+                if isinstance(s, RaiseStmt):
+                    return
+                elif isinstance(s.expr, CallExpr):
+                    with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
+                        typ = self.expr_checker.accept(
+                            s.expr, allow_none_return=True, always_allow_any=True
+                        )
+                    if isinstance(get_proper_type(typ), UninhabitedType):
+                        return
+            self.msg.redundant_condition_in_if(True, expr)
+
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""
         if_stmt = IfStmt([s.expr], [s.body], None, while_stmt=True)

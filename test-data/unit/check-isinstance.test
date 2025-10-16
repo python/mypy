@@ -3079,3 +3079,48 @@ while False:  # E: While condition is always false
     ...
 
 [builtins fixtures/bool.pyi]
+
+[case testNoRedundantExpressionWarningsForExhaustivenessChecks]
+# flags: --enable-error-code=redundant-expr
+from typing import Literal, Never, NoReturn
+
+def assert_never(x: Never) -> NoReturn:
+    ...
+def f1(x: Literal[1, 2]) -> str:
+    if x == 1:
+        y = "a"
+    elif x == 2:
+        y = "b"
+    else:
+        assert_never(x)
+    return y
+
+class ValueError: ...
+def f2(x: Literal[1]) -> str:
+    if x == 1:
+        y = "a"
+    else:
+        raise ValueError
+    return y
+
+def f3(x: Literal[1]) -> str:
+    if x == 1:
+        y = "a"
+    else:
+        assert False
+    return y
+
+def f4(x: Literal[1, 2]) -> int:
+    if x == 1:
+        return 1
+    if x == 2:
+        return 2
+
+def f5(x: Literal[1, 2]) -> str:
+    if x == 1:
+        y = "a"
+    elif x == 2:  # E: If condition is always true
+        y = "b"
+    return y
+
+[builtins fixtures/bool.pyi]
