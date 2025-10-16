@@ -8194,8 +8194,7 @@ def conditional_types(
                 current_type = try_expanding_sum_type_to_union(current_type, enum_name)
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
-        current_type = get_proper_type(current_type)
-        if isinstance(current_type, AnyType):
+        if isinstance(get_proper_type(current_type), AnyType):
             return proposed_type, current_type
         elif isinstance(proposed_type, AnyType):
             # We don't really know much about the proposed type, so we shouldn't
