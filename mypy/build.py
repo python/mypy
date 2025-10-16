@@ -3334,7 +3334,13 @@ def find_stale_sccs(
         scc_str = " ".join(ascc.mod_ids)
         if fresh:
             manager.trace(f"Found {fresh_msg} SCC ({scc_str})")
-            scc = order_ascc_ex(graph, ascc)
+            # If there is at most one file with errors we can skip the ordering to save time.
+            mods_with_errors = [id for id in ascc.mod_ids if graph[id].error_lines]
+            if len(mods_with_errors) <= 1:
+                scc = mods_with_errors
+            else:
+                # Use exactly the same order as for stale SCCs for stability.
+                scc = order_ascc_ex(graph, ascc)
             for id in scc:
                 if graph[id].error_lines:
                     manager.flush_errors(
@@ -3471,6 +3477,7 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
 
     if missing_sccs:
         # Load missing SCCs from cache.
+        # TODO: speed-up ordering if this causes problems for large builds.
         fresh_sccs_to_load = [
             manager.scc_by_id[sid] for sid in manager.top_order if sid in missing_sccs
         ]
