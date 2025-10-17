@@ -5039,7 +5039,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Emits `redundant-expr` errors for if statements that are always true or always false.
 
         We try to avoid emitting such errors if the redundancy seems to be intended as part of
-        dynamic type or exhaustiveness checking (risking to miss some uninteded redundant if
+        dynamic type or exhaustiveness checking (risking to miss some unintended redundant if
         statements).
         """
 
