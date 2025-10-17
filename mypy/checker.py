@@ -3147,6 +3147,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """
         if isinstance(s, AssertStmt) and is_false_literal(s.expr):
             return True
+        elif isinstance(s, ReturnStmt) and is_literal_not_implemented(s.expr):
+            return True
         elif isinstance(s, (RaiseStmt, PassStmt)):
             return True
         elif isinstance(s, ExpressionStmt):
