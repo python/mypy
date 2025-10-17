@@ -1794,7 +1794,9 @@ class SemanticAnalyzer(
             if self.is_defined_type_param(p.name):
                 self.fail(f'"{p.name}" already defined as a type parameter', context)
             else:
-                self.add_symbol(p.name, tv, context, no_progress=True, type_param=True)
+                assert self.add_symbol(
+                    p.name, tv, context, no_progress=True, type_param=True
+                ), "Type parameter should not be discarded"
 
         return tvs
 
