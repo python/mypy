@@ -363,7 +363,7 @@ class CacheMeta(NamedTuple):
     # dep_prios and dep_lines are in parallel with dependencies + suppressed
     dep_prios: list[int]
     dep_lines: list[int]
-    dep_hashes: dict[str, str]
+    dep_hashes: list[str]
     interface_hash: str  # hash representing the public interface
     error_lines: list[str]
     version_id: str  # mypy version for cache invalidation
@@ -403,7 +403,7 @@ def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
         meta.get("options"),
         meta.get("dep_prios", []),
         meta.get("dep_lines", []),
-        meta.get("dep_hashes", {}),
+        meta.get("dep_hashes", []),
         meta.get("interface_hash", ""),
         meta.get("error_lines", []),
         meta.get("version_id", sentinel),
@@ -1310,8 +1310,7 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
     Args:
       id: module ID
       path: module path
-      cache_dir: cache directory
-      pyversion: Python version (major, minor)
+      options: build options
 
     Returns:
       A tuple with the file names to be used for the meta JSON, the
@@ -1328,7 +1327,7 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
         # Solve this by rewriting the paths as relative to the root dir.
         # This only makes sense when using the filesystem backed cache.
         root = _cache_dir_prefix(options)
-        return (os.path.relpath(pair[0], root), os.path.relpath(pair[1], root), None)
+        return os.path.relpath(pair[0], root), os.path.relpath(pair[1], root), None
     prefix = os.path.join(*id.split("."))
     is_package = os.path.basename(path).startswith("__init__.py")
     if is_package:
@@ -1341,7 +1340,20 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
         data_suffix = ".data.ff"
     else:
         data_suffix = ".data.json"
-    return (prefix + ".meta.json", prefix + data_suffix, deps_json)
+    return prefix + ".meta.json", prefix + data_suffix, deps_json
+
+
+def options_snapshot(id: str, manager: BuildManager) -> dict[str, object]:
+    """Make compact snapshot of options for a module.
+
+    Separately store only the options we may compare individually, and take a hash
+    of everything else. If --debug-cache is specified, fall back to full snapshot.
+    """
+    snapshot = manager.options.clone_for_module(id).select_options_affecting_cache()
+    if manager.options.debug_cache:
+        return snapshot
+    platform_opt = snapshot.pop("platform")
+    return {"platform": platform_opt, "other_options": hash_digest(json_dumps(snapshot))}
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | None:
@@ -1403,7 +1415,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     # Ignore cache if (relevant) options aren't the same.
     # Note that it's fine to mutilate cached_options since it's only used here.
     cached_options = m.options
-    current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
+    current_options = options_snapshot(id, manager)
     if manager.options.skip_version_check:
         # When we're lax about version we're also lax about platform.
         cached_options["platform"] = current_options["platform"]
@@ -1556,7 +1568,7 @@ def validate_meta(
                 "data_mtime": meta.data_mtime,
                 "dependencies": meta.dependencies,
                 "suppressed": meta.suppressed,
-                "options": (manager.options.clone_for_module(id).select_options_affecting_cache()),
+                "options": options_snapshot(id, manager),
                 "dep_prios": meta.dep_prios,
                 "dep_lines": meta.dep_lines,
                 "dep_hashes": meta.dep_hashes,
@@ -1701,7 +1713,6 @@ def write_cache(
     # updates made by inline config directives in the file. This is
     # important, or otherwise the options would never match when
     # verifying the cache.
-    options = manager.options.clone_for_module(id)
     assert source_hash is not None
     meta = {
         "id": id,
@@ -1712,7 +1723,7 @@ def write_cache(
         "data_mtime": data_mtime,
         "dependencies": dependencies,
         "suppressed": suppressed,
-        "options": options.select_options_affecting_cache(),
+        "options": options_snapshot(id, manager),
         "dep_prios": dep_prios,
         "dep_lines": dep_lines,
         "interface_hash": interface_hash,
@@ -2029,7 +2040,10 @@ class State:
             self.priorities = {id: pri for id, pri in zip(all_deps, self.meta.dep_prios)}
             assert len(all_deps) == len(self.meta.dep_lines)
             self.dep_line_map = {id: line for id, line in zip(all_deps, self.meta.dep_lines)}
-            self.dep_hashes = self.meta.dep_hashes
+            assert len(self.meta.dep_hashes) == len(self.meta.dependencies)
+            self.dep_hashes = {
+                k: v for (k, v) in zip(self.meta.dependencies, self.meta.dep_hashes)
+            }
             self.error_lines = self.meta.error_lines
             if temporary:
                 self.load_tree(temporary=True)
@@ -2346,6 +2360,7 @@ class State:
         self.suppressed_set = set()
         self.priorities = {}  # id -> priority
         self.dep_line_map = {}  # id -> line
+        self.dep_hashes = {}
         dep_entries = manager.all_imported_modules_in_file(
             self.tree
         ) + self.manager.plugin.get_additional_deps(self.tree)
@@ -2433,7 +2448,7 @@ class State:
 
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
-            self._patch_indirect_dependencies(
+            self.patch_indirect_dependencies(
                 # Two possible sources of indirect dependencies:
                 # * Symbols not directly imported in this module but accessed via an attribute
                 #   or via a re-export (vast majority of these recorded in semantic analysis).
@@ -2470,21 +2485,17 @@ class State:
             self._type_checker.reset()
             self._type_checker = None
 
-    def _patch_indirect_dependencies(self, module_refs: set[str], types: set[Type]) -> None:
-        assert None not in types
-        valid = self.valid_references()
+    def patch_indirect_dependencies(self, module_refs: set[str], types: set[Type]) -> None:
+        assert self.ancestors is not None
+        existing_deps = set(self.dependencies + self.suppressed + self.ancestors)
+        existing_deps.add(self.id)
 
         encountered = self.manager.indirection_detector.find_modules(types) | module_refs
-        extra = encountered - valid
-
-        for dep in sorted(extra):
+        for dep in sorted(encountered - existing_deps):
             if dep not in self.manager.modules:
                 continue
-            if dep not in self.suppressed_set and dep not in self.manager.missing_modules:
-                self.add_dependency(dep)
-                self.priorities[dep] = PRI_INDIRECT
-            elif dep not in self.suppressed_set and dep in self.manager.missing_modules:
-                self.suppress_dependency(dep)
+            self.add_dependency(dep)
+            self.priorities[dep] = PRI_INDIRECT
 
     def compute_fine_grained_deps(self) -> dict[str, set[str]]:
         assert self.tree is not None
@@ -2513,16 +2524,6 @@ class State:
 
             merge_dependencies(self.compute_fine_grained_deps(), deps)
             type_state.update_protocol_deps(deps)
-
-    def valid_references(self) -> set[str]:
-        assert self.ancestors is not None
-        valid_refs = set(self.dependencies + self.suppressed + self.ancestors)
-        valid_refs.add(self.id)
-
-        if "os" in valid_refs:
-            valid_refs.add("os.path")
-
-        return valid_refs
 
     def write_cache(self) -> tuple[dict[str, Any], str] | None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -2577,14 +2578,16 @@ class State:
         """
         manager = self.manager
         assert self.ancestors is not None
+        # Strip out indirect dependencies. See comment in build.load_graph().
         if suppressed_only:
-            all_deps = self.suppressed
+            all_deps = [dep for dep in self.suppressed if self.priorities.get(dep) != PRI_INDIRECT]
         else:
-            # Strip out indirect dependencies. See comment in build.load_graph().
             dependencies = [
-                dep for dep in self.dependencies if self.priorities.get(dep) != PRI_INDIRECT
+                dep
+                for dep in self.dependencies + self.suppressed
+                if self.priorities.get(dep) != PRI_INDIRECT
             ]
-            all_deps = dependencies + self.suppressed + self.ancestors
+            all_deps = dependencies + self.ancestors
         for dep in all_deps:
             if dep in manager.modules:
                 continue
@@ -3250,6 +3253,13 @@ def load_graph(
             if dep in graph and dep in st.suppressed_set:
                 # Previously suppressed file is now visible
                 st.add_dependency(dep)
+    # In the loop above we skip indirect dependencies, so to make indirect dependencies behave
+    # more consistently with regular ones, we suppress them manually here (when needed).
+    for st in graph.values():
+        indirect = [dep for dep in st.dependencies if st.priorities.get(dep) == PRI_INDIRECT]
+        for dep in indirect:
+            if dep not in graph:
+                st.suppress_dependency(dep)
     manager.plugin.set_modules(manager.modules)
     return graph
 
@@ -3284,8 +3294,9 @@ def find_stale_sccs(
 
     Fresh SCCs are those where:
     * We have valid cache files for all modules in the SCC.
+    * There are no changes in dependencies (files removed from/added to the build).
     * The interface hashes of direct dependents matches those recorded in the cache.
-    * There are no new (un)suppressed dependencies (files removed/added to the build).
+    The first and second conditions are verified by is_fresh().
     """
     stale_sccs = []
     fresh_sccs = []
@@ -3294,34 +3305,15 @@ def find_stale_sccs(
         fresh = not stale_scc
 
         # Verify that interfaces of dependencies still present in graph are up-to-date (fresh).
-        # Note: if a dependency is not in graph anymore, it should be considered interface-stale.
-        # This is important to trigger any relevant updates from indirect dependencies that were
-        # removed in load_graph().
         stale_deps = set()
         for id in ascc.mod_ids:
             for dep in graph[id].dep_hashes:
-                if dep not in graph:
-                    stale_deps.add(dep)
-                    continue
-                if graph[dep].interface_hash != graph[id].dep_hashes[dep]:
+                if dep in graph and graph[dep].interface_hash != graph[id].dep_hashes[dep]:
                     stale_deps.add(dep)
         fresh = fresh and not stale_deps
 
-        undeps = set()
-        if fresh:
-            # Check if any dependencies that were suppressed according
-            # to the cache have been added back in this run.
-            # NOTE: Newly suppressed dependencies are handled by is_fresh().
-            for id in ascc.mod_ids:
-                undeps.update(graph[id].suppressed)
-            undeps &= graph.keys()
-            if undeps:
-                fresh = False
-
         if fresh:
             fresh_msg = "fresh"
-        elif undeps:
-            fresh_msg = f"stale due to changed suppression ({' '.join(sorted(undeps))})"
         elif stale_scc:
             fresh_msg = "inherently stale"
             if stale_scc != ascc.mod_ids:
@@ -3563,9 +3555,7 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
         if meta_tuple is None:
             continue
         meta, meta_json = meta_tuple
-        meta["dep_hashes"] = {
-            dep: graph[dep].interface_hash for dep in graph[id].dependencies if dep in graph
-        }
+        meta["dep_hashes"] = [graph[dep].interface_hash for dep in graph[id].dependencies]
         meta["error_lines"] = errors_by_id.get(id, [])
         write_cache_meta(meta, manager, meta_json)
     manager.done_sccs.add(ascc.id)
