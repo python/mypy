@@ -1346,7 +1346,7 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
 def options_snapshot(id: str, manager: BuildManager) -> dict[str, object]:
     """Make compact snapshot of options for a module.
 
-    Separately stor only the options we may compare individually, and take a hash
+    Separately store only the options we may compare individually, and take a hash
     of everything else. If --debug-cache is specified, fall back to full snapshot.
     """
     snapshot = manager.options.clone_for_module(id).select_options_affecting_cache()
