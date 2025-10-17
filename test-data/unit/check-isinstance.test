@@ -3123,4 +3123,8 @@ def f5(x: Literal[1, 2]) -> str:
         y = "b"
     return y
 
+def f6(x: Literal[1]) -> None:
+    if x != 1:
+        raise ValueError
+
 [builtins fixtures/bool.pyi]

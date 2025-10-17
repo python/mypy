@@ -5036,35 +5036,44 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     def _visit_if_stmt_redundant_expr_helper(
         self, stmt: IfStmt, expr: Expression, body: Block, if_map: TypeMap, else_map: TypeMap
     ) -> None:
+        """Emits `redundant-expr` errors for if statements that are always true or always false.
+
+        We try to avoid emitting such errors if the redundancy seems to be intended as part of
+        dynamic type or exhaustiveness checking (risking to miss some uninteded redundant if
+        statements).
+        """
 
         if codes.REDUNDANT_EXPR not in self.options.enabled_error_codes:
             return
         if refers_to_fullname(expr, ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING")):
             return
 
+        def _filter(body: Block | None) -> bool:
+            if body is None:
+                return False
+            s = body.body[0]
+            if isinstance(s, AssertStmt) and is_false_literal(s.expr):
+                return True
+            if isinstance(s, RaiseStmt):
+                return True
+            elif isinstance(s, ExpressionStmt) and isinstance(s.expr, CallExpr):
+                with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
+                    typ = self.expr_checker.accept(
+                        s.expr, allow_none_return=True, always_allow_any=True
+                    )
+                if isinstance(get_proper_type(typ), UninhabitedType):
+                    return True
+            return False
+
         if if_map is None:
             if stmt.while_stmt:
                 self.msg.redundant_condition_in_while(expr)
-            else:
+            elif not _filter(body):
                 self.msg.redundant_condition_in_if(False, expr)
 
         if else_map is None and not stmt.while_stmt:
-            if isinstance(body.body[0], ReturnStmt):
-                return
-            if (else_body := stmt.else_body) is not None:
-                s = else_body.body[0]
-                if isinstance(s, AssertStmt) and is_false_literal(s.expr):
-                    return
-                if isinstance(s, RaiseStmt):
-                    return
-                elif isinstance(s, ExpressionStmt) and isinstance(s.expr, CallExpr):
-                    with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
-                        typ = self.expr_checker.accept(
-                            s.expr, allow_none_return=True, always_allow_any=True
-                        )
-                    if isinstance(get_proper_type(typ), UninhabitedType):
-                        return
-            self.msg.redundant_condition_in_if(True, expr)
+            if not (isinstance(body.body[0], ReturnStmt) or _filter(stmt.else_body)):
+                self.msg.redundant_condition_in_if(True, expr)
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""
