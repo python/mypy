@@ -5019,18 +5019,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if_map, else_map = self.find_isinstance_check(e)
 
-                if codes.REDUNDANT_EXPR in self.options.enabled_error_codes and not (
-                    refers_to_fullname(
-                        e, ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING")
-                    )
-                ):
-                    if if_map is None:
-                        if s.while_stmt:
-                            self.msg.redundant_condition_in_while(e)
-                        else:
-                            self.msg.redundant_condition_in_if(False, e)
-                    if else_map is None and not s.while_stmt:
-                        self.msg.redundant_condition_in_if(True, e)
+                self._visit_if_stmt_redundant_expr_helper(
+                    stmt=s, expr=e, body=b, if_map=if_map, else_map=else_map
+                )
 
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     self.push_type_map(if_map, from_assignment=False)
@@ -5043,7 +5034,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.accept(s.else_body)
 
     def _visit_if_stmt_redundant_expr_helper(
-        self, stmt: IfStmt, expr: Expression, body: Body, if_map, else_map
+        self, stmt: IfStmt, expr: Expression, body: Block, if_map: TypeMap, else_map: TypeMap
     ) -> None:
 
         if codes.REDUNDANT_EXPR not in self.options.enabled_error_codes:
@@ -5066,7 +5057,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     return
                 if isinstance(s, RaiseStmt):
                     return
-                elif isinstance(s.expr, CallExpr):
+                elif isinstance(s, ExpressionStmt) and isinstance(s.expr, CallExpr):
                     with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
                         typ = self.expr_checker.accept(
                             s.expr, allow_none_return=True, always_allow_any=True
