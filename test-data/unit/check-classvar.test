@@ -360,3 +360,23 @@ reveal_type(C.x)  # E: Access to generic instance variables via class is ambiguo
                   # N: Revealed type is "Any"
 reveal_type(C.y)  # E: Access to generic class variables is ambiguous \
                   # N: Revealed type is "Any"
+
+[case testClassVarBareAnnotation]
+from typing import ClassVar
+
+class C:
+    x: ClassVar = 1
+    y: ClassVar
+
+reveal_type(C.x)  # N: Revealed type is "builtins.int"
+reveal_type(C().x)  # N: Revealed type is "builtins.int"
+reveal_type(C.y)  # N: Revealed type is "Any"
+reveal_type(C().y)  # N: Revealed type is "Any"
+
+[case testClassVarBareAnnotationDisabled]
+# flags: --disallow-any-generics
+from typing import ClassVar
+
+class C:
+    x: ClassVar = 1
+    y: ClassVar  # E: ClassVar without type argument becomes Any

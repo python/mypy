@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
+    bit_rprimitive,
     c_pyssize_t_rprimitive,
     int_rprimitive,
     list_rprimitive,
@@ -54,6 +55,13 @@ new_tuple_with_length_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+load_empty_tuple_constant_op = custom_op(
+    arg_types=[],
+    return_type=tuple_rprimitive,
+    c_function_name="CPyTuple_LoadEmptyTupleConstant",
+    error_kind=ERR_NEVER,
+)
+
 # PyTuple_SET_ITEM does no error checking,
 # and should only be used to fill in brand new tuples.
 new_tuple_set_item_op = custom_op(
@@ -75,12 +83,21 @@ list_tuple_op = function_op(
 )
 
 # Construct tuple from an arbitrary (iterable) object.
-function_op(
+sequence_tuple_op = function_op(
     name="builtins.tuple",
     arg_types=[object_rprimitive],
     return_type=tuple_rprimitive,
     c_function_name="PySequence_Tuple",
     error_kind=ERR_MAGIC,
+)
+
+# translate isinstance(obj, tuple)
+isinstance_tuple = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyTuple_Check",
+    error_kind=ERR_NEVER,
 )
 
 # tuple + tuple

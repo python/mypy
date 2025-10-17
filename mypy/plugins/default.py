@@ -5,7 +5,7 @@ from typing import Callable, Final
 
 import mypy.errorcodes as codes
 from mypy import message_registry
-from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
+from mypy.nodes import DictExpr, Expression, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
@@ -82,6 +82,7 @@ from mypy.types import (
 
 TD_SETDEFAULT_NAMES: Final = {n + ".setdefault" for n in TPDICT_FB_NAMES}
 TD_POP_NAMES: Final = {n + ".pop" for n in TPDICT_FB_NAMES}
+TD_DELITEM_NAMES: Final = {n + ".__delitem__" for n in TPDICT_FB_NAMES}
 
 TD_UPDATE_METHOD_NAMES: Final = (
     {n + ".update" for n in TPDICT_FB_NAMES}
@@ -144,11 +145,11 @@ class DefaultPlugin(Plugin):
             return int_pos_callback
         elif fullname in ("builtins.tuple.__mul__", "builtins.tuple.__rmul__"):
             return tuple_mul_callback
-        elif fullname in {n + ".setdefault" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_SETDEFAULT_NAMES:
             return typed_dict_setdefault_callback
-        elif fullname in {n + ".pop" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_POP_NAMES:
             return typed_dict_pop_callback
-        elif fullname in {n + ".__delitem__" for n in TPDICT_FB_NAMES}:
+        elif fullname in TD_DELITEM_NAMES:
             return typed_dict_delitem_callback
         elif fullname == "_ctypes.Array.__getitem__":
             return array_getitem_callback
@@ -262,30 +263,40 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if keys is None:
             return ctx.default_return_type
 
+        default_type: Type
+        default_arg: Expression | None
+        if len(ctx.arg_types) <= 1 or not ctx.arg_types[1]:
+            default_arg = None
+            default_type = NoneType()
+        elif len(ctx.arg_types[1]) == 1 and len(ctx.args[1]) == 1:
+            default_arg = ctx.args[1][0]
+            default_type = ctx.arg_types[1][0]
+        else:
+            return ctx.default_return_type
+
         output_types: list[Type] = []
         for key in keys:
-            value_type = get_proper_type(ctx.type.items.get(key))
+            value_type: Type | None = ctx.type.items.get(key)
             if value_type is None:
                 return ctx.default_return_type
 
-            if len(ctx.arg_types) == 1:
+            if key in ctx.type.required_keys:
                 output_types.append(value_type)
-            elif len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1 and len(ctx.args[1]) == 1:
-                default_arg = ctx.args[1][0]
+            else:
+                # HACK to deal with get(key, {})
                 if (
                     isinstance(default_arg, DictExpr)
                     and len(default_arg.items) == 0
-                    and isinstance(value_type, TypedDictType)
+                    and isinstance(vt := get_proper_type(value_type), TypedDictType)
                 ):
-                    # Special case '{}' as the default for a typed dict type.
-                    output_types.append(value_type.copy_modified(required_keys=set()))
+                    output_types.append(vt.copy_modified(required_keys=set()))
                 else:
                     output_types.append(value_type)
-                    output_types.append(ctx.arg_types[1][0])
+                    output_types.append(default_type)
 
-        if len(ctx.arg_types) == 1:
-            output_types.append(NoneType())
-
+        # for nicer reveal_type, put default at the end, if it is present
+        if default_type in output_types:
+            output_types = [t for t in output_types if t != default_type] + [default_type]
         return make_simplified_union(output_types)
     return ctx.default_return_type
 

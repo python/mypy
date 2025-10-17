@@ -472,6 +472,27 @@ class B(A):
     def __new__(cls) -> B:
         pass
 
+[case testOverride__new__WithLiteralReturnPassing]
+from typing import Literal
+
+class Falsy:
+    def __bool__(self) -> Literal[False]: pass
+
+reveal_type(bool(Falsy()))  # N: Revealed type is "Literal[False]"
+reveal_type(int())  # N: Revealed type is "Literal[0]"
+
+[builtins fixtures/literal__new__.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testOverride__new__WithLiteralReturnFailing]
+from typing import Literal
+
+class Foo:
+    def __new__(cls) -> Literal[1]: pass # E: Incompatible return type for "__new__" (returns "Literal[1]", but must return a subtype of "Foo")
+
+[builtins fixtures/__new__.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testOverride__new__AndCallObject]
 from typing import TypeVar, Generic
 
@@ -3261,7 +3282,10 @@ b.bad = 'a'  # E: Incompatible types in assignment (expression has type "str", v
 from typing import Any
 
 class Test:
-    def __setattr__() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument? # E: Invalid signature "Callable[[], None]" for "__setattr__"
+    def __setattr__() -> None: ... \
+        # E: Invalid signature "Callable[[], None]" for "__setattr__" \
+        # E: Method must have at least one argument. Did you forget the "self" argument?
+
 t = Test()
 t.crash = 'test'  # E: Attribute function "__setattr__" with type "Callable[[], None]" does not accept self argument \
                   # E: "Test" has no attribute "crash"
@@ -6081,7 +6105,7 @@ class B(A):
     __slots__ = ('a', 'b')
 class C:
     __slots__ = ('x',)
-class D(B, C):
+class D(B, C):  # E: Class "D" has incompatible disjoint bases
     __slots__ = ('aa', 'bb', 'cc')
 [builtins fixtures/tuple.pyi]
 
@@ -7742,6 +7766,231 @@ class Foo:
     def bad():  # E: Method must have at least one argument. Did you forget the "self" argument?
         self.x = 0  # E: Name "self" is not defined
 
+[case testMethodSelfArgumentChecks]
+from typing import Callable, ParamSpec, TypeVar
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+def to_number_1(fn: Callable[[], int]) -> int:
+    return 0
+
+def to_number_2(fn: Callable[[int], int]) -> int:
+    return 0
+
+def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
+    return fn
+
+class A:
+    def undecorated() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+
+    def undecorated_not_self(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    def undecorated_not_self_2(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
+
+    @to_number_1
+    def fn1() -> int:
+        return 0
+
+    @to_number_1  # E: Argument 1 to "to_number_1" has incompatible type "Callable[[int], int]"; expected "Callable[[], int]"
+    def fn2(_x: int) -> int:
+        return 0
+
+    @to_number_2  # E: Argument 1 to "to_number_2" has incompatible type "Callable[[], int]"; expected "Callable[[int], int]"
+    def fn3() -> int:
+        return 0
+
+    @to_number_2
+    def fn4(_x: int) -> int:
+        return 0
+
+    @to_number_2  # E: Argument 1 to "to_number_2" has incompatible type "Callable[[str], int]"; expected "Callable[[int], int]"
+    def fn5(_x: str) -> int:
+        return 0
+
+    @to_same_callable
+    def g1() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+
+    @to_same_callable
+    def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    @to_same_callable
+    def g3(self: int) -> None: ...  # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.A"
+
+reveal_type(A().fn1)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn2)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn3)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn4)  # N: Revealed type is "builtins.int"
+reveal_type(A().fn5)  # N: Revealed type is "builtins.int"
+
+reveal_type(A().g1)  # E: Attribute function "g1" with type "Callable[[], None]" does not accept self argument \
+                     # N: Revealed type is "def ()"
+reveal_type(A().g2)  # E: Invalid self argument "A" to attribute function "g2" with type "Callable[[int], None]" \
+                     # N: Revealed type is "def ()"
+reveal_type(A().g3)  # E: Invalid self argument "A" to attribute function "g3" with type "Callable[[int], None]" \
+                     # N: Revealed type is "def ()"
+[builtins fixtures/tuple.pyi]
+
+[case testMethodSelfArgumentChecksConcatenate]
+from typing import Callable, ParamSpec, TypeVar
+from typing_extensions import Concatenate
+
+T = TypeVar("T")
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def to_same_callable(fn: Callable[Concatenate[T, P], R]) -> Callable[Concatenate[T, P], R]:
+    return fn
+
+def remove_first(fn: Callable[Concatenate[T, P], R]) -> Callable[P, R]:
+    ...
+
+def add_correct_first(fn: Callable[P, R]) -> Callable[Concatenate["C", P], R]:
+    ...
+
+def add_wrong_first(fn: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    ...
+
+class A:
+    @to_same_callable  # E: Argument 1 to "to_same_callable" has incompatible type "Callable[[], int]"; expected "Callable[[T], int]"
+    def fn1() -> int:
+        return 0
+
+    @to_same_callable
+    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+    @to_same_callable
+    def fn3(self, _x: int) -> int:
+        return 0
+
+reveal_type(A().fn1)  # N: Revealed type is "def () -> builtins.int"
+reveal_type(A().fn2)  # E: Invalid self argument "A" to attribute function "fn2" with type "Callable[[int], int]" \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(A().fn3)  # N: Revealed type is "def (_x: builtins.int) -> builtins.int"
+
+class B:
+    @remove_first  # E: Argument 1 to "remove_first" has incompatible type "Callable[[], int]"; expected "Callable[[T], int]"
+    def fn1() -> int:  # E: Method must have at least one argument. Did you forget the "self" argument?
+        return 0
+
+    @remove_first
+    def fn2(_x: int) -> int:  # E: Method must have at least one argument. Did you forget the "self" argument?
+        return 0
+
+    @remove_first
+    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+    @remove_first
+    def fn4(self, new_self: 'B') -> int:
+        return 0
+
+reveal_type(B().fn1)  # E: Attribute function "fn1" with type "Callable[[], int]" does not accept self argument \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(B().fn2)  # E: Attribute function "fn2" with type "Callable[[], int]" does not accept self argument \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(B().fn3)  # E: Invalid self argument "B" to attribute function "fn3" with type "Callable[[int], int]" \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(B().fn4)  # N: Revealed type is "def () -> builtins.int"
+
+class C:
+    @add_correct_first
+    def fn1() -> int:
+        return 0
+
+    @add_correct_first
+    def fn2(_x: int) -> int:
+        return 0
+
+    @add_correct_first
+    def fn3(self, _x: int) -> int:
+        return 0
+
+reveal_type(C().fn1)  # N: Revealed type is "def () -> builtins.int"
+reveal_type(C().fn2)  # N: Revealed type is "def (_x: builtins.int) -> builtins.int"
+reveal_type(C().fn3)  # N: Revealed type is "def (self: __main__.C, _x: builtins.int) -> builtins.int"
+
+class D:
+    @add_wrong_first
+    def fn1() -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+    @add_wrong_first
+    def fn2(_x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+    @add_wrong_first
+    def fn3(self, _x: int) -> int:  # E: Self argument missing for a non-static method (or an invalid type for self)
+        return 0
+
+reveal_type(D().fn1)  # E: Invalid self argument "D" to attribute function "fn1" with type "Callable[[int], int]" \
+                      # N: Revealed type is "def () -> builtins.int"
+reveal_type(D().fn2)  # E: Invalid self argument "D" to attribute function "fn2" with type "Callable[[int, int], int]" \
+                      # N: Revealed type is "def (_x: builtins.int) -> builtins.int"
+reveal_type(D().fn3)  # E: Invalid self argument "D" to attribute function "fn3" with type "Callable[[int, D, int], int]" \
+                      # N: Revealed type is "def (self: __main__.D, _x: builtins.int) -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testMethodSelfArgumentChecksInUntyped]
+from typing import Callable, ParamSpec, TypeVar
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+def to_same_callable(fn: Callable[P, T]) -> Callable[P, T]:
+    return fn
+
+def unchecked():
+    class Bad:
+        def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+        # TODO: would be nice to make this error, but now we see the func
+        # being decorated as Any, not as a callable
+        @to_same_callable
+        def gaaa() -> None: ...
+        @to_same_callable
+        def gaaa2(x: int) -> None: ...
+
+    class Ok:
+        def fn(): ...
+        def fn2(x): ...
+
+        @to_same_callable
+        def g(): ...
+        @to_same_callable
+        def g2(x): ...
+
+def checked() -> None:
+    class Bad:
+        def fn() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+        @to_same_callable
+        def g() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        @to_same_callable
+        def g2(x: int) -> None: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    class AlsoBad:
+        def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        def fn2(x): ...
+
+        @to_same_callable
+        def g(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+        @to_same_callable
+        def g2(x): ...
+
+class Ok:
+    def fn(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    def fn2(x): ...
+
+    @to_same_callable
+    def g(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+    @to_same_callable
+    def g2(x): ...
+[builtins fixtures/tuple.pyi]
+
 [case testTypeAfterAttributeAccessWithDisallowAnyExpr]
 # flags: --disallow-any-expr
 
@@ -8983,3 +9232,81 @@ class CGT(BG[T]): ...
 
 reveal_type(CGI)  # N: Revealed type is "def () -> __main__.CGI"
 reveal_type(CGT)  # N: Revealed type is "def [T] () -> __main__.CGT[T`1]"
+
+[case testSettablePropertyAlias]
+from typing import Any, TypeVar
+
+class A:
+    @property
+    def prop(self: Any) -> str: ...
+    @prop.setter
+    def prop(self, val: str) -> None: ...
+
+T = TypeVar("T")
+class AT:
+    @property
+    def prop(self: T) -> T: ...
+    @prop.setter
+    def prop(self: T, val: list[T]) -> None: ...
+
+class B:
+    prop: str
+    prop_t: str
+
+class C(B):
+    prop = A.prop
+    prop_t = AT.prop  # E: Incompatible types in assignment (expression has type "C", base class "B" defined the type as "str")
+
+reveal_type(C().prop)  # N: Revealed type is "builtins.str"
+C().prop = "no"  # E: Invalid self argument "C" to attribute function "prop" with type "Callable[[A, str], None]"
+reveal_type(C().prop_t)  # N: Revealed type is "__main__.C"
+C().prop_t = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "list[C]")
+[builtins fixtures/property.pyi]
+
+[case testClassEqDecoratedAbstractNote]
+from abc import abstractmethod
+
+class C:
+    @abstractmethod
+    def __eq__(self, other: C) -> bool: ...
+[builtins fixtures/plugin_attrs.pyi]
+[out]
+main:5: error: Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"
+main:5: note: This violates the Liskov substitution principle
+main:5: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:5: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
+main:5: note:     def __eq__(self, other: object) -> bool:
+main:5: note:         if not isinstance(other, C):
+main:5: note:             return NotImplemented
+main:5: note:         return <logic to compare two C instances>
+
+[case testLambdaInAttributeCallValue]
+# https://github.com/python/mypy/issues/19632
+import foo
+
+def nop(fn: object) -> foo.Bar:
+    return foo.Bar()
+
+class Bar:
+    foo: foo.Bar = nop(
+        lambda: 0
+    )
+[file foo.py]
+class Bar:
+    ...
+
+[case testConstructorWithoutStrictOptionalNoCache]
+import mod
+a = mod.NT(x=None)  # OK
+
+[file typ.py]
+from typing import NamedTuple, Optional
+NT = NamedTuple("NT", [("x", Optional[str])])
+
+[file mod.py]
+# mypy: no-strict-optional
+from typ import NT
+
+def f() -> NT:
+    return NT(x='')
+[builtins fixtures/tuple.pyi]

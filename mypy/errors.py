@@ -206,7 +206,8 @@ class ErrorWatcher:
         """
         if info.code == codes.DEPRECATED:
             # Deprecated is not a type error, so it is handled on opt-in basis here.
-            return self._filter_deprecated
+            if not self._filter_deprecated:
+                return False
 
         self._has_new_errors = True
         if isinstance(self._filter, bool):
@@ -390,7 +391,7 @@ class Errors:
     # in some cases to avoid reporting huge numbers of errors.
     seen_import_error = False
 
-    _watchers: list[ErrorWatcher] = []
+    _watchers: list[ErrorWatcher]
 
     def __init__(
         self,
@@ -421,6 +422,7 @@ class Errors:
         self.scope = None
         self.target_module = None
         self.seen_import_error = False
+        self._watchers = []
 
     def reset(self) -> None:
         self.initialize()
@@ -804,8 +806,8 @@ class Errors:
                 continue
             if codes.UNUSED_IGNORE.code in ignored_codes:
                 continue
-            used_ignored_codes = used_ignored_lines[line]
-            unused_ignored_codes = set(ignored_codes) - set(used_ignored_codes)
+            used_ignored_codes = set(used_ignored_lines[line])
+            unused_ignored_codes = [c for c in ignored_codes if c not in used_ignored_codes]
             # `ignore` is used
             if not ignored_codes and used_ignored_codes:
                 continue
@@ -815,7 +817,7 @@ class Errors:
             # Display detail only when `ignore[...]` specifies more than one error code
             unused_codes_message = ""
             if len(ignored_codes) > 1 and unused_ignored_codes:
-                unused_codes_message = f"[{', '.join(sorted(unused_ignored_codes))}]"
+                unused_codes_message = f"[{', '.join(unused_ignored_codes)}]"
             message = f'Unused "type: ignore{unused_codes_message}" comment'
             for unused in unused_ignored_codes:
                 narrower = set(used_ignored_codes) & codes.sub_code_map[unused]
@@ -931,7 +933,8 @@ class Errors:
         if self.file in self.ignored_files:
             # Errors ignored, so no point generating fancy messages
             return True
-        for _watcher in self._watchers:
+        if self._watchers:
+            _watcher = self._watchers[-1]
             if _watcher._filter is True and _watcher._filtered is None:
                 # Errors are filtered
                 return True
@@ -1000,6 +1003,9 @@ class Errors:
                     marker = "^"
                     if end_line == line and end_column > column:
                         marker = f'^{"~" * (end_column - column - 1)}'
+                    elif end_line != line:
+                        # just highlight the first line instead
+                        marker = f'^{"~" * (len(source_line_expanded) - column - 1)}'
                     a.append(" " * (DEFAULT_SOURCE_OFFSET + column) + marker)
         return a
 

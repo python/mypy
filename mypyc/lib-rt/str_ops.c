@@ -64,20 +64,33 @@ make_bloom_mask(int kind, const void* ptr, Py_ssize_t len)
 #undef BLOOM_UPDATE
 }
 
-// Adapted from CPython 3.13.1 (_PyUnicode_Equal)
-char CPyStr_Equal(PyObject *str1, PyObject *str2) {
-    if (str1 == str2) {
-        return 1;
-    }
-    Py_ssize_t len = PyUnicode_GET_LENGTH(str1);
-    if (PyUnicode_GET_LENGTH(str2) != len)
+static inline char _CPyStr_Equal_NoIdentCheck(PyObject *str1, PyObject *str2, Py_ssize_t str2_length) {
+    // This helper function only exists to deduplicate code in CPyStr_Equal and CPyStr_EqualLiteral
+    Py_ssize_t str1_length = PyUnicode_GET_LENGTH(str1);
+    if (str1_length != str2_length)
         return 0;
     int kind = PyUnicode_KIND(str1);
     if (PyUnicode_KIND(str2) != kind)
         return 0;
     const void *data1 = PyUnicode_DATA(str1);
     const void *data2 = PyUnicode_DATA(str2);
-    return memcmp(data1, data2, len * kind) == 0;
+    return memcmp(data1, data2, str1_length * kind) == 0;
+}
+
+// Adapted from CPython 3.13.1 (_PyUnicode_Equal)
+char CPyStr_Equal(PyObject *str1, PyObject *str2) {
+    if (str1 == str2) {
+        return 1;
+    }
+    Py_ssize_t str2_length = PyUnicode_GET_LENGTH(str2);
+    return _CPyStr_Equal_NoIdentCheck(str1, str2, str2_length);
+}
+
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length) {
+    if (str == literal_str) {
+        return 1;
+    }
+    return _CPyStr_Equal_NoIdentCheck(str, literal_str, literal_length);
 }
 
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
@@ -115,6 +128,11 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
         PyObject *index_obj = CPyTagged_AsObject(index);
         return PyObject_GetItem(str, index_obj);
     }
+}
+
+PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index) {
+    // This is unsafe since we don't check for overflow when doing <<.
+    return CPyStr_GetItem(str, index << 1);
 }
 
 // A simplification of _PyUnicode_JoinArray() from CPython 3.9.6
@@ -505,6 +523,45 @@ PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
                                 enc, err);
     } else {
         return PyUnicode_FromEncodedObject(obj, enc, err);
+    }
+}
+
+PyObject *CPy_DecodeUTF8(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeUTF8(buffer, size, "strict");
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "utf-8", "strict");
+    }
+}
+
+PyObject *CPy_DecodeASCII(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeASCII(buffer, size, "strict");;
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "ascii", "strict");
+    }
+}
+
+PyObject *CPy_DecodeLatin1(PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        char *buffer = PyBytes_AsString(bytes);   // Borrowed reference
+        if (buffer == NULL) {
+            return NULL;
+        }
+        Py_ssize_t size = PyBytes_Size(bytes);
+        return PyUnicode_DecodeLatin1(buffer, size, "strict");
+    } else {
+        return PyUnicode_FromEncodedObject(bytes, "latin1", "strict");
     }
 }
 

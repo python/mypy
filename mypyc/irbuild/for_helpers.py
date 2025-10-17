@@ -11,18 +11,24 @@ from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
+    BytesExpr,
     CallExpr,
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
+    ListExpr,
     Lvalue,
     MemberExpr,
     NameExpr,
     RefExpr,
     SetExpr,
+    StarExpr,
+    StrExpr,
     TupleExpr,
     TypeAlias,
+    Var,
 )
+from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -31,6 +37,7 @@ from mypyc.ir.ops import (
     IntOp,
     LoadAddress,
     LoadErrorValue,
+    LoadLiteral,
     LoadMem,
     MethodCall,
     RaiseStandardError,
@@ -48,6 +55,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
+    is_immutable_rprimitive,
     is_list_rprimitive,
     is_sequence_rprimitive,
     is_short_int_rprimitive,
@@ -76,6 +84,7 @@ from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, n
 from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
+from mypyc.primitives.str_ops import str_get_item_unsafe_op
 from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
 GenFunc = Callable[[], None]
@@ -150,6 +159,7 @@ def for_loop_helper_with_index(
     expr_reg: Value,
     body_insts: Callable[[Value], None],
     line: int,
+    length: Value,
 ) -> None:
     """Generate IR for a sequence iteration.
 
@@ -162,7 +172,7 @@ def for_loop_helper_with_index(
         body_insts: a function that generates the body of the loop.
                     It needs a index as parameter.
     """
-    assert is_sequence_rprimitive(expr_reg.type)
+    assert is_sequence_rprimitive(expr_reg.type), (expr_reg, expr_reg.type)
     target_type = builder.get_sequence_type(expr)
 
     body_block = BasicBlock()
@@ -171,11 +181,16 @@ def for_loop_helper_with_index(
     condition_block = BasicBlock()
 
     for_gen = ForSequence(builder, index, body_block, exit_block, line, False)
-    for_gen.init(expr_reg, target_type, reverse=False)
+    for_gen.init(expr_reg, target_type, reverse=False, length=length)
 
     builder.push_loop_stack(step_block, exit_block)
 
-    builder.goto_and_activate(condition_block)
+    if isinstance(length, Integer) and length.value > 0:
+        builder.goto(body_block)
+        builder.activate_block(condition_block)
+    else:
+        builder.goto_and_activate(condition_block)
+
     for_gen.gen_condition()
 
     builder.activate_block(body_block)
@@ -204,10 +219,9 @@ def sequence_from_generator_preallocate_helper(
     there is no condition list in the generator and only one original sequence with
     one index is allowed.
 
-    e.g.  (1) tuple(f(x) for x in a_list/a_tuple)
-          (2) list(f(x) for x in a_list/a_tuple)
-          (3) [f(x) for x in a_list/a_tuple]
-    RTuple as an original sequence is not supported yet.
+    e.g.  (1) tuple(f(x) for x in a_list/a_tuple/a_str/a_bytes/an_rtuple)
+          (2) list(f(x) for x in a_list/a_tuple/a_str/a_bytes/an_rtuple)
+          (3) [f(x) for x in a_list/a_tuple/a_str/a_bytes/an_rtuple]
 
     Args:
         empty_op_llbuilder: A function that can generate an empty sequence op when
@@ -222,21 +236,41 @@ def sequence_from_generator_preallocate_helper(
             implementation.
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
-        rtype = builder.node_type(gen.sequences[0])
-        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype) or is_str_rprimitive(rtype):
-            sequence = builder.accept(gen.sequences[0])
-            length = builder.builder.builtin_len(sequence, gen.line, use_pyssize_t=True)
-            target_op = empty_op_llbuilder(length, gen.line)
+        line = gen.line
+        sequence_expr = gen.sequences[0]
+        rtype = builder.node_type(sequence_expr)
+        if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
+            return None
+        sequence = builder.accept(sequence_expr)
+        length = get_expr_length_value(builder, sequence_expr, sequence, line, use_pyssize_t=True)
+        if isinstance(rtype, RTuple):
+            # If input is RTuple, box it to tuple_rprimitive for generic iteration
+            # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
+            proper_type = get_proper_type(builder.types[sequence_expr])
+            assert isinstance(proper_type, TupleType), proper_type
 
-            def set_item(item_index: Value) -> None:
-                e = builder.accept(gen.left_expr)
-                builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
+            get_item_ops = [
+                (
+                    LoadLiteral(typ.value, object_rprimitive)
+                    if isinstance(typ, LiteralType)
+                    else TupleGet(sequence, i, line)
+                )
+                for i, typ in enumerate(get_proper_types(proper_type.items))
+            ]
+            items = list(map(builder.add, get_item_ops))
+            sequence = builder.new_tuple(items, line)
 
-            for_loop_helper_with_index(
-                builder, gen.indices[0], gen.sequences[0], sequence, set_item, gen.line
-            )
+        target_op = empty_op_llbuilder(length, line)
 
-            return target_op
+        def set_item(item_index: Value) -> None:
+            e = builder.accept(gen.left_expr)
+            builder.call_c(set_item_op, [target_op, item_index, e], line)
+
+        for_loop_helper_with_index(
+            builder, gen.indices[0], sequence_expr, sequence, set_item, line, length
+        )
+
+        return target_op
     return None
 
 
@@ -732,7 +766,7 @@ class ForAsyncIterable(ForGenerator):
 
         def except_match() -> Value:
             addr = builder.add(LoadAddress(pointer_rprimitive, stop_async_iteration_op.src, line))
-            return builder.add(LoadMem(stop_async_iteration_op.type, addr))
+            return builder.add(LoadMem(stop_async_iteration_op.type, addr, borrow=True))
 
         def try_body() -> None:
             awaitable = builder.call_c(anext_op, [builder.read(self.iter_target)], line)
@@ -772,6 +806,8 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
         return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
     elif is_tuple_rprimitive(target.type):
         return builder.call_c(tuple_get_item_unsafe_op, [target, index], line)
+    elif is_str_rprimitive(target.type):
+        return builder.call_c(str_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, "__getitem__", [index], None, line)
 
@@ -782,24 +818,41 @@ class ForSequence(ForGenerator):
     Supports iterating in both forward and reverse.
     """
 
-    def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
+    length_reg: Value | AssignmentTarget | None
+
+    def init(
+        self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None
+    ) -> None:
+        assert is_sequence_rprimitive(expr_reg.type), (expr_reg, expr_reg.type)
         builder = self.builder
+        # Record a Value indicating the length of the sequence, if known at compile time.
+        self.length = length
         self.reverse = reverse
         # Define target to contain the expression, along with the index that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         self.expr_target = builder.maybe_spill(expr_reg)
+        if is_immutable_rprimitive(expr_reg.type):
+            # If the expression is an immutable type, we can load the length just once.
+            self.length_reg = builder.maybe_spill(self.length or self.load_len(self.expr_target))
+        else:
+            # Otherwise, even if the length is known, we must recalculate the length
+            # at every iteration for compatibility with python semantics.
+            self.length_reg = None
         if not reverse:
             index_reg: Value = Integer(0, c_pyssize_t_rprimitive)
         else:
-            index_reg = builder.builder.int_sub(self.load_len(self.expr_target), 1)
+            if self.length_reg is not None:
+                len_val = builder.read(self.length_reg)
+            else:
+                len_val = self.load_len(self.expr_target)
+            index_reg = builder.builder.int_sub(len_val, 1)
         self.index_target = builder.maybe_spill_assignable(index_reg)
         self.target_type = target_type
 
     def gen_condition(self) -> None:
         builder = self.builder
         line = self.line
-        # TODO: Don't reload the length each time when iterating an immutable sequence?
         if self.reverse:
             # If we are iterating in reverse order, we obviously need
             # to check that the index is still positive. Somewhat less
@@ -811,9 +864,13 @@ class ForSequence(ForGenerator):
             second_check = BasicBlock()
             builder.add_bool_branch(comparison, second_check, self.loop_exit)
             builder.activate_block(second_check)
-        # For compatibility with python semantics we recalculate the length
-        # at every iteration.
-        len_reg = self.load_len(self.expr_target)
+        if self.length_reg is None:
+            # For compatibility with python semantics we recalculate the length
+            # at every iteration.
+            len_reg = self.load_len(self.expr_target)
+        else:
+            # (unless input is immutable type).
+            len_reg = builder.read(self.length_reg, line)
         comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, "<", line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
@@ -1144,3 +1201,48 @@ class ForZip(ForGenerator):
     def gen_cleanup(self) -> None:
         for gen in self.gens:
             gen.gen_cleanup()
+
+
+def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
+    if isinstance(expr, (StrExpr, BytesExpr)):
+        return len(expr.value)
+    elif isinstance(expr, (ListExpr, TupleExpr)):
+        # if there are no star expressions, or we know the length of them,
+        # we know the length of the expression
+        stars = [get_expr_length(builder, i) for i in expr.items if isinstance(i, StarExpr)]
+        if None not in stars:
+            other = sum(not isinstance(i, StarExpr) for i in expr.items)
+            return other + sum(stars)  # type: ignore [arg-type]
+    elif isinstance(expr, StarExpr):
+        return get_expr_length(builder, expr.expr)
+    elif (
+        isinstance(expr, RefExpr)
+        and isinstance(expr.node, Var)
+        and expr.node.is_final
+        and isinstance(expr.node.final_value, str)
+        and expr.node.has_explicit_value
+    ):
+        return len(expr.node.final_value)
+    # TODO: extend this, passing length of listcomp and genexp should have worthwhile
+    # performance boost and can be (sometimes) figured out pretty easily. set and dict
+    # comps *can* be done as well but will need special logic to consider the possibility
+    # of key conflicts. Range, enumerate, zip are all simple logic.
+
+    # we might still be able to get the length directly from the type
+    rtype = builder.node_type(expr)
+    if isinstance(rtype, RTuple):
+        return len(rtype.types)
+    return None
+
+
+def get_expr_length_value(
+    builder: IRBuilder, expr: Expression, expr_reg: Value, line: int, use_pyssize_t: bool
+) -> Value:
+    rtype = builder.node_type(expr)
+    assert is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple), rtype
+    length = get_expr_length(builder, expr)
+    if length is None:
+        # We cannot compute the length at compile time, so we will fetch it.
+        return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
+    # The expression result is known at compile time, so we can use a constant.
+    return Integer(length, c_pyssize_t_rprimitive if use_pyssize_t else short_int_rprimitive)

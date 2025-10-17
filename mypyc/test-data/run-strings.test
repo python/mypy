@@ -412,9 +412,16 @@ def test_basics() -> None:
 [case testFStrings]
 import decimal
 from datetime import datetime
+from typing import Final
 
 var = 'mypyc'
 num = 20
+final_known_at_compile_time: Final = 'hello'
+
+def final_value_setter() -> str:
+    return 'goodbye'
+
+final_unknown_at_compile_time: Final = final_value_setter()
 
 def test_fstring_basics() -> None:
     assert f'Hello {var}, this is a test' == "Hello mypyc, this is a test"
@@ -450,6 +457,8 @@ def test_fstring_basics() -> None:
     nan_num = float('nan')
     inf_num = float('inf')
     assert f'{nan_num}, {inf_num}' == 'nan, inf'
+
+    assert f'{final_known_at_compile_time} {final_unknown_at_compile_time}' == 'hello goodbye'
 
 # F-strings would be translated into ''.join[string literals, format method call, ...] in mypy AST.
 # Currently we are using a str.join specializer for f-string speed up. We might not cover all cases
@@ -792,14 +801,23 @@ def test_ord() -> None:
         ord('')
 
 [case testDecode]
+from testutil import assertRaises
+
 def test_decode() -> None:
     assert "\N{GREEK CAPITAL LETTER DELTA}" == '\u0394'
     assert "\u0394" == "\u0394"
     assert "\U00000394" == '\u0394'
     assert b'\x80abc'.decode('utf-8', 'replace') == '\ufffdabc'
     assert b'\x80abc'.decode('utf-8', 'backslashreplace') == '\\x80abc'
+    assert b''.decode() == ''
+    assert b'a'.decode() == 'a'
     assert b'abc'.decode() == 'abc'
     assert b'abc'.decode('utf-8') == 'abc'
+    assert b'abc'.decode('utf-8' + str()) == 'abc'
+    assert b'abc\x00\xce'.decode('latin-1') == 'abc\x00\xce'
+    assert b'abc\x00\xce'.decode('latin-1' + str()) == 'abc\x00\xce'
+    assert b'abc\x00\x7f'.decode('ascii') == 'abc\x00\x7f'
+    assert b'abc\x00\x7f'.decode('ascii' + str()) == 'abc\x00\x7f'
     assert b'\x80abc'.decode('utf-8', 'ignore') == 'abc'
     assert b'\x80abc'.decode('UTF-8', 'ignore') == 'abc'
     assert b'\x80abc'.decode('Utf-8', 'ignore') == 'abc'
@@ -808,16 +826,71 @@ def test_decode() -> None:
     assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode('gbk', 'ignore') == '一二三'
     assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode('latin1', 'ignore') == 'Ò»¶þÈý'
     assert b'Z\xc3\xbcrich'.decode("utf-8") == 'Zürich'
-    try:
-        b'Z\xc3\xbcrich'.decode('ascii')
-        assert False
-    except UnicodeDecodeError:
-        pass
+    assert b'Z\xc3\xbcrich'.decode("utf-8" + str()) == 'Zürich'
+
     assert bytearray(range(5)).decode() == '\x00\x01\x02\x03\x04'
     b = bytearray(b'\xe4\xbd\xa0\xe5\xa5\xbd')
     assert b.decode() == '你好'
     assert b.decode('gbk') == '浣犲ソ'
     assert b.decode('latin1') == 'ä½\xa0å¥½'
+    assert b.decode('latin1' + str()) == 'ä½\xa0å¥½'
+
+def test_decode_error() -> None:
+    try:
+        b'Z\xc3\xbcrich'.decode('ascii')
+        assert False
+    except UnicodeDecodeError:
+        pass
+    try:
+        b'Z\xc3\xbcrich'.decode('ascii' + str())
+        assert False
+    except UnicodeDecodeError:
+        pass
+    try:
+        b'Z\xc3y'.decode('utf8')
+        assert False
+    except UnicodeDecodeError:
+        pass
+    try:
+        b'Z\xc3y'.decode('utf8' + str())
+        assert False
+    except UnicodeDecodeError:
+        pass
+
+def test_decode_bytearray() -> None:
+    b: bytes = bytearray(b'foo\x00bar')
+    assert b.decode() == 'foo\x00bar'
+    assert b.decode('utf-8') == 'foo\x00bar'
+    assert b.decode('latin-1') == 'foo\x00bar'
+    assert b.decode('ascii') == 'foo\x00bar'
+    assert b.decode('utf-8' + str()) == 'foo\x00bar'
+    assert b.decode('latin-1' + str()) == 'foo\x00bar'
+    assert b.decode('ascii' + str()) == 'foo\x00bar'
+    b2: bytes = bytearray(b'foo\x00bar\xbe')
+    assert b2.decode('latin-1') == 'foo\x00bar\xbe'
+    with assertRaises(UnicodeDecodeError):
+        b2.decode('ascii')
+    with assertRaises(UnicodeDecodeError):
+        b2.decode('ascii' + str())
+    with assertRaises(UnicodeDecodeError):
+        b2.decode('utf-8')
+    with assertRaises(UnicodeDecodeError):
+        b2.decode('utf-8' + str())
+    b3: bytes = bytearray(b'Z\xc3\xbcrich')
+    assert b3.decode("utf-8") == 'Zürich'
+
+def test_invalid_encoding() -> None:
+    try:
+        b"foo".decode("ut-f-8")
+        assert False
+    except Exception as e:
+        assert repr(e).startswith("LookupError")
+    try:
+        encoding = "ut-f-8"
+        b"foo".decode(encoding)
+        assert False
+    except Exception as e:
+        assert repr(e).startswith("LookupError")
 
 [case testEncode]
 from testutil import assertRaises
@@ -964,3 +1037,69 @@ def test_count_multi_start_end_emoji() -> None:
     assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
     assert string.count("🚀🚀🚀", 0, 12) == 2, string.count("🚀🚀🚀", 0, 12)
     assert string.count("ñññ", 0, 12) == 1, string.count("ñññ", 0, 12)
+
+[case testIsInstance]
+from copysubclass import subc
+from typing import Any
+def test_built_in() -> None:
+    s: Any = str()
+    assert isinstance(s, str)
+    assert isinstance(s + "test", str)
+    assert isinstance(s + "ñññ", str)
+    assert isinstance(subc(), str)
+    assert isinstance(subc("test"), str)
+    assert isinstance(subc("ñññ"), str)
+
+    assert not isinstance(set(), str)
+    assert not isinstance((), str)
+    assert not isinstance(('a','b'), str)
+    assert not isinstance({'a','b'}, str)
+    assert not isinstance(int() + 1, str)
+    assert not isinstance(['a','b'], str)
+
+def test_user_defined() -> None:
+    from userdefinedstr import str
+
+    s: Any = "str"
+    assert isinstance(str(), str)
+    assert not isinstance(s, str)
+
+[file copysubclass.py]
+from typing import Any
+class subc(str):
+    pass
+
+[file userdefinedstr.py]
+class str:
+    pass
+
+[case testStrOptionalEquality]
+from __future__ import annotations
+
+def eq_s_opt_s_opt(x: str | None, y: str | None) -> bool:
+    return x == y
+
+def ne_s_opt_s_opt(x: str | None, y: str | None) -> bool:
+    return x != y
+
+def test_optional_eq() -> None:
+    s = 'x'
+    assert eq_s_opt_s_opt(s, s)
+    assert eq_s_opt_s_opt(s + str(int()), s + str(int()))
+    assert eq_s_opt_s_opt(None, None)
+
+    assert not eq_s_opt_s_opt('x', 'y')
+    assert not eq_s_opt_s_opt('y', 'x')
+    assert not eq_s_opt_s_opt(None, 'x')
+    assert not eq_s_opt_s_opt('x', None)
+
+def test_optional_ne() -> None:
+    s = 'x'
+    assert not ne_s_opt_s_opt(s, s)
+    assert not ne_s_opt_s_opt(s + str(int()), s+ str(int()))
+    assert not ne_s_opt_s_opt(None, None)
+
+    assert ne_s_opt_s_opt('x', 'y')
+    assert ne_s_opt_s_opt('y', 'x')
+    assert ne_s_opt_s_opt(None, 'x')
+    assert ne_s_opt_s_opt('x', None)

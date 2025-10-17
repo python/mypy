@@ -8,6 +8,7 @@ from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import (
+    GENERATOR_ATTRIBUTE_PREFIX,
     HAVE_IMMORTAL,
     MODULE_PREFIX,
     NATIVE_PREFIX,
@@ -70,12 +71,14 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -86,7 +89,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
-    is_bool_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -434,7 +437,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     exc_class = "PyExc_AttributeError"
                     self.emitter.emit_line(
                         'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                            exc_class, repr(op.attr), repr(cl.name)
+                            exc_class,
+                            repr(op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)),
+                            repr(cl.name),
                         )
                     )
 
@@ -628,7 +633,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_inc_ref(self, op: IncRef) -> None:
         if (
             isinstance(op.src, Box)
-            and (is_none_rprimitive(op.src.src.type) or is_bool_rprimitive(op.src.src.type))
+            and (is_none_rprimitive(op.src.src.type) or is_bool_or_bit_rprimitive(op.src.src.type))
             and HAVE_IMMORTAL
         ):
             # On Python 3.12+, None/True/False are immortal, and we can skip inc ref
@@ -652,6 +657,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
 
     def visit_cast(self, op: Cast) -> None:
+        if op.is_unchecked and op.is_borrowed:
+            self.emit_line(f"{self.reg(op)} = {self.reg(op.src)};")
+            return
         branch = self.next_branch()
         handler = None
         if branch is not None:
@@ -791,6 +799,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line(f"{dest} = *({type} *){src};")
+        if not op.is_borrowed:
+            self.emit_inc_ref(dest, op.type)
 
     def visit_set_mem(self, op: SetMem) -> None:
         dest = self.reg(op.dest)
@@ -812,6 +822,31 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 dest, op.type._ctype, op.src_type.name, src, op.field
             )
         )
+
+    def visit_set_element(self, op: SetElement) -> None:
+        dest = self.reg(op)
+        item = self.reg(op.item)
+        field = op.field
+        if isinstance(op.src, Undef):
+            # First assignment to an undefined struct is trivial.
+            self.emit_line(f"{dest}.{field} = {item};")
+        else:
+            # In the general case create a copy of the struct with a single
+            # item modified.
+            #
+            # TODO: Can we do better if only a subset of fields are initialized?
+            # TODO: Make this less verbose in the common case
+            # TODO: Support tuples (or use RStruct for tuples)?
+            src = self.reg(op.src)
+            src_type = op.src.type
+            assert isinstance(src_type, RStruct), src_type
+            init_items = []
+            for n in src_type.names:
+                if n != field:
+                    init_items.append(f"{src}.{n}")
+                else:
+                    init_items.append(item)
+            self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
@@ -909,7 +944,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.source_path.replace("\\", "\\\\"),
                 op.traceback_entry[0],
                 class_name,
-                attr,
+                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
                 op.traceback_entry[1],
                 globals_static,
             )

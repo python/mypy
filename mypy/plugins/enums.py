@@ -144,7 +144,7 @@ def _implements_new(info: TypeInfo) -> bool:
 def enum_member_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     """By default `member(1)` will be inferred as `member[int]`,
     we want to improve the inference to be `Literal[1]` here."""
-    if ctx.arg_types or ctx.arg_types[0]:
+    if ctx.arg_types and ctx.arg_types[0]:
         arg = get_proper_type(ctx.arg_types[0][0])
         proper_return = get_proper_type(ctx.default_return_type)
         if (

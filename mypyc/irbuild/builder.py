@@ -40,7 +40,6 @@ from mypy.nodes import (
     TypeAlias,
     TypeInfo,
     TypeParam,
-    UnaryExpr,
     Var,
 )
 from mypy.types import (
@@ -59,7 +58,7 @@ from mypy.types import (
 )
 from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypyc.common import BITMAP_BITS, SELF_NAME, TEMP_ATTR_NAME
+from mypyc.common import BITMAP_BITS, GENERATOR_ATTRIBUTE_PREFIX, SELF_NAME, TEMP_ATTR_NAME
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -76,6 +75,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     LoadStatic,
+    MethodCall,
     Op,
     PrimitiveDescription,
     RaiseStandardError,
@@ -91,6 +91,7 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     bitmap_rprimitive,
+    bytes_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -104,6 +105,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     str_rprimitive,
 )
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.mapper import Mapper
@@ -424,6 +426,10 @@ class IRBuilder:
     def debug_print(self, toprint: str | Value) -> None:
         return self.builder.debug_print(toprint)
 
+    def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
+        """Make an object immortal on free-threaded builds (to avoid contention)."""
+        self.builder.set_immortal_if_free_threaded(v, line)
+
     # Helpers for IR building
 
     def add_to_non_ext_dict(
@@ -432,6 +438,10 @@ class IRBuilder:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
         self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
+
+        # It's important that accessing class dictionary items from multiple threads
+        # doesn't cause contention.
+        self.builder.set_immortal_if_free_threaded(val, line)
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
@@ -643,7 +653,11 @@ class IRBuilder:
                     # current environment.
                     if self.fn_info.is_generator:
                         return self.add_var_to_env_class(
-                            symbol, reg_type, self.fn_info.generator_class, reassign=False
+                            symbol,
+                            reg_type,
+                            self.fn_info.generator_class,
+                            reassign=False,
+                            prefix=GENERATOR_ATTRIBUTE_PREFIX,
                         )
 
                     # Otherwise define a new local variable.
@@ -687,7 +701,12 @@ class IRBuilder:
         assert False, "Unsupported lvalue: %r" % lvalue
 
     def read(
-        self, target: Value | AssignmentTarget, line: int = -1, can_borrow: bool = False
+        self,
+        target: Value | AssignmentTarget,
+        line: int = -1,
+        *,
+        can_borrow: bool = False,
+        allow_error_value: bool = False,
     ) -> Value:
         if isinstance(target, Value):
             return target
@@ -703,7 +722,15 @@ class IRBuilder:
         if isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj.type, RInstance) and target.obj.type.class_ir.is_ext_class:
                 borrow = can_borrow and target.can_borrow
-                return self.add(GetAttr(target.obj, target.attr, line, borrow=borrow))
+                return self.add(
+                    GetAttr(
+                        target.obj,
+                        target.attr,
+                        line,
+                        borrow=borrow,
+                        allow_error_value=allow_error_value,
+                    )
+                )
             else:
                 return self.py_get_attr(target.obj, target.attr, line)
 
@@ -722,8 +749,15 @@ class IRBuilder:
             self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
-                self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
+                setattr = target.obj_type.class_ir.get_method("__setattr__")
+                if setattr:
+                    key = self.load_str(target.attr)
+                    boxed_reg = self.builder.box(rvalue_reg)
+                    call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
+                    self.add(call)
+                else:
+                    rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
+                    self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
@@ -931,12 +965,8 @@ class IRBuilder:
         return reg
 
     def extract_int(self, e: Expression) -> int | None:
-        if isinstance(e, IntExpr):
-            return e.value
-        elif isinstance(e, UnaryExpr) and e.op == "-" and isinstance(e.expr, IntExpr):
-            return -e.expr.value
-        else:
-            return None
+        folded = constant_fold_expr(self, e)
+        return folded if isinstance(folded, int) else None
 
     def get_sequence_type(self, expr: Expression) -> RType:
         return self.get_sequence_type_from_type(self.types[expr])
@@ -950,8 +980,12 @@ class IRBuilder:
         elif isinstance(target_type, Instance):
             if target_type.type.fullname == "builtins.str":
                 return str_rprimitive
-            else:
+            elif target_type.type.fullname == "builtins.bytes":
+                return bytes_rprimitive
+            try:
                 return self.type_to_rtype(target_type.args[0])
+            except IndexError:
+                raise ValueError(f"{target_type!r} is not a valid sequence.") from None
         # This elif-blocks are needed for iterating over classes derived from NamedTuple.
         elif isinstance(target_type, TypeVarLikeType):
             return self.get_sequence_type_from_type(target_type.upper_bound)
@@ -1224,6 +1258,7 @@ class IRBuilder:
         ret_type: RType,
         fn_info: FuncInfo | str = "",
         self_type: RType | None = None,
+        internal: bool = False,
     ) -> Iterator[None]:
         """Generate IR for a method.
 
@@ -1251,7 +1286,7 @@ class IRBuilder:
             sig = FuncSignature(args, ret_type)
             name = self.function_name_stack.pop()
             class_ir = self.class_ir_stack.pop()
-            decl = FuncDecl(name, class_ir.name, self.module_name, sig)
+            decl = FuncDecl(name, class_ir.name, self.module_name, sig, internal=internal)
             ir = FuncIR(decl, arg_regs, blocks)
             class_ir.methods[name] = ir
             class_ir.method_decls[name] = ir.decl
@@ -1325,10 +1360,11 @@ class IRBuilder:
         base: FuncInfo | ImplicitClass,
         reassign: bool = False,
         always_defined: bool = False,
+        prefix: str = "",
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
-        name = remangle_redefinition_name(var.name)
+        name = prefix + remangle_redefinition_name(var.name)
         self.fn_info.env_class.attributes[name] = rtype
         if always_defined:
             self.fn_info.env_class.attrs_with_defaults.add(name)
@@ -1418,6 +1454,10 @@ class IRBuilder:
             return
         self.function_names.add(name)
         self.functions.append(func_ir)
+
+    def get_current_class_ir(self) -> ClassIR | None:
+        type_info = self.fn_info.fitem.info
+        return self.mapper.type_to_ir.get(type_info)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
