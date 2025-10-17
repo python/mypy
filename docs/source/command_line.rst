@@ -1159,7 +1159,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes, NewInlineTypedDict, InlineTypedDict}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1206,13 +1206,21 @@ List of currently incomplete/experimental features:
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
 
+* ``NewInlineTypedDict``: this feature enables :pep:`764` syntax for inline
+  :ref:`TypedDicts <typeddict>`, for example:
+
+  .. code-block:: python
+
+     def get_movie() -> TypedDict[{"name": str, "year": int}]:
+        return {"name": "Blade Runner", "year": 1982}
+
 * ``InlineTypedDict``: this feature enables non-standard syntax for inline
   :ref:`TypedDicts <typeddict>`, for example:
 
   .. code-block:: python
 
-     def test_values() -> {"int": int, "str": str}:
-         return {"int": 42, "str": "test"}
+     def get_movie() -> {"name": str, "year": int}:
+            return {"name": "Blade Runner", "year": 1982}
 
 
 Miscellaneous
