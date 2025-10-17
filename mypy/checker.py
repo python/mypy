@@ -8283,7 +8283,7 @@ def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.None"
 
 
-def is_literal_not_implemented(n: Expression) -> bool:
+def is_literal_not_implemented(n: Expression | None) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.NotImplemented"
 
 
