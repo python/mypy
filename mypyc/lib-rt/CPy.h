@@ -854,7 +854,7 @@ void CPy_TypeErrorTraceback(const char *filename, const char *funcname, int line
 void CPy_AttributeError(const char *filename, const char *funcname, const char *classname,
                         const char *attrname, int line, PyObject *globals);
 void CPy_UnboundLocalError(const char *filename, const char *funcname, const char *attrname,
-                           int line, PyObject *globals)
+                           int line, PyObject *globals);
 
 
 // Misc operations
