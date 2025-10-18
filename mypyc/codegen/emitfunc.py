@@ -429,7 +429,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     ):
                         # Generate code for the following branch here to avoid
                         # redundant branches in the generated code.
-                        self.emit_attribute_error(branch, cl.name, op.attr)
+                        self.emit_attribute_error(branch, cl, op.attr)
                         self.emit_line("goto %s;" % self.label(branch.true))
                         merged_branch = branch
                         self.emitter.emit_line("}")
@@ -937,20 +937,32 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.traceback_entry is not None:
             self.emitter.emit_traceback(self.source_path, self.module_name, op.traceback_entry)
 
-    def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
+    def emit_attribute_error(self, op: Branch, class_ir: ClassIR, attr: str) -> None:
         assert op.traceback_entry is not None
         globals_static = self.emitter.static_name("globals", self.module_name)
-        self.emit_line(
-            'CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);'
-            % (
-                self.source_path.replace("\\", "\\\\"),
-                op.traceback_entry[0],
-                class_name,
-                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
-                op.traceback_entry[1],
-                globals_static,
+        if class_ir.is_generated:
+            self.emit_line(
+                'CPy_UnboundLocalError("%s", "%s", "%s", "%s", %d, %s);'
+                % (
+                    self.source_path.replace("\\", "\\\\"),
+                    op.traceback_entry[0],
+                    attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
+                    op.traceback_entry[1],
+                    globals_static,
+                )
             )
-        )
+        else:
+            self.emit_line(
+                'CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);'
+                % (
+                    self.source_path.replace("\\", "\\\\"),
+                    op.traceback_entry[0],
+                    class_ir.name,
+                    attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
+                    op.traceback_entry[1],
+                    globals_static,
+                )
+            )
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
