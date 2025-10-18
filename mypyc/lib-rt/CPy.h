@@ -964,4 +964,12 @@ static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObj
 PyObject *CPy_GetName(PyObject *obj);
 #endif
 
-#if CPY_3_14_FEATURESEx
+#if CPY_3_14_FEATURES
+void CPy_SetImmortal(PyObject *obj);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // CPY_CPY_H
