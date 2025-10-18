@@ -1228,6 +1228,43 @@ class C[T]:
 def f[S, S](x: S) -> S:  # E: "S" already defined as a type parameter
     return x
 
+[case testPEP695TypeVarNameClashNoCrashForwardReference]
+# https://github.com/python/mypy/issues/18507
+from typing import TypeVar
+T = TypeVar("T", bound=Foo)  # E: Name "Foo" is used before definition
+
+class Foo: ...
+class Bar[T]: ...
+
+[case testPEP695TypeVarNameClashNoCrashDeferredSymbol]
+# https://github.com/python/mypy/issues/19526
+T = Unknown  # E: Name "Unknown" is not defined
+
+class Foo[T]: ...
+class Bar[*T]: ...
+class Baz[**T]: ...
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeVarNameClashTypeAlias]
+type Tb = object
+type Ta[Tb] = 'B[Tb]'
+class A[Ta]: ...
+class B[Tb](A[Ta]): ...
+
+[case testPEP695TypeVarNameClashStarImport]
+# Similar to
+# https://github.com/python/mypy/issues/19946
+import a
+
+[file a.py]
+from b import *
+class Foo[T]: ...
+
+[file b.py]
+from a import *
+class Bar[T]: ...
+[builtins fixtures/tuple.pyi]
+
 [case testPEP695ClassDecorator]
 from typing import Any
 
