@@ -1742,6 +1742,20 @@ match (m7, m7):
     case (_, {"a": "2"}):
         reveal_type(m7)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
 
+match (m7, m7):
+    case (dict(), _):
+        reveal_type(m7)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+    case (_, dict()):
+        reveal_type(m7)  # E: Statement is unreachable
+    case (_, _):
+        reveal_type(m7)  # E: Statement is unreachable
+
+match (m7, 4):
+    case ({"a": "1"}, _):
+        reveal_type(m7)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+    case r7:
+        reveal_type(r7)  # N: Revealed type is "tuple[builtins.dict[builtins.str, builtins.str], Literal[4]?]"
+
 m8: list[int]
 
 match (m8, m8):
@@ -1749,6 +1763,12 @@ match (m8, m8):
         reveal_type(m8)  # N: Revealed type is "builtins.list[builtins.int]"
     case (_, [2]):
         reveal_type(m8)  # N: Revealed type is "builtins.list[builtins.int]"
+
+match (m8, m8):
+    case (list(), _):
+        reveal_type(m8)  # N: Revealed type is "builtins.list[builtins.int]"
+    case (_, [2]):
+        reveal_type(m8)  # E: Statement is unreachable
 [builtins fixtures/dict.pyi]
 
 [case testMatchEnumSingleChoice]
