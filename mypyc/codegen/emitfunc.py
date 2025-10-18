@@ -942,7 +942,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         globals_static = self.emitter.static_name("globals", self.module_name)
         if class_ir.is_generated:
             self.emit_line(
-                'CPy_UnboundLocalError("%s", "%s", "%s", "%s", %d, %s);'
+                'CPy_UnboundLocalError("%s", "%s", "%s", %d, %s);'
                 % (
                     self.source_path.replace("\\", "\\\\"),
                     op.traceback_entry[0],
