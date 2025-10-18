@@ -434,14 +434,21 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                         merged_branch = branch
                         self.emitter.emit_line("}")
                 if not merged_branch:
-                    exc_class = "PyExc_AttributeError"
-                    self.emitter.emit_line(
-                        'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                            exc_class,
-                            repr(op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)),
-                            repr(cl.name),
+                    var_name = op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
+                    if cl.is_generated:
+                        # A generated class does not "exist" to the user, this is just an unbound
+                        # variable in their code, not a missing attribute on the generated class.
+                        # NOTE We are safe to use the more specific UnboundLocalError here because
+                        # we know that NameError type cases won't compile.
+                        exc_class = "PyExc_UnboundLocalError"
+                        self.emitter.emit_line(
+                            f'PyErr_SetString({exc_class}, "local variable {var_name!r} referenced before assignment");'
                         )
-                    )
+                    else:
+                        exc_class = "PyExc_AttributeError"
+                        self.emitter.emit_line(
+                            f'PyErr_SetString({exc_class}, "attribute {var_name!r} of {cl.name!r} undefined");'
+                        )
 
             if attr_rtype.is_refcounted and not op.is_borrowed:
                 if not merged_branch and not always_defined:
