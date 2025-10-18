@@ -2091,6 +2091,9 @@ class MessageBuilder:
     def redundant_condition_in_if(self, truthiness: bool, context: Context) -> None:
         self.redundant_expr("If condition", truthiness, context)
 
+    def redundant_condition_in_while(self, context: Context) -> None:
+        self.redundant_expr("While condition", False, context)
+
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
         self.fail(
             f"{description} is always {str(truthiness).lower()}",
