@@ -3147,6 +3147,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """
         if isinstance(s, AssertStmt) and is_false_literal(s.expr):
             return True
+        elif isinstance(s, ReturnStmt) and is_literal_not_implemented(s.expr):
+            return True
         elif isinstance(s, (RaiseStmt, PassStmt)):
             return True
         elif isinstance(s, ExpressionStmt):
@@ -8281,7 +8283,7 @@ def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.None"
 
 
-def is_literal_not_implemented(n: Expression) -> bool:
+def is_literal_not_implemented(n: Expression | None) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.NotImplemented"
 
 
