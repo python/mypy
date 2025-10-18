@@ -256,6 +256,7 @@ void CPy_AttributeError(const char *filename, const char *funcname, const char *
     snprintf(buf, sizeof(buf), "attribute '%.200s' of '%.200s' undefined", attrname, classname);
     PyErr_SetString(PyExc_AttributeError, buf);
     CPy_AddTraceback(filename, funcname, line, globals);
+}
 
 void CPy_UnboundLocalError(const char *filename, const char *funcname, const char *attrname,
                            int line, PyObject *globals) {
