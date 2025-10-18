@@ -1,4 +1,4 @@
-From 438dbb1300b77331940d7db8f010e97305745116 Mon Sep 17 00:00:00 2001
+From 7678bc3f80e4d3f04a0ff0ee3a7d51f49ae4c465 Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 21 Dec 2024 22:36:38 +0100
 Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
@@ -36,10 +36,10 @@ index d663f5d93..f43178e4d 100644
      @property
      def _exception(self) -> BaseException | None: ...
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index f2dd00079..784ee7eac 100644
+index 044e264d2..6d813f172 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
-@@ -1209,7 +1209,7 @@ class frozenset(AbstractSet[_T_co]):
+@@ -1210,7 +1210,7 @@ class frozenset(AbstractSet[_T_co]):
      def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
  
  @disjoint_base
@@ -48,7 +48,7 @@ index f2dd00079..784ee7eac 100644
      def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> tuple[int, _T]: ...
-@@ -1405,7 +1405,7 @@ else:
+@@ -1404,7 +1404,7 @@ else:
  exit: _sitebuiltins.Quitter
  
  @disjoint_base
@@ -57,7 +57,7 @@ index f2dd00079..784ee7eac 100644
      @overload
      def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
      @overload
-@@ -1469,7 +1469,7 @@ license: _sitebuiltins._Printer
+@@ -1468,7 +1468,7 @@ license: _sitebuiltins._Printer
  
  def locals() -> dict[str, Any]: ...
  @disjoint_base
@@ -66,7 +66,7 @@ index f2dd00079..784ee7eac 100644
      # 3.14 adds `strict` argument.
      if sys.version_info >= (3, 14):
          @overload
-@@ -1776,7 +1776,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
+@@ -1775,7 +1775,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
  quit: _sitebuiltins.Quitter
  
  @disjoint_base
@@ -75,7 +75,7 @@ index f2dd00079..784ee7eac 100644
      @overload
      def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
      @overload
-@@ -1840,7 +1840,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
+@@ -1839,7 +1839,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
  @overload
  def vars(object: Any = ..., /) -> dict[str, Any]: ...
  @disjoint_base
@@ -83,7 +83,7 @@ index f2dd00079..784ee7eac 100644
 +class zip(Iterator[_T_co]):
      if sys.version_info >= (3, 10):
          @overload
-         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...
+         def __new__(cls, *, strict: bool = False) -> zip[Any]: ...
 diff --git a/mypy/typeshed/stdlib/csv.pyi b/mypy/typeshed/stdlib/csv.pyi
 index 2c8e7109c..4ed0ab1d8 100644
 --- a/mypy/typeshed/stdlib/csv.pyi
@@ -326,5 +326,5 @@ index 6b0f1ba94..882cd143c 100644
      @property
      def connection(self) -> Connection: ...
 -- 
-2.51.0
+2.51.1
 

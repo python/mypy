@@ -149,6 +149,38 @@ t23: collections.abc.ValuesView[str]
 # reveal_type(t23)  # Nx Revealed type is "collections.abc.ValuesView[builtins.str]"
 [builtins fixtures/tuple.pyi]
 
+[case testGenericAliasIsinstanceUnreachable]
+# flags: --warn-unreachable --python-version 3.10
+from collections.abc import Iterable
+
+class A: ...
+
+def test(dependencies: list[A] | None) -> None:
+    if dependencies is None:
+        dependencies = []
+    elif not isinstance(dependencies, Iterable):
+        dependencies = [dependencies]  # E: Statement is unreachable
+
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testGenericAliasRedundantExprCompoundIfExpr]
+# flags: --warn-unreachable --enable-error-code=redundant-expr --python-version 3.10
+
+from typing import Any, reveal_type
+from collections.abc import Iterable
+
+def test_example(x: Iterable[Any]) -> None:
+    if isinstance(x, Iterable) and not isinstance(x, str):  # E: Left operand of "and" is always true
+        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
+
+def test_counterexample(x: Any) -> None:
+    if isinstance(x, Iterable) and not isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
+
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 [case testGenericBuiltinTupleTyping]
 from typing import Tuple
