@@ -853,6 +853,8 @@ void CPy_TypeErrorTraceback(const char *filename, const char *funcname, int line
                             PyObject *globals, const char *expected, PyObject *value);
 void CPy_AttributeError(const char *filename, const char *funcname, const char *classname,
                         const char *attrname, int line, PyObject *globals);
+void CPy_UnboundLocalError(const char *filename, const char *funcname, const char *attrname,
+                           int line, PyObject *globals)
 
 
 // Misc operations
@@ -962,12 +964,4 @@ static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObj
 PyObject *CPy_GetName(PyObject *obj);
 #endif
 
-#if CPY_3_14_FEATURES
-void CPy_SetImmortal(PyObject *obj);
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // CPY_CPY_H
+#if CPY_3_14_FEATURESEx
