@@ -903,7 +903,7 @@ def test_same_names() -> None:
     assert list(gen_throw()) == [84]
 
     with assertRaises(UnboundLocalError, "local variable 'send' referenced before assignment"):
-        # this test verifies that the attribute name matches the variable name 
+        # this test verifies that the attribute name matches the variable name
         # in the input code, since internally it's generated with a prefix.
         list(undefined())
 
