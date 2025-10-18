@@ -438,17 +438,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     if cl.is_generated:
                         # A generated class does not "exist" to the user, this is just an unbound
                         # variable in their code, not a missing attribute on the generated class.
-                        # NOTE We are safe to use the more specific UnboundLocalError here because
-                        # we know that NameError type cases won't compile.
                         exc_class = "PyExc_UnboundLocalError"
-                        self.emitter.emit_line(
-                            f'PyErr_SetString({exc_class}, "local variable {var_name!r} referenced before assignment");'
-                        )
+                        exc_msg = f"local variable {var_name!r} referenced before assignment"
                     else:
                         exc_class = "PyExc_AttributeError"
-                        self.emitter.emit_line(
-                            f'PyErr_SetString({exc_class}, "attribute {var_name!r} of {cl.name!r} undefined");'
-                        )
+                        exc_msg = f"attribute {var_name!r} of {cl.name!r} undefined"
+                    self.emitter.emit_line(f'PyErr_SetString({exc_class}, "{exc_msg}");')
 
             if attr_rtype.is_refcounted and not op.is_borrowed:
                 if not merged_branch and not always_defined:
