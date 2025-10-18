@@ -8174,11 +8174,15 @@ def conditional_types(
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
-    Returns a 2-tuple: The first element is the proposed type, if the expression
-    can be the proposed type. The second element is the type it would hold
-    if it was not the proposed type, if any. UninhabitedType means unreachable.
-    None means no new information can be inferred. If default is set it is returned
-    instead."""
+    Returns a 2-tuple:
+        The first element is the proposed type, if the expression can be the proposed type.
+            (or default, if default is set and the expression is a subtype of the proposed type).
+        The second element is the type it would hold if it was not the proposed type, if any.
+            (or default, if default is set and the expression is not a subtype of the proposed type).
+
+        UninhabitedType means unreachable.
+        None means no new information can be inferred.
+    """
     if proposed_type_ranges:
         if len(proposed_type_ranges) == 1:
             target = proposed_type_ranges[0].item
@@ -8190,14 +8194,25 @@ def conditional_types(
                 current_type = try_expanding_sum_type_to_union(current_type, enum_name)
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
-        if isinstance(proposed_type, AnyType):
+        if isinstance(get_proper_type(current_type), AnyType):
+            return proposed_type, current_type
+        elif isinstance(proposed_type, AnyType):
             # We don't really know much about the proposed type, so we shouldn't
             # attempt to narrow anything. Instead, we broaden the expr to Any to
             # avoid false positives
             return proposed_type, default
-        elif not any(
-            type_range.is_upper_bound for type_range in proposed_type_ranges
-        ) and is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
+        elif not any(type_range.is_upper_bound for type_range in proposed_type_ranges) and (
+            # concrete subtypes
+            is_proper_subtype(current_type, proposed_type, ignore_promotions=True)
+            # structural subtypes
+            or (
+                (
+                    isinstance(proposed_type, CallableType)
+                    or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
+                )
+                and is_subtype(current_type, proposed_type, ignore_promotions=True)
+            )
+        ):
             # Expression is always of one of the types in proposed_type_ranges
             return default, UninhabitedType()
         elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):

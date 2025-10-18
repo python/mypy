@@ -56,7 +56,9 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     @overload
     def get(self, k: T) -> Optional[T_co]: pass
     @overload
-    def get(self, k: T, default: Union[T_co, V]) -> Union[T_co, V]: pass
+    def get(self, k: T, default: T_co, /) -> Optional[T_co]: pass  # type: ignore[misc]
+    @overload
+    def get(self, k: T, default: V, /) -> Union[T_co, V]: pass
     def values(self) -> Iterable[T_co]: pass  # Approximate return type
     def __len__(self) -> int: ...
     def __contains__(self, arg: object) -> int: pass
