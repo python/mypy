@@ -1620,6 +1620,26 @@ reveal_type(bar().attr)  # N: Revealed type is "Never"
 reveal_type(foo().attr)  # N: Revealed type is "Never"
 1  # E: Statement is unreachable
 
+[case testIgnoreReturningNotImplemented]
+# flags: --warn-unreachable
+
+class C:
+    def __add__(self, o: C) -> C:
+        if not isinstance(o, C):
+            return NotImplemented
+        return C()
+    def __sub__(self, o: C) -> C:
+        if isinstance(o, C):
+            return C()
+        return NotImplemented
+    def __mul__(self, o: C) -> C:
+        if isinstance(o, C):
+            return C()
+        else:
+            return NotImplemented
+
+[builtins fixtures/isinstance.pyi]
+
 [case testUnreachableStatementPrettyHighlighting]
 # flags: --warn-unreachable --pretty
 def x() -> None:
