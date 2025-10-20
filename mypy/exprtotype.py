@@ -126,7 +126,14 @@ def expr_to_unanalyzed_type(
                     # losing all the annotations.
                     return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
             base.args = tuple(
-                expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr, allow_unpack=True)
+                expr_to_unanalyzed_type(
+                    arg,
+                    options,
+                    allow_new_syntax,
+                    expr,
+                    allow_unpack=True,
+                    lookup_qualified=lookup_qualified,
+                )
                 for arg in args
             )
             if not base.args:
