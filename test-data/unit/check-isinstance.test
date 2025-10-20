@@ -3039,30 +3039,30 @@ if isinstance(a, B):
 from typing import Literal
 
 if True:  # E: If condition is always true
-    ...
+    x = 1
 
 if False:  # E: If condition is always false
-    ...
+    x = 1
 
 class W:
     ...
 if W():
-    ...
+    x = 1
 
 class X:
     def __bool__(self) -> bool: ...
 if X():
-    ...
+    x = 1
 
 class Y:
     def __bool__(self) -> Literal[True]: ...
 if Y():  # E: If condition is always true
-    ...
+    x = 1
 
 class Z:
     def __bool__(self) -> Literal[False]: ...
 if Z():  # E: If condition is always false
-    ...
+    x = 1
 
 [builtins fixtures/bool.pyi]
 
