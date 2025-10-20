@@ -3080,6 +3080,16 @@ while False:  # E: While condition is always false
 
 [builtins fixtures/bool.pyi]
 
+[case testNoRedundantExpressionWarningsForUsagesOfTYPECHECKING]
+# flags: --enable-error-code=redundant-expr
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    ...
+
+if not TYPE_CHECKING:
+    ...
+
 [case testNoRedundantExpressionWarningsForExhaustivenessChecks]
 # flags: --enable-error-code=redundant-expr
 from typing import Literal, Never, NoReturn
