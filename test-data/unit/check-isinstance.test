@@ -3137,4 +3137,21 @@ def f6(x: Literal[1]) -> None:
     if x != 1:
         raise ValueError
 
+def f7(x: Literal[1, 2]) -> None:
+    if x == 1:
+        y = "a"
+    elif x == 2:
+        y = "b"
+    else:
+        pass
+
+def f8(x: Literal[1, 2]) -> None:
+    if x == 1:
+        y = "a"
+    elif x == 2:  # E: If condition is always true
+        y = "b"
+    else:
+        pass
+        y = "c"
+
 [builtins fixtures/bool.pyi]

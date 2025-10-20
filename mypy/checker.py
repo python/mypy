@@ -5054,19 +5054,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         def _filter(body: Block | None) -> bool:
             if body is None:
                 return False
-            s = body.body[0]
-            if isinstance(s, AssertStmt) and is_false_literal(s.expr):
-                return True
-            if isinstance(s, RaiseStmt):
-                return True
-            elif isinstance(s, ExpressionStmt) and isinstance(s.expr, CallExpr):
-                with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
-                    typ = self.expr_checker.accept(
-                        s.expr, allow_none_return=True, always_allow_any=True
-                    )
-                if isinstance(get_proper_type(typ), UninhabitedType):
-                    return True
-            return False
+            return all(self.is_noop_for_reachability(s) for s in body.body)
 
         if if_map is None:
             if stmt.while_stmt:
