@@ -23,6 +23,7 @@ from mypyc.ir.rtypes import (
     is_str_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.primitives.bytes_ops import bytes_build_op
 from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.str_ops import str_build_op, str_op
