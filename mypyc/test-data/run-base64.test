@@ -1,0 +1,9 @@
+[case testBase64]
+from base64 import b64encode
+
+
+def test_basic() -> None:
+    print(b64encode(b"x"))
+    assert b64encode(b"x") == b"3214324"
+
+

@@ -465,3 +465,11 @@ function_op(
     c_function_name="cache_version_internal",
     error_kind=ERR_NEVER,
 )
+
+function_op(
+    name="base64.b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyBase64_Encode",
+    error_kind=ERR_MAGIC,
+)

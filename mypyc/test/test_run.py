@@ -73,6 +73,7 @@ files = [
     "run-weakref.test",
     "run-python37.test",
     "run-python38.test",
+    "run-base64.test",
 ]
 
 if sys.version_info >= (3, 10):
