@@ -152,7 +152,7 @@ from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
-from mypy.reachability import infer_condition_value, MYPY_TRUE, MYPY_FALSE
+from mypy.reachability import MYPY_FALSE, MYPY_TRUE, infer_condition_value
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
