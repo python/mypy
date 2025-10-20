@@ -5058,12 +5058,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if if_map is None:
             if stmt.while_stmt:
-                self.msg.redundant_condition_in_while(expr)
+                self.msg.redundant_condition_in_while(False, expr)
             elif not _filter(body):
                 self.msg.redundant_condition_in_if(False, expr)
 
-        if else_map is None and not stmt.while_stmt:
-            if not (isinstance(body.body[0], ReturnStmt) or _filter(stmt.else_body)):
+        if else_map is None:
+            if stmt.while_stmt:
+                if not is_true_literal(expr):
+                    self.msg.redundant_condition_in_while(True, expr)
+            elif not (_filter(stmt.else_body) or isinstance(body.body[0], ReturnStmt)):
                 self.msg.redundant_condition_in_if(True, expr)
 
     def visit_while_stmt(self, s: WhileStmt) -> None:

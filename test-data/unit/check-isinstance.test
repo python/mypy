@@ -3078,6 +3078,10 @@ while True:
 while False:  # E: While condition is always false
     ...
 
+y = None
+while y is None:  # E: While condition is always true
+    ...
+
 [builtins fixtures/bool.pyi]
 
 [case testNoRedundantExpressionWarningsForUsagesOfTYPECHECKING]
