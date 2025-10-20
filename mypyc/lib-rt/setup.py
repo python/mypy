@@ -96,6 +96,27 @@ else:
                 ],
                 include_dirs=["."],
                 extra_compile_args=cflags,
+            ),
+            Extension(
+                "librt.base64",
+                [
+                    "librt_base64.c",
+                    "base64/lib.c",
+                    "base64/codec_choose.c",
+                    "base64/tables/tables.c",
+                    "base64/arch/generic/codec.c",
+                    "base64/arch/ssse3/codec.c",
+                    "base64/arch/sse41/codec.c",
+                    "base64/arch/sse42/codec.c",
+                    "base64/arch/avx/codec.c",
+                    "base64/arch/avx2/codec.c",
+                    "base64/arch/avx512/codec.c",
+                    "base64/arch/neon32/codec.c",
+                    "base64/arch/neon64/codec.c",
+                ],
+                include_dirs=[".", "base64"],
+                extra_compile_args=cflags,
             )
+
         ]
     )

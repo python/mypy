@@ -467,9 +467,9 @@ function_op(
 )
 
 function_op(
-    name="base64.b64encode",
+    name="librt.base64.b64encode",
     arg_types=[bytes_rprimitive],
     return_type=bytes_rprimitive,
-    c_function_name="CPyBase64_Encode",
+    c_function_name="b64encode",
     error_kind=ERR_MAGIC,
 )
