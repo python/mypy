@@ -1203,18 +1203,18 @@ class ForZip(ForGenerator):
             gen.gen_cleanup()
 
 
-def get_expr_length(expr: Expression) -> int | None:
+def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
     if isinstance(expr, (StrExpr, BytesExpr)):
         return len(expr.value)
     elif isinstance(expr, (ListExpr, TupleExpr)):
         # if there are no star expressions, or we know the length of them,
         # we know the length of the expression
-        stars = [get_expr_length(i) for i in expr.items if isinstance(i, StarExpr)]
+        stars = [get_expr_length(builder, i) for i in expr.items if isinstance(i, StarExpr)]
         if None not in stars:
             other = sum(not isinstance(i, StarExpr) for i in expr.items)
             return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
-        return get_expr_length(expr.expr)
+        return get_expr_length(builder, expr.expr)
     elif (
         isinstance(expr, RefExpr)
         and isinstance(expr.node, Var)
@@ -1227,6 +1227,11 @@ def get_expr_length(expr: Expression) -> int | None:
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
     # of key conflicts. Range, enumerate, zip are all simple logic.
+
+    # we might still be able to get the length directly from the type
+    rtype = builder.node_type(expr)
+    if isinstance(rtype, RTuple):
+        return len(rtype.types)
     return None
 
 
@@ -1235,7 +1240,7 @@ def get_expr_length_value(
 ) -> Value:
     rtype = builder.node_type(expr)
     assert is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple), rtype
-    length = get_expr_length(expr)
+    length = get_expr_length(builder, expr)
     if length is None:
         # We cannot compute the length at compile time, so we will fetch it.
         return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)
