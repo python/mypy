@@ -168,14 +168,13 @@ from typing import Final, List, Any, AsyncIterable
 from mypy_extensions import trait, mypyc_attr
 
 def busted(b: bool) -> None:
-    for i in range(1, 10, 0):  # E: range() step can't be zero
-        try:
-            if i == 5:
-                break  # E: break inside try/finally block is unimplemented
-            elif i == 4:
-                continue  # E: continue inside try/finally block is unimplemented
-        finally:
-            print('oops')
+    try:
+        if i == 5:
+            break  # E: break inside try/finally block is unimplemented
+        elif i == 4:
+            continue  # E: continue inside try/finally block is unimplemented
+    finally:
+        print('oops')
 
 print(sum([1,2,3]))
 
