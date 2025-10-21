@@ -5022,13 +5022,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
                 if_map, else_map = self.find_isinstance_check(e)
 
-                self._visit_if_stmt_redundant_expr_helper(
-                    stmt=s, expr=e, body=b, if_map=if_map, else_map=else_map
-                )
-
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     self.push_type_map(if_map, from_assignment=False)
                     self.accept(b)
+                    self._visit_if_stmt_redundant_expr_helper(
+                        s, e, b, if_map, else_map, self.binder.frames[-1].unreachable
+                    )
 
                 self.push_type_map(else_map, from_assignment=False)
 
@@ -5037,7 +5036,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.accept(s.else_body)
 
     def _visit_if_stmt_redundant_expr_helper(
-        self, stmt: IfStmt, expr: Expression, body: Block, if_map: TypeMap, else_map: TypeMap
+        self,
+        stmt: IfStmt,
+        expr: Expression,
+        body: Block,
+        if_map: TypeMap,
+        else_map: TypeMap,
+        else_reachable: bool,
     ) -> None:
         """Emits `redundant-expr` errors for if statements that are always true or always false.
 
@@ -5066,7 +5071,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if stmt.while_stmt:
                 if not is_true_literal(expr):
                     self.msg.redundant_condition_in_while(True, expr)
-            elif not (_filter(stmt.else_body) or isinstance(body.body[0], ReturnStmt)):
+            elif not (else_reachable or _filter(stmt.else_body)):
                 self.msg.redundant_condition_in_if(True, expr)
 
     def visit_while_stmt(self, s: WhileStmt) -> None:

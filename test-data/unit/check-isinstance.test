@@ -3130,12 +3130,14 @@ def f4(x: Literal[1, 2]) -> int:
     if x == 2:
         return 2
 
-def f5(x: Literal[1, 2]) -> str:
+def f5(x: Literal[1, 2]) -> int:
     if x == 1:
-        y = "a"
-    elif x == 2:  # E: If condition is always true
-        y = "b"
-    return y
+        return 1
+    if x == 2:
+        if bool():
+            return 2
+        else:
+            return 3
 
 def f6(x: Literal[1]) -> None:
     if x != 1:
