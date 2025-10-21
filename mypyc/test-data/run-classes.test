@@ -5460,14 +5460,14 @@ import time
 
 
 def bench(data: bytes, n: int) -> None:
-    for i in range(1000 * 1000):
+    for i in range(10 * 1000):
         b = ReadBuffer(data)
         for i in range(n):
             read_int(b)
 
 
 w = WriteBuffer()
-N = 1000
+N = 400 * 1000
 for i in range(N):
     write_int(w, i & 63)
 
