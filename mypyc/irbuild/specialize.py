@@ -746,18 +746,25 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
         and expr.arg_kinds == [ARG_POS]
         and isinstance(expr.args[0], ListExpr)
     ):
-        for item in expr.args[0].items:
+        items = expr.args[0].items
+        for i, item in enumerate(items):
             if isinstance(item, StrExpr):
                 continue
+            elif isinstance(folded := constant_fold_expr(builder, item), str):
+                items[i] = StrExpr(folded)
+                continue
             elif isinstance(item, CallExpr):
-                if not isinstance(item.callee, MemberExpr) or item.callee.name != "format":
-                    return None
-                elif (
-                    not isinstance(item.callee.expr, StrExpr) or item.callee.expr.value != "{:{}}"
+                if not (
+                    isinstance(callee := item.callee, MemberExpr)
+                    and callee.name == "format"
+                    and isinstance(callee.expr, StrExpr)
+                    # TODO: extend this to cover {!r:{}}
+                    and callee.expr.value == "{:{}}"
                 ):
                     return None
 
-                if not isinstance(item.args[1], StrExpr) or item.args[1].value != "":
+                format_spec = item.args[1]
+                if not isinstance(format_spec, StrExpr) or format_spec.value != "":
                     return None
             else:
                 return None
@@ -765,7 +772,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
         format_ops = []
         exprs: list[Expression] = []
 
-        for item in expr.args[0].items:
+        for item in items:
             if isinstance(item, StrExpr) and item.value != "":
                 format_ops.append(FormatOp.STR)
                 exprs.append(item)
