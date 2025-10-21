@@ -785,8 +785,8 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
         for i in range(len(exprs) - 1):
             while (
                 len(exprs) >= i + 2
-                and (first := constant_fold_expr(builder, exprs[i])) is not None
-                and (second := constant_fold_expr(builder, exprs[i + 1])) is not None
+                and (first := get_literal_str(exprs[i])) is not None
+                and (second := get_literal_str(exprs[i + 1])) is not None
             ):
                 exprs = [*exprs[:i], StrExpr(first + second), *exprs[i + 2 :]]
                 format_ops = [*format_ops[:i], FormatOp.STR, *format_ops[i + 2 :]]
