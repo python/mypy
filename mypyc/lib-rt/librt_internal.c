@@ -220,7 +220,6 @@ bool format: single byte
 
 static char
 read_bool_internal(PyObject *data) {
-    _CHECK_BUFFER(data, CPY_BOOL_ERROR)
     _CHECK_READ(data, 1, CPY_BOOL_ERROR)
     char res = _READ(data, char)
     if (unlikely((res != 0) & (res != 1))) {
@@ -238,6 +237,7 @@ read_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     char res = read_bool_internal(data);
     if (unlikely(res == CPY_BOOL_ERROR))
         return NULL;
@@ -248,7 +248,6 @@ read_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
 
 static char
 write_bool_internal(PyObject *data, char value) {
-    _CHECK_BUFFER(data, CPY_NONE_ERROR)
     _CHECK_SIZE(data, 1)
     _WRITE(data, char, value)
     ((BufferObject *)data)->end += 1;
@@ -264,6 +263,7 @@ write_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     if (unlikely(!PyBool_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bool");
         return NULL;
@@ -306,8 +306,6 @@ _read_short_int(PyObject *data, uint8_t first) {
 
 static PyObject*
 read_str_internal(PyObject *data) {
-    _CHECK_BUFFER(data, NULL)
-
     // Read string length.
     _CHECK_READ(data, 1, NULL)
     uint8_t first = _READ(data, uint8_t)
@@ -345,6 +343,7 @@ read_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     return read_str_internal(data);
 }
 
@@ -379,8 +378,6 @@ _write_short_int(PyObject *data, Py_ssize_t real_value) {
 
 static char
 write_str_internal(PyObject *data, PyObject *value) {
-    _CHECK_BUFFER(data, CPY_NONE_ERROR)
-
     Py_ssize_t size;
     const char *chunk = PyUnicode_AsUTF8AndSize(value, &size);
     if (unlikely(chunk == NULL))
@@ -412,6 +409,7 @@ write_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     if (unlikely(!PyUnicode_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a str");
         return NULL;
@@ -429,8 +427,6 @@ bytes format: size as int (see below) followed by bytes
 
 static PyObject*
 read_bytes_internal(PyObject *data) {
-    _CHECK_BUFFER(data, NULL)
-
     // Read length.
     _CHECK_READ(data, 1, NULL)
     uint8_t first = _READ(data, uint8_t)
@@ -468,13 +464,12 @@ read_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     return read_bytes_internal(data);
 }
 
 static char
 write_bytes_internal(PyObject *data, PyObject *value) {
-    _CHECK_BUFFER(data, CPY_NONE_ERROR)
-
     const char *chunk = PyBytes_AsString(value);
     if (unlikely(chunk == NULL))
         return CPY_NONE_ERROR;
@@ -506,6 +501,7 @@ write_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnam
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     if (unlikely(!PyBytes_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes object");
         return NULL;
@@ -524,7 +520,6 @@ float format:
 
 static double
 read_float_internal(PyObject *data) {
-    _CHECK_BUFFER(data, CPY_FLOAT_ERROR)
     _CHECK_READ(data, 8, CPY_FLOAT_ERROR)
     char *buf = ((BufferObject *)data)->buf;
     double res = PyFloat_Unpack8(buf + ((BufferObject *)data)->pos, 1);
@@ -542,6 +537,7 @@ read_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     double retval = read_float_internal(data);
     if (unlikely(retval == CPY_FLOAT_ERROR && PyErr_Occurred())) {
         return NULL;
@@ -551,7 +547,6 @@ read_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
 
 static char
 write_float_internal(PyObject *data, double value) {
-    _CHECK_BUFFER(data, CPY_NONE_ERROR)
     _CHECK_SIZE(data, 8)
     char *buf = ((BufferObject *)data)->buf;
     int res = PyFloat_Pack8(value, buf + ((BufferObject *)data)->pos, 1);
@@ -571,6 +566,7 @@ write_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnam
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     if (unlikely(!PyFloat_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a float");
         return NULL;
@@ -595,7 +591,6 @@ since negative integers are much more rare.
 
 static CPyTagged
 read_int_internal(PyObject *data) {
-    _CHECK_BUFFER(data, CPY_INT_TAG)
     _CHECK_READ(data, 1, CPY_INT_TAG)
 
     uint8_t first = _READ(data, uint8_t)
@@ -645,6 +640,7 @@ read_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     CPyTagged retval = read_int_internal(data);
     if (unlikely(retval == CPY_INT_TAG)) {
         return NULL;
@@ -731,8 +727,6 @@ _write_long_int(PyObject *data, CPyTagged value) {
 
 static char
 write_int_internal(PyObject *data, CPyTagged value) {
-    _CHECK_BUFFER(data, CPY_NONE_ERROR)
-
     if (likely((value & CPY_INT_TAG) == 0)) {
         Py_ssize_t real_value = CPyTagged_ShortAsSsize_t(value);
         if (likely(real_value >= MIN_FOUR_BYTES_INT && real_value <= MAX_FOUR_BYTES_INT)) {
@@ -754,6 +748,7 @@ write_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     if (unlikely(!PyLong_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be an int");
         return NULL;
@@ -773,7 +768,6 @@ integer tag format (0 <= t <= 255):
 
 static uint8_t
 read_tag_internal(PyObject *data) {
-    _CHECK_BUFFER(data, CPY_LL_UINT_ERROR)
     _CHECK_READ(data, 1, CPY_LL_UINT_ERROR)
     uint8_t ret = _READ(data, uint8_t)
     return ret;
@@ -787,6 +781,7 @@ read_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     uint8_t retval = read_tag_internal(data);
     if (unlikely(retval == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         return NULL;
@@ -796,7 +791,6 @@ read_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
 
 static char
 write_tag_internal(PyObject *data, uint8_t value) {
-    _CHECK_BUFFER(data, CPY_NONE_ERROR)
     _CHECK_SIZE(data, 1)
     _WRITE(data, uint8_t, value)
     ((BufferObject *)data)->end += 1;
@@ -812,6 +806,7 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
+    _CHECK_BUFFER(data, NULL)
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
