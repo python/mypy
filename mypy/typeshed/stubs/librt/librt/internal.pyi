@@ -1,7 +1,9 @@
 from mypy_extensions import u8
 
-class Buffer:
+class ReadBuffer:
     def __init__(self, source: bytes = ...) -> None: ...
+
+class WriteBuffer:
     def getvalue(self) -> bytes: ...
 
 def write_bool(data: Buffer, value: bool) -> None: ...
