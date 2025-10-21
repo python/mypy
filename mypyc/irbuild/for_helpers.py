@@ -462,6 +462,7 @@ def make_for_loop_generator(
                 # We support the 3 arg form but only for int literals, since it doesn't
                 # seem worth the hassle of supporting dynamically determining which
                 # direction of comparison to do.
+                step: int | None
                 if num_args == 1:
                     start_reg: Value = Integer(0)
                     end_reg = builder.accept(expr.args[0])
