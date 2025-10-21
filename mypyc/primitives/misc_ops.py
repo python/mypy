@@ -350,7 +350,7 @@ function_op(
     name="librt.internal.WriteBuffer",
     arg_types=[],
     return_type=write_buffer_rprimitive,
-    c_function_name="WriteBuffer_internal_empty",
+    c_function_name="WriteBuffer_internal",
     error_kind=ERR_MAGIC,
 )
 

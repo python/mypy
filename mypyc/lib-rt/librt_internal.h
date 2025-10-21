@@ -7,7 +7,7 @@
 #ifdef LIBRT_INTERNAL_MODULE
 
 static PyObject *ReadBuffer_internal(PyObject *source);
-static PyObject *WriteBuffer_internal_empty(void);
+static PyObject *WriteBuffer_internal(void);
 static PyObject *WriteBuffer_getvalue_internal(PyObject *self);
 static PyObject *ReadBuffer_internal(PyObject *source);
 static PyObject *ReadBuffer_internal_empty(void);
@@ -31,7 +31,7 @@ static uint8_t cache_version_internal(void);
 static void **NativeInternal_API;
 
 #define ReadBuffer_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[0])
-#define WriteBuffer_internal_empty (*(PyObject* (*)(void)) NativeInternal_API[1])
+#define WriteBuffer_internal (*(PyObject* (*)(void)) NativeInternal_API[1])
 #define WriteBuffer_getvalue_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[2])
 #define write_bool_internal (*(char (*)(PyObject *source, char value)) NativeInternal_API[3])
 #define read_bool_internal (*(char (*)(PyObject *source)) NativeInternal_API[4])

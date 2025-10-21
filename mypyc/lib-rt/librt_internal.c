@@ -118,11 +118,6 @@ ReadBuffer_internal(PyObject *source) {
     return (PyObject *)self;
 }
 
-static PyObject*
-ReadBuffer_internal_empty(void) {
-    return ReadBuffer_internal(NULL);
-}
-
 static int
 ReadBuffer_init(ReadBufferObject *self, PyObject *args, PyObject *kwds)
 {
@@ -190,12 +185,7 @@ WriteBuffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static int
-WriteBuffer_init_internal(WriteBufferObject *self, PyObject *source) {
-    if (source) {
-        // TODO
-        PyErr_SetString(PyExc_TypeError, "source should not be provided");
-        return -1;
-    }
+WriteBuffer_init_internal(WriteBufferObject *self) {
     Py_ssize_t size = START_SIZE;
     self->buf = PyMem_Malloc(size + 1);
     if (self->buf == NULL) {
@@ -208,35 +198,34 @@ WriteBuffer_init_internal(WriteBufferObject *self, PyObject *source) {
 }
 
 static PyObject*
-WriteBuffer_internal(PyObject *source) {
+WriteBuffer_internal(void) {
     WriteBufferObject *self = (WriteBufferObject *)WriteBufferType.tp_alloc(&WriteBufferType, 0);
     if (self == NULL)
         return NULL;
     self->buf = NULL;
     self->ptr = NULL;
     self->end = NULL;
-    if (WriteBuffer_init_internal(self, source) == -1) {
+    if (WriteBuffer_init_internal(self) == -1) {
         Py_DECREF(self);
         return NULL;
     }
     return (PyObject *)self;
 }
 
-static PyObject*
-WriteBuffer_internal_empty(void) {
-    return WriteBuffer_internal(NULL);
-}
-
 static int
 WriteBuffer_init(WriteBufferObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"source", NULL};
-    PyObject *source = NULL;
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|O", kwlist, &source))
+    if (!PyArg_ParseTuple(args, "")) {
         return -1;
+    }
 
-    return WriteBuffer_init_internal(self, source);
+    if (kwds != NULL && PyDict_Size(kwds) > 0) {
+        PyErr_SetString(PyExc_TypeError,
+                        "WriteBuffer() takes no keyword arguments");
+        return -1;
+    }
+
+    return WriteBuffer_init_internal(self);
 }
 
 static void
@@ -985,7 +974,7 @@ librt_internal_module_exec(PyObject *m)
     // Export mypy internal C API, be careful with the order!
     static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN] = {
         (void *)ReadBuffer_internal,
-        (void *)WriteBuffer_internal_empty,
+        (void *)WriteBuffer_internal,
         (void *)WriteBuffer_getvalue_internal,
         (void *)write_bool_internal,
         (void *)read_bool_internal,
