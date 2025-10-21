@@ -747,7 +747,10 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
     ):
         items = expr.args[0].items
         for i, item in enumerate(items):
-            if isinstance(item, StrExpr) or isinstance(constant_fold_expr(builder, item), str):
+            if isinstance(item, StrExpr):
+                continue
+            elif isinstance(folded := constant_fold_expr(builder, item), str):
+                items[i] = StrExpr(folded)
                 continue
             elif isinstance(item, CallExpr):
                 if not (
@@ -775,15 +778,10 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             elif isinstance(item, CallExpr):
                 format_ops.append(FormatOp.STR)
                 exprs.append(item.args[0])
-            else:
-                format_ops.append(FormatOp.STR)
-                exprs.append(item)
 
         def get_literal_str(expr: Expression) -> str | None:
             if isinstance(expr, StrExpr):
                 return expr.value
-            elif isinstance(folded := constant_fold_expr(builder, expr), str):
-                return folded
             return None
 
         for i in range(len(exprs) - 1):
