@@ -457,12 +457,12 @@ def make_for_loop_generator(
         num_args = len(expr.args)
 
         if is_range_ref(expr.callee) and set(expr.arg_kinds) == {ARG_POS}:
-            if num_args <= 2 or (num_args == 3 and builder.extract_int(expr.args[2]) is not None):
-                # Special case "for x in range(...)".
-                # We support the 3 arg form but only for int literals, since it doesn't
-                # seem worth the hassle of supporting dynamically determining which
-                # direction of comparison to do.
-                step: int | None
+            # Special case "for x in range(...)".
+            # NOTE We support the 3 arg form but only when `step` is constant-
+            # foldable, since it doesn't seem worth the hassle of supporting
+            # dynamically determining which direction of comparison to do.
+            # If we cannot constant fold `step`, we just fallback to stdlib range.
+            if num_args <= 2 or (num_args == 3 and builder.extract_int(expr.args[2])):
                 if num_args == 1:
                     start_reg: Value = Integer(0)
                     end_reg = builder.accept(expr.args[0])
@@ -470,14 +470,11 @@ def make_for_loop_generator(
                 else:
                     start_reg = builder.accept(expr.args[0])
                     end_reg = builder.accept(expr.args[1])
-                    step = 1 if num_args == 2 else builder.extract_int(expr.args[2])
+                    step = 1 if num_args == 2 else cast(int, builder.extract_int(expr.args[2]))
 
-                if step:
-                    for_range = ForRange(builder, index, body_block, loop_exit, line, nested)
-                    for_range.init(start_reg, end_reg, step)
-                    return for_range
-
-                # If we could not constant fold `step`, we just fallback to calling stdlib implementation
+                for_range = ForRange(builder, index, body_block, loop_exit, line, nested)
+                for_range.init(start_reg, end_reg, step)
+                return for_range
 
         elif (
             expr.callee.fullname == "builtins.enumerate"
