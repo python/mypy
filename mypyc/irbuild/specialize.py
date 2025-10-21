@@ -749,7 +749,7 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
         for i, item in enumerate(items):
             if isinstance(item, StrExpr):
                 continue
-            elif (folded := constant_fold_expr(builder, item) is not None:
+            elif (folded := constant_fold_expr(builder, item)) is not None:
                 items[i] = StrExpr(str(folded))
                 continue
             elif isinstance(item, CallExpr):
