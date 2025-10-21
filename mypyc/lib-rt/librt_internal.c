@@ -30,18 +30,30 @@
 #define CPY_NONE_ERROR 2
 #define CPY_NONE 1
 
-#define _CHECK_BUFFER(data, err)      if (unlikely(_check_buffer(data) == CPY_NONE_ERROR)) \
-                                          return err;
-#define _CHECK_SIZE(data, need)       if (unlikely(_check_size((BufferObject *)data, need) == CPY_NONE_ERROR)) \
-                                          return CPY_NONE_ERROR;
-#define _CHECK_READ(data, size, err)  if (unlikely(_check_read((BufferObject *)data, size) == CPY_NONE_ERROR)) \
-                                          return err;
+#define _CHECK_READ_BUFFER(data, err)  if (unlikely(_check_read_buffer(data) == CPY_NONE_ERROR)) \
+                                           return err;
+#define _CHECK_WRITE_BUFFER(data, err) if (unlikely(_check_write_buffer(data) == CPY_NONE_ERROR)) \
+                                           return err;
+#define _CHECK_WRITE(data, need)        if (unlikely(_check_size((WriteBufferObject *)data, need) == CPY_NONE_ERROR)) \
+                                           return CPY_NONE_ERROR;
+#define _CHECK_READ(data, size, err)   if (unlikely(_check_read((ReadBufferObject *)data, size) == CPY_NONE_ERROR)) \
+                                           return err;
 
-#define _READ(data, type)  *(type *)(((BufferObject *)data)->buf + ((BufferObject *)data)->pos); \
-                           ((BufferObject *)data)->pos += sizeof(type);
+#define _READ(result, data, type) \
+    do { \
+        *(result) = *(type *)(((ReadBufferObject *)data)->ptr); \
+        ((ReadBufferObject *)data)->ptr += sizeof(type); \
+    } while (0)
 
-#define _WRITE(data, type, v)  *(type *)(((BufferObject *)data)->buf + ((BufferObject *)data)->pos) = v; \
-                               ((BufferObject *)data)->pos += sizeof(type);
+#define _WRITE(data, type, v) \
+    do { \
+       *(type *)(((WriteBufferObject *)data)->ptr) = v; \
+       ((WriteBufferObject *)data)->ptr += sizeof(type); \
+    } while (0)
+
+//
+// ReadBuffer
+//
 
 #if PY_BIG_ENDIAN
 uint16_t reverse_16(uint16_t number) {
@@ -55,65 +67,51 @@ uint32_t reverse_32(uint32_t number) {
 
 typedef struct {
     PyObject_HEAD
-    Py_ssize_t pos;
-    Py_ssize_t end;
-    Py_ssize_t size;
-    char *buf;
-} BufferObject;
+    char *ptr;  // Current read location in the buffer
+    char *end;  // End of the buffer
+    PyObject *source;  // The object that contains the buffer
+} ReadBufferObject;
 
-static PyTypeObject BufferType;
+static PyTypeObject ReadBufferType;
 
 static PyObject*
-Buffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+ReadBuffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (type != &BufferType) {
-        PyErr_SetString(PyExc_TypeError, "Buffer should not be subclassed");
+    if (type != &ReadBufferType) {
+        PyErr_SetString(PyExc_TypeError, "ReadBuffer should not be subclassed");
         return NULL;
     }
 
-    BufferObject *self = (BufferObject *)type->tp_alloc(type, 0);
+    ReadBufferObject *self = (ReadBufferObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        self->pos = 0;
-        self->end = 0;
-        self->size = 0;
-        self->buf = NULL;
+        self->source = NULL;
+        self->ptr = NULL;
+        self->end = NULL;
     }
     return (PyObject *) self;
 }
 
-
 static int
-Buffer_init_internal(BufferObject *self, PyObject *source) {
-    if (source) {
-        if (!PyBytes_Check(source)) {
-            PyErr_SetString(PyExc_TypeError, "source must be a bytes object");
-            return -1;
-        }
-        self->end = PyBytes_GET_SIZE(source);
-        // Allocate at least one byte to simplify resizing logic.
-        // The original bytes buffer has last null byte, so this is safe.
-        self->size = self->end + 1;
-        // This returns a pointer to internal bytes data, so make our own copy.
-        char *buf = PyBytes_AsString(source);
-        self->buf = PyMem_Malloc(self->size);
-        memcpy(self->buf, buf, self->end);
-    } else {
-        self->buf = PyMem_Malloc(START_SIZE);
-        self->size = START_SIZE;
+ReadBuffer_init_internal(ReadBufferObject *self, PyObject *source) {
+    if (!PyBytes_CheckExact(source)) {
+        PyErr_SetString(PyExc_TypeError, "source must be a bytes object");
+        return -1;
     }
+    self->source = Py_NewRef(source);
+    self->ptr = PyBytes_AsString(source);
+    self->end = self->ptr + PyBytes_GET_SIZE(source);
     return 0;
 }
 
 static PyObject*
-Buffer_internal(PyObject *source) {
-    BufferObject *self = (BufferObject *)BufferType.tp_alloc(&BufferType, 0);
+ReadBuffer_internal(PyObject *source) {
+    ReadBufferObject *self = (ReadBufferObject *)ReadBufferType.tp_alloc(&ReadBufferType, 0);
     if (self == NULL)
         return NULL;
-    self->pos = 0;
-    self->end = 0;
-    self->size = 0;
-    self->buf = NULL;
-    if (Buffer_init_internal(self, source) == -1) {
+    self->ptr = NULL;
+    self->end = NULL;
+    self->source = NULL;
+    if (ReadBuffer_init_internal(self, source) == -1) {
         Py_DECREF(self);
         return NULL;
     }
@@ -121,12 +119,12 @@ Buffer_internal(PyObject *source) {
 }
 
 static PyObject*
-Buffer_internal_empty(void) {
-    return Buffer_internal(NULL);
+ReadBuffer_internal_empty(void) {
+    return ReadBuffer_internal(NULL);
 }
 
 static int
-Buffer_init(BufferObject *self, PyObject *args, PyObject *kwds)
+ReadBuffer_init(ReadBufferObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"source", NULL};
     PyObject *source = NULL;
@@ -134,53 +132,160 @@ Buffer_init(BufferObject *self, PyObject *args, PyObject *kwds)
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|O", kwlist, &source))
         return -1;
 
-    return Buffer_init_internal(self, source);
+    return ReadBuffer_init_internal(self, source);
 }
 
 static void
-Buffer_dealloc(BufferObject *self)
+ReadBuffer_dealloc(ReadBufferObject *self)
+{
+    Py_CLEAR(self->source);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static PyMethodDef ReadBuffer_methods[] = {
+    {NULL}  /* Sentinel */
+};
+
+static PyTypeObject ReadBufferType = {
+    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "ReadBuffer",
+    .tp_doc = PyDoc_STR("Mypy cache buffer objects"),
+    .tp_basicsize = sizeof(ReadBufferObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_new = ReadBuffer_new,
+    .tp_init = (initproc) ReadBuffer_init,
+    .tp_dealloc = (destructor) ReadBuffer_dealloc,
+    .tp_methods = ReadBuffer_methods,
+};
+
+//
+// WriteBuffer
+//
+
+typedef struct {
+    PyObject_HEAD
+    char *buf;  // Beginning of the buffer
+    char *ptr;  // Current write location in the buffer
+    char *end;  // End of the buffer
+} WriteBufferObject;
+
+static PyTypeObject WriteBufferType;
+
+static PyObject*
+WriteBuffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    if (type != &WriteBufferType) {
+        PyErr_SetString(PyExc_TypeError, "WriteBuffer cannot be subclassed");
+        return NULL;
+    }
+
+    WriteBufferObject *self = (WriteBufferObject *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->buf = NULL;
+        self->ptr = NULL;
+        self->end = NULL;
+    }
+    return (PyObject *)self;
+}
+
+static int
+WriteBuffer_init_internal(WriteBufferObject *self, PyObject *source) {
+    if (source) {
+        // TODO
+        PyErr_SetString(PyExc_TypeError, "source should not be provided");
+        return -1;
+    }
+    Py_ssize_t size = START_SIZE;
+    self->buf = PyMem_Malloc(size + 1);
+    if (self->buf == NULL) {
+        // TODO
+        CPyError_OutOfMemory();
+    }
+    self->ptr = self->buf;
+    self->end = self->buf + size;
+    return 0;
+}
+
+static PyObject*
+WriteBuffer_internal(PyObject *source) {
+    WriteBufferObject *self = (WriteBufferObject *)WriteBufferType.tp_alloc(&WriteBufferType, 0);
+    if (self == NULL)
+        return NULL;
+    self->buf = NULL;
+    self->ptr = NULL;
+    self->end = NULL;
+    if (WriteBuffer_init_internal(self, source) == -1) {
+        Py_DECREF(self);
+        return NULL;
+    }
+    return (PyObject *)self;
+}
+
+static PyObject*
+WriteBuffer_internal_empty(void) {
+    return WriteBuffer_internal(NULL);
+}
+
+static int
+WriteBuffer_init(WriteBufferObject *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"source", NULL};
+    PyObject *source = NULL;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|O", kwlist, &source))
+        return -1;
+
+    return WriteBuffer_init_internal(self, source);
+}
+
+static void
+WriteBuffer_dealloc(WriteBufferObject *self)
 {
     PyMem_Free(self->buf);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static PyObject*
-Buffer_getvalue_internal(PyObject *self)
+WriteBuffer_getvalue_internal(PyObject *self)
 {
-    return PyBytes_FromStringAndSize(((BufferObject *)self)->buf, ((BufferObject *)self)->end);
+    WriteBufferObject *obj = (WriteBufferObject *)self;
+    return PyBytes_FromStringAndSize(obj->buf, obj->ptr - obj->buf);
 }
 
 static PyObject*
-Buffer_getvalue(BufferObject *self, PyObject *Py_UNUSED(ignored))
+WriteBuffer_getvalue(WriteBufferObject *self, PyObject *Py_UNUSED(ignored))
 {
-    return PyBytes_FromStringAndSize(self->buf, self->end);
+    return PyBytes_FromStringAndSize(self->buf, self->ptr - self->buf);
 }
 
-static PyMethodDef Buffer_methods[] = {
-    {"getvalue", (PyCFunction) Buffer_getvalue, METH_NOARGS,
+static PyMethodDef WriteBuffer_methods[] = {
+    {"getvalue", (PyCFunction) WriteBuffer_getvalue, METH_NOARGS,
      "Return the buffer content as bytes object"
     },
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject BufferType = {
+static PyTypeObject WriteBufferType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "Buffer",
+    .tp_name = "WriteBuffer",
     .tp_doc = PyDoc_STR("Mypy cache buffer objects"),
-    .tp_basicsize = sizeof(BufferObject),
+    .tp_basicsize = sizeof(WriteBufferObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_new = Buffer_new,
-    .tp_init = (initproc) Buffer_init,
-    .tp_dealloc = (destructor) Buffer_dealloc,
-    .tp_methods = Buffer_methods,
+    .tp_new = WriteBuffer_new,
+    .tp_init = (initproc) WriteBuffer_init,
+    .tp_dealloc = (destructor) WriteBuffer_dealloc,
+    .tp_methods = WriteBuffer_methods,
 };
 
+// ----------
+
 static inline char
-_check_buffer(PyObject *data) {
-    if (unlikely(Py_TYPE(data) != &BufferType)) {
+_check_read_buffer(PyObject *data) {
+    if (unlikely(Py_TYPE(data) != &ReadBufferType)) {
         PyErr_Format(
-            PyExc_TypeError, "data must be a Buffer object, got %s", Py_TYPE(data)->tp_name
+            PyExc_TypeError, "data must be a ReadBuffer object, got %s", Py_TYPE(data)->tp_name
         );
         return CPY_NONE_ERROR;
     }
@@ -188,24 +293,39 @@ _check_buffer(PyObject *data) {
 }
 
 static inline char
-_check_size(BufferObject *data, Py_ssize_t need) {
-    Py_ssize_t target = data->pos + need;
-    if (target <= data->size)
-        return CPY_NONE;
-    do
-        data->size *= 2;
-    while (target >= data->size);
-    data->buf = PyMem_Realloc(data->buf, data->size);
-    if (unlikely(data->buf == NULL)) {
-        PyErr_NoMemory();
+_check_write_buffer(PyObject *data) {
+    if (unlikely(Py_TYPE(data) != &WriteBufferType)) {
+        PyErr_Format(
+            PyExc_TypeError, "data must be a WriteBuffer object, got %s", Py_TYPE(data)->tp_name
+        );
         return CPY_NONE_ERROR;
     }
     return CPY_NONE;
 }
 
 static inline char
-_check_read(BufferObject *data, Py_ssize_t need) {
-    if (unlikely(data->pos + need > data->end)) {
+_check_size(WriteBufferObject *data, Py_ssize_t need) {
+    if (data->end - data->ptr >= need)
+        return CPY_NONE;
+    Py_ssize_t index = data->ptr - data->buf;
+    Py_ssize_t target = index + need;
+    Py_ssize_t size = data->end - data->ptr;
+    do {
+        size *= 2;
+    } while (target >= size);
+    data->buf = PyMem_Realloc(data->buf, size);
+    if (unlikely(data->buf == NULL)) {
+        PyErr_NoMemory();
+        return CPY_NONE_ERROR;
+    }
+    data->ptr = data->buf + index;
+    data->end = data->buf + size;
+    return CPY_NONE;
+}
+
+static inline char
+_check_read(ReadBufferObject *data, Py_ssize_t need) {
+    if (unlikely((data->end - data->ptr) < need)) {
         PyErr_SetString(PyExc_ValueError, "reading past the buffer end");
         return CPY_NONE_ERROR;
     }
@@ -221,7 +341,8 @@ bool format: single byte
 static char
 read_bool_internal(PyObject *data) {
     _CHECK_READ(data, 1, CPY_BOOL_ERROR)
-    char res = _READ(data, char)
+    char res;
+    _READ(&res, data, char);
     if (unlikely((res != 0) & (res != 1))) {
         PyErr_SetString(PyExc_ValueError, "invalid bool value");
         return CPY_BOOL_ERROR;
@@ -237,7 +358,7 @@ read_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_READ_BUFFER(data, NULL)
     char res = read_bool_internal(data);
     if (unlikely(res == CPY_BOOL_ERROR))
         return NULL;
@@ -248,9 +369,8 @@ read_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
 
 static char
 write_bool_internal(PyObject *data, char value) {
-    _CHECK_SIZE(data, 1)
-    _WRITE(data, char, value)
-    ((BufferObject *)data)->end += 1;
+    _CHECK_WRITE(data, 1)
+    _WRITE(data, char, value);
     return CPY_NONE;
 }
 
@@ -263,7 +383,7 @@ write_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyBool_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bool");
         return NULL;
@@ -308,7 +428,8 @@ static PyObject*
 read_str_internal(PyObject *data) {
     // Read string length.
     _CHECK_READ(data, 1, NULL)
-    uint8_t first = _READ(data, uint8_t)
+    uint8_t first;
+    _READ(&first, data, uint8_t);
     if (unlikely(first == LONG_INT_TRAILER)) {
         // Fail fast for invalid/tampered data.
         PyErr_SetString(PyExc_ValueError, "invalid str size");
@@ -324,14 +445,12 @@ read_str_internal(PyObject *data) {
     }
     Py_ssize_t size = tagged_size >> 1;
     // Read string content.
-    char *buf = ((BufferObject *)data)->buf;
+    char *ptr = ((ReadBufferObject *)data)->ptr;
     _CHECK_READ(data, size, NULL)
-    PyObject *res = PyUnicode_FromStringAndSize(
-        buf + ((BufferObject *)data)->pos, (Py_ssize_t)size
-    );
+    PyObject *res = PyUnicode_FromStringAndSize(ptr, (Py_ssize_t)size);
     if (unlikely(res == NULL))
         return NULL;
-    ((BufferObject *)data)->pos += size;
+    ((ReadBufferObject *)data)->ptr += size;
     return res;
 }
 
@@ -343,7 +462,7 @@ read_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_READ_BUFFER(data, NULL)
     return read_str_internal(data);
 }
 
@@ -393,10 +512,9 @@ write_str_internal(PyObject *data, PyObject *value) {
     }
     // Write string content.
     _CHECK_SIZE(data, size)
-    char *buf = ((BufferObject *)data)->buf;
-    memcpy(buf + ((BufferObject *)data)->pos, chunk, size);
-    ((BufferObject *)data)->pos += size;
-    ((BufferObject *)data)->end += size;
+    char *ptr = ((WriteBufferObject *)data)->ptr;
+    memcpy(ptr, chunk, size);
+    ((WriteBufferObject *)data)->ptr += size;
     return CPY_NONE;
 }
 
@@ -409,7 +527,7 @@ write_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyUnicode_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a str");
         return NULL;
@@ -429,7 +547,8 @@ static PyObject*
 read_bytes_internal(PyObject *data) {
     // Read length.
     _CHECK_READ(data, 1, NULL)
-    uint8_t first = _READ(data, uint8_t)
+    uint8_t first;
+    _READ(&first, data, uint8_t);
     if (unlikely(first == LONG_INT_TRAILER)) {
         // Fail fast for invalid/tampered data.
         PyErr_SetString(PyExc_ValueError, "invalid bytes size");
@@ -445,14 +564,12 @@ read_bytes_internal(PyObject *data) {
     }
     Py_ssize_t size = tagged_size >> 1;
     // Read bytes content.
-    char *buf = ((BufferObject *)data)->buf;
+    char *ptr = ((ReadBufferObject *)data)->ptr;
     _CHECK_READ(data, size, NULL)
-    PyObject *res = PyBytes_FromStringAndSize(
-        buf + ((BufferObject *)data)->pos, (Py_ssize_t)size
-    );
+    PyObject *res = PyBytes_FromStringAndSize(ptr, (Py_ssize_t)size);
     if (unlikely(res == NULL))
         return NULL;
-    ((BufferObject *)data)->pos += size;
+    ((ReadBufferObject *)data)->ptr += size;
     return res;
 }
 
@@ -464,7 +581,7 @@ read_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_READ_BUFFER(data, NULL)
     return read_bytes_internal(data);
 }
 
@@ -485,10 +602,9 @@ write_bytes_internal(PyObject *data, PyObject *value) {
     }
     // Write bytes content.
     _CHECK_SIZE(data, size)
-    char *buf = ((BufferObject *)data)->buf;
-    memcpy(buf + ((BufferObject *)data)->pos, chunk, size);
-    ((BufferObject *)data)->pos += size;
-    ((BufferObject *)data)->end += size;
+    char *ptr = ((WriteBufferObject *)data)->ptr;
+    memcpy(ptr, chunk, size);
+    ((WriteBufferObject *)data)->ptr += size;
     return CPY_NONE;
 }
 
@@ -501,7 +617,7 @@ write_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnam
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyBytes_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes object");
         return NULL;
@@ -521,11 +637,11 @@ float format:
 static double
 read_float_internal(PyObject *data) {
     _CHECK_READ(data, 8, CPY_FLOAT_ERROR)
-    char *buf = ((BufferObject *)data)->buf;
-    double res = PyFloat_Unpack8(buf + ((BufferObject *)data)->pos, 1);
+    char *ptr = ((BufferObject *)data)->ptr;
+    double res = PyFloat_Unpack8(ptr, 1);
     if (unlikely((res == -1.0) && PyErr_Occurred()))
         return CPY_FLOAT_ERROR;
-    ((BufferObject *)data)->pos += 8;
+    ((BufferObject *)data)->ptr += 8;
     return res;
 }
 
@@ -537,7 +653,7 @@ read_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_READ_BUFFER(data, NULL)
     double retval = read_float_internal(data);
     if (unlikely(retval == CPY_FLOAT_ERROR && PyErr_Occurred())) {
         return NULL;
@@ -548,12 +664,11 @@ read_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
 static char
 write_float_internal(PyObject *data, double value) {
     _CHECK_SIZE(data, 8)
-    char *buf = ((BufferObject *)data)->buf;
-    int res = PyFloat_Pack8(value, buf + ((BufferObject *)data)->pos, 1);
+    char *ptr = ((BufferObject *)data)->ptr;
+    int res = PyFloat_Pack8(value, ptr, 1);
     if (unlikely(res == -1))
         return CPY_NONE_ERROR;
-    ((BufferObject *)data)->pos += 8;
-    ((BufferObject *)data)->end += 8;
+    ((BufferObject *)data)->ptr += 8;
     return CPY_NONE;
 }
 
@@ -566,7 +681,7 @@ write_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnam
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyFloat_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a float");
         return NULL;
@@ -593,7 +708,8 @@ static CPyTagged
 read_int_internal(PyObject *data) {
     _CHECK_READ(data, 1, CPY_INT_TAG)
 
-    uint8_t first = _READ(data, uint8_t)
+    uint8_t first;
+    _READ(&first, data, uint8_t);
     if (likely(first != LONG_INT_TRAILER)) {
         return _read_short_int(data, first);
     }
@@ -602,7 +718,7 @@ read_int_internal(PyObject *data) {
 
     // Read byte length and sign.
     _CHECK_READ(data, 1, CPY_INT_TAG)
-    first = _READ(data, uint8_t)
+    _READ(&first, data, uint8_t);
     Py_ssize_t size_and_sign = _read_short_int(data, first);
     if (size_and_sign == CPY_INT_TAG)
         return CPY_INT_TAG;
@@ -615,12 +731,11 @@ read_int_internal(PyObject *data) {
 
     // Construct an int object from the byte array.
     _CHECK_READ(data, size, CPY_INT_TAG)
-    char *buf = ((BufferObject *)data)->buf;
-    PyObject *num = _PyLong_FromByteArray(
-        (unsigned char *)(buf + ((BufferObject *)data)->pos), size, 1, 0);
+    char *ptr = ((BufferObject *)data)->ptr;
+    PyObject *num = _PyLong_FromByteArray((unsigned char *)ptr, size, 1, 0);
     if (num == NULL)
         return CPY_INT_TAG;
-    ((BufferObject *)data)->pos += size;
+    ((BufferObject *)data)->ptr += size;
     if (sign) {
         PyObject *old = num;
         num = PyNumber_Negative(old);
@@ -640,7 +755,7 @@ read_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_READ_BUFFER(data, NULL)
     CPyTagged retval = read_int_internal(data);
     if (unlikely(retval == CPY_INT_TAG)) {
         return NULL;
@@ -748,7 +863,7 @@ write_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_WRITE_BUFFER(data, NULL)
     if (unlikely(!PyLong_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be an int");
         return NULL;
@@ -769,7 +884,8 @@ integer tag format (0 <= t <= 255):
 static uint8_t
 read_tag_internal(PyObject *data) {
     _CHECK_READ(data, 1, CPY_LL_UINT_ERROR)
-    uint8_t ret = _READ(data, uint8_t)
+    uint8_t ret;
+    _READ(&ret, data, uint8_t);
     return ret;
 }
 
@@ -781,7 +897,7 @@ read_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_READ_BUFFER(data, NULL)
     uint8_t retval = read_tag_internal(data);
     if (unlikely(retval == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         return NULL;
@@ -791,9 +907,8 @@ read_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
 
 static char
 write_tag_internal(PyObject *data, uint8_t value) {
-    _CHECK_SIZE(data, 1)
-    _WRITE(data, uint8_t, value)
-    ((BufferObject *)data)->end += 1;
+    _CHECK_WRITE(data, 1)
+    _WRITE(data, uint8_t, value);
     return CPY_NONE;
 }
 
@@ -806,7 +921,7 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
         return NULL;
     }
-    _CHECK_BUFFER(data, NULL)
+    _CHECK_WRITE_BUFFER(data, NULL)
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
@@ -854,18 +969,24 @@ NativeInternal_ABI_Version(void) {
 static int
 librt_internal_module_exec(PyObject *m)
 {
-    if (PyType_Ready(&BufferType) < 0) {
+    if (PyType_Ready(&ReadBufferType) < 0) {
         return -1;
     }
-    if (PyModule_AddObjectRef(m, "Buffer", (PyObject *) &BufferType) < 0) {
+    if (PyType_Ready(&WriteBufferType) < 0) {
+        return -1;
+    }
+    if (PyModule_AddObjectRef(m, "ReadBuffer", (PyObject *) &ReadBufferType) < 0) {
+        return -1;
+    }
+    if (PyModule_AddObjectRef(m, "WriteBuffer", (PyObject *) &WriteBufferType) < 0) {
         return -1;
     }
 
     // Export mypy internal C API, be careful with the order!
-    static void *NativeInternal_API[17] = {
-        (void *)Buffer_internal,
-        (void *)Buffer_internal_empty,
-        (void *)Buffer_getvalue_internal,
+    static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN] = {
+        (void *)ReadBuffer_internal,
+        (void *)WriteBuffer_internal_empty,
+        (void *)WriteBuffer_getvalue_internal,
         (void *)write_bool_internal,
         (void *)read_bool_internal,
         (void *)write_str_internal,
