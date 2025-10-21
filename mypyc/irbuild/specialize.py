@@ -31,7 +31,6 @@ from mypy.nodes import (
     StrExpr,
     SuperExpr,
     TupleExpr,
-    Var,
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
