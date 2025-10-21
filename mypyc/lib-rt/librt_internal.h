@@ -28,7 +28,7 @@ static uint8_t cache_version_internal(void);
 
 #else
 
-static void **NativeInternal_API;
+static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN];
 
 #define ReadBuffer_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[0])
 #define WriteBuffer_internal (*(PyObject* (*)(void)) NativeInternal_API[1])
@@ -55,9 +55,10 @@ import_librt_internal(void)
     if (mod == NULL)
         return -1;
     Py_DECREF(mod);  // we import just for the side effect of making the below work.
-    NativeInternal_API = (void **)PyCapsule_Import("librt.internal._C_API", 0);
-    if (NativeInternal_API == NULL)
+    void *capsule = PyCapsule_Import("librt.internal._C_API", 0);
+    if (capsule == NULL)
         return -1;
+    memcpy(NativeInternal_API, capsule, sizeof(NativeInternal_API));
     if (NativeInternal_ABI_Version() != LIBRT_INTERNAL_ABI_VERSION) {
         PyErr_SetString(PyExc_ValueError, "ABI version conflict for librt.internal");
         return -1;
