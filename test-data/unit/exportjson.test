@@ -278,3 +278,47 @@ x: X = 2
 [builtins fixtures/tuple.pyi]
 [out]
 <not checked>
+
+[case testExportMetaBasic_meta]
+import typing
+from typing_extensions import Final
+[builtins fixtures/tuple.pyi]
+[out]
+{
+    "id": "main",
+    "path": ...,
+    "mtime": ...,
+    "size": 49,
+    "hash": "db2252f953c889e6b78dde8e30bd241a0c86b2d9",
+    "data_mtime": ...,
+    "dependencies": [
+        "typing",
+        "typing_extensions",
+        "builtins"
+    ],
+    "suppressed": [],
+    "options": {
+        "other_options": "<hash>",
+        "platform": ...
+    },
+    "dep_prios": [
+        10,
+        5,
+        5
+    ],
+    "dep_lines": [
+        1,
+        2,
+        1
+    ],
+    "dep_hashes": [
+        "<hash>",
+        "<hash>",
+        "<hash>"
+    ],
+    "interface_hash": "<hash>",
+    "error_lines": [],
+    "version_id": ...,
+    "ignore_all": false,
+    "plugin_data": null
+}
