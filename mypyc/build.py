@@ -588,6 +588,7 @@ def mypycify(
     build_dir = compiler_options.target_dir
 
     cflags: list[str] = []
+    opt_level = 3
     if compiler.compiler_type == "unix":
         cflags += [
             f"-O{opt_level}",

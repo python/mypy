@@ -5450,3 +5450,34 @@ def test_read_corrupted_data() -> None:
             print("RANDOMIZED TEST FAILURE -- please open an issue with the following context:")
             print(">>>", e, data)
             raise
+
+
+
+[case testXXX_librt_internal]
+from librt.internal import WriteBuffer, ReadBuffer, write_int, read_int
+
+import time
+
+
+def bench(data: bytes, n: int) -> None:
+    for i in range(100 * 1000):
+        b = ReadBuffer(data)
+        for i in range(n):
+            read_int(b)
+
+
+w = WriteBuffer()
+N = 1000
+for i in range(N):
+    write_int(w, i & 63)
+
+d = w.getvalue()
+
+bench(d, N)
+
+def test_foo() -> None:
+    t0 = time.time()
+    bench(d, N)
+    print("===>", time.time() - t0)
+    print()
+    assert False
