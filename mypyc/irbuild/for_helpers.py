@@ -455,7 +455,7 @@ def make_for_loop_generator(
 
     if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
         num_args = len(expr.args)
-        
+
         if is_range_ref(expr.callee) and set(expr.arg_kinds) == {ARG_POS}:
             if num_args <= 2 or (num_args == 3 and builder.extract_int(expr.args[2]) is not None):
                 # Special case "for x in range(...)".
@@ -470,12 +470,12 @@ def make_for_loop_generator(
                     start_reg = builder.accept(expr.args[0])
                     end_reg = builder.accept(expr.args[1])
                     step = 1 if num_args == 2 else builder.extract_int(expr.args[2])
-                
+
                 if step:
                     for_range = ForRange(builder, index, body_block, loop_exit, line, nested)
                     for_range.init(start_reg, end_reg, step)
                     return for_range
-            
+
                 # If we could not constant fold `step`, we just fallback to calling stdlib implementation
 
         elif (
