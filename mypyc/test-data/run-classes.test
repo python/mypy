@@ -2721,6 +2721,8 @@ from librt.internal import (
     cache_version,
 )
 
+from testutil import assertRaises
+
 Tag = u8
 TAG_A: Final[Tag] = 33
 TAG_B: Final[Tag] = 255
@@ -2732,6 +2734,17 @@ def test_buffer_basic() -> None:
     write_str(w, "foo")
     r = ReadBuffer(w.getvalue())
     assert read_str(r) == "foo"
+
+def test_buffer_grow() -> None:
+    w = WriteBuffer()
+    n = 100 * 1000
+    for i in range(n):
+        write_int(w, i & 63)
+    r = ReadBuffer(w.getvalue())
+    for i in range(n):
+        assert read_int(r) == (i & 63)
+    with assertRaises(ValueError):
+        read_int(r)
 
 def test_buffer_roundtrip() -> None:
     b: WriteBuffer | ReadBuffer
@@ -2863,6 +2876,7 @@ def test_buffer_str_size() -> None:
 from native import *
 
 test_buffer_basic()
+test_buffer_grow()
 test_buffer_roundtrip()
 test_buffer_int_size()
 test_buffer_str_size()

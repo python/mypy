@@ -298,7 +298,7 @@ _check_size(WriteBufferObject *data, Py_ssize_t need) {
         return CPY_NONE;
     Py_ssize_t index = data->ptr - data->buf;
     Py_ssize_t target = index + need;
-    Py_ssize_t size = data->end - data->ptr;
+    Py_ssize_t size = data->end - data->buf;
     do {
         size *= 2;
     } while (target >= size);
