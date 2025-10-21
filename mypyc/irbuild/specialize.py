@@ -776,6 +776,9 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             elif isinstance(item, CallExpr):
                 format_ops.append(FormatOp.STR)
                 exprs.append(item.args[0])
+            else:
+                format_ops.append(FormatOp.STR)
+                exprs.append(item)
 
         def get_literal_str(expr: Expression) -> str | None:
             if isinstance(expr, StrExpr):
