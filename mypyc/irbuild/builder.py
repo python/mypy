@@ -385,11 +385,7 @@ class IRBuilder:
         opt_value_none_rare: bool = False,
     ) -> None:
         self.builder.add_bool_branch(
-            value,
-            true,
-            false,
-            rare=rare,
-            opt_value_none_rare=opt_value_none_rare,
+            value, true, false, rare=rare, opt_value_none_rare=opt_value_none_rare
         )
 
     def load_native_type_object(self, fullname: str) -> Value:
