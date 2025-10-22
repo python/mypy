@@ -1034,24 +1034,43 @@ _program.py:17: note: Revealed type is "builtins.str"
 # Test that TypedDict get plugin works with typeshed stubs
 from typing import TypedDict
 class A: pass
-D = TypedDict('D', {'x': int, 'y': str})
-d: D
-reveal_type(d.get('x'))
-reveal_type(d.get('y'))
-reveal_type(d.get('z'))
-d.get()
-s = ''
-reveal_type(d.get(s))
+D_total = TypedDict('D_total', {'x': int, 'y': str}, total=True)
+D_not_total = TypedDict('D_not_total', {'x': int, 'y': str}, total=False)
+
+def test_total(d: D_total) -> None:
+    reveal_type(d.get('x'))
+    reveal_type(d.get('y'))
+    reveal_type(d.get('z'))
+    d.get()
+    s = ''
+    reveal_type(d.get(s))
+
+def test_not_total(d: D_not_total) -> None:
+    reveal_type(d.get('x'))
+    reveal_type(d.get('y'))
+    reveal_type(d.get('z'))
+    d.get()
+    s = ''
+    reveal_type(d.get(s))
 [out]
-_testTypedDictGet.py:6: note: Revealed type is "Union[builtins.int, None]"
-_testTypedDictGet.py:7: note: Revealed type is "Union[builtins.str, None]"
-_testTypedDictGet.py:8: note: Revealed type is "builtins.object"
-_testTypedDictGet.py:9: error: All overload variants of "get" of "Mapping" require at least one argument
-_testTypedDictGet.py:9: note: Possible overload variants:
-_testTypedDictGet.py:9: note:     def get(self, str, /) -> object
-_testTypedDictGet.py:9: note:     def get(self, str, /, default: object) -> object
-_testTypedDictGet.py:9: note:     def [_T] get(self, str, /, default: _T) -> object
-_testTypedDictGet.py:11: note: Revealed type is "builtins.object"
+_testTypedDictGet.py:8: note: Revealed type is "builtins.int"
+_testTypedDictGet.py:9: note: Revealed type is "builtins.str"
+_testTypedDictGet.py:10: note: Revealed type is "builtins.object"
+_testTypedDictGet.py:11: error: All overload variants of "get" of "Mapping" require at least one argument
+_testTypedDictGet.py:11: note: Possible overload variants:
+_testTypedDictGet.py:11: note:     def get(self, str, /) -> object
+_testTypedDictGet.py:11: note:     def get(self, str, /, default: object) -> object
+_testTypedDictGet.py:11: note:     def [_T] get(self, str, /, default: _T) -> object
+_testTypedDictGet.py:13: note: Revealed type is "builtins.object"
+_testTypedDictGet.py:16: note: Revealed type is "Union[builtins.int, None]"
+_testTypedDictGet.py:17: note: Revealed type is "Union[builtins.str, None]"
+_testTypedDictGet.py:18: note: Revealed type is "builtins.object"
+_testTypedDictGet.py:19: error: All overload variants of "get" of "Mapping" require at least one argument
+_testTypedDictGet.py:19: note: Possible overload variants:
+_testTypedDictGet.py:19: note:     def get(self, str, /) -> object
+_testTypedDictGet.py:19: note:     def get(self, str, /, default: object) -> object
+_testTypedDictGet.py:19: note:     def [_T] get(self, str, /, default: _T) -> object
+_testTypedDictGet.py:21: note: Revealed type is "builtins.object"
 
 [case testTypedDictMappingMethods]
 from typing import TypedDict

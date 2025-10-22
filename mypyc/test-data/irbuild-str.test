@@ -740,3 +740,34 @@ L2:
 L3:
     keep_alive x
     return r2
+
+[case testStrEqLiteral]
+from typing import Final
+literal: Final = "literal"
+def literal_rhs(x: str) -> bool:
+    return x == literal
+def literal_lhs(x: str) -> bool:
+    return literal == x
+def literal_both() -> bool:
+    return literal == "literal"
+[out]
+def literal_rhs(x):
+    x, r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'literal'
+    r1 = CPyStr_EqualLiteral(x, r0, 7)
+    return r1
+def literal_lhs(x):
+    x, r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'literal'
+    r1 = CPyStr_EqualLiteral(x, r0, 7)
+    return r1
+def literal_both():
+    r0, r1 :: str
+L0:
+    r0 = 'literal'
+    r1 = 'literal'
+    return 1
