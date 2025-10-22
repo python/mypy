@@ -558,7 +558,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     # Special case some int ops to allow borrowing operands.
     if is_int_rprimitive(ltype) and is_int_rprimitive(rtype):
         if expr.op == "//":
-            expr = try_optimize_int_floor_divide(expr)
+            expr = try_optimize_int_floor_divide(builder, expr)
         if expr.op in int_borrow_friendly_op:
             borrow_left = is_borrow_friendly_expr(builder, expr.right)
             borrow_right = True
@@ -571,11 +571,11 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     return builder.binary_op(left, right, expr.op, expr.line)
 
 
-def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:
+def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
     """Replace // with a power of two with a right shift, if possible."""
-    if not isinstance(expr.right, IntExpr):
+    divisor = constant_fold_expr(builder, expr.right)
+    if not isinstance(divisor, int):
         return expr
-    divisor = expr.right.value
     shift = divisor.bit_length() - 1
     if 0 < shift < 28 and divisor == (1 << shift):
         return OpExpr(">>", expr.left, IntExpr(shift))
@@ -590,8 +590,12 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
 
     base = builder.accept(expr.base, can_borrow=can_borrow_base)
 
-    if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
-        return builder.add(TupleGet(base, index.value, expr.line))
+    if isinstance(base.type, RTuple):
+        folded_index = constant_fold_expr(builder, index)
+        if isinstance(folded_index, int):
+            length = len(base.type.types)
+            if -length <= folded_index <= length - 1:
+                return builder.add(TupleGet(base, folded_index, expr.line))
 
     if isinstance(index, SliceExpr):
         value = try_gen_slice_op(builder, base, index)

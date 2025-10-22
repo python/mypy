@@ -2,8 +2,8 @@
 #include <Python.h>
 #include <stdint.h>
 #include "CPy.h"
-#define NATIVE_INTERNAL_MODULE
-#include "native_internal.h"
+#define LIBRT_INTERNAL_MODULE
+#include "librt_internal.h"
 
 #define START_SIZE 512
 #define MAX_SHORT_INT_TAGGED (255 << 1)
@@ -70,12 +70,14 @@ Buffer_init_internal(BufferObject *self, PyObject *source) {
             PyErr_SetString(PyExc_TypeError, "source must be a bytes object");
             return -1;
         }
-        self->size = PyBytes_GET_SIZE(source);
-        self->end = self->size;
+        self->end = PyBytes_GET_SIZE(source);
+        // Allocate at least one byte to simplify resizing logic.
+        // The original bytes buffer has last null byte, so this is safe.
+        self->size = self->end + 1;
         // This returns a pointer to internal bytes data, so make our own copy.
         char *buf = PyBytes_AsString(source);
         self->buf = PyMem_Malloc(self->size);
-        memcpy(self->buf, buf, self->size);
+        memcpy(self->buf, buf, self->end);
     } else {
         self->buf = PyMem_Malloc(START_SIZE);
         self->size = START_SIZE;
@@ -345,6 +347,100 @@ write_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
 }
 
 /*
+bytes format: size followed by bytes
+    short bytes (len <= 127): single byte for size as `(uint8_t)size << 1`
+    long bytes: \x01 followed by size as Py_ssize_t
+*/
+
+static PyObject*
+read_bytes_internal(PyObject *data) {
+    _CHECK_BUFFER(data, NULL)
+
+    // Read length.
+    Py_ssize_t size;
+    _CHECK_READ(data, 1, NULL)
+    uint8_t first = _READ(data, uint8_t)
+    if (likely(first != LONG_STR_TAG)) {
+        // Common case: short bytes (len <= 127).
+        size = (Py_ssize_t)(first >> 1);
+    } else {
+        _CHECK_READ(data, sizeof(CPyTagged), NULL)
+        size = _READ(data, Py_ssize_t)
+    }
+    // Read bytes content.
+    char *buf = ((BufferObject *)data)->buf;
+    _CHECK_READ(data, size, NULL)
+    PyObject *res = PyBytes_FromStringAndSize(
+        buf + ((BufferObject *)data)->pos, (Py_ssize_t)size
+    );
+    if (unlikely(res == NULL))
+        return NULL;
+    ((BufferObject *)data)->pos += size;
+    return res;
+}
+
+static PyObject*
+read_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", 0};
+    static CPyArg_Parser parser = {"O:read_bytes", kwlist, 0};
+    PyObject *data;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsOneArg(args, nargs, kwnames, &parser, &data))) {
+        return NULL;
+    }
+    return read_bytes_internal(data);
+}
+
+static char
+write_bytes_internal(PyObject *data, PyObject *value) {
+    _CHECK_BUFFER(data, CPY_NONE_ERROR)
+
+    const char *chunk = PyBytes_AsString(value);
+    if (unlikely(chunk == NULL))
+        return CPY_NONE_ERROR;
+    Py_ssize_t size = PyBytes_GET_SIZE(value);
+
+    Py_ssize_t need;
+    // Write length.
+    if (likely(size <= MAX_SHORT_LEN)) {
+        // Common case: short bytes (len <= 127) store as single byte.
+        need = size + 1;
+        _CHECK_SIZE(data, need)
+        _WRITE(data, uint8_t, (uint8_t)size << 1)
+    } else {
+        need = size + sizeof(Py_ssize_t) + 1;
+        _CHECK_SIZE(data, need)
+        _WRITE(data, uint8_t, LONG_STR_TAG)
+        _WRITE(data, Py_ssize_t, size)
+    }
+    // Write bytes content.
+    char *buf = ((BufferObject *)data)->buf;
+    memcpy(buf + ((BufferObject *)data)->pos, chunk, size);
+    ((BufferObject *)data)->pos += size;
+    ((BufferObject *)data)->end += need;
+    return CPY_NONE;
+}
+
+static PyObject*
+write_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+    static const char * const kwlist[] = {"data", "value", 0};
+    static CPyArg_Parser parser = {"OO:write_bytes", kwlist, 0};
+    PyObject *data;
+    PyObject *value;
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+        return NULL;
+    }
+    if (unlikely(!PyBytes_Check(value))) {
+        PyErr_SetString(PyExc_TypeError, "value must be a bytes object");
+        return NULL;
+    }
+    if (unlikely(write_bytes_internal(data, value) == CPY_NONE_ERROR)) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*
 float format:
     stored as a C double
 */
@@ -558,11 +654,13 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     return Py_None;
 }
 
-static PyMethodDef native_internal_module_methods[] = {
+static PyMethodDef librt_internal_module_methods[] = {
     {"write_bool", (PyCFunction)write_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a bool")},
     {"read_bool", (PyCFunction)read_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a bool")},
     {"write_str", (PyCFunction)write_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a string")},
     {"read_str", (PyCFunction)read_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a string")},
+    {"write_bytes", (PyCFunction)write_bytes, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write bytes")},
+    {"read_bytes", (PyCFunction)read_bytes, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read bytes")},
     {"write_float", (PyCFunction)write_float, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a float")},
     {"read_float", (PyCFunction)read_float, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a float")},
     {"write_int", (PyCFunction)write_int, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write an int")},
@@ -574,11 +672,11 @@ static PyMethodDef native_internal_module_methods[] = {
 
 static int
 NativeInternal_ABI_Version(void) {
-    return NATIVE_INTERNAL_ABI_VERSION;
+    return LIBRT_INTERNAL_ABI_VERSION;
 }
 
 static int
-native_internal_module_exec(PyObject *m)
+librt_internal_module_exec(PyObject *m)
 {
     if (PyType_Ready(&BufferType) < 0) {
         return -1;
@@ -588,7 +686,7 @@ native_internal_module_exec(PyObject *m)
     }
 
     // Export mypy internal C API, be careful with the order!
-    static void *NativeInternal_API[14] = {
+    static void *NativeInternal_API[16] = {
         (void *)Buffer_internal,
         (void *)Buffer_internal_empty,
         (void *)Buffer_getvalue_internal,
@@ -603,33 +701,35 @@ native_internal_module_exec(PyObject *m)
         (void *)write_tag_internal,
         (void *)read_tag_internal,
         (void *)NativeInternal_ABI_Version,
+        (void *)write_bytes_internal,
+        (void *)read_bytes_internal,
     };
-    PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "native_internal._C_API", NULL);
+    PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "librt.internal._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
     return 0;
 }
 
-static PyModuleDef_Slot native_internal_module_slots[] = {
-    {Py_mod_exec, native_internal_module_exec},
+static PyModuleDef_Slot librt_internal_module_slots[] = {
+    {Py_mod_exec, librt_internal_module_exec},
 #ifdef Py_MOD_GIL_NOT_USED
     {Py_mod_gil, Py_MOD_GIL_NOT_USED},
 #endif
     {0, NULL}
 };
 
-static PyModuleDef native_internal_module = {
+static PyModuleDef librt_internal_module = {
     .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "native_internal",
+    .m_name = "internal",
     .m_doc = "Mypy cache serialization utils",
     .m_size = 0,
-    .m_methods = native_internal_module_methods,
-    .m_slots = native_internal_module_slots,
+    .m_methods = librt_internal_module_methods,
+    .m_slots = librt_internal_module_slots,
 };
 
 PyMODINIT_FUNC
-PyInit_native_internal(void)
+PyInit_internal(void)
 {
-    return PyModuleDef_Init(&native_internal_module);
+    return PyModuleDef_Init(&librt_internal_module);
 }

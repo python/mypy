@@ -694,37 +694,46 @@ L0:
     return r1
 def test():
     r0, source :: tuple[int, int, int]
-    r1 :: list
-    r2, r3, r4 :: object
-    r5, x :: int
-    r6 :: bool
-    r7 :: object
-    r8 :: i32
-    r9, r10 :: bit
-    r11, a :: tuple
+    r1, r2, r3 :: int
+    r4, r5, r6 :: object
+    r7, r8 :: tuple
+    r9 :: native_int
+    r10 :: bit
+    r11 :: object
+    r12, x :: int
+    r13 :: bool
+    r14 :: object
+    r15 :: native_int
+    a :: tuple
 L0:
     r0 = (2, 4, 6)
     source = r0
-    r1 = PyList_New(0)
-    r2 = box(tuple[int, int, int], source)
-    r3 = PyObject_GetIter(r2)
+    r1 = source[0]
+    r2 = source[1]
+    r3 = source[2]
+    r4 = box(int, r1)
+    r5 = box(int, r2)
+    r6 = box(int, r3)
+    r7 = PyTuple_Pack(3, r4, r5, r6)
+    r8 = PyTuple_New(3)
+    r9 = 0
+    goto L2
 L1:
-    r4 = PyIter_Next(r3)
-    if is_error(r4) goto L4 else goto L2
+    r10 = r9 < 3 :: signed
+    if r10 goto L2 else goto L4 :: bool
 L2:
-    r5 = unbox(int, r4)
-    x = r5
-    r6 = f(x)
-    r7 = box(bool, r6)
-    r8 = PyList_Append(r1, r7)
-    r9 = r8 >= 0 :: signed
+    r11 = CPySequenceTuple_GetItemUnsafe(r7, r9)
+    r12 = unbox(int, r11)
+    x = r12
+    r13 = f(x)
+    r14 = box(bool, r13)
+    CPySequenceTuple_SetItemUnsafe(r8, r9, r14)
 L3:
+    r15 = r9 + 1
+    r9 = r15
     goto L1
 L4:
-    r10 = CPy_NoErrOccurred()
-L5:
-    r11 = PyList_AsTuple(r1)
-    a = r11
+    a = r8
     return 1
 
 [case testTupleBuiltFromFinalFixedLengthTuple]
@@ -746,43 +755,52 @@ L0:
     r1 = int_eq r0, 0
     return r1
 def test():
-    r0 :: list
-    r1 :: tuple[int, int, int]
-    r2 :: bool
-    r3, r4, r5 :: object
-    r6, x :: int
-    r7 :: bool
-    r8 :: object
-    r9 :: i32
-    r10, r11 :: bit
-    r12, a :: tuple
+    r0 :: tuple[int, int, int]
+    r1 :: bool
+    r2, r3, r4 :: int
+    r5, r6, r7 :: object
+    r8, r9 :: tuple
+    r10 :: native_int
+    r11 :: bit
+    r12 :: object
+    r13, x :: int
+    r14 :: bool
+    r15 :: object
+    r16 :: native_int
+    a :: tuple
 L0:
-    r0 = PyList_New(0)
-    r1 = __main__.source :: static
-    if is_error(r1) goto L1 else goto L2
+    r0 = __main__.source :: static
+    if is_error(r0) goto L1 else goto L2
 L1:
-    r2 = raise NameError('value for final name "source" was not set')
+    r1 = raise NameError('value for final name "source" was not set')
     unreachable
 L2:
-    r3 = box(tuple[int, int, int], r1)
-    r4 = PyObject_GetIter(r3)
+    r2 = r0[0]
+    r3 = r0[1]
+    r4 = r0[2]
+    r5 = box(int, r2)
+    r6 = box(int, r3)
+    r7 = box(int, r4)
+    r8 = PyTuple_Pack(3, r5, r6, r7)
+    r9 = PyTuple_New(3)
+    r10 = 0
+    goto L4
 L3:
-    r5 = PyIter_Next(r4)
-    if is_error(r5) goto L6 else goto L4
+    r11 = r10 < 3 :: signed
+    if r11 goto L4 else goto L6 :: bool
 L4:
-    r6 = unbox(int, r5)
-    x = r6
-    r7 = f(x)
-    r8 = box(bool, r7)
-    r9 = PyList_Append(r0, r8)
-    r10 = r9 >= 0 :: signed
+    r12 = CPySequenceTuple_GetItemUnsafe(r8, r10)
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = f(x)
+    r15 = box(bool, r14)
+    CPySequenceTuple_SetItemUnsafe(r9, r10, r15)
 L5:
+    r16 = r10 + 1
+    r10 = r16
     goto L3
 L6:
-    r11 = CPy_NoErrOccurred()
-L7:
-    r12 = PyList_AsTuple(r0)
-    a = r12
+    a = r9
     return 1
 
 [case testTupleBuiltFromVariableLengthTuple]

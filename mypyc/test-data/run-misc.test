@@ -1173,3 +1173,26 @@ def test_dummy_context() -> None:
     with c:
         assert c.c == 1
     assert c.c == 0
+
+[case testIsInstanceTuple]
+from typing import Any
+
+def isinstance_empty(x: Any) -> bool:
+    return isinstance(x, ())
+def isinstance_single(x: Any) -> bool:
+    return isinstance(x, (str,))
+def isinstance_multi(x: Any) -> bool:
+    return isinstance(x, (str, int))
+
+def test_isinstance_empty() -> None:
+    assert isinstance_empty("a") is False
+    assert isinstance_empty(1) is False
+    assert isinstance_empty(None) is False
+def test_isinstance_single() -> None:
+    assert isinstance_single("a") is True
+    assert isinstance_single(1) is False
+    assert isinstance_single(None) is False
+def test_isinstance_multi() -> None:
+    assert isinstance_multi("a") is True
+    assert isinstance_multi(1) is True
+    assert isinstance_multi(None) is False
