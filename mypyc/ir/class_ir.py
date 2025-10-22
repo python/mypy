@@ -237,6 +237,16 @@ class ClassIR:
     def fullname(self) -> str:
         return f"{self.module_name}.{self.name}"
 
+    @property
+    def allow_interpreted_subclasses(self) -> bool:
+        return (
+            self._allow_interpreted_subclasses or not self.is_ext_class and not self.is_final_class
+        )
+
+    @allow_interpreted_subclasses.setter
+    def allow_interpreted_subclasses(self, value: bool) -> None:
+        self._allow_interpreted_subclasses = value
+
     def real_base(self) -> ClassIR | None:
         """Return the actual concrete base class, if there is one."""
         if len(self.mro) > 1 and not self.mro[1].is_trait:
@@ -345,11 +355,10 @@ class ClassIR:
             return None
         result = set(self.children)
         for child in self.children:
-            if child.children:
-                child_subs = child.subclasses()
-                if child_subs is None:
-                    return None
-                result.update(child_subs)
+            child_subs = child.subclasses()
+            if child_subs is None:
+                return None
+            result.update(child_subs)
         return result
 
     def concrete_subclasses(self) -> list[ClassIR] | None:
@@ -381,7 +390,7 @@ class ClassIR:
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
-            "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
+            "allow_interpreted_subclasses": self._allow_interpreted_subclasses,
             "needs_getseters": self.needs_getseters,
             "_serializable": self._serializable,
             "builtin_base": self.builtin_base,
