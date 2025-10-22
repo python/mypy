@@ -58,7 +58,6 @@ from mypyc.ir.rtypes import (
     is_fixed_width_rtype,
     is_immutable_rprimitive,
     is_int_rprimitive,
-    is_int16_rprimitive,
     is_list_rprimitive,
     is_sequence_rprimitive,
     is_short_int_rprimitive,
@@ -466,7 +465,8 @@ def make_for_loop_generator(
             # dynamically determining which direction of comparison to do.
             # If we cannot constant fold `step`, we just fallback to stdlib range.
             if num_args <= 2 or (
-                num_args == 3 and (
+                num_args == 3
+                and (
                     builder.extract_int(expr.args[2])
                     or expr_value_is_inspectable(builder, expr.args[2])
                 )
@@ -481,9 +481,11 @@ def make_for_loop_generator(
                     step = (
                         1
                         if num_args == 2
-                        else expr.args[2]
-                        if expr_value_is_inspectable(builder, expr.args[2])
-                        else cast(int, builder.extract_int(expr.args[2]))
+                        else (
+                            expr.args[2]
+                            if expr_value_is_inspectable(builder, expr.args[2])
+                            else cast(int, builder.extract_int(expr.args[2]))
+                        )
                     )
 
                 for_range = ForRange(builder, index, body_block, loop_exit, line, nested)
@@ -1054,7 +1056,7 @@ class ForDictionaryItems(ForDictionaryCommon):
 def expr_value_is_inspectable(builder: IRBuilder, expr: Expression) -> bool:
     """
     Return True if we can call buidler.accept(expr) with NO side effects.
-    
+
     This is useful so we can call `builder.accept` twice on the same Expression
     in order to perform some sort of runtime check on its value BEFORE the place
     in the code where we actually intend to accept it.
@@ -1070,9 +1072,8 @@ def expr_value_is_inspectable(builder: IRBuilder, expr: Expression) -> bool:
     if isinstance(expr, RefExpr):
         return True
     if isinstance(expr, OpExpr):
-        return (
-            expr_value_is_inspectable(builder, expr.left)
-            and expr_value_is_inspectable(builder, expr.right)
+        return expr_value_is_inspectable(builder, expr.left) and expr_value_is_inspectable(
+            builder, expr.right
         )
     # TODO: extend me with some more Expression subtypes
     return False
@@ -1104,9 +1105,7 @@ class ForRange(ForGenerator):
             builder.activate_block(zero_block)
             builder.add(
                 RaiseStandardError(
-                    RaiseStandardError.VALUE_ERROR,
-                    "range() arg 3 must not be zero",
-                    self.line,
+                    RaiseStandardError.VALUE_ERROR, "range() arg 3 must not be zero", self.line
                 )
             )
 
@@ -1143,7 +1142,7 @@ class ForRange(ForGenerator):
         elif isinstance(self.step, Value):
             index_val = builder.read(self.index_reg, line)
             end_target = builder.read(self.end_target, line)
-            
+
             # Dynamic step: determine sign at runtime and branch accordingly
             # NOTE step can't be zero here: we have already checked that step != 0 before constructing ForRange
             # so at runtime, step is either positive or negative
@@ -1151,7 +1150,9 @@ class ForRange(ForGenerator):
             negative_step_block = BasicBlock()
 
             # Check if step > 0
-            builder.add_bool_branch(self.step_is_positive, positive_step_block, negative_step_block)
+            builder.add_bool_branch(
+                self.step_is_positive, positive_step_block, negative_step_block
+            )
 
             # Positive step: index < end
             builder.activate_block(positive_step_block)
@@ -1176,16 +1177,12 @@ class ForRange(ForGenerator):
             self.end_reg.type
         ):
             new_val = builder.int_op(
-                short_int_rprimitive,
-                index_val,
-                self.step_value,
-                IntOp.ADD,
-                line,
+                short_int_rprimitive, index_val, self.step_value, IntOp.ADD, line
             )
 
         else:
             new_val = builder.binary_op(index_val, self.step_value, "+", line)
-        
+
         builder.assign(self.index_reg, new_val, line)
         builder.assign(self.index_target, new_val, line)
 
