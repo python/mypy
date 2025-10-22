@@ -51,6 +51,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    callable_with_ellipsis,
     find_unpack_in_list,
     get_proper_type,
     split_with_prefix_and_suffix,
@@ -546,6 +547,15 @@ class PatternChecker(PatternVisitor[PatternType]):
             return self.early_non_match()
         elif isinstance(p_typ, FunctionLike) and p_typ.is_type_obj():
             typ = fill_typevars_with_any(p_typ.type_object())
+        elif (
+            isinstance(type_info, Var)
+            and type_info.type is not None
+            and type_info.fullname == "typing.Callable"
+        ):
+            # Create a `Callable[..., Any]`
+            fallback = self.chk.named_type("builtins.function")
+            any_type = AnyType(TypeOfAny.unannotated)
+            typ = callable_with_ellipsis(any_type, ret_type=any_type, fallback=fallback)
         elif not isinstance(p_typ, AnyType):
             self.msg.fail(
                 message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(

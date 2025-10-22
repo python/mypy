@@ -1794,7 +1794,9 @@ class SemanticAnalyzer(
             if self.is_defined_type_param(p.name):
                 self.fail(f'"{p.name}" already defined as a type parameter', context)
             else:
-                self.add_symbol(p.name, tv, context, no_progress=True, type_param=True)
+                assert self.add_symbol(
+                    p.name, tv, context, no_progress=True, type_param=True
+                ), "Type parameter should not be discarded"
 
         return tvs
 
@@ -6830,6 +6832,7 @@ class SemanticAnalyzer(
             else:
                 # see note in docstring describing None contexts
                 self.defer()
+
         if (
             existing is not None
             and context is not None
@@ -6849,7 +6852,9 @@ class SemanticAnalyzer(
                     self.add_redefinition(names, name, symbol)
                 if not (isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
-        elif name not in self.missing_names[-1] and "*" not in self.missing_names[-1]:
+        elif type_param or (
+            name not in self.missing_names[-1] and "*" not in self.missing_names[-1]
+        ):
             names[name] = symbol
             if not no_progress:
                 self.progress = True
