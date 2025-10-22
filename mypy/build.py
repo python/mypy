@@ -25,21 +25,11 @@ import sys
 import time
 import types
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    NamedTuple,
-    NoReturn,
-    TextIO,
-    TypedDict,
-)
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Final, NoReturn, TextIO, TypedDict
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.semanal_main
-from mypy.cache import Buffer
+from mypy.cache import Buffer, CacheMeta
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -55,6 +45,7 @@ from mypy.util import (
     decode_python_encoding,
     get_mypy_comments,
     hash_digest,
+    hash_digest_bytes,
     is_stub_package_file,
     is_sub_path_normabs,
     is_typeshed_file,
@@ -349,28 +340,6 @@ def normpath(path: str, options: Options) -> str:
         return os.path.abspath(path)
 
 
-class CacheMeta(NamedTuple):
-    id: str
-    path: str
-    mtime: int
-    size: int
-    hash: str
-    dependencies: list[str]  # names of imported modules
-    data_mtime: int  # mtime of data_json
-    data_json: str  # path of <id>.data.json
-    suppressed: list[str]  # dependencies that weren't imported
-    options: dict[str, object] | None  # build options
-    # dep_prios and dep_lines are in parallel with dependencies + suppressed
-    dep_prios: list[int]
-    dep_lines: list[int]
-    dep_hashes: list[str]
-    interface_hash: str  # hash representing the public interface
-    error_lines: list[str]
-    version_id: str  # mypy version for cache invalidation
-    ignore_all: bool  # if errors were ignored
-    plugin_data: Any  # config data from plugins
-
-
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
 # silent mode or simply not found.
@@ -380,36 +349,6 @@ class CacheMeta(NamedTuple):
 class FgDepMeta(TypedDict):
     path: str
     mtime: int
-
-
-def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
-    """Build a CacheMeta object from a json metadata dictionary
-
-    Args:
-      meta: JSON metadata read from the metadata cache file
-      data_json: Path to the .data.json file containing the AST trees
-    """
-    sentinel: Any = None  # Values to be validated by the caller
-    return CacheMeta(
-        meta.get("id", sentinel),
-        meta.get("path", sentinel),
-        int(meta["mtime"]) if "mtime" in meta else sentinel,
-        meta.get("size", sentinel),
-        meta.get("hash", sentinel),
-        meta.get("dependencies", []),
-        int(meta["data_mtime"]) if "data_mtime" in meta else sentinel,
-        data_json,
-        meta.get("suppressed", []),
-        meta.get("options"),
-        meta.get("dep_prios", []),
-        meta.get("dep_lines", []),
-        meta.get("dep_hashes", []),
-        meta.get("interface_hash", ""),
-        meta.get("error_lines", []),
-        meta.get("version_id", sentinel),
-        meta.get("ignore_all", True),
-        meta.get("plugin_data", None),
-    )
 
 
 # Priorities used for imports.  (Here, top-level includes inside a class.)
@@ -1234,7 +1173,7 @@ def _load_json_file(
     try:
         t1 = time.time()
         result = json_loads(data)
-        manager.add_stats(data_json_load_time=time.time() - t1)
+        manager.add_stats(data_file_load_time=time.time() - t1)
     except json.JSONDecodeError:
         manager.errors.set_file(file, None, manager.options)
         manager.errors.report(
@@ -1313,8 +1252,8 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
       options: build options
 
     Returns:
-      A tuple with the file names to be used for the meta JSON, the
-      data JSON, and the fine-grained deps JSON, respectively.
+      A tuple with the file names to be used for the meta file, the
+      data file, and the fine-grained deps JSON, respectively.
     """
     if options.cache_map:
         pair = options.cache_map.get(normpath(path, options))
@@ -1338,9 +1277,11 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
         deps_json = prefix + ".deps.json"
     if options.fixed_format_cache:
         data_suffix = ".data.ff"
+        meta_suffix = ".meta.ff"
     else:
         data_suffix = ".data.json"
-    return prefix + ".meta.json", prefix + data_suffix, deps_json
+        meta_suffix = ".meta.json"
+    return prefix + meta_suffix, prefix + data_suffix, deps_json
 
 
 def options_snapshot(id: str, manager: BuildManager) -> dict[str, object]:
@@ -1369,47 +1310,50 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json, _ = get_cache_names(id, path, manager.options)
-    manager.trace(f"Looking for {id} at {meta_json}")
+    meta_file, data_file, _ = get_cache_names(id, path, manager.options)
+    manager.trace(f"Looking for {id} at {meta_file}")
+    meta: bytes | dict[str, Any] | None
     t0 = time.time()
-    meta = _load_json_file(
-        meta_json, manager, log_success=f"Meta {id} ", log_error=f"Could not load cache for {id}: "
-    )
+    if manager.options.fixed_format_cache:
+        meta = _load_ff_file(meta_file, manager, log_error=f"Could not load cache for {id}: ")
+        if meta is None:
+            return None
+    else:
+        meta = _load_json_file(
+            meta_file,
+            manager,
+            log_success=f"Meta {id} ",
+            log_error=f"Could not load cache for {id}: ",
+        )
+        if meta is None:
+            return None
+        if not isinstance(meta, dict):
+            manager.log(  # type: ignore[unreachable]
+                f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}"
+            )
+            return None
     t1 = time.time()
-    if meta is None:
+    if isinstance(meta, bytes):
+        data_io = Buffer(meta)
+        m = CacheMeta.read(data_io, data_file)
+    else:
+        m = CacheMeta.deserialize(meta, data_file)
+    if m is None:
+        manager.log(f"Metadata abandoned for {id}: attributes are missing")
         return None
-    if not isinstance(meta, dict):
-        manager.log(f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}")  # type: ignore[unreachable]
-        return None
-    m = cache_meta_from_dict(meta, data_json)
     t2 = time.time()
     manager.add_stats(
         load_meta_time=t2 - t0, load_meta_load_time=t1 - t0, load_meta_from_dict_time=t2 - t1
     )
 
-    # Don't check for path match, that is dealt with in validate_meta().
-    #
-    # TODO: these `type: ignore`s wouldn't be necessary
-    # if the type annotations for CacheMeta were more accurate
-    # (all of these attributes can be `None`)
-    if (
-        m.id != id
-        or m.mtime is None  # type: ignore[redundant-expr]
-        or m.size is None  # type: ignore[redundant-expr]
-        or m.dependencies is None  # type: ignore[redundant-expr]
-        or m.data_mtime is None
-    ):
-        manager.log(f"Metadata abandoned for {id}: attributes are missing")
+    # Ignore cache if generated by an older mypy version.
+    if m.version_id != manager.version_id and not manager.options.skip_version_check:
+        manager.log(f"Metadata abandoned for {id}: different mypy version")
         return None
 
-    # Ignore cache if generated by an older mypy version.
-    if (
-        (m.version_id != manager.version_id and not manager.options.skip_version_check)
-        or m.options is None
-        or len(m.dependencies) + len(m.suppressed) != len(m.dep_prios)
-        or len(m.dependencies) + len(m.suppressed) != len(m.dep_lines)
-    ):
-        manager.log(f"Metadata abandoned for {id}: new attributes are missing")
+    total_deps = len(m.dependencies) + len(m.suppressed)
+    if len(m.dep_prios) != total_deps or len(m.dep_lines) != total_deps:
+        manager.log(f"Metadata abandoned for {id}: broken dependencies")
         return None
 
     # Ignore cache if (relevant) options aren't the same.
@@ -1479,11 +1423,11 @@ def validate_meta(
     bazel = manager.options.bazel
     assert path is not None, "Internal error: meta was provided without a path"
     if not manager.options.skip_cache_mtime_checks:
-        # Check data_json; assume if its mtime matches it's good.
+        # Check data_file; assume if its mtime matches it's good.
         try:
-            data_mtime = manager.getmtime(meta.data_json)
+            data_mtime = manager.getmtime(meta.data_file)
         except OSError:
-            manager.log(f"Metadata abandoned for {id}: failed to stat data_json")
+            manager.log(f"Metadata abandoned for {id}: failed to stat data_file")
             return None
         if data_mtime != meta.data_mtime:
             manager.log(f"Metadata abandoned for {id}: data cache is modified")
@@ -1534,7 +1478,8 @@ def validate_meta(
             qmtime, qsize, qhash = manager.quickstart_state[path]
             if int(qmtime) == mtime and qsize == size and qhash == meta.hash:
                 manager.log(f"Metadata fresh (by quickstart) for {id}: file {path}")
-                meta = meta._replace(mtime=mtime, path=path)
+                meta.mtime = mtime
+                meta.path = path
                 return meta
 
         t0 = time.time()
@@ -1557,36 +1502,18 @@ def validate_meta(
         else:
             t0 = time.time()
             # Optimization: update mtime and path (otherwise, this mismatch will reappear).
-            meta = meta._replace(mtime=mtime, path=path)
-            # Construct a dict we can pass to json.dumps() (compare to write_cache()).
-            meta_dict = {
-                "id": id,
-                "path": path,
-                "mtime": mtime,
-                "size": size,
-                "hash": source_hash,
-                "data_mtime": meta.data_mtime,
-                "dependencies": meta.dependencies,
-                "suppressed": meta.suppressed,
-                "options": options_snapshot(id, manager),
-                "dep_prios": meta.dep_prios,
-                "dep_lines": meta.dep_lines,
-                "dep_hashes": meta.dep_hashes,
-                "interface_hash": meta.interface_hash,
-                "error_lines": meta.error_lines,
-                "version_id": manager.version_id,
-                "ignore_all": meta.ignore_all,
-                "plugin_data": meta.plugin_data,
-            }
-            meta_bytes = json_dumps(meta_dict, manager.options.debug_cache)
-            meta_json, _, _ = get_cache_names(id, path, manager.options)
+            meta.mtime = mtime
+            meta.path = path
+            meta.size = size
+            meta.options = options_snapshot(id, manager)
+            meta_file, _, _ = get_cache_names(id, path, manager.options)
             manager.log(
                 "Updating mtime for {}: file {}, meta {}, mtime {}".format(
-                    id, path, meta_json, meta.mtime
+                    id, path, meta_file, meta.mtime
                 )
             )
+            write_cache_meta(meta, manager, meta_file)
             t1 = time.time()
-            manager.metastore.write(meta_json, meta_bytes)  # Ignore errors, just an optimization.
             manager.add_stats(validate_update_time=time.time() - t1, validate_munging_time=t1 - t0)
             return meta
 
@@ -1612,11 +1539,11 @@ def write_cache(
     suppressed: list[str],
     dep_prios: list[int],
     dep_lines: list[int],
-    old_interface_hash: str,
+    old_interface_hash: bytes,
     source_hash: str,
     ignore_all: bool,
     manager: BuildManager,
-) -> tuple[str, tuple[dict[str, Any], str] | None]:
+) -> tuple[bytes, tuple[CacheMeta, str] | None]:
     """Write cache files for a module.
 
     Note that this mypy's behavior is still correct when any given
@@ -1637,7 +1564,7 @@ def write_cache(
       manager: the build manager (for pyversion, log/trace)
 
     Returns:
-      A tuple containing the interface hash and inner tuple with cache meta JSON
+      A tuple containing the interface hash and inner tuple with CacheMeta
       that should be written and path to cache file (inner tuple may be None,
       if the cache data could not be written).
     """
@@ -1646,8 +1573,8 @@ def write_cache(
     bazel = manager.options.bazel
 
     # Obtain file paths.
-    meta_json, data_json, _ = get_cache_names(id, path, manager.options)
-    manager.log(f"Writing {id} {path} {meta_json} {data_json}")
+    meta_file, data_file, _ = get_cache_names(id, path, manager.options)
+    manager.log(f"Writing {id} {path} {meta_file} {data_file}")
 
     # Update tree.path so that in bazel mode it's made relative (since
     # sometimes paths leak out).
@@ -1664,7 +1591,7 @@ def write_cache(
     else:
         data = tree.serialize()
         data_bytes = json_dumps(data, manager.options.debug_cache)
-    interface_hash = hash_digest(data_bytes + json_dumps(plugin_data))
+    interface_hash = hash_digest_bytes(data_bytes + json_dumps(plugin_data))
 
     # Obtain and set up metadata
     st = manager.get_stat(path)
@@ -1672,7 +1599,7 @@ def write_cache(
         manager.log(f"Cannot get stat for {path}")
         # Remove apparently-invalid cache files.
         # (This is purely an optimization.)
-        for filename in [data_json, meta_json]:
+        for filename in [data_file, meta_file]:
             try:
                 os.remove(filename)
             except OSError:
@@ -1686,10 +1613,10 @@ def write_cache(
         manager.trace(f"Interface for {id} is unchanged")
     else:
         manager.trace(f"Interface for {id} has changed")
-        if not metastore.write(data_json, data_bytes):
+        if not metastore.write(data_file, data_bytes):
             # Most likely the error is the replace() call
             # (see https://github.com/python/mypy/issues/3215).
-            manager.log(f"Error writing data JSON file {data_json}")
+            manager.log(f"Error writing cache data file {data_file}")
             # Let's continue without writing the meta file.  Analysis:
             # If the replace failed, we've changed nothing except left
             # behind an extraneous temporary file; if the replace
@@ -1701,9 +1628,9 @@ def write_cache(
             return interface_hash, None
 
     try:
-        data_mtime = manager.getmtime(data_json)
+        data_mtime = manager.getmtime(data_file)
     except OSError:
-        manager.log(f"Error in os.stat({data_json!r}), skipping cache write")
+        manager.log(f"Error in os.stat({data_file!r}), skipping cache write")
         return interface_hash, None
 
     mtime = 0 if bazel else int(st.st_mtime)
@@ -1714,35 +1641,45 @@ def write_cache(
     # important, or otherwise the options would never match when
     # verifying the cache.
     assert source_hash is not None
-    meta = {
-        "id": id,
-        "path": path,
-        "mtime": mtime,
-        "size": size,
-        "hash": source_hash,
-        "data_mtime": data_mtime,
-        "dependencies": dependencies,
-        "suppressed": suppressed,
-        "options": options_snapshot(id, manager),
-        "dep_prios": dep_prios,
-        "dep_lines": dep_lines,
-        "interface_hash": interface_hash,
-        "version_id": manager.version_id,
-        "ignore_all": ignore_all,
-        "plugin_data": plugin_data,
-    }
-    return interface_hash, (meta, meta_json)
+    meta = CacheMeta(
+        id=id,
+        path=path,
+        mtime=mtime,
+        size=size,
+        hash=source_hash,
+        dependencies=dependencies,
+        data_mtime=data_mtime,
+        data_file=data_file,
+        suppressed=suppressed,
+        options=options_snapshot(id, manager),
+        dep_prios=dep_prios,
+        dep_lines=dep_lines,
+        interface_hash=interface_hash,
+        version_id=manager.version_id,
+        ignore_all=ignore_all,
+        plugin_data=plugin_data,
+        # These two will be filled by the caller.
+        dep_hashes=[],
+        error_lines=[],
+    )
+    return interface_hash, (meta, meta_file)
 
 
-def write_cache_meta(meta: dict[str, Any], manager: BuildManager, meta_json: str) -> None:
+def write_cache_meta(meta: CacheMeta, manager: BuildManager, meta_file: str) -> None:
     # Write meta cache file
     metastore = manager.metastore
-    meta_str = json_dumps(meta, manager.options.debug_cache)
-    if not metastore.write(meta_json, meta_str):
+    if manager.options.fixed_format_cache:
+        data_io = Buffer()
+        meta.write(data_io)
+        meta_bytes = data_io.getvalue()
+    else:
+        meta_dict = meta.serialize()
+        meta_bytes = json_dumps(meta_dict, manager.options.debug_cache)
+    if not metastore.write(meta_file, meta_bytes):
         # Most likely the error is the replace() call
         # (see https://github.com/python/mypy/issues/3215).
         # The next run will simply find the cache entry out of date.
-        manager.log(f"Error writing meta JSON file {meta_json}")
+        manager.log(f"Error writing cache meta file {meta_file}")
 
 
 """Dependency manager.
@@ -1918,7 +1855,7 @@ class State:
     dep_line_map: dict[str, int]
 
     # Map from dependency id to its last observed interface hash
-    dep_hashes: dict[str, str] = {}
+    dep_hashes: dict[str, bytes] = {}
 
     # List of errors reported for this file last time.
     error_lines: list[str] = []
@@ -1933,7 +1870,7 @@ class State:
     caller_line = 0
 
     # Contains a hash of the public interface in incremental mode
-    interface_hash: str = ""
+    interface_hash: bytes = b""
 
     # Options, specialized for this file
     options: Options
@@ -2152,10 +2089,10 @@ class State:
 
         data: bytes | dict[str, Any] | None
         if self.options.fixed_format_cache:
-            data = _load_ff_file(self.meta.data_json, self.manager, "Could not load tree: ")
+            data = _load_ff_file(self.meta.data_file, self.manager, "Could not load tree: ")
         else:
             data = _load_json_file(
-                self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
+                self.meta.data_file, self.manager, "Load tree ", "Could not load tree: "
             )
         if data is None:
             return
@@ -2525,7 +2462,7 @@ class State:
             merge_dependencies(self.compute_fine_grained_deps(), deps)
             type_state.update_protocol_deps(deps)
 
-    def write_cache(self) -> tuple[dict[str, Any], str] | None:
+    def write_cache(self) -> tuple[CacheMeta, str] | None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # We don't support writing cache files in fine-grained incremental mode.
         if (
@@ -3554,10 +3491,10 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
         meta_tuple = meta_tuples[id]
         if meta_tuple is None:
             continue
-        meta, meta_json = meta_tuple
-        meta["dep_hashes"] = [graph[dep].interface_hash for dep in graph[id].dependencies]
-        meta["error_lines"] = errors_by_id.get(id, [])
-        write_cache_meta(meta, manager, meta_json)
+        meta, meta_file = meta_tuple
+        meta.dep_hashes = [graph[dep].interface_hash for dep in graph[id].dependencies]
+        meta.error_lines = errors_by_id.get(id, [])
+        write_cache_meta(meta, manager, meta_file)
     manager.done_sccs.add(ascc.id)
 
 
