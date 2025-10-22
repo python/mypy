@@ -523,7 +523,7 @@ def callable_corresponding_argument(
 
         # def right(a: int = ...) -> None: ...
         # def left(__a: int = ..., *, a: int = ...) -> None: ...
-        from mypy.meet import meet_types
+        from mypy.join import safe_meet
 
         if (
             not (by_name.required or by_pos.required)
@@ -531,7 +531,7 @@ def callable_corresponding_argument(
             and by_name.pos is None
         ):
             return FormalArgument(
-                by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
+                by_name.name, by_pos.pos, safe_meet(by_name.typ, by_pos.typ), False
             )
     return by_name if by_name is not None else by_pos
 

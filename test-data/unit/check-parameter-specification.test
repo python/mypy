@@ -2599,3 +2599,23 @@ def run3(predicate: Callable[Concatenate[int, str, _P], None], *args: _P.args, *
                                            # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "str" \
                                            # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "_P.args"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecWithTypeVarTupleUnpack]
+# Regression test for crash with ParamSpec and TypeVarTuple Unpack in meet.py
+from typing import Callable, ParamSpec, TypeVar, TypeVarTuple, Unpack
+
+P = ParamSpec("P")
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+def call(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    return func(*args, **kwargs)
+
+def run(func: Callable[[Unpack[Ts]], T], *args: Unpack[Ts], some_kwarg: str = "asdf") -> T:
+    ...
+
+def foo() -> str:
+    ...
+
+call(run, foo, some_kwarg="a")  # E: Argument 1 to "call" has incompatible type "Callable[[Callable[[VarArg(Unpack[Ts])], T], VarArg(Unpack[Ts]), DefaultNamedArg(str, 'some_kwarg')], T]"; expected "Callable[[Callable[[], str], str], str]"
+[builtins fixtures/paramspec.pyi]

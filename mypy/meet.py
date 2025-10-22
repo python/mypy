@@ -830,7 +830,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
-        raise NotImplementedError
+        if isinstance(self.s, UnpackType):
+            return UnpackType(self.meet(t.type, self.s.type))
+        if isinstance(self.s, Instance) and self.s.type.fullname == "builtins.object":
+            return t
+        return self.default(self.s)
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         if isinstance(self.s, Parameters):
