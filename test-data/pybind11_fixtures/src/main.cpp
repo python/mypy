@@ -265,6 +265,35 @@ void bind_demo(py::module& m) {
   // Module-level attributes
   m.attr("PI") = std::acos(-1);
   m.attr("__version__") = "0.0.1";
+
+    // test_positional_only_args
+    m.def(
+        "pos_only_all",
+        [](int i, int j) { return py::make_tuple(i, j); },
+        py::arg("i"),
+        py::arg("j"),
+        py::pos_only());
+    m.def(
+        "pos_only_mix",
+        [](int i, int j) { return py::make_tuple(i, j); },
+        py::arg("i"),
+        py::pos_only(),
+        py::arg("j"));
+    m.def(
+        "pos_kw_only_mix",
+        [](int i, int j, int k) { return py::make_tuple(i, j, k); },
+        py::arg("i"),
+        py::pos_only(),
+        py::arg("j"),
+        py::kw_only(),
+        py::arg("k"));
+    m.def(
+        "pos_only_def_mix",
+        [](int i, int j, int k) { return py::make_tuple(i, j, k); },
+        py::arg("i"),
+        py::arg("j") = 2,
+        py::pos_only(),
+        py::arg("k") = 3);
 }
 
 // ----------------------------------------------------------------------------

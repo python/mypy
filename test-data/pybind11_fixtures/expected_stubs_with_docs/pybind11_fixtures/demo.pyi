@@ -28,9 +28,9 @@ class Point:
             """__ne__(self: object, other: object) -> bool"""
         @property
         def name(self) -> str:
-            """name(self: handle) -> str
+            """name(self: object) -> str
 
-            name(self: handle) -> str
+            name(self: object) -> str
             """
         @property
         def value(self) -> int:
@@ -63,9 +63,9 @@ class Point:
             """__ne__(self: object, other: object) -> bool"""
         @property
         def name(self) -> str:
-            """name(self: handle) -> str
+            """name(self: object) -> str
 
-            name(self: handle) -> str
+            name(self: object) -> str
             """
         @property
         def value(self) -> int:
@@ -96,7 +96,7 @@ class Point:
         2. __init__(self: pybind11_fixtures.demo.Point, x: float, y: float) -> None
         """
     def as_list(self) -> list[float]:
-        """as_list(self: pybind11_fixtures.demo.Point) -> List[float]"""
+        """as_list(self: pybind11_fixtures.demo.Point) -> list[float]"""
     @overload
     def distance_to(self, x: float, y: float) -> float:
         """distance_to(*args, **kwargs)
@@ -126,6 +126,14 @@ def answer() -> int:
     '''
 def midpoint(left: float, right: float) -> float:
     """midpoint(left: float, right: float) -> float"""
+def pos_kw_only_mix(i: int, /, j: int, *, k: int) -> tuple:
+    """pos_kw_only_mix(i: int, /, j: int, *, k: int) -> tuple"""
+def pos_only_all(i: int, j: int, /) -> tuple:
+    """pos_only_all(i: int, j: int, /) -> tuple"""
+def pos_only_def_mix(i: int, j: int = ..., /, k: int = ...) -> tuple:
+    """pos_only_def_mix(i: int, j: int = 2, /, k: int = 3) -> tuple"""
+def pos_only_mix(i: int, /, j: int) -> tuple:
+    """pos_only_mix(i: int, /, j: int) -> tuple"""
 def sum(arg0: int, arg1: int) -> int:
     '''sum(arg0: int, arg1: int) -> int
 

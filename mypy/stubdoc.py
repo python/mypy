@@ -79,6 +79,8 @@ class FunctionSig(NamedTuple):
     ret_type: str | None
     type_args: str = ""  # TODO implement in stubgenc and remove the default
     docstring: str | None = None
+    pos_only_index: int | None = None
+    kwarg_only_index: int | None = None
 
     def is_special_method(self) -> bool:
         return bool(
@@ -139,6 +141,11 @@ class FunctionSig(NamedTuple):
 
             args.append(arg_def)
 
+        if self.pos_only_index:
+            args.insert(self.pos_only_index, "/")
+        if self.kwarg_only_index:
+            args.insert(self.kwarg_only_index, "*")
+
         retfield = ""
         ret_type = self.ret_type if self.ret_type else any_val
         if ret_type is not None:
@@ -182,6 +189,7 @@ class DocStringParser:
         self.args: list[ArgSig] = []
         self.pos_only: int | None = None
         self.keyword_only: int | None = None
+        self.keyword_only_index: int | None = None
         # Valid signatures found so far.
         self.signatures: list[FunctionSig] = []
 
@@ -265,6 +273,8 @@ class DocStringParser:
                         self.reset()
                         return
                     self.keyword_only = len(self.args)
+                    pos_offset = 1 if self.pos_only is not None else 0
+                    self.keyword_only_index = self.keyword_only + pos_offset
                     self.accumulator = ""
                 else:
                     if self.accumulator.startswith("*"):
@@ -342,7 +352,13 @@ class DocStringParser:
 
             if self.found:
                 self.signatures.append(
-                    FunctionSig(name=self.function_name, args=self.args, ret_type=self.ret_type)
+                    FunctionSig(
+                        name=self.function_name,
+                        args=self.args,
+                        pos_only_index=self.pos_only,
+                        kwarg_only_index=self.keyword_only_index,
+                        ret_type=self.ret_type,
+                    )
                 )
                 self.found = False
             self.args = []
