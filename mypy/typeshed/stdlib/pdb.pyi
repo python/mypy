@@ -5,6 +5,7 @@ from cmd import Cmd
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from inspect import _SourceObjectType
 from linecache import _ModuleGlobals
+from rlcompleter import Completer
 from types import CodeType, FrameType, TracebackType
 from typing import IO, Any, ClassVar, Final, Literal, TypeVar
 from typing_extensions import ParamSpec, Self, TypeAlias
@@ -200,6 +201,10 @@ class Pdb(Bdb, Cmd):
         def completenames(self, text: str, line: str, begidx: int, endidx: int) -> list[str]: ...  # type: ignore[override]
     if sys.version_info >= (3, 12):
         def set_convenience_variable(self, frame: FrameType, name: str, value: Any) -> None: ...
+    if sys.version_info >= (3, 13) and sys.version_info < (3, 14):
+        # Added in 3.13.8.
+        @property
+        def rlcompleter(self) -> type[Completer]: ...
 
     def _select_frame(self, number: int) -> None: ...
     def _getval_except(self, arg: str, frame: FrameType | None = None) -> object: ...
