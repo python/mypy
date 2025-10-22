@@ -2178,3 +2178,13 @@ type A = list[Annotated[str, something()]]
 a: A
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testAnnotatedWithCallableAsParameterTypeKeywordDeeper]
+from typing_extensions import Annotated
+
+def something() -> None: ...
+
+type A = list[Annotated[Annotated[str, something()], something()]]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
