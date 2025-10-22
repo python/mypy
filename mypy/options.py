@@ -5,7 +5,6 @@ import re
 import sys
 import sysconfig
 import warnings
-from collections.abc import Mapping
 from re import Pattern
 from typing import Any, Callable, Final
 
@@ -621,7 +620,7 @@ class Options:
             expr += re.escape("." + part) if part != "*" else r"(\..*)?"
         return re.compile(expr + "\\Z")
 
-    def select_options_affecting_cache(self) -> Mapping[str, object]:
+    def select_options_affecting_cache(self) -> dict[str, object]:
         result: dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)
