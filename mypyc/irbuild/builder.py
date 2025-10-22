@@ -376,8 +376,21 @@ class IRBuilder:
     ) -> Value:
         return self.builder.py_call(function, arg_values, line, arg_kinds, arg_names)
 
-    def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
-        self.builder.add_bool_branch(value, true, false)
+    def add_bool_branch(
+        self,
+        value: Value,
+        true: BasicBlock,
+        false: BasicBlock,
+        rare: bool = False,
+        opt_value_none_rare: bool = False,
+    ) -> None:
+        self.builder.add_bool_branch(
+            value,
+            true,
+            false,
+            rare=rare,
+            opt_value_none_rare=opt_value_none_rare,
+        )
 
     def load_native_type_object(self, fullname: str) -> Value:
         return self.builder.load_native_type_object(fullname)
