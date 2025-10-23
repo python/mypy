@@ -88,6 +88,14 @@ str_eq = custom_primitive_op(
     error_kind=ERR_NEVER,
 )
 
+str_eq_literal = custom_primitive_op(
+    name="str_eq_literal",
+    c_function_name="CPyStr_EqualLiteral",
+    arg_types=[str_rprimitive, str_rprimitive, c_pyssize_t_rprimitive],
+    return_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
 unicode_compare = custom_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_int_rprimitive,
@@ -387,12 +395,36 @@ method_op(
     extra_int_constants=[(0, pointer_rprimitive)],
 )
 
-# obj.decode(encoding, errors)
+# bytes.decode(encoding, errors)
 method_op(
     name="decode",
     arg_types=[bytes_rprimitive, str_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
     c_function_name="CPy_Decode",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - utf8 strict specialization
+bytes_decode_utf8_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeUTF8",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - ascii strict specialization
+bytes_decode_ascii_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeASCII",
+    error_kind=ERR_MAGIC,
+)
+
+# bytes.decode(encoding) - latin1 strict specialization
+bytes_decode_latin1_strict = custom_op(
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeLatin1",
     error_kind=ERR_MAGIC,
 )
 

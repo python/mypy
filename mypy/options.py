@@ -5,7 +5,6 @@ import re
 import sys
 import sysconfig
 import warnings
-from collections.abc import Mapping
 from re import Pattern
 from typing import Any, Callable, Final
 
@@ -55,6 +54,7 @@ PER_MODULE_OPTIONS: Final = {
     "mypyc",
     "strict_concatenate",
     "strict_equality",
+    "strict_equality_for_none",
     "strict_optional",
     "warn_no_return",
     "warn_return_any",
@@ -72,6 +72,8 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
         "strict_bytes",
+        "fixed_format_cache",
+        "untyped_calls_exclude",
     }
 ) - {"debug_cache"}
 
@@ -230,6 +232,9 @@ class Options:
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
+        # Extend the logic of `strict_equality` to comparisons with `None`.
+        self.strict_equality_for_none = False
+
         # Disable treating bytearray and memoryview as subtypes of bytes
         self.strict_bytes = False
 
@@ -287,6 +292,7 @@ class Options:
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
         self.sqlite_cache = False
+        self.fixed_format_cache = False
         self.debug_cache = False
         self.skip_version_check = False
         self.skip_cache_mtime_checks = False
@@ -618,7 +624,7 @@ class Options:
             expr += re.escape("." + part) if part != "*" else r"(\..*)?"
         return re.compile(expr + "\\Z")
 
-    def select_options_affecting_cache(self) -> Mapping[str, object]:
+    def select_options_affecting_cache(self) -> dict[str, object]:
         result: dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)

@@ -64,6 +64,15 @@ typedef struct tuple_T4CIOO {
 } tuple_T4CIOO;
 #endif
 
+// System-wide empty tuple constant
+extern PyObject * __mypyc_empty_tuple__;
+
+static inline PyObject *CPyTuple_LoadEmptyTupleConstant(void) {
+#if !CPY_3_12_FEATURES
+    Py_INCREF(__mypyc_empty_tuple__);
+#endif
+    return __mypyc_empty_tuple__;
+}
 
 // Native object operations
 
@@ -139,6 +148,7 @@ CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_BitLength(CPyTagged self);
 
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
@@ -725,6 +735,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
 #define BOTHSTRIP  2
 
 char CPyStr_Equal(PyObject *str1, PyObject *str2);
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
@@ -752,6 +763,9 @@ PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
+PyObject *CPy_DecodeUTF8(PyObject *bytes);
+PyObject *CPy_DecodeASCII(PyObject *bytes);
+PyObject *CPy_DecodeLatin1(PyObject *bytes);
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
@@ -874,6 +888,12 @@ static inline bool CPy_TypeCheck(PyObject *o, PyObject *type) {
     return PyObject_TypeCheck(o, (PyTypeObject *)type);
 }
 
+static inline PyObject *CPy_TYPE(PyObject *obj) {
+    PyObject *result = (PyObject *)Py_TYPE(obj);
+    Py_INCREF(result);
+    return result;
+}
+
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
 PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
@@ -930,6 +950,17 @@ PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
 void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
 void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details);
+
+static inline PyObject *CPyObject_GenericGetAttr(PyObject *self, PyObject *name) {
+    return _PyObject_GenericGetAttrWithDict(self, name, NULL, 1);
+}
+static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObject *value) {
+    return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
+}
+
+#if CPY_3_11_FEATURES
+PyObject *CPy_GetName(PyObject *obj);
+#endif
 
 #if CPY_3_14_FEATURES
 void CPy_SetImmortal(PyObject *obj);
