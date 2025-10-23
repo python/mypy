@@ -315,18 +315,51 @@ class E: ...
 [builtins fixtures/tuple.pyi]
 
 
-[case testDeprecatedClassInitMethod]
+[case testDeprecatedClassConstructor]
 # flags: --enable-error-code=deprecated
 
 from typing_extensions import deprecated
 
-@deprecated("use C2 instead")
 class C:
+    @deprecated("call `make_c()` instead")
     def __init__(self) -> None: ...
+    @classmethod
+    def make_c(cls) -> C: ...
 
-c: C  # E: class __main__.C is deprecated: use C2 instead
-C()  # E: class __main__.C is deprecated: use C2 instead
-C.__init__(c)  # E: class __main__.C is deprecated: use C2 instead
+C()  # E: function __main__.C.__init__ is deprecated: call `make_c()` instead
+
+class D:
+    @deprecated("call `make_d()` instead")
+    def __new__(cls) -> D: ...
+    @classmethod
+    def make_d(cls) -> D: ...
+
+D()  # E: function __main__.D.__new__ is deprecated: call `make_d()` instead
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedSuperClassConstructor]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated, Self
+
+class A:
+    @deprecated("call `self.initialise()` instead")
+    def __init__(self) -> None: ...
+    def initialise(self) -> None: ...
+
+class B(A):
+    def __init__(self) -> None:
+        super().__init__()  # E: function __main__.A.__init__ is deprecated: call `self.initialise()` instead
+
+class C:
+    @deprecated("call `object.__new__(cls)` instead")
+    def __new__(cls) -> Self: ...
+
+class D(C):
+    def __new__(cls) -> Self:
+        return super().__new__(cls)  # E: function __main__.C.__new__ is deprecated: call `object.__new__(cls)` instead
 
 [builtins fixtures/tuple.pyi]
 

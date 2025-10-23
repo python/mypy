@@ -1664,6 +1664,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         See the docstring of check_call for more information.
         """
+        # Check implicit calls to deprecated class constructors.
+        # Only the non-overload case is handled here. Overloaded constructors are handled
+        # separately during overload resolution. `callable_node` is `None` for an overload
+        # item so deprecation checks are not duplicated.
+        if isinstance(callable_node, RefExpr) and isinstance(callable_node.node, TypeInfo):
+            self.chk.check_deprecated(callable_node.node.get_method("__new__"), context)
+            self.chk.check_deprecated(callable_node.node.get_method("__init__"), context)
+
         # Always unpack **kwargs before checking a call.
         callee = callee.with_unpacked_kwargs().with_normalized_var_args()
         if callable_name is None and callee.name:
