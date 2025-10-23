@@ -239,7 +239,6 @@ Generic: _SpecialForm
 Protocol: _SpecialForm
 Callable: _SpecialForm
 Type: _SpecialForm
-TypeForm: _SpecialForm
 NoReturn: _SpecialForm
 ClassVar: _SpecialForm
 

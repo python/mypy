@@ -2,7 +2,7 @@
 
 [case testRecognizesUnparameterizedTypeFormInAnnotation]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm = str
 reveal_type(typx)  # N: Revealed type is "TypeForm[Any]"
 [builtins fixtures/primitives.pyi]
@@ -10,7 +10,7 @@ reveal_type(typx)  # N: Revealed type is "TypeForm[Any]"
 
 [case testRecognizesParameterizedTypeFormInAnnotation]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm[str] = str
 reveal_type(typx)  # N: Revealed type is "TypeForm[builtins.str]"
 [builtins fixtures/primitives.pyi]
@@ -21,28 +21,28 @@ reveal_type(typx)  # N: Revealed type is "TypeForm[builtins.str]"
 
 [case testCanAssignTypeExpressionToTypeFormVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm[str] = str
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testCanAssignTypeExpressionToUnionTypeFormVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm[str | None] = str | None
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testCannotAssignTypeExpressionToTypeFormVariableWithIncompatibleItemType]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm[str] = int  # E: Incompatible types in assignment (expression has type "TypeForm[int]", variable has type "TypeForm[str]")
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testCanAssignValueExpressionToTypeFormVariableIfValueIsATypeForm1]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx1: TypeForm = str
 typx2: TypeForm = typx1  # looks like a type expression: name
 [builtins fixtures/primitives.pyi]
@@ -50,7 +50,7 @@ typx2: TypeForm = typx1  # looks like a type expression: name
 
 [case testCanAssignValueExpressionToTypeFormVariableIfValueIsATypeForm2]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 def identity_tf(x: TypeForm) -> TypeForm:
     return x
 typx1: TypeForm = str
@@ -60,7 +60,7 @@ typx2: TypeForm = identity_tf(typx1)  # does not look like a type expression
 
 [case testCannotAssignValueExpressionToTypeFormVariableIfValueIsNotATypeForm]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 val: int = 42
 typx: TypeForm = val  # E: Incompatible types in assignment (expression has type "int", variable has type "TypeForm[Any]")
 [builtins fixtures/primitives.pyi]
@@ -68,7 +68,7 @@ typx: TypeForm = val  # E: Incompatible types in assignment (expression has type
 
 [case testCanAssignNoneTypeExpressionToTypeFormVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm = None
 reveal_type(typx)  # N: Revealed type is "TypeForm[Any]"
 [builtins fixtures/primitives.pyi]
@@ -86,7 +86,7 @@ typx = int | None
 
 [case testCanAssignTypeExpressionWithStringAnnotationToTypeFormVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm[str | None] = 'str | None'
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
@@ -96,7 +96,7 @@ typx: TypeForm[str | None] = 'str | None'
 
 [case testCanPassTypeExpressionToTypeFormParameterInFunction]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 def is_type(typx: TypeForm) -> bool:
     return isinstance(typx, type)
 is_type(int | None)
@@ -113,7 +113,7 @@ is_type(int | None)  # E: Argument 1 to "is_type" has incompatible type "object"
 
 [case testCanPassTypeExpressionToTypeFormParameterInMethod]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 class C:
     def is_type(self, typx: TypeForm) -> bool:
         return isinstance(typx, type)
@@ -168,7 +168,7 @@ def sum_ints(x: int | None, y: int) -> tuple[int, int]:
 
 [case testCanPassTypeExpressionWithStringAnnotationToTypeFormParameter]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 def is_type(typx: TypeForm) -> bool:
     return isinstance(typx, type)
 is_type('int | None')
@@ -180,7 +180,7 @@ is_type('int | None')
 
 [case testCanReturnTypeExpressionInFunctionWithTypeFormReturnType]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 def maybe_int_type() -> TypeForm:
     return int | None
 reveal_type(maybe_int_type())  # N: Revealed type is "TypeForm[Any]"
@@ -189,7 +189,7 @@ reveal_type(maybe_int_type())  # N: Revealed type is "TypeForm[Any]"
 
 [case testCanReturnTypeExpressionWithStringAnnotationInFunctionWithTypeFormReturnType]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 def maybe_int_type() -> TypeForm:
     return 'int | None'
 reveal_type(maybe_int_type())  # N: Revealed type is "TypeForm[Any]"
@@ -282,7 +282,7 @@ typx2: TypeForm = no_such_module.NoSuchType  # E: Name "no_such_module" is not d
 
 [case testAcceptsTypeFormLiteralAssignedToUnionOfTypeFormAndNonStr]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx_or_int1: TypeForm[int | None] | int = int | None  # No error; interpret as TypeForm
 typx_or_int2: TypeForm[int | None] | int = str | None  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[TypeForm[Optional[int]], int]")
 typx_or_int3: TypeForm[int | None] | int = 1
@@ -292,7 +292,7 @@ typx_or_int4: TypeForm[int | None] | int = object()  # E: Incompatible types in 
 
 [case testAcceptsTypeFormLiteralAssignedToUnionOfTypeFormAndStr]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx_or_str1: TypeForm[int | None] | str = 'int | None'
 typx_or_str2: TypeForm[int | None] | str = 'str | None'  # No error; interpret as str
 typx_or_str3: TypeForm[int | None] | str = 'hello'
@@ -325,7 +325,7 @@ list_of_typx4: List[TypeForm[str | None] | int] = ['str | None']  # E: TypeForm 
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
 # - TypeForm[T1] is assignable to TypeForm[T2] iff T1 is assignable to T2.
 # - In particular TypeForm[Any] is assignable to TypeForm[Any].
-from typing import TypeForm
+from typing_extensions import TypeForm
 INT_OR_STR_TF: TypeForm[int | str] = int | str
 INT_TF: TypeForm[int] = int
 STR_TF: TypeForm[str] = str
@@ -436,7 +436,7 @@ any3: Any = ANY_TF
 [case testTypeFormToTypeFormJoin]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
 # - TypeForm[T1] join TypeForm[T2] == TypeForm[T1 join T2]
-from typing import TypeForm
+from typing_extensions import TypeForm
 class AB:
     pass
 class A(AB):
@@ -583,7 +583,7 @@ reveal_type(f(g))  # N: Revealed type is "type[TypedDict({'b': builtins.str, 'c'
 
 [case testTypeFormExpression]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 tf1 = TypeForm(int | str)
 reveal_type(tf1)  # N: Revealed type is "TypeForm[Union[builtins.int, builtins.str]]"
 tf2 = TypeForm('int | str')
@@ -601,7 +601,7 @@ tf6: TypeForm = TypeForm(TypeForm(int) | TypeForm(str))  # E: TypeForm argument 
 
 [case testTypeFormAndTypeIsinstance]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm[str] = str
 if isinstance(typx, type):
     reveal_type(typx)  # N: Revealed type is "type[builtins.str]"
@@ -615,7 +615,7 @@ else:
 
 [case testLinkTypeFormToTypeFormWithTypeVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm, TypeVar
+from typing_extensions import TypeForm, TypeVar
 T = TypeVar('T')
 def as_typeform(typx: TypeForm[T]) -> TypeForm[T]:
     return typx
@@ -639,7 +639,7 @@ reveal_type(as_type(int))  # N: Revealed type is "Union[type[builtins.int], None
 
 [case testLinkTypeFormToInstanceWithTypeVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm, TypeVar
+from typing_extensions import TypeForm, TypeVar
 T = TypeVar('T')
 def as_instance(typx: TypeForm[T]) -> T | None:
     if isinstance(typx, type):
@@ -653,7 +653,7 @@ reveal_type(as_instance(int))  # N: Revealed type is "Union[builtins.int, None]"
 
 [case testLinkTypeFormToTypeIsWithTypeVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm, TypeVar
+from typing_extensions import TypeForm, TypeVar
 from typing_extensions import TypeIs
 T = TypeVar('T')
 def isassignable(value: object, typx: TypeForm[T]) -> TypeIs[T]:
@@ -668,7 +668,7 @@ else:
 
 [case testLinkTypeFormToTypeGuardWithTypeVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm, TypeVar
+from typing_extensions import TypeForm, TypeVar
 from typing_extensions import TypeGuard
 T = TypeVar('T')
 def isassignable(value: object, typx: TypeForm[T]) -> TypeGuard[T]:
@@ -686,7 +686,7 @@ else:
 
 [case testTypeFormHasAllObjectAttributesAndMethods]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 typx: TypeForm[int | str] = int | str
 print(typx.__class__)  # OK
 print(typx.__hash__())  # OK
@@ -710,7 +710,7 @@ class float: pass
 
 [case testDottedTypeFormsAreRecognized]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing_extensions import TypeForm
 import typing
 class C1:
     class C2:
