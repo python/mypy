@@ -232,6 +232,7 @@ dict_with_typx_keys['int | str'] += 1  # E: TypeForm containing a string annotat
 [typing fixtures/typing-full.pyi]
 
 [case testValueExpressionWithStringInTypeFormContextEmitsConservativeWarning]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
 from typing import Any, Dict, List, TypeForm
 types: Dict[str, TypeForm] = {'any': Any}
 # Ensure warning can be ignored if does not apply.
