@@ -16,6 +16,7 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
+    IndexExpr,
     ListExpr,
     Lvalue,
     MemberExpr,
@@ -67,6 +68,7 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.primitives.dict_ops import (
@@ -437,11 +439,23 @@ def make_for_loop_generator(
     rtyp = builder.node_type(expr)
     if is_sequence_rprimitive(rtyp):
         # Special case "for x in <list>".
-        expr_reg = builder.accept(expr)
         target_type = builder.get_sequence_type(expr)
-
         for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
-        for_list.init(expr_reg, target_type, reverse=False)
+
+        if isinstance(expr, IndexExpr) and all(
+            s is None or isinstance(constant_fold_expr(builder, s), int)
+            for s in (expr.start, expr.stop, expr.step)
+        ):
+            for_list.init(
+                builder.accept(expr.expr),
+                target_type,
+                reverse=False,
+                start=expr.start,
+                stop=expr.stop,
+                step=expr.step,
+            )
+        else:
+            for_list.init(builder.accept(expr), target_type, reverse=False)
         return for_list
 
     if is_dict_rprimitive(rtyp):
@@ -821,13 +835,33 @@ class ForSequence(ForGenerator):
     length_reg: Value | AssignmentTarget | None
 
     def init(
-        self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None
+        self,
+        expr_reg: Value,
+        target_type: RType,
+        reverse: bool,
+        length: Value | None = None,
+        *,
+        start: int | None = None,
+        stop: int | None = None,
+        step: int | None = None,
     ) -> None:
         assert is_sequence_rprimitive(expr_reg.type), (expr_reg, expr_reg.type)
         builder = self.builder
         # Record a Value indicating the length of the sequence, if known at compile time.
         self.length = length
         self.reverse = reverse
+        
+        self.start = 0 if start is None else start
+        assert self.start >= 0, "implement me!"
+        
+        self.stop = -1 if stop is None else stop
+        assert self.stop == -1, "implement me!"
+        
+        self.step = 1 if step is None else step
+        assert self.step and self.step >= 1:
+        if reverse:
+            self.step *= -1
+        
         # Define target to contain the expression, along with the index that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
@@ -835,13 +869,16 @@ class ForSequence(ForGenerator):
         if is_immutable_rprimitive(expr_reg.type):
             # If the expression is an immutable type, we can load the length just once.
             self.length_reg = builder.maybe_spill(self.length or self.load_len(self.expr_target))
+            # TODO: if stop != -1 implement a safety check and then set self.stop_reg
+            # gen_condition will need to read stop_reg if present
         else:
             # Otherwise, even if the length is known, we must recalculate the length
             # at every iteration for compatibility with python semantics.
             self.length_reg = None
         if not reverse:
-            index_reg: Value = Integer(0, c_pyssize_t_rprimitive)
+            index_reg: Value = Integer(self.start, c_pyssize_t_rprimitive)
         else:
+            # TODO implement start logic
             if self.length_reg is not None:
                 len_val = builder.read(self.length_reg)
             else:
@@ -854,6 +891,7 @@ class ForSequence(ForGenerator):
         builder = self.builder
         line = self.line
         if self.reverse:
+            # TODO implement start stop step
             # If we are iterating in reverse order, we obviously need
             # to check that the index is still positive. Somewhat less
             # obviously we still need to check against the length,
@@ -898,8 +936,7 @@ class ForSequence(ForGenerator):
         # Step to the next item.
         builder = self.builder
         line = self.line
-        step = 1 if not self.reverse else -1
-        add = builder.builder.int_add(builder.read(self.index_target, line), step)
+        add = builder.builder.int_add(builder.read(self.index_target, line), self.step)
         builder.assign(self.index_target, add, line)
 
 
