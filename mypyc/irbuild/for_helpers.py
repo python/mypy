@@ -850,18 +850,18 @@ class ForSequence(ForGenerator):
         # Record a Value indicating the length of the sequence, if known at compile time.
         self.length = length
         self.reverse = reverse
-        
+
         self.start = 0 if start is None else start
         assert self.start >= 0, "implement me!"
-        
+
         self.stop = -1 if stop is None else stop
         assert self.stop == -1, "implement me!"
-        
+
         self.step = 1 if step is None else step
         assert self.step and self.step >= 1:
         if reverse:
             self.step *= -1
-        
+
         # Define target to contain the expression, along with the index that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
