@@ -968,7 +968,7 @@ class Signature(Generic[T]):
 
         is_arg_pos_only: defaultdict[str, set[bool]] = defaultdict(set)
         for func in map(_resolve_funcitem_from_decorator, stub.items):
-            assert func is not None, "Failed to resolve decorated overload"
+            assert func is not None, f"Failed to resolve decorated overload of {stub.fullname!r}"
             args = maybe_strip_cls(stub.name, func.arguments)
             for index, arg in enumerate(args):
                 if (
@@ -984,7 +984,7 @@ class Signature(Generic[T]):
 
         all_args: dict[str, list[tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
-            assert func is not None, "Failed to resolve decorated overload"
+            assert func is not None, f"Failed to resolve decorated overload of {stub.fullname!r}"
             args = maybe_strip_cls(stub.name, func.arguments)
             for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same

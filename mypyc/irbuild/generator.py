@@ -39,7 +39,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
-from mypyc.irbuild.context import FuncInfo, GeneratorClass
+from mypyc.irbuild.context import FuncInfo
 from mypyc.irbuild.env_class import (
     add_args_to_env,
     add_vars_to_env,
@@ -166,10 +166,8 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
         builder.fn_info.env_class = generator_class_ir
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
-    generator_class_ir.mro = [generator_class_ir]
 
     builder.classes.append(generator_class_ir)
-    builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
     return generator_class_ir
 
 

@@ -1003,6 +1003,9 @@ class Errors:
                     marker = "^"
                     if end_line == line and end_column > column:
                         marker = f'^{"~" * (end_column - column - 1)}'
+                    elif end_line != line:
+                        # just highlight the first line instead
+                        marker = f'^{"~" * (len(source_line_expanded) - column - 1)}'
                     a.append(" " * (DEFAULT_SOURCE_OFFSET + column) + marker)
         return a
 

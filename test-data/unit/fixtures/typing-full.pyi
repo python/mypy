@@ -34,6 +34,7 @@ no_type_check = 0
 ClassVar = 0
 Final = 0
 TypedDict = 0
+TypeGuard = 0
 NoReturn = 0
 NewType = 0
 Self = 0

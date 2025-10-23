@@ -280,13 +280,13 @@ def compile_modules_to_ir(
 
     # Process the graph by SCC in topological order, like we do in mypy.build
     for scc in sorted_components(result.graph):
-        scc_states = [result.graph[id] for id in scc]
+        scc_states = [result.graph[id] for id in scc.mod_ids]
         trees = [st.tree for st in scc_states if st.id in mapper.group_map and st.tree]
 
         if not trees:
             continue
 
-        fresh = all(id not in result.manager.rechecked_modules for id in scc)
+        fresh = all(id not in result.manager.rechecked_modules for id in scc.mod_ids)
         if fresh:
             load_scc_from_cache(trees, result, mapper, deser_ctx)
         else:
@@ -341,7 +341,8 @@ def compile_ir_to_c(
 
 def get_ir_cache_name(id: str, path: str, options: Options) -> str:
     meta_path, _, _ = get_cache_names(id, path, options)
-    return meta_path.replace(".meta.json", ".ir.json")
+    # Mypy uses JSON cache even with --fixed-format-cache (for now).
+    return meta_path.replace(".meta.json", ".ir.json").replace(".meta.ff", ".ir.json")
 
 
 def get_state_ir_cache_name(state: State) -> str:
@@ -1064,6 +1065,8 @@ class GroupGenerator:
                     "(PyObject *){t}_template, NULL, modname);".format(t=type_struct)
                 )
                 emitter.emit_lines(f"if (unlikely(!{type_struct}))", "    goto fail;")
+                name_prefix = cl.name_prefix(emitter.names)
+                emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
 
         emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
 
