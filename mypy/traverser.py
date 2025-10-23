@@ -952,9 +952,11 @@ class NameAndMemberCollector(TraverserVisitor):
 
     def visit_name_expr(self, o: NameExpr, /) -> None:
         self.name_exprs.append(o)
+        super().visit_name_expr(o)
 
     def visit_member_expr(self, o: MemberExpr, /) -> None:
         self.member_exprs.append(o)
+        super().visit_member_expr(o)
 
 
 def all_name_and_member_expressions(node: Expression) -> tuple[list[NameExpr], list[MemberExpr]]:
