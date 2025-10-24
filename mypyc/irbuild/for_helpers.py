@@ -1216,12 +1216,9 @@ class ForZip(ForGenerator):
         ordered = for_range + for_sequence_forward + for_sequence_reverse + for_native + for_dict
                 
         # this is a failsafe for ForHelper classes which might have been added after this commit but not added to this function's code
-        others = [g for g in gens if g not in ordered + for_iterable]
-
-        ordered += others
-        ordered += for_iterable
+        leftovers = [g for g in gens if g not in ordered + for_iterable]
         
-        for i, gen in enumerate(ordered):
+        for i, gen in enumerate(ordered + leftovers + for_iterable):
             gen.gen_condition()
             if i < len(self.gens) - 1:
                 self.builder.activate_block(self.cond_blocks[i])
