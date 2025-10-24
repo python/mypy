@@ -446,7 +446,7 @@ def make_for_loop_generator(
         if isinstance(expr, IndexExpr) and isinstance(expr.index, SliceExpr):
             # TODO: maybe we must not apply this optimization to list type specifically
             # because the need to check length changes at each iteration?
-            
+
             def constant_fold_or_none(expr: Expression | None) -> Any:
                 return None if expr is None else constant_fold_expr(builder, expr)
 
