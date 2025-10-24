@@ -439,7 +439,7 @@ def make_for_loop_generator(
 
     rtyp = builder.node_type(expr)
     if is_sequence_rprimitive(rtyp):
-        # Special case "for x in <list>".
+        # Special case "for x in <list/tuple/str/bytes>".
         target_type = builder.get_sequence_type(expr)
         for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
 
