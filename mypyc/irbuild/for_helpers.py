@@ -1195,7 +1195,9 @@ class ForZip(ForGenerator):
         def check_type(obj: Any, typ: type[ForGenerator]) -> bool:
             # ForEnumerate gen_condition is as fast as it's underlying generator's
             return (
-                isinstance(obj, typ) or isinstance(obj, ForEnumerate) and isinstance(obj.main_gen, typ)
+                isinstance(obj, typ)
+                or isinstance(obj, ForEnumerate)
+                and isinstance(obj.main_gen, typ)
             )
 
         # these are slowest, they invoke Python's iteration protocol
@@ -1213,28 +1215,36 @@ class ForZip(ForGenerator):
             g
             for g in gens
             if check_type(g, ForSequence)
-            and (for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)).reverse
+            and (
+                for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
+            ).reverse
             and for_seq.len_reg is not None
         ]
         for_sequence_reverse_no_len_check = [
             g
             for g in gens
             if check_type(g, ForSequence)
-            and (for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)).reverse
+            and (
+                for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
+            ).reverse
             and for_seq.len_reg is None
         ]
         for_sequence_forward_with_len_check = [
             g
             for g in gens
             if check_type(g, ForSequence)
-            and not (for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)).reverse
+            and not (
+                for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
+            ).reverse
             and for_seq.len_reg is not None
         ]
         for_sequence_forward_no_len_check = [
             g
             for g in gens
             if check_type(g, ForSequence)
-            and not (for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)).reverse
+            and not (
+                for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
+            ).reverse
             and for_seq.len_reg is None
         ]
 
