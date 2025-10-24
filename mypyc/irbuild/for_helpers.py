@@ -1204,7 +1204,7 @@ class ForZip(ForGenerator):
         for gen in self.gens:
             gen.gen_cleanup()
 
-    def __sort_conditions(self) -> List[ForSequence]:
+    def __sort_conditions(self) -> tuple[list[ForSequence], list[BasicBlock]]:
         # We don't necessarily need to check the gens in order,
         # we just need to know which gen ends first. Some gens
         # are quicker to check than others, so we will check the
