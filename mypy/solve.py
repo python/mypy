@@ -576,16 +576,13 @@ def pre_validate_solutions(
             new_solutions.append(s)
             continue
         if s is not None and not is_subtype(s, t.upper_bound):
-            bound_satisfies_all = True
+            bound = t.upper_bound
             for c in constraints:
-                if c.op == SUBTYPE_OF and not is_subtype(t.upper_bound, c.target):
-                    bound_satisfies_all = False
+                bound = meet_types(bound, c.target)
+                if isinstance(bound, UninhabitedType):
                     break
-                if c.op == SUPERTYPE_OF and not is_subtype(c.target, t.upper_bound):
-                    bound_satisfies_all = False
-                    break
-            if bound_satisfies_all:
-                new_solutions.append(t.upper_bound)
+            else:
+                new_solutions.append(bound)
                 continue
         new_solutions.append(s)
     return new_solutions

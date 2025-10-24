@@ -2122,7 +2122,7 @@ TA = TypeVar('TA', bound=A)
 TB = TypeVar('TB', bound=B)
 
 def f(b_or_t: Union[TA, TB, int]) -> None:
-    a2 = replace(b_or_t)   # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[TA, TB, int]"
+    a2 = replace(b_or_t)   # E: Argument 1 to "replace" has incompatible type "Union[TA, TB, int]"; expected "TA"
 
 [builtins fixtures/tuple.pyi]
 
@@ -2202,9 +2202,9 @@ replace(None)  # E: Value of type variable "_DataclassT" of "replace" cannot be 
 from dataclasses import is_dataclass, replace
 
 def f(x: object) -> None:
-  _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
+  _ = replace(x)  # E: Argument 1 to "replace" has incompatible type "object"; expected "DataclassInstance"
   if is_dataclass(x):
-    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[DataclassInstance, type[DataclassInstance]]"
+    _ = replace(x)  # E: Argument 1 to "replace" has incompatible type "Union[DataclassInstance, type[DataclassInstance]]"; expected "DataclassInstance"
     if not isinstance(x, type):
       _ = replace(x)
 
