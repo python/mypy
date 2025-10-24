@@ -4974,9 +4974,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 elif (
                     isinstance(typ, Instance)
                     and typ.type.fullname == "builtins._NotImplementedType"
-                    and (
-                        (defn.name in BINARY_MAGIC_METHODS or defn.name == "__subclasshook__")
-                    )
+                    and (defn.name in BINARY_MAGIC_METHODS or defn.name == "__subclasshook__")
                 ):
                     return
                 else:
