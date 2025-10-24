@@ -1185,7 +1185,43 @@ class ForZip(ForGenerator):
             self.gens.append(gen)
 
     def gen_condition(self) -> None:
-        for i, gen in enumerate(self.gens):
+        # We don't necessarily need to check the gens in order,
+        # we just need to know which gen ends first. Some gens
+        # are quicker to check than others, so we will check the
+        # specialized ForHelpers before we check any generic
+        # ForIterable
+        gens = self.gens
+
+        def check_type(obj: Any, typ: Type[Any]) -> bool:
+            # ForEnumerate gen_condition is as fast as it's underlying generator's
+            return isinstance(obj, typ) or isinstance(obj, ForEnumerate) and isinstance(obj.gen, typ)
+
+        # these are slowest, they invoke Python's iteration protocol
+        for_iterable = [g for g in gens if check_type(g, ForSequence)]
+
+        # These aren't the slowest but they're slow, we need to pack an RTuple and then get and item and do a comparison
+        for_dict = [g for g in gens if check_type(g, ForDictionaryCommon)]
+        
+        # These are faster than ForIterable but not as fast as others (faster than ForDict?)
+        for_native = [g for g in gens if check_type(g, ForNativeGenerator)]
+        
+        # forward involves in the best case one pyssize_t comparison, else one length check + the comparison
+        # reverse is slightly slower than forward, with one extra check
+        for_sequence_reverse = [g for g in gens if check_type(g, ForSequence) and (g.gen if isinstance(g, ForEnumerate) else g).reverse]
+        for_sequence_forward = [g for g in gens if check_type(g, ForSequence) and not (g.gen if isinstance(g, ForEnumerate) else g).reverse]
+
+        # these are really fast, just a C int equality check
+        for_range = [g for g in gens if isinstance(g, ForRange)]
+
+        ordered = for_range + for_sequence_forward + for_sequence_reverse + for_native + for_dict
+                
+        # this is a failsafe for ForHelper classes which might have been added after this commit but not added to this function's code
+        others = [g for g in gens if g not in ordered + for_iterable]
+
+        ordered += others
+        ordered += for_iterable
+        
+        for i, gen in enumerate(ordered):
             gen.gen_condition()
             if i < len(self.gens) - 1:
                 self.builder.activate_block(self.cond_blocks[i])
