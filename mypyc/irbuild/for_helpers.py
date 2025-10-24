@@ -449,7 +449,7 @@ def make_for_loop_generator(
             start = expr.index.start
             stop = expr.index.stop
             step = expr.index.step
-            
+
             if all(
                 s is None or isinstance(constant_fold_expr(builder, s), int)
                 for s in (start, stop, step)
@@ -463,7 +463,7 @@ def make_for_loop_generator(
                     step=constant_fold_expr(builder, step),
                 )
                 return for_list
-        
+
         for_list.init(builder.accept(expr), target_type, reverse=False)
         return for_list
 
