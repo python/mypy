@@ -1213,29 +1213,29 @@ class ForZip(ForGenerator):
             g
             for g in gens
             if check_type(g, ForSequence)
-            and (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
-            and g.len_reg is not None
+            and (for_seq := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
+            and for_seq.len_reg is not None
         ]
         for_sequence_reverse_no_len_check = [
             g
             for g in gens
             if check_type(g, ForSequence)
-            and (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
-            and g.len_reg is None
+            and (for_seq := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
+            and for_seq.len_reg is None
         ]
         for_sequence_forward_with_len_check = [
             g
             for g in gens
             if check_type(g, ForSequence)
-            and not (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
-            and g.len_reg is not None
+            and not (for_seq := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
+            and for_seq.len_reg is not None
         ]
         for_sequence_forward_no_len_check = [
             g
             for g in gens
             if check_type(g, ForSequence)
-            and not (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
-            and g.len_reg is None
+            and not (for_seq := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
+            and for_seq.len_reg is None
         ]
 
         # these are really fast, just a C int equality check
@@ -1244,7 +1244,7 @@ class ForZip(ForGenerator):
         ordered = (
             for_range
             + for_sequence_forward_no_len_check
-            + for_sequence_forward_no_len_check
+            + for_sequence_reverse_no_len_check
             + for_sequence_forward_with_len_check
             + for_sequence_reverse_with_len_check
             + for_native
