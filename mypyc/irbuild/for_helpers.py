@@ -1213,7 +1213,7 @@ class ForZip(ForGenerator):
             g
             for g in gens
             if check_type(g, ForSequence)
-            and (for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g))).reverse
+            and (for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)).reverse
             and for_seq.len_reg is not None
         ]
         for_sequence_reverse_no_len_check = [
