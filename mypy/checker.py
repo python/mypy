@@ -4942,13 +4942,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             s.expr, return_type, allow_none_return=allow_none_func_call
                         )
                     )
-                # Treat NotImplemented as having type Any, consistent with its
-                # definition in typeshed prior to python/typeshed#4222.
-                if (
-                    isinstance(typ, Instance)
-                    and typ.type.fullname == "builtins._NotImplementedType"
-                ):
-                    typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
                     self.fail(message_registry.RETURN_IN_ASYNC_GENERATOR, s)
@@ -4961,10 +4954,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         self.options.warn_return_any
                         and not self.current_node_deferred
                         and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
-                        and not (
-                            defn.name in BINARY_MAGIC_METHODS
-                            and is_literal_not_implemented(s.expr)
-                        )
                         and not (
                             isinstance(return_type, Instance)
                             and return_type.type.fullname == "builtins.object"
@@ -4982,6 +4971,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if is_lambda or isinstance(typ, NoneType):
                         return
                     self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s)
+                elif (
+                    isinstance(typ, Instance)
+                    and typ.type.fullname == "builtins._NotImplementedType"
+                    and (
+                        (defn.name in BINARY_MAGIC_METHODS or defn.name == "__subclasshook__")
+                    )
+                ):
+                    return
                 else:
                     self.check_subtype(
                         subtype_label="got",
