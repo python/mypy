@@ -6854,8 +6854,21 @@ reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iter
 [builtins fixtures/isinstancelist.pyi]
 
 [case testReturnNotImplementedInBinaryMagicMethods]
+from typing import Union
 class A:
-    def __eq__(self, other: object) -> bool: return NotImplemented
+    def __add__(self, other: object) -> int:
+        return NotImplemented
+    def __radd__(self, other: object) -> Union[int, NotImplementedType]:
+        return NotImplemented
+    def __sub__(self, other: object) -> Union[int, NotImplementedType]:
+        return 1
+    def __isub__(self, other: object) -> int:
+        x: Union[int, NotImplementedType]
+        return x
+    def __mul__(self, other: object) -> Union[int, NotImplementedType]:
+        x: Union[int, NotImplementedType]
+        return x
+
 [builtins fixtures/notimplemented.pyi]
 
 [case testReturnNotImplementedABCSubclassHookMethod]

@@ -4895,6 +4895,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return typ
 
     def check_return_stmt(self, s: ReturnStmt) -> None:
+
+        def is_notimplemented(t: object) -> bool:
+            return isinstance(t, Instance) and t.type.fullname == "builtins._NotImplementedType"
+
         defn = self.scope.current_function()
         if defn is not None:
             if defn.is_generator:
@@ -4946,6 +4950,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if defn.is_async_generator:
                     self.fail(message_registry.RETURN_IN_ASYNC_GENERATOR, s)
                     return
+
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
@@ -4971,18 +4976,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if is_lambda or isinstance(typ, NoneType):
                         return
                     self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s)
-                elif (
-                    isinstance(typ, Instance)
-                    and typ.type.fullname == "builtins._NotImplementedType"
-                    and (
-                        (defn.name in BINARY_MAGIC_METHODS or defn.name == "__subclasshook__")
-                    )
-                ):
-                    return
                 else:
+                    typ_: Type = typ
+                    if defn.name in BINARY_MAGIC_METHODS or defn.name == "__subclasshook__":
+                        if is_notimplemented(typ):
+                            return
+                        if isinstance(typ, UnionType):
+                            typ_ = UnionType.make_union(
+                                [i for i in typ.items if not is_notimplemented(i)]
+                            )
                     self.check_subtype(
                         subtype_label="got",
-                        subtype=typ,
+                        subtype=typ_,
                         supertype_label="expected",
                         supertype=return_type,
                         context=s.expr,
