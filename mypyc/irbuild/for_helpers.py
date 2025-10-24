@@ -23,6 +23,7 @@ from mypy.nodes import (
     NameExpr,
     RefExpr,
     SetExpr,
+    SliceExpr,
     StarExpr,
     StrExpr,
     TupleExpr,
