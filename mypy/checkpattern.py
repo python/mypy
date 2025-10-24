@@ -14,7 +14,7 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, Var
+from mypy.nodes import ARG_POS, Context, Expression, NameExpr, Node, TypeAlias, Var
 from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
@@ -104,6 +104,8 @@ class PatternChecker(PatternVisitor[PatternType]):
     subject_type: Type
     # Type of the subject to check the (sub)pattern against
     type_context: list[Type]
+    # Pattern node currently being processed
+    node_context: list[Node]
     # Types that match against self instead of their __match_args__ if used as a class pattern
     # Filled in from self_match_type_names
     self_match_types: list[Type]
@@ -121,6 +123,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         self.plugin = plugin
 
         self.type_context = []
+        self.node_context = []
         self.self_match_types = self.generate_types_from_names(self_match_type_names)
         self.non_sequence_match_types = self.generate_types_from_names(
             non_sequence_match_type_names
@@ -129,8 +132,10 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     def accept(self, o: Pattern, type_context: Type) -> PatternType:
         self.type_context.append(type_context)
+        self.node_context.append(o)
         result = o.accept(self)
         self.type_context.pop()
+        self.node_context.pop()
 
         return result
 
@@ -140,7 +145,12 @@ class PatternChecker(PatternVisitor[PatternType]):
             pattern_type = self.accept(o.pattern, current_type)
             typ, rest_type, type_map = pattern_type
         else:
-            typ, rest_type, type_map = current_type, UninhabitedType(), {}
+            typ, type_map = current_type, {}
+            if len(self.node_context) >= 2 and isinstance(self.node_context[-2], SequencePattern):
+                # Don't narrow rest type to Never if parent node is a sequence pattern
+                rest_type = current_type
+            else:
+                rest_type = UninhabitedType()
 
         if not is_uninhabited(typ) and o.name is not None:
             typ, _ = self.chk.conditional_types_with_intersection(
