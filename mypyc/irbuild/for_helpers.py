@@ -443,24 +443,28 @@ def make_for_loop_generator(
         target_type = builder.get_sequence_type(expr)
         for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
 
-        if (
-            isinstance(expr, IndexExpr)
-            and isinstance(expr.index, SliceExpr)
-            and all(
+        if isinstance(expr, IndexExpr) and isinstance(expr.index, SliceExpr):
+            # TODO: maybe we must not apply this optimization to list type specifically
+            # because the need to check length changes at each iteration?
+            start = expr.index.start
+            stop = expr.index.stop
+            step = expr.index.step
+            
+            if all(
                 s is None or isinstance(constant_fold_expr(builder, s), int)
-                for s in (expr.index.start, expr.index.stop, expr.index.step)
-            )
-        ):
-            for_list.init(
-                builder.accept(expr.base),
-                target_type,
-                reverse=False,
-                start=constant_fold_expr(builder, expr.index.start),
-                stop=constant_fold_expr(builder, expr.index.stop),
-                step=constant_fold_expr(builder, expr.index.step),
-            )
-        else:
-            for_list.init(builder.accept(expr), target_type, reverse=False)
+                for s in (start, stop, step)
+            ):
+                for_list.init(
+                    builder.accept(expr.base),
+                    target_type,
+                    reverse=False,
+                    start=constant_fold_expr(builder, start),
+                    stop=constant_fold_expr(builder, stop),
+                    step=constant_fold_expr(builder, step),
+                )
+                return for_list
+        
+        for_list.init(builder.accept(expr), target_type, reverse=False)
         return for_list
 
     if is_dict_rprimitive(rtyp):
