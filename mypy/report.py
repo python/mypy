@@ -141,12 +141,9 @@ def should_skip_path(path: str) -> bool:
 
 def iterate_python_lines(path: str) -> Iterator[tuple[int, str]]:
     """Return an iterator over (line number, line text) from a Python file."""
-    try:
+    if not os.path.isdir(path):  # can happen with namespace packages
         with tokenize.open(path) as input_file:
             yield from enumerate(input_file, 1)
-    except IsADirectoryError:
-        # can happen with namespace packages
-        pass
 
 
 class FuncCounterVisitor(TraverserVisitor):
