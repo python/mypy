@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Any, Callable, ClassVar, Type
+from typing import Any, Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
@@ -1192,7 +1192,7 @@ class ForZip(ForGenerator):
         # ForIterable
         gens = self.gens
 
-        def check_type(obj: Any, typ: Type[Any]) -> bool:
+        def check_type(obj: Any, typ: type[Any]) -> bool:
             # ForEnumerate gen_condition is as fast as it's underlying generator's
             return (
                 isinstance(obj, typ) or isinstance(obj, ForEnumerate) and isinstance(obj.gen, typ)
