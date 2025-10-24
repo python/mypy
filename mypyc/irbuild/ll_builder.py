@@ -1999,15 +1999,23 @@ class LowLevelIRBuilder:
                 result = self.primitive_op(bool_op, [value], value.line)
         return result
 
-    def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
+    def add_bool_branch(
+        self,
+        value: Value,
+        true: BasicBlock,
+        false: BasicBlock,
+        *,
+        rare: bool = False,
+        opt_value_none_rare: bool = False,
+    ) -> None:
         opt_value_type = optional_value_type(value.type)
         if opt_value_type is None:
             bool_value = self.bool_value(value)
-            self.add(Branch(bool_value, true, false, Branch.BOOL))
+            self.add(Branch(bool_value, true, false, Branch.BOOL, rare=rare))
         else:
             # Special-case optional types
             is_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
-            branch = Branch(is_none, true, false, Branch.BOOL)
+            branch = Branch(is_none, true, false, Branch.BOOL, rare=opt_value_none_rare)
             self.add(branch)
             always_truthy = False
             if isinstance(opt_value_type, RInstance):
@@ -2024,7 +2032,7 @@ class LowLevelIRBuilder:
                 # unbox_or_cast instead of coerce because we want the
                 # type to change even if it is a subtype.
                 remaining = self.unbox_or_cast(value, opt_value_type, value.line)
-                self.add_bool_branch(remaining, true, false)
+                self.add_bool_branch(remaining, true, false, rare=rare)
 
     def call_c(
         self,

@@ -451,7 +451,7 @@ def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDe
         call_delattr, call_setattr = BasicBlock(), BasicBlock()
         null = Integer(0, object_rprimitive, line)
         is_delattr = builder.add(ComparisonOp(value_arg, null, ComparisonOp.EQ, line))
-        builder.add_bool_branch(is_delattr, call_delattr, call_setattr)
+        builder.add_bool_branch(is_delattr, call_delattr, call_setattr, rare=True)
 
         builder.activate_block(call_delattr)
         delattr_symbol = cdef.info.get("__delattr__")

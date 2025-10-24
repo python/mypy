@@ -614,7 +614,7 @@ def setup_non_ext_dict(
     non_ext_dict = Register(dict_rprimitive)
 
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
-    builder.add_bool_branch(has_prepare, true_block, false_block)
+    builder.add_bool_branch(has_prepare, true_block, false_block, rare=True)
 
     builder.activate_block(true_block)
     cls_name = builder.load_str(cdef.name)
