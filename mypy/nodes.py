@@ -1792,19 +1792,28 @@ class PassStmt(Statement):
 
 
 class IfStmt(Statement):
-    __slots__ = ("expr", "body", "else_body")
+    __slots__ = ("expr", "body", "else_body", "while_stmt")
 
-    __match_args__ = ("expr", "body", "else_body")
+    __match_args__ = ("expr", "body", "else_body", "while_stmt")
 
     expr: list[Expression]
     body: list[Block]
     else_body: Block | None
+    while_stmt: bool  # Is the if statement a converted while statement?
 
-    def __init__(self, expr: list[Expression], body: list[Block], else_body: Block | None) -> None:
+    def __init__(
+        self,
+        expr: list[Expression],
+        body: list[Block],
+        else_body: Block | None,
+        *,
+        while_stmt: bool = False,
+    ) -> None:
         super().__init__()
         self.expr = expr
         self.body = body
         self.else_body = else_body
+        self.while_stmt = while_stmt
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
