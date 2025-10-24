@@ -1210,7 +1210,7 @@ class ForZip(ForGenerator):
         # are quicker to check than others, so we will check the
         # specialized ForHelpers before we check any generic
         # ForIterable
-        
+
         gens = self.gens
         cond_blocks = self.cond_blocks[:]
         cond_blocks.remove(self.body_block)
@@ -1224,18 +1224,25 @@ class ForZip(ForGenerator):
             )
 
         # these are slowest, they invoke Python's iteration protocol
-        for_iterable = [(g, block) for g, block in zip(gens, cond_blocks) if check_type(g, ForSequence)]
+        for_iterable = [
+            (g, block) for g, block in zip(gens, cond_blocks) if check_type(g, ForSequence)
+        ]
 
         # These aren't the slowest but they're slow, we need to pack an RTuple and then get and item and do a comparison
-        for_dict = [(g, block) for g, block in zip(gens, cond_blocks) if check_type(g, ForDictionaryCommon)]
+        for_dict = [
+            (g, block) for g, block in zip(gens, cond_blocks) if check_type(g, ForDictionaryCommon)
+        ]
 
         # These are faster than ForIterable but not as fast as others (faster than ForDict?)
-        for_native = [(g, block) for g, block in zip(gens, cond_blocks) if check_type(g, ForNativeGenerator)]
+        for_native = [
+            (g, block) for g, block in zip(gens, cond_blocks) if check_type(g, ForNativeGenerator)
+        ]
 
         # forward involves in the best case one pyssize_t comparison, else one length check + the comparison
         # reverse is slightly slower than forward, with one extra check
         for_sequence_reverse_with_len_check = [
-            (g, block) for g, block in zip(gens, cond_blocks)
+            (g, block)
+            for g, block in zip(gens, cond_blocks)
             if check_type(g, ForSequence)
             and (
                 for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
@@ -1243,7 +1250,8 @@ class ForZip(ForGenerator):
             and for_seq.length_reg is not None
         ]
         for_sequence_reverse_no_len_check = [
-            (g, block) for g, block in zip(gens, cond_blocks)
+            (g, block)
+            for g, block in zip(gens, cond_blocks)
             if check_type(g, ForSequence)
             and (
                 for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
@@ -1251,7 +1259,8 @@ class ForZip(ForGenerator):
             and for_seq.length_reg is None
         ]
         for_sequence_forward_with_len_check = [
-            (g, block) for g, block in zip(gens, cond_blocks)
+            (g, block)
+            for g, block in zip(gens, cond_blocks)
             if check_type(g, ForSequence)
             and not (
                 for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
@@ -1259,7 +1268,8 @@ class ForZip(ForGenerator):
             and for_seq.length_reg is not None
         ]
         for_sequence_forward_no_len_check = [
-            (g, block) for g, block in zip(gens, cond_blocks)
+            (g, block)
+            for g, block in zip(gens, cond_blocks)
             if check_type(g, ForSequence)
             and not (
                 for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
@@ -1281,13 +1291,15 @@ class ForZip(ForGenerator):
         )
 
         # this is a failsafe for ForHelper classes which might have been added after this commit but not added to this function's code
-        leftovers = [(g, block) for g, block in zip(gens, cond_blocks) if g not in ordered + for_iterable]
+        leftovers = [
+            (g, block) for g, block in zip(gens, cond_blocks) if g not in ordered + for_iterable
+        ]
 
         gens_and_blocks = ordered + leftovers + for_iterable
         conditons = [g for (g, block) in gens_and_blocks]
         cond_blocks = [block for (g, block) in gens_and_blocks] + [self.body_block]
 
-        return conditions, cond_blocks 
+        return conditions, cond_blocks
 
 
 def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
