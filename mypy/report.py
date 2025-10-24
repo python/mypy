@@ -424,6 +424,9 @@ class LineCoverageReporter(AbstractReporter):
         type_map: dict[Expression, Type],
         options: Options,
     ) -> None:
+        if os.path.isdir(tree.path):  # can happen with namespace packages
+            return
+
         with open(tree.path) as f:
             tree_source = f.readlines()
 
