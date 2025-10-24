@@ -1187,7 +1187,7 @@ class ForZip(ForGenerator):
         self.conditions, self.cond_blocks = self.__sort_conditions()
 
     def gen_condition(self) -> None:
-        for i, gen in enumerate(ordered + leftovers + for_iterable):
+        for i, gen in enumerate(self.conditions):
             gen.gen_condition()
             if i < len(self.gens) - 1:
                 self.builder.activate_block(self.cond_blocks[i])
@@ -1296,7 +1296,7 @@ class ForZip(ForGenerator):
         ]
 
         gens_and_blocks = ordered + leftovers + for_iterable
-        conditons = [g for (g, block) in gens_and_blocks]
+        conditions = [g for (g, block) in gens_and_blocks]
         cond_blocks = [block for (g, block) in gens_and_blocks] + [self.body_block]
 
         return conditions, cond_blocks
