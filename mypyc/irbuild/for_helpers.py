@@ -1192,7 +1192,7 @@ class ForZip(ForGenerator):
         # ForIterable
         gens = self.gens
 
-        def check_type(obj: Any, typ: type[Any]) -> bool:
+        def check_type(obj: Any, typ: type[ForGenerator]) -> bool:
             # ForEnumerate gen_condition is as fast as it's underlying generator's
             return (
                 isinstance(obj, typ) or isinstance(obj, ForEnumerate) and isinstance(obj.main_gen, typ)
