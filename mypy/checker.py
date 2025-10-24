@@ -5100,21 +5100,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # where we allow `raise e from None`.
             expected_type_items.append(NoneType())
 
-        self.check_subtype(
-            typ, UnionType.make_union(expected_type_items), s, message_registry.INVALID_EXCEPTION
-        )
+        message = message_registry.INVALID_EXCEPTION
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
+            message = message.with_additional_msg('; did you mean "NotImplementedError"?')
+        self.check_subtype(typ, UnionType.make_union(expected_type_items), s, message)
 
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
-
-        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
-            self.fail(
-                message_registry.INVALID_EXCEPTION.with_additional_msg(
-                    '; did you mean "NotImplementedError"?'
-                ),
-                s,
-            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
