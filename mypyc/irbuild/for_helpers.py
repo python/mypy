@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, cast
 
 from mypy.nodes import (
     ARG_POS,
@@ -67,6 +67,7 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.primitives.dict_ops import (
@@ -1223,10 +1224,42 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
         and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, NameExpr)
+        and all(kind == ARG_POS for kind in expr.arg_kinds)
+    ):
+        fullname = callee.fullname
+        if (
+            fullname
+            in (
+                "builtins.list",
+                "builtins.tuple",
+                "builtins.enumerate",
+                "builtins.sorted",
+                "builtins.reversed",
+            )
+            and len(expr.args) == 1
+        ):
+            return get_expr_length(builder, expr.args[0])
+        elif fullname == "builtins.map" and len(expr.args) == 2:
+            return get_expr_length(builder, expr.args[1])
+        elif fullname == "builtins.zip" and expr.args:
+            arg_lengths = [get_expr_length(builder, arg) for arg in expr.args]
+            if all(arg is not None for arg in arg_lengths):
+                return min(arg_lengths)  # type: ignore [type-var]
+        elif fullname == "builtins.range" and len(expr.args) <= 3:
+            folded_args = [constant_fold_expr(builder, arg) for arg in expr.args]
+            if all(isinstance(arg, int) for arg in folded_args):
+                try:
+                    return len(range(*cast(list[int], folded_args)))
+                except ValueError:  # prevent crash if invalid args
+                    pass
+
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
-    # of key conflicts. Range, enumerate, zip are all simple logic.
+    # of key conflicts.
 
     # we might still be able to get the length directly from the type
     rtype = builder.node_type(expr)
