@@ -443,9 +443,13 @@ def make_for_loop_generator(
         target_type = builder.get_sequence_type(expr)
         for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
 
-        if isinstance(expr, IndexExpr) and isinstance(expr.index, SliceExpr) and all(
-            s is None or isinstance(constant_fold_expr(builder, s), int)
-            for s in (expr.index.start, expr.index.stop, expr.index.step)
+        if (
+            isinstance(expr, IndexExpr)
+            and isinstance(expr.index, SliceExpr)
+            and all(
+                s is None or isinstance(constant_fold_expr(builder, s), int)
+                for s in (expr.index.start, expr.index.stop, expr.index.step)
+            )
         ):
             for_list.init(
                 builder.accept(expr.base),
