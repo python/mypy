@@ -1373,6 +1373,19 @@ main:16: note:         def meth(self, x: int) -> int
 main:16: note:         @overload
 main:16: note:         def meth(self, x: bytes) -> str
 
+[case testProtocolWithMultiContravariantTypeVarOverloads]
+from typing import overload, Protocol, TypeVar
+
+T1 = TypeVar("T1", contravariant=True)
+T2 = TypeVar("T2", contravariant=True)
+
+class A(Protocol[T1, T2]):
+    @overload
+    def method(self, a: T1) -> None: ...
+    @overload
+    def method(self, a: T2) -> None: ...
+
+
 -- Join and meet with protocol types
 -- ---------------------------------
 
