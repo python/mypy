@@ -1362,7 +1362,7 @@ class NT(NamedTuple, Generic[T]):
             return self._replace()
 
 class SNT(NT[int]): ...
-reveal_type(SNT("test", 42).meth())  # N: Revealed type is "tuple[builtins.str, Never, fallback=__main__.SNT]"
+reveal_type(SNT("test", 42).meth())  # N: Revealed type is "tuple[builtins.str, builtins.int, fallback=__main__.SNT]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 

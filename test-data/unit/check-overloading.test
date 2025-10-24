@@ -1335,14 +1335,6 @@ def g(x: U, y: V) -> None:
     f([x, y]) # E: Value of type variable "T" of "f" cannot be "object"
 [builtins fixtures/list.pyi]
 [out]
-tmp/foo.pyi:12: error: "mystr" not callable
-tmp/foo.pyi:13: error: No overload variant of "f" matches argument type "V"
-tmp/foo.pyi:13: note: Possible overload variants:
-tmp/foo.pyi:13: note:     def [T: str] f(x: T) -> T
-tmp/foo.pyi:13: note:     def [T: str] f(x: list[T]) -> None
-tmp/foo.pyi:15: note: Revealed type is "None"
-tmp/foo.pyi:16: error: Value of type variable "T" of "f" cannot be "V"
-tmp/foo.pyi:17: error: List item 1 has incompatible type "V"; expected "str"
 
 [case testOverloadOverlapWithTypeVars]
 from foo import *
