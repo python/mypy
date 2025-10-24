@@ -172,7 +172,7 @@ class LineCountReporter(AbstractReporter):
     ) -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
-        if not os.path.isdir(tree.path): # can happen with namespace packages
+        if not os.path.isdir(tree.path):  # can happen with namespace packages
             with open(tree.path, "rb") as f:
                 physical_lines = len(f.readlines())
         else:
