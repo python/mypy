@@ -442,17 +442,17 @@ def make_for_loop_generator(
         target_type = builder.get_sequence_type(expr)
         for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
 
-        if isinstance(expr, IndexExpr) and all(
+        if isinstance(expr, IndexExpr) and isinstance(expr.index, SliceExpr) and all(
             s is None or isinstance(constant_fold_expr(builder, s), int)
-            for s in (expr.start, expr.stop, expr.step)
+            for s in (expr.index.start, expr.index.stop, expr.index.step)
         ):
             for_list.init(
-                builder.accept(expr.expr),
+                builder.accept(expr.base),
                 target_type,
                 reverse=False,
-                start=expr.start,
-                stop=expr.stop,
-                step=expr.step,
+                start=expr.index.start,
+                stop=expr.index.stop,
+                step=expr.index.step,
             )
         else:
             for_list.init(builder.accept(expr), target_type, reverse=False)
