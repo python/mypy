@@ -32,7 +32,16 @@ from mypy.cache import (
     write_str_opt_list,
     write_tag,
 )
-from mypy.nodes import ARG_KINDS, ARG_POS, ARG_STAR, ARG_STAR2, INVARIANT, ArgKind, SymbolNode
+from mypy.nodes import (
+    ARG_KINDS,
+    ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
+    INVARIANT,
+    ArgKind,
+    ArgKinds,
+    SymbolNode,
+)
 from mypy.options import Options
 from mypy.state import state
 from mypy.util import IdMapper
@@ -1895,7 +1904,7 @@ class Parameters(ProperType):
     def __init__(
         self,
         arg_types: Sequence[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None],
         *,
         variables: Sequence[TypeVarLikeType] | None = None,
@@ -1908,7 +1917,11 @@ class Parameters(ProperType):
         self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
-        assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        assert len(arg_types) == len(arg_kinds) == len(arg_names), (
+            len(arg_types),
+            len(arg_kinds),
+            len(arg_names),
+        )
         assert not any(isinstance(t, Parameters) for t in arg_types)
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_ellipsis_args = is_ellipsis_args
@@ -1918,7 +1931,7 @@ class Parameters(ProperType):
     def copy_modified(
         self,
         arg_types: Bogus[Sequence[Type]] = _dummy,
-        arg_kinds: Bogus[list[ArgKind]] = _dummy,
+        arg_kinds: Bogus[ArgKinds] = _dummy,
         arg_names: Bogus[Sequence[str | None]] = _dummy,
         *,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
@@ -2128,7 +2141,7 @@ class CallableType(FunctionLike):
         self,
         # maybe this should be refactored to take a Parameters object
         arg_types: Sequence[Type],
-        arg_kinds: list[ArgKind],
+        arg_kinds: ArgKinds,
         arg_names: Sequence[str | None],
         ret_type: Type,
         fallback: Instance,
@@ -2149,7 +2162,11 @@ class CallableType(FunctionLike):
         unpack_kwargs: bool = False,
     ) -> None:
         super().__init__(line, column)
-        assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        assert len(arg_types) == len(arg_kinds) == len(arg_names), (
+            len(arg_types),
+            len(arg_kinds),
+            len(arg_names),
+        )
         self.arg_types = list(arg_types)
         for t in self.arg_types:
             if isinstance(t, ParamSpecType):
@@ -2186,7 +2203,7 @@ class CallableType(FunctionLike):
     def copy_modified(
         self: CT,
         arg_types: Bogus[Sequence[Type]] = _dummy,
-        arg_kinds: Bogus[list[ArgKind]] = _dummy,
+        arg_kinds: Bogus[ArgKinds] = _dummy,
         arg_names: Bogus[Sequence[str | None]] = _dummy,
         ret_type: Bogus[Type] = _dummy,
         fallback: Bogus[Instance] = _dummy,
