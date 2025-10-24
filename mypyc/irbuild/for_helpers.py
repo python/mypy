@@ -1292,7 +1292,9 @@ class ForZip(ForGenerator):
 
         # this is a failsafe for ForHelper classes which might have been added after this commit but not added to this function's code
         leftovers = [
-            g_and_block for g_and_block in zip(gens, cond_blocks) if g_and_block not in ordered + for_iterable
+            g_and_block
+            for g_and_block in zip(gens, cond_blocks)
+            if g_and_block not in ordered + for_iterable
         ]
 
         gens_and_blocks = ordered + leftovers + for_iterable
