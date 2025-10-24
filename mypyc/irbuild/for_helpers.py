@@ -1218,7 +1218,7 @@ class ForZip(ForGenerator):
             and (
                 for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
             ).reverse
-            and for_seq.len_reg is not None
+            and for_seq.length_reg is not None
         ]
         for_sequence_reverse_no_len_check = [
             g
@@ -1227,7 +1227,7 @@ class ForZip(ForGenerator):
             and (
                 for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
             ).reverse
-            and for_seq.len_reg is None
+            and for_seq.length_reg is None
         ]
         for_sequence_forward_with_len_check = [
             g
@@ -1236,7 +1236,7 @@ class ForZip(ForGenerator):
             and not (
                 for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
             ).reverse
-            and for_seq.len_reg is not None
+            and for_seq.length_reg is not None
         ]
         for_sequence_forward_no_len_check = [
             g
@@ -1245,7 +1245,7 @@ class ForZip(ForGenerator):
             and not (
                 for_seq := cast(ForSequence, g.main_gen if isinstance(g, ForEnumerate) else g)
             ).reverse
-            and for_seq.len_reg is None
+            and for_seq.length_reg is None
         ]
 
         # these are really fast, just a C int equality check
