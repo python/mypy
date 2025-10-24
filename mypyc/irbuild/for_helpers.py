@@ -1212,30 +1212,44 @@ class ForZip(ForGenerator):
         for_sequence_reverse_with_len_check = [
             g
             for g in gens
-            if check_type(g, ForSequence) and (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse and g.len_reg is not None
+            if check_type(g, ForSequence)
+            and (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
+            and g.len_reg is not None
         ]
         for_sequence_reverse_no_len_check = [
             g
             for g in gens
-            if check_type(g, ForSequence) and (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse and g.len_reg is None
+            if check_type(g, ForSequence)
+            and (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
+            and g.len_reg is None
         ]
         for_sequence_forward_with_len_check = [
             g
             for g in gens
             if check_type(g, ForSequence)
-            and not (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse and g.len_reg is not None
+            and not (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
+            and g.len_reg is not None
         ]
         for_sequence_forward_no_len_check = [
             g
             for g in gens
             if check_type(g, ForSequence)
-            and not (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse and g.len_reg is None
+            and not (g := (g.gen if isinstance(g, ForEnumerate) else g)).reverse
+            and g.len_reg is None
         ]
 
         # these are really fast, just a C int equality check
         for_range = [g for g in gens if isinstance(g, ForRange)]
 
-        ordered = for_range + for_sequence_forward_no_len_check + for_sequence_forward_no_len_check + for_sequence_forward_with_len_check + for_sequence_reverse_with_len_check + for_native + for_dict
+        ordered = (
+            for_range
+            + for_sequence_forward_no_len_check
+            + for_sequence_forward_no_len_check
+            + for_sequence_forward_with_len_check
+            + for_sequence_reverse_with_len_check
+            + for_native
+            + for_dict
+        )
 
         # this is a failsafe for ForHelper classes which might have been added after this commit but not added to this function's code
         leftovers = [g for g in gens if g not in ordered + for_iterable]
