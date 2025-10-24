@@ -858,7 +858,7 @@ class ForSequence(ForGenerator):
         assert self.stop == -1, "implement me!"
 
         self.step = 1 if step is None else step
-        assert self.step and self.step >= 1:
+        assert self.step and self.step >= 1, "this should be unreachable for step None and step 0"
         if reverse:
             self.step *= -1
 
