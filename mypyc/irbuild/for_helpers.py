@@ -450,9 +450,9 @@ def make_for_loop_generator(
             def constant_fold_or_none(expr: Expression | None) -> Any:
                 return None if expr is None else constant_fold_expr(builder, expr)
 
-            start = constant_fold_or_none(expr.index.start)
-            stop = constant_fold_or_none(expr.index.stop)
-            step = constant_fold_or_none(expr.index.step)
+            start = constant_fold_or_none(expr.index.begin_index)
+            stop = constant_fold_or_none(expr.index.end_index)
+            step = constant_fold_or_none(expr.index.stride)
 
             if all(s is None or isinstance(s, int) for s in (start, stop, step)):
                 for_list.init(
