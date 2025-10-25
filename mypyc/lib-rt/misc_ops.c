@@ -642,7 +642,7 @@ int CPyStatics_Initialize(PyObject **statics,
                 if (obj == NULL) {
                     return -1;
                 }
-                PyUnicode_InternInPlace(&obj); 
+                PyUnicode_InternInPlace(&obj);
                 *result++ = obj;
 #if CPY_3_14_FEATURES
                 CPy_SetImmortal(obj);
