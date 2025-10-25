@@ -751,9 +751,9 @@ int CPyStatics_Initialize(PyObject **statics,
             if (obj == NULL) {
                 return -1;
             }
-#if CPY_3_14_FEATURES
-            CPy_SetImmortal(obj);
-#endif
+//#if CPY_3_14_FEATURES
+//            CPy_SetImmortal(obj);
+//#endif
             for (int i = 0; i < num_items; i++) {
                 PyObject *item = statics[*frozensets++];
 #if CPY_3_14_FEATURES
