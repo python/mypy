@@ -125,6 +125,7 @@ from mypy.nodes import (
     TypeAliasExpr,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeInfo,
     TypeVarExpr,
     UnaryExpr,
@@ -764,6 +765,10 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_cast_expr(self, e: CastExpr) -> None:
         super().visit_cast_expr(e)
+        self.add_type_dependencies(e.type)
+
+    def visit_type_form_expr(self, e: TypeFormExpr) -> None:
+        super().visit_type_form_expr(e)
         self.add_type_dependencies(e.type)
 
     def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
