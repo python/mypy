@@ -204,7 +204,17 @@ class Emitter:
 
         If it contains illegal characters, an empty string is returned."""
         line_width = self._indent + len(line)
+
+        # temporarily override pprint._safe_key
+        default_safe_key = pprint._safe_key  # type: ignore [attr-defined]
+        pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
+
+        # pretty print the object
         formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+
+        # replace the _safe_key
+        pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
+
         if any(x in formatted for x in ("/*", "*/", "\0")):
             return ""
 
@@ -1226,3 +1236,13 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
     # Multi-line result
     res.append(indent + ", ".join(current))
     return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"
+
+
+def _mypyc_safe_key(obj: object) -> str:
+    """A custom sort key implementation for pprint that makes the output deterministic
+    for all literal types supported by mypyc.
+
+    This is NOT safe for use as a sort key for other types, so we MUST replace the
+    original pprint._safe_key once we've pprinted our object.
+    """
+    return str(type(obj)) + pprint.pformat(obj)
