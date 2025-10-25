@@ -4895,15 +4895,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return typ
 
     @staticmethod
-    def is_notimplemented(t: ProperType) -> Type:
+    def is_notimplemented(t: ProperType) -> bool:
         return isinstance(t, Instance) and t.type.fullname == "builtins._NotImplementedType"
 
     @classmethod
-    def erase_notimplemented(cls, t: ProperType) -> Type:
+    def erase_notimplemented(cls, t: Type) -> Type:
+        t = get_proper_type(t)
         if cls.is_notimplemented(t):
             return AnyType(TypeOfAny.special_form)
         if isinstance(t, UnionType):
-            return UnionType.make_union([i for i in t.items if not cls.is_notimplemented(i)])
+            return UnionType.make_union(
+                [i for i in t.items if not cls.is_notimplemented(get_proper_type(i))]
+            )
         return t
 
     def check_return_stmt(self, s: ReturnStmt) -> None:
