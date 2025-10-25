@@ -7843,8 +7843,9 @@ class SemanticAnalyzer(
                     return
         elif isinstance(maybe_type_expr, IndexExpr):
             if isinstance(maybe_type_expr.base, NameExpr):
-                if (isinstance(maybe_type_expr.base.node, Var) and
-                        not self.var_is_typing_special_form(maybe_type_expr.base)):
+                if isinstance(
+                    maybe_type_expr.base.node, Var
+                ) and not self.var_is_typing_special_form(maybe_type_expr.base):
                     # Leftmost part of IndexExpr refers to a Var. Not a valid type.
                     maybe_type_expr.as_type = None
                     return
@@ -7856,8 +7857,9 @@ class SemanticAnalyzer(
                         break
                     next_leftmost = leftmost
                 if isinstance(leftmost, NameExpr):
-                    if (isinstance(leftmost.node, Var) and
-                            not self.var_is_typing_special_form(leftmost.node)):
+                    if isinstance(leftmost.node, Var) and not self.var_is_typing_special_form(
+                        leftmost.node
+                    ):
                         # Leftmost part of IndexExpr refers to a Var. Not a valid type.
                         maybe_type_expr.as_type = None
                         return
@@ -7907,18 +7909,19 @@ class SemanticAnalyzer(
 
     @staticmethod
     def var_is_typing_special_form(var: Var) -> bool:
-        return (
-            var.fullname.startswith('typing') and
-            var.fullname in [
-                'typing.Annotated', 'typing_extensions.Annotated',
-                'typing.Callable',
-                'typing.Literal', 'typing_extensions.Literal',
-                'typing.Optional',
-                'typing.TypeGuard', 'typing_extensions.TypeGuard',
-                'typing.TypeIs', 'typing_extensions.TypeIs',
-                'typing.Union',
-            ]
-        )
+        return var.fullname.startswith("typing") and var.fullname in [
+            "typing.Annotated",
+            "typing_extensions.Annotated",
+            "typing.Callable",
+            "typing.Literal",
+            "typing_extensions.Literal",
+            "typing.Optional",
+            "typing.TypeGuard",
+            "typing_extensions.TypeGuard",
+            "typing.TypeIs",
+            "typing_extensions.TypeIs",
+            "typing.Union",
+        ]
 
     @contextmanager
     def isolated_error_analysis(self) -> Iterator[None]:
