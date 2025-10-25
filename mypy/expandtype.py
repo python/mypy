@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Final, TypeVar, cast, overload
 
-from mypy.nodes import ARG_STAR, FakeInfo, Var
+from mypy.nodes import ARG_STAR, ArgKind, FakeInfo, Var
 from mypy.state import state
 from mypy.types import (
     ANY_STRATEGY,
@@ -270,14 +270,61 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 ),
             )
         elif isinstance(repl, Parameters):
-            assert t.flavor == ParamSpecFlavor.BARE
-            return Parameters(
-                self.expand_types(t.prefix.arg_types) + repl.arg_types,
-                t.prefix.arg_kinds + repl.arg_kinds,
-                t.prefix.arg_names + repl.arg_names,
-                variables=[*t.prefix.variables, *repl.variables],
-                imprecise_arg_kinds=repl.imprecise_arg_kinds,
-            )
+            assert isinstance(t.upper_bound, ProperType) and isinstance(t.upper_bound, Instance)
+            if t.flavor == ParamSpecFlavor.BARE:
+                return Parameters(
+                    self.expand_types(t.prefix.arg_types) + repl.arg_types,
+                    t.prefix.arg_kinds + repl.arg_kinds,
+                    t.prefix.arg_names + repl.arg_names,
+                    variables=[*t.prefix.variables, *repl.variables],
+                    imprecise_arg_kinds=repl.imprecise_arg_kinds,
+                )
+            elif t.flavor == ParamSpecFlavor.ARGS:
+                assert all(k.is_positional() for k in t.prefix.arg_kinds)
+                required_posargs = list(t.prefix.arg_types)
+                optional_posargs: list[Type] = []
+                for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
+                    if kind.is_positional() and name is None:
+                        if optional_posargs:
+                            # May happen following Unpack expansion
+                            required_posargs += optional_posargs
+                            optional_posargs = []
+                        required_posargs.append(type)
+                    elif kind.is_positional():
+                        optional_posargs.append(type)
+                    elif kind == ArgKind.ARG_STAR:
+                        p_type = get_proper_type(type)
+                        if isinstance(p_type, UnpackType):
+                            optional_posargs.append(type)
+                        else:
+                            optional_posargs.append(
+                                UnpackType(Instance(t.upper_bound.type, [type]))
+                            )
+                        break
+                return UnionType.make_union(
+                    [
+                        TupleType(required_posargs + optional_posargs[:i], fallback=t.upper_bound)
+                        for i in range(len(optional_posargs) + 1)
+                    ]
+                )
+            else:
+                assert t.flavor == ParamSpecFlavor.KWARGS
+                kwargs = {}
+                required_names = set()
+                extra_items: Type = UninhabitedType()
+                for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
+                    if kind == ArgKind.ARG_NAMED and name is not None:
+                        kwargs[name] = type
+                        required_names.add(name)
+                    elif kind == ArgKind.ARG_STAR2:
+                        # Unpack[TypedDict] is normalized early, it isn't stored as Unpack
+                        extra_items = type
+                    elif not kind.is_star() and name is not None:
+                        kwargs[name] = type
+                if not kwargs:
+                    return Instance(t.upper_bound.type, [t.upper_bound.args[0], extra_items])
+                # TODO: when PEP 728 is implemented, pass extra_items below.
+                return TypedDictType(kwargs, required_names, set(), fallback=t.upper_bound)
         else:
             # We could encode Any as trivial parameters etc., but it would be too verbose.
             # TODO: assert this is a trivial type, like Any, Never, or object.
