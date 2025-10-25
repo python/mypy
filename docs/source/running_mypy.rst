@@ -309,7 +309,7 @@ All this will do is make mypy stop reporting an error on the line containing the
 import: the imported module will continue to be of type ``Any``, and mypy may
 not catch errors in its use.
 
-1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
+1.  To suppress a *single* missing import error, add a ``# type: ignore[import-not-found]`` at the end of the
     line containing the import.
 
 2.  To suppress *all* missing import errors from a single library, add
