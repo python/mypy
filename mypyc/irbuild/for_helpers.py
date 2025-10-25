@@ -471,7 +471,9 @@ def make_for_loop_generator(
                     start_reg = builder.accept(expr.args[0])
                     end_reg = builder.accept(expr.args[1])
                     step = 1 if num_args == 2 else builder.extract_int(expr.args[2])
-                    assert isinstance(step, int), "this was validated above, the assert is for mypy"
+                    assert isinstance(
+                        step, int
+                    ), "this was validated above, the assert is for mypy"
 
                 for_range = ForRange(builder, index, body_block, loop_exit, line, nested)
                 for_range.init(start_reg, end_reg, step)
