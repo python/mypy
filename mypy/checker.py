@@ -178,6 +178,7 @@ from mypy.typeops import (
     coerce_to_literal,
     custom_special_method,
     erase_def_to_union_or_bound,
+    erase_notimplemented,
     erase_to_bound,
     erase_to_union_or_bound,
     false_only,
@@ -4894,21 +4895,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.store_types(original_type_map)
         return typ
 
-    @staticmethod
-    def is_notimplemented(t: ProperType) -> bool:
-        return isinstance(t, Instance) and t.type.fullname == "builtins._NotImplementedType"
-
-    @classmethod
-    def erase_notimplemented(cls, t: Type) -> Type:
-        t = get_proper_type(t)
-        if cls.is_notimplemented(t):
-            return AnyType(TypeOfAny.special_form)
-        if isinstance(t, UnionType):
-            return UnionType.make_union(
-                [i for i in t.items if not cls.is_notimplemented(get_proper_type(i))]
-            )
-        return t
-
     def check_return_stmt(self, s: ReturnStmt) -> None:
 
         defn = self.scope.current_function()
@@ -4991,7 +4977,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 else:
                     typ_: Type = typ
                     if defn.name in BINARY_MAGIC_METHODS or defn.name == "__subclasshook__":
-                        typ_ = self.erase_notimplemented(typ)
+                        typ_ = erase_notimplemented(typ)
                     self.check_subtype(
                         subtype_label="got",
                         subtype=typ_,
