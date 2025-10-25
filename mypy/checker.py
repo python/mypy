@@ -4896,7 +4896,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     @staticmethod
     def is_notimplemented(t: ProperType) -> Type:
-        return (isinstance(t, Instance) and t.type.fullname == "builtins._NotImplementedType")
+        return isinstance(t, Instance) and t.type.fullname == "builtins._NotImplementedType"
 
     @classmethod
     def erase_notimplemented(cls, t: ProperType) -> Type:

@@ -6942,4 +6942,3 @@ reveal_type(a and int())  # N: Revealed type is "Union[__main__.A, builtins.int]
 reveal_type(int() or a)  # N: Revealed type is "Union[builtins.int, __main__.A]"
 
 [builtins fixtures/notimplemented.pyi]
-
