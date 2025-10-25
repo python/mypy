@@ -13,7 +13,7 @@ class tuple: pass
 class dict: pass
 class classmethod: pass
 
-class _NotImplementedType(Any):
+class _NotImplementedType:
     __call__: NotImplemented  # type: ignore
 NotImplemented: _NotImplementedType
 
