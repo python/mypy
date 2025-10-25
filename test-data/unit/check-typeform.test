@@ -694,13 +694,15 @@ from typing import (
 )
 from typing_extensions import (
     Annotated, Concatenate, Never, TypeAlias, TypeForm, TypeIs,
+    TypeVarTuple, Unpack,
 )
 #
 class SomeClass:
     pass
 SomeTypeAlias: TypeAlias = SomeClass
 SomeTypeVar = TypeVar('SomeTypeVar')
-type IntTuple[*Ts] = tuple[int, *Ts]
+Ts = TypeVarTuple('Ts')
+IntTuple: TypeAlias = tuple[int, Unpack[Ts]]
 P = ParamSpec('P')
 R = TypeVar('R')
 #
