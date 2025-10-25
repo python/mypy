@@ -683,6 +683,103 @@ else:
 [typing fixtures/typing-full.pyi]
 
 
+-- Type Expressions Assignable To TypeForm Variable
+
+[case testEveryKindOfTypeExpressionIsAssignableToATypeFormVariable]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+# NOTE: Importing Callable from collections.abc also works OK
+from typing import (
+    Any, Callable, Dict, List, Literal, LiteralString, NoReturn,
+    Optional, ParamSpec, Self, Type, TypeGuard, TypeVar, Union,
+)
+from typing_extensions import (
+    Annotated, Concatenate, Never, TypeAlias, TypeForm, TypeIs,
+)
+#
+class SomeClass:
+    pass
+SomeTypeAlias: TypeAlias = SomeClass
+SomeTypeVar = TypeVar('SomeTypeVar')
+type IntTuple[*Ts] = tuple[int, *Ts]
+P = ParamSpec('P')
+R = TypeVar('R')
+#
+typx: TypeForm
+# Begin rules taken from: https://typing.python.org/en/latest/spec/annotations.html#grammar-token-expression-grammar-type_expression
+# <Any>
+typx = Any
+class SelfBinder:
+    def bind_self(self) -> Self:
+        typx: TypeForm
+        # <Self> (valid only in some contexts)
+        typx = Self
+        return self
+# <LiteralString>
+typx = LiteralString
+# <NoReturn>
+typx = NoReturn
+# <Never>
+typx = Never
+# <None>
+typx = None
+# name (where name must refer to a valid in-scope class)
+typx = SomeClass
+# name (where name must refer to a valid in-scope type alias)
+typx = SomeTypeAlias
+# name (where name must refer to a valid in-scope TypeVar)
+# NOTE: Unbound TypeVar isn't currently accepted as a TypeForm. Is that OK?
+typx = SomeTypeVar  # E: Incompatible types in assignment (expression has type "TypeVar", variable has type "TypeForm[Any]")
+# name '[' type_expression (',' type_expression)* ']'
+typx = Dict[str, int]
+# (TODO: Add: name '[' unpacked ']')
+# (TODO: Add: name '[' type_expression_list (',' type_expression_list)* ']')
+# name '[' '(' ')' ']' (denoting specialization with an empty TypeVarTuple)
+typx = IntTuple[()]
+# <Literal> '[' expression (',' expression) ']'
+typx = Literal[1]
+# type_expression '|' type_expression
+typx = int | str
+# <Optional> '[' type_expression ']'
+typx = Optional[str]
+# <Union> '[' type_expression (',' type_expression)* ']'
+typx = Union[int, str]
+# <type> '[' <Any> ']'
+typx = type[Any]
+# <type> '[' name ']' (where name must refer to a valid in-scope class)
+typx = type[int]
+# (TODO: Add: <type> '[' name ']' (where name must refer to a valid in-scope TypeVar))
+# <Callable> '[' '...' ',' type_expression ']'
+typx = Callable[..., str]
+def bind_R(input: R) -> R:
+    typx: TypeForm
+    # <Callable> '[' name ',' type_expression ']' (where name must be a valid in-scope ParamSpec)
+    typx = Callable[P, R]
+    # <Callable> '[' <Concatenate> '[' (type_expression ',')+
+    #            (name | '...') ']' ',' type_expression ']'
+    #     (where name must be a valid in-scope ParamSpec)
+    typx = Callable[Concatenate[int, P], R]
+    return input
+# <Callable> '[' '[' maybe_unpacked (',' maybe_unpacked)* ']' ',' type_expression ']'
+typx = Callable[[int, str], None]
+# <tuple> '[' '(' ')' ']' (representing an empty tuple)
+typx = tuple[()]
+# <tuple> '[' type_expression ',' '...' ']' (representing an arbitrary-length tuple)
+typx = tuple[int, ...]
+# <tuple> '[' maybe_unpacked (',' maybe_unpacked)* ']'
+typx = tuple[int, str]
+# <Annotated> '[' type_expression ',' expression (',' expression)* ']'
+typx = Annotated[str, 'uppercase']
+# <TypeGuard> '[' type_expression ']' (valid only in some contexts)
+typx = TypeGuard[List[str]]
+# <TypeIs> '[' type_expression ']' (valid only in some contexts)
+typx = TypeIs[List[str]]
+# string_annotation (must evaluate to a valid type_expression)
+typx = 'int | str'
+# End rules
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+
 -- Misc
 
 [case testTypeFormHasAllObjectAttributesAndMethods]
