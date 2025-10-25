@@ -293,8 +293,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     elif kind.is_positional():
                         optional_posargs.append(type)
                     elif kind == ArgKind.ARG_STAR:
-                        p_type = get_proper_type(type)
-                        if isinstance(p_type, UnpackType):
+                        # UnpackType cannot be aliased
+                        if isinstance(type, ProperType) and isinstance(type, UnpackType):
                             optional_posargs.append(type)
                         else:
                             optional_posargs.append(
