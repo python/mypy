@@ -9,10 +9,15 @@ class function: pass
 class bool: pass
 class int: pass
 class str: pass
+class tuple: pass
 class dict: pass
+class classmethod: pass
+class ellipsis: pass
 
-class _NotImplementedType(Any):
+class _NotImplementedType:
     __call__: NotImplemented  # type: ignore
 NotImplemented: _NotImplementedType
+
+NotImplementedType = _NotImplementedType
 
 class BaseException: pass

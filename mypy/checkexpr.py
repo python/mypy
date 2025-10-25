@@ -132,6 +132,7 @@ from mypy.typeanal import (
 from mypy.typeops import (
     callable_type,
     custom_special_method,
+    erase_notimplemented,
     erase_to_union_or_bound,
     false_only,
     fixup_partial_type,
@@ -3554,7 +3555,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             else:
                 assert_never(use_reverse)
             e.method_type = method_type
-            return result
+            return erase_notimplemented(result)
         else:
             raise RuntimeError(f"Unknown operator {e.op}")
 
@@ -3705,7 +3706,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 result = join.join_types(result, sub_result)
 
         assert result is not None
-        return result
+        return erase_notimplemented(result)
 
     def find_partial_type_ref_fast_path(self, expr: Expression) -> Type | None:
         """If expression has a partial generic type, return it without additional checks.
@@ -4228,15 +4229,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # callable types.
             results_final = make_simplified_union(all_results)
             inferred_final = self.combine_function_signatures(get_proper_types(all_inferred))
-            return results_final, inferred_final
+            return erase_notimplemented(results_final), inferred_final
         else:
-            return self.check_method_call_by_name(
+            result, inferred = self.check_method_call_by_name(
                 method=method,
                 base_type=base_type,
                 args=[arg],
                 arg_kinds=[ARG_POS],
                 context=context,
             )
+            return erase_notimplemented(result), inferred
 
     def check_boolean_op(self, e: OpExpr) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
