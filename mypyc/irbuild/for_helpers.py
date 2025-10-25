@@ -7,7 +7,7 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar, cast
+from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
@@ -470,7 +470,8 @@ def make_for_loop_generator(
                 else:
                     start_reg = builder.accept(expr.args[0])
                     end_reg = builder.accept(expr.args[1])
-                    step = 1 if num_args == 2 else cast(int, builder.extract_int(expr.args[2]))
+                    step = 1 if num_args == 2 else builder.extract_int(expr.args[2])
+                    assert isinstance(step, int), "this was validated above, the assert is for mypy"
 
                 for_range = ForRange(builder, index, body_block, loop_exit, line, nested)
                 for_range.init(start_reg, end_reg, step)
