@@ -4894,10 +4894,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.store_types(original_type_map)
         return typ
 
-    def check_return_stmt(self, s: ReturnStmt) -> None:
+    @staticmethod
+    def is_notimplemented(t: ProperType) -> Type:
+        return (isinstance(t, Instance) and t.type.fullname == "builtins._NotImplementedType")
 
-        def is_notimplemented(t: object) -> bool:
-            return isinstance(t, Instance) and t.type.fullname == "builtins._NotImplementedType"
+    @classmethod
+    def erase_notimplemented(cls, t: ProperType) -> Type:
+        if cls.is_notimplemented(t):
+            return AnyType(TypeOfAny.special_form)
+        if isinstance(t, UnionType):
+            return UnionType.make_union([i for i in t.items if not cls.is_notimplemented(i)])
+        return t
+
+    def check_return_stmt(self, s: ReturnStmt) -> None:
 
         defn = self.scope.current_function()
         if defn is not None:
@@ -4979,12 +4988,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 else:
                     typ_: Type = typ
                     if defn.name in BINARY_MAGIC_METHODS or defn.name == "__subclasshook__":
-                        if is_notimplemented(typ):
-                            return
-                        if isinstance(typ, UnionType):
-                            typ_ = UnionType.make_union(
-                                [i for i in typ.items if not is_notimplemented(i)]
-                            )
+                        typ_ = self.erase_notimplemented(typ)
                     self.check_subtype(
                         subtype_label="got",
                         subtype=typ_,

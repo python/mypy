@@ -12,6 +12,7 @@ class str: pass
 class tuple: pass
 class dict: pass
 class classmethod: pass
+class ellipsis: pass
 
 class _NotImplementedType:
     __call__: NotImplemented  # type: ignore
