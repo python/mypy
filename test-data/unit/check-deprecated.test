@@ -329,7 +329,7 @@ class C:
 class C2(C): ...
 
 C()  # E: function __main__.C.__init__ is deprecated: call `make_c()` instead
-C2()  # E: function.__main__.C.__init__ is deprecated: call `make_c()` instead
+C2()  # E: function __main__.C.__init__ is deprecated: call `make_c()` instead
 
 class D:
     @deprecated("call `make_d()` instead")
