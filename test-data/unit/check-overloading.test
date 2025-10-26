@@ -6854,7 +6854,9 @@ reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iter
 [builtins fixtures/isinstancelist.pyi]
 
 [case testReturnNotImplementedInBinaryMagicMethods]
+# flags: --warn-return-any
 from typing import Union
+
 class A:
     def __add__(self, other: object) -> int:
         return NotImplemented
@@ -6868,10 +6870,10 @@ class A:
     def __mul__(self, other: object) -> Union[int, NotImplementedType]:
         x: Union[int, NotImplementedType]
         return x
-
 [builtins fixtures/notimplemented.pyi]
 
 [case testReturnNotImplementedABCSubclassHookMethod]
+# flags: --warn-return-any
 class A:
     @classmethod
     def __subclasshook__(cls, t: type[object], /) -> bool:
@@ -6879,7 +6881,9 @@ class A:
 [builtins fixtures/notimplemented.pyi]
 
 [case testReturnNotImplementedInNormalMethods]
+# flags: --warn-return-any
 from typing import Union
+
 class A:
     def f(self) -> bool: return NotImplemented  # E: Incompatible return value type (got "_NotImplementedType", expected "bool")
     def g(self) -> NotImplementedType: return True # E: Incompatible return value type (got "bool", expected "_NotImplementedType")
@@ -6889,7 +6893,7 @@ class A:
 [builtins fixtures/notimplemented.pyi]
 
 [case testNotImplementedReturnedFromBinaryMagicMethod]
-# flags: --warn-unreachable
+# flags: --warn-return-any
 from typing import Union
 
 class A:
@@ -6940,5 +6944,4 @@ reveal_type(a <= 1)  # N: Revealed type is "builtins.bool"
 reveal_type(a < 1)  # N: Revealed type is "Any"
 reveal_type(a and int())  # N: Revealed type is "Union[__main__.A, builtins.int]"
 reveal_type(int() or a)  # N: Revealed type is "Union[builtins.int, __main__.A]"
-
 [builtins fixtures/notimplemented.pyi]
