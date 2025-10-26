@@ -6,15 +6,21 @@
 #include "librt_internal.h"
 
 #define START_SIZE 512
-#define MAX_SHORT_INT_TAGGED (255 << 1)
 
-#define MAX_SHORT_LEN 127
-#define LONG_STR_TAG 1
+// See comment in read_int_internal() on motivation for these values.
+#define MIN_ONE_BYTE_INT -10
+#define MAX_ONE_BYTE_INT 117  // 2 ** 7 - 1 - 10
+#define MIN_TWO_BYTES_INT -100
+#define MAX_TWO_BYTES_INT 16283  // 2 ** (8 + 6) - 1 - 100
+#define MIN_FOUR_BYTES_INT -10000
+#define MAX_FOUR_BYTES_INT 536860911  // 2 ** (3 * 8 + 5) - 1 - 10000
 
-#define MIN_SHORT_INT -10
-#define MAX_SHORT_INT 117
-#define MEDIUM_INT_TAG 1
-#define LONG_INT_TAG 3
+#define TWO_BYTES_INT_BIT 1
+#define FOUR_BYTES_INT_BIT 2
+#define LONG_INT_BIT 4
+
+#define FOUR_BYTES_INT_TRAILER 3
+#define LONG_INT_TRAILER 7
 
 #define CPY_BOOL_ERROR 2
 #define CPY_NONE_ERROR 2
@@ -39,7 +45,6 @@ typedef struct {
     Py_ssize_t end;
     Py_ssize_t size;
     char *buf;
-    PyObject *source;
 } BufferObject;
 
 static PyTypeObject BufferType;
@@ -253,26 +258,47 @@ write_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
 }
 
 /*
-str format: size followed by UTF-8 bytes
-    short strings (len <= 127): single byte for size as `(uint8_t)size << 1`
-    long strings: \x01 followed by size as Py_ssize_t
+str format: size as int (see below) followed by UTF-8 bytes
 */
+
+static inline CPyTagged
+_read_short_int(PyObject *data, uint8_t first) {
+    uint8_t second;
+    uint16_t two_more;
+    if ((first & TWO_BYTES_INT_BIT) == 0) {
+       // Note we use tagged ints since this function can return an error.
+       return ((Py_ssize_t)(first >> 1) + MIN_ONE_BYTE_INT) << 1;
+    }
+    if ((first & FOUR_BYTES_INT_BIT) == 0) {
+       _CHECK_READ(data, 1, CPY_INT_TAG)
+       second = _READ(data, uint8_t)
+       return ((((Py_ssize_t)second) << 6) + (Py_ssize_t)(first >> 2) + MIN_TWO_BYTES_INT) << 1;
+    }
+    // The caller is responsible to verify this is called only for short ints.
+    _CHECK_READ(data, 3, CPY_INT_TAG)
+    // TODO: check if compilers emit optimal code for these two reads, and tweak if needed.
+    second = _READ(data, uint8_t)
+    two_more = _READ(data, uint16_t)
+    Py_ssize_t higher = (((Py_ssize_t)two_more) << 13) + (((Py_ssize_t)second) << 5);
+    return (higher + (Py_ssize_t)(first >> 3) + MIN_FOUR_BYTES_INT) << 1;
+}
 
 static PyObject*
 read_str_internal(PyObject *data) {
     _CHECK_BUFFER(data, NULL)
 
     // Read string length.
-    Py_ssize_t size;
     _CHECK_READ(data, 1, NULL)
     uint8_t first = _READ(data, uint8_t)
-    if (likely(first != LONG_STR_TAG)) {
-        // Common case: short string (len <= 127).
-        size = (Py_ssize_t)(first >> 1);
-    } else {
-        _CHECK_READ(data, sizeof(CPyTagged), NULL)
-        size = _READ(data, Py_ssize_t)
+    if (unlikely(first == LONG_INT_TRAILER)) {
+        // Fail fast for invalid/tampered data.
+        PyErr_SetString(PyExc_ValueError, "invalid str size");
+        return NULL;
     }
+    CPyTagged tagged_size = _read_short_int(data, first);
+    if (tagged_size == CPY_INT_TAG)
+        return NULL;
+    Py_ssize_t size = tagged_size >> 1;
     // Read string content.
     char *buf = ((BufferObject *)data)->buf;
     _CHECK_READ(data, size, NULL)
@@ -296,6 +322,24 @@ read_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     return read_str_internal(data);
 }
 
+static inline char
+_write_short_int(PyObject *data, Py_ssize_t real_value) {
+    if (real_value >= MIN_ONE_BYTE_INT && real_value <= MAX_ONE_BYTE_INT) {
+        _CHECK_SIZE(data, 1)
+        _WRITE(data, uint8_t, (uint8_t)(real_value - MIN_ONE_BYTE_INT) << 1)
+        ((BufferObject *)data)->end += 1;
+    } else if (real_value >= MIN_TWO_BYTES_INT && real_value <= MAX_TWO_BYTES_INT) {
+        _CHECK_SIZE(data, 2)
+        _WRITE(data, uint16_t, ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT)
+        ((BufferObject *)data)->end += 2;
+    } else {
+        _CHECK_SIZE(data, 4)
+        _WRITE(data, uint32_t, ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER)
+        ((BufferObject *)data)->end += 4;
+    }
+    return CPY_NONE;
+}
+
 static char
 write_str_internal(PyObject *data, PyObject *value) {
     _CHECK_BUFFER(data, CPY_NONE_ERROR)
@@ -305,24 +349,20 @@ write_str_internal(PyObject *data, PyObject *value) {
     if (unlikely(chunk == NULL))
         return CPY_NONE_ERROR;
 
-    Py_ssize_t need;
     // Write string length.
-    if (likely(size <= MAX_SHORT_LEN)) {
-        // Common case: short string (len <= 127) store as single byte.
-        need = size + 1;
-        _CHECK_SIZE(data, need)
-        _WRITE(data, uint8_t, (uint8_t)size << 1)
+    if (likely(size >= MIN_FOUR_BYTES_INT && size <= MAX_FOUR_BYTES_INT)) {
+        if (_write_short_int(data, size) == CPY_NONE_ERROR)
+            return CPY_NONE_ERROR;
     } else {
-        need = size + sizeof(Py_ssize_t) + 1;
-        _CHECK_SIZE(data, need)
-        _WRITE(data, uint8_t, LONG_STR_TAG)
-        _WRITE(data, Py_ssize_t, size)
+        PyErr_SetString(PyExc_ValueError, "str too long to serialize");
+        return CPY_NONE_ERROR;
     }
     // Write string content.
+    _CHECK_SIZE(data, size)
     char *buf = ((BufferObject *)data)->buf;
     memcpy(buf + ((BufferObject *)data)->pos, chunk, size);
     ((BufferObject *)data)->pos += size;
-    ((BufferObject *)data)->end += need;
+    ((BufferObject *)data)->end += size;
     return CPY_NONE;
 }
 
@@ -347,9 +387,7 @@ write_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
 }
 
 /*
-bytes format: size followed by bytes
-    short bytes (len <= 127): single byte for size as `(uint8_t)size << 1`
-    long bytes: \x01 followed by size as Py_ssize_t
+bytes format: size as int (see below) followed by bytes
 */
 
 static PyObject*
@@ -357,16 +395,17 @@ read_bytes_internal(PyObject *data) {
     _CHECK_BUFFER(data, NULL)
 
     // Read length.
-    Py_ssize_t size;
     _CHECK_READ(data, 1, NULL)
     uint8_t first = _READ(data, uint8_t)
-    if (likely(first != LONG_STR_TAG)) {
-        // Common case: short bytes (len <= 127).
-        size = (Py_ssize_t)(first >> 1);
-    } else {
-        _CHECK_READ(data, sizeof(CPyTagged), NULL)
-        size = _READ(data, Py_ssize_t)
+    if (unlikely(first == LONG_INT_TRAILER)) {
+        // Fail fast for invalid/tampered data.
+        PyErr_SetString(PyExc_ValueError, "invalid bytes size");
+        return NULL;
     }
+    CPyTagged tagged_size = _read_short_int(data, first);
+    if (tagged_size == CPY_INT_TAG)
+        return NULL;
+    Py_ssize_t size = tagged_size >> 1;
     // Read bytes content.
     char *buf = ((BufferObject *)data)->buf;
     _CHECK_READ(data, size, NULL)
@@ -399,24 +438,20 @@ write_bytes_internal(PyObject *data, PyObject *value) {
         return CPY_NONE_ERROR;
     Py_ssize_t size = PyBytes_GET_SIZE(value);
 
-    Py_ssize_t need;
     // Write length.
-    if (likely(size <= MAX_SHORT_LEN)) {
-        // Common case: short bytes (len <= 127) store as single byte.
-        need = size + 1;
-        _CHECK_SIZE(data, need)
-        _WRITE(data, uint8_t, (uint8_t)size << 1)
+    if (likely(size >= MIN_FOUR_BYTES_INT && size <= MAX_FOUR_BYTES_INT)) {
+        if (_write_short_int(data, size) == CPY_NONE_ERROR)
+            return CPY_NONE_ERROR;
     } else {
-        need = size + sizeof(Py_ssize_t) + 1;
-        _CHECK_SIZE(data, need)
-        _WRITE(data, uint8_t, LONG_STR_TAG)
-        _WRITE(data, Py_ssize_t, size)
+        PyErr_SetString(PyExc_ValueError, "bytes too long to serialize");
+        return CPY_NONE_ERROR;
     }
     // Write bytes content.
+    _CHECK_SIZE(data, size)
     char *buf = ((BufferObject *)data)->buf;
     memcpy(buf + ((BufferObject *)data)->pos, chunk, size);
     ((BufferObject *)data)->pos += size;
-    ((BufferObject *)data)->end += need;
+    ((BufferObject *)data)->end += size;
     return CPY_NONE;
 }
 
@@ -449,7 +484,7 @@ static double
 read_float_internal(PyObject *data) {
     _CHECK_BUFFER(data, CPY_FLOAT_ERROR)
     _CHECK_READ(data, sizeof(double), CPY_FLOAT_ERROR)
-    double res = _READ(data, double);
+    double res = _READ(data, double)
     return res;
 }
 
@@ -499,9 +534,13 @@ write_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnam
 
 /*
 int format:
-    most common values (-10 <= value <= 117): single byte as `(uint8_t)(value + 10) << 1`
-    medium values (fit in CPyTagged): \x01 followed by CPyTagged value
-    long values (very rare): \x03 followed by decimal string (see str format)
+    one byte: last bit 0, 7 bits used
+    two bytes: last two bits 01, 14 bits used
+    four bytes: last three bits 011, 29 bits used
+    everything else: 00000111 followed by serialized string representation
+
+Note: for fixed size formats we skew ranges towards more positive values,
+since negative integers are much more rare.
 */
 
 static CPyTagged
@@ -510,14 +549,8 @@ read_int_internal(PyObject *data) {
     _CHECK_READ(data, 1, CPY_INT_TAG)
 
     uint8_t first = _READ(data, uint8_t)
-    if ((first & MEDIUM_INT_TAG) == 0) {
-       // Most common case: int that is small in absolute value.
-       return ((Py_ssize_t)(first >> 1) + MIN_SHORT_INT) << 1;
-    }
-    if (first == MEDIUM_INT_TAG) {
-        _CHECK_READ(data, sizeof(CPyTagged), CPY_INT_TAG)
-        CPyTagged ret = _READ(data, CPyTagged)
-        return ret;
+    if (likely(first != LONG_INT_TRAILER)) {
+        return _read_short_int(data, first);
     }
     // People who have literal ints not fitting in size_t should be punished :-)
     PyObject *str_ret = read_str_internal(data);
@@ -525,7 +558,9 @@ read_int_internal(PyObject *data) {
         return CPY_INT_TAG;
     PyObject* ret_long = PyLong_FromUnicodeObject(str_ret, 10);
     Py_DECREF(str_ret);
-    return ((CPyTagged)ret_long) | CPY_INT_TAG;
+    if (ret_long == NULL)
+        return CPY_INT_TAG;
+    return CPyTagged_StealFromObject(ret_long);
 }
 
 static PyObject*
@@ -543,36 +578,38 @@ read_int(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     return CPyTagged_StealAsObject(retval);
 }
 
+static inline char
+_write_long_int(PyObject *data, CPyTagged value) {
+    // TODO(jukka): write a more compact/optimal format for arbitrary length ints.
+    _CHECK_SIZE(data, 1)
+    _WRITE(data, uint8_t, LONG_INT_TRAILER)
+    ((BufferObject *)data)->end += 1;
+    PyObject* int_value = CPyTagged_AsObject(value);
+    if (unlikely(int_value == NULL))
+        return CPY_NONE_ERROR;
+    PyObject *str_value = PyObject_Str(int_value);
+    Py_DECREF(int_value);
+    if (unlikely(str_value == NULL))
+        return CPY_NONE_ERROR;
+    char res = write_str_internal(data, str_value);
+    Py_DECREF(str_value);
+    return res;
+}
+
 static char
 write_int_internal(PyObject *data, CPyTagged value) {
     _CHECK_BUFFER(data, CPY_NONE_ERROR)
 
     if (likely((value & CPY_INT_TAG) == 0)) {
         Py_ssize_t real_value = CPyTagged_ShortAsSsize_t(value);
-        if (real_value >= MIN_SHORT_INT && real_value <= MAX_SHORT_INT) {
-            // Most common case: int that is small in absolute value.
-            _CHECK_SIZE(data, 1)
-            _WRITE(data, uint8_t, (uint8_t)(real_value - MIN_SHORT_INT) << 1)
-            ((BufferObject *)data)->end += 1;
+        if (likely(real_value >= MIN_FOUR_BYTES_INT && real_value <= MAX_FOUR_BYTES_INT)) {
+            return _write_short_int(data, real_value);
         } else {
-            _CHECK_SIZE(data, sizeof(CPyTagged) + 1)
-            _WRITE(data, uint8_t, MEDIUM_INT_TAG)
-            _WRITE(data, CPyTagged, value)
-            ((BufferObject *)data)->end += sizeof(CPyTagged) + 1;
+            return _write_long_int(data, value);
         }
     } else {
-        _CHECK_SIZE(data, 1)
-        _WRITE(data, uint8_t, LONG_INT_TAG)
-        ((BufferObject *)data)->end += 1;
-        PyObject *str_value = PyObject_Str(CPyTagged_LongAsObject(value));
-        if (unlikely(str_value == NULL))
-            return CPY_NONE_ERROR;
-        char res = write_str_internal(data, str_value);
-        Py_DECREF(str_value);
-        if (unlikely(res == CPY_NONE_ERROR))
-            return CPY_NONE_ERROR;
+        return _write_long_int(data, value);
     }
-    return CPY_NONE;
 }
 
 static PyObject*
