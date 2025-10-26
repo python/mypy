@@ -326,7 +326,10 @@ class C:
     @classmethod
     def make_c(cls) -> C: ...
 
+class C2(C): ...
+
 C()  # E: function __main__.C.__init__ is deprecated: call `make_c()` instead
+C2()  # E: function.__main__.C.__init__ is deprecated: call `make_c()` instead
 
 class D:
     @deprecated("call `make_d()` instead")
@@ -334,7 +337,10 @@ class D:
     @classmethod
     def make_d(cls) -> D: ...
 
+class D2(D): ...
+
 D()  # E: function __main__.D.__new__ is deprecated: call `make_d()` instead
+D2()  # E: function __main__.D.__new__ is deprecated: call `make_d()` instead
 
 [builtins fixtures/tuple.pyi]
 
