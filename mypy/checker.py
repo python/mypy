@@ -3313,6 +3313,33 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
                         lvalue, instance_type, lvalue_type, rvalue, context=rvalue
                     )
+                    ## --PATCH-- (ISSUE №19996 --INTERNAL ERROR with allow_redefinition_new and undeclared instance variables)
+                    proper_rvalue_type = get_proper_type(rvalue_type)
+                    resolved_type = None
+
+                    def can_resolve_partial(lvalue_type, proper_rvalue_type):
+                        return lvalue_type.type is None and not isinstance(proper_rvalue_type, NoneType)
+
+                    def set_node_type(lvalue, typ):
+                        if getattr(lvalue, "node", None) and hasattr(lvalue.node, "type"):
+                            lvalue.node.type = typ
+
+                    if isinstance(lvalue_type, PartialType) and can_resolve_partial(lvalue_type, proper_rvalue_type):
+                        resolved_type = make_simplified_union([proper_rvalue_type, NoneType()])
+                    elif lvalue_type.type is not None and isinstance(proper_rvalue_type, Instance):
+                        if rvalue_type.type == lvalue_type.type:
+                            resolved_type = rvalue_type
+
+                    if resolved_type is not None:
+                        lvalue_type = resolved_type
+                        set_node_type(lvalue, resolved_type)
+                    else:
+                        self.fail(
+                            f"Cannot resolve type for instance variable '{lvalue.name}', please annotate",
+                            lvalue,
+                        )
+                    return
+                    
                 else:
                     # Hacky special case for assigning a literal None
                     # to a variable defined in a previous if
