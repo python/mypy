@@ -2778,7 +2778,6 @@ def test_buffer_roundtrip() -> None:
     assert read_int(b) == 536860912
     assert read_int(b) == 1234567891
 
-
 def test_buffer_int_size() -> None:
     for i in (-10, -9, 0, 116, 117):
         b = Buffer()
