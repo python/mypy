@@ -1680,8 +1680,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if isinstance(callable_node.node, TypeInfo):
                 callable_info = callable_node.node
             if callable_info is not None:
-                self.chk.check_deprecated(callable_node.node.get_method("__new__"), context)
-                self.chk.check_deprecated(callable_node.node.get_method("__init__"), context)
+                self.chk.check_deprecated(callee.definition, context)
 
             if callable_node.fullname in ENUM_BASES:
                 # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
