@@ -102,7 +102,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypy.options import PRECISE_TUPLE_TYPES
+from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.plugin import (
     FunctionContext,
     FunctionSigContext,
@@ -376,6 +376,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # generating extra type errors.
             result = AnyType(TypeOfAny.from_error)
         if isinstance(node, TypeInfo):
+            if self.type_context[-1] is not None:
+                proper_result = get_proper_type(result)
+                if isinstance(proper_result, (CallableType, Overloaded)):
+                    ctor_type = constructor_type_in_callable_context(
+                        proper_result,
+                        get_proper_type(self.type_context[-1]),
+                        self.chk.options,
+                    )
+                    if ctor_type is not None:
+                        self.chk.check_deprecated(ctor_type.definition, e)
             if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
                 result.ret_type, Instance
             ):
@@ -6782,3 +6792,53 @@ def is_type_type_context(context: Type | None) -> bool:
     if isinstance(context, UnionType):
         return any(is_type_type_context(item) for item in context.items)
     return False
+
+
+def constructor_type_in_callable_context(
+    constructor_type: CallableType | Overloaded,
+    context: ProperType,
+    options: Options,
+    /,
+    *,
+    _check_subtyping: bool = False,
+) -> CallableType | None:
+    """
+    Gets a class constructor type if it's used in a valid callable type context.
+    Considers the following cases as valid contexts:
+
+    * A plain `Callable` context is always treated as a valid context.
+    * A union type context requires at least one of the union items to be a supertype of
+      the class type, in addition to being a `Callable` or callable `Protocol`.
+    * A callable `Protocol` context is only treated as a valid context if the
+      constructor type is a subtype of the protocol or overloaded type.
+
+    If the class type is overloaded, use the first overload which is in a valid context.
+    """
+
+    item: Type
+    if isinstance(constructor_type, Overloaded):
+        for item in constructor_type.items:
+            result = constructor_type_in_callable_context(
+                item, context, options, _check_subtyping=True
+            )
+            if result is not None:
+                return result
+    elif isinstance(context, CallableType):
+        if (not _check_subtyping) or is_subtype(constructor_type, context, options=options):
+            return constructor_type
+    elif isinstance(context, UnionType):
+        for item in context.items:
+            result = constructor_type_in_callable_context(
+                constructor_type, get_proper_type(item), options, _check_subtyping=True
+            )
+            if result is not None:
+                return result
+    elif isinstance(context, Instance):
+        if (
+            context.type.is_protocol
+            and ("__call__" in context.type.protocol_members)
+            and is_subtype(constructor_type, context, options=options)
+        ):
+            return constructor_type
+
+    return None

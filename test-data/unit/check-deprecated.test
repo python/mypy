@@ -399,6 +399,207 @@ B_explicit_alias
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedClassConstructorInCallableTypeContext]
+# flags: --enable-error-code=deprecated
+
+from typing import Any, Callable, ClassVar, TypeVar, Generic
+from typing_extensions import deprecated
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+def receives_callable(c: Callable[..., Any], /) -> None: ...
+callable_receiver: Callable[[Callable[..., Any]], None]
+
+T = TypeVar("T")
+
+class CallableAttr(Generic[T]):
+    def __get__(self, instance: Settable[T], owner: type[Settable[T]], /) -> T: ...
+    def __set__(self, instance: Settable[T], value: T, /) -> None: ...
+
+class Settable(Generic[T]):
+    instance: T
+    attr = CallableAttr[T]()
+
+    @property
+    def prop(self) -> T: ...
+    @prop.setter
+    def prop(self, c: T, /) -> None: ...
+
+# Simple assignment
+A_callable: Callable[..., Any] = (
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+
+# Multiple assignments
+A_multi_callable: Callable[..., Any]
+A_multi_callable, var = (
+    A,  # E: function __main__.A.__init__ is deprecated: do not use
+    1,
+)
+
+# Function argument
+receives_callable(
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+
+# Callable type argument
+callable_receiver(
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+
+# Function return type
+def func_returns_callable(arg: int) -> Callable[..., Any]:
+    return A  # E: function __main__.A.__init__ is deprecated: do not use
+
+# Typed lambda return type
+lambda_returns_callable_1: Callable[[], Callable[..., Any]] = (
+    lambda: A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+lambda_returns_callable_2: Callable[[], Callable[..., Any]]
+lambda_returns_callable_2 = lambda: (
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+
+# Class and instance attributes
+settable: Settable[Callable[..., Any]]
+settable.instance = (
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+settable.attr = (
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+settable.prop = (
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+class SettableChild(Settable[Callable[..., Any]]):
+    class_: ClassVar[Callable[..., Any]] = (
+        A  # E: function __main__.A.__init__ is deprecated: do not use
+    )
+
+# Checks for false positives
+
+def receives_type(t: type[A], /) -> None: ...
+def receives_object(o: object) -> None: ...
+def receives_any(o: Any) -> None: ...
+type_receiver: Callable[[type[A]], None]
+object_receiver: Callable[[object], None]
+any_receiver: Callable[[Any], None]
+
+A_type: type[A] = A
+A_object: object = A
+A_any: Any = A
+receives_type(A_type)
+receives_object(A_object)
+receives_any(A_any)
+type_receiver(A_type)
+object_receiver(A_object)
+any_receiver(A_any)
+
+def func_returns_type(arg: int) -> type[A]: return A
+def func_returns_object(arg: int) -> object: return A
+def func_returns_any(arg: int) -> Any: return A
+lambda_returns_type: Callable[[], type[A]] = lambda: A
+lambda_returns_object: Callable[[], object] = lambda: A
+lambda_returns_any: Callable[[], Any] = lambda: A
+
+settable2: Settable[type[A]]
+settable2.instance = A
+settable2.attr = A
+settable2.prop = A
+
+class SettableChild2(Settable[type[A]]):
+    class_: ClassVar[type[A]] = A
+
+[builtins fixtures/property.pyi]
+
+
+[case testDeprecatedClassConstructorInUnionTypeContext]
+# flags: --enable-error-code=deprecated
+
+from typing import Any, Callable, Union, Optional
+from typing_extensions import deprecated
+
+class Dummy: ...
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+callable_or_dummy: Union[Callable[..., Any], Dummy] = A  # E: function __main__.A.__init__ is deprecated: do not use
+maybe_callable: Optional[Callable[..., Any]] = A  # E: function __main__.A.__init__ is deprecated: do not use
+
+type_or_dummy: Union[type[A], Dummy] = A
+maybe_type: Optional[type[A]] = A
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedClassConstructorInProtocolTypeContext]
+# flags: --enable-error-code=deprecated
+
+from typing import Protocol, Union
+from typing_extensions import deprecated
+
+class CompatibleProto(Protocol):
+    def __call__(self) -> A: ...
+
+class IncompatibleProto1(Protocol):
+    def __call__(self, a: int, /) -> A: ...
+
+class IncompatibleProto2(Protocol):
+    var: int
+    def __call__(self) -> A: ...
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+CallableA: Union[CompatibleProto, type[A]] = (
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+)
+AType1: Union[IncompatibleProto1, type[A]] = A
+AType2: Union[IncompatibleProto2, type[A]] = A
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedOverloadedClassConstructorInCallableTypeContext]
+# flags: --enable-error-code=deprecated --disable-error-code=no-overload-impl
+
+from typing import Callable, overload
+from typing_extensions import deprecated
+
+class A:
+    @overload
+    @deprecated("use `make_a` instead")
+    def __init__(self) -> None: ...
+    @overload
+    @deprecated("use `make_a_with_int()` instead")
+    def __init__(self, a: int) -> None: ...
+    @overload
+    def __init__(self, a: str) -> None: ...
+    @classmethod
+    def make_a(cls) -> A: ...
+    @classmethod
+    def make_a_with_int(cls, a: int) -> A: ...
+
+AFactory: Callable[[], A] = (
+    A  # E: overload def (self: __main__.A) of function __main__.A.__init__ is deprecated: use `make_a` instead
+)
+AFactoryWithInt: Callable[[int], A] = (
+    A  # E: overload def (self: __main__.A, a: builtins.int) of function __main__.A.__init__ is deprecated: use `make_a_with_int()` instead
+)
+
+AFactoryWithStr: Callable[[str], A] = A
+IncompatibleFactory: Callable[[bytes], A] = (
+    A  # E: Incompatible types in assignment (expression has type "type[A]", variable has type "Callable[[bytes], A]")
+)
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedSpecialMethods]
 # flags: --enable-error-code=deprecated
 
