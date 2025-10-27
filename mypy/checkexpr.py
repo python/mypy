@@ -383,9 +383,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 proper_result = get_proper_type(result)
                 if isinstance(proper_result, (CallableType, Overloaded)):
                     ctor_type = constructor_type_in_callable_context(
-                        proper_result,
-                        get_proper_type(self.type_context[-1]),
-                        self.chk.options,
+                        proper_result, get_proper_type(self.type_context[-1]), self.chk.options
                     )
                     if ctor_type is not None:
                         self.chk.check_deprecated(ctor_type.definition, e)
