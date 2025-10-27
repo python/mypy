@@ -15,7 +15,8 @@ else:
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import Any, Callable, Final, TextIO, Union
-from typing_extensions import Never, TypeAlias
+from typing import Never
+from typing_extensions import TypeAlias
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options

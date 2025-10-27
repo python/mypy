@@ -6,7 +6,8 @@ import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Final, NewType, TypeVar, Union, cast, overload
-from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
+from typing import TypeGuard
+from typing_extensions import Self, TypeAlias
 
 import mypy.nodes
 from mypy.bogus_type import Bogus

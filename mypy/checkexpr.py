@@ -9,7 +9,8 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager, nullcontext
 from typing import Callable, ClassVar, Final, Optional, cast, overload
-from typing_extensions import TypeAlias as _TypeAlias, assert_never
+from typing import assert_never
+from typing_extensions import TypeAlias
 
 import mypy.checker
 import mypy.errorcodes as codes
