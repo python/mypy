@@ -548,6 +548,13 @@ namespace_packages = True
 </body>
 </html>
 
+[case testLinecountReportCrashOnNamespacePackages]
+# cmd: mypy --linecount-report report -p folder
+-- Regression test for https://github.com/python/mypy/issues/15979
+[file folder/subfolder/something.py]
+class Something:
+    pass
+
 [case testReportIsADirectoryErrorCrashOnNamespacePackages]
 # cmd: mypy --linecoverage-report report -p folder
 -- Regression test for https://github.com/python/mypy/issues/18128
