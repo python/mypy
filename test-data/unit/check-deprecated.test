@@ -515,6 +515,31 @@ class SettableChild2(Settable[type[A]]):
 [builtins fixtures/property.pyi]
 
 
+[case testDeprecatedClassConstructorInConditionalExprCallableTypeContext]
+# flags: --enable-error-code=deprecated
+
+from typing import Any, Callable
+from typing_extensions import deprecated
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+class B(A): ...
+
+var: object
+callable_: Callable[..., Any] = (
+    A  # E: function __main__.A.__init__ is deprecated: do not use
+    if (var is None) else
+    B  # E: function __main__.A.__init__ is deprecated: do not use
+)
+
+TypeA1: type[A] = A if (var is None) else B
+TypeA2 = A if (var is None) else B
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedClassConstructorInUnionTypeContext]
 # flags: --enable-error-code=deprecated
 

@@ -286,6 +286,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     plugin: Plugin
 
     _arg_infer_context_cache: ArgumentInferContext | None
+    # Used to prevent generating redundant or invalid `@deprecated()` reports
+    _valid_pep702_type_context: bool
 
     def __init__(
         self,
@@ -322,6 +324,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         type_state.infer_polymorphic = not self.chk.options.old_type_inference
 
         self._arg_infer_context_cache = None
+        self._valid_pep702_type_context = True
         self.expr_cache: dict[
             tuple[Expression, Type | None],
             tuple[int, Type, list[ErrorInfo], dict[Expression, Type]],
@@ -375,7 +378,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType(TypeOfAny.from_error)
-        if isinstance(node, TypeInfo):
+        if self._valid_pep702_type_context and isinstance(node, TypeInfo):
             if self.type_context[-1] is not None:
                 proper_result = get_proper_type(result)
                 if isinstance(proper_result, (CallableType, Overloaded)):
@@ -5963,6 +5966,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 e.else_expr,
                 context=if_type_fallback,
                 allow_none_return=allow_none_return,
+                # `@deprecated()` is already properly reported in the else branch when obtaining
+                # `full_context_else_type`. Reporting it again is redundant, and also invalid when
+                # analysing reference expressions here because the full type context is not used.
+                valid_pep702_type_context=False,
             )
 
         # In most cases using if_type as a context for right branch gives better inferred types.
@@ -5988,17 +5995,26 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         context: Type | None,
         allow_none_return: bool = False,
         suppress_unreachable_errors: bool = True,
+        valid_pep702_type_context: bool = True,
     ) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+            _valid_pep702_context = self._valid_pep702_type_context
+            self._valid_pep702_type_context = valid_pep702_type_context
+            result: Type
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later. Since the branch was
                 # determined to be unreachable, any errors should be suppressed.
                 with self.msg.filter_errors(filter_errors=suppress_unreachable_errors):
                     self.accept(node, type_context=context, allow_none_return=allow_none_return)
-                return UninhabitedType()
-            self.chk.push_type_map(map)
-            return self.accept(node, type_context=context, allow_none_return=allow_none_return)
+                result = UninhabitedType()
+            else:
+                self.chk.push_type_map(map)
+                result = self.accept(
+                    node, type_context=context, allow_none_return=allow_none_return
+                )
+            self._valid_pep702_type_context = _valid_pep702_context
+            return result
 
     def _combined_context(self, ty: Type | None) -> Type | None:
         ctx_items = []
