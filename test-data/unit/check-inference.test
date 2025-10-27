@@ -2567,7 +2567,8 @@ def check() -> None:
     x = None  # E: Need type annotation for "x"
     if int():
         x = Foo()
-    reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
+        reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
+    reveal_type(x)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
 
 [case testRejectsPartialWithUninhabited2]
 from typing import Generic, TypeVar
@@ -2582,6 +2583,8 @@ def check() -> None:
     x = Foo()
     reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
 
+reveal_type(x)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
 [case testRejectsPartialWithUninhabited3]
 # Without force-rejecting Partial<None>, this crashes:
 # https://github.com/python/mypy/issues/16573
@@ -2595,12 +2598,11 @@ def check() -> None:
 
     if client := Foo():
         reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
-        pass
 
-    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
 
-    client = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Foo[Any]")
-    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
+    client = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Foo[Any]]")
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
 
 [case testRejectsPartialWithUninhabitedIndependently]
 from typing import Generic, TypeVar
@@ -2617,15 +2619,12 @@ def bad() -> None:
 
 def good() -> None:
     global client
-    client = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Foo[Any]")
-    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
+    client = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Foo[Any]]")
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
 
 def bad2() -> None:
     global client
     client = Foo()
-    # This doesn't look optimal, we should keep saying `Any | None`
-    # But once we store `Any | None` globally, it gives enough context
-    # to infer Foo[Any] instead of Foo[Never]
     reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
 
 [case testInferenceNestedTuplesFromGenericIterable]
