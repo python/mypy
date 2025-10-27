@@ -2575,9 +2575,10 @@ def format_type_inner(
     Args:
       typ: type to be formatted
       verbosity: a coarse grained control on the verbosity of the type
+      options: Options object controlling formatting
       fullnames: a set of names that should be printed in full
-      use_pretty_callable: use MessageBuilder.pretty_callable to format Callable
-        types.
+      module_names: whether to show module names for module types
+      use_pretty_callable: use pretty_callable to format Callable types.
     """
 
     def format(typ: Type) -> str:
@@ -2777,11 +2778,11 @@ def format_type_inner(
 
             # Use pretty format (def-style) for complex signatures with named, optional, or star args.
             # Use compact Callable[[...], ...] only for signatures with all simple positional args.
-            has_complex_args = any(
+            would_use_arg_constructors = any(
                 not should_format_arg_as_type(kind, name, verbosity)
                 for kind, name in zip(func.arg_kinds, func.arg_names)
             )
-            if use_pretty_callable and has_complex_args:
+            if use_pretty_callable and would_use_arg_constructors:
                 return pretty_callable(func, options)
 
             args = format_callable_args(
