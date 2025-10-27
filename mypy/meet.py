@@ -346,7 +346,12 @@ def is_overlapping_types(
         seen_types = set()
     elif (left, right) in seen_types:
         return True
-    if isinstance(left, TypeAliasType) or isinstance(right, TypeAliasType):
+    if (
+        isinstance(left, TypeAliasType)
+        and left.is_recursive
+        or isinstance(right, TypeAliasType)
+        and right.is_recursive
+    ):
         seen_types.add((left, right))
 
     left, right = get_proper_types((left, right))
