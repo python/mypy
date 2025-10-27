@@ -550,7 +550,7 @@ namespace_packages = True
 
 [case testReportIsADirectoryErrorCrashOnNamespacePackages]
 # cmd: mypy --linecoverage-report report -p folder
---Regression test for https://github.com/python/mypy/issues/18128
+-- Regression test for https://github.com/python/mypy/issues/18128
 -- "IsADirectoryError for namespace packages when using --linecoverage-report"
 [file folder/subfolder/something.py]
 class Something:
