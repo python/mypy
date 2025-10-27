@@ -3295,11 +3295,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             lvalue_type = var.type
                     else:
                         # Try to infer a partial type.
-                        if not self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type):
+                        if not self.infer_partial_type(var, lvalue, rvalue_type):
                             # If that also failed, give up and let the caller know that we
                             # cannot read their mind. The definition site will be reported later.
-                            rvalue_type = fixup_partial_type(lvalue_type)
-                            self.set_inferred_type(var, lvalue, rvalue_type)
+                            self.set_inference_error_fallback_type(var, lvalue, rvalue_type)
                 elif (
                     is_literal_none(rvalue)
                     and isinstance(lvalue, NameExpr)

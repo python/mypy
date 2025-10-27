@@ -2567,7 +2567,7 @@ def check() -> None:
     x = None  # E: Need type annotation for "x"
     if int():
         x = Foo()
-    reveal_type(x)  # N: Revealed type is "Union[Any, None]"
+    reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
 
 [case testRejectsPartialWithUninhabited2]
 from typing import Generic, TypeVar
@@ -2580,7 +2580,7 @@ x = None  # E: Need type annotation for "x"
 def check() -> None:
     global x
     x = Foo()
-    reveal_type(x)  # N: Revealed type is "Union[Any, None]"
+    reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
 
 [case testRejectsPartialWithUninhabited3]
 # Without force-rejecting Partial<None>, this crashes:
@@ -2594,13 +2594,13 @@ def check() -> None:
     client = None  # E: Need type annotation for "client"
 
     if client := Foo():
-        reveal_type(client)  # N: Revealed type is "Any"
+        reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
         pass
 
-    reveal_type(client)  # N: Revealed type is "Union[Any, None]"
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
 
-    client = 0
-    reveal_type(client)  # N: Revealed type is "builtins.int"
+    client = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Foo[Any]")
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
 
 [case testRejectsPartialWithUninhabitedIndependently]
 from typing import Generic, TypeVar
@@ -2613,12 +2613,12 @@ client = None  # E: Need type annotation for "client"
 def bad() -> None:
     global client
     client = Foo()
-    reveal_type(client)  # N: Revealed type is "Union[Any, None]"
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
 
 def good() -> None:
     global client
-    client = 1
-    reveal_type(client)  # N: Revealed type is "builtins.int"
+    client = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Foo[Any]")
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
 
 def bad2() -> None:
     global client
