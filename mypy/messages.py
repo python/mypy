@@ -2530,6 +2530,15 @@ def quote_type_string(type_string: str) -> str:
     return f'"{type_string}"'
 
 
+def should_format_arg_as_type(arg_kind: ArgKind, arg_name: str | None, verbosity: int) -> bool:
+    """
+    Determine whether a function argument should be formatted as its Type or with name.
+    """
+    return (arg_kind == ARG_POS and arg_name is None) or (
+        verbosity == 0 and arg_kind.is_positional()
+    )
+
+
 def format_callable_args(
     arg_types: list[Type],
     arg_kinds: list[ArgKind],
@@ -2540,7 +2549,7 @@ def format_callable_args(
     """Format a bunch of Callable arguments into a string"""
     arg_strings = []
     for arg_name, arg_type, arg_kind in zip(arg_names, arg_types, arg_kinds):
-        if arg_kind == ARG_POS and arg_name is None or verbosity == 0 and arg_kind.is_positional():
+        if should_format_arg_as_type(arg_kind, arg_name, verbosity):
             arg_strings.append(format(arg_type))
         else:
             constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
@@ -2769,10 +2778,8 @@ def format_type_inner(
             # Use pretty format (def-style) for complex signatures with named, optional, or star args.
             # Use compact Callable[[...], ...] only for signatures with all simple positional args.
             has_complex_args = any(
-                not (
-                    (kind == ARG_POS and name is None) or (verbosity == 0 and kind.is_positional())
-                )
-                for name, kind in zip(func.arg_names, func.arg_kinds)
+                not should_format_arg_as_type(kind, name, verbosity)
+                for kind, name in zip(func.arg_kinds, func.arg_names)
             )
             if use_pretty_callable and has_complex_args:
                 return pretty_callable(func, options)
