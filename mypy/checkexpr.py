@@ -1664,14 +1664,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         See the docstring of check_call for more information.
         """
-        # Check implicit calls to deprecated class constructors.
-        # Only the non-overload case is handled here. Overloaded constructors are handled
-        # separately during overload resolution. `callable_node` is `None` for an overload
-        # item so deprecation checks are not duplicated.
-        if isinstance(callable_node, RefExpr) and isinstance(callable_node.node, TypeInfo):
-            self.chk.check_deprecated(callable_node.node.get_method("__new__"), context)
-            self.chk.check_deprecated(callable_node.node.get_method("__init__"), context)
-
         # Always unpack **kwargs before checking a call.
         callee = callee.with_unpacked_kwargs().with_normalized_var_args()
         if callable_name is None and callee.name:
@@ -1679,9 +1671,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ret_type = get_proper_type(callee.ret_type)
         if callee.is_type_obj() and isinstance(ret_type, Instance):
             callable_name = ret_type.type.fullname
-        if isinstance(callable_node, RefExpr) and callable_node.fullname in ENUM_BASES:
-            # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
-            return callee.ret_type, callee
+        if isinstance(callable_node, RefExpr):
+            # Check implicit calls to deprecated class constructors.
+            # Only the non-overload case is handled here. Overloaded constructors are handled
+            # separately during overload resolution. `callable_node` is `None` for an overload
+            # item so deprecation checks are not duplicated.
+            callable_info: TypeInfo | None = None
+            if isinstance(callable_node.node, TypeInfo):
+                callable_info = callable_node.node
+            if callable_info is not None:
+                self.chk.check_deprecated(callable_node.node.get_method("__new__"), context)
+                self.chk.check_deprecated(callable_node.node.get_method("__init__"), context)
+
+            if callable_node.fullname in ENUM_BASES:
+                # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
+                return callee.ret_type, callee
 
         if (
             callee.is_type_obj()
