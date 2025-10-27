@@ -2558,13 +2558,17 @@ def format_type_inner(
     options: Options,
     fullnames: set[str] | None,
     module_names: bool = False,
+    use_pretty_callable: bool = True,
 ) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
     Args:
+      typ: type to be formatted
       verbosity: a coarse grained control on the verbosity of the type
       fullnames: a set of names that should be printed in full
+      use_pretty_callable: use MessageBuilder.pretty_callable to format Callable
+        types.
     """
 
     def format(typ: Type) -> str:
@@ -2761,6 +2765,18 @@ def format_type_inner(
             param_spec = func.param_spec()
             if param_spec is not None:
                 return f"Callable[{format(param_spec)}, {return_type}]"
+
+            # Use pretty format (def-style) for complex signatures with named, optional, or star args.
+            # Use compact Callable[[...], ...] only for signatures with all simple positional args.
+            has_complex_args = any(
+                not (
+                    (kind == ARG_POS and name is None) or (verbosity == 0 and kind.is_positional())
+                )
+                for name, kind in zip(func.arg_names, func.arg_kinds)
+            )
+            if use_pretty_callable and has_complex_args:
+                return pretty_callable(func, options)
+
             args = format_callable_args(
                 func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
             )
