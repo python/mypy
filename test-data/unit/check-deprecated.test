@@ -370,6 +370,35 @@ class D(C):
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedClassConstructorCalledFromTypeAlias]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated, TypeAlias
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+class B(A): ...
+
+A_alias = A
+A_explicit_alias: TypeAlias = A
+B_alias = B
+B_explicit_alias: TypeAlias = B
+
+A_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+A_explicit_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+B_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+B_explicit_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+
+A_alias
+A_explicit_alias
+B_alias
+B_explicit_alias
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedSpecialMethods]
 # flags: --enable-error-code=deprecated
 

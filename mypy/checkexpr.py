@@ -1679,6 +1679,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             callable_info: TypeInfo | None = None
             if isinstance(callable_node.node, TypeInfo):
                 callable_info = callable_node.node
+            elif (
+                isinstance(callable_node.node, TypeAlias)
+                and isinstance(callable_node.node.target, Instance)
+                and isinstance(callable_node.node.target.type, TypeInfo)
+            ):
+                callable_info = callable_node.node.target.type
             if callable_info is not None:
                 self.chk.check_deprecated(callee.definition, context)
 
