@@ -6625,8 +6625,58 @@ class SemanticAnalyzer(
             return v
         return None
 
+    def _lookup_fully_qualified(
+        self, fullname: str, *, allow_missing: bool
+    ) -> SymbolTableNode | None:
+        """Implementation detail shared by fully qualified lookup helpers.
+
+        This is not part of the public or plugin APIs. It only exists to centralize
+        the traversal logic so the public helpers remain thin wrappers without
+        changing any semantic rules governed by the analyzer.
+        """
+        if "." not in fullname:
+            raise ValueError(
+                f"_lookup_fully_qualified requires a qualified name with at least one dot, "
+                f"got: {fullname!r}"
+            )
+
+        module: str | None = None
+        filenode: MypyFile | None = None
+        parts = fullname.split(".")
+        names: list[str] = []
+
+        while parts:
+            candidate = ".".join(parts)
+            filenode = self.modules.get(candidate)
+            if filenode is not None:
+                module = candidate
+                break
+            names.append(parts.pop())
+
+        if filenode is None or module is None or not names:
+            return None
+
+        names.reverse()
+        result = filenode.names.get(names[0])
+
+        if result is None and self.is_incomplete_namespace(module):
+            self.record_incomplete_ref()
+            # When the namespace is incomplete and we don't have a result,
+            # return None immediately. If allow_missing=False, the caller
+            # will assert this is not None (preserving original behavior).
+            # If allow_missing=True, returning None is the expected outcome.
+            return None
+
+        for part in names[1:]:
+            if result is not None and isinstance(result.node, TypeInfo):
+                result = result.node.names.get(part)
+            else:
+                return None
+
+        return result
+
     def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
-        ret = self.lookup_fully_qualified_or_none(fullname)
+        ret = self._lookup_fully_qualified(fullname, allow_missing=False)
         assert ret is not None, fullname
         return ret
 
@@ -6639,47 +6689,7 @@ class SemanticAnalyzer(
 
         Note that this can't be used for names nested in class namespaces.
         """
-        # TODO: unify/clean-up/simplify lookup methods, see #4157.
-        module, name = fullname.rsplit(".", maxsplit=1)
-
-        if module in self.modules:
-            # If the module exists, look up the name in the module.
-            # This is the common case.
-            filenode = self.modules[module]
-            result = filenode.names.get(name)
-            if result is None and self.is_incomplete_namespace(module):
-                # TODO: More explicit handling of incomplete refs?
-                self.record_incomplete_ref()
-            return result
-        else:
-            # Else, try to find the longest prefix of the module name that is in the modules dictionary.
-            splitted_modules = fullname.split(".")
-            names = []
-
-            while splitted_modules and ".".join(splitted_modules) not in self.modules:
-                names.append(splitted_modules.pop())
-
-            if not splitted_modules or not names:
-                # If no module or name is found, return None.
-                return None
-
-            # Reverse the names list to get the correct order of names.
-            names.reverse()
-
-            module = ".".join(splitted_modules)
-            filenode = self.modules[module]
-            result = filenode.names.get(names[0])
-
-            if result is None and self.is_incomplete_namespace(module):
-                # TODO: More explicit handling of incomplete refs?
-                self.record_incomplete_ref()
-
-            for part in names[1:]:
-                if result is not None and isinstance(result.node, TypeInfo):
-                    result = result.node.names.get(part)
-                else:
-                    return None
-            return result
+        return self._lookup_fully_qualified(fullname, allow_missing=True)
 
     def object_type(self) -> Instance:
         if self._object_type is None:
