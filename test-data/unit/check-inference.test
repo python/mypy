@@ -2522,7 +2522,6 @@ class C:
     def __init__(self) -> None:
         self.x = []  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable]
 from typing import Tuple, TypeVar
@@ -2534,7 +2533,6 @@ x = None
 (x,) = f('')
 reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable2]
 # flags: --no-local-partial-types
@@ -2543,11 +2541,10 @@ T = TypeVar('T', bound=str)
 
 def f() -> Tuple[T]:
     ...
-x = None
+x = None  # E: Need type annotation for "x"
 if int():
     (x,) = f()
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable3]
 from typing import Tuple, TypeVar
@@ -2559,7 +2556,76 @@ x = None
 (x, x) = f('')
 reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
+
+[case testRejectsPartialWithUninhabited]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Foo(Generic[T]): ...
+
+def check() -> None:
+    x = None  # E: Need type annotation for "x"
+    if int():
+        x = Foo()
+        reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
+    reveal_type(x)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+[case testRejectsPartialWithUninhabited2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Foo(Generic[T]): ...
+
+x = None  # E: Need type annotation for "x"
+
+def check() -> None:
+    global x
+    x = Foo()
+    reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
+
+reveal_type(x)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+[case testRejectsPartialWithUninhabited3]
+# Without force-rejecting Partial<None>, this crashes:
+# https://github.com/python/mypy/issues/16573
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Foo(Generic[T]): ...
+
+def check() -> None:
+    client = None  # E: Need type annotation for "client"
+
+    if client := Foo():
+        reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
+
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+    client = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Foo[Any]]")
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+[case testRejectsPartialWithUninhabitedIndependently]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Foo(Generic[T]): ...
+
+client = None  # E: Need type annotation for "client"
+
+def bad() -> None:
+    global client
+    client = Foo()
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
+
+def good() -> None:
+    global client
+    client = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Foo[Any]]")
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+def bad2() -> None:
+    global client
+    client = Foo()
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
 
 [case testInferenceNestedTuplesFromGenericIterable]
 from typing import Tuple, TypeVar
@@ -2574,7 +2640,6 @@ def main() -> None:
     reveal_type(a) # N: Revealed type is "builtins.int"
     reveal_type(b) # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testDontMarkUnreachableAfterInferenceUninhabited]
 from typing import TypeVar

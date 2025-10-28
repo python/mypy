@@ -3299,9 +3299,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             del partial_types[var]
                             lvalue_type = var.type
                     else:
-                        # Try to infer a partial type. No need to check the return value, as
-                        # an error will be reported elsewhere.
-                        self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
+                        # Try to infer a partial type.
+                        if not self.infer_partial_type(var, lvalue, rvalue_type):
+                            # If that also failed, give up and let the caller know that we
+                            # cannot read their mind. The definition site will be reported later.
+                            # Calling .put() directly because the newly inferred type is
+                            # not a subtype of None - we are not looking for narrowing
+                            fallback = self.inference_error_fallback_type(rvalue_type)
+                            self.binder.put(lvalue, fallback)
+                            # Same as self.set_inference_error_fallback_type but inlined
+                            # to avoid computing fallback twice.
+                            # We are replacing partial<None> now, so the variable type
+                            # should remain optional.
+                            self.set_inferred_type(var, lvalue, make_optional_type(fallback))
                 elif (
                     is_literal_none(rvalue)
                     and isinstance(lvalue, NameExpr)
