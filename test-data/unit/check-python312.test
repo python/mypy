@@ -31,9 +31,10 @@ reveal_type(f(1))  # N: Revealed type is "builtins.int"
 async def g[T](x: T) -> T:
     return reveal_type(x)  # N: Revealed type is "T`-1"
 
-reveal_type(g(1))  # E: Value of type "Coroutine[Any, Any, int]" must be used \
+reveal_type(g(1))  # E: Value of type "CoroutineType[Any, Any, int]" must be used \
                    # N: Are you missing an await? \
-                   # N: Revealed type is "typing.Coroutine[Any, Any, builtins.int]"
+                   # N: Revealed type is "types.CoroutineType[Any, Any, builtins.int]"
+[builtins fixtures/async_await.pyi]
 
 [case testPEP695TypeVarBasic]
 from typing import Callable
