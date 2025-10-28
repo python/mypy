@@ -661,7 +661,7 @@ def not_precomputed_non_final_name(i):
 L0:
     r0 = __main__.globals :: static
     r1 = 'non_const'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = unbox(int, r2)
     r4 = PySet_New(0)
     r5 = box(int, r3)
@@ -780,7 +780,7 @@ def not_precomputed():
 L0:
     r0 = __main__.globals :: static
     r1 = 'non_const'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = unbox(int, r2)
     r4 = PySet_New(0)
     r5 = box(int, r3)
