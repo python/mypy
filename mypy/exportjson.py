@@ -1,4 +1,4 @@
-"""Tool to convert mypy cache file to a JSON format (print to stdout).
+"""Tool to convert binary mypy cache files (.ff) to JSON (.ff.json).
 
 Usage:
    python -m mypy.exportjson .mypy_cache/.../my_module.data.ff
@@ -21,6 +21,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 
 from librt.internal import Buffer
 
+from mypy.cache import CacheMeta
 from mypy.nodes import (
     FUNCBASE_FLAGS,
     FUNCDEF_FLAGS,
@@ -552,6 +553,30 @@ def convert_unbound_type(self: UnboundType) -> Json:
     }
 
 
+def convert_binary_cache_meta_to_json(data: bytes, data_file: str) -> Json:
+    meta = CacheMeta.read(Buffer(data), data_file)
+    assert meta is not None, f"Error reading meta cache file associated with {data_file}"
+    return {
+        "id": meta.id,
+        "path": meta.path,
+        "mtime": meta.mtime,
+        "size": meta.size,
+        "hash": meta.hash,
+        "data_mtime": meta.data_mtime,
+        "dependencies": meta.dependencies,
+        "suppressed": meta.suppressed,
+        "options": meta.options,
+        "dep_prios": meta.dep_prios,
+        "dep_lines": meta.dep_lines,
+        "dep_hashes": [dep.hex() for dep in meta.dep_hashes],
+        "interface_hash": meta.interface_hash.hex(),
+        "error_lines": meta.error_lines,
+        "version_id": meta.version_id,
+        "ignore_all": meta.ignore_all,
+        "plugin_data": meta.plugin_data,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Convert binary cache files to JSON. "
@@ -563,11 +588,19 @@ def main() -> None:
     args = parser.parse_args()
     fnams: list[str] = args.path
     for fnam in fnams:
-        if not fnam.endswith(".data.ff"):
-            sys.exit(f"error: Expected .data.ff extension, but got {fnam}")
+        if fnam.endswith(".data.ff"):
+            is_data = True
+        elif fnam.endswith(".meta.ff"):
+            is_data = False
+        else:
+            sys.exit(f"error: Expected .data.ff or .meta.ff extension, but got {fnam}")
         with open(fnam, "rb") as f:
             data = f.read()
-        json_data = convert_binary_cache_to_json(data)
+        if is_data:
+            json_data = convert_binary_cache_to_json(data)
+        else:
+            data_file = fnam.removesuffix(".meta.ff") + ".data.ff"
+            json_data = convert_binary_cache_meta_to_json(data, data_file)
         new_fnam = fnam + ".json"
         with open(new_fnam, "w") as f:
             json.dump(json_data, f)
