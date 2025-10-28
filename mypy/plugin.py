@@ -128,7 +128,7 @@ from mypy.errors import ErrorInfo
 from mypy.lookup import lookup_fully_qualified
 from mypy.message_registry import ErrorMessage
 from mypy.nodes import (
-    ArgKind,
+    ArgKinds,
     CallExpr,
     ClassDef,
     Context,
@@ -185,7 +185,7 @@ class TypeAnalyzerPluginInterface:
     @abstractmethod
     def analyze_callable_args(
         self, arglist: TypeList
-    ) -> tuple[list[Type], list[ArgKind], list[str | None]] | None:
+    ) -> tuple[list[Type], ArgKinds, list[str | None]] | None:
         """Find types, kinds, and names of arguments from extended callable syntax."""
         raise NotImplementedError
 
@@ -446,7 +446,7 @@ class FunctionSigContext(NamedTuple):
 # callback at least sometimes can infer a more precise type.
 class FunctionContext(NamedTuple):
     arg_types: list[list[Type]]  # List of actual caller types for each formal argument
-    arg_kinds: list[list[ArgKind]]  # Ditto for argument kinds, see nodes.ARG_* constants
+    arg_kinds: list[ArgKinds]  # Ditto for argument kinds, see nodes.ARG_* constants
     # Names of formal parameters from the callee definition,
     # these will be sufficient in most cases.
     callee_arg_names: list[str | None]
@@ -483,7 +483,7 @@ class MethodContext(NamedTuple):
     type: ProperType  # Base object type for method call
     arg_types: list[list[Type]]  # List of actual caller types for each formal argument
     # see FunctionContext for details about names and kinds
-    arg_kinds: list[list[ArgKind]]
+    arg_kinds: list[ArgKinds]
     callee_arg_names: list[str | None]
     arg_names: list[list[str | None]]
     default_return_type: Type  # Return type inferred by mypy

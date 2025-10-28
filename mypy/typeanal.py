@@ -33,6 +33,7 @@ from mypy.nodes import (
     MISSING_FALLBACK,
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
+    ArgKinds,
     Context,
     Decorator,
     ImportFrom,
@@ -1157,9 +1158,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 param_spec_invalid = True
 
             if param_spec_invalid:
-                if ARG_STAR in arg_kinds:
+                if arg_kinds.has_star:
                     arg_types[arg_kinds.index(ARG_STAR)] = AnyType(TypeOfAny.from_error)
-                if ARG_STAR2 in arg_kinds:
+                if arg_kinds.has_star2:
                     arg_types[arg_kinds.index(ARG_STAR2)] = AnyType(TypeOfAny.from_error)
 
             # If there were multiple (invalid) unpacks, the arg types list will become shorter,
@@ -1603,9 +1604,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def analyze_callable_args(
         self, arglist: TypeList
-    ) -> tuple[list[Type], list[ArgKind], list[str | None]] | None:
+    ) -> tuple[list[Type], ArgKinds, list[str | None]] | None:
         args: list[Type] = []
-        kinds: list[ArgKind] = []
+        kinds = ArgKinds()
         names: list[str | None] = []
         seen_unpack = False
         unpack_types: list[Type] = []
