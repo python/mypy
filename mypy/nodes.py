@@ -9,8 +9,7 @@ from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from enum import Enum, unique
 from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
-from typing import TypeGuard
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 

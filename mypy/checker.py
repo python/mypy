@@ -18,8 +18,7 @@ from typing import (
     cast,
     overload,
 )
-from typing import TypeGuard
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators

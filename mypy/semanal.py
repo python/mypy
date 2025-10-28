@@ -53,8 +53,7 @@ from __future__ import annotations
 from collections.abc import Collection, Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any, Callable, Final, TypeVar, cast
-from typing import TypeGuard
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
