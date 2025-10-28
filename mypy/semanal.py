@@ -6754,11 +6754,7 @@ class SemanticAnalyzer(
 
     def named_type_or_none(self, fullname: str, args: list[Type] | None = None) -> Instance | None:
         return self._build_named_instance(
-            fullname,
-            args,
-            allow_missing=True,
-            any_flavor=TypeOfAny.unannotated,
-            unwrap_alias=True,
+            fullname, args, allow_missing=True, any_flavor=TypeOfAny.unannotated, unwrap_alias=True
         )
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
