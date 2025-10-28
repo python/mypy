@@ -1,26 +1,69 @@
+"""
+This module contains high-level logic for fixed format serialization.
+
+Lower-level parts are implemented in C in mypyc/lib-rt/librt_internal.c
+Short summary of low-level functionality:
+* integers are automatically serialized as 1, 2, or 4 bytes, or arbitrary length.
+* str/bytes are serialized as size (1, 2, or 4 bytes) followed by bytes buffer.
+* floats are serialized as C doubles.
+
+At high-level we add type tags as needed so that our format is self-descriptive.
+More precisely:
+* False, True, and None are stored as just a tag: 0, 1, 2 correspondingly.
+* builtin primitives like int/str/bytes/float are stored as their type tag followed
+  by bare (low-level) representation of the value. Reserved tag range for primitives is
+  3 ... 19.
+* generic (heterogeneous) list are stored as tag, followed by bare size, followed by
+  sequence of tagged values.
+* homogeneous lists of primitives are stored as tag, followed by bare size, followed
+  by sequence of bare values.
+* reserved tag range for sequence-like builtins is 20 ... 29
+* currently we have only one mapping-like format: string-keyed dictionary with heterogeneous
+  values. It is stored as tag, followed by bare size, followed by sequence of pairs: bare
+  string key followed by tagged value.
+* reserved tag range for mapping-like builtins is 30 ... 39
+* there is an additional reserved tag range 40 ... 49 for any other builtin collections.
+* custom classes (like types, symbols etc.) are stored as tag, followed by a sequence of
+  tagged field values, followed by a special end tag 255. Names of class fields are
+  *not* stored, the caller should know the field names and order for the given class tag.
+* reserved tag range for symbols (TypeInfo, Var, etc) is 50 ... 79.
+* class Instance is the only exception from the above format (since it is the most common one).
+  It has two extra formats: few most common instances like "builtins.object" are stored as
+  instance tag followed by a secondary tag, other plain non-generic instances are stored as
+  instance tag followed by secondary tag followed by fullname as bare string. All generic
+  readers must handle these.
+* reserved tag range for Instance type formats is 80 ... 99, for other types it is 100 ... 149.
+* tag 254 is reserved for if we would ever need to extend the tag range to indicated second tag
+  page. Tags 150 ... 253 are free for everything else (e.g. AST nodes etc).
+
+General convention is that custom classes implement write() and read() methods for FF
+serialization. The write method should write both class tag and end tag. The read method
+conventionally *does not* read the start tag (to simplify logic for unions). Known exceptions
+are MypyFile.read() and SymbolTableNode.read(), since those two never appear in a union.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final
+from typing import Any, Final, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from librt.internal import (
     Buffer as Buffer,
     read_bool as read_bool,
-    read_bytes as read_bytes,
-    read_float as read_float,
-    read_int as read_int,
-    read_str as read_str,
+    read_bytes as read_bytes_bare,
+    read_float as read_float_bare,
+    read_int as read_int_bare,
+    read_str as read_str_bare,
     read_tag as read_tag,
     write_bool as write_bool,
-    write_bytes as write_bytes,
-    write_float as write_float,
-    write_int as write_int,
-    write_str as write_str,
+    write_bytes as write_bytes_bare,
+    write_float as write_float_bare,
+    write_int as write_int_bare,
+    write_str as write_str_bare,
     write_tag as write_tag,
 )
 from mypy_extensions import u8
-
-from mypy.util import json_dumps, json_loads
 
 
 class CacheMeta:
@@ -125,7 +168,7 @@ class CacheMeta:
         write_str_list(data, self.dependencies)
         write_int(data, self.data_mtime)
         write_str_list(data, self.suppressed)
-        write_bytes(data, json_dumps(self.options))
+        write_json(data, self.options)
         write_int_list(data, self.dep_prios)
         write_int_list(data, self.dep_lines)
         write_bytes_list(data, self.dep_hashes)
@@ -133,7 +176,9 @@ class CacheMeta:
         write_str_list(data, self.error_lines)
         write_str(data, self.version_id)
         write_bool(data, self.ignore_all)
-        write_bytes(data, json_dumps(self.plugin_data))
+        # Plugin data may be not a dictionary, so we use
+        # a more generic write_json_value() here.
+        write_json_value(data, self.plugin_data)
 
     @classmethod
     def read(cls, data: Buffer, data_file: str) -> CacheMeta | None:
@@ -148,7 +193,7 @@ class CacheMeta:
                 data_mtime=read_int(data),
                 data_file=data_file,
                 suppressed=read_str_list(data),
-                options=json_loads(read_bytes(data)),
+                options=read_json(data),
                 dep_prios=read_int_list(data),
                 dep_lines=read_int_list(data),
                 dep_hashes=read_bytes_list(data),
@@ -156,7 +201,7 @@ class CacheMeta:
                 error_lines=read_str_list(data),
                 version_id=read_str(data),
                 ignore_all=read_bool(data),
-                plugin_data=json_loads(read_bytes(data)),
+                plugin_data=read_json_value(data),
             )
         except ValueError:
             return None
@@ -165,114 +210,243 @@ class CacheMeta:
 # Always use this type alias to refer to type tags.
 Tag = u8
 
-LITERAL_INT: Final[Tag] = 1
-LITERAL_STR: Final[Tag] = 2
-LITERAL_BOOL: Final[Tag] = 3
-LITERAL_FLOAT: Final[Tag] = 4
-LITERAL_COMPLEX: Final[Tag] = 5
-LITERAL_NONE: Final[Tag] = 6
+# Primitives.
+LITERAL_FALSE: Final[Tag] = 0
+LITERAL_TRUE: Final[Tag] = 1
+LITERAL_NONE: Final[Tag] = 2
+LITERAL_INT: Final[Tag] = 3
+LITERAL_STR: Final[Tag] = 4
+LITERAL_BYTES: Final[Tag] = 5
+LITERAL_FLOAT: Final[Tag] = 6
+LITERAL_COMPLEX: Final[Tag] = 7
+
+# Collections.
+LIST_GEN: Final[Tag] = 20
+LIST_INT: Final[Tag] = 21
+LIST_STR: Final[Tag] = 22
+LIST_BYTES: Final[Tag] = 23
+DICT_STR_GEN: Final[Tag] = 30
+
+# Misc classes.
+EXTRA_ATTRS: Final[Tag] = 150
+DT_SPEC: Final[Tag] = 151
+
+END_TAG: Final[Tag] = 255
 
 
 def read_literal(data: Buffer, tag: Tag) -> int | str | bool | float:
     if tag == LITERAL_INT:
-        return read_int(data)
+        return read_int_bare(data)
     elif tag == LITERAL_STR:
-        return read_str(data)
-    elif tag == LITERAL_BOOL:
-        return read_bool(data)
+        return read_str_bare(data)
+    elif tag == LITERAL_FALSE:
+        return False
+    elif tag == LITERAL_TRUE:
+        return True
     elif tag == LITERAL_FLOAT:
-        return read_float(data)
+        return read_float_bare(data)
     assert False, f"Unknown literal tag {tag}"
 
 
+# There is an intentional asymmetry between read and write for literals because
+# None and/or complex values are only allowed in some contexts but not in others.
 def write_literal(data: Buffer, value: int | str | bool | float | complex | None) -> None:
     if isinstance(value, bool):
-        write_tag(data, LITERAL_BOOL)
         write_bool(data, value)
     elif isinstance(value, int):
         write_tag(data, LITERAL_INT)
-        write_int(data, value)
+        write_int_bare(data, value)
     elif isinstance(value, str):
         write_tag(data, LITERAL_STR)
-        write_str(data, value)
+        write_str_bare(data, value)
     elif isinstance(value, float):
         write_tag(data, LITERAL_FLOAT)
-        write_float(data, value)
+        write_float_bare(data, value)
     elif isinstance(value, complex):
         write_tag(data, LITERAL_COMPLEX)
-        write_float(data, value.real)
-        write_float(data, value.imag)
+        write_float_bare(data, value.real)
+        write_float_bare(data, value.imag)
     else:
         write_tag(data, LITERAL_NONE)
 
 
+def read_int(data: Buffer) -> int:
+    assert read_tag(data) == LITERAL_INT
+    return read_int_bare(data)
+
+
+def write_int(data: Buffer, value: int) -> None:
+    write_tag(data, LITERAL_INT)
+    write_int_bare(data, value)
+
+
+def read_str(data: Buffer) -> str:
+    assert read_tag(data) == LITERAL_STR
+    return read_str_bare(data)
+
+
+def write_str(data: Buffer, value: str) -> None:
+    write_tag(data, LITERAL_STR)
+    write_str_bare(data, value)
+
+
+def read_bytes(data: Buffer) -> bytes:
+    assert read_tag(data) == LITERAL_BYTES
+    return read_bytes_bare(data)
+
+
+def write_bytes(data: Buffer, value: bytes) -> None:
+    write_tag(data, LITERAL_BYTES)
+    write_bytes_bare(data, value)
+
+
 def read_int_opt(data: Buffer) -> int | None:
-    if read_bool(data):
-        return read_int(data)
-    return None
+    tag = read_tag(data)
+    if tag == LITERAL_NONE:
+        return None
+    assert tag == LITERAL_INT
+    return read_int_bare(data)
 
 
 def write_int_opt(data: Buffer, value: int | None) -> None:
     if value is not None:
-        write_bool(data, True)
-        write_int(data, value)
+        write_tag(data, LITERAL_INT)
+        write_int_bare(data, value)
     else:
-        write_bool(data, False)
+        write_tag(data, LITERAL_NONE)
 
 
 def read_str_opt(data: Buffer) -> str | None:
-    if read_bool(data):
-        return read_str(data)
-    return None
+    tag = read_tag(data)
+    if tag == LITERAL_NONE:
+        return None
+    assert tag == LITERAL_STR
+    return read_str_bare(data)
 
 
 def write_str_opt(data: Buffer, value: str | None) -> None:
     if value is not None:
-        write_bool(data, True)
-        write_str(data, value)
+        write_tag(data, LITERAL_STR)
+        write_str_bare(data, value)
     else:
-        write_bool(data, False)
+        write_tag(data, LITERAL_NONE)
 
 
 def read_int_list(data: Buffer) -> list[int]:
-    size = read_int(data)
-    return [read_int(data) for _ in range(size)]
+    assert read_tag(data) == LIST_INT
+    size = read_int_bare(data)
+    return [read_int_bare(data) for _ in range(size)]
 
 
 def write_int_list(data: Buffer, value: list[int]) -> None:
-    write_int(data, len(value))
+    write_tag(data, LIST_INT)
+    write_int_bare(data, len(value))
     for item in value:
-        write_int(data, item)
+        write_int_bare(data, item)
 
 
 def read_str_list(data: Buffer) -> list[str]:
-    size = read_int(data)
-    return [read_str(data) for _ in range(size)]
+    assert read_tag(data) == LIST_STR
+    size = read_int_bare(data)
+    return [read_str_bare(data) for _ in range(size)]
 
 
 def write_str_list(data: Buffer, value: Sequence[str]) -> None:
-    write_int(data, len(value))
+    write_tag(data, LIST_STR)
+    write_int_bare(data, len(value))
     for item in value:
-        write_str(data, item)
+        write_str_bare(data, item)
 
 
 def read_bytes_list(data: Buffer) -> list[bytes]:
-    size = read_int(data)
-    return [read_bytes(data) for _ in range(size)]
+    assert read_tag(data) == LIST_BYTES
+    size = read_int_bare(data)
+    return [read_bytes_bare(data) for _ in range(size)]
 
 
 def write_bytes_list(data: Buffer, value: Sequence[bytes]) -> None:
-    write_int(data, len(value))
+    write_tag(data, LIST_BYTES)
+    write_int_bare(data, len(value))
     for item in value:
-        write_bytes(data, item)
+        write_bytes_bare(data, item)
 
 
 def read_str_opt_list(data: Buffer) -> list[str | None]:
-    size = read_int(data)
+    assert read_tag(data) == LIST_GEN
+    size = read_int_bare(data)
     return [read_str_opt(data) for _ in range(size)]
 
 
 def write_str_opt_list(data: Buffer, value: list[str | None]) -> None:
-    write_int(data, len(value))
+    write_tag(data, LIST_GEN)
+    write_int_bare(data, len(value))
     for item in value:
         write_str_opt(data, item)
+
+
+JsonValue: _TypeAlias = Union[None, int, str, bool, list["JsonValue"], dict[str, "JsonValue"]]
+
+
+def read_json_value(data: Buffer) -> JsonValue:
+    tag = read_tag(data)
+    if tag == LITERAL_NONE:
+        return None
+    if tag == LITERAL_FALSE:
+        return False
+    if tag == LITERAL_TRUE:
+        return True
+    if tag == LITERAL_INT:
+        return read_int_bare(data)
+    if tag == LITERAL_STR:
+        return read_str_bare(data)
+    if tag == LIST_GEN:
+        size = read_int_bare(data)
+        return [read_json_value(data) for _ in range(size)]
+    if tag == DICT_STR_GEN:
+        size = read_int_bare(data)
+        return {read_str_bare(data): read_json_value(data) for _ in range(size)}
+    assert False, f"Invalid JSON tag: {tag}"
+
+
+# Currently tuples are used by mypyc plugin. They will be normalized to
+# JSON lists after a roundtrip.
+def write_json_value(data: Buffer, value: JsonValue | tuple[JsonValue, ...]) -> None:
+    if value is None:
+        write_tag(data, LITERAL_NONE)
+    elif isinstance(value, bool):
+        write_bool(data, value)
+    elif isinstance(value, int):
+        write_tag(data, LITERAL_INT)
+        write_int_bare(data, value)
+    elif isinstance(value, str):
+        write_tag(data, LITERAL_STR)
+        write_str_bare(data, value)
+    elif isinstance(value, (list, tuple)):
+        write_tag(data, LIST_GEN)
+        write_int_bare(data, len(value))
+        for val in value:
+            write_json_value(data, val)
+    elif isinstance(value, dict):
+        write_tag(data, DICT_STR_GEN)
+        write_int_bare(data, len(value))
+        for key in sorted(value):
+            write_str_bare(data, key)
+            write_json_value(data, value[key])
+    else:
+        assert False, f"Invalid JSON value: {value}"
+
+
+# These are functions for JSON *dictionaries* specifically. Unfortunately, we
+# must use imprecise types here, because the callers use imprecise types.
+def read_json(data: Buffer) -> dict[str, Any]:
+    assert read_tag(data) == DICT_STR_GEN
+    size = read_int_bare(data)
+    return {read_str_bare(data): read_json_value(data) for _ in range(size)}
+
+
+def write_json(data: Buffer, value: dict[str, Any]) -> None:
+    write_tag(data, DICT_STR_GEN)
+    write_int_bare(data, len(value))
+    for key in sorted(value):
+        write_str_bare(data, key)
+        write_json_value(data, value[key])

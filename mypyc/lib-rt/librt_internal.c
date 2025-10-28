@@ -204,6 +204,10 @@ read_bool_internal(PyObject *data) {
     _CHECK_BUFFER(data, CPY_BOOL_ERROR)
     _CHECK_READ(data, 1, CPY_BOOL_ERROR)
     char res = _READ(data, char)
+    if (unlikely((res != 0) & (res != 1))) {
+        PyErr_SetString(PyExc_ValueError, "invalid bool value");
+        return CPY_BOOL_ERROR;
+    }
     return res;
 }
 
