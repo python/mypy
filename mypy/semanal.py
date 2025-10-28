@@ -6660,6 +6660,7 @@ class SemanticAnalyzer(
         result = filenode.names.get(names[0])
 
         if result is None and self.is_incomplete_namespace(module):
+            # TODO: More explicit handling of incomplete refs?
             self.record_incomplete_ref()
             # When the namespace is incomplete and we don't have a result,
             # return None immediately. If allow_missing=False, the caller
@@ -6706,33 +6707,71 @@ class SemanticAnalyzer(
             self._function_type = self.named_type("builtins.function")
         return self._function_type
 
-    def named_type(self, fullname: str, args: list[Type] | None = None) -> Instance:
-        sym = self.lookup_fully_qualified(fullname)
-        assert sym, "Internal error: attempted to construct unknown type"
-        node = sym.node
-        assert isinstance(node, TypeInfo), node
-        if args:
-            # TODO: assert len(args) == len(node.defn.type_vars)
-            return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
+    def _build_named_instance(
+        self,
+        fullname: str,
+        args: list[Type] | None,
+        *,
+        allow_missing: bool,
+        any_flavor: int,
+        unwrap_alias: bool,
+    ) -> Instance | None:
+        """Internal helper to construct Instances for fully-qualified names.
 
-    def named_type_or_none(self, fullname: str, args: list[Type] | None = None) -> Instance | None:
-        sym = self.lookup_fully_qualified_or_none(fullname)
-        if not sym or isinstance(sym.node, PlaceholderNode):
-            return None
+        This exists solely to remove duplication between the public helpers. It
+        doesn't change user-visible behavior and is not part of the public or
+        plugin APIs.
+        """
+        if allow_missing:
+            sym = self.lookup_fully_qualified_or_none(fullname)
+            if not sym or isinstance(sym.node, PlaceholderNode):
+                return None
+        else:
+            sym = self.lookup_fully_qualified(fullname)
+
         node = sym.node
-        if isinstance(node, TypeAlias):
+        if unwrap_alias and isinstance(node, TypeAlias):
             assert isinstance(node.target, Instance)  # type: ignore[misc]
             node = node.target.type
         assert isinstance(node, TypeInfo), node
-        if args is not None:
-            # TODO: assert len(args) == len(node.defn.type_vars)
-            return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
+
+        inst_args = args
+        if inst_args is None:
+            inst_args = [AnyType(any_flavor)] * len(node.defn.type_vars)
+        # TODO: assert len(inst_args) == len(node.defn.type_vars)
+        return Instance(node, inst_args)
+
+    def named_type(self, fullname: str, args: list[Type] | None = None) -> Instance:
+        inst = self._build_named_instance(
+            fullname,
+            args,
+            allow_missing=False,
+            any_flavor=TypeOfAny.special_form,
+            unwrap_alias=False,
+        )
+        assert inst is not None, "Internal error: attempted to construct unknown type"
+        return inst
+
+    def named_type_or_none(self, fullname: str, args: list[Type] | None = None) -> Instance | None:
+        return self._build_named_instance(
+            fullname,
+            args,
+            allow_missing=True,
+            any_flavor=TypeOfAny.unannotated,
+            unwrap_alias=True,
+        )
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
         """Legacy function -- use named_type() instead."""
-        return self.named_type(fully_qualified_name)
+        inst = self._build_named_instance(
+            fully_qualified_name,
+            None,
+            allow_missing=False,
+            any_flavor=TypeOfAny.special_form,
+            unwrap_alias=False,
+        )
+        assert inst is not None
+        return inst
 
     def lookup_current_scope(self, name: str) -> SymbolTableNode | None:
         if self.locals[-1] is not None:
