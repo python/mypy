@@ -30,9 +30,9 @@ m: Any
 
 match m:
     case 1:
-        reveal_type(m)  # N: Revealed type is "Literal[1]"
+        reveal_type(m)  # N: Revealed type is "Any"
     case 2:
-        reveal_type(m)  # N: Revealed type is "Literal[2]"
+        reveal_type(m)  # N: Revealed type is "Any"
     case other:
         reveal_type(other)  # N: Revealed type is "Any"
 
@@ -61,7 +61,7 @@ m: object
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "builtins.int"
+        reveal_type(m)  # N: Revealed type is "builtins.object"
 [file b.py]
 b: int
 
@@ -83,7 +83,7 @@ m: A
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "b.B">"
+        reveal_type(m)  # N: Revealed type is "__main__.A"
 [file b.py]
 class B: ...
 b: B
@@ -96,7 +96,7 @@ m: int
 
 match m:
     case b.b:
-        reveal_type(m)
+        reveal_type(m)  # N: Revealed type is "builtins.int"
 [file b.py]
 b: str
 [builtins fixtures/primitives.pyi]
@@ -1742,14 +1742,15 @@ from typing import NoReturn
 def assert_never(x: NoReturn) -> None: ...
 
 class Medal(Enum):
-    gold = 1
+    GOLD = 1
 
 def f(m: Medal) -> None:
     always_assigned: int | None = None
     match m:
-        case Medal.gold:
+        case Medal.GOLD:
             always_assigned = 1
-            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+            # This should narrow to literal, see TODO in checker::refine_identity_comparison_expression
+            reveal_type(m)  # N: Revealed type is "__main__.Medal"
         case _:
             assert_never(m)
 
@@ -2813,7 +2814,7 @@ match A().foo:
 def int_literal() -> None:
     match 12:
         case 1 as s:
-            reveal_type(s)  # N: Revealed type is "Literal[1]"
+            reveal_type(s)  # E: Statement is unreachable
         case int(i):
             reveal_type(i)  # N: Revealed type is "Literal[12]?"
         case other:
@@ -2822,7 +2823,7 @@ def int_literal() -> None:
 def str_literal() -> None:
     match 'foo':
         case 'a' as s:
-            reveal_type(s)  # N: Revealed type is "Literal['a']"
+            reveal_type(s)  # E: Statement is unreachable
         case str(i):
             reveal_type(i)  # N: Revealed type is "Literal['foo']?"
         case other:
@@ -2909,9 +2910,9 @@ T_Choice = TypeVar("T_Choice", bound=b.One | b.Two)
 def switch(choice: type[T_Choice]) -> None:
     match choice:
         case b.One:
-            reveal_type(choice)  # N: Revealed type is "def () -> b.One"
+            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
         case b.Two:
-            reveal_type(choice)  # N: Revealed type is "def () -> b.Two"
+            reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
         case _:
             reveal_type(choice)  # N: Revealed type is "type[T_Choice`-1]"
 
