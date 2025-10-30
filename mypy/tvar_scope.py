@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from mypy.messages import MessageBuilder
+from collections.abc import Callable
+from typing_extensions import TypeAlias as _TypeAlias
+
 from mypy.nodes import (
     Context,
     ParamSpecExpr,
@@ -23,14 +25,21 @@ from mypy.types import (
     TypeVarType,
 )
 
+FailFunc: _TypeAlias = Callable[[str, Context], None]
+
 
 class TypeVarLikeDefaultFixer(TrivialSyntheticTypeTranslator):
     """Set namespace for all TypeVarLikeTypes types."""
 
     def __init__(
-        self, scope: TypeVarLikeScope, source_tv: TypeVarLikeExpr, context: Context
+        self,
+        scope: TypeVarLikeScope,
+        fail_func: FailFunc,
+        source_tv: TypeVarLikeExpr,
+        context: Context,
     ) -> None:
         self.scope = scope
+        self.fail_func = fail_func
         self.source_tv = source_tv
         self.context = context
         super().__init__()
@@ -60,7 +69,7 @@ class TypeVarLikeDefaultFixer(TrivialSyntheticTypeTranslator):
         return t
 
     def _report_unbound_tvar(self, tvar: TypeVarLikeType) -> None:
-        self.scope.msg.fail(
+        self.fail_func(
             f"Type variable {tvar.name} referenced in the default"
             f" of {self.source_tv.name} is unbound",
             self.context,
@@ -79,8 +88,6 @@ class TypeVarLikeScope:
         is_class_scope: bool = False,
         prohibited: TypeVarLikeScope | None = None,
         namespace: str = "",
-        *,
-        msg: MessageBuilder,
     ) -> None:
         """Initializer for TypeVarLikeScope
 
@@ -97,7 +104,6 @@ class TypeVarLikeScope:
         self.is_class_scope = is_class_scope
         self.prohibited = prohibited
         self.namespace = namespace
-        self.msg = msg
         if parent is not None:
             self.func_id = parent.func_id
             self.class_id = parent.class_id
@@ -120,20 +126,20 @@ class TypeVarLikeScope:
 
     def method_frame(self, namespace: str) -> TypeVarLikeScope:
         """A new scope frame for binding a method"""
-        return TypeVarLikeScope(self, False, None, namespace=namespace, msg=self.msg)
+        return TypeVarLikeScope(self, False, None, namespace=namespace)
 
     def class_frame(self, namespace: str) -> TypeVarLikeScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
-        return TypeVarLikeScope(
-            self.get_function_scope(), True, self, namespace=namespace, msg=self.msg
-        )
+        return TypeVarLikeScope(self.get_function_scope(), True, self, namespace=namespace)
 
     def new_unique_func_id(self) -> TypeVarId:
         """Used by plugin-like code that needs to make synthetic generic functions."""
         self.func_id -= 1
         return TypeVarId(self.func_id)
 
-    def bind_new(self, name: str, tvar_expr: TypeVarLikeExpr, context: Context) -> TypeVarLikeType:
+    def bind_new(
+        self, name: str, tvar_expr: TypeVarLikeExpr, fail_func: FailFunc, context: Context
+    ) -> TypeVarLikeType:
         if self.is_class_scope:
             self.class_id += 1
             i = self.class_id
@@ -146,7 +152,9 @@ class TypeVarLikeScope:
         # referenced variable is already in scope (textually precedes the definition we're
         # processing now).
         default = tvar_expr.default.accept(
-            TypeVarLikeDefaultFixer(self, tvar_expr, context=context)
+            TypeVarLikeDefaultFixer(
+                self, fail_func=fail_func, source_tv=tvar_expr, context=context
+            )
         )
 
         if isinstance(tvar_expr, TypeVarExpr):

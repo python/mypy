@@ -451,13 +451,13 @@ class SemanticAnalyzer(
         self.type_stack = []
         # Are the namespaces of classes being processed complete?
         self.incomplete_type_stack: list[bool] = []
+        self.tvar_scope = TypeVarLikeScope()
         self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = [0]
         self.errors = errors
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
-        self.tvar_scope = TypeVarLikeScope(msg=self.msg)
         self.missing_modules = missing_modules
         self.missing_names = [set()]
         # These namespaces are still in process of being populated. If we encounter a
@@ -859,7 +859,7 @@ class SemanticAnalyzer(
             self._is_stub_file = file_node.path.lower().endswith(".pyi")
             self._is_typeshed_stub_file = file_node.is_typeshed_file(options)
             self.globals = file_node.names
-            self.tvar_scope = TypeVarLikeScope(msg=self.msg)
+            self.tvar_scope = TypeVarLikeScope()
 
             self.named_tuple_analyzer = NamedTupleAnalyzer(options, self, self.msg)
             self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
@@ -2404,7 +2404,7 @@ class SemanticAnalyzer(
                 self.fail(
                     message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name), context
                 )
-            tvar_def = self.tvar_scope.bind_new(name, tvar_expr, context)
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr, self.fail, context)
             if last_tvar_name_with_default is not None and not tvar_def.has_default():
                 self.msg.tvar_without_default_type(
                     tvar_def.name, last_tvar_name_with_default, context
@@ -2433,7 +2433,7 @@ class SemanticAnalyzer(
                 tvars.setdefault(name, (expr, base_expr))
         tvar_defs = []
         for name, (tvar_expr, context) in tvars.items():
-            tvar_def = self.tvar_scope.bind_new(name, tvar_expr, context)
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr, self.fail, context)
             tvar_defs.append(tvar_def)
         return tvar_defs
 
@@ -7441,7 +7441,7 @@ class SemanticAnalyzer(
         # them semantically analyzed, however, if they need to treat it as an expression
         # and not a type. (Which is to say, mypyc needs to do this.) Do the analysis
         # in a fresh tvar scope in order to suppress any errors about using type variables.
-        with self.tvar_scope_frame(TypeVarLikeScope(msg=self.msg)), self.allow_unbound_tvars_set():
+        with self.tvar_scope_frame(TypeVarLikeScope()), self.allow_unbound_tvars_set():
             expr.accept(self)
 
     def type_analyzer(
