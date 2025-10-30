@@ -2715,7 +2715,8 @@ from typing import Final
 from mypy_extensions import u8
 from librt.internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
-    write_int, read_int, write_tag, read_tag, write_bytes, read_bytes
+    write_int, read_int, write_tag, read_tag, write_bytes, read_bytes,
+    cache_version,
 )
 
 Tag = u8
@@ -2724,6 +2725,7 @@ TAG_B: Final[Tag] = 255
 TAG_SPECIAL: Final[Tag] = 239
 
 def test_buffer_basic() -> None:
+    assert cache_version() == 0
     b = Buffer(b"foo")
     assert b.getvalue() == b"foo"
 
@@ -2739,6 +2741,7 @@ def test_buffer_roundtrip() -> None:
     write_bytes(b, b"a" * 117)
     write_bytes(b, b"a" * 118)
     write_float(b, 0.1)
+    write_float(b, -113.0)
     write_int(b, 0)
     write_int(b, 1)
     write_tag(b, TAG_A)
@@ -2764,6 +2767,7 @@ def test_buffer_roundtrip() -> None:
     assert read_bytes(b) == b"a" * 117
     assert read_bytes(b) == b"a" * 118
     assert read_float(b) == 0.1
+    assert read_float(b) == -113.0
     assert read_int(b) == 0
     assert read_int(b) == 1
     assert read_tag(b) == TAG_A

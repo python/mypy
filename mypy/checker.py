@@ -395,6 +395,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     # A helper state to produce unique temporary names on demand.
     _unique_id: int
+    # Fake concrete type used when checking variance
+    _variance_dummy_type: Instance | None
 
     def __init__(
         self,
@@ -469,6 +471,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
         self._unique_id = 0
+        self._variance_dummy_type = None
 
     @property
     def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
@@ -2918,17 +2921,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         info = defn.info
         object_type = Instance(info.mro[-1], [])
         tvars = info.defn.type_vars
+        if self._variance_dummy_type is None:
+            _, dummy_info = self.make_fake_typeinfo("<dummy>", "Dummy", "Dummy", [])
+            self._variance_dummy_type = Instance(dummy_info, [])
+        dummy = self._variance_dummy_type
         for i, tvar in enumerate(tvars):
             if not isinstance(tvar, TypeVarType):
                 # Variance of TypeVarTuple and ParamSpec is underspecified by PEPs.
                 continue
             up_args: list[Type] = [
-                object_type if i == j else AnyType(TypeOfAny.special_form)
-                for j, _ in enumerate(tvars)
+                object_type if i == j else dummy.copy_modified() for j, _ in enumerate(tvars)
             ]
             down_args: list[Type] = [
-                UninhabitedType() if i == j else AnyType(TypeOfAny.special_form)
-                for j, _ in enumerate(tvars)
+                UninhabitedType() if i == j else dummy.copy_modified() for j, _ in enumerate(tvars)
             ]
             up, down = Instance(info, up_args), Instance(info, down_args)
             # TODO: add advanced variance checks for recursive protocols
@@ -3294,9 +3299,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             del partial_types[var]
                             lvalue_type = var.type
                     else:
-                        # Try to infer a partial type. No need to check the return value, as
-                        # an error will be reported elsewhere.
-                        self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
+                        # Try to infer a partial type.
+                        if not self.infer_partial_type(var, lvalue, rvalue_type):
+                            # If that also failed, give up and let the caller know that we
+                            # cannot read their mind. The definition site will be reported later.
+                            # Calling .put() directly because the newly inferred type is
+                            # not a subtype of None - we are not looking for narrowing
+                            fallback = self.inference_error_fallback_type(rvalue_type)
+                            self.binder.put(lvalue, fallback)
+                            # Same as self.set_inference_error_fallback_type but inlined
+                            # to avoid computing fallback twice.
+                            # We are replacing partial<None> now, so the variable type
+                            # should remain optional.
+                            self.set_inferred_type(var, lvalue, make_optional_type(fallback))
                 elif (
                     is_literal_none(rvalue)
                     and isinstance(lvalue, NameExpr)
@@ -7905,6 +7920,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return False
 
     def get_isinstance_type(self, expr: Expression) -> list[TypeRange] | None:
+        """Get the type(s) resulting from an isinstance check.
+
+        Returns an empty list for isinstance(x, ()).
+        """
         if isinstance(expr, OpExpr) and expr.op == "|":
             left = self.get_isinstance_type(expr.left)
             if left is None and is_literal_none(expr.left):
@@ -7944,11 +7963,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 types.append(TypeRange(typ, is_upper_bound=False))
             else:  # we didn't see an actual type, but rather a variable with unknown value
                 return None
-        if not types:
-            # this can happen if someone has empty tuple as 2nd argument to isinstance
-            # strictly speaking, we should return UninhabitedType but for simplicity we will simply
-            # refuse to do any type inference for now
-            return None
         return types
 
     def is_literal_enum(self, n: Expression) -> bool:
@@ -8185,59 +8199,82 @@ def conditional_types(
         UninhabitedType means unreachable.
         None means no new information can be inferred.
     """
-    if proposed_type_ranges:
-        if len(proposed_type_ranges) == 1:
-            target = proposed_type_ranges[0].item
-            target = get_proper_type(target)
-            if isinstance(target, LiteralType) and (
-                target.is_enum_literal() or isinstance(target.value, bool)
-            ):
-                enum_name = target.fallback.type.fullname
-                current_type = try_expanding_sum_type_to_union(current_type, enum_name)
-        proposed_items = [type_range.item for type_range in proposed_type_ranges]
-        proposed_type = make_simplified_union(proposed_items)
-        if isinstance(get_proper_type(current_type), AnyType):
-            return proposed_type, current_type
-        elif isinstance(proposed_type, AnyType):
-            # We don't really know much about the proposed type, so we shouldn't
-            # attempt to narrow anything. Instead, we broaden the expr to Any to
-            # avoid false positives
-            return proposed_type, default
-        elif not any(type_range.is_upper_bound for type_range in proposed_type_ranges) and (
-            # concrete subtypes
-            is_proper_subtype(current_type, proposed_type, ignore_promotions=True)
-            # structural subtypes
-            or (
-                (
-                    isinstance(proposed_type, CallableType)
-                    or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
-                )
-                and is_subtype(current_type, proposed_type, ignore_promotions=True)
-            )
-        ):
-            # Expression is always of one of the types in proposed_type_ranges
-            return default, UninhabitedType()
-        elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
-            # Expression is never of any type in proposed_type_ranges
-            return UninhabitedType(), default
-        else:
-            # we can only restrict when the type is precise, not bounded
-            proposed_precise_type = UnionType.make_union(
-                [
-                    type_range.item
-                    for type_range in proposed_type_ranges
-                    if not type_range.is_upper_bound
-                ]
-            )
-            remaining_type = restrict_subtype_away(
-                current_type,
-                proposed_precise_type,
-                consider_runtime_isinstance=consider_runtime_isinstance,
-            )
-            return proposed_type, remaining_type
-    else:
+    if proposed_type_ranges is None:
         # An isinstance check, but we don't understand the type
         return current_type, default
+
+    if not proposed_type_ranges:
+        # This is the case for `if isinstance(x, ())` which always returns False.
+        return UninhabitedType(), default
+
+    if len(proposed_type_ranges) == 1:
+        # expand e.g. bool -> Literal[True] | Literal[False]
+        target = proposed_type_ranges[0].item
+        target = get_proper_type(target)
+        if isinstance(target, LiteralType) and (
+            target.is_enum_literal() or isinstance(target.value, bool)
+        ):
+            enum_name = target.fallback.type.fullname
+            current_type = try_expanding_sum_type_to_union(current_type, enum_name)
+
+    proper_type = get_proper_type(current_type)
+    # factorize over union types: isinstance(A|B, C) -> yes = A_yes | B_yes
+    if isinstance(proper_type, UnionType):
+        result: list[tuple[Type | None, Type | None]] = [
+            conditional_types(
+                union_item,
+                proposed_type_ranges,
+                default=union_item,
+                consider_runtime_isinstance=consider_runtime_isinstance,
+            )
+            for union_item in get_proper_types(proper_type.items)
+        ]
+        # separate list of tuples into two lists
+        yes_types, no_types = zip(*result)
+        proposed_type = make_simplified_union([t for t in yes_types if t is not None])
+    else:
+        proposed_items = [type_range.item for type_range in proposed_type_ranges]
+        proposed_type = make_simplified_union(proposed_items)
+
+    if isinstance(proper_type, AnyType):
+        return proposed_type, current_type
+    elif isinstance(proposed_type, AnyType):
+        # We don't really know much about the proposed type, so we shouldn't
+        # attempt to narrow anything. Instead, we broaden the expr to Any to
+        # avoid false positives
+        return proposed_type, default
+    elif not any(type_range.is_upper_bound for type_range in proposed_type_ranges) and (
+        # concrete subtypes
+        is_proper_subtype(current_type, proposed_type, ignore_promotions=True)
+        # structural subtypes
+        or (
+            (
+                isinstance(proposed_type, CallableType)
+                or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
+            )
+            and is_subtype(current_type, proposed_type, ignore_promotions=True)
+        )
+    ):
+        # Expression is always of one of the types in proposed_type_ranges
+        return default, UninhabitedType()
+    elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+        # Expression is never of any type in proposed_type_ranges
+        return UninhabitedType(), default
+    else:
+        # we can only restrict when the type is precise, not bounded
+        proposed_precise_type = UnionType.make_union(
+            [
+                type_range.item
+                for type_range in proposed_type_ranges
+                if not type_range.is_upper_bound
+            ]
+        )
+        remaining_type = restrict_subtype_away(
+            current_type,
+            proposed_precise_type,
+            consider_runtime_isinstance=consider_runtime_isinstance,
+        )
+        return proposed_type, remaining_type
 
 
 def conditional_types_to_typemaps(

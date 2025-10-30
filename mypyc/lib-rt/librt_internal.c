@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdint.h>
@@ -209,6 +211,10 @@ read_bool_internal(PyObject *data) {
     _CHECK_BUFFER(data, CPY_BOOL_ERROR)
     _CHECK_READ(data, 1, CPY_BOOL_ERROR)
     char res = _READ(data, char)
+    if (unlikely((res != 0) & (res != 1))) {
+        PyErr_SetString(PyExc_ValueError, "invalid bool value");
+        return CPY_BOOL_ERROR;
+    }
     return res;
 }
 
@@ -250,7 +256,7 @@ write_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
         PyErr_SetString(PyExc_TypeError, "value must be a bool");
         return NULL;
     }
-    if (unlikely(write_bool_internal(data, value == Py_True) == CPY_NONE_ERROR)) {
+    if (unlikely(write_bool_internal(data, Py_IsTrue(value)) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -691,6 +697,16 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
     return Py_None;
 }
 
+static uint8_t
+cache_version_internal(void) {
+    return 0;
+}
+
+static PyObject*
+cache_version(PyObject *self, PyObject *Py_UNUSED(ignored)) {
+    return PyLong_FromLong(cache_version_internal());
+}
+
 static PyMethodDef librt_internal_module_methods[] = {
     {"write_bool", (PyCFunction)write_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a bool")},
     {"read_bool", (PyCFunction)read_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a bool")},
@@ -704,6 +720,7 @@ static PyMethodDef librt_internal_module_methods[] = {
     {"read_int", (PyCFunction)read_int, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read an int")},
     {"write_tag", (PyCFunction)write_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a short int")},
     {"read_tag", (PyCFunction)read_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a short int")},
+    {"cache_version", (PyCFunction)cache_version, METH_NOARGS, PyDoc_STR("cache format version")},
     {NULL, NULL, 0, NULL}
 };
 
@@ -723,7 +740,7 @@ librt_internal_module_exec(PyObject *m)
     }
 
     // Export mypy internal C API, be careful with the order!
-    static void *NativeInternal_API[16] = {
+    static void *NativeInternal_API[17] = {
         (void *)Buffer_internal,
         (void *)Buffer_internal_empty,
         (void *)Buffer_getvalue_internal,
@@ -740,6 +757,7 @@ librt_internal_module_exec(PyObject *m)
         (void *)NativeInternal_ABI_Version,
         (void *)write_bytes_internal,
         (void *)read_bytes_internal,
+        (void *)cache_version_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "librt.internal._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
