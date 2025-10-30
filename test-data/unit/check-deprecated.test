@@ -814,6 +814,71 @@ class C:
 [builtins fixtures/callable.pyi]
 
 
+[case testDeprecatedClassConstructorMethodAccessedFromOutsideMethod]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import TypeAlias, deprecated
+
+class C:
+    @deprecated("use make_c() instead")
+    def __new__(cls) -> C: ...
+
+    @deprecated("use make_c() instead")
+    def __init__(self) -> None: ...
+
+    @classmethod
+    def make_c(cls) -> C: ...
+
+C_alias: TypeAlias = C
+C_type_obj: type[C]
+c: C
+
+C.__new__  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C.__new__(C)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C.__init__  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C.__init__(c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C_alias.__new__  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C_alias.__new__(C)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C_alias.__init__  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C_alias.__init__(c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C_type_obj.__new__  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C_type_obj.__new__(C)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C_type_obj.__init__  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C_type_obj.__init__(c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+
+(C.__new__, C_alias.__new__, C_type_obj.__new__, C.make_c, c.make_c)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+(C.__init__, C_alias.__init__, C_type_obj.__init__, C.make_c, c.make_c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedMethodClassConstructorAccessedFromInsideMethod]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated
+
+class C:
+    @deprecated("use make_c() instead")
+    def __new__(cls) -> C: ...
+    @deprecated("use make_c() instead")
+    def __init__(self) -> None: ...
+
+    @classmethod
+    def make_c(cls) -> C: ...
+
+    @classmethod
+    def class_method(cls) -> None:
+        self: C
+        cls.__new__  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+        cls.__new__(cls)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+        cls.__init__  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+        cls.__init__(self)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+        (cls.__new__, cls.__new__, cls.make_c)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+        (cls.__init__, cls.__init__, cls.make_c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedClassWithDeprecatedMethod]
 # flags: --enable-error-code=deprecated
 
