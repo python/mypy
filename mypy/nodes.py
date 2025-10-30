@@ -1792,19 +1792,21 @@ class PassStmt(Statement):
 
 
 class IfStmt(Statement):
-    __slots__ = ("expr", "body", "else_body")
+    __slots__ = ("expr", "body", "else_body", "else_irrelevant_for_possibly_undefined")
 
-    __match_args__ = ("expr", "body", "else_body")
+    __match_args__ = ("expr", "body", "else_body", "else_body_irrelevant_for_possibly_undefined")
 
     expr: list[Expression]
     body: list[Block]
     else_body: Block | None
+    else_irrelevant_for_possibly_undefined: bool
 
     def __init__(self, expr: list[Expression], body: list[Block], else_body: Block | None) -> None:
         super().__init__()
         self.expr = expr
         self.body = body
         self.else_body = else_body
+        self.else_irrelevant_for_possibly_undefined = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
