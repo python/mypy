@@ -1420,7 +1420,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return None
 
     def handle_decorator_overload_call(
-        self, callee_type: CallableType, overloaded: Overloaded, ctx: Context
+        self,
+        callee_type: CallableType,
+        overloaded: Overloaded,
+        ctx: Context,
+        callee_is_overload_item: bool,
     ) -> tuple[Type, Type] | None:
         """Type-check application of a generic callable to an overload.
 
@@ -1432,7 +1436,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         for item in overloaded.items:
             arg = TempNode(typ=item)
             with self.msg.filter_errors() as err:
-                item_result, inferred_arg = self.check_call(callee_type, [arg], [ARG_POS], ctx)
+                item_result, inferred_arg = self.check_call(
+                    callee_type, [arg], [ARG_POS], ctx, is_overload_item=callee_is_overload_item
+                )
             if err.has_new_errors():
                 # This overload doesn't match.
                 continue
@@ -1538,6 +1544,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         callable_name: str | None = None,
         object_type: Type | None = None,
         original_type: Type | None = None,
+        is_overload_item: bool = False,
     ) -> tuple[Type, Type]:
         """Type check a call.
 
@@ -1558,6 +1565,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 or None if unavailable (examples: 'builtins.open', 'typing.Mapping.get')
             object_type: If callable_name refers to a method, the type of the object
                 on which the method is being called
+            is_overload_item: Whether this check is for an individual overload item
         """
         callee = get_proper_type(callee)
 
@@ -1568,7 +1576,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     # Special casing for inline application of generic callables to overloads.
                     # Supporting general case would be tricky, but this should cover 95% of cases.
                     overloaded_result = self.handle_decorator_overload_call(
-                        callee, overloaded, context
+                        callee, overloaded, context, is_overload_item
                     )
                     if overloaded_result is not None:
                         return overloaded_result
@@ -1582,6 +1590,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 callable_node,
                 callable_name,
                 object_type,
+                is_overload_item,
             )
         elif isinstance(callee, Overloaded):
             return self.check_overload_call(
@@ -1659,11 +1668,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         callable_node: Expression | None,
         callable_name: str | None,
         object_type: Type | None,
+        is_overload_item: bool = False,
     ) -> tuple[Type, Type]:
         """Type check a call that targets a callable value.
 
         See the docstring of check_call for more information.
         """
+        # Check implicit calls to deprecated class constructors.
+        # Only the non-overload case is handled here. Overloaded constructors are handled
+        # separately during overload resolution.
+        if (not is_overload_item) and callee.is_type_obj():
+            self.chk.warn_deprecated(callee.definition, context)
+
         # Always unpack **kwargs before checking a call.
         callee = callee.with_unpacked_kwargs().with_normalized_var_args()
         if callable_name is None and callee.name:
@@ -1671,21 +1687,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ret_type = get_proper_type(callee.ret_type)
         if callee.is_type_obj() and isinstance(ret_type, Instance):
             callable_name = ret_type.type.fullname
-        if isinstance(callable_node, RefExpr):
-            # Check implicit calls to deprecated class constructors.
-            # Only the non-overload case is handled here. Overloaded constructors are handled
-            # separately during overload resolution. `callable_node` is `None` for an overload
-            # item so deprecation checks are not duplicated.
-            callable_info: TypeInfo | None = None
-            if isinstance(callable_node.node, TypeInfo):
-                callable_info = callable_node.node
-            elif isinstance(callable_node.node, TypeAlias):
-                alias_target = get_proper_type(callable_node.node.target)
-                if isinstance(alias_target, Instance) and isinstance(alias_target.type, TypeInfo):
-                    callable_info = alias_target.type
-            if callable_info is not None:
-                self.chk.check_deprecated(callee.definition, context)
-
+        if isinstance(callable_node, RefExpr) and (callable_node.fullname in ENUM_BASES):
             if callable_node.fullname in ENUM_BASES:
                 # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
                 return callee.ret_type, callee
@@ -2925,6 +2927,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         context=context,
                         callable_name=callable_name,
                         object_type=object_type,
+                        is_overload_item=True,
                     )
             is_match = not w.has_new_errors()
             if is_match:

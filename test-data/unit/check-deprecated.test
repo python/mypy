@@ -416,6 +416,127 @@ B2_explicit_alias
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedClassConstructorCalledFromTypeType]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+class B1(A): ...
+
+class B2(A):
+    def __init__(self) -> None: ...
+
+def get_class_A() -> type[A]: ...
+def get_class_B1() -> type[B1]: ...
+def get_class_B2() -> type[B2]: ...
+
+A_type_obj: type[A]
+B1_type_obj: type[B1]
+B2_type_obj: type[B2]
+A_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use
+B1_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use
+B2_type_obj()
+get_class_A()()  # E: function __main__.A.__init__ is deprecated: do not use
+get_class_B1()()  # E: function __main__.A.__init__ is deprecated: do not use
+get_class_B2()()
+
+def call_class_A(cls: type[A]) -> None:
+    cls()  # E: function __main__.A.__init__ is deprecated: do not use
+
+def call_class_B1(cls: type[B1]) -> None:
+    cls()  # E: function __main__.A.__init__ is deprecated: do not use
+
+def call_class_B2(cls: type[B2]) -> None:
+    cls()
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedClassConstructorTypeNarrowing]
+# flags: --enable-error-code=deprecated
+
+from typing import TypeVar
+from typing_extensions import TypeAlias, TypeIs, deprecated
+
+T = TypeVar("T")
+
+class Dummy: ...
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+class B(A):
+    def __init__(self) -> None: ...
+
+def maybe() -> bool: ...
+
+# `builtins.issubclass()` does not type-narrow properly
+def is_subclass(c1: type, c2: type[T]) -> TypeIs[type[T]]: ...
+
+A_alias: TypeAlias = A
+A_type_obj: type[A]
+B_alias: TypeAlias = B
+B_type_obj: type[B]
+
+maybe_A = A if maybe() else None
+maybe_A_alias = A_alias if maybe() else None
+maybe_A_type_obj = A_type_obj if maybe() else None
+if maybe_A is not None:
+    maybe_A()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    maybe_A()  # E: "None" not callable
+if maybe_A_alias is not None:
+    maybe_A_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    maybe_A_alias()  # E: "None" not callable
+if maybe_A_type_obj is not None:
+    maybe_A_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    maybe_A_type_obj()  # E: "None" not callable
+
+A_or_Dummy = A if maybe() else Dummy
+A_type_obj_or_Dummy = A_type_obj if maybe() else Dummy
+if is_subclass(A_or_Dummy, A):
+    A_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    A_or_Dummy()
+if is_subclass(A_or_Dummy, Dummy):
+    A_or_Dummy()
+else:
+    A_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
+if is_subclass(A_type_obj_or_Dummy, A):
+    A_type_obj_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    A_type_obj_or_Dummy()
+if is_subclass(A_type_obj_or_Dummy, Dummy):
+    A_type_obj_or_Dummy()
+else:
+    A_type_obj_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
+
+A_or_B = A if maybe() else B
+A_or_B_alias = A if maybe() else B_alias
+A_or_B_type_obj = A if maybe() else B_type_obj
+if is_subclass(A_or_B, B):
+    A_or_B()
+else:
+    A_or_B()  # E: function __main__.A.__init__ is deprecated: do not use
+if is_subclass(A_or_B_alias, B):
+    A_or_B_alias()
+else:
+    A_or_B_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+if is_subclass(A_or_B_type_obj, B):
+    A_or_B_type_obj()
+else:
+    A_or_B_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedSpecialMethods]
 # flags: --enable-error-code=deprecated
 
