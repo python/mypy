@@ -456,6 +456,68 @@ def call_class_B2(cls: type[B2]) -> None:
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedClassConstructorCalledFromUnion]
+# flags: --enable-error-code=deprecated
+
+from typing import Callable, Union
+from typing_extensions import TypeAlias, deprecated
+
+def maybe() -> bool: ...
+
+def dummy_factory() -> Dummy: ...
+
+class Dummy: ...
+
+class A:
+    @deprecated("do not use A()")
+    def __init__(self) -> None: ...
+
+class B1(A):
+    def __init__(self) -> None: ...
+
+class B2(A):
+    @deprecated("do not use B2()")
+    def __init__(self) -> None: ...
+
+A_alias: TypeAlias = A
+A_type_obj: type[A]
+B1_alias: TypeAlias = B1
+B1_type_obj: type[B1]
+
+maybe_A = A if maybe() else None
+maybe_A_alias = A_alias if maybe() else None
+maybe_A_type_obj = A_type_obj if maybe() else None
+maybe_A()  # E: function __main__.A.__init__ is deprecated: do not use A() \
+           # E: "None" not callable
+maybe_A_alias()  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                 # E: "None" not callable
+maybe_A_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                    # E: "None" not callable
+
+maybe_B1 = B1 if maybe() else None
+maybe_B1_alias = B1_alias if maybe() else None
+maybe_B1_type_obj = B1_type_obj if maybe() else None
+maybe_B1()  # E: "None" not callable
+maybe_B1_alias()  # E: "None" not callable
+maybe_B1_type_obj()  # E: "None" not callable
+
+A_or_B1: type[Union[A, B1]]
+A_or_B2: type[Union[A, B2]]
+A_or_dummy: type[Union[A, Dummy]]
+A_or_dummy_factory: Union[type[A], Callable[[], Dummy]]
+reveal_type(A_or_B1())  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                        # N: Revealed type is "__main__.A"
+reveal_type(A_or_B2())  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                        # E: function __main__.B2.__init__ is deprecated: do not use B2() \
+                        # N: Revealed type is "__main__.A"
+reveal_type(A_or_dummy())  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                           # N: Revealed type is "Union[__main__.A, __main__.Dummy]"
+reveal_type(A_or_dummy_factory())  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                                   # N: Revealed type is "Union[__main__.A, __main__.Dummy]"
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedClassConstructorTypeNarrowing]
 # flags: --enable-error-code=deprecated
 
