@@ -2715,7 +2715,7 @@ from typing import Final
 from mypy_extensions import u8
 from librt.internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
-    write_int, read_int, write_tag, read_tag
+    write_int, read_int, write_tag, read_tag, write_bytes, read_bytes
 )
 
 Tag = u8
@@ -2733,6 +2733,11 @@ def test_buffer_roundtrip() -> None:
     write_bool(b, True)
     write_str(b, "bar" * 1000)
     write_bool(b, False)
+    write_bytes(b, b"bar")
+    write_bytes(b, b"bar" * 100)
+    write_bytes(b, b"")
+    write_bytes(b, b"a" * 127)
+    write_bytes(b, b"a" * 128)
     write_float(b, 0.1)
     write_int(b, 0)
     write_int(b, 1)
@@ -2752,6 +2757,11 @@ def test_buffer_roundtrip() -> None:
     assert read_bool(b) is True
     assert read_str(b) == "bar" * 1000
     assert read_bool(b) is False
+    assert read_bytes(b) == b"bar"
+    assert read_bytes(b) == b"bar" * 100
+    assert read_bytes(b) == b""
+    assert read_bytes(b) == b"a" * 127
+    assert read_bytes(b) == b"a" * 128
     assert read_float(b) == 0.1
     assert read_int(b) == 0
     assert read_int(b) == 1
@@ -2806,6 +2816,11 @@ def test_buffer_roundtrip_interpreted() -> None:
     write_bool(b, True)
     write_str(b, "bar" * 1000)
     write_bool(b, False)
+    write_bytes(b, b"bar")
+    write_bytes(b, b"bar" * 100)
+    write_bytes(b, b"")
+    write_bytes(b, b"a" * 127)
+    write_bytes(b, b"a" * 128)
     write_float(b, 0.1)
     write_int(b, 0)
     write_int(b, 1)
@@ -2825,6 +2840,11 @@ def test_buffer_roundtrip_interpreted() -> None:
     assert read_bool(b) is True
     assert read_str(b) == "bar" * 1000
     assert read_bool(b) is False
+    assert read_bytes(b) == b"bar"
+    assert read_bytes(b) == b"bar" * 100
+    assert read_bytes(b) == b""
+    assert read_bytes(b) == b"a" * 127
+    assert read_bytes(b) == b"a" * 128
     assert read_float(b) == 0.1
     assert read_int(b) == 0
     assert read_int(b) == 1

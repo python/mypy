@@ -394,6 +394,22 @@ function_op(
 )
 
 function_op(
+    name="librt.internal.write_bytes",
+    arg_types=[object_rprimitive, bytes_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_bytes_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.read_bytes",
+    arg_types=[object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="read_bytes_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
     name="librt.internal.write_float",
     arg_types=[object_rprimitive, float_rprimitive],
     return_type=none_rprimitive,

@@ -1373,6 +1373,19 @@ main:16: note:         def meth(self, x: int) -> int
 main:16: note:         @overload
 main:16: note:         def meth(self, x: bytes) -> str
 
+[case testProtocolWithMultiContravariantTypeVarOverloads]
+from typing import overload, Protocol, TypeVar
+
+T1 = TypeVar("T1", contravariant=True)
+T2 = TypeVar("T2", contravariant=True)
+
+class A(Protocol[T1, T2]):
+    @overload
+    def method(self, a: T1) -> None: ...
+    @overload
+    def method(self, a: T2) -> None: ...
+
+
 -- Join and meet with protocol types
 -- ---------------------------------
 
@@ -1506,11 +1519,12 @@ class C: pass
 def f(x: P1) -> int: ...
 @overload
 def f(x: P2) -> str: ...
-def f(x):
+def f(x: object) -> object:
     if isinstance(x, P1):
         return P1.attr1
     if isinstance(x, P2): # E: Only @runtime_checkable protocols can be used with instance and class checks
-        return P1.attr2
+        return P2.attr2
+    return None
 
 reveal_type(f(C1())) # N: Revealed type is "builtins.int"
 reveal_type(f(C2())) # N: Revealed type is "builtins.str"

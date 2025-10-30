@@ -59,19 +59,25 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
-        - name: Test suite with py313-windows-64
-          python: '3.13'
+        - name: Test suite with py314-ubuntu, mypyc-compiled
+          python: '3.14'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
+        - name: Test suite with py314-windows-64
+          python: '3.14'
           os: windows-latest
           toxenv: py
           tox_extra_args: "-n 4"
 
-        - name: Test suite with py314-dev-ubuntu
-          python: '3.14-dev'
-          os: ubuntu-24.04-arm
-          toxenv: py
-          tox_extra_args: "-n 4"
-          # allow_failure: true
-          test_mypyc: true
+        # - name: Test suite with py315-dev-ubuntu
+        #   python: '3.15-dev'
+        #   os: ubuntu-24.04-arm
+        #   toxenv: py
+        #   tox_extra_args: "-n 4"
+        #   # allow_failure: true
+        #   test_mypyc: true
 
         - name: mypyc runtime tests with py39-macos
           python: '3.9.21'
