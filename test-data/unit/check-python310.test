@@ -1786,6 +1786,34 @@ def g(m: Medal) -> int:
             return 2
 [builtins fixtures/enum.pyi]
 
+[case testMatchLiteralOrValuePattern]
+# flags: --warn-unreachable
+from typing import Literal
+
+def test1(x: Literal[1,2,3]) -> None:
+    match x:
+        case 1:
+            reveal_type(x)  # N: Revealed type is "Literal[1]"
+        case other:
+            reveal_type(x)  # N: Revealed type is "Union[Literal[2], Literal[3]]"
+
+def test2(x: Literal[1,2,3]) -> None:
+    match x:
+        case 1:
+            reveal_type(x)  # N: Revealed type is "Literal[1]"
+        case 2:
+            reveal_type(x)  # N: Revealed type is "Literal[2]"
+        case 3:
+            reveal_type(x)  # N: Revealed type is "Literal[3]"
+        case other:
+            1  # E: Statement is unreachable
+
+def test3(x: Literal[1,2,3]) -> None:
+    match x:
+        case 1 | 3:
+            reveal_type(x)  # N: Revealed type is "Union[Literal[1], Literal[3]]"
+        case other:
+            reveal_type(x)  # N: Revealed type is "Literal[2]"
 
 [case testMatchLiteralPatternEnumWithTypedAttribute]
 from enum import Enum
