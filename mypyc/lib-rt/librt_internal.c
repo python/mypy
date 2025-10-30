@@ -22,7 +22,9 @@
 #define LONG_INT_BIT 4
 
 #define FOUR_BYTES_INT_TRAILER 3
-#define LONG_INT_TRAILER 7
+// We add one reserved bit here so that we can potentially support
+// 8 bytes format in the future.
+#define LONG_INT_TRAILER 15
 
 #define CPY_BOOL_ERROR 2
 #define CPY_NONE_ERROR 2
@@ -328,6 +330,7 @@ read_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
     return read_str_internal(data);
 }
 
+// The caller *must* check that real_value is within allowed range (29 bits).
 static inline char
 _write_short_int(PyObject *data, Py_ssize_t real_value) {
     if (real_value >= MIN_ONE_BYTE_INT && real_value <= MAX_ONE_BYTE_INT) {
@@ -543,7 +546,7 @@ int format:
     one byte: last bit 0, 7 bits used
     two bytes: last two bits 01, 14 bits used
     four bytes: last three bits 011, 29 bits used
-    everything else: 00000111 followed by serialized string representation
+    everything else: 00001111 followed by serialized string representation
 
 Note: for fixed size formats we skew ranges towards more positive values,
 since negative integers are much more rare.
@@ -558,7 +561,6 @@ read_int_internal(PyObject *data) {
     if (likely(first != LONG_INT_TRAILER)) {
         return _read_short_int(data, first);
     }
-    // People who have literal ints not fitting in size_t should be punished :-)
     PyObject *str_ret = read_str_internal(data);
     if (unlikely(str_ret == NULL))
         return CPY_INT_TAG;

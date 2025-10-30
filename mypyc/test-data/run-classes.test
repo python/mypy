@@ -2802,6 +2802,16 @@ def test_buffer_int_size() -> None:
         b = Buffer(b.getvalue())
         assert read_int(b) == i
 
+def test_buffer_int_powers() -> None:
+    # 0, 1, 2 are tested above
+    for p in range(2, 9):
+        b = Buffer()
+        write_int(b, 1 << p)
+        write_int(b, -1 << p)
+        b = Buffer(b.getvalue())
+        assert read_int(b) == 1 << p
+        assert read_int(b) == -1 << p
+
 def test_buffer_str_size() -> None:
     for s in ("", "a", "a" * 117):
         b = Buffer()
@@ -2824,6 +2834,7 @@ test_buffer_basic()
 test_buffer_roundtrip()
 test_buffer_int_size()
 test_buffer_str_size()
+test_buffer_int_powers()
 
 def test_buffer_basic_interpreted() -> None:
     b = Buffer(b"foo")
@@ -2900,6 +2911,16 @@ def test_buffer_int_size_interpreted() -> None:
         b = Buffer(b.getvalue())
         assert read_int(b) == i
 
+def test_buffer_int_powers_interpreted() -> None:
+    # 0, 1, 2 are tested above
+    for p in range(2, 9):
+        b = Buffer()
+        write_int(b, 1 << p)
+        write_int(b, -1 << p)
+        b = Buffer(b.getvalue())
+        assert read_int(b) == 1 << p
+        assert read_int(b) == -1 << p
+
 def test_buffer_str_size_interpreted() -> None:
     for s in ("", "a", "a" * 117):
         b = Buffer()
@@ -2919,6 +2940,7 @@ test_buffer_basic_interpreted()
 test_buffer_roundtrip_interpreted()
 test_buffer_int_size_interpreted()
 test_buffer_str_size_interpreted()
+test_buffer_int_powers_interpreted()
 
 [case testBufferEmpty_librt_internal]
 from librt.internal import Buffer, write_int, read_int
