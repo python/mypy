@@ -2602,13 +2602,19 @@ def run3(predicate: Callable[Concatenate[int, str, _P], None], *args: _P.args, *
 
 [case testRevealBoundParamSpecArgs]
 from typing import Callable, Generic, ParamSpec
-from typing_extensions import TypeVarTuple, Unpack
+from typing_extensions import Concatenate, TypeVarTuple, Unpack
 
 P = ParamSpec("P")
 Ts = TypeVarTuple("Ts")
 
 class Sneaky(Generic[P]):
     def __init__(self, fn: Callable[P, object], *args: P.args, **kwargs: P.kwargs) -> None:
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+
+class SneakyPrefix(Generic[P]):
+    def __init__(self, fn: Callable[Concatenate[int, P], object], _: int, *args: P.args, **kwargs: P.kwargs) -> None:
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
@@ -2635,18 +2641,41 @@ def f10(x: int=0, *args: Unpack[tuple[str, ...]]) -> int:
     return 0
 
 reveal_type(Sneaky(f1).args)  # N: Revealed type is "tuple[()]"
+reveal_type(SneakyPrefix(f1).args)  # E: Missing positional argument "_" in call to "SneakyPrefix" \
+                                    # N: Revealed type is "tuple[()]" \
+                                    # E: Argument 1 to "SneakyPrefix" has incompatible type "Callable[[], int]"; expected "Callable[[int], object]"
+
 reveal_type(Sneaky(f2, 1).args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int]]"
+reveal_type(SneakyPrefix(f2, 1).args)  # N: Revealed type is "tuple[()]"
+
 reveal_type(Sneaky(f3, 1).args)  # N: Revealed type is "tuple[builtins.int]"
+reveal_type(SneakyPrefix(f3, 1).args)  # N: Revealed type is "tuple[()]"
+
 reveal_type(Sneaky(f4, x=1).args)  # N: Revealed type is "tuple[()]"
+
 reveal_type(Sneaky(f5, 1).args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int], tuple[builtins.int, builtins.int]]"
+reveal_type(SneakyPrefix(f5, 1).args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int]]"
 reveal_type(Sneaky(f5, 1, 2).args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int], tuple[builtins.int, builtins.int]]"
+reveal_type(SneakyPrefix(f5, 1, 2).args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int]]"
+
 reveal_type(Sneaky(f6, 1).args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int], tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]]"
+reveal_type(SneakyPrefix(f6, 1).args)  # N: Revealed type is "Union[tuple[()], tuple[Unpack[builtins.tuple[builtins.int, ...]]]]"
 reveal_type(Sneaky(f6, 1, 2).args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int], tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]]"
+reveal_type(SneakyPrefix(f6, 1, 2).args)  # N: Revealed type is "Union[tuple[()], tuple[Unpack[builtins.tuple[builtins.int, ...]]]]"
+
 reveal_type(Sneaky(f7, 1, 2).args)  # N: Revealed type is "tuple[Literal[1]?, Literal[2]?]"
+reveal_type(SneakyPrefix(f7, 1, 2).args)  # N: Revealed type is "tuple[Literal[2]?]"
+
 reveal_type(Sneaky(f8, 1, '').args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int], tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]]"
+reveal_type(SneakyPrefix(f8, 1, '').args)  # N: Revealed type is "Union[tuple[()], tuple[Unpack[builtins.tuple[builtins.str, ...]]]]"
+
 reveal_type(Sneaky(f9, 1, '', 0).args)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.int]"
+reveal_type(SneakyPrefix(f9, 1, '', 0).args)  # N: Revealed type is "tuple[builtins.str, builtins.int]"
+
 reveal_type(Sneaky(f10, 1, '', '').args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int], tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]]"
+reveal_type(SneakyPrefix(f10, 1, '', '').args)  # N: Revealed type is "Union[tuple[()], tuple[Unpack[builtins.tuple[builtins.str, ...]]]]"
 [builtins fixtures/paramspec.pyi]
+
 
 [case testRevealBoundParamSpecKwargs]
 from typing import Callable, Generic, ParamSpec
