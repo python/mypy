@@ -780,6 +780,40 @@ C().k()  # E: function __main__.C.k is deprecated: use g instead
 [builtins fixtures/callable.pyi]
 
 
+[case testDeprecatedMethodAccessedFromMethod]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated
+
+class C:
+    @deprecated("use g instead")
+    def f(self) -> None: ...
+
+    def g(self) -> None: ...
+
+    @deprecated("use g instead")
+    @staticmethod
+    def h() -> None: ...
+
+    def instance_method(self) -> None:
+        self.f  # E: function __main__.C.f is deprecated: use g instead
+        self.f()  # E: function __main__.C.f is deprecated: use g instead
+        self.g()
+        self.h()  # E: function __main__.C.h is deprecated: use g instead
+        t = (self.f, self.f, self.g)  # E: function __main__.C.f is deprecated: use g instead
+
+    @classmethod
+    def class_method(cls) -> None:
+        c: C
+        cls.f  # E: function __main__.C.f is deprecated: use g instead
+        cls.f(c)  # E: function __main__.C.f is deprecated: use g instead
+        cls.g(c)
+        cls.h()  # E: function __main__.C.h is deprecated: use g instead
+        t = (cls.f, cls.f, cls.g)  # E: function __main__.C.f is deprecated: use g instead
+
+[builtins fixtures/callable.pyi]
+
+
 [case testDeprecatedClassWithDeprecatedMethod]
 # flags: --enable-error-code=deprecated
 
