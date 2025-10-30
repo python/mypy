@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdint.h>
@@ -245,7 +247,7 @@ write_bool(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
         PyErr_SetString(PyExc_TypeError, "value must be a bool");
         return NULL;
     }
-    if (unlikely(write_bool_internal(data, value == Py_True) == CPY_NONE_ERROR)) {
+    if (unlikely(write_bool_internal(data, Py_IsTrue(value)) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
