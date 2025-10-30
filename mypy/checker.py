@@ -395,6 +395,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     # A helper state to produce unique temporary names on demand.
     _unique_id: int
+    # Fake concrete type used when checking variance
+    _variance_dummy_type: Instance | None
 
     def __init__(
         self,
@@ -469,6 +471,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
         self._unique_id = 0
+        self._variance_dummy_type = None
 
     @property
     def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
@@ -2918,17 +2921,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         info = defn.info
         object_type = Instance(info.mro[-1], [])
         tvars = info.defn.type_vars
+        if self._variance_dummy_type is None:
+            _, dummy_info = self.make_fake_typeinfo("<dummy>", "Dummy", "Dummy", [])
+            self._variance_dummy_type = Instance(dummy_info, [])
+        dummy = self._variance_dummy_type
         for i, tvar in enumerate(tvars):
             if not isinstance(tvar, TypeVarType):
                 # Variance of TypeVarTuple and ParamSpec is underspecified by PEPs.
                 continue
             up_args: list[Type] = [
-                object_type if i == j else AnyType(TypeOfAny.special_form)
-                for j, _ in enumerate(tvars)
+                object_type if i == j else dummy.copy_modified() for j, _ in enumerate(tvars)
             ]
             down_args: list[Type] = [
-                UninhabitedType() if i == j else AnyType(TypeOfAny.special_form)
-                for j, _ in enumerate(tvars)
+                UninhabitedType() if i == j else dummy.copy_modified() for j, _ in enumerate(tvars)
             ]
             up, down = Instance(info, up_args), Instance(info, down_args)
             # TODO: add advanced variance checks for recursive protocols
@@ -3294,9 +3299,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             del partial_types[var]
                             lvalue_type = var.type
                     else:
-                        # Try to infer a partial type. No need to check the return value, as
-                        # an error will be reported elsewhere.
-                        self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
+                        # Try to infer a partial type.
+                        if not self.infer_partial_type(var, lvalue, rvalue_type):
+                            # If that also failed, give up and let the caller know that we
+                            # cannot read their mind. The definition site will be reported later.
+                            # Calling .put() directly because the newly inferred type is
+                            # not a subtype of None - we are not looking for narrowing
+                            fallback = self.inference_error_fallback_type(rvalue_type)
+                            self.binder.put(lvalue, fallback)
+                            # Same as self.set_inference_error_fallback_type but inlined
+                            # to avoid computing fallback twice.
+                            # We are replacing partial<None> now, so the variable type
+                            # should remain optional.
+                            self.set_inferred_type(var, lvalue, make_optional_type(fallback))
                 elif (
                     is_literal_none(rvalue)
                     and isinstance(lvalue, NameExpr)

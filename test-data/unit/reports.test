@@ -547,3 +547,52 @@ namespace_packages = True
 </table>
 </body>
 </html>
+
+[case testLinecountReportCrashOnNamespacePackages]
+# cmd: mypy --linecount-report report -p folder
+-- Regression test for https://github.com/python/mypy/issues/15979
+[file folder/subfolder/something.py]
+class Something:
+    pass
+
+[case testReportIsADirectoryErrorCrashOnNamespacePackages]
+# cmd: mypy --linecoverage-report report -p folder
+-- Regression test for https://github.com/python/mypy/issues/18128
+-- "IsADirectoryError for namespace packages when using --linecoverage-report"
+[file folder/subfolder/something.py]
+class Something:
+    pass
+
+[case testReportCoberturaCrashOnNamespacePackages]
+# cmd: mypy --cobertura-xml-report report -p folder
+-- Regression test for https://github.com/python/mypy/issues/19843
+[file folder/subfolder/something.py]
+-- This output is not important, but due to the way tests are run we need to check it.
+[outfile report/cobertura.xml]
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="1.0" branch-rate="0" lines-covered="0" lines-valid="0">
+  <sources>
+    <source>$PWD</source>
+  </sources>
+  <packages>
+    <package complexity="1.0" name="folder" branch-rate="0" line-rate="1.0">
+      <classes>
+        <class complexity="1.0" filename="folder" name="folder" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
+        <class complexity="1.0" filename="folder/subfolder" name="subfolder" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
+      </classes>
+    </package>
+    <package complexity="1.0" name="folder.subfolder" branch-rate="0" line-rate="1.0">
+      <classes>
+        <class complexity="1.0" filename="folder/subfolder/something.py" name="something.py" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
