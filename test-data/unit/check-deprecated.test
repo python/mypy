@@ -328,8 +328,12 @@ class C:
 
 class C2(C): ...
 
+class C3(C):
+    def __init__(self) -> None: ...
+
 C()  # E: function __main__.C.__init__ is deprecated: call `make_c()` instead
 C2()  # E: function __main__.C.__init__ is deprecated: call `make_c()` instead
+C3()
 
 class D:
     @deprecated("call `make_d()` instead")
@@ -339,8 +343,12 @@ class D:
 
 class D2(D): ...
 
+class D3(D):
+    def __new__(cls) -> D3: ...
+
 D()  # E: function __main__.D.__new__ is deprecated: call `make_d()` instead
 D2()  # E: function __main__.D.__new__ is deprecated: call `make_d()` instead
+D3()
 
 [builtins fixtures/tuple.pyi]
 
@@ -379,22 +387,31 @@ class A:
     @deprecated("do not use")
     def __init__(self) -> None: ...
 
-class B(A): ...
+class B1(A): ...
+
+class B2(A):
+    def __init__(self) -> None: ...
 
 A_alias = A
 A_explicit_alias: TypeAlias = A
-B_alias = B
-B_explicit_alias: TypeAlias = B
+B1_alias = B1
+B1_explicit_alias: TypeAlias = B1
+B2_alias = B2
+B2_explicit_alias: TypeAlias = B2
 
 A_alias()  # E: function __main__.A.__init__ is deprecated: do not use
 A_explicit_alias()  # E: function __main__.A.__init__ is deprecated: do not use
-B_alias()  # E: function __main__.A.__init__ is deprecated: do not use
-B_explicit_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+B1_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+B1_explicit_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+B2_alias()
+B2_explicit_alias()
 
 A_alias
 A_explicit_alias
-B_alias
-B_explicit_alias
+B1_alias
+B1_explicit_alias
+B2_alias
+B2_explicit_alias
 
 [builtins fixtures/tuple.pyi]
 
