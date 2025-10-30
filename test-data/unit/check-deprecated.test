@@ -666,6 +666,85 @@ a += "x"  # E: function __main__.A.__iadd__ is deprecated: no A += Any
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedOverloadedClassConstructor]
+# flags: --enable-error-code=deprecated --disable-error-code=no-overload-impl
+
+from typing_extensions import TypeAlias, deprecated, overload
+
+class A:
+    @overload
+    @deprecated("do not pass int")
+    def __new__(cls, arg: int) -> A: ...
+    @overload
+    def __new__(cls, arg: str) -> A: ...
+
+class B:
+    @overload
+    @deprecated("do not pass int")
+    def __init__(self, arg: int) -> None: ...
+    @overload
+    def __init__(self, arg: str) -> None: ...
+
+A_alias: TypeAlias = A
+B_alias: TypeAlias = B
+
+A(1)  # E: overload def (cls: type[__main__.A], arg: builtins.int) -> __main__.A of function __main__.A.__new__ is deprecated: do not pass int
+A_alias(1)  # E: overload def (cls: type[__main__.A], arg: builtins.int) -> __main__.A of function __main__.A.__new__ is deprecated: do not pass int
+A("")
+A_alias("")
+class A_child(A):
+    def __new__(cls) -> A_child:
+        super().__new__(cls, 1)  # E: overload def (cls: type[__main__.A], arg: builtins.int) -> __main__.A of function __main__.A.__new__ is deprecated: do not pass int
+        super().__new__(cls, "")
+        return object.__new__(cls)
+
+B(1)  # E: overload def (self: __main__.B, arg: builtins.int) of function __main__.B.__init__ is deprecated: do not pass int
+B_alias(1)  # E: overload def (self: __main__.B, arg: builtins.int) of function __main__.B.__init__ is deprecated: do not pass int
+B("")
+B_alias("")
+class B_child(B):
+    def __init__(self) -> None:
+        super().__init__(1)  # E: overload def (self: __main__.B, arg: builtins.int) of function __main__.B.__init__ is deprecated: do not pass int
+        super().__init__("")
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedOverloadedClassConstructorDecoratingOverloadedFunction]
+
+# flags: --enable-error-code=deprecated --disable-error-code=no-overload-impl
+
+from typing import Callable, Generic, TypeVar
+from typing_extensions import deprecated, overload
+
+F = TypeVar("F", bound=Callable[..., object])
+
+class decorator(Generic[F]):
+    __call__: F
+
+    @overload
+    @deprecated("decorated function must take arguments")
+    def __init__(self: decorator[Callable[[], None]], f: Callable[[], None]) -> None: ...
+    @overload
+    def __init__(self, f: F) -> None: ...
+
+@overload
+@decorator
+def f(a: str) -> None: ...
+@overload  # E: overload def (self: __main__.decorator[def ()], f: def ()) of function __main__.decorator.__init__ is deprecated: decorated function must take arguments
+@decorator
+def f() -> None: ...
+
+f()
+f("")
+f(1)  # E: No overload variant of "f" matches argument type "int" \
+      # N: Possible overload variants: \
+      # N:     def f(a: str) -> None \
+      # N:     def f() -> None
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedMethod]
 # flags: --enable-error-code=deprecated
 
