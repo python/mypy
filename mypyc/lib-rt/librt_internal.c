@@ -509,14 +509,18 @@ write_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnam
 
 /*
 float format:
-    stored as a C double
+    stored using PyFloat helpers in little-endian format.
 */
 
 static double
 read_float_internal(PyObject *data) {
     _CHECK_BUFFER(data, CPY_FLOAT_ERROR)
-    _CHECK_READ(data, sizeof(double), CPY_FLOAT_ERROR)
-    double res = _READ(data, double)
+    _CHECK_READ(data, 8, CPY_FLOAT_ERROR)
+    char *buf = ((BufferObject *)data)->buf;
+    double res = PyFloat_Unpack8(buf + ((BufferObject *)data)->pos, 1);
+    if (unlikely((res == -1.0) && PyErr_Occurred()))
+        return CPY_FLOAT_ERROR;
+    ((BufferObject *)data)->pos += 8;
     return res;
 }
 
@@ -538,9 +542,13 @@ read_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
 static char
 write_float_internal(PyObject *data, double value) {
     _CHECK_BUFFER(data, CPY_NONE_ERROR)
-    _CHECK_SIZE(data, sizeof(double))
-    _WRITE(data, double, value)
-    ((BufferObject *)data)->end += sizeof(double);
+    _CHECK_SIZE(data, 8)
+    char *buf = ((BufferObject *)data)->buf;
+    int res = PyFloat_Pack8(value, buf + ((BufferObject *)data)->pos, 1);
+    if (unlikely(res == -1))
+        return CPY_NONE_ERROR;
+    ((BufferObject *)data)->pos += 8;
+    ((BufferObject *)data)->end += 8;
     return CPY_NONE;
 }
 
