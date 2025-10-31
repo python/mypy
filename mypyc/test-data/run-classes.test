@@ -2804,13 +2804,17 @@ def test_buffer_int_size() -> None:
 
 def test_buffer_int_powers() -> None:
     # 0, 1, 2 are tested above
-    for p in range(2, 9):
+    for p in range(2, 200):
         b = Buffer()
         write_int(b, 1 << p)
+        write_int(b, (1 << p) - 1)
         write_int(b, -1 << p)
+        write_int(b, (-1 << p) + 1)
         b = Buffer(b.getvalue())
         assert read_int(b) == 1 << p
+        assert read_int(b) == (1 << p) - 1
         assert read_int(b) == -1 << p
+        assert read_int(b) == (-1 << p) + 1
 
 def test_buffer_str_size() -> None:
     for s in ("", "a", "a" * 117):
