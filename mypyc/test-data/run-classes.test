@@ -2806,13 +2806,36 @@ def test_buffer_int_size() -> None:
 
 def test_buffer_int_powers() -> None:
     # 0, 1, 2 are tested above
-    for p in range(2, 9):
+    for p in range(2, 200):
         b = Buffer()
         write_int(b, 1 << p)
+        write_int(b, (1 << p) - 1)
         write_int(b, -1 << p)
+        write_int(b, (-1 << p) + 1)
         b = Buffer(b.getvalue())
         assert read_int(b) == 1 << p
+        assert read_int(b) == (1 << p) - 1
         assert read_int(b) == -1 << p
+        assert read_int(b) == (-1 << p) + 1
+
+def test_positive_long_int_serialized_bytes() -> None:
+    b = Buffer()
+    n = 0x123456789ab
+    write_int(b, n)
+    x = b.getvalue()
+    # Two prefix bytes, followed by little endian encoded integer in variable-length format
+    assert x == b"\x0f\x2c\xab\x89\x67\x45\x23\x01"
+    b = Buffer(x)
+    assert read_int(b) == n
+
+def test_negative_long_int_serialized_bytes() -> None:
+    b = Buffer()
+    n = -0x123456789abcde
+    write_int(b, n)
+    x = b.getvalue()
+    assert x == b"\x0f\x32\xde\xbc\x9a\x78\x56\x34\x12"
+    b = Buffer(x)
+    assert read_int(b) == n
 
 def test_buffer_str_size() -> None:
     for s in ("", "a", "a" * 117):
@@ -2837,6 +2860,8 @@ test_buffer_roundtrip()
 test_buffer_int_size()
 test_buffer_str_size()
 test_buffer_int_powers()
+test_positive_long_int_serialized_bytes()
+test_negative_long_int_serialized_bytes()
 
 def test_buffer_basic_interpreted() -> None:
     b = Buffer(b"foo")
