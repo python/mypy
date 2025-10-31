@@ -2741,6 +2741,7 @@ def test_buffer_roundtrip() -> None:
     write_bytes(b, b"a" * 127)
     write_bytes(b, b"a" * 128)
     write_float(b, 0.1)
+    write_float(b, -1.0)
     write_float(b, -113.0)
     write_int(b, 0)
     write_int(b, 1)
@@ -2766,6 +2767,7 @@ def test_buffer_roundtrip() -> None:
     assert read_bytes(b) == b"a" * 127
     assert read_bytes(b) == b"a" * 128
     assert read_float(b) == 0.1
+    assert read_float(b) == -1.0
     assert read_float(b) == -113.0
     assert read_int(b) == 0
     assert read_int(b) == 1
