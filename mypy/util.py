@@ -10,9 +10,9 @@ import re
 import shutil
 import sys
 import time
-from collections.abc import Container, Iterable, Sequence, Sized
+from collections.abc import Callable, Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, Any, Callable, Final, Literal, TypeVar
+from typing import IO, Any, Final, Literal, TypeVar
 
 orjson: Any
 try:

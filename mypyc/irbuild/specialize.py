@@ -14,7 +14,8 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Final, cast
+from collections.abc import Callable
+from typing import Final, cast
 
 from mypy.nodes import (
     ARG_NAMED,

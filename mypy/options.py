@@ -5,8 +5,9 @@ import re
 import sys
 import sysconfig
 import warnings
+from collections.abc import Callable
 from re import Pattern
-from typing import Any, Callable, Final
+from typing import Any, Final
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes

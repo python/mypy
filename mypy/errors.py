@@ -4,10 +4,10 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from itertools import chain
-from typing import Callable, Final, NoReturn, TextIO, TypeVar
-from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
+from typing import Final, Literal, NoReturn, TextIO, TypeAlias as _TypeAlias, TypeVar
+from typing_extensions import Self
 
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter

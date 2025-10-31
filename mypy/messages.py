@@ -14,10 +14,10 @@ from __future__ import annotations
 import difflib
 import itertools
 import re
-from collections.abc import Collection, Iterable, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Final, cast
+from typing import Any, Final, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
