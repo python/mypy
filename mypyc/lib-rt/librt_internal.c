@@ -585,7 +585,7 @@ read_int_internal(PyObject *data) {
         return _read_short_int(data, first);
     }
 
-    // Long integer -- bytes length+sign followed by a byte array.
+    // Long integer encoding -- byte length and sign, followed by a byte array.
 
     // Read byte length and sign.
     _CHECK_READ(data, 1, CPY_INT_TAG)
@@ -642,15 +642,24 @@ static inline int hex_to_int(char c) {
 
 static inline char
 _write_long_int(PyObject *data, CPyTagged value) {
-    // TODO(jukka): write a more compact/optimal format for arbitrary length ints.
     _CHECK_SIZE(data, 1)
     _WRITE(data, uint8_t, LONG_INT_TRAILER)
     ((BufferObject *)data)->end += 1;
+
+    PyObject *hex_str = NULL;
     PyObject* int_value = CPyTagged_AsObject(value);
     if (unlikely(int_value == NULL))
-        return CPY_NONE_ERROR;
-    PyObject *hex_str = PyNumber_ToBase(int_value, 16);
+        goto error;
+
+    hex_str = PyNumber_ToBase(int_value, 16);
+    if (hex_str == NULL)
+        goto error;
+    Py_DECREF(int_value);
+    int_value = NULL;
+
     const char *str = PyUnicode_AsUTF8(hex_str);
+    if (str == NULL)
+        goto error;
     Py_ssize_t len = strlen(str);
     bool neg;
     if (str[0] == '-') {
@@ -660,31 +669,42 @@ _write_long_int(PyObject *data, CPyTagged value) {
     } else {
         neg = false;
     }
-    // Skip 0x
+    // Skip the 0x hex prefix.
     str += 2;
     len -= 2;
 
-
+    // Write bytes encoded length and sign.
     Py_ssize_t size = (len + 1) / 2;
     Py_ssize_t encoded_size = (size << 1) | neg;
-    //printf("%d %ld %s\n", neg, encoded_size, str);
     if (encoded_size <= MAX_FOUR_BYTES_INT) {
-        _write_short_int(data, encoded_size);
+        if (_write_short_int(data, encoded_size) == CPY_NONE_ERROR)
+            goto error;
     } else {
-        // TODO
+        PyErr_SetString(PyExc_ValueError, "int too long to serialize");
+        goto error;
     }
 
-    // Write integer as packed bytes (2 hex digits each) in a little endian format.
+    // Write absolute integer value as byte array in a variable-length little endian format.
     int i;
     for (i = len; i > 1; i -= 2) {
-        write_tag_internal(data, hex_to_int(str[i - 1]) | (hex_to_int(str[i - 2]) << 4));
+        if (write_tag_internal(
+                data, hex_to_int(str[i - 1]) | (hex_to_int(str[i - 2]) << 4)) == CPY_NONE_ERROR)
+            goto error;
     }
     // The final byte may correspond to only one hex digit.
     if (i == 1) {
-        write_tag_internal(data, hex_to_int(str[i - 1]));
+        if (write_tag_internal(data, hex_to_int(str[i - 1])) == CPY_NONE_ERROR)
+            goto error;
     }
 
+    Py_DECREF(hex_str);
     return CPY_NONE;
+
+  error:
+
+    Py_XDECREF(int_value);
+    Py_XDECREF(hex_str);
+    return CPY_NONE_ERROR;
 }
 
 static char
