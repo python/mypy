@@ -395,7 +395,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
                 continue
             b.accept(self)
             self.tracker.next_branch()
-        if o.else_irrelevant_for_possibly_undefined:
+        if o.unreachable_else:
             self.tracker.skip_branch()
         elif o.else_body:
             if o.else_body.is_unreachable:
