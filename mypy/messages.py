@@ -1624,7 +1624,6 @@ class MessageBuilder:
         )
 
     def dangerous_comparison(self, left: Type, right: Type, kind: str, ctx: Context) -> None:
-
         # In loops (and similar cases), the same expression might be analysed multiple
         # times and thereby confronted with different types.  We only want to raise a
         # `comparison-overlap` error if it occurs in all cases and therefore collect the
