@@ -1794,7 +1794,7 @@ class PassStmt(Statement):
 class IfStmt(Statement):
     __slots__ = ("expr", "body", "else_body", "unreachable_else")
 
-    __match_args__ = ("expr", "body", "else_body", "else_body_irrelevant_for_possibly_undefined")
+    __match_args__ = ("expr", "body", "else_body", "unreachable_else")
 
     expr: list[Expression]
     body: list[Block]
