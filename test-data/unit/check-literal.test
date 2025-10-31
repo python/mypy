@@ -615,7 +615,8 @@ e: Literal[dummy()]             # E: Invalid type: Literal[...] cannot contain a
 from typing import Literal
 a: Literal[{"a": 1, "b": 2}]    # E: Parameter 1 of Literal[...] is invalid
 b: Literal[{1, 2, 3}]           # E: Invalid type: Literal[...] cannot contain arbitrary expressions
-c: {"a": 1, "b": 2}             # E: Inline TypedDict is experimental, must be enabled with --enable-incomplete-feature=InlineTypedDict \
+c: {"a": 1, "b": 2}             # E: Legacy inline TypedDict is experimental, must be enabled with --enable-incomplete-feature=InlineTypedDict \
+                                # N: Did you mean TypedDict[...]? \
                                 # E: Invalid type: try using Literal[1] instead? \
                                 # E: Invalid type: try using Literal[2] instead?
 d: {1, 2, 3}                    # E: Invalid type comment or annotation
