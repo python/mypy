@@ -43,6 +43,16 @@
 #define _WRITE(data, type, v)  *(type *)(((BufferObject *)data)->buf + ((BufferObject *)data)->pos) = v; \
                                ((BufferObject *)data)->pos += sizeof(type);
 
+#if PY_BIG_ENDIAN
+uint16_t reverse_16(uint16_t number) {
+  return (number << 8) | (number >> 8);
+}
+
+uint32_t reverse_32(uint32_t number) {
+  return ((number & 0xFF) << 24) | ((number & 0xFF00) << 8) | ((number & 0xFF0000) >> 8) | (number >> 24);
+}
+#endif
+
 typedef struct {
     PyObject_HEAD
     Py_ssize_t pos;
@@ -287,6 +297,9 @@ _read_short_int(PyObject *data, uint8_t first) {
     // TODO: check if compilers emit optimal code for these two reads, and tweak if needed.
     second = _READ(data, uint8_t)
     two_more = _READ(data, uint16_t)
+#if PY_BIG_ENDIAN
+    two_more = reverse_16(two_more);
+#endif
     Py_ssize_t higher = (((Py_ssize_t)two_more) << 13) + (((Py_ssize_t)second) << 5);
     return (higher + (Py_ssize_t)(first >> 3) + MIN_FOUR_BYTES_INT) << 1;
 }
@@ -339,11 +352,21 @@ _write_short_int(PyObject *data, Py_ssize_t real_value) {
         ((BufferObject *)data)->end += 1;
     } else if (real_value >= MIN_TWO_BYTES_INT && real_value <= MAX_TWO_BYTES_INT) {
         _CHECK_SIZE(data, 2)
+#if PY_BIG_ENDIAN
+        uint16_t to_write = ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT;
+        _WRITE(data, uint16_t, reverse_16(to_write))
+#else
         _WRITE(data, uint16_t, ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT)
+#endif
         ((BufferObject *)data)->end += 2;
     } else {
         _CHECK_SIZE(data, 4)
+#if PY_BIG_ENDIAN
+        uint32_t to_write = ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER;
+        _WRITE(data, uint32_t, reverse_32(to_write))
+#else
         _WRITE(data, uint32_t, ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER)
+#endif
         ((BufferObject *)data)->end += 4;
     }
     return CPY_NONE;
