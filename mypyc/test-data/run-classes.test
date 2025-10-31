@@ -2858,6 +2858,8 @@ test_buffer_roundtrip()
 test_buffer_int_size()
 test_buffer_str_size()
 test_buffer_int_powers()
+test_positive_long_int_serialized_bytes()
+test_negative_long_int_serialized_bytes()
 
 def test_buffer_basic_interpreted() -> None:
     b = Buffer(b"foo")
