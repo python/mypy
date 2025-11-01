@@ -28,8 +28,10 @@ from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Final, NoReturn, TextIO, TypedDict
 from typing_extensions import TypeAlias as _TypeAlias
 
+from librt.internal import cache_version
+
 import mypy.semanal_main
-from mypy.cache import Buffer, CacheMeta
+from mypy.cache import CACHE_VERSION, Buffer, CacheMeta
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -1334,12 +1336,18 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
             return None
     t1 = time.time()
     if isinstance(meta, bytes):
-        data_io = Buffer(meta)
+        # If either low-level buffer format or high-level cache layout changed, we
+        # cannot use the cache files, even with --skip-version-check.
+        # TODO: switch to something like librt.internal.read_byte() if this is slow.
+        if meta[0] != cache_version() or meta[1] != CACHE_VERSION:
+            manager.log(f"Metadata abandoned for {id}: incompatible cache format")
+            return None
+        data_io = Buffer(meta[2:])
         m = CacheMeta.read(data_io, data_file)
     else:
         m = CacheMeta.deserialize(meta, data_file)
     if m is None:
-        manager.log(f"Metadata abandoned for {id}: attributes are missing")
+        manager.log(f"Metadata abandoned for {id}: cannot deserialize data")
         return None
     t2 = time.time()
     manager.add_stats(
@@ -1671,7 +1679,9 @@ def write_cache_meta(meta: CacheMeta, manager: BuildManager, meta_file: str) -> 
     if manager.options.fixed_format_cache:
         data_io = Buffer()
         meta.write(data_io)
-        meta_bytes = data_io.getvalue()
+        # Prefix with both low- and high-level cache format versions for future validation.
+        # TODO: switch to something like librt.internal.write_byte() if this is slow.
+        meta_bytes = bytes([cache_version(), CACHE_VERSION]) + data_io.getvalue()
     else:
         meta_dict = meta.serialize()
         meta_bytes = json_dumps(meta_dict, manager.options.debug_cache)

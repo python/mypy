@@ -40,6 +40,9 @@ General convention is that custom classes implement write() and read() methods f
 serialization. The write method should write both class tag and end tag. The read method
 conventionally *does not* read the start tag (to simplify logic for unions). Known exceptions
 are MypyFile.read() and SymbolTableNode.read(), since those two never appear in a union.
+
+If any of these details change, or if the structure of CacheMeta changes please
+bump CACHE_VERSION below.
 """
 
 from __future__ import annotations
@@ -64,6 +67,9 @@ from librt.internal import (
     write_tag as write_tag,
 )
 from mypy_extensions import u8
+
+# High-level cache layout format
+CACHE_VERSION: Final = 0
 
 
 class CacheMeta:
