@@ -1689,8 +1689,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             callable_name = ret_type.type.fullname
         if isinstance(callable_node, RefExpr) and (callable_node.fullname in ENUM_BASES):
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
-            if callable_node.fullname in ENUM_BASES:
-                return callee.ret_type, callee
+            return callee.ret_type, callee
 
         if (
             callee.is_type_obj()
