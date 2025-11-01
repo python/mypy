@@ -151,7 +151,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
         is_error = False
         is_invalid = False
-        for (i, arg), tvar in zip(enumerate(args), type_vars):
+        for arg, tvar in zip(args, type_vars):
             context = ctx if arg.line < 0 else arg
             if isinstance(tvar, TypeVarType):
                 if isinstance(arg, ParamSpecType):

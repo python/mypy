@@ -2057,6 +2057,7 @@ reveal_type(AA.XX)  # N: Revealed type is "def () -> __main__.XX"
 y: B.Y
 reveal_type(y)  # N: Revealed type is "__main__.Y"
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testPEP695TypeAliasRecursiveInvalid]
 type X = X  # E: Cannot resolve name "X" (possible cyclic definition)
@@ -2166,5 +2167,28 @@ class MyTuple[*Ts](tuple[*TS]):  # E: Name "TS" is not defined
 
 x: MyTuple[int, str]
 reveal_type(x[0])  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasRecursiveInParameterBound]
+from typing import Any
+
+type A1[T: B1] = list[int]
+type B1 = None | A1[B1]
+x1: A1[B1]
+y1: A1[int]  # E: Type argument "int" of "A1" must be a subtype of "B1"
+z1: A1[None]
+
+type A2[T: B2] = list[T]
+type B2 = None | A2[Any]
+x2: A2[B2]
+y2: A2[int]  # E: Type argument "int" of "A2" must be a subtype of "B2"
+z2: A2[None]
+
+type A3[T: B3] = list[T]
+type B3 = None | A3[B3]
+x3: A3[B3]
+y3: A3[int]  # E: Type argument "int" of "A3" must be a subtype of "B3"
+z3: A3[None]
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
