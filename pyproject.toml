@@ -38,7 +38,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -47,7 +46,7 @@ classifiers = [
   "Topic :: Software Development",
   "Typing :: Typed",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   # When changing this, also update build-system.requires and mypy-requirements.txt
   "typing_extensions>=4.6.0",
@@ -107,7 +106,7 @@ mypyc = [
 
 [tool.black]
 line-length = 99
-target-version = ["py39", "py310", "py311", "py312", "py313", "py314"]
+target-version = ["py310", "py311", "py312", "py313", "py314"]
 skip-magic-trailing-comma = true
 force-exclude = '''
 ^/mypy/typeshed|
