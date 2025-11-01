@@ -272,7 +272,7 @@ class IPCServer(IPCBase):
         else:
             try:
                 self.connection, _ = self.sock.accept()
-            except socket.timeout as e:
+            except TimeoutError as e:
                 raise IPCException("The socket timed out") from e
         return self
 
