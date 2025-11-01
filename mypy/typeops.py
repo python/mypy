@@ -999,6 +999,21 @@ def is_singleton_type(typ: Type) -> bool:
     return typ.is_singleton_type()
 
 
+def is_notimplemented(t: ProperType) -> bool:
+    return isinstance(t, Instance) and t.type.fullname == "builtins._NotImplementedType"
+
+
+def erase_notimplemented(t: Type) -> Type:
+    t = get_proper_type(t)
+    if is_notimplemented(t):
+        return AnyType(TypeOfAny.special_form)
+    if isinstance(t, UnionType):
+        return UnionType.make_union(
+            [i for i in t.items if not is_notimplemented(get_proper_type(i))]
+        )
+    return t
+
+
 def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.

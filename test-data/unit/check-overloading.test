@@ -6852,3 +6852,96 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iterable[tuple[builtins.bytes, builtins.bytes]]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testReturnNotImplementedInBinaryMagicMethods]
+# flags: --warn-return-any
+from typing import Union
+
+class A:
+    def __add__(self, other: object) -> int:
+        return NotImplemented
+    def __radd__(self, other: object) -> Union[int, NotImplementedType]:
+        return NotImplemented
+    def __sub__(self, other: object) -> Union[int, NotImplementedType]:
+        return 1
+    def __isub__(self, other: object) -> int:
+        x: Union[int, NotImplementedType]
+        return x
+    def __mul__(self, other: object) -> Union[int, NotImplementedType]:
+        x: Union[int, NotImplementedType]
+        return x
+[builtins fixtures/notimplemented.pyi]
+
+[case testReturnNotImplementedABCSubclassHookMethod]
+# flags: --warn-return-any
+class A:
+    @classmethod
+    def __subclasshook__(cls, t: type[object], /) -> bool:
+        return NotImplemented
+[builtins fixtures/notimplemented.pyi]
+
+[case testReturnNotImplementedInNormalMethods]
+# flags: --warn-return-any
+from typing import Union
+
+class A:
+    def f(self) -> bool: return NotImplemented  # E: Incompatible return value type (got "_NotImplementedType", expected "bool")
+    def g(self) -> NotImplementedType: return True # E: Incompatible return value type (got "bool", expected "_NotImplementedType")
+    def h(self) -> NotImplementedType: return NotImplemented
+    def i(self) -> Union[bool, NotImplementedType]: return NotImplemented
+    def j(self) -> Union[bool, NotImplementedType]: return True
+[builtins fixtures/notimplemented.pyi]
+
+[case testNotImplementedReturnedFromBinaryMagicMethod]
+# flags: --warn-return-any
+from typing import Union
+
+class A:
+    def __add__(self, x: A) -> Union[int, NotImplementedType]: ...
+    def __sub__(self, x: A) -> NotImplementedType: ...
+    def __imul__(self, x: A) -> Union[A, NotImplementedType]: ...
+    def __itruediv__(self, x: A) -> Union[A, NotImplementedType]: ...
+    def __ifloordiv__(self, x: A) -> Union[int, NotImplementedType]: ...
+    def __eq__(self, x: object) -> Union[bool, NotImplementedType]: ...
+    def __le__(self, x: int) -> Union[bool, NotImplementedType]: ...
+    def __lt__(self, x: int) -> NotImplementedType: ...
+    def __and__(self, x: object) -> NotImplementedType: ...
+class B(A):
+    def __radd__(self, x: A) -> Union[int, NotImplementedType]: ...
+    def __rsub__(self, x: A) -> NotImplementedType: ...
+    def __itruediv__(self, x: A) -> Union[A, NotImplementedType]: ...
+    def __ror__(self, x: object) -> NotImplementedType: ...
+
+a: A
+b: B
+
+reveal_type(a.__add__(a))  # N: Revealed type is "Union[builtins.int, builtins._NotImplementedType]"
+reveal_type(a.__sub__(a))  # N: Revealed type is "builtins._NotImplementedType"
+reveal_type(a.__imul__(a))  # N: Revealed type is "Union[__main__.A, builtins._NotImplementedType]"
+reveal_type(a.__eq__(a))  # N: Revealed type is "Union[builtins.bool, builtins._NotImplementedType]"
+reveal_type(a.__le__(1))  # N: Revealed type is "Union[builtins.bool, builtins._NotImplementedType]"
+
+reveal_type(a + a)  # N: Revealed type is "builtins.int"
+reveal_type(a - a)  # N: Revealed type is "Any"
+reveal_type(a + b)  # N: Revealed type is "builtins.int"
+reveal_type(a - b)  # N: Revealed type is "Any"
+def f1(a: A) -> None:
+    a += a  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+def f2(a: A) -> None:
+    a -= a
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+def f3(a: A) -> None:
+    a *= a
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+def f4(a: A) -> None:
+    a /= a
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+def f5(a: A) -> None:
+    a //= a  # E: Result type of // incompatible in assignment
+reveal_type(a == a)  # N: Revealed type is "builtins.bool"
+reveal_type(a == 1)  # N: Revealed type is "builtins.bool"
+reveal_type(a <= 1)  # N: Revealed type is "builtins.bool"
+reveal_type(a < 1)  # N: Revealed type is "Any"
+reveal_type(a and int())  # N: Revealed type is "Union[__main__.A, builtins.int]"
+reveal_type(int() or a)  # N: Revealed type is "Union[builtins.int, __main__.A]"
+[builtins fixtures/notimplemented.pyi]

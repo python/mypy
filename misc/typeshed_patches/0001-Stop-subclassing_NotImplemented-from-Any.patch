@@ -1,0 +1,25 @@
+From 9b584b626fc18881055a3f48080fe3afcf9bb583 Mon Sep 17 00:00:00 2001
+From: Christoph Tyralla <c.tyralla@bjoernsen.de>
+Date: Sat, 25 Oct 2025 09:39:03 +0200
+Subject: [PATCH] modify typeshed instead of hacking `calculate_mro`
+
+---
+ mypy/typeshed/stdlib/builtins.pyi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
+index ddf81db18..933a06640 100644
+--- a/mypy/typeshed/stdlib/builtins.pyi
++++ b/mypy/typeshed/stdlib/builtins.pyi
+@@ -1269,7 +1269,7 @@ class property:
+ 
+ @final
+ @type_check_only
+-class _NotImplementedType(Any):
++class _NotImplementedType:
+     __call__: None
+ 
+ NotImplemented: _NotImplementedType
+-- 
+2.45.1.windows.1
+
