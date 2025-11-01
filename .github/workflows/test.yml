@@ -47,7 +47,6 @@ jobs:
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
-          test_mypyc: true
         - name: Test suite with py313-ubuntu, mypyc-compiled
           python: '3.13'
           os: ubuntu-24.04-arm
