@@ -157,7 +157,7 @@ Alias1 = Callable[[*Ts], int]  # E: Variable "__main__.Ts" is not valid as a typ
 x1: Alias1[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 reveal_type(x1)  # N: Revealed type is "def (*Any) -> builtins.int"
 x1 = good
-x1 = bad  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), NamedArg(int, 'y')], int]", variable has type "Callable[[VarArg(Any)], int]")
+x1 = bad  # E: Incompatible types in assignment (expression has type "def bad(*x: int, y: int) -> int", variable has type "def (*Any) -> int")
 
 Alias2 = Callable[[*T], int]  # E: "T" cannot be unpacked (must be tuple or TypeVarTuple)
 x2: Alias2[int]

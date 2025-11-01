@@ -2358,6 +2358,6 @@ describe(CAny())
 describe(C())
 describe(CNone())
 describe(CWrong())  # E: Argument 1 to "describe" has incompatible type "CWrong"; expected "Callable[[], None]" \
-                    # N: "CWrong.__call__" has type "Callable[[Arg(int, 'x')], None]"
+                    # N: "CWrong.__call__" has type "def __call__(self, x: int) -> None"
 describe(f)
 [builtins fixtures/isinstancelist.pyi]

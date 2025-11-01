@@ -654,13 +654,13 @@ class Call(Protocol):
 
 def f1() -> None: ...
 a1: Call = f1  # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+               # N: "Call.__call__" has type "def __call__(self, x: int, *args: Any, **kwargs: Any) -> None"
 def f2(x: str) -> None: ...
 a2: Call = f2  # E: Incompatible types in assignment (expression has type "Callable[[str], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+               # N: "Call.__call__" has type "def __call__(self, x: int, *args: Any, **kwargs: Any) -> None"
 def f3(y: int) -> None: ...
 a3: Call = f3  # E: Incompatible types in assignment (expression has type "Callable[[int], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+               # N: "Call.__call__" has type "def __call__(self, x: int, *args: Any, **kwargs: Any) -> None"
 def f4(x: int) -> None: ...
 a4: Call = f4
 

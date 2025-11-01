@@ -443,7 +443,7 @@ reveal_type(register(lambda: f(1)))  # N: Revealed type is "def ()"
 reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Literal[1]?)"
 register(lambda x: f(x))  # E: Cannot infer type of lambda \
                           # E: Argument 1 to "register" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
-register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "Callable[[Arg(int, 'x')], None]"; expected "Callable[[Arg(int, 'y')], None]"
+register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "def (x: int) -> None"; expected "def (y: int) -> None"
 reveal_type(register(lambda x: f(x), 1))  # N: Revealed type is "def (Literal[1]?)"
 reveal_type(register(lambda x, y: g(x, y), 1, "a"))  # N: Revealed type is "def (Literal[1]?, Literal['a']?)"
 reveal_type(register(lambda x, y: g(x, y), 1, y="a"))  # N: Revealed type is "def (Literal[1]?, y: Literal['a']?)"
@@ -623,10 +623,10 @@ def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None: ...
                     # N: This is likely because "one" has named arguments: "x". Consider marking them positional-only
 def one(x: str) -> int: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[int, NamedArg(int, 'x')], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "def two(*, x: int) -> int"; expected "def (int, /, *, x: int) -> int"
 def two(*, x: int) -> int: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[KwArg(int)], int]"; expected "Callable[[int, KwArg(int)], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "def three(**kwargs: int) -> int"; expected "def (int, /, **kwargs: int) -> int"
 def three(**kwargs: int) -> int: ...
 
 @expects_int_first # Accepted
@@ -2154,7 +2154,7 @@ reveal_type(submit(  # N: Revealed type is "__main__.Result"
     backend="asyncio",
 ))
 submit(
-    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], R], VarArg(object), DefaultNamedArg(str, 'backend')], R]"; expected "Callable[[Callable[[], Result], int], Result]"
+    run,  # E: Argument 1 to "submit" has incompatible type "def [R] run(func: Callable[[], R], *args: object, backend: str = ...) -> R"; expected "Callable[[Callable[[], Result], int], Result]"
     run_portal,
     backend=int(),
 )
