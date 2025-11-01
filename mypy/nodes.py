@@ -61,6 +61,11 @@ if TYPE_CHECKING:
     from mypy.patterns import Pattern
 
 
+@unique
+class NotParsed(Enum):
+    VALUE = "NotParsed"
+
+
 class Context:
     """Base type for objects that are valid as error message locations."""
 
@@ -2005,15 +2010,20 @@ class IntExpr(Expression):
 class StrExpr(Expression):
     """String literal"""
 
-    __slots__ = ("value",)
+    __slots__ = ("value", "as_type")
 
     __match_args__ = ("value",)
 
     value: str  # '' by default
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -2314,7 +2324,7 @@ class IndexExpr(Expression):
     Also wraps type application such as List[int] as a special form.
     """
 
-    __slots__ = ("base", "index", "method_type", "analyzed")
+    __slots__ = ("base", "index", "method_type", "analyzed", "as_type")
 
     __match_args__ = ("base", "index")
 
@@ -2325,6 +2335,10 @@ class IndexExpr(Expression):
     # If not None, this is actually semantically a type application
     # Class[type, ...] or a type alias initializer.
     analyzed: TypeApplication | TypeAliasExpr | None
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -2332,6 +2346,7 @@ class IndexExpr(Expression):
         self.index = index
         self.method_type = None
         self.analyzed = None
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
@@ -2389,6 +2404,7 @@ class OpExpr(Expression):
         "right_always",
         "right_unreachable",
         "analyzed",
+        "as_type",
     )
 
     __match_args__ = ("left", "op", "right")
@@ -2404,6 +2420,10 @@ class OpExpr(Expression):
     right_unreachable: bool
     # Used for expressions that represent a type "X | Y" in some contexts
     analyzed: TypeAliasExpr | None
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(
         self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
@@ -2416,9 +2436,17 @@ class OpExpr(Expression):
         self.right_always = False
         self.right_unreachable = False
         self.analyzed = analyzed
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
+
+
+# Expression subtypes that could represent the root of a valid type expression.
+#
+# May have an "as_type" attribute to hold the type for a type expression parsed
+# during the SemanticAnalyzer pass.
+MaybeTypeExpression = (IndexExpr, MemberExpr, NameExpr, OpExpr, StrExpr)
 
 
 class ComparisonExpr(Expression):
@@ -2496,6 +2524,23 @@ class CastExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_cast_expr(self)
+
+
+class TypeFormExpr(Expression):
+    """TypeForm(type) expression."""
+
+    __slots__ = ("type",)
+
+    __match_args__ = ("type",)
+
+    type: mypy.types.Type
+
+    def __init__(self, typ: mypy.types.Type) -> None:
+        super().__init__()
+        self.type = typ
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_type_form_expr(self)
 
 
 class AssertTypeExpr(Expression):

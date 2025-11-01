@@ -269,6 +269,11 @@ EXHAUSTIVE_MATCH: Final = ErrorCode(
     default_enabled=False,
 )
 METACLASS: Final = ErrorCode("metaclass", "Ensure that metaclass is valid", "General")
+MAYBE_UNRECOGNIZED_STR_TYPEFORM: Final = ErrorCode(
+    "maybe-unrecognized-str-typeform",
+    "Error when a string is used where a TypeForm is expected but a string annotation cannot be recognized",
+    "General",
+)
 
 # Syntax errors are often blocking.
 SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
