@@ -6,8 +6,8 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from itertools import chain
-from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
-from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
+from typing import Callable, Final, Literal, NoReturn, Optional, TextIO, TypeVar
+from typing_extensions import Self, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
