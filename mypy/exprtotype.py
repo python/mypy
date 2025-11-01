@@ -100,7 +100,9 @@ def expr_to_unanalyzed_type(
         else:
             raise TypeTranslationError()
     elif isinstance(expr, IndexExpr):
-        base = expr_to_unanalyzed_type(expr.base, options, allow_new_syntax, expr)
+        base = expr_to_unanalyzed_type(
+            expr.base, options, allow_new_syntax, expr, lookup_qualified=lookup_qualified
+        )
         if isinstance(base, UnboundType):
             if base.args:
                 raise TypeTranslationError()
@@ -124,9 +126,18 @@ def expr_to_unanalyzed_type(
                     # TODO: this is not the optimal solution as we are basically getting rid
                     # of the Annotation definition and only returning the type information,
                     # losing all the annotations.
-                    return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
+                    return expr_to_unanalyzed_type(
+                        args[0], options, allow_new_syntax, expr, lookup_qualified=lookup_qualified
+                    )
             base.args = tuple(
-                expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr, allow_unpack=True)
+                expr_to_unanalyzed_type(
+                    arg,
+                    options,
+                    allow_new_syntax,
+                    expr,
+                    allow_unpack=True,
+                    lookup_qualified=lookup_qualified,
+                )
                 for arg in args
             )
             if not base.args:
@@ -141,8 +152,12 @@ def expr_to_unanalyzed_type(
     ):
         return UnionType(
             [
-                expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
-                expr_to_unanalyzed_type(expr.right, options, allow_new_syntax),
+                expr_to_unanalyzed_type(
+                    expr.left, options, allow_new_syntax, lookup_qualified=lookup_qualified
+                ),
+                expr_to_unanalyzed_type(
+                    expr.right, options, allow_new_syntax, lookup_qualified=lookup_qualified
+                ),
             ],
             uses_pep604_syntax=True,
         )
@@ -178,12 +193,16 @@ def expr_to_unanalyzed_type(
                     if typ is not default_type:
                         # Two types
                         raise TypeTranslationError()
-                    typ = expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr)
+                    typ = expr_to_unanalyzed_type(
+                        arg, options, allow_new_syntax, expr, lookup_qualified=lookup_qualified
+                    )
                     continue
                 else:
                     raise TypeTranslationError()
             elif i == 0:
-                typ = expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr)
+                typ = expr_to_unanalyzed_type(
+                    arg, options, allow_new_syntax, expr, lookup_qualified=lookup_qualified
+                )
             elif i == 1:
                 name = _extract_argument_name(arg)
             else:
@@ -192,7 +211,14 @@ def expr_to_unanalyzed_type(
     elif isinstance(expr, ListExpr):
         return TypeList(
             [
-                expr_to_unanalyzed_type(t, options, allow_new_syntax, expr, allow_unpack=True)
+                expr_to_unanalyzed_type(
+                    t,
+                    options,
+                    allow_new_syntax,
+                    expr,
+                    allow_unpack=True,
+                    lookup_qualified=lookup_qualified,
+                )
                 for t in expr.items
             ],
             line=expr.line,
@@ -203,7 +229,9 @@ def expr_to_unanalyzed_type(
     elif isinstance(expr, BytesExpr):
         return parse_type_string(expr.value, "builtins.bytes", expr.line, expr.column)
     elif isinstance(expr, UnaryExpr):
-        typ = expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax)
+        typ = expr_to_unanalyzed_type(
+            expr.expr, options, allow_new_syntax, lookup_qualified=lookup_qualified
+        )
         if isinstance(typ, RawExpressionType):
             if isinstance(typ.literal_value, int):
                 if expr.op == "-":
@@ -225,7 +253,10 @@ def expr_to_unanalyzed_type(
         return EllipsisType(expr.line)
     elif allow_unpack and isinstance(expr, StarExpr):
         return UnpackType(
-            expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax), from_star_syntax=True
+            expr_to_unanalyzed_type(
+                expr.expr, options, allow_new_syntax, lookup_qualified=lookup_qualified
+            ),
+            from_star_syntax=True,
         )
     elif isinstance(expr, DictExpr):
         if not expr.items:
@@ -236,12 +267,18 @@ def expr_to_unanalyzed_type(
             if not isinstance(item_name, StrExpr):
                 if item_name is None:
                     extra_items_from.append(
-                        expr_to_unanalyzed_type(value, options, allow_new_syntax, expr)
+                        expr_to_unanalyzed_type(
+                            value,
+                            options,
+                            allow_new_syntax,
+                            expr,
+                            lookup_qualified=lookup_qualified,
+                        )
                     )
                     continue
                 raise TypeTranslationError()
             items[item_name.value] = expr_to_unanalyzed_type(
-                value, options, allow_new_syntax, expr
+                value, options, allow_new_syntax, expr, lookup_qualified=lookup_qualified
             )
         result = TypedDictType(
             items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
