@@ -1338,6 +1338,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     if isinstance(meta, bytes):
         # If either low-level buffer format or high-level cache layout changed, we
         # cannot use the cache files, even with --skip-version-check.
+        # TODO: switch to something like librt.internal.read_byte() if this is slow.
         if meta[0] != cache_version() or meta[1] != CACHE_VERSION:
             manager.log(f"Metadata abandoned for {id}: incompatible cache format")
             return None
@@ -1679,6 +1680,7 @@ def write_cache_meta(meta: CacheMeta, manager: BuildManager, meta_file: str) -> 
         data_io = Buffer()
         meta.write(data_io)
         # Prefix with both low- and high-level cache format versions for future validation.
+        # TODO: switch to something like librt.internal.write_byte() if this is slow.
         meta_bytes = bytes([cache_version(), CACHE_VERSION]) + data_io.getvalue()
     else:
         meta_dict = meta.serialize()

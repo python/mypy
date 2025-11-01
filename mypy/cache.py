@@ -41,7 +41,8 @@ serialization. The write method should write both class tag and end tag. The rea
 conventionally *does not* read the start tag (to simplify logic for unions). Known exceptions
 are MypyFile.read() and SymbolTableNode.read(), since those two never appear in a union.
 
-If any of these details change, please bump CACHE_VERSION below.
+If any of these details change, or if the structure of CacheMeta changes please
+bump CACHE_VERSION below.
 """
 
 from __future__ import annotations
