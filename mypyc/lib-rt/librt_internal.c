@@ -319,6 +319,11 @@ read_str_internal(PyObject *data) {
     CPyTagged tagged_size = _read_short_int(data, first);
     if (tagged_size == CPY_INT_TAG)
         return NULL;
+    if ((Py_ssize_t)tagged_size < 0) {
+        // Fail fast for invalid/tampered data.
+        PyErr_SetString(PyExc_ValueError, "invalid str size");
+        return NULL;
+    }
     Py_ssize_t size = tagged_size >> 1;
     // Read string content.
     char *buf = ((BufferObject *)data)->buf;
@@ -437,6 +442,11 @@ read_bytes_internal(PyObject *data) {
     CPyTagged tagged_size = _read_short_int(data, first);
     if (tagged_size == CPY_INT_TAG)
         return NULL;
+    if ((Py_ssize_t)tagged_size < 0) {
+        // Fail fast for invalid/tampered data.
+        PyErr_SetString(PyExc_ValueError, "invalid bytes size");
+        return NULL;
+    }
     Py_ssize_t size = tagged_size >> 1;
     // Read bytes content.
     char *buf = ((BufferObject *)data)->buf;
@@ -601,6 +611,10 @@ read_int_internal(PyObject *data) {
     Py_ssize_t size_and_sign = _read_short_int(data, first);
     if (size_and_sign == CPY_INT_TAG)
         return CPY_INT_TAG;
+    if ((Py_ssize_t)size_and_sign < 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid int data");
+        return CPY_INT_TAG;
+    }
     bool sign = (size_and_sign >> 1) & 1;
     Py_ssize_t size = size_and_sign >> 2;
 
