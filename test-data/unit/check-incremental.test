@@ -7512,3 +7512,91 @@ tmp/impl.py:31: note: Revealed type is "builtins.object"
 tmp/impl.py:32: note: Revealed type is "Union[builtins.int, builtins.str, lib.Unrelated]"
 tmp/impl.py:33: note: Revealed type is "builtins.object"
 tmp/impl.py:34: note: Revealed type is "builtins.object"
+
+
+[case testIncrementalDeprecatedClassConstructorCallExpressions]
+# flags: --enable-error-code=deprecated
+
+# Tests whether adding/removing `@deprecated()` on class constructors correctly update
+# when the call is from a class, the class's children, and from type aliases.
+# Addition/removal is emulated by setting up 2 parent classes across 3 versions of `mod.py`.
+# `Parent1.__init__` has `@deprecated()`: yes/no/yes in v1/v2/v3, respectively.
+# `Parent2.__init__` has `@deprecated()`: no/yes/no in v1/v2/v3, respectively.
+
+from typing_extensions import TypeAlias
+import mod
+
+Parent1_alias: TypeAlias = mod.Parent1
+Parent1_type_obj: type[mod.Parent1]
+Parent2_alias: TypeAlias = mod.Parent2
+Parent2_type_obj: type[mod.Parent2]
+class Child1_of_Parent1(mod.Parent1): ...
+class Child1_of_Parent2(mod.Parent2): ...
+
+# Emits errors in v1 and v3
+Parent1_alias()
+Parent1_type_obj()
+Child1_of_Parent1()
+class Child2_of_Parent1(mod.Parent1):
+    def __init__(self) -> None:
+        super().__init__()
+
+# Emits errors in v2 only
+Parent2_alias()
+Parent2_type_obj()
+Child1_of_Parent2()
+class Child2_of_Parent2(mod.Parent2):
+    def __init__(self) -> None:
+        super().__init__()
+
+# Never emits errors
+Child2_of_Parent1()
+Child2_of_Parent2()
+
+[file mod.py]
+from typing_extensions import TypeAlias, deprecated
+
+class Parent1:
+    @deprecated("v1: do not use Parent1.__init__")
+    def __init__(self) -> None: ...
+
+class Parent2:
+    def __init__(self) -> None: ...
+
+[file mod.py.2]
+from typing_extensions import TypeAlias, deprecated
+
+class Parent1:
+    def __init__(self) -> None: ...
+
+class Parent2:
+    @deprecated("v2: do not use Parent2.__init__")
+    def __init__(self) -> None: ...
+
+[file mod.py.3]
+from typing_extensions import TypeAlias, deprecated
+
+class Parent1:
+    @deprecated("v3: do not use Parent1.__init__")
+    def __init__(self) -> None: ...
+
+class Parent2:
+    def __init__(self) -> None: ...
+
+[builtins fixtures/tuple.pyi]
+[stale mod]
+[out]
+main:20: error: function mod.Parent1.__init__ is deprecated: v1: do not use Parent1.__init__
+main:21: error: function mod.Parent1.__init__ is deprecated: v1: do not use Parent1.__init__
+main:22: error: function mod.Parent1.__init__ is deprecated: v1: do not use Parent1.__init__
+main:25: error: function mod.Parent1.__init__ is deprecated: v1: do not use Parent1.__init__
+[out2]
+main:28: error: function mod.Parent2.__init__ is deprecated: v2: do not use Parent2.__init__
+main:29: error: function mod.Parent2.__init__ is deprecated: v2: do not use Parent2.__init__
+main:30: error: function mod.Parent2.__init__ is deprecated: v2: do not use Parent2.__init__
+main:33: error: function mod.Parent2.__init__ is deprecated: v2: do not use Parent2.__init__
+[out3]
+main:20: error: function mod.Parent1.__init__ is deprecated: v3: do not use Parent1.__init__
+main:21: error: function mod.Parent1.__init__ is deprecated: v3: do not use Parent1.__init__
+main:22: error: function mod.Parent1.__init__ is deprecated: v3: do not use Parent1.__init__
+main:25: error: function mod.Parent1.__init__ is deprecated: v3: do not use Parent1.__init__
