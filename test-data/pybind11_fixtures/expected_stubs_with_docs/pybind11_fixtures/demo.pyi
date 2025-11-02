@@ -17,15 +17,15 @@ class Point:
         radian: ClassVar[Point.AngleUnit] = ...
         def __init__(self, value: typing.SupportsInt) -> None:
             """__init__(self: pybind11_fixtures.demo.Point.AngleUnit, value: typing.SupportsInt) -> None"""
-        def __eq__(self, other: object) -> bool:
+        def __eq__(self, other: object, /) -> bool:
             """__eq__(self: object, other: object, /) -> bool"""
-        def __hash__(self) -> int:
+        def __hash__(self, /) -> int:
             """__hash__(self: object, /) -> int"""
-        def __index__(self) -> int:
+        def __index__(self, /) -> int:
             """__index__(self: pybind11_fixtures.demo.Point.AngleUnit, /) -> int"""
-        def __int__(self) -> int:
+        def __int__(self, /) -> int:
             """__int__(self: pybind11_fixtures.demo.Point.AngleUnit, /) -> int"""
-        def __ne__(self, other: object) -> bool:
+        def __ne__(self, other: object, /) -> bool:
             """__ne__(self: object, other: object, /) -> bool"""
         @property
         def name(self) -> str:
@@ -52,15 +52,15 @@ class Point:
         pixel: ClassVar[Point.LengthUnit] = ...
         def __init__(self, value: typing.SupportsInt) -> None:
             """__init__(self: pybind11_fixtures.demo.Point.LengthUnit, value: typing.SupportsInt) -> None"""
-        def __eq__(self, other: object) -> bool:
+        def __eq__(self, other: object, /) -> bool:
             """__eq__(self: object, other: object, /) -> bool"""
-        def __hash__(self) -> int:
+        def __hash__(self, /) -> int:
             """__hash__(self: object, /) -> int"""
-        def __index__(self) -> int:
+        def __index__(self, /) -> int:
             """__index__(self: pybind11_fixtures.demo.Point.LengthUnit, /) -> int"""
-        def __int__(self) -> int:
+        def __int__(self, /) -> int:
             """__int__(self: pybind11_fixtures.demo.Point.LengthUnit, /) -> int"""
-        def __ne__(self, other: object) -> bool:
+        def __ne__(self, other: object, /) -> bool:
             """__ne__(self: object, other: object, /) -> bool"""
         @property
         def name(self) -> str:
