@@ -3495,10 +3495,13 @@ class EllipsisType(ProperType):
 
 
 class TypeType(ProperType):
-    """For types like Type[User].
+    """For types like Type[User] or TypeForm[User | None].
 
-    This annotates variables that are class objects, constrained by
+    Type[C] annotates variables that are class objects, constrained by
     the type argument.  See PEP 484 for more details.
+
+    TypeForm[T] annotates variables that hold the result of evaluating
+    a type expression.  See PEP 747 for more details.
 
     We may encounter expressions whose values are specific classes;
     those are represented as callables (possibly overloaded)
@@ -3522,11 +3525,15 @@ class TypeType(ProperType):
     assumption).
     """
 
-    __slots__ = ("item",)
+    __slots__ = ("item", "is_type_form")
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
     item: ProperType
+
+    # If True then this TypeType represents a TypeForm[T].
+    # If False then this TypeType represents a Type[C].
+    is_type_form: bool
 
     def __init__(
         self,
@@ -3534,23 +3541,31 @@ class TypeType(ProperType):
         *,
         line: int = -1,
         column: int = -1,
+        is_type_form: bool = False,
     ) -> None:
         """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
         type UnionType must be handled through make_normalized static method.
         """
         super().__init__(line, column)
         self.item = item
+        self.is_type_form = is_type_form
 
     @staticmethod
-    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> ProperType:
+    def make_normalized(
+        item: Type, *, line: int = -1, column: int = -1, is_type_form: bool = False
+    ) -> ProperType:
         item = get_proper_type(item)
-        if isinstance(item, UnionType):
-            return UnionType.make_union(
-                [TypeType.make_normalized(union_item) for union_item in item.items],
-                line=line,
-                column=column,
-            )
-        return TypeType(item, line=line, column=column)  # type: ignore[arg-type]
+        if is_type_form:
+            # Don't convert TypeForm[X | Y] to (TypeForm[X] | TypeForm[Y])
+            pass
+        else:
+            if isinstance(item, UnionType):
+                return UnionType.make_union(
+                    [TypeType.make_normalized(union_item) for union_item in item.items],
+                    line=line,
+                    column=column,
+                )
+        return TypeType(item, line=line, column=column, is_type_form=is_type_form)  # type: ignore[arg-type]
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_type(self)
@@ -3561,15 +3576,21 @@ class TypeType(ProperType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeType):
             return NotImplemented
-        return self.item == other.item
+        return self.item == other.item and self.is_type_form == other.is_type_form
 
     def serialize(self) -> JsonDict:
-        return {".class": "TypeType", "item": self.item.serialize()}
+        return {
+            ".class": "TypeType",
+            "item": self.item.serialize(),
+            "is_type_form": self.is_type_form,
+        }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> Type:
         assert data[".class"] == "TypeType"
-        return TypeType.make_normalized(deserialize_type(data["item"]))
+        return TypeType.make_normalized(
+            deserialize_type(data["item"]), is_type_form=data["is_type_form"]
+        )
 
     def write(self, data: Buffer) -> None:
         write_tag(data, TYPE_TYPE)
@@ -3945,7 +3966,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return "..."
 
     def visit_type_type(self, t: TypeType, /) -> str:
-        return f"type[{t.item.accept(self)}]"
+        if t.is_type_form:
+            type_name = "TypeForm"
+        else:
+            type_name = "type"
+        return f"{type_name}[{t.item.accept(self)}]"
 
     def visit_placeholder_type(self, t: PlaceholderType, /) -> str:
         return f"<placeholder {t.fullname}>"
