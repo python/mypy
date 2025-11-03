@@ -5385,37 +5385,37 @@ test_deletable_attr()
 
 [case testBufferCorruptedData_librt_internal]
 from librt.internal import (
-    Buffer, read_bool, read_str, read_float, read_int, read_tag, read_bytes
+    ReadBuffer, read_bool, read_str, read_float, read_int, read_tag, read_bytes
 )
 from random import randbytes
 
 def check(data: bytes) -> None:
-    b = Buffer(data)
+    b = ReadBuffer(data)
     try:
         while True:
             read_bool(b)
     except ValueError:
         pass
-    b = Buffer(data)
+    b = ReadBuffer(data)
     read_tag(b)  # Always succeeds
     try:
         while True:
             read_int(b)
     except ValueError:
         pass
-    b = Buffer(data)
+    b = ReadBuffer(data)
     try:
         while True:
             read_str(b)
     except ValueError:
         pass
-    b = Buffer(data)
+    b = ReadBuffer(data)
     try:
         while True:
             read_bytes(b)
     except ValueError:
         pass
-    b = Buffer(data)
+    b = ReadBuffer(data)
     try:
         while True:
             read_float(b)
