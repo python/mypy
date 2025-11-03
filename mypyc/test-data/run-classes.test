@@ -2716,7 +2716,7 @@ from __future__ import annotations
 from typing import Final
 from mypy_extensions import u8
 from librt.internal import (
-    ReadBuffer, WriteBuffer, , write_bool, read_bool, write_str, read_str, write_float, read_float,
+    ReadBuffer, WriteBuffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag, write_bytes, read_bytes,
     cache_version,
 )
@@ -2826,35 +2826,35 @@ def test_buffer_int_size() -> None:
 def test_buffer_int_powers() -> None:
     # 0, 1, 2 are tested above
     for p in range(2, 200):
-        b = Buffer()
+        b = WriteBuffer()
         write_int(b, 1 << p)
         write_int(b, (1 << p) - 1)
         write_int(b, -1 << p)
         write_int(b, (-1 << p) + 1)
-        b = Buffer(b.getvalue())
-        assert read_int(b) == 1 << p
-        assert read_int(b) == (1 << p) - 1
-        assert read_int(b) == -1 << p
-        assert read_int(b) == (-1 << p) + 1
+        rb = ReadBuffer(b.getvalue())
+        assert read_int(rb) == 1 << p
+        assert read_int(rb) == (1 << p) - 1
+        assert read_int(rb) == -1 << p
+        assert read_int(rb) == (-1 << p) + 1
 
 def test_positive_long_int_serialized_bytes() -> None:
-    b = Buffer()
+    b = WriteBuffer()
     n = 0x123456789ab
     write_int(b, n)
     x = b.getvalue()
     # Two prefix bytes, followed by little endian encoded integer in variable-length format
     assert x == b"\x0f\x2c\xab\x89\x67\x45\x23\x01"
-    b = Buffer(x)
-    assert read_int(b) == n
+    rb = ReadBuffer(x)
+    assert read_int(rb) == n
 
 def test_negative_long_int_serialized_bytes() -> None:
-    b = Buffer()
+    b = WriteBuffer()
     n = -0x123456789abcde
     write_int(b, n)
     x = b.getvalue()
     assert x == b"\x0f\x32\xde\xbc\x9a\x78\x56\x34\x12"
-    b = Buffer(x)
-    assert read_int(b) == n
+    rb = ReadBuffer(x)
+    assert read_int(rb) == n
 
 def test_buffer_str_size() -> None:
     b: WriteBuffer | ReadBuffer
@@ -2964,10 +2964,10 @@ def test_buffer_int_size_interpreted() -> None:
 def test_buffer_int_powers_interpreted() -> None:
     # 0, 1, 2 are tested above
     for p in range(2, 9):
-        b = Buffer()
+        b = WriteBuffer()
         write_int(b, 1 << p)
         write_int(b, -1 << p)
-        b = Buffer(b.getvalue())
+        b = ReadBuffer(b.getvalue())
         assert read_int(b) == 1 << p
         assert read_int(b) == -1 << p
 
