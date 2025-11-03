@@ -750,7 +750,15 @@ class SemanticAnalyzer(
                 else:
                     inst = self.named_type_or_none("importlib.machinery.ModuleSpec")
                 if inst is None:
-                    if self.final_iteration:
+                    if (
+                        self.final_iteration
+                        or self.options.clone_for_module("importlib.machinery").follow_imports
+                        == "skip"
+                    ):
+                        # If we are not allowed to resolve imports from `importlib.machinery`,
+                        # ModuleSpec will not be available at any iteration.
+                        # Use the fallback earlier.
+                        # (see https://github.com/python/mypy/issues/18237)
                         inst = self.named_type_or_none("builtins.object")
                         assert inst is not None, "Cannot find builtins.object"
                     else:
@@ -5880,7 +5888,11 @@ class SemanticAnalyzer(
             expr.analyzed = PromoteExpr(target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
-        elif refers_to_fullname(expr.callee, "builtins.dict"):
+        elif refers_to_fullname(expr.callee, "builtins.dict") and not (
+            isinstance(expr.callee, RefExpr)
+            and isinstance(expr.callee.node, TypeAlias)
+            and not expr.callee.node.no_args
+        ):
             expr.analyzed = self.translate_dict_call(expr)
         elif refers_to_fullname(expr.callee, "builtins.divmod"):
             if not self.check_fixed_args(expr, 2, "divmod"):

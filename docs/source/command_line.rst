@@ -1176,8 +1176,8 @@ List of currently incomplete/experimental features:
 
   .. code-block:: python
 
-     def test_values() -> {"int": int, "str": str}:
-         return {"int": 42, "str": "test"}
+     def test_values() -> {"width": int, "description": str}:
+         return {"width": 42, "description": "test"}
 
 * ``PreciseTupleTypes``: this feature will infer more precise tuple types in
   various scenarios. Before variadic types were added to the Python type system
