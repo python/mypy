@@ -5424,5 +5424,6 @@ def test_read_corrupted_data() -> None:
         try:
             check(data)
         except BaseException as e:
+            print("RANDOMIZED TEST FAILURE -- please open an issue with the following context:")
             print(">>>", e, data)
             raise
