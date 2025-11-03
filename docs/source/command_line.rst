@@ -372,7 +372,7 @@ definitions or calls.
 
 .. option:: --untyped-calls-exclude
 
-    This flag allows to selectively disable :option:`--disallow-untyped-calls`
+    This flag allows one to selectively disable :option:`--disallow-untyped-calls`
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming there
     are no type annotations for ``third_party_lib`` available):
@@ -562,7 +562,7 @@ potentially problematic or redundant in some way.
 
 .. option:: --deprecated-calls-exclude
 
-    This flag allows to selectively disable :ref:`deprecated<code-deprecated>` warnings
+    This flag allows one to selectively disable :ref:`deprecated<code-deprecated>` warnings
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming ``foo.A.func`` is deprecated):
 
@@ -1159,7 +1159,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1211,8 +1211,8 @@ List of currently incomplete/experimental features:
 
   .. code-block:: python
 
-     def test_values() -> {"int": int, "str": str}:
-         return {"int": 42, "str": "test"}
+     def test_values() -> {"width": int, "description": str}:
+         return {"width": 42, "description": "test"}
 
 
 Miscellaneous
@@ -1255,11 +1255,17 @@ Miscellaneous
    stub packages were found, they are installed and then another run
    is performed.
 
-.. option:: --junit-xml JUNIT_XML
+.. option:: --junit-xml JUNIT_XML_OUTPUT_FILE
 
     Causes mypy to generate a JUnit XML test result document with
     type checking results. This can make it easier to integrate mypy
     with continuous integration (CI) tools.
+
+.. option:: --junit-format {global,per_file}
+
+    If --junit-xml is set, specifies format.
+    global (default): single test with all errors;
+    per_file: one test entry per file with failures.
 
 .. option:: --find-occurrences CLASS.MEMBER
 

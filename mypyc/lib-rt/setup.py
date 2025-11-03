@@ -1,4 +1,4 @@
-"""Build script for mypyc C runtime library unit tests.
+"""Build script for mypyc C runtime library and C API unit tests.
 
 The tests are written in C++ and use the Google Test framework.
 """
@@ -8,9 +8,11 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from distutils.command.build_ext import build_ext
-from distutils.core import Extension, setup
+from distutils import ccompiler, sysconfig
 from typing import Any
+
+from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
 
 C_APIS_TO_TEST = [
     "init.c",
@@ -72,14 +74,20 @@ if "--run-capi-tests" in sys.argv:
 else:
     # TODO: we need a way to share our preferred C flags and get_extension() logic with
     # mypyc/build.py without code duplication.
+    compiler = ccompiler.new_compiler()
+    sysconfig.customize_compiler(compiler)
+    cflags: list[str] = []
+    if compiler.compiler_type == "unix":
+        cflags += ["-O3"]
+    elif compiler.compiler_type == "msvc":
+        cflags += ["/O2"]
+
     setup(
-        name="mypy-native",
-        version="0.0.1",
         ext_modules=[
             Extension(
-                "native_internal",
+                "librt.internal",
                 [
-                    "native_internal.c",
+                    "librt_internal.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
@@ -87,6 +95,7 @@ else:
                     "getargsfast.c",
                 ],
                 include_dirs=["."],
+                extra_compile_args=cflags,
             )
-        ],
+        ]
     )

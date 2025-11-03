@@ -42,6 +42,7 @@ from mypyc.ir.func_ir import (
 )
 from mypyc.ir.ops import (
     BasicBlock,
+    ComparisonOp,
     GetAttr,
     Integer,
     LoadAddress,
@@ -56,6 +57,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     bool_rprimitive,
+    c_int_rprimitive,
     dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
@@ -67,7 +69,7 @@ from mypyc.irbuild.callable_class import (
     instantiate_callable_class,
     setup_callable_class,
 )
-from mypyc.irbuild.context import FuncInfo
+from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_vars_to_env,
     finalize_env_class,
@@ -81,7 +83,7 @@ from mypyc.primitives.dict_ops import (
     dict_new_op,
     exact_dict_set_item_op,
 )
-from mypyc.primitives.generic_ops import py_setattr_op
+from mypyc.primitives.generic_ops import generic_getattr, generic_setattr, py_setattr_op
 from mypyc.primitives.misc_ops import register_function
 from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_method_signature, is_same_type
@@ -244,6 +246,12 @@ def gen_func_item(
     is_generator = fn_info.is_generator
     builder.enter(fn_info, ret_type=sig.ret_type)
 
+    if is_generator:
+        fitem = builder.fn_info.fitem
+        assert isinstance(fitem, FuncDef), fitem
+        generator_class_ir = builder.mapper.fdef_to_generator[fitem]
+        builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
+
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
     # store a variable denoting the next instruction to be executed when the __next__ function
@@ -355,13 +363,114 @@ def gen_func_ir(
                 builder.module_name,
                 sig,
                 func_decl.kind,
-                func_decl.is_prop_getter,
-                func_decl.is_prop_setter,
+                is_prop_getter=func_decl.is_prop_getter,
+                is_prop_setter=func_decl.is_prop_setter,
             )
             func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:
             func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
     return (func_ir, func_reg)
+
+
+def generate_getattr_wrapper(builder: IRBuilder, cdef: ClassDef, getattr: FuncDef) -> None:
+    """
+    Generate a wrapper function for __getattr__ that can be put into the tp_getattro slot.
+    The wrapper takes one argument besides self which is the attribute name.
+    It first checks if the name matches any of the attributes of this class.
+    If it does, it returns that attribute. If none match, it calls __getattr__.
+
+    __getattr__ is not supported in classes that allow interpreted subclasses because the
+    tp_getattro slot is inherited by subclasses and if the subclass overrides __getattr__,
+    the override would be ignored in our wrapper. TODO: To support this, the wrapper would
+    have to check type of self and if it's not the compiled class, resolve "__getattr__" against
+    the type at runtime and call the returned method, like _Py_slot_tp_getattr_hook in cpython.
+
+    __getattr__ is not supported in classes which inherit from non-native classes because those
+    have __dict__ which currently has some strange interactions when class attributes and
+    variables are assigned through __dict__ vs. through regular attribute access. Allowing
+    __getattr__ on top of that could be problematic.
+    """
+    name = getattr.name + "__wrapper"
+    ir = builder.mapper.type_to_ir[cdef.info]
+    line = getattr.line
+
+    error_base = f'"__getattr__" not supported in class "{cdef.name}" because '
+    if ir.allow_interpreted_subclasses:
+        builder.error(error_base + "it allows interpreted subclasses", line)
+    if ir.inherits_python:
+        builder.error(error_base + "it inherits from a non-native class", line)
+
+    with builder.enter_method(ir, name, object_rprimitive, internal=True):
+        attr_arg = builder.add_argument("attr", object_rprimitive)
+        generic_getattr_result = builder.call_c(generic_getattr, [builder.self(), attr_arg], line)
+
+        return_generic, call_getattr = BasicBlock(), BasicBlock()
+        null = Integer(0, object_rprimitive, line)
+        got_generic = builder.add(
+            ComparisonOp(generic_getattr_result, null, ComparisonOp.NEQ, line)
+        )
+        builder.add_bool_branch(got_generic, return_generic, call_getattr)
+
+        builder.activate_block(return_generic)
+        builder.add(Return(generic_getattr_result, line))
+
+        builder.activate_block(call_getattr)
+        # No attribute matched so call user-provided __getattr__.
+        getattr_result = builder.gen_method_call(
+            builder.self(), getattr.name, [attr_arg], object_rprimitive, line
+        )
+        builder.add(Return(getattr_result, line))
+
+
+def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDef) -> None:
+    """
+    Generate a wrapper function for __setattr__ that can be put into the tp_setattro slot.
+    The wrapper takes two arguments besides self - attribute name and the new value.
+    Returns 0 on success and -1 on failure. Restrictions are similar to the __getattr__
+    wrapper above.
+
+    The wrapper calls the user-defined __setattr__ when the value to set is not NULL.
+    When it's NULL, this means that the call to tp_setattro comes from a del statement,
+    so it calls __delattr__ instead. If __delattr__ is not overridden in the native class,
+    this will call the base implementation in object which doesn't work without __dict__.
+    """
+    name = setattr.name + "__wrapper"
+    ir = builder.mapper.type_to_ir[cdef.info]
+    line = setattr.line
+
+    error_base = f'"__setattr__" not supported in class "{cdef.name}" because '
+    if ir.allow_interpreted_subclasses:
+        builder.error(error_base + "it allows interpreted subclasses", line)
+    if ir.inherits_python:
+        builder.error(error_base + "it inherits from a non-native class", line)
+
+    with builder.enter_method(ir, name, c_int_rprimitive, internal=True):
+        attr_arg = builder.add_argument("attr", object_rprimitive)
+        value_arg = builder.add_argument("value", object_rprimitive)
+
+        call_delattr, call_setattr = BasicBlock(), BasicBlock()
+        null = Integer(0, object_rprimitive, line)
+        is_delattr = builder.add(ComparisonOp(value_arg, null, ComparisonOp.EQ, line))
+        builder.add_bool_branch(is_delattr, call_delattr, call_setattr)
+
+        builder.activate_block(call_delattr)
+        delattr_symbol = cdef.info.get("__delattr__")
+        delattr = delattr_symbol.node if delattr_symbol else None
+        delattr_override = delattr is not None and not delattr.fullname.startswith("builtins.")
+        if delattr_override:
+            builder.gen_method_call(builder.self(), "__delattr__", [attr_arg], None, line)
+        else:
+            # Call internal function that cpython normally calls when deleting an attribute.
+            # Cannot call object.__delattr__ here because it calls PyObject_SetAttr internally
+            # which in turn calls our wrapper and recurses infinitely.
+            # Note that since native classes don't have __dict__, this will raise AttributeError
+            # for dynamic attributes.
+            builder.call_c(generic_setattr, [builder.self(), attr_arg, null], line)
+        builder.add(Return(Integer(0, c_int_rprimitive), line))
+
+        builder.activate_block(call_setattr)
+        builder.gen_method_call(builder.self(), setattr.name, [attr_arg, value_arg], None, line)
+        builder.add(Return(Integer(0, c_int_rprimitive), line))
 
 
 def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None:
@@ -429,6 +538,19 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         f = gen_glue(builder, func_ir.sig, func_ir, class_ir, class_ir, fdef, do_py_ops=True)
         class_ir.glue_methods[(class_ir, name)] = f
         builder.functions.append(f)
+
+    if fdef.name == "__getattr__":
+        generate_getattr_wrapper(builder, cdef, fdef)
+    elif fdef.name == "__setattr__":
+        generate_setattr_wrapper(builder, cdef, fdef)
+    elif fdef.name == "__delattr__":
+        setattr = cdef.info.get("__setattr__")
+        if not setattr or not setattr.node or setattr.node.fullname.startswith("builtins."):
+            builder.error(
+                '"__delattr__" supported only in classes that also override "__setattr__", '
+                + "or inherit from a native class that overrides it.",
+                fdef.line,
+            )
 
 
 def handle_non_ext_method(

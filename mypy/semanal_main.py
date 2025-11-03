@@ -107,6 +107,17 @@ def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -> N
     if "builtins" in scc:
         cleanup_builtin_scc(graph["builtins"])
 
+    # Report TypeForm profiling stats
+    if len(scc) >= 1:
+        # Get manager from any state in the SCC (they all share the same manager)
+        manager = graph[scc[0]].manager
+        analyzer = manager.semantic_analyzer
+        manager.add_stats(
+            type_expression_parse_count=analyzer.type_expression_parse_count,
+            type_expression_full_parse_success_count=analyzer.type_expression_full_parse_success_count,
+            type_expression_full_parse_failure_count=analyzer.type_expression_full_parse_failure_count,
+        )
+
 
 def cleanup_builtin_scc(state: State) -> None:
     """Remove imported names from builtins namespace.

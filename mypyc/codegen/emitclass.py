@@ -39,6 +39,12 @@ def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
 
 
+def dunder_attr_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    wrapper_fn = cl.get_method(fn.name + "__wrapper")
+    assert wrapper_fn
+    return f"{NATIVE_PREFIX}{wrapper_fn.cname(emitter.names)}"
+
+
 # We maintain a table from dunder function names to struct slots they
 # correspond to and functions that generate a wrapper (if necessary)
 # and return the function name to stick in the slot.
@@ -55,6 +61,8 @@ SLOT_DEFS: SlotTable = {
     "__iter__": ("tp_iter", native_slot),
     "__hash__": ("tp_hash", generate_hash_wrapper),
     "__get__": ("tp_descr_get", generate_get_wrapper),
+    "__getattr__": ("tp_getattro", dunder_attr_slot),
+    "__setattr__": ("tp_setattro", dunder_attr_slot),
 }
 
 AS_MAPPING_SLOT_DEFS: SlotTable = {
@@ -402,7 +410,7 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    seen_attrs: set[tuple[str, RType]] = set()
+    seen_attrs: set[str] = set()
     lines: list[str] = []
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__"):
@@ -419,9 +427,11 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
                             lines.append(f"{BITMAP_TYPE} {attr};")
                             bitmap_attrs.append(attr)
             for attr, rtype in base.attributes.items():
-                if (attr, rtype) not in seen_attrs:
+                # Generated class may redefine certain attributes with different
+                # types in subclasses (this would be unsafe for user-defined classes).
+                if attr not in seen_attrs:
                     lines.append(f"{emitter.ctype_spaced(rtype)}{emitter.attr(attr)};")
-                    seen_attrs.add((attr, rtype))
+                    seen_attrs.add(attr)
 
                     if isinstance(rtype, RTuple):
                         emitter.declare_tuple_struct(rtype)
