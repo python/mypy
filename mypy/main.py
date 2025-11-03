@@ -1158,7 +1158,9 @@ def define_options(
         description="Enable features that work well enough to be useful,"
         + " but perhaps not as well as you might wish."
         + " These features may be enabled by default in the future,"
-        + " or perhaps moved to another section.",
+        + " or may be made non-experimental."
+        + " Experimental features that are better described in some other context"
+        + " may be documented in some other place instead.",
     )
     experimental_group.add_argument(
         "--enable-incomplete-feature",
