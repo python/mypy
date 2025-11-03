@@ -5359,3 +5359,71 @@ def test_deletable_attr() -> None:
     assert i.del_counter == 1
 
 test_deletable_attr()
+
+[case testBufferCorruptedData_librt_internal]
+from librt.internal import (
+    Buffer, read_bool, read_str, read_float, read_int, read_tag, read_bytes
+)
+from random import randbytes
+
+def check(data: bytes) -> None:
+    b = Buffer(data)
+    try:
+        while True:
+            read_bool(b)
+    except ValueError:
+        pass
+    b = Buffer(data)
+    read_tag(b)  # Always succeeds
+    try:
+        while True:
+            read_int(b)
+    except ValueError:
+        pass
+    b = Buffer(data)
+    try:
+        while True:
+            read_str(b)
+    except ValueError:
+        pass
+    b = Buffer(data)
+    try:
+        while True:
+            read_bytes(b)
+    except ValueError:
+        pass
+    b = Buffer(data)
+    try:
+        while True:
+            read_float(b)
+    except ValueError:
+        pass
+
+import time
+
+def test_read_corrupted_data() -> None:
+    # Test various deterministic byte sequences (1 to 4 bytes).
+    t0 = time.time()
+    for a in range(256):
+        check(bytes([a]))
+    for a in range(256):
+        for b in range(256):
+            check(bytes([a, b]))
+    for a in range(32):
+        for b in range(48):
+            for c in range(48):
+                check(bytes([a, b, c]))
+    for a in range(32):
+        for b in (0, 5, 17, 34):
+            for c in (0, 5, 17, 34):
+                for d in (0, 5, 17, 34):
+                    check(bytes([a, b, c, d]))
+    # Also test some random data.
+    for i in range(20000):
+        data = randbytes(16)
+        try:
+            check(data)
+        except BaseException as e:
+            print("RANDOMIZED TEST FAILURE -- please open an issue with the following context:")
+            print(">>>", e, data)
+            raise
