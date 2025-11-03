@@ -4959,10 +4959,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     )
                 # Treat NotImplemented as having type Any, consistent with its
                 # definition in typeshed prior to python/typeshed#4222.
-                if (
-                    isinstance(typ, Instance)
-                    and typ.type.fullname == "builtins._NotImplementedType"
-                ):
+                if isinstance(typ, Instance) and typ.type.fullname in {
+                    "builtins._NotImplementedType",
+                    "types.NotImplementedType",
+                }:
                     typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
@@ -5121,7 +5121,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
 
-        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
+        if (
+            isinstance(typ, Instance)
+            and typ.type.fullname in {"builtins._NotImplementedType", "types.NotImplementedType"}
+        ) or (
+            isinstance(e, CallExpr)
+            and isinstance(e.callee, RefExpr)
+            and e.callee.fullname in {"builtins.NotImplemented"}
+        ):
             self.fail(
                 message_registry.INVALID_EXCEPTION.with_additional_msg(
                     '; did you mean "NotImplementedError"?'
