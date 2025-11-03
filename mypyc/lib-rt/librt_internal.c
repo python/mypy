@@ -461,7 +461,6 @@ _write_short_int(PyObject *data, Py_ssize_t real_value) {
     if (real_value >= MIN_ONE_BYTE_INT && real_value <= MAX_ONE_BYTE_INT) {
         _CHECK_WRITE(data, 1)
         _WRITE(data, uint8_t, (uint8_t)(real_value - MIN_ONE_BYTE_INT) << 1);
-        ((WriteBufferObject *)data)->ptr += 1;
     } else if (real_value >= MIN_TWO_BYTES_INT && real_value <= MAX_TWO_BYTES_INT) {
         _CHECK_WRITE(data, 2)
 #if PY_BIG_ENDIAN
@@ -470,7 +469,6 @@ _write_short_int(PyObject *data, Py_ssize_t real_value) {
 #else
         _WRITE(data, uint16_t, ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT);
 #endif
-        ((WriteBufferObject *)data)->ptr += 2;
     } else {
         _CHECK_WRITE(data, 4)
 #if PY_BIG_ENDIAN
@@ -479,7 +477,6 @@ _write_short_int(PyObject *data, Py_ssize_t real_value) {
 #else
         _WRITE(data, uint32_t, ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER);
 #endif
-        ((WriteBufferObject *)data)->ptr += 4;
     }
     return CPY_NONE;
 }
@@ -766,7 +763,6 @@ static inline char
 _write_long_int(PyObject *data, CPyTagged value) {
     _CHECK_WRITE(data, 1)
     _WRITE(data, uint8_t, LONG_INT_TRAILER);
-    ((WriteBufferObject *)data)->end += 1;
 
     PyObject *hex_str = NULL;
     PyObject* int_value = CPyTagged_AsObject(value);
