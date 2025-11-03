@@ -1151,7 +1151,7 @@ def define_options(
         if report_type not in {"memory-xml"}:
             report_group.add_argument(
                 f"--{report_type.replace('_', '-')}-report",
-                metavar="OUTPUT_DIR",
+                metavar="DIR",
                 dest=f"special-opts:{report_type}_report",
             )
 
