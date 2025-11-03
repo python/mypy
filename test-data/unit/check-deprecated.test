@@ -462,8 +462,6 @@ def call_class_B2(cls: type[B2]) -> None:
 from typing import Callable, Union
 from typing_extensions import TypeAlias, deprecated
 
-def maybe() -> bool: ...
-
 def dummy_factory() -> Dummy: ...
 
 class Dummy: ...
@@ -484,9 +482,9 @@ A_type_obj: type[A]
 B1_alias: TypeAlias = B1
 B1_type_obj: type[B1]
 
-maybe_A = A if maybe() else None
-maybe_A_alias = A_alias if maybe() else None
-maybe_A_type_obj = A_type_obj if maybe() else None
+maybe_A = A if int() else None
+maybe_A_alias = A_alias if int() else None
+maybe_A_type_obj = A_type_obj if int() else None
 maybe_A()  # E: function __main__.A.__init__ is deprecated: do not use A() \
            # E: "None" not callable
 maybe_A_alias()  # E: function __main__.A.__init__ is deprecated: do not use A() \
@@ -494,9 +492,9 @@ maybe_A_alias()  # E: function __main__.A.__init__ is deprecated: do not use A()
 maybe_A_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use A() \
                     # E: "None" not callable
 
-maybe_B1 = B1 if maybe() else None
-maybe_B1_alias = B1_alias if maybe() else None
-maybe_B1_type_obj = B1_type_obj if maybe() else None
+maybe_B1 = B1 if int() else None
+maybe_B1_alias = B1_alias if int() else None
+maybe_B1_type_obj = B1_type_obj if int() else None
 maybe_B1()  # E: "None" not callable
 maybe_B1_alias()  # E: "None" not callable
 maybe_B1_type_obj()  # E: "None" not callable
@@ -535,8 +533,6 @@ class A:
 class B(A):
     def __init__(self) -> None: ...
 
-def maybe() -> bool: ...
-
 # `builtins.issubclass()` does not type-narrow properly
 def is_subclass(c1: type, c2: type[T]) -> TypeIs[type[T]]: ...
 
@@ -545,9 +541,9 @@ A_type_obj: type[A]
 B_alias: TypeAlias = B
 B_type_obj: type[B]
 
-maybe_A = A if maybe() else None
-maybe_A_alias = A_alias if maybe() else None
-maybe_A_type_obj = A_type_obj if maybe() else None
+maybe_A = A if int() else None
+maybe_A_alias = A_alias if int() else None
+maybe_A_type_obj = A_type_obj if int() else None
 if maybe_A is not None:
     maybe_A()  # E: function __main__.A.__init__ is deprecated: do not use
 else:
@@ -561,8 +557,8 @@ if maybe_A_type_obj is not None:
 else:
     maybe_A_type_obj()  # E: "None" not callable
 
-A_or_Dummy = A if maybe() else Dummy
-A_type_obj_or_Dummy = A_type_obj if maybe() else Dummy
+A_or_Dummy = A if int() else Dummy
+A_type_obj_or_Dummy = A_type_obj if int() else Dummy
 if is_subclass(A_or_Dummy, A):
     A_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
 else:
@@ -580,9 +576,9 @@ if is_subclass(A_type_obj_or_Dummy, Dummy):
 else:
     A_type_obj_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
 
-A_or_B = A if maybe() else B
-A_or_B_alias = A if maybe() else B_alias
-A_or_B_type_obj = A if maybe() else B_type_obj
+A_or_B = A if int() else B
+A_or_B_alias = A if int() else B_alias
+A_or_B_type_obj = A if int() else B_type_obj
 if is_subclass(A_or_B, B):
     A_or_B()
 else:
