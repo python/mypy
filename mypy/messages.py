@@ -2778,12 +2778,12 @@ def format_type_inner(
 
             # Use pretty format (def-style) for complex signatures with named, optional, or star args.
             # Use compact Callable[[...], ...] only for signatures with all simple positional args.
-            would_use_arg_constructors = any(
-                not should_format_arg_as_type(kind, name, verbosity)
-                for kind, name in zip(func.arg_kinds, func.arg_names)
-            )
-            if use_pretty_callable and would_use_arg_constructors:
-                return pretty_callable(func, options)
+            if use_pretty_callable:
+                if any(
+                    not should_format_arg_as_type(kind, name, verbosity)
+                    for kind, name in zip(func.arg_kinds, func.arg_names)
+                ):
+                    return pretty_callable(func, options)
 
             args = format_callable_args(
                 func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
