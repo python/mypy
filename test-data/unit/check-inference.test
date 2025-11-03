@@ -3548,7 +3548,7 @@ if x:
 [builtins fixtures/dict.pyi]
 
 [case testSuggestPep604AnnotationForPartialNone]
-# flags: --local-partial-types --python-version 3.10
+# flags: --local-partial-types --python-version 3.10 --no-force-union-syntax
 x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
 [case testTupleContextFromIterable]
