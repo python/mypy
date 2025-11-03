@@ -1274,6 +1274,7 @@ def verify_var(
         yield Error(object_path, "is read-only at runtime but not in the stub", stub, runtime)
 
     runtime_type = get_mypy_type_of_runtime_value(runtime, type_context=stub.type)
+    note = ""
     if (
         runtime_type is not None
         and stub.type is not None
@@ -1286,17 +1287,28 @@ def verify_var(
             runtime_type = get_mypy_type_of_runtime_value(runtime.value)
             if runtime_type is not None and is_subtype_helper(runtime_type, stub.type):
                 should_error = False
-            # We always allow setting the stub value to ...
+            # We always allow setting the stub value to Ellipsis (...), but use
+            # _value_ type as a fallback if given. If a member is ... and _value_
+            # type is given, all runtime types should be assignable to _value_.
             proper_type = mypy.types.get_proper_type(stub.type)
             if (
                 isinstance(proper_type, mypy.types.Instance)
                 and proper_type.type.fullname in mypy.types.ELLIPSIS_TYPE_NAMES
             ):
-                should_error = False
+                value_t = stub.info.get("_value_")
+                if value_t is None or value_t.type is None or runtime_type is None:
+                    should_error = False
+                elif is_subtype_helper(runtime_type, value_t.type):
+                    should_error = False
+                else:
+                    note = " (incompatible '_value_')"
 
         if should_error:
             yield Error(
-                object_path, f"variable differs from runtime type {runtime_type}", stub, runtime
+                object_path,
+                f"variable differs from runtime type {runtime_type}{note}",
+                stub,
+                runtime,
             )
 
 
