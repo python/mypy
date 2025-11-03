@@ -398,14 +398,14 @@ _read_short_int(PyObject *data, uint8_t first) {
     }
     if ((first & FOUR_BYTES_INT_BIT) == 0) {
        _CHECK_READ(data, 1, CPY_INT_TAG)
-       second = _READ(data, uint8_t)
+       _READ(&second, data, uint8_t);
        return ((((Py_ssize_t)second) << 6) + (Py_ssize_t)(first >> 2) + MIN_TWO_BYTES_INT) << 1;
     }
     // The caller is responsible to verify this is called only for short ints.
     _CHECK_READ(data, 3, CPY_INT_TAG)
     // TODO: check if compilers emit optimal code for these two reads, and tweak if needed.
-    second = _READ(data, uint8_t)
-    two_more = _READ(data, uint16_t)
+    _READ(&second, data, uint8_t);
+    _READ(&two_more, data, uint16_t);
 #if PY_BIG_ENDIAN
     two_more = reverse_16(two_more);
 #endif
@@ -459,27 +459,27 @@ read_str(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)
 static inline char
 _write_short_int(PyObject *data, Py_ssize_t real_value) {
     if (real_value >= MIN_ONE_BYTE_INT && real_value <= MAX_ONE_BYTE_INT) {
-        _CHECK_SIZE(data, 1)
-        _WRITE(data, uint8_t, (uint8_t)(real_value - MIN_ONE_BYTE_INT) << 1)
-        ((BufferObject *)data)->end += 1;
+        _CHECK_WRITE(data, 1)
+        _WRITE(data, uint8_t, (uint8_t)(real_value - MIN_ONE_BYTE_INT) << 1);
+        ((WriteBufferObject *)data)->ptr += 1;
     } else if (real_value >= MIN_TWO_BYTES_INT && real_value <= MAX_TWO_BYTES_INT) {
-        _CHECK_SIZE(data, 2)
+        _CHECK_WRITE(data, 2)
 #if PY_BIG_ENDIAN
         uint16_t to_write = ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT;
         _WRITE(data, uint16_t, reverse_16(to_write))
 #else
-        _WRITE(data, uint16_t, ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT)
+        _WRITE(data, uint16_t, ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT);
 #endif
-        ((BufferObject *)data)->end += 2;
+        ((WriteBufferObject *)data)->ptr += 2;
     } else {
-        _CHECK_SIZE(data, 4)
+        _CHECK_WRITE(data, 4)
 #if PY_BIG_ENDIAN
         uint32_t to_write = ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER;
         _WRITE(data, uint32_t, reverse_32(to_write))
 #else
-        _WRITE(data, uint32_t, ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER)
+        _WRITE(data, uint32_t, ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER);
 #endif
-        ((BufferObject *)data)->end += 4;
+        ((WriteBufferObject *)data)->ptr += 4;
     }
     return CPY_NONE;
 }
@@ -500,7 +500,7 @@ write_str_internal(PyObject *data, PyObject *value) {
         return CPY_NONE_ERROR;
     }
     // Write string content.
-    _CHECK_SIZE(data, size)
+    _CHECK_WRITE(data, size)
     char *ptr = ((WriteBufferObject *)data)->ptr;
     memcpy(ptr, chunk, size);
     ((WriteBufferObject *)data)->ptr += size;
@@ -590,7 +590,7 @@ write_bytes_internal(PyObject *data, PyObject *value) {
         return CPY_NONE_ERROR;
     }
     // Write bytes content.
-    _CHECK_SIZE(data, size)
+    _CHECK_WRITE(data, size)
     char *ptr = ((WriteBufferObject *)data)->ptr;
     memcpy(ptr, chunk, size);
     ((WriteBufferObject *)data)->ptr += size;
@@ -626,11 +626,11 @@ float format:
 static double
 read_float_internal(PyObject *data) {
     _CHECK_READ(data, 8, CPY_FLOAT_ERROR)
-    char *ptr = ((BufferObject *)data)->ptr;
+    char *ptr = ((ReadBufferObject *)data)->ptr;
     double res = PyFloat_Unpack8(ptr, 1);
     if (unlikely((res == -1.0) && PyErr_Occurred()))
         return CPY_FLOAT_ERROR;
-    ((BufferObject *)data)->ptr += 8;
+    ((ReadBufferObject *)data)->ptr += 8;
     return res;
 }
 
@@ -652,12 +652,12 @@ read_float(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwname
 
 static char
 write_float_internal(PyObject *data, double value) {
-    _CHECK_SIZE(data, 8)
-    char *ptr = ((BufferObject *)data)->ptr;
+    _CHECK_WRITE(data, 8)
+    char *ptr = ((WriteBufferObject *)data)->ptr;
     int res = PyFloat_Pack8(value, ptr, 1);
     if (unlikely(res == -1))
         return CPY_NONE_ERROR;
-    ((BufferObject *)data)->ptr += 8;
+    ((WriteBufferObject *)data)->ptr += 8;
     return CPY_NONE;
 }
 
@@ -720,11 +720,11 @@ read_int_internal(PyObject *data) {
 
     // Construct an int object from the byte array.
     _CHECK_READ(data, size, CPY_INT_TAG)
-    char *ptr = ((BufferObject *)data)->ptr;
+    char *ptr = ((ReadBufferObject *)data)->ptr;
     PyObject *num = _PyLong_FromByteArray((unsigned char *)ptr, size, 1, 0);
     if (num == NULL)
         return CPY_INT_TAG;
-    ((BufferObject *)data)->ptr += size;
+    ((ReadBufferObject *)data)->ptr += size;
     if (sign) {
         PyObject *old = num;
         num = PyNumber_Negative(old);
@@ -764,9 +764,9 @@ static inline int hex_to_int(char c) {
 
 static inline char
 _write_long_int(PyObject *data, CPyTagged value) {
-    _CHECK_SIZE(data, 1)
-    _WRITE(data, uint8_t, LONG_INT_TRAILER)
-    ((BufferObject *)data)->end += 1;
+    _CHECK_WRITE(data, 1)
+    _WRITE(data, uint8_t, LONG_INT_TRAILER);
+    ((WriteBufferObject *)data)->end += 1;
 
     PyObject *hex_str = NULL;
     PyObject* int_value = CPyTagged_AsObject(value);
