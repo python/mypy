@@ -750,7 +750,15 @@ class SemanticAnalyzer(
                 else:
                     inst = self.named_type_or_none("importlib.machinery.ModuleSpec")
                 if inst is None:
-                    if self.final_iteration:
+                    if (
+                        self.final_iteration
+                        or self.options.clone_for_module("importlib.machinery").follow_imports
+                        == "skip"
+                    ):
+                        # If we are not allowed to resolve imports from `importlib.machinery`,
+                        # ModuleSpec will not be available at any iteration.
+                        # Use the fallback earlier.
+                        # (see https://github.com/python/mypy/issues/18237)
                         inst = self.named_type_or_none("builtins.object")
                         assert inst is not None, "Cannot find builtins.object"
                     else:
