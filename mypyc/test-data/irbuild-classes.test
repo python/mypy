@@ -1494,7 +1494,7 @@ def foo():
     r15, t :: int
     r16, u, r17, v :: u8
 L0:
-    r0 = WriteBuffer_internal_empty()
+    r0 = WriteBuffer_internal()
     b = r0
     r1 = 'foo'
     r2 = write_str_internal(b, r1)
