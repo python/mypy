@@ -61,6 +61,7 @@ class CFunctionDescription(NamedTuple):
     extra_int_constants: list[tuple[int, RType]]
     priority: int
     is_pure: bool
+    returns_null: bool
 
 
 # A description for C load operations including LoadGlobal and LoadAddress
@@ -253,6 +254,7 @@ def custom_op(
     is_borrowed: bool = False,
     *,
     is_pure: bool = False,
+    returns_null: bool = False,
 ) -> CFunctionDescription:
     """Create a one-off CallC op that can't be automatically generated from the AST.
 
@@ -274,6 +276,7 @@ def custom_op(
         extra_int_constants,
         0,
         is_pure=is_pure,
+        returns_null=returns_null,
     )
 
 

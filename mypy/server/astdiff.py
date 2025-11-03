@@ -519,7 +519,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         raise RuntimeError
 
     def visit_type_type(self, typ: TypeType) -> SnapshotItem:
-        return ("TypeType", snapshot_type(typ.item))
+        return ("TypeType", snapshot_type(typ.item), typ.is_type_form)
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> SnapshotItem:
         assert typ.alias is not None

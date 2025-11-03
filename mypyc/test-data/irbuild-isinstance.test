@@ -189,3 +189,31 @@ def is_tuple(x):
 L0:
     r0 = PyTuple_Check(x)
     return r0
+
+[case testTupleOfPrimitives]
+from typing import Any
+
+def is_instance(x: Any) -> bool:
+    return isinstance(x, (str, int, bytes))
+
+[out]
+def is_instance(x):
+    x :: object
+    r0, r1, r2 :: bit
+    r3 :: bool
+L0:
+    r0 = PyUnicode_Check(x)
+    if r0 goto L3 else goto L1 :: bool
+L1:
+    r1 = PyLong_Check(x)
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    r2 = PyBytes_Check(x)
+    if r2 goto L3 else goto L4 :: bool
+L3:
+    r3 = 1
+    goto L5
+L4:
+    r3 = 0
+L5:
+    return r3

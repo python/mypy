@@ -122,7 +122,7 @@ Daemon stopped
 Daemon started
 foo.py:1: error: Function is missing a return type annotation
     def f():
-    ^
+    ^~~~~~~~
 foo.py:1: note: Use "-> None" if function does not return a value
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1

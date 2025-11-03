@@ -135,17 +135,19 @@ from ast import AST, Attribute, Call, FunctionType, Name, Starred, UAdd, UnaryOp
 def ast3_parse(
     source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
 ) -> AST:
-    return ast3.parse(
-        source,
-        filename,
-        mode,
-        type_comments=True,  # This works the magic
-        feature_version=feature_version,
-    )
+    # Ignore warnings that look like:
+    #     <type_comment>:1: SyntaxWarning: invalid escape sequence '\.'
+    # because `source` could be anything, including literals like r'(re\.match)'
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast3.parse(
+            source,
+            filename,
+            mode,
+            type_comments=True,  # This works the magic
+            feature_version=feature_version,
+        )
 
-
-NamedExpr = ast3.NamedExpr
-Constant = ast3.Constant
 
 if sys.version_info >= (3, 10):
     Match = ast3.Match
@@ -232,9 +234,12 @@ def parse(
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
     try:
-        # Disable deprecation warnings about \u
+        # Disable
+        # - deprecation warnings for 'invalid escape sequence' (Python 3.11 and below)
+        # - syntax warnings for 'invalid escape sequence' (3.12+) and 'return in finally' (3.14+)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
+            warnings.filterwarnings("ignore", category=SyntaxWarning)
             ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
 
         tree = ASTConverter(
@@ -954,7 +959,7 @@ class ASTConverter:
                 # for ellipsis arg
                 if (
                     len(func_type_ast.argtypes) == 1
-                    and isinstance(func_type_ast.argtypes[0], Constant)
+                    and isinstance(func_type_ast.argtypes[0], ast3.Constant)
                     and func_type_ast.argtypes[0].value is Ellipsis
                 ):
                     if n.returns:
@@ -1489,7 +1494,7 @@ class ASTConverter:
 
     # --- expr ---
 
-    def visit_NamedExpr(self, n: NamedExpr) -> AssignmentExpr:
+    def visit_NamedExpr(self, n: ast3.NamedExpr) -> AssignmentExpr:
         s = AssignmentExpr(self.visit(n.target), self.visit(n.value))
         return self.set_line(s, n)
 
@@ -1645,8 +1650,8 @@ class ASTConverter:
         )
         return self.set_line(e, n)
 
-    # Constant(object value) -- a constant, in Python 3.8.
-    def visit_Constant(self, n: Constant) -> Any:
+    # Constant(object value)
+    def visit_Constant(self, n: ast3.Constant) -> Any:
         val = n.value
         e: Any = None
         if val is None:
@@ -1769,8 +1774,6 @@ class ASTConverter:
     def visit_Tuple(self, n: ast3.Tuple) -> TupleExpr:
         e = TupleExpr(self.translate_expr_list(n.elts))
         return self.set_line(e, n)
-
-    # --- slice ---
 
     # Slice(expr? lower, expr? upper, expr? step)
     def visit_Slice(self, n: ast3.Slice) -> SliceExpr:
@@ -2027,9 +2030,9 @@ class TypeConverter:
         return TypeList([self.visit(e) for e in l], line=self.line)
 
     def _extract_argument_name(self, n: ast3.expr) -> str | None:
-        if isinstance(n, Constant) and isinstance(n.value, str):
+        if isinstance(n, ast3.Constant) and isinstance(n.value, str):
             return n.value.strip()
-        elif isinstance(n, Constant) and n.value is None:
+        elif isinstance(n, ast3.Constant) and n.value is None:
             return None
         self.fail(
             message_registry.ARG_NAME_EXPECTED_STRING_LITERAL.format(type(n).__name__),
@@ -2055,7 +2058,7 @@ class TypeConverter:
             uses_pep604_syntax=True,
         )
 
-    def visit_Constant(self, n: Constant) -> Type:
+    def visit_Constant(self, n: ast3.Constant) -> Type:
         val = n.value
         if val is None:
             # None is a type.
@@ -2111,16 +2114,10 @@ class TypeConverter:
             numeric_value, type_name, line=self.line, column=getattr(n, "col_offset", -1)
         )
 
-    def visit_Index(self, n: ast3.Index) -> Type:
-        # cast for mypyc's benefit on Python 3.9
-        value = self.visit(cast(Any, n).value)
-        assert isinstance(value, Type)
-        return value
-
     def visit_Slice(self, n: ast3.Slice) -> Type:
         return self.invalid_type(n, note="did you mean to use ',' instead of ':' ?")
 
-    # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
+    # Subscript(expr value, expr slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         empty_tuple_index = False
         if isinstance(n.slice, ast3.Tuple):
