@@ -1269,7 +1269,7 @@ class property:
 
 @final
 @type_check_only
-class _NotImplementedType(Any):
+class _NotImplementedType:
     __call__: None
 
 NotImplemented: _NotImplementedType

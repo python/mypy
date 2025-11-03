@@ -179,6 +179,7 @@ from mypy.typeops import (
     coerce_to_literal,
     custom_special_method,
     erase_def_to_union_or_bound,
+    erase_notimplemented,
     erase_to_bound,
     erase_to_union_or_bound,
     false_only,
@@ -4925,6 +4926,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         return typ
 
     def check_return_stmt(self, s: ReturnStmt) -> None:
+
         defn = self.scope.current_function()
         if defn is not None:
             if defn.is_generator:
@@ -4972,17 +4974,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             s.expr, return_type, allow_none_return=allow_none_func_call
                         )
                     )
-                # Treat NotImplemented as having type Any, consistent with its
-                # definition in typeshed prior to python/typeshed#4222.
-                if (
-                    isinstance(typ, Instance)
-                    and typ.type.fullname == "builtins._NotImplementedType"
-                ):
-                    typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
                     self.fail(message_registry.RETURN_IN_ASYNC_GENERATOR, s)
                     return
+
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
@@ -4991,10 +4987,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         self.options.warn_return_any
                         and not self.current_node_deferred
                         and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
-                        and not (
-                            defn.name in BINARY_MAGIC_METHODS
-                            and is_literal_not_implemented(s.expr)
-                        )
                         and not (
                             isinstance(return_type, Instance)
                             and return_type.type.fullname == "builtins.object"
@@ -5013,9 +5005,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         return
                     self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s)
                 else:
+                    typ_: Type = typ
+                    if defn.name in BINARY_MAGIC_METHODS or defn.name == "__subclasshook__":
+                        typ_ = erase_notimplemented(typ)
                     self.check_subtype(
                         subtype_label="got",
-                        subtype=typ,
+                        subtype=typ_,
                         supertype_label="expected",
                         supertype=return_type,
                         context=s.expr,
@@ -5128,21 +5123,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # where we allow `raise e from None`.
             expected_type_items.append(NoneType())
 
-        self.check_subtype(
-            typ, UnionType.make_union(expected_type_items), s, message_registry.INVALID_EXCEPTION
-        )
+        message = message_registry.INVALID_EXCEPTION
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
+            message = message.with_additional_msg('; did you mean "NotImplementedError"?')
+        self.check_subtype(typ, UnionType.make_union(expected_type_items), s, message)
 
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
-
-        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
-            self.fail(
-                message_registry.INVALID_EXCEPTION.with_additional_msg(
-                    '; did you mean "NotImplementedError"?'
-                ),
-                s,
-            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
