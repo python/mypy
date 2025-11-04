@@ -422,7 +422,7 @@ function_op(
     arg_types=[object_rprimitive],
     return_type=float_rprimitive,
     c_function_name="read_float_internal",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
 function_op(
@@ -455,4 +455,12 @@ function_op(
     return_type=uint8_rprimitive,
     c_function_name="read_tag_internal",
     error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+function_op(
+    name="librt.internal.cache_version",
+    arg_types=[],
+    return_type=uint8_rprimitive,
+    c_function_name="cache_version_internal",
+    error_kind=ERR_NEVER,
 )
