@@ -7541,3 +7541,21 @@ def foo() -> None: pass
 tmp/a.py:3: error: "object" has no attribute "submod"
 [out2]
 tmp/a.py:3: error: "object" has no attribute "submod"
+
+[case testIncrementalAccessSubmoduleWithoutExplicitImportNested]
+import pandas
+
+pandas.core.dtypes
+
+[file pandas/__init__.py]
+import pandas.core.api
+
+[file pandas/core/__init__.py]
+[file pandas/core/api.py]
+from pandas.core.dtypes.dtypes import X
+
+[file pandas/core/dtypes/__init__.py]
+[file pandas/core/dtypes/dtypes.py]
+X = 0
+[out]
+[out2]

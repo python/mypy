@@ -2901,7 +2901,9 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         graph = load_graph(sources, manager)
 
     for id in graph:
-        manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
+        ancestors = graph[id].ancestors
+        assert ancestors is not None
+        manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed + ancestors)
 
     t1 = time.time()
     manager.add_stats(
