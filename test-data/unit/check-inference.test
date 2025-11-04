@@ -1109,7 +1109,7 @@ def f(*, x: int) -> int: ...
 def g(*, y: int) -> int: ...
 def h(*, x: int) -> int: ...
 
-list_1 = [f, g]  # E: List item 0 has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[NamedArg(int, 'y')], int]"
+list_1 = [f, g]  # E: List item 0 has incompatible type "def f(*, x: int) -> int"; expected "def g(*, y: int) -> int"
 list_2 = [f, h]
 [builtins fixtures/list.pyi]
 
@@ -1434,7 +1434,7 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type "Callable[[VarArg(Any), KwArg(Any)], int]", argument has type "Callable[..., None]")
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type "def (*a: Any, **k: Any) -> int", argument has type "Callable[..., None]")
     pass
 [builtins fixtures/dict.pyi]
 
@@ -3548,7 +3548,7 @@ if x:
 [builtins fixtures/dict.pyi]
 
 [case testSuggestPep604AnnotationForPartialNone]
-# flags: --local-partial-types --python-version 3.10
+# flags: --local-partial-types --python-version 3.10 --no-force-union-syntax
 x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
 [case testTupleContextFromIterable]
@@ -3769,7 +3769,7 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 def g(__x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "tuple[Never, Never]" \
                    # E: Argument 1 to "f" has incompatible type "Callable[[str], None]"; expected "Call[Never]" \
-                   # N: "Call[Never].__call__" has type "Callable[[NamedArg(Never, 'x')], None]"
+                   # N: "Call[Never].__call__" has type "def __call__(self, *, x: Never) -> None"
 [builtins fixtures/list.pyi]
 
 [case testCallableInferenceAgainstCallableNamedVsPosOnly]
@@ -3785,7 +3785,7 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(*, x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(str, 'x')], None]"; expected "Call[Never]" \
+                   # E: Argument 1 to "f" has incompatible type "def g(*, x: str) -> None"; expected "Call[Never]" \
                    # N: "Call[Never].__call__" has type "Callable[[Never], None]"
 [builtins fixtures/list.pyi]
 
@@ -3802,7 +3802,7 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(**x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[KwArg(str)], None]"; expected "Call[Never]" \
+                   # E: Argument 1 to "f" has incompatible type "def g(**x: str) -> None"; expected "Call[Never]" \
                    # N: "Call[Never].__call__" has type "Callable[[Never], None]"
 [builtins fixtures/list.pyi]
 
@@ -3819,8 +3819,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(*args: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]" \
-                   # N: "Call[Never].__call__" has type "Callable[[NamedArg(Never, 'x')], None]"
+                   # E: Argument 1 to "f" has incompatible type "def g(*args: str) -> None"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "def __call__(self, *, x: Never) -> None"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstTypeVarActualBound]

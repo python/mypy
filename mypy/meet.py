@@ -187,12 +187,24 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
         return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
-        return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
+        return TypeType.make_normalized(
+            narrow_declared_type(declared.item, narrowed.item),
+            is_type_form=declared.is_type_form and narrowed.is_type_form,
+        )
     elif (
         isinstance(declared, TypeType)
         and isinstance(narrowed, Instance)
         and narrowed.type.is_metaclass()
     ):
+        if declared.is_type_form:
+            # The declared TypeForm[T] after narrowing must be a kind of
+            # type object at least as narrow as Type[T]
+            return narrow_declared_type(
+                TypeType.make_normalized(
+                    declared.item, line=declared.line, column=declared.column, is_type_form=False
+                ),
+                original_narrowed,
+            )
         # We'd need intersection types, so give up.
         return original_declared
     elif isinstance(declared, Instance):
@@ -1115,7 +1127,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, TypeType):
             typ = self.meet(t.item, self.s.item)
             if not isinstance(typ, NoneType):
-                typ = TypeType.make_normalized(typ, line=t.line)
+                typ = TypeType.make_normalized(
+                    typ, line=t.line, is_type_form=self.s.is_type_form and t.is_type_form
+                )
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":
             return t

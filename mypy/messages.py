@@ -1803,18 +1803,17 @@ class MessageBuilder:
         )
 
     def need_annotation_for_var(
-        self, node: SymbolNode, context: Context, python_version: tuple[int, int] | None = None
+        self, node: SymbolNode, context: Context, options: Options | None = None
     ) -> None:
         hint = ""
-        pep604_supported = not python_version or python_version >= (3, 10)
         # type to recommend the user adds
         recommended_type = None
         # Only gives hint if it's a variable declaration and the partial type is a builtin type
-        if python_version and isinstance(node, Var) and isinstance(node.type, PartialType):
+        if options and isinstance(node, Var) and isinstance(node.type, PartialType):
             type_dec = "<type>"
             if not node.type.type:
                 # partial None
-                if pep604_supported:
+                if options.use_or_syntax():
                     recommended_type = f"{type_dec} | None"
                 else:
                     recommended_type = f"Optional[{type_dec}]"
@@ -2530,6 +2529,15 @@ def quote_type_string(type_string: str) -> str:
     return f'"{type_string}"'
 
 
+def should_format_arg_as_type(arg_kind: ArgKind, arg_name: str | None, verbosity: int) -> bool:
+    """
+    Determine whether a function argument should be formatted as its Type or with name.
+    """
+    return (arg_kind == ARG_POS and arg_name is None) or (
+        verbosity == 0 and arg_kind.is_positional()
+    )
+
+
 def format_callable_args(
     arg_types: list[Type],
     arg_kinds: list[ArgKind],
@@ -2540,7 +2548,7 @@ def format_callable_args(
     """Format a bunch of Callable arguments into a string"""
     arg_strings = []
     for arg_name, arg_type, arg_kind in zip(arg_names, arg_types, arg_kinds):
-        if arg_kind == ARG_POS and arg_name is None or verbosity == 0 and arg_kind.is_positional():
+        if should_format_arg_as_type(arg_kind, arg_name, verbosity):
             arg_strings.append(format(arg_type))
         else:
             constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
@@ -2558,13 +2566,18 @@ def format_type_inner(
     options: Options,
     fullnames: set[str] | None,
     module_names: bool = False,
+    use_pretty_callable: bool = True,
 ) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
     Args:
+      typ: type to be formatted
       verbosity: a coarse grained control on the verbosity of the type
+      options: Options object controlling formatting
       fullnames: a set of names that should be printed in full
+      module_names: whether to show module names for module types
+      use_pretty_callable: use pretty_callable to format Callable types.
     """
 
     def format(typ: Type) -> str:
@@ -2742,7 +2755,11 @@ def format_type_inner(
     elif isinstance(typ, UninhabitedType):
         return "Never"
     elif isinstance(typ, TypeType):
-        return f"type[{format(typ.item)}]"
+        if typ.is_type_form:
+            type_name = "TypeForm"
+        else:
+            type_name = "type"
+        return f"{type_name}[{format(typ.item)}]"
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
@@ -2761,6 +2778,16 @@ def format_type_inner(
             param_spec = func.param_spec()
             if param_spec is not None:
                 return f"Callable[{format(param_spec)}, {return_type}]"
+
+            # Use pretty format (def-style) for complex signatures with named, optional, or star args.
+            # Use compact Callable[[...], ...] only for signatures with all simple positional args.
+            if use_pretty_callable:
+                if any(
+                    not should_format_arg_as_type(kind, name, verbosity)
+                    for kind, name in zip(func.arg_kinds, func.arg_names)
+                ):
+                    return pretty_callable(func, options)
+
             args = format_callable_args(
                 func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
             )

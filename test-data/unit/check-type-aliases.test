@@ -1318,3 +1318,17 @@ from typing_extensions import TypeAlias
 
 Foo: TypeAlias = ClassVar[int]  # E: ClassVar[...] can't be used inside a type alias
 [builtins fixtures/tuple.pyi]
+
+
+[case testTypeAliasDict]
+D = dict[str, int]
+d = D()
+reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type(D())  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type(D(x=1))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type(D(x="asdf"))  # E: No overload variant of "dict" matches argument type "str" \
+                          # N: Possible overload variants: \
+                          # N:     def __init__(self, **kwargs: int) -> dict[str, int] \
+                          # N:     def __init__(self, arg: Iterable[tuple[str, int]], **kwargs: int) -> dict[str, int] \
+                          # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
