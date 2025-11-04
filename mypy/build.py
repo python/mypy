@@ -603,6 +603,7 @@ class BuildManager:
         self.options = options
         self.version_id = version_id
         self.modules: dict[str, MypyFile] = {}
+        self.import_map: dict[str, set[str]] = {}
         self.missing_modules: set[str] = set()
         self.fg_deps_meta: dict[str, FgDepMeta] = {}
         # fg_deps holds the dependencies of every module that has been
@@ -623,6 +624,7 @@ class BuildManager:
             self.incomplete_namespaces,
             self.errors,
             self.plugin,
+            self.import_map,
         )
         self.all_types: dict[Expression, Type] = {}  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
@@ -2897,6 +2899,9 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         manager.log("Redoing load_graph without cache because too much was missing")
         manager.cache_enabled = False
         graph = load_graph(sources, manager)
+
+    for id in graph:
+        manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
 
     t1 = time.time()
     manager.add_stats(
