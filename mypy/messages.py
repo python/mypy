@@ -1803,18 +1803,17 @@ class MessageBuilder:
         )
 
     def need_annotation_for_var(
-        self, node: SymbolNode, context: Context, python_version: tuple[int, int] | None = None
+        self, node: SymbolNode, context: Context, options: Options | None = None
     ) -> None:
         hint = ""
-        pep604_supported = not python_version or python_version >= (3, 10)
         # type to recommend the user adds
         recommended_type = None
         # Only gives hint if it's a variable declaration and the partial type is a builtin type
-        if python_version and isinstance(node, Var) and isinstance(node.type, PartialType):
+        if options and isinstance(node, Var) and isinstance(node.type, PartialType):
             type_dec = "<type>"
             if not node.type.type:
                 # partial None
-                if pep604_supported:
+                if options.use_or_syntax():
                     recommended_type = f"{type_dec} | None"
                 else:
                     recommended_type = f"Optional[{type_dec}]"

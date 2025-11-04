@@ -198,6 +198,7 @@ from mypy.typeops import (
 from mypy.types import (
     ANY_STRATEGY,
     MYPYC_NATIVE_INT_NAMES,
+    NOT_IMPLEMENTED_TYPE_NAMES,
     OVERLOAD_NAMES,
     AnyType,
     BoolTypeQuery,
@@ -4449,7 +4450,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # partial type which will be made more specific later. A partial type
             # gets generated in assignment like 'x = []' where item type is not known.
             if name.name != "_" and not self.infer_partial_type(name, lvalue, init_type):
-                self.msg.need_annotation_for_var(name, context, self.options.python_version)
+                self.msg.need_annotation_for_var(name, context, self.options)
                 self.set_inference_error_fallback_type(name, lvalue, init_type)
         elif (
             isinstance(lvalue, MemberExpr)
@@ -4459,7 +4460,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)
         ):
             # Multiple, inconsistent types inferred for an attribute.
-            self.msg.need_annotation_for_var(name, context, self.options.python_version)
+            self.msg.need_annotation_for_var(name, context, self.options)
             name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
@@ -4656,9 +4657,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
                 if not is_valid_inferred_type(rvalue_type, self.options) and inferred is not None:
-                    self.msg.need_annotation_for_var(
-                        inferred, context, self.options.python_version
-                    )
+                    self.msg.need_annotation_for_var(inferred, context, self.options)
                     rvalue_type = rvalue_type.accept(SetNothingToAny())
 
             if (
@@ -4976,10 +4975,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     )
                 # Treat NotImplemented as having type Any, consistent with its
                 # definition in typeshed prior to python/typeshed#4222.
-                if (
-                    isinstance(typ, Instance)
-                    and typ.type.fullname == "builtins._NotImplementedType"
-                ):
+                if isinstance(typ, Instance) and typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES:
                     typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
@@ -5138,7 +5134,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
 
-        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
+        if (isinstance(typ, Instance) and typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES) or (
+            isinstance(e, CallExpr)
+            and isinstance(e.callee, RefExpr)
+            and e.callee.fullname == "builtins.NotImplemented"
+        ):
             self.fail(
                 message_registry.INVALID_EXCEPTION.with_additional_msg(
                     '; did you mean "NotImplementedError"?'
@@ -7680,7 +7680,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     var.type = NoneType()
                 else:
                     if var not in self.partial_reported and not permissive:
-                        self.msg.need_annotation_for_var(var, context, self.options.python_version)
+                        self.msg.need_annotation_for_var(var, context, self.options)
                         self.partial_reported.add(var)
                     if var.type:
                         fixed = fixup_partial_type(var.type)
@@ -7707,9 +7707,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if in_scope:
                     context = partial_types[node]
                     if is_local or not self.options.allow_untyped_globals:
-                        self.msg.need_annotation_for_var(
-                            node, context, self.options.python_version
-                        )
+                        self.msg.need_annotation_for_var(node, context, self.options)
                         self.partial_reported.add(node)
                 else:
                     # Defer the node -- we might get a better type in the outer scope

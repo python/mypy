@@ -1159,7 +1159,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {InlineTypedDict,PreciseTupleTypes}
+.. option:: --enable-incomplete-feature {InlineTypedDict,PreciseTupleTypes,TypeForm}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1213,6 +1213,9 @@ List of currently incomplete/experimental features:
          reveal_type(numbers)
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
+
+* ``TypeForm``: this feature enables ``TypeForm``, as described in
+  `PEP 747 – Annotating Type Forms <https://peps.python.org/pep-0747/>_`.
 
 
 Miscellaneous
