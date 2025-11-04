@@ -4469,6 +4469,32 @@ class PlaceholderNode(SymbolNode):
         return visitor.visit_placeholder_node(self)
 
 
+class PluginFlags:
+    """Checking customization for plugin-generated nodes.
+
+    This class is part of the public API. It can be used with the
+    `mypy.plugins.common.add_*_to_class` family of functions.
+
+    Args:
+        skip_override_checks: Allow this node to be an incompatible override.
+            A node having this flag set to True will not be required to be
+            LSP-compatible with the superclasses of its enclosing class.
+            This is helpful when the plugin generates a precise signature,
+            overriding a fallback signature defined in the base class.
+            This flag does not affect checking overrides *of* this node in
+            further subclasses.
+    """
+
+    def __init__(self, *, skip_override_checks: bool = False) -> None:
+        self.skip_override_checks = skip_override_checks
+
+    @staticmethod
+    def should_skip_override_checks(node: SymbolTableNode) -> bool:
+        if node.plugin_flags is None:
+            return False
+        return node.plugin_flags.skip_override_checks
+
+
 class SymbolTableNode:
     """Description of a name binding in a symbol table.
 
@@ -4537,6 +4563,7 @@ class SymbolTableNode:
         "cross_ref",
         "implicit",
         "plugin_generated",
+        "plugin_flags",
         "no_serialize",
     )
 
@@ -4549,6 +4576,7 @@ class SymbolTableNode:
         module_hidden: bool = False,
         *,
         plugin_generated: bool = False,
+        plugin_flags: PluginFlags | None = None,
         no_serialize: bool = False,
     ) -> None:
         self.kind = kind
@@ -4558,6 +4586,7 @@ class SymbolTableNode:
         self.module_hidden = module_hidden
         self.cross_ref: str | None = None
         self.plugin_generated = plugin_generated
+        self.plugin_flags = plugin_flags
         self.no_serialize = no_serialize
 
     @property

@@ -122,6 +122,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     OverloadPart,
     PassStmt,
+    PluginFlags,
     PromoteExpr,
     RaiseStmt,
     RefExpr,
@@ -2205,6 +2206,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 defn.name != "__replace__"
                 or defn.info.metadata.get("dataclass_tag") is None
             )
+            and not (
+                defn.info
+                and (node := defn.info.get(defn.name))
+                and PluginFlags.should_skip_override_checks(node)
+            )
         )
         found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
@@ -3547,6 +3553,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and lvalue.kind in (MDEF, None)  # None for Vars defined via self
             and len(lvalue_node.info.bases) > 0
         ):
+            if not (
+                sym := lvalue_node.info.names.get(lvalue_node.name)
+            ) or PluginFlags.should_skip_override_checks(sym):
+                return
             for base in lvalue_node.info.mro[1:]:
                 tnode = base.names.get(lvalue_node.name)
                 if tnode is not None:
