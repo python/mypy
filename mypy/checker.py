@@ -5134,13 +5134,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
 
-        if (
-            isinstance(typ, Instance)
-            and typ.type.fullname in {"builtins._NotImplementedType", "types.NotImplementedType"}
-        ) or (
+        if (isinstance(typ, Instance) and typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES) or (
             isinstance(e, CallExpr)
             and isinstance(e.callee, RefExpr)
-            and e.callee.fullname in {"builtins.NotImplemented"}
+            and e.callee.fullname == "builtins.NotImplemented"
         ):
             self.fail(
                 message_registry.INVALID_EXCEPTION.with_additional_msg(
