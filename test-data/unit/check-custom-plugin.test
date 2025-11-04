@@ -1088,7 +1088,7 @@ enable_error_code = explicit-override
 [typing fixtures/typing-override.pyi]
 
 [case testAddMethodPluginExplicitOverrideIgnoreCompat]
-# flags: --python-version 3.12 --config-file tmp/mypy.ini
+# flags: --python-version 3.12 --config-file tmp/mypy.ini --debug-serialize
 from typing import TypeVar
 
 T = TypeVar('T', bound=type)
@@ -1114,6 +1114,7 @@ class BaseWithOtherFoo:
     def meth_ok(self) -> int: ...
     def meth_bad(self) -> int: ...
 
+# `attr` is not reported because add_attribute_to_class does not generate a statement (yet).
 @inject_foo
 class Child3(BaseWithOtherFoo): ...  # E: Return type "None" of "meth_bad" incompatible with return type "int" in supertype "BaseWithOtherFoo"
 
@@ -1134,7 +1135,7 @@ class FurtherOverridden(Original):
                                     # E: Method "meth_bad" is not using @override but is overriding a method in class "__main__.Original"
 
 [file mypy.ini]
-[mypy]
+\[mypy]
 plugins=<ROOT>/test-data/unit/plugins/add_method_ignore_compat.py
 enable_error_code = explicit-override
 [typing fixtures/typing-override.pyi]
