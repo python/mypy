@@ -128,8 +128,7 @@ def run_standard_benchmarks() -> None:
 
     # Benchmark 3: Large dictionary (simulating large cache)
     large_dict = {
-        f"key_{i}": {"nested": {"value": i, "data": f"string_{i}" * 10}}
-        for i in range(1000)
+        f"key_{i}": {"nested": {"value": i, "data": f"string_{i}" * 10}} for i in range(1000)
     }
     print("Benchmark 3: Large dictionary (1000 entries)")
     results3 = compare_serialization_performance(large_dict, iterations=100)

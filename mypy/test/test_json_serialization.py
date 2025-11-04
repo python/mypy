@@ -6,7 +6,6 @@ edge cases, error conditions, and performance characteristics.
 
 from __future__ import annotations
 
-import sys
 import unittest
 from typing import Any
 
@@ -91,13 +90,7 @@ class TestJsonSerialization(unittest.TestCase):
 
     def test_special_values(self) -> None:
         """Test special JSON values."""
-        obj = {
-            "null": None,
-            "true": True,
-            "false": False,
-            "empty_list": [],
-            "empty_dict": {},
-        }
+        obj = {"null": None, "true": True, "false": False, "empty_list": [], "empty_dict": {}}
         serialized = json_dumps(obj)
         deserialized = json_loads(serialized)
         self.assertEqual(deserialized, obj)
