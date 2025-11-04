@@ -200,6 +200,8 @@ OVERRIDE_DECORATOR_NAMES: Final = ("typing.override", "typing_extensions.overrid
 
 ELLIPSIS_TYPE_NAMES: Final = ("builtins.ellipsis", "types.EllipsisType")
 
+NOT_IMPLEMENTED_TYPE_NAMES: Final = ("builtins._NotImplementedType", "types.NotImplementedType")
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 

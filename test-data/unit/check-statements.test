@@ -523,7 +523,7 @@ if object():
 if object():
     raise NotImplemented    # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
 if object():
-    raise NotImplemented()  # E: NotImplemented? not callable
+    raise NotImplemented()  # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
 [builtins fixtures/notimplemented.pyi]
 
 [case testTryFinallyStatement]
