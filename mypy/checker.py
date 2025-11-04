@@ -197,6 +197,7 @@ from mypy.typeops import (
 from mypy.types import (
     ANY_STRATEGY,
     MYPYC_NATIVE_INT_NAMES,
+    NOT_IMPLEMENTED_TYPE_NAMES,
     OVERLOAD_NAMES,
     AnyType,
     BoolTypeQuery,
@@ -4959,10 +4960,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     )
                 # Treat NotImplemented as having type Any, consistent with its
                 # definition in typeshed prior to python/typeshed#4222.
-                if isinstance(typ, Instance) and typ.type.fullname in {
-                    "builtins._NotImplementedType",
-                    "types.NotImplementedType",
-                }:
+                if isinstance(typ, Instance) and typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES:
                     typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
