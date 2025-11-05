@@ -143,6 +143,7 @@ from mypy.typeanal import (
     validate_instance,
 )
 from mypy.typeops import (
+    bind_self,
     callable_type,
     custom_special_method,
     erase_to_union_or_bound,
@@ -1001,6 +1002,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.named_type("builtins.type"),
             variables=variables,
             is_bound=True,
+            original_self_type=AnyType(TypeOfAny.implementation_artifact),
         )
 
     def check_typeddict_call_with_kwargs(
@@ -2911,10 +2913,54 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         args_contain_any = any(map(has_any_type, arg_types))
         type_maps: list[dict[Expression, Type]] = []
 
+        # If we have a selftype overload, it should contribute to `any_causes_overload_ambiguity`
+        # check. Pretend that we're checking `Foo.func(instance, ...)` instead of
+        # `instance.func(...)`.
+        p_object_type = get_proper_type(object_type) if object_type is not None else None
+        prepend_self = (
+            isinstance(p_object_type, Instance)
+            and has_any_type(p_object_type)
+            and any(
+                typ.is_bound and typ.original_self_type is not None for typ in plausible_targets
+            )
+        )
+        if prepend_self:
+            assert object_type is not None
+
+            args = [TempNode(object_type)] + args
+            arg_types = [object_type] + arg_types
+            arg_kinds = [ARG_POS] + arg_kinds
+            arg_names = [None, *arg_names] if arg_names is not None else None
+
+        def maybe_bind_self(t: Type) -> Type:
+            if prepend_self and isinstance(t, ProperType) and isinstance(t, FunctionLike):
+                return bind_self(t, object_type)
+            return t
+
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
-            with self.msg.filter_errors() as w:
-                with self.chk.local_type_map as m:
+            with self.msg.filter_errors() as w, self.chk.local_type_map as m:
+                if prepend_self:
+                    param = typ.original_self_type
+                    assert param is not None, "Overload bound only partially?"
+                    assert isinstance(p_object_type, Instance)
+                    param = expand_type_by_instance(param, p_object_type)
+                    ret_type, infer_type = self.check_call(
+                        callee=typ.copy_modified(
+                            arg_types=[param] + typ.arg_types,
+                            arg_kinds=[ARG_POS] + typ.arg_kinds,
+                            arg_names=[None, *typ.arg_names],
+                            is_bound=False,
+                            original_self_type=None,
+                        ),
+                        args=args,
+                        arg_kinds=arg_kinds,
+                        arg_names=arg_names,
+                        context=context,
+                        callable_name=callable_name,
+                        object_type=None,
+                    )
+                else:
                     ret_type, infer_type = self.check_call(
                         callee=typ,
                         args=args,
@@ -2928,9 +2974,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if is_match:
                 # Return early if possible; otherwise record info, so we can
                 # check for ambiguity due to 'Any' below.
-                if not args_contain_any:
+                if not args_contain_any and not prepend_self:
                     self.chk.store_types(m)
-                    return ret_type, infer_type
+                    return ret_type, maybe_bind_self(infer_type)
                 p_infer_type = get_proper_type(infer_type)
                 if isinstance(p_infer_type, CallableType):
                     # Prefer inferred types if possible, this will avoid false triggers for
@@ -2949,10 +2995,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
                 self.chk.store_types(type_maps[0])
-                return return_types[0], inferred_types[0]
+                return return_types[0], maybe_bind_self(inferred_types[0])
             elif all_same_types([erase_type(typ) for typ in return_types]):
                 self.chk.store_types(type_maps[0])
-                return erase_type(return_types[0]), erase_type(inferred_types[0])
+                return erase_type(return_types[0]), maybe_bind_self(erase_type(inferred_types[0]))
             else:
                 return self.check_call(
                     callee=AnyType(TypeOfAny.special_form),
@@ -2966,7 +3012,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
-            return return_types[0], inferred_types[0]
+            return return_types[0], maybe_bind_self(inferred_types[0])
 
     def overload_erased_call_targets(
         self,
@@ -5017,6 +5063,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         name="tuple",
                         definition=tp.definition,
                         is_bound=tp.is_bound,
+                        original_self_type=tp.original_self_type,
                     )
                 self.msg.incompatible_type_application(
                     min_arg_count, len(type_vars), len(args), ctx

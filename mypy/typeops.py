@@ -205,6 +205,7 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     arg_names=["_args", "_kwds"],
                     ret_type=any_type,
                     is_bound=True,
+                    original_self_type=any_type,
                     fallback=named_type("builtins.function"),
                 )
                 result: FunctionLike = class_callable(sig, info, fallback, None, is_new=False)
@@ -490,6 +491,7 @@ def bind_self(
         arg_names=func.arg_names[1:],
         variables=variables,
         is_bound=True,
+        original_self_type=func.arg_types[0],
     )
     return cast(F, res)
 

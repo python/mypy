@@ -467,6 +467,9 @@ def convert_callable_type(self: CallableType) -> Json:
         "is_ellipsis_args": self.is_ellipsis_args,
         "implicit": self.implicit,
         "is_bound": self.is_bound,
+        "original_self_type": (
+            convert_type(self.original_self_type) if self.original_self_type is not None else None
+        ),
         "type_guard": convert_type(self.type_guard) if self.type_guard is not None else None,
         "type_is": convert_type(self.type_is) if self.type_is is not None else None,
         "from_concatenate": self.from_concatenate,
