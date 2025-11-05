@@ -6669,6 +6669,9 @@ class SemanticAnalyzer(
         return sym
 
     def is_visible_import(self, base_id: str, id: str) -> bool:
+        if id in self.import_map[self.cur_mod_id]:
+            # Fast path: module is imported locally.
+            return True
         if base_id not in self.transitive_submodule_imports:
             # This is a performance optimization for a common pattern. If one module
             # in a codebase uses import numpy as np; np.foo.bar, then it is likely that
