@@ -5637,12 +5637,19 @@ class SemanticAnalyzer(
             else:
                 incomplete_target = has_placeholder(res)
 
-            incomplete_tv = any(has_placeholder(tv) for tv in alias_tvars)
-            if self.found_incomplete_ref(tag) or incomplete_target or incomplete_tv:
+            if self.found_incomplete_ref(tag) or incomplete_target:
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 self.mark_incomplete(s.name.name, s.value, becomes_typeinfo=True)
                 return
+
+            # Now go through all new variables and temporary replace all tvars that still
+            # refer to some placeholders. We defer the whole alias and will revisit it again,
+            # as well as all its dependents.
+            for i, tv in enumerate(alias_tvars):
+                if has_placeholder(tv):
+                    self.mark_incomplete(s.name.name, s.value, becomes_typeinfo=True)
+                    alias_tvars[i] = self._trivial_typevarlike_like(tv)
 
             self.add_type_alias_deps(depends_on)
             check_for_explicit_any(
@@ -5677,7 +5684,10 @@ class SemanticAnalyzer(
             ):
                 updated = False
                 if isinstance(existing.node, TypeAlias):
-                    if existing.node.target != res:
+                    if (
+                        existing.node.target != res
+                        or existing.node.alias_tvars != alias_node.alias_tvars
+                    ):
                         # Copy expansion to the existing alias, this matches how we update base classes
                         # for a TypeInfo _in place_ if there are nested placeholders.
                         existing.node.target = res
@@ -5706,6 +5716,46 @@ class SemanticAnalyzer(
             s.name.accept(self)
         finally:
             self.pop_type_args(s.type_args)
+
+    def _trivial_typevarlike_like(self, tv: TypeVarLikeType) -> TypeVarLikeType:
+        object_type = self.named_type("builtins.object")
+        if isinstance(tv, TypeVarType):
+            return TypeVarType(
+                tv.name,
+                tv.fullname,
+                tv.id,
+                values=[],
+                upper_bound=object_type,
+                default=AnyType(TypeOfAny.from_omitted_generics),
+                variance=tv.variance,
+                line=tv.line,
+                column=tv.column,
+            )
+        elif isinstance(tv, TypeVarTupleType):
+            tuple_type = self.named_type("builtins.tuple", [object_type])
+            return TypeVarTupleType(
+                tv.name,
+                tv.fullname,
+                tv.id,
+                upper_bound=tuple_type,
+                tuple_fallback=tuple_type,
+                default=AnyType(TypeOfAny.from_omitted_generics),
+                line=tv.line,
+                column=tv.column,
+            )
+        elif isinstance(tv, ParamSpecType):
+            return ParamSpecType(
+                tv.name,
+                tv.fullname,
+                tv.id,
+                flavor=tv.flavor,
+                upper_bound=object_type,
+                default=AnyType(TypeOfAny.from_omitted_generics),
+                line=tv.line,
+                column=tv.column,
+            )
+        else:
+            assert False, f"Unknown TypeVarLike: {tv!r}"
 
     #
     # Expressions
