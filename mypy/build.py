@@ -744,6 +744,26 @@ class BuildManager:
         else:
             return int(self.metastore.getmtime(path))
 
+    def correct_rel_imp(self, file: MypyFile, imp: ImportFrom | ImportAll) -> str:
+        """Function to correct for relative imports."""
+        file_id = file.fullname
+        rel = imp.relative
+        if rel == 0:
+            return imp.id
+        if os.path.basename(file.path).startswith("__init__."):
+            rel -= 1
+        if rel != 0:
+            file_id = ".".join(file_id.split(".")[:-rel])
+        new_id = file_id + "." + imp.id if imp.id else file_id
+
+        if not new_id:
+            self.errors.set_file(file.path, file.name, self.options)
+            self.errors.report(
+                imp.line, 0, "No parent module -- cannot perform relative import", blocker=True
+            )
+
+        return new_id
+
     def all_imported_modules_in_file(self, file: MypyFile) -> list[tuple[int, str, int]]:
         """Find all reachable import statements in a file.
 
@@ -752,27 +772,6 @@ class BuildManager:
 
         Can generate blocking errors on bogus relative imports.
         """
-
-        def correct_rel_imp(imp: ImportFrom | ImportAll) -> str:
-            """Function to correct for relative imports."""
-            file_id = file.fullname
-            rel = imp.relative
-            if rel == 0:
-                return imp.id
-            if os.path.basename(file.path).startswith("__init__."):
-                rel -= 1
-            if rel != 0:
-                file_id = ".".join(file_id.split(".")[:-rel])
-            new_id = file_id + "." + imp.id if imp.id else file_id
-
-            if not new_id:
-                self.errors.set_file(file.path, file.name, self.options)
-                self.errors.report(
-                    imp.line, 0, "No parent module -- cannot perform relative import", blocker=True
-                )
-
-            return new_id
-
         res: list[tuple[int, str, int]] = []
         for imp in file.imports:
             if not imp.is_unreachable:
@@ -787,7 +786,7 @@ class BuildManager:
                             ancestors.append(part)
                             res.append((ancestor_pri, ".".join(ancestors), imp.line))
                 elif isinstance(imp, ImportFrom):
-                    cur_id = correct_rel_imp(imp)
+                    cur_id = self.correct_rel_imp(file, imp)
                     all_are_submodules = True
                     # Also add any imported names that are submodules.
                     pri = import_priority(imp, PRI_MED)
@@ -807,7 +806,7 @@ class BuildManager:
                     res.append((pri, cur_id, imp.line))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
-                    res.append((pri, correct_rel_imp(imp), imp.line))
+                    res.append((pri, self.correct_rel_imp(file, imp), imp.line))
 
         # Sort such that module (e.g. foo.bar.baz) comes before its ancestors (e.g. foo
         # and foo.bar) so that, if FindModuleCache finds the target module in a
@@ -2901,9 +2900,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         graph = load_graph(sources, manager)
 
     for id in graph:
-        ancestors = graph[id].ancestors
-        assert ancestors is not None
-        manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed + ancestors)
+        manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
 
     t1 = time.time()
     manager.add_stats(
