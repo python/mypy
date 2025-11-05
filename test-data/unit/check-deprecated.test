@@ -315,18 +315,282 @@ class E: ...
 [builtins fixtures/tuple.pyi]
 
 
-[case testDeprecatedClassInitMethod]
+[case testDeprecatedClassConstructor]
 # flags: --enable-error-code=deprecated
 
 from typing_extensions import deprecated
 
-@deprecated("use C2 instead")
 class C:
+    @deprecated("call `make_c()` instead")
+    def __init__(self) -> None: ...
+    @classmethod
+    def make_c(cls) -> C: ...
+
+class C2(C): ...
+
+class C3(C):
     def __init__(self) -> None: ...
 
-c: C  # E: class __main__.C is deprecated: use C2 instead
-C()  # E: class __main__.C is deprecated: use C2 instead
-C.__init__(c)  # E: class __main__.C is deprecated: use C2 instead
+C()  # E: function __main__.C.__init__ is deprecated: call `make_c()` instead
+C2()  # E: function __main__.C.__init__ is deprecated: call `make_c()` instead
+C3()
+
+class D:
+    @deprecated("call `make_d()` instead")
+    def __new__(cls) -> D: ...
+    @classmethod
+    def make_d(cls) -> D: ...
+
+class D2(D): ...
+
+class D3(D):
+    def __new__(cls) -> D3: ...
+
+D()  # E: function __main__.D.__new__ is deprecated: call `make_d()` instead
+D2()  # E: function __main__.D.__new__ is deprecated: call `make_d()` instead
+D3()
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedSuperClassConstructor]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated, Self
+
+class A:
+    @deprecated("call `self.initialise()` instead")
+    def __init__(self) -> None: ...
+    def initialise(self) -> None: ...
+
+class B(A):
+    def __init__(self) -> None:
+        super().__init__()  # E: function __main__.A.__init__ is deprecated: call `self.initialise()` instead
+
+class C:
+    @deprecated("call `object.__new__(cls)` instead")
+    def __new__(cls) -> Self: ...
+
+class D(C):
+    def __new__(cls) -> Self:
+        return super().__new__(cls)  # E: function __main__.C.__new__ is deprecated: call `object.__new__(cls)` instead
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedClassConstructorCalledFromTypeAlias]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated, TypeAlias
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+class B1(A): ...
+
+class B2(A):
+    def __init__(self) -> None: ...
+
+A_alias = A
+A_explicit_alias: TypeAlias = A
+B1_alias = B1
+B1_explicit_alias: TypeAlias = B1
+B2_alias = B2
+B2_explicit_alias: TypeAlias = B2
+
+A_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+A_explicit_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+B1_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+B1_explicit_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+B2_alias()
+B2_explicit_alias()
+
+A_alias
+A_explicit_alias
+B1_alias
+B1_explicit_alias
+B2_alias
+B2_explicit_alias
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedClassConstructorCalledFromTypeType]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+class B1(A): ...
+
+class B2(A):
+    def __init__(self) -> None: ...
+
+def get_class_A() -> type[A]: ...
+def get_class_B1() -> type[B1]: ...
+def get_class_B2() -> type[B2]: ...
+
+A_type_obj: type[A]
+B1_type_obj: type[B1]
+B2_type_obj: type[B2]
+A_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use
+B1_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use
+B2_type_obj()
+get_class_A()()  # E: function __main__.A.__init__ is deprecated: do not use
+get_class_B1()()  # E: function __main__.A.__init__ is deprecated: do not use
+get_class_B2()()
+
+def call_class_A(cls: type[A]) -> None:
+    cls()  # E: function __main__.A.__init__ is deprecated: do not use
+
+def call_class_B1(cls: type[B1]) -> None:
+    cls()  # E: function __main__.A.__init__ is deprecated: do not use
+
+def call_class_B2(cls: type[B2]) -> None:
+    cls()
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedClassConstructorCalledFromUnion]
+# flags: --enable-error-code=deprecated
+
+from typing import Callable, Union
+from typing_extensions import TypeAlias, deprecated
+
+def dummy_factory() -> Dummy: ...
+
+class Dummy: ...
+
+class A:
+    @deprecated("do not use A()")
+    def __init__(self) -> None: ...
+
+class B1(A):
+    def __init__(self) -> None: ...
+
+class B2(A):
+    @deprecated("do not use B2()")
+    def __init__(self) -> None: ...
+
+A_alias: TypeAlias = A
+A_type_obj: type[A]
+B1_alias: TypeAlias = B1
+B1_type_obj: type[B1]
+
+maybe_A = A if int() else None
+maybe_A_alias = A_alias if int() else None
+maybe_A_type_obj = A_type_obj if int() else None
+maybe_A()  # E: function __main__.A.__init__ is deprecated: do not use A() \
+           # E: "None" not callable
+maybe_A_alias()  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                 # E: "None" not callable
+maybe_A_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                    # E: "None" not callable
+
+maybe_B1 = B1 if int() else None
+maybe_B1_alias = B1_alias if int() else None
+maybe_B1_type_obj = B1_type_obj if int() else None
+maybe_B1()  # E: "None" not callable
+maybe_B1_alias()  # E: "None" not callable
+maybe_B1_type_obj()  # E: "None" not callable
+
+A_or_B1: type[Union[A, B1]]
+A_or_B2: type[Union[A, B2]]
+A_or_dummy: type[Union[A, Dummy]]
+A_or_dummy_factory: Union[type[A], Callable[[], Dummy]]
+reveal_type(A_or_B1())  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                        # N: Revealed type is "__main__.A"
+reveal_type(A_or_B2())  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                        # E: function __main__.B2.__init__ is deprecated: do not use B2() \
+                        # N: Revealed type is "__main__.A"
+reveal_type(A_or_dummy())  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                           # N: Revealed type is "Union[__main__.A, __main__.Dummy]"
+reveal_type(A_or_dummy_factory())  # E: function __main__.A.__init__ is deprecated: do not use A() \
+                                   # N: Revealed type is "Union[__main__.A, __main__.Dummy]"
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedClassConstructorTypeNarrowing]
+# flags: --enable-error-code=deprecated
+
+from typing import TypeVar
+from typing_extensions import TypeAlias, TypeIs, deprecated
+
+T = TypeVar("T")
+
+class Dummy: ...
+
+class A:
+    @deprecated("do not use")
+    def __init__(self) -> None: ...
+
+class B(A):
+    def __init__(self) -> None: ...
+
+# `builtins.issubclass()` does not type-narrow properly
+def is_subclass(c1: type, c2: type[T]) -> TypeIs[type[T]]: ...
+
+A_alias: TypeAlias = A
+A_type_obj: type[A]
+B_alias: TypeAlias = B
+B_type_obj: type[B]
+
+maybe_A = A if int() else None
+maybe_A_alias = A_alias if int() else None
+maybe_A_type_obj = A_type_obj if int() else None
+if maybe_A is not None:
+    maybe_A()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    maybe_A()  # E: "None" not callable
+if maybe_A_alias is not None:
+    maybe_A_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    maybe_A_alias()  # E: "None" not callable
+if maybe_A_type_obj is not None:
+    maybe_A_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    maybe_A_type_obj()  # E: "None" not callable
+
+A_or_Dummy = A if int() else Dummy
+A_type_obj_or_Dummy = A_type_obj if int() else Dummy
+if is_subclass(A_or_Dummy, A):
+    A_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    A_or_Dummy()
+if is_subclass(A_or_Dummy, Dummy):
+    A_or_Dummy()
+else:
+    A_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
+if is_subclass(A_type_obj_or_Dummy, A):
+    A_type_obj_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
+else:
+    A_type_obj_or_Dummy()
+if is_subclass(A_type_obj_or_Dummy, Dummy):
+    A_type_obj_or_Dummy()
+else:
+    A_type_obj_or_Dummy()  # E: function __main__.A.__init__ is deprecated: do not use
+
+A_or_B = A if int() else B
+A_or_B_alias = A if int() else B_alias
+A_or_B_type_obj = A if int() else B_type_obj
+if is_subclass(A_or_B, B):
+    A_or_B()
+else:
+    A_or_B()  # E: function __main__.A.__init__ is deprecated: do not use
+if is_subclass(A_or_B_alias, B):
+    A_or_B_alias()
+else:
+    A_or_B_alias()  # E: function __main__.A.__init__ is deprecated: do not use
+if is_subclass(A_or_B_type_obj, B):
+    A_or_B_type_obj()
+else:
+    A_or_B_type_obj()  # E: function __main__.A.__init__ is deprecated: do not use
 
 [builtins fixtures/tuple.pyi]
 
@@ -581,6 +845,85 @@ a += "x"  # E: function __main__.A.__iadd__ is deprecated: no A += Any
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedOverloadedClassConstructor]
+# flags: --enable-error-code=deprecated --disable-error-code=no-overload-impl
+
+from typing_extensions import TypeAlias, deprecated, overload
+
+class A:
+    @overload
+    @deprecated("do not pass int")
+    def __new__(cls, arg: int) -> A: ...
+    @overload
+    def __new__(cls, arg: str) -> A: ...
+
+class B:
+    @overload
+    @deprecated("do not pass int")
+    def __init__(self, arg: int) -> None: ...
+    @overload
+    def __init__(self, arg: str) -> None: ...
+
+A_alias: TypeAlias = A
+B_alias: TypeAlias = B
+
+A(1)  # E: overload def (cls: type[__main__.A], arg: builtins.int) -> __main__.A of function __main__.A.__new__ is deprecated: do not pass int
+A_alias(1)  # E: overload def (cls: type[__main__.A], arg: builtins.int) -> __main__.A of function __main__.A.__new__ is deprecated: do not pass int
+A("")
+A_alias("")
+class A_child(A):
+    def __new__(cls) -> A_child:
+        super().__new__(cls, 1)  # E: overload def (cls: type[__main__.A], arg: builtins.int) -> __main__.A of function __main__.A.__new__ is deprecated: do not pass int
+        super().__new__(cls, "")
+        return object.__new__(cls)
+
+B(1)  # E: overload def (self: __main__.B, arg: builtins.int) of function __main__.B.__init__ is deprecated: do not pass int
+B_alias(1)  # E: overload def (self: __main__.B, arg: builtins.int) of function __main__.B.__init__ is deprecated: do not pass int
+B("")
+B_alias("")
+class B_child(B):
+    def __init__(self) -> None:
+        super().__init__(1)  # E: overload def (self: __main__.B, arg: builtins.int) of function __main__.B.__init__ is deprecated: do not pass int
+        super().__init__("")
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedOverloadedClassConstructorDecoratingOverloadedFunction]
+
+# flags: --enable-error-code=deprecated --disable-error-code=no-overload-impl
+
+from typing import Callable, Generic, TypeVar
+from typing_extensions import deprecated, overload
+
+F = TypeVar("F", bound=Callable[..., object])
+
+class decorator(Generic[F]):
+    __call__: F
+
+    @overload
+    @deprecated("decorated function must take arguments")
+    def __init__(self: decorator[Callable[[], None]], f: Callable[[], None]) -> None: ...
+    @overload
+    def __init__(self, f: F) -> None: ...
+
+@overload
+@decorator
+def f(a: str) -> None: ...
+@overload  # E: overload def (self: __main__.decorator[def ()], f: def ()) of function __main__.decorator.__init__ is deprecated: decorated function must take arguments
+@decorator
+def f() -> None: ...
+
+f()
+f("")
+f(1)  # E: No overload variant of "f" matches argument type "int" \
+      # N: Possible overload variants: \
+      # N:     def f(a: str) -> None \
+      # N:     def f() -> None
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedMethod]
 # flags: --enable-error-code=deprecated
 
@@ -614,6 +957,105 @@ C().h()  # E: function __main__.C.h is deprecated: use g instead
 C().k()  # E: function __main__.C.k is deprecated: use g instead
 
 [builtins fixtures/callable.pyi]
+
+
+[case testDeprecatedMethodAccessedFromMethod]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated
+
+class C:
+    @deprecated("use g instead")
+    def f(self) -> None: ...
+
+    def g(self) -> None: ...
+
+    @deprecated("use g instead")
+    @staticmethod
+    def h() -> None: ...
+
+    def instance_method(self) -> None:
+        self.f  # E: function __main__.C.f is deprecated: use g instead
+        self.f()  # E: function __main__.C.f is deprecated: use g instead
+        self.g()
+        self.h()  # E: function __main__.C.h is deprecated: use g instead
+        t = (self.f, self.f, self.g)  # E: function __main__.C.f is deprecated: use g instead
+
+    @classmethod
+    def class_method(cls) -> None:
+        c: C
+        cls.f  # E: function __main__.C.f is deprecated: use g instead
+        cls.f(c)  # E: function __main__.C.f is deprecated: use g instead
+        cls.g(c)
+        cls.h()  # E: function __main__.C.h is deprecated: use g instead
+        t = (cls.f, cls.f, cls.g)  # E: function __main__.C.f is deprecated: use g instead
+
+[builtins fixtures/callable.pyi]
+
+
+[case testDeprecatedClassConstructorMethodAccessedFromOutsideMethod]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import TypeAlias, deprecated
+
+class C:
+    @deprecated("use make_c() instead")
+    def __new__(cls) -> C: ...
+
+    @deprecated("use make_c() instead")
+    def __init__(self) -> None: ...
+
+    @classmethod
+    def make_c(cls) -> C: ...
+
+C_alias: TypeAlias = C
+C_type_obj: type[C]
+c: C
+
+C.__new__  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C.__new__(C)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C.__init__  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C.__init__(c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C_alias.__new__  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C_alias.__new__(C)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C_alias.__init__  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C_alias.__init__(c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C_type_obj.__new__  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C_type_obj.__new__(C)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+C_type_obj.__init__  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+C_type_obj.__init__(c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+
+(C.__new__, C_alias.__new__, C_type_obj.__new__, C.make_c, c.make_c)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+(C.__init__, C_alias.__init__, C_type_obj.__init__, C.make_c, c.make_c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedMethodClassConstructorAccessedFromInsideMethod]
+# flags: --enable-error-code=deprecated
+
+from typing_extensions import deprecated
+
+class C:
+    @deprecated("use make_c() instead")
+    def __new__(cls) -> C: ...
+    @deprecated("use make_c() instead")
+    def __init__(self) -> None: ...
+
+    @classmethod
+    def make_c(cls) -> C: ...
+
+    @classmethod
+    def class_method(cls) -> None:
+        self: C
+        cls.__new__  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+        cls.__new__(cls)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+        cls.__init__  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+        cls.__init__(self)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+        (cls.__new__, cls.__new__, cls.make_c)  # E: function __main__.C.__new__ is deprecated: use make_c() instead
+        (cls.__init__, cls.__init__, cls.make_c)  # E: function __main__.C.__init__ is deprecated: use make_c() instead
+
+[builtins fixtures/tuple.pyi]
 
 
 [case testDeprecatedClassWithDeprecatedMethod]
