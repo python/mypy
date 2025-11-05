@@ -471,7 +471,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.is_ellipsis_args,
             snapshot_types(typ.variables),
             typ.is_bound,
-            snapshot_types([typ.original_self_type] if typ.original_self_type is not None else []),
+            snapshot_optional_type(typ.original_self_type),
         )
 
     def normalize_callable_variables(self, typ: CallableType) -> CallableType:
