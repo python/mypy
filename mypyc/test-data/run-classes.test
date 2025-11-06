@@ -2713,7 +2713,7 @@ Player.MIN = <Player.MIN: 1>
 [case testBufferRoundTrip_librt_internal]
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Any
 from mypy_extensions import u8
 from librt.internal import (
     ReadBuffer, WriteBuffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
@@ -2745,6 +2745,23 @@ def test_buffer_grow() -> None:
         assert read_int(r) == (i & 63)
     with assertRaises(ValueError):
         read_int(r)
+
+def test_buffer_primitive_types() -> None:
+    a1: Any = WriteBuffer()
+    w: WriteBuffer = a1
+    write_str(w, "foo")
+    data = w.getvalue()
+    assert read_str(ReadBuffer(data)) == "foo"
+    a2: Any = ReadBuffer(b"foo")
+    with assertRaises(TypeError):
+        w2: WriteBuffer = a2
+
+    a3: Any = ReadBuffer(data)
+    r: ReadBuffer = a3
+    assert read_str(r) == "foo"
+    a4: Any = WriteBuffer()
+    with assertRaises(TypeError):
+        r2: ReadBuffer = a4
 
 def test_buffer_roundtrip() -> None:
     b: WriteBuffer | ReadBuffer
