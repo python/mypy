@@ -154,7 +154,7 @@ def _translate_index_expr(
         raise TypeTranslationError()
     if base.args:
         raise TypeTranslationError()
-    
+
     if isinstance(expr.index, TupleExpr):
         args = expr.index.items
     else:
@@ -168,7 +168,7 @@ def _translate_index_expr(
             # of the Annotation definition and only returning the type information,
             # losing all the annotations.
             return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
-    
+
     base.args = tuple(
         expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr, allow_unpack=True)
         for arg in args
@@ -185,7 +185,7 @@ def _get_base_fullname(
     lookup_qualified: Callable[[str, Context], SymbolTableNode | None] | None,
 ) -> str | None:
     """Get the fullname of a base expression for type translation.
-    
+
     This is used to check if the type is Annotated[...], which needs special handling.
     """
     if lookup_qualified is not None and base_name is not None:
@@ -200,7 +200,7 @@ def _translate_union_op(expr: OpExpr, options: Options, allow_new_syntax: bool) 
     """Translate a union expression (X | Y) to a type."""
     if not ((options.python_version >= (3, 10)) or allow_new_syntax):
         raise TypeTranslationError()
-    
+
     return UnionType(
         [
             expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
@@ -214,7 +214,7 @@ def _translate_callable_argument(
     expr: CallExpr, options: Options, allow_new_syntax: bool
 ) -> ProperType:
     """Translate a callable argument constructor call to a CallableArgument.
-    
+
     This handles expressions like Arg(int, "x") in callable type syntax.
     """
     # Go through the dotted member expr chain to get the full arg
@@ -289,7 +289,7 @@ def _translate_dict_expr(expr: DictExpr, options: Options, allow_new_syntax: boo
     """Translate a dict expression to a TypedDictType."""
     if not expr.items:
         raise TypeTranslationError()
-    
+
     items: dict[str, Type] = {}
     extra_items_from: list[ProperType] = []
     for item_name, value in expr.items:
@@ -303,7 +303,7 @@ def _translate_dict_expr(expr: DictExpr, options: Options, allow_new_syntax: boo
             )
         else:
             raise TypeTranslationError()
-    
+
     result = TypedDictType(
         items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
     )
