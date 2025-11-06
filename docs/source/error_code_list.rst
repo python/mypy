@@ -1286,6 +1286,65 @@ type must be a subtype of the original type::
     def g(x: object) -> TypeIs[str]:  # OK
         ...
 
+.. _code-maybe-unrecognized-str-typeform:
+
+String appears in a context which expects a TypeForm [maybe-unrecognized-str-typeform]
+--------------------------------------------------------------------------------------
+
+TypeForm literals may contain string annotations:
+
+.. code-block:: python
+
+   typx1: TypeForm = str | None
+   typx2: TypeForm = 'str | None'  # OK
+   typx3: TypeForm = 'str' | None  # OK
+
+However TypeForm literals containing a string annotation can only be recognized
+by mypy in the following locations:
+
+.. code-block:: python
+
+   typx_var: TypeForm = 'str | None'  # assignment r-value
+
+   def func(typx_param: TypeForm) -> TypeForm:
+       return 'str | None'  # returned expression
+
+   func('str | None')  # callable's argument
+
+If you try to use a string annotation in some other location
+which expects a TypeForm, the string value will always be treated as a ``str``
+even if a ``TypeForm`` would be more appropriate and this error code
+will be generated:
+
+.. code-block:: python
+
+   # Error: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
+   # Error: List item 0 has incompatible type "str"; expected "TypeForm[Any]"  [list-item]
+   list_of_typx: list[TypeForm] = ['str | None', float]
+
+Fix the error by surrounding the entire type with ``TypeForm(...)``:
+
+.. code-block:: python
+
+   list_of_typx: list[TypeForm] = [TypeForm('str | None'), float]  # OK
+
+Similarly, if you try to use a string literal in a location which expects a
+TypeForm, this error code will be generated:
+
+.. code-block:: python
+
+   dict_of_typx = {'str_or_none': TypeForm(str | None)}
+   # Error: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.  [maybe-unrecognized-str-typeform]
+   list_of_typx: list[TypeForm] = [dict_of_typx['str_or_none']]
+
+Fix the error by adding ``# type: ignore[maybe-unrecognized-str-typeform]``
+to the line with the string literal:
+
+.. code-block:: python
+
+   dict_of_typx = {'str_or_none': TypeForm(str | None)}
+   list_of_typx: list[TypeForm] = [dict_of_typx['str_or_none']]  # type: ignore[maybe-unrecognized-str-typeform]
+
 .. _code-misc:
 
 Miscellaneous checks [misc]
