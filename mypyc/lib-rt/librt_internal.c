@@ -98,7 +98,7 @@ ReadBuffer_init_internal(ReadBufferObject *self, PyObject *source) {
         return -1;
     }
     self->source = Py_NewRef(source);
-    self->ptr = PyBytes_AsString(source);
+    self->ptr = PyBytes_AS_STRING(source);
     self->end = self->ptr + PyBytes_GET_SIZE(source);
     return 0;
 }
