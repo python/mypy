@@ -189,8 +189,8 @@ WriteBuffer_init_internal(WriteBufferObject *self) {
     Py_ssize_t size = START_SIZE;
     self->buf = PyMem_Malloc(size + 1);
     if (self->buf == NULL) {
-        // TODO
-        CPyError_OutOfMemory();
+        PyErr_NoMemory();
+        return -1;
     }
     self->ptr = self->buf;
     self->end = self->buf + size;
@@ -232,6 +232,7 @@ static void
 WriteBuffer_dealloc(WriteBufferObject *self)
 {
     PyMem_Free(self->buf);
+    self->buf = NULL;
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
