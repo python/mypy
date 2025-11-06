@@ -2917,11 +2917,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # check. Pretend that we're checking `Foo.func(instance, ...)` instead of
         # `instance.func(...)`.
         p_object_type = get_proper_type(object_type) if object_type is not None else None
+
+        def is_trivial_self(t: CallableType) -> bool:
+            if isinstance(t.definition, FuncDef):
+                return t.definition.is_trivial_self
+            if isinstance(t.definition, Decorator):
+                return t.definition.func.is_trivial_self
+            return False
+
         prepend_self = (
             isinstance(p_object_type, Instance)
             and has_any_type(p_object_type)
             and any(
-                typ.is_bound and typ.original_self_type is not None for typ in plausible_targets
+                typ.is_bound and typ.original_self_type is not None and not is_trivial_self(typ)
+                for typ in plausible_targets
             )
         )
         if prepend_self:
