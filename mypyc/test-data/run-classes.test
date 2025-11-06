@@ -2763,6 +2763,53 @@ def test_buffer_primitive_types() -> None:
     with assertRaises(TypeError):
         r2: ReadBuffer = a4
 
+def test_type_check_args_in_write_functions() -> None:
+    # Test calling wrapper functions with invalid arg types
+    from librt import internal
+    alias: Any = internal
+    w = WriteBuffer()
+    with assertRaises(TypeError):
+        alias.write_str(None, "foo")
+    with assertRaises(TypeError):
+        alias.write_str(w, None)
+    with assertRaises(TypeError):
+        alias.write_bool(None, True)
+    with assertRaises(TypeError):
+        alias.write_bool(w, None)
+    with assertRaises(TypeError):
+        alias.write_bytes(None, b"foo")
+    with assertRaises(TypeError):
+        alias.write_bytes(w, None)
+    with assertRaises(TypeError):
+        alias.write_float(None, 1.5)
+    with assertRaises(TypeError):
+        alias.write_float(w, None)
+    with assertRaises(TypeError):
+        alias.write_int(None, 15)
+    with assertRaises(TypeError):
+        alias.write_int(w, None)
+    with assertRaises(TypeError):
+        alias.write_tag(None, 15)
+    with assertRaises(TypeError):
+        alias.write_tag(w, None)
+
+def test_type_check_buffer_in_read_functions() -> None:
+    # Test calling wrapper functions with invalid arg types
+    from librt import internal
+    alias: Any = internal
+    with assertRaises(TypeError):
+        alias.read_str(None)
+    with assertRaises(TypeError):
+        alias.read_bool(None)
+    with assertRaises(TypeError):
+        alias.read_bytes(None)
+    with assertRaises(TypeError):
+        alias.read_float(None)
+    with assertRaises(TypeError):
+        alias.read_int(None)
+    with assertRaises(TypeError):
+        alias.read_tag(None)
+
 def test_buffer_roundtrip() -> None:
     b: WriteBuffer | ReadBuffer
     b = WriteBuffer()
