@@ -87,9 +87,11 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         t.ret_type.accept(self)
         t.fallback.accept(self)
 
+        if t.original_self_type is not None:
+            t.original_self_type.accept(self)
+
         if t.type_guard is not None:
             t.type_guard.accept(self)
-
         if t.type_is is not None:
             t.type_is.accept(self)
 

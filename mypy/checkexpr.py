@@ -2916,7 +2916,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # If we have a selftype overload, it should contribute to `any_causes_overload_ambiguity`
         # check. Pretend that we're checking `Foo.func(instance, ...)` instead of
         # `instance.func(...)`.
-        p_object_type = get_proper_type(object_type) if object_type is not None else None
 
         def is_trivial_self(t: CallableType) -> bool:
             if isinstance(t.definition, FuncDef):
@@ -2926,8 +2925,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return False
 
         prepend_self = (
-            isinstance(p_object_type, Instance)
-            and has_any_type(p_object_type)
+            object_type is not None
+            and has_any_type(object_type)
             and any(
                 typ.is_bound and typ.original_self_type is not None and not is_trivial_self(typ)
                 for typ in plausible_targets
@@ -2952,16 +2951,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 if prepend_self:
                     param = typ.original_self_type
                     assert param is not None, "Overload bound only partially?"
-                    assert isinstance(p_object_type, Instance)
-                    param = expand_type_by_instance(param, p_object_type)
+                    typ = typ.copy_modified(
+                        arg_types=[param] + typ.arg_types,
+                        arg_kinds=[ARG_POS] + typ.arg_kinds,
+                        arg_names=[None, *typ.arg_names],
+                        is_bound=False,
+                        original_self_type=None,
+                    )
                     ret_type, infer_type = self.check_call(
-                        callee=typ.copy_modified(
-                            arg_types=[param] + typ.arg_types,
-                            arg_kinds=[ARG_POS] + typ.arg_kinds,
-                            arg_names=[None, *typ.arg_names],
-                            is_bound=False,
-                            original_self_type=None,
-                        ),
+                        callee=typ,
                         args=args,
                         arg_kinds=arg_kinds,
                         arg_names=arg_names,

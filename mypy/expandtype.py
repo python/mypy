@@ -381,6 +381,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     arg_kinds=t.arg_kinds[:-2] + repl.arg_kinds,
                     arg_names=t.arg_names[:-2] + repl.arg_names,
                     ret_type=t.ret_type.accept(self),
+                    original_self_type=(
+                        t.original_self_type.accept(self)
+                        if t.original_self_type is not None
+                        else None
+                    ),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
                     type_is=(t.type_is.accept(self) if t.type_is is not None else None),
                     imprecise_arg_kinds=(t.imprecise_arg_kinds or repl.imprecise_arg_kinds),
@@ -420,6 +425,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         expanded = t.copy_modified(
             arg_types=arg_types,
             ret_type=t.ret_type.accept(self),
+            original_self_type=(
+                t.original_self_type.accept(self) if t.original_self_type is not None else None
+            ),
             type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
             type_is=(t.type_is.accept(self) if t.type_is is not None else None),
         )
