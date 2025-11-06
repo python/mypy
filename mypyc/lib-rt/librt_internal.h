@@ -2,7 +2,7 @@
 #define LIBRT_INTERNAL_H
 
 #define LIBRT_INTERNAL_ABI_VERSION 1
-#define LIBRT_INTERNAL_API_LEN 17
+#define LIBRT_INTERNAL_API_LEN 19
 
 #ifdef LIBRT_INTERNAL_MODULE
 
@@ -25,6 +25,8 @@ static int NativeInternal_ABI_Version(void);
 static char write_bytes_internal(PyObject *data, PyObject *value);
 static PyObject *read_bytes_internal(PyObject *data);
 static uint8_t cache_version_internal(void);
+static PyTypeObject *ReadBuffer_type_internal(void);
+static PyTypeObject *WriteBuffer_type_internal(void);
 
 #else
 
@@ -47,6 +49,8 @@ static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN];
 #define write_bytes_internal (*(char (*)(PyObject *source, PyObject *value)) NativeInternal_API[14])
 #define read_bytes_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[15])
 #define cache_version_internal (*(uint8_t (*)(void)) NativeInternal_API[16])
+#define ReadBuffer_type_internal (*(PyTypeObject* (*)(void)) NativeInternal_API[17])
+#define WriteBuffer_type_internal (*(PyTypeObject* (*)(void)) NativeInternal_API[18])
 
 static int
 import_librt_internal(void)
@@ -67,4 +71,13 @@ import_librt_internal(void)
 }
 
 #endif
+
+static inline bool CPyReadBuffer_Check(PyObject *obj) {
+    return Py_TYPE(obj) == ReadBuffer_type_internal();
+}
+
+static inline bool CPyWriteBuffer_Check(PyObject *obj) {
+    return Py_TYPE(obj) == WriteBuffer_type_internal();
+}
+
 #endif  // LIBRT_INTERNAL_H

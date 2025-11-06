@@ -929,6 +929,16 @@ cache_version(PyObject *self, PyObject *Py_UNUSED(ignored)) {
     return PyLong_FromLong(cache_version_internal());
 }
 
+static PyTypeObject *
+ReadBuffer_type_internal(void) {
+    return &ReadBufferType;  // Return borrowed reference
+}
+
+static PyTypeObject *
+WriteBuffer_type_internal(void) {
+    return &WriteBufferType;  // Return borrowed reference
+};
+
 static PyMethodDef librt_internal_module_methods[] = {
     {"write_bool", (PyCFunction)write_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a bool")},
     {"read_bool", (PyCFunction)read_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a bool")},
@@ -986,6 +996,8 @@ librt_internal_module_exec(PyObject *m)
         (void *)write_bytes_internal,
         (void *)read_bytes_internal,
         (void *)cache_version_internal,
+        (void *)ReadBuffer_type_internal,
+        (void *)WriteBuffer_type_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "librt.internal._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
