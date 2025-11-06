@@ -5002,27 +5002,27 @@ CLASS_DEF: Final[Tag] = 60
 SYMBOL_TABLE_NODE: Final[Tag] = 61
 
 
-def read_symbol(data: Buffer) -> mypy.nodes.SymbolNode:
+def read_symbol(data: Buffer) -> SymbolNode:
     tag = read_tag(data)
     # The branches here are ordered manually by type "popularity".
     if tag == VAR:
-        return mypy.nodes.Var.read(data)
+        return Var.read(data)
     if tag == FUNC_DEF:
-        return mypy.nodes.FuncDef.read(data)
+        return FuncDef.read(data)
     if tag == DECORATOR:
-        return mypy.nodes.Decorator.read(data)
+        return Decorator.read(data)
     if tag == TYPE_INFO:
-        return mypy.nodes.TypeInfo.read(data)
+        return TypeInfo.read(data)
     if tag == OVERLOADED_FUNC_DEF:
-        return mypy.nodes.OverloadedFuncDef.read(data)
+        return OverloadedFuncDef.read(data)
     if tag == TYPE_VAR_EXPR:
-        return mypy.nodes.TypeVarExpr.read(data)
+        return TypeVarExpr.read(data)
     if tag == TYPE_ALIAS:
-        return mypy.nodes.TypeAlias.read(data)
+        return TypeAlias.read(data)
     if tag == PARAM_SPEC_EXPR:
-        return mypy.nodes.ParamSpecExpr.read(data)
+        return ParamSpecExpr.read(data)
     if tag == TYPE_VAR_TUPLE_EXPR:
-        return mypy.nodes.TypeVarTupleExpr.read(data)
+        return TypeVarTupleExpr.read(data)
     assert False, f"Unknown symbol tag {tag}"
 
 

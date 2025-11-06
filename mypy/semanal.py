@@ -451,6 +451,7 @@ class SemanticAnalyzer(
         incomplete_namespaces: set[str],
         errors: Errors,
         plugin: Plugin,
+        import_map: dict[str, set[str]],
     ) -> None:
         """Construct semantic analyzer.
 
@@ -483,6 +484,7 @@ class SemanticAnalyzer(
         self.loop_depth = [0]
         self.errors = errors
         self.modules = modules
+        self.import_map = import_map
         self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
         self.missing_names = [set()]
@@ -533,6 +535,16 @@ class SemanticAnalyzer(
         self.type_expression_parse_count: int = 0  # Total try_parse_as_type_expression calls
         self.type_expression_full_parse_success_count: int = 0  # Successful full parses
         self.type_expression_full_parse_failure_count: int = 0  # Failed full parses
+
+        # Imports of submodules transitively visible from given module.
+        # This is needed to support patterns like this
+        #   [a.py]
+        #     import b
+        #     import foo
+        #     foo.bar  # <- this should work even if bar is not re-exported in foo
+        #   [b.py]
+        #     import foo.bar
+        self.transitive_submodule_imports: dict[str, set[str]] = {}
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -6687,7 +6699,7 @@ class SemanticAnalyzer(
         sym = names.get(name)
         if not sym:
             fullname = module + "." + name
-            if fullname in self.modules:
+            if fullname in self.modules and self.is_visible_import(module, fullname):
                 sym = SymbolTableNode(GDEF, self.modules[fullname])
             elif self.is_incomplete_namespace(module):
                 self.record_incomplete_ref()
@@ -6705,6 +6717,40 @@ class SemanticAnalyzer(
         elif sym.module_hidden:
             sym = None
         return sym
+
+    def is_visible_import(self, base_id: str, id: str) -> bool:
+        if id in self.import_map[self.cur_mod_id]:
+            # Fast path: module is imported locally.
+            return True
+        if base_id not in self.transitive_submodule_imports:
+            # This is a performance optimization for a common pattern. If one module
+            # in a codebase uses import numpy as np; np.foo.bar, then it is likely that
+            # other modules use similar pattern as well. So we pre-compute transitive
+            # dependencies for np, to avoid possible duplicate work in the future.
+            self.add_transitive_submodule_imports(base_id)
+        if self.cur_mod_id not in self.transitive_submodule_imports:
+            self.add_transitive_submodule_imports(self.cur_mod_id)
+        return id in self.transitive_submodule_imports[self.cur_mod_id]
+
+    def add_transitive_submodule_imports(self, mod_id: str) -> None:
+        if mod_id not in self.import_map:
+            return
+        todo = self.import_map[mod_id]
+        seen = {mod_id}
+        result = {mod_id}
+        while todo:
+            dep = todo.pop()
+            if dep in seen:
+                continue
+            seen.add(dep)
+            if "." in dep:
+                result.add(dep)
+            if dep in self.transitive_submodule_imports:
+                result |= self.transitive_submodule_imports[dep]
+                continue
+            if dep in self.import_map:
+                todo |= self.import_map[dep]
+        self.transitive_submodule_imports[mod_id] = result
 
     def is_missing_module(self, module: str) -> bool:
         return module in self.missing_modules
