@@ -3266,12 +3266,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 lvalue, None, rvalue, "=", pre_check=True
             )
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue, rvalue)
-            (
-                lvalue_type,
-                override_rvalue_type,
-                should_return,
-                skip_simple_assignment,
-            ) = self.try_resolve_partial_type_from_assignment(lvalue, lvalue_type, rvalue, "=")
+            (lvalue_type, override_rvalue_type, should_return, skip_simple_assignment) = (
+                self.try_resolve_partial_type_from_assignment(lvalue, lvalue_type, rvalue, "=")
+            )
             if should_return:
                 return
             # If we're assigning to __getattr__ or similar methods, check that the signature is
@@ -4760,9 +4757,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # None initializers preserve the partial None type.
                 return lvalue_type, rvalue_type, True, True
 
-            if is_valid_inferred_type(
-                rvalue_type, self.options, is_lvalue_final=var.is_final
-            ):
+            if is_valid_inferred_type(rvalue_type, self.options, is_lvalue_final=var.is_final):
                 partial_types = self.find_partial_types(var)
                 if partial_types is None:
                     return lvalue_type, rvalue_type, False, True
@@ -4857,11 +4852,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if partial_types is None:
             return
         typename = type_info.fullname
-        if typename not in (
-            "builtins.dict",
-            "collections.OrderedDict",
-            "collections.defaultdict",
-        ):
+        if typename not in ("builtins.dict", "collections.OrderedDict", "collections.defaultdict"):
             return
         # TODO: Don't infer things twice.
         key_type = self.expr_checker.accept(lvalue.index)
@@ -5101,12 +5092,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             lvalue_type = self.expr_checker.visit_member_expr(s.lvalue, True)
         else:
             lvalue_type = self.expr_checker.accept(s.lvalue)
-        (
-            resolved_lvalue_type,
-            _,
-            should_return,
-            _,
-        ) = self.try_resolve_partial_type_from_assignment(s.lvalue, lvalue_type, s.rvalue, s.op)
+        (resolved_lvalue_type, _, should_return, _) = (
+            self.try_resolve_partial_type_from_assignment(s.lvalue, lvalue_type, s.rvalue, s.op)
+        )
         if resolved_lvalue_type is not None:
             lvalue_type = resolved_lvalue_type
         if should_return:
