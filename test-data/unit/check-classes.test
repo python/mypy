@@ -585,6 +585,58 @@ class B(A):
     @dec
     def f(self) -> int: pass
 
+[case testOverrideWithDecoratorReturningCallable]
+from typing import Any, Callable, TypeVar
+
+class Base:
+    def get(self, a: str) -> None: ...
+
+def dec(fn: Any) -> Callable[[Any, int], None]: ...
+
+class Derived(Base):
+    @dec
+    def get(self) -> None: ...  # E: Argument 1 of "get" is incompatible with supertype "Base"; supertype defines the argument type as "str" \
+                                # N: This violates the Liskov substitution principle \
+                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+[builtins fixtures/tuple.pyi]
+
+[case testOverrideWithDecoratorReturningCallable2]
+# flags: --pretty
+from typing import Any, Callable, TypeVar
+
+_C = TypeVar("_C", bound=Callable[..., Any])
+
+def infer_signature(f: _C) -> Callable[[Any], _C]: ...
+
+class Base:
+    def get(self, a: str, b: str, c: str) -> None: ...
+    def post(self, a: str, b: str) -> None: ...
+
+# Third argument incompatible
+def get(self, a: str, b: str, c: int) -> None: ...
+
+# Second argument incompatible - still should not map to **kwargs
+def post(self, a: str, b: int) -> None: ...
+
+class Derived(Base):
+    @infer_signature(get)
+    def get(self, *args: Any, **kwargs: Any) -> None: ...
+
+    @infer_signature(post)
+    def post(self, *args: Any, **kwargs: Any) -> None: ...
+[builtins fixtures/tuple.pyi]
+[out]
+main:20: error: Argument 3 of "get" is incompatible with supertype "Base"; supertype defines the argument type as "str"
+        def get(self, *args: Any, **kwargs: Any) -> None: ...
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:20: note: This violates the Liskov substitution principle
+main:20: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:23: error: Argument 2 of "post" is incompatible with supertype "Base"; supertype defines the argument type as "str"
+        def post(self, *args: Any, **kwargs: Any) -> None: ...
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:23: note: This violates the Liskov substitution principle
+main:23: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
 [case testOverrideWithDecoratorReturningInstance]
 def dec(f) -> str: pass
 
