@@ -1431,16 +1431,6 @@ def validate_meta(
     t0 = time.time()
     bazel = manager.options.bazel
     assert path is not None, "Internal error: meta was provided without a path"
-    if not manager.options.skip_cache_mtime_checks:
-        # Check data_file; assume if its mtime matches it's good.
-        try:
-            data_mtime = manager.getmtime(meta.data_file)
-        except OSError:
-            manager.log(f"Metadata abandoned for {id}: failed to stat data_file")
-            return None
-        if data_mtime != meta.data_mtime:
-            manager.log(f"Metadata abandoned for {id}: data cache is modified")
-            return None
 
     if bazel:
         # Normalize path under bazel to make sure it isn't absolute
@@ -2108,7 +2098,7 @@ class State:
         if data is None:
             return False
 
-        if not self.options.bazel and self.meta.data_mtime != 0:
+        if not self.manager.options.skip_cache_mtime_checks and self.meta.data_mtime != 0:
             # A lot of time might have passed since we have loaded meta.
             # If the mtime is inconsistent, we should discard the cache entry.
             # We do this **after** reading the file: if avoids the race condition.
