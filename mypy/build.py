@@ -2108,9 +2108,15 @@ class State:
             # We do this **after** reading the file: if avoids the race condition.
             # Discarding is safe, we'll just reprocess everything if someone wrote
             # to that file since we have read from it.
-            actual_mtime = self.manager.getmtime(self.meta.data_file)
+            try:
+                actual_mtime = self.manager.getmtime(self.meta.data_file)
+            except OSError:
+                self.manager.log(f"Cache data abandoned for {self.id}: failed to stat data_file")
+                return False
             if actual_mtime != self.meta.data_mtime:
-                self.manager.log(f"Discarding {self.meta.data_file}: too fresh")
+                self.manager.log(
+                    f"Cache data abandoned for {self.id}: inconsistent data_file mtime"
+                )
                 return False
 
         t0 = time.time()
