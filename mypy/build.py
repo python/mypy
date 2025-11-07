@@ -2106,7 +2106,18 @@ class State:
                 self.meta.data_file, self.manager, "Load tree ", "Could not load tree: "
             )
         if data is None:
-            return
+            return False
+
+        if not self.options.bazel and self.meta.data_mtime != 0:
+            # A lot of time might have passed since we have loaded meta.
+            # If the mtime is inconsistent, we should discard the cache entry.
+            # We do this **after** reading the file: if avoids the race condition.
+            # Discarding is safe, we'll just reprocess everything if someone wrote
+            # to that file since we have read from it.
+            actual_mtime = self.manager.getmtime(self.meta.data_file)
+            if actual_mtime != self.meta.data_mtime:
+                self.manager.log(f"Discarding {self.meta.data_file}: too fresh")
+                return False
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
@@ -2120,6 +2131,7 @@ class State:
         if not temporary:
             self.manager.modules[self.id] = self.tree
             self.manager.add_stats(fresh_trees=1)
+        return True
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -3390,20 +3402,24 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_INDIRECT
     return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
 
 
-def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManager) -> None:
+def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManager) -> bool:
     """Process the modules in one group of modules from their cached data.
 
     This can be used to process an SCC of modules. This involves loading the tree (i.e.
     module symbol tables) from cache file and then fixing cross-references in the symbols.
     """
     t0 = time.time()
-    for id in modules:
-        graph[id].load_tree()
+    for i, id in enumerate(modules):
+        if not graph[id].load_tree():
+            for id in modules[i:]:
+                graph[id].tree = None
+            return False
     t1 = time.time()
     for id in modules:
         graph[id].fix_cross_refs()
     t2 = time.time()
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
+    return True
 
 
 def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
@@ -3441,7 +3457,8 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
             gc.disable()
         for prev_scc in fresh_sccs_to_load:
             manager.done_sccs.add(prev_scc.id)
-            process_fresh_modules(graph, sorted(prev_scc.mod_ids), manager)
+            if not process_fresh_modules(graph, sorted(prev_scc.mod_ids), manager):
+                process_stale_scc(graph, prev_scc, manager)
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
