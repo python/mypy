@@ -3311,7 +3311,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 # Partial type can't be final, so strip any literal values.
                                 rvalue_type = remove_instance_last_known_values(rvalue_type)
                                 inferred_type = make_simplified_union([rvalue_type, NoneType()])
-                                self.binder.put(lvalue, inferred_type)
                                 self.set_inferred_type(var, lvalue, inferred_type)
                             else:
                                 var.type = None
@@ -3374,7 +3373,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 break
                         if has_if_ancestor:
                             lvalue_type = make_optional_type(lvalue_type)
-                            self.binder.put(lvalue, lvalue_type)
                             self.set_inferred_type(lvalue.node, lvalue, lvalue_type)
 
                     rvalue_type, lvalue_type = self.check_simple_assignment(
