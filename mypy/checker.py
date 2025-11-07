@@ -2581,7 +2581,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         if (
                             isinstance(node, FuncDef)
                             and not node.is_property
-                            and not node.is_decorated
+                            and (
+                                not node.is_decorated  # fast path
+                                # allow trivial decorators like @classmethod and @override
+                                or not (sym := node.info.get(node.name))
+                                or not isinstance(sym.node, Decorator)
+                                or not sym.node.decorators
+                            )
                         ):
                             # If there's any decorator, we can no longer map arguments 1:1 reliably.
                             arg_node = node.arguments[i + override.bound()]
