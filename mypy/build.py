@@ -2083,7 +2083,11 @@ class State:
     def load_fine_grained_deps(self) -> dict[str, set[str]]:
         return self.manager.load_fine_grained_deps(self.id)
 
-    def load_tree(self, temporary: bool = False) -> None:
+    def load_tree(self, temporary: bool = False) -> bool:
+        """Load the cached tree.
+
+        Returns True if the load was successful, False otherwise.
+        """
         assert (
             self.meta is not None
         ), "Internal error: this method must be called only for cached modules"
