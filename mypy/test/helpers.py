@@ -444,6 +444,8 @@ def check_test_output_files(
             if testcase.suite.native_sep and os.path.sep == "\\":
                 normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
             normalized_output = normalize_error_messages(normalized_output)
+        if os.path.basename(testcase.file) == "reports.test":
+            normalized_output = normalize_report_meta(normalized_output)
         assert_string_arrays_equal(
             expected_content.splitlines(),
             normalized_output,
@@ -465,6 +467,13 @@ def normalize_file_output(content: list[str], current_abs_path: str) -> list[str
     result = [re.sub(r"\b" + re.escape(base_version) + r"\b", "$VERSION", x) for x in result]
     result = [timestamp_regex.sub("$TIMESTAMP", x) for x in result]
     return result
+
+
+def normalize_report_meta(content: list[str]) -> list[str]:
+    # libxml 2.15 and newer emits the "modern" version of this <meta> element.
+    # Normalize the old style to look the same.
+    html_meta = '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
+    return ['<meta charset="UTF-8">' if x == html_meta else x for x in content]
 
 
 def find_test_files(pattern: str, exclude: list[str] | None = None) -> list[str]:
