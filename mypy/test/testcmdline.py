@@ -10,6 +10,8 @@ import os
 import re
 import subprocess
 import sys
+from types import ModuleType
+from typing import Optional
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -19,8 +21,9 @@ from mypy.test.helpers import (
     normalize_error_messages,
 )
 
+lxml: Optional[ModuleType] #lxml is an optional dependency
 try:
-    import lxml  # type: ignore[import-untyped]
+    import lxml
 except ImportError:
     lxml = None
 
