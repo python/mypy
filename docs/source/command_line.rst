@@ -1242,7 +1242,7 @@ Miscellaneous
     <https://en.wikipedia.org/wiki/CI/CD>`_, as it will make your
     dependencies less reproducible. Instead, you should require and
     install type dependencies like you would any other (test) dependency,
-    eg by using an dependency section in your `pyproject.toml
+    such as by using a dependency section in your `pyproject.toml
     <https://packaging.python.org/en/latest/guides/writing-pyproject-toml/>`_.
 
     .. note::
