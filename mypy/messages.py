@@ -1123,7 +1123,6 @@ class MessageBuilder:
                 context,
                 code=code,
             )
-
         self.note(f"Possible overload variant{plural_s(len(overload.items))}:", context, code=code)
         for item in overload.items:
             self.note(pretty_callable(item, self.options), context, offset=4, code=code)
@@ -3015,7 +3014,14 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             if s:
                 s = ", " + s
             s = first_arg + s
-        s = f"{tp.name.split()[0]}({s})"  # skip "of Class" part
+        if (
+            isinstance(definition, FuncDef)
+            and hasattr(definition, "name")
+            and definition.name == "__init__"
+        ):
+            s = f"{definition.name}({s})"
+        else:
+            s = f"{tp.name.split()[0]}({s})"  # skip "of Class" part
     else:
         s = f"({s})"
 
