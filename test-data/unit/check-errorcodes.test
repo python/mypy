@@ -550,9 +550,12 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-# Note: it was too difficult for me to figure out how to test [import-untyped] here,
-# (ideally, it would!)
-# but testNamespacePkgWStubs does test that, anyway.
+-- Note: it was too difficult for me to figure out how to test [import-untyped] here,
+-- (ideally, it would!)
+-- but testNamespacePkgWStubs does test that, anyway.
+-- TODO: can this be done? The specific error message is
+-- Skipping analyzing "no_py_typed": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+-- which apparently was never tested for non-namespace packages before...
 from defusedxml import xyz  # E: Library stubs not installed for "defusedxml"  [import-untyped-stubs-available] \
                             # N: Hint: "python3 -m pip install types-defusedxml" \
                             # N: (or run "mypy --install-types" to install all missing stub packages)
