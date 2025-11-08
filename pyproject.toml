@@ -65,10 +65,8 @@ python2 = []
 reports = ["lxml"]
 install-types = ["pip"]
 faster-cache = ["orjson"]
-dev = [
-  "pip-tools", # Not strictly needed for building per se, but pip-compile from this package is needed if you want to update the requirement files. (Word on the street is you can also use uv pip compile instead.)
-  "pip<24.3" # Needed to update the requirement files correctly with pip-tools ay ay ay https://github.com/jazzband/pip-tools/issues/2131
-]
+# Not strictly needed for building per se, but pip-compile from this package is needed if you want to update the requirement files. (Word on the street is you can also use uv pip compile instead.):
+dev = ["pip-tools>=7.5.1"]
 
 [project.urls]
 Homepage = "https://www.mypy-lang.org/"
