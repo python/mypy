@@ -394,7 +394,7 @@ to your mypy command to install all known missing stubs:
     mypy --install-types
 
 This is slower than explicitly installing stubs, since it effectively
-runs mypy twice -- the first time to find the missing stubs, and
+runs mypy twice — the first time to find the missing stubs, and
 the second time to type check your code properly after mypy has
 installed the stubs. It also can make controlling stub versions harder,
 resulting in less reproducible type checking — it might even install
