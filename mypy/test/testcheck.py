@@ -27,7 +27,7 @@ from mypy.test.helpers import (
 )
 from mypy.test.update_data import update_testcase_output
 
-lxml: Optional[ModuleType] #lxml is an optional dependency
+lxml: Optional[ModuleType]  # lxml is an optional dependency
 try:
     import lxml
 except ImportError:

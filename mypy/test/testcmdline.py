@@ -21,7 +21,7 @@ from mypy.test.helpers import (
     normalize_error_messages,
 )
 
-lxml: Optional[ModuleType] #lxml is an optional dependency
+lxml: Optional[ModuleType]  # lxml is an optional dependency
 try:
     import lxml
 except ImportError:

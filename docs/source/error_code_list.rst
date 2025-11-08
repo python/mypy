@@ -670,7 +670,7 @@ Check for an issue with imports [import]
 
 Mypy generates an error if it can't resolve an `import` statement.
 This is a parent error code of `import-not-found`, `import-untyped`,
-and `import-untyped-stubs-available`
+and `import-untyped-stubs-available`.
 
 See :ref:`ignore-missing-imports` for how to work around these errors.
 
