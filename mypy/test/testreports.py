@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import textwrap
 from types import ModuleType
-from typing import Optional
 
 from mypy.report import CoberturaPackage, get_line_rate
 from mypy.test.helpers import Suite, assert_equal
 
-lxml: Optional[ModuleType]  # lxml is an optional dependency
+lxml: ModuleType | None  # lxml is an optional dependency
 try:
     import lxml
 except ImportError:

@@ -8,7 +8,6 @@ import sys
 import tempfile
 from pathlib import Path
 from types import ModuleType
-from typing import Optional
 
 from mypy import build
 from mypy.errors import CompileError
@@ -27,7 +26,7 @@ from mypy.test.helpers import (
 )
 from mypy.test.update_data import update_testcase_output
 
-lxml: Optional[ModuleType]  # lxml is an optional dependency
+lxml: ModuleType | None  # lxml is an optional dependency
 try:
     import lxml
 except ImportError:
