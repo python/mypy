@@ -65,8 +65,10 @@ python2 = []
 reports = ["lxml"]
 install-types = ["pip"]
 faster-cache = ["orjson"]
-# Not strictly needed for building per se, but pip-compile from this package is needed if you want to update the requirement files. (Word on the street is you can also use uv pip compile instead.):
+
+[dependency-groups]
 dev = [
+  # Not strictly needed for building per se, but pip-compile from this package is needed if you want to update the requirement files. (Word on the street is you can also use uv pip compile instead.):
   "pip-tools>=7.5.1",
   "pip<25.3", # workaround for this problem until its fix gets released: https://github.com/jazzband/pip-tools/pull/2253
 ]
