@@ -1238,8 +1238,8 @@ Miscellaneous
     stubs at the end of the run, but only if any missing modules were
     detected.
 
-    It is not recommended to use this option in `CI/CD
-    <https://en.wikipedia.org/wiki/CI/CD>`_, as it will make your
+    It is not recommended to use this option in Continuous Integration
+    / Continuous Delivery (CI/CD), as it will make your
     dependencies less reproducible. Instead, you should require and
     install type dependencies like you would any other (test) dependency,
     such as by using a dependency section in your `pyproject.toml
@@ -1266,8 +1266,7 @@ Miscellaneous
    is performed.
 
    It is not recommended to use ``--install-types --non-interactive``
-   in `CI/CD <https://en.wikipedia.org/wiki/CI/CD>`_; see the other
-   flag for more details.
+   in CI/CD; see the other flag for more details.
 
 .. option:: --junit-xml JUNIT_XML_OUTPUT_FILE
 
