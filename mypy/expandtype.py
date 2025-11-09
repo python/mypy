@@ -313,7 +313,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         required_posargs = required_prefix
         optional_posargs: list[Type] = []
         for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
-            if kind.is_positional() and name is None:
+            if kind == ArgKind.ARG_POS and name is None:
                 if optional_posargs:
                     # May happen following Unpack expansion without kinds correction
                     required_posargs += optional_posargs
