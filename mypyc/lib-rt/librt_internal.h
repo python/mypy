@@ -64,7 +64,7 @@ import_librt_internal(void)
         return -1;
     memcpy(NativeInternal_API, capsule, sizeof(NativeInternal_API));
     if (NativeInternal_ABI_Version() != LIBRT_INTERNAL_ABI_VERSION) {
-        char err[64];
+        char err[128];
         snprintf(err, sizeof(err), "ABI version conflict for librt.internal, expected %d, found %d",
             LIBRT_INTERNAL_ABI_VERSION,
             NativeInternal_ABI_Version()
