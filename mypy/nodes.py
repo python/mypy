@@ -28,8 +28,9 @@ from mypy.cache import (
     LIST_STR,
     LITERAL_COMPLEX,
     LITERAL_NONE,
-    Buffer,
+    ReadBuffer,
     Tag,
+    WriteBuffer,
     read_bool,
     read_int,
     read_int_list,
@@ -285,11 +286,11 @@ class SymbolNode(Node):
             return method(data)
         raise NotImplementedError(f"unexpected .class {classname}")
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
 
     @classmethod
-    def read(cls, data: Buffer) -> SymbolNode:
+    def read(cls, data: ReadBuffer) -> SymbolNode:
         raise NotImplementedError(f"Cannot deserialize {cls.__name__} instance")
 
 
@@ -441,7 +442,7 @@ class MypyFile(SymbolNode):
         tree.future_import_flags = set(data["future_import_flags"])
         return tree
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, MYPY_FILE)
         write_str(data, self._fullname)
         self.names.write(data, self._fullname)
@@ -452,7 +453,7 @@ class MypyFile(SymbolNode):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> MypyFile:
+    def read(cls, data: ReadBuffer) -> MypyFile:
         assert read_tag(data) == MYPY_FILE
         tree = MypyFile([], [])
         tree._fullname = read_str(data)
@@ -737,7 +738,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         # NOTE: res.info will be set in the fixup phase.
         return res
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, OVERLOADED_FUNC_DEF)
         write_tag(data, LIST_GEN)
         write_int_bare(data, len(self.items))
@@ -755,7 +756,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> OverloadedFuncDef:
+    def read(cls, data: ReadBuffer) -> OverloadedFuncDef:
         assert read_tag(data) == LIST_GEN
         res = OverloadedFuncDef([read_overload_part(data) for _ in range(read_int_bare(data))])
         typ = mypy.types.read_type_opt(data)
@@ -1052,7 +1053,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         del ret.min_args
         return ret
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, FUNC_DEF)
         write_str(data, self._name)
         mypy.types.write_type_opt(data, self.type)
@@ -1070,7 +1071,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> FuncDef:
+    def read(cls, data: ReadBuffer) -> FuncDef:
         name = read_str(data)
         typ: mypy.types.FunctionLike | None = None
         tag = read_tag(data)
@@ -1168,7 +1169,7 @@ class Decorator(SymbolNode, Statement):
         dec.is_overload = data["is_overload"]
         return dec
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, DECORATOR)
         self.func.write(data)
         self.var.write(data)
@@ -1176,7 +1177,7 @@ class Decorator(SymbolNode, Statement):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> Decorator:
+    def read(cls, data: ReadBuffer) -> Decorator:
         assert read_tag(data) == FUNC_DEF
         func = FuncDef.read(data)
         assert read_tag(data) == VAR
@@ -1362,7 +1363,7 @@ class Var(SymbolNode):
         v.final_value = data.get("final_value")
         return v
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, VAR)
         write_str(data, self._name)
         mypy.types.write_type_opt(data, self.type)
@@ -1373,7 +1374,7 @@ class Var(SymbolNode):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> Var:
+    def read(cls, data: ReadBuffer) -> Var:
         name = read_str(data)
         typ = mypy.types.read_type_opt(data)
         v = Var(name, typ)
@@ -1504,7 +1505,7 @@ class ClassDef(Statement):
         res.fullname = data["fullname"]
         return res
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, CLASS_DEF)
         write_str(data, self.name)
         mypy.types.write_type_list(data, self.type_vars)
@@ -1512,7 +1513,7 @@ class ClassDef(Statement):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> ClassDef:
+    def read(cls, data: ReadBuffer) -> ClassDef:
         res = ClassDef(read_str(data), Block([]), mypy.types.read_type_var_likes(data))
         res.fullname = read_str(data)
         assert read_tag(data) == END_TAG
@@ -2975,7 +2976,7 @@ class TypeVarExpr(TypeVarLikeExpr):
             data["variance"],
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_VAR_EXPR)
         write_str(data, self._name)
         write_str(data, self._fullname)
@@ -2986,7 +2987,7 @@ class TypeVarExpr(TypeVarLikeExpr):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> TypeVarExpr:
+    def read(cls, data: ReadBuffer) -> TypeVarExpr:
         ret = TypeVarExpr(
             read_str(data),
             read_str(data),
@@ -3028,7 +3029,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
             data["variance"],
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, PARAM_SPEC_EXPR)
         write_str(data, self._name)
         write_str(data, self._fullname)
@@ -3038,7 +3039,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> ParamSpecExpr:
+    def read(cls, data: ReadBuffer) -> ParamSpecExpr:
         ret = ParamSpecExpr(
             read_str(data),
             read_str(data),
@@ -3099,7 +3100,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             data["variance"],
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_VAR_TUPLE_EXPR)
         self.tuple_fallback.write(data)
         write_str(data, self._name)
@@ -3110,7 +3111,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> TypeVarTupleExpr:
+    def read(cls, data: ReadBuffer) -> TypeVarTupleExpr:
         assert read_tag(data) == mypy.types.INSTANCE
         fallback = mypy.types.Instance.read(data)
         ret = TypeVarTupleExpr(
@@ -3994,7 +3995,7 @@ class TypeInfo(SymbolNode):
         ti.deprecated = data.get("deprecated")
         return ti
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_INFO)
         self.names.write(data, self.fullname)
         self.defn.write(data)
@@ -4028,7 +4029,7 @@ class TypeInfo(SymbolNode):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> TypeInfo:
+    def read(cls, data: ReadBuffer) -> TypeInfo:
         names = SymbolTable.read(data)
         assert read_tag(data) == CLASS_DEF
         defn = ClassDef.read(data)
@@ -4363,7 +4364,7 @@ class TypeAlias(SymbolNode):
             python_3_12_type_alias=python_3_12_type_alias,
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_ALIAS)
         write_str(data, self._fullname)
         write_str(data, self.module)
@@ -4375,7 +4376,7 @@ class TypeAlias(SymbolNode):
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> TypeAlias:
+    def read(cls, data: ReadBuffer) -> TypeAlias:
         fullname = read_str(data)
         module = read_str(data)
         target = mypy.types.read_type(data)
@@ -4652,7 +4653,7 @@ class SymbolTableNode:
             stnode.plugin_generated = data["plugin_generated"]
         return stnode
 
-    def write(self, data: Buffer, prefix: str, name: str) -> None:
+    def write(self, data: WriteBuffer, prefix: str, name: str) -> None:
         write_tag(data, SYMBOL_TABLE_NODE)
         write_int(data, self.kind)
         write_bool(data, self.module_hidden)
@@ -4684,7 +4685,7 @@ class SymbolTableNode:
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> SymbolTableNode:
+    def read(cls, data: ReadBuffer) -> SymbolTableNode:
         assert read_tag(data) == SYMBOL_TABLE_NODE
         sym = SymbolTableNode(read_int(data), None)
         sym.module_hidden = read_bool(data)
@@ -4750,7 +4751,7 @@ class SymbolTable(dict[str, SymbolTableNode]):
                 st[key] = SymbolTableNode.deserialize(value)
         return st
 
-    def write(self, data: Buffer, fullname: str) -> None:
+    def write(self, data: WriteBuffer, fullname: str) -> None:
         size = 0
         for key, value in self.items():
             # Skip __builtins__: it's a reference to the builtins
@@ -4771,7 +4772,7 @@ class SymbolTable(dict[str, SymbolTableNode]):
             value.write(data, fullname, key)
 
     @classmethod
-    def read(cls, data: Buffer) -> SymbolTable:
+    def read(cls, data: ReadBuffer) -> SymbolTable:
         assert read_tag(data) == DICT_STR_GEN
         size = read_int_bare(data)
         return SymbolTable(
@@ -4828,7 +4829,7 @@ class DataclassTransformSpec:
             field_specifiers=tuple(data.get("field_specifiers", [])),
         )
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_tag(data, DT_SPEC)
         write_bool(data, self.eq_default)
         write_bool(data, self.order_default)
@@ -4838,7 +4839,7 @@ class DataclassTransformSpec:
         write_tag(data, END_TAG)
 
     @classmethod
-    def read(cls, data: Buffer) -> DataclassTransformSpec:
+    def read(cls, data: ReadBuffer) -> DataclassTransformSpec:
         ret = DataclassTransformSpec(
             eq_default=read_bool(data),
             order_default=read_bool(data),
@@ -4859,12 +4860,12 @@ def set_flags(node: Node, flags: list[str]) -> None:
         setattr(node, name, True)
 
 
-def write_flags(data: Buffer, node: SymbolNode, flags: list[str]) -> None:
+def write_flags(data: WriteBuffer, node: SymbolNode, flags: list[str]) -> None:
     for flag in flags:
         write_bool(data, getattr(node, flag))
 
 
-def read_flags(data: Buffer, node: SymbolNode, flags: list[str]) -> None:
+def read_flags(data: ReadBuffer, node: SymbolNode, flags: list[str]) -> None:
     for flag in flags:
         if read_bool(data):
             setattr(node, flag, True)
@@ -5002,7 +5003,7 @@ CLASS_DEF: Final[Tag] = 60
 SYMBOL_TABLE_NODE: Final[Tag] = 61
 
 
-def read_symbol(data: Buffer) -> SymbolNode:
+def read_symbol(data: ReadBuffer) -> SymbolNode:
     tag = read_tag(data)
     # The branches here are ordered manually by type "popularity".
     if tag == VAR:
@@ -5026,7 +5027,7 @@ def read_symbol(data: Buffer) -> SymbolNode:
     assert False, f"Unknown symbol tag {tag}"
 
 
-def read_overload_part(data: Buffer, tag: Tag | None = None) -> OverloadPart:
+def read_overload_part(data: ReadBuffer, tag: Tag | None = None) -> OverloadPart:
     if tag is None:
         tag = read_tag(data)
     if tag == DECORATOR:

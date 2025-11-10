@@ -31,7 +31,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 from librt.internal import cache_version
 
 import mypy.semanal_main
-from mypy.cache import CACHE_VERSION, Buffer, CacheMeta
+from mypy.cache import CACHE_VERSION, CacheMeta, ReadBuffer, WriteBuffer
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -1343,7 +1343,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
         if meta[0] != cache_version() or meta[1] != CACHE_VERSION:
             manager.log(f"Metadata abandoned for {id}: incompatible cache format")
             return None
-        data_io = Buffer(meta[2:])
+        data_io = ReadBuffer(meta[2:])
         m = CacheMeta.read(data_io, data_file)
     else:
         m = CacheMeta.deserialize(meta, data_file)
@@ -1594,7 +1594,7 @@ def write_cache(
 
     # Serialize data and analyze interface
     if manager.options.fixed_format_cache:
-        data_io = Buffer()
+        data_io = WriteBuffer()
         tree.write(data_io)
         data_bytes = data_io.getvalue()
     else:
@@ -1678,7 +1678,7 @@ def write_cache_meta(meta: CacheMeta, manager: BuildManager, meta_file: str) -> 
     # Write meta cache file
     metastore = manager.metastore
     if manager.options.fixed_format_cache:
-        data_io = Buffer()
+        data_io = WriteBuffer()
         meta.write(data_io)
         # Prefix with both low- and high-level cache format versions for future validation.
         # TODO: switch to something like librt.internal.write_byte() if this is slow.
@@ -2111,7 +2111,7 @@ class State:
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
         if isinstance(data, bytes):
-            data_io = Buffer(data)
+            data_io = ReadBuffer(data)
             self.tree = MypyFile.read(data_io)
         else:
             self.tree = MypyFile.deserialize(data)
@@ -2484,7 +2484,7 @@ class State:
             if self.options.debug_serialize:
                 try:
                     if self.manager.options.fixed_format_cache:
-                        data = Buffer()
+                        data = WriteBuffer()
                         self.tree.write(data)
                     else:
                         self.tree.serialize()
