@@ -67,7 +67,7 @@ import_librt_internal(void)
         char err[64];
         snprintf(err, sizeof(err), "ABI version conflict for librt.internal, expected %d, found %d",
             LIBRT_INTERNAL_ABI_VERSION,
-            NativeInternal_ABI_Version(),
+            NativeInternal_ABI_Version()
         );
         PyErr_SetString(PyExc_ValueError, err);
         return -1;
