@@ -1455,6 +1455,7 @@ from mypy_extensions import u8
 from librt.internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag, write_bytes, read_bytes,
+    cache_version,
 )
 
 Tag = u8
@@ -1476,6 +1477,7 @@ def foo() -> None:
     z = read_float(b)
     t = read_int(b)
     u = read_tag(b)
+    v = cache_version()
 [out]
 def foo():
     r0, b :: librt.internal.Buffer
@@ -1490,7 +1492,7 @@ def foo():
     r13, y :: bool
     r14, z :: float
     r15, t :: int
-    r16, u :: u8
+    r16, u, r17, v :: u8
 L0:
     r0 = Buffer_internal_empty()
     b = r0
@@ -1517,6 +1519,8 @@ L0:
     t = r15
     r16 = read_tag_internal(b)
     u = r16
+    r17 = cache_version_internal()
+    v = r17
     return 1
 
 [case testEnumFastPath]

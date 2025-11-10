@@ -2715,7 +2715,8 @@ from typing import Final
 from mypy_extensions import u8
 from librt.internal import (
     Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
-    write_int, read_int, write_tag, read_tag, write_bytes, read_bytes
+    write_int, read_int, write_tag, read_tag, write_bytes, read_bytes,
+    cache_version,
 )
 
 Tag = u8
@@ -2724,6 +2725,7 @@ TAG_B: Final[Tag] = 255
 TAG_SPECIAL: Final[Tag] = 239
 
 def test_buffer_basic() -> None:
+    assert cache_version() == 0
     b = Buffer(b"foo")
     assert b.getvalue() == b"foo"
 
@@ -2736,9 +2738,11 @@ def test_buffer_roundtrip() -> None:
     write_bytes(b, b"bar")
     write_bytes(b, b"bar" * 100)
     write_bytes(b, b"")
-    write_bytes(b, b"a" * 127)
-    write_bytes(b, b"a" * 128)
+    write_bytes(b, b"a" * 117)
+    write_bytes(b, b"a" * 118)
     write_float(b, 0.1)
+    write_float(b, -1.0)
+    write_float(b, -113.0)
     write_int(b, 0)
     write_int(b, 1)
     write_tag(b, TAG_A)
@@ -2749,8 +2753,9 @@ def test_buffer_roundtrip() -> None:
     write_int(b, 255)
     write_int(b, -1)
     write_int(b, -255)
-    write_int(b, 1234512344)
-    write_int(b, 1234512345)
+    write_int(b, 536860911)
+    write_int(b, 536860912)
+    write_int(b, 1234567891)
 
     b = Buffer(b.getvalue())
     assert read_str(b) == "foo"
@@ -2760,9 +2765,11 @@ def test_buffer_roundtrip() -> None:
     assert read_bytes(b) == b"bar"
     assert read_bytes(b) == b"bar" * 100
     assert read_bytes(b) == b""
-    assert read_bytes(b) == b"a" * 127
-    assert read_bytes(b) == b"a" * 128
+    assert read_bytes(b) == b"a" * 117
+    assert read_bytes(b) == b"a" * 118
     assert read_float(b) == 0.1
+    assert read_float(b) == -1.0
+    assert read_float(b) == -113.0
     assert read_int(b) == 0
     assert read_int(b) == 1
     assert read_tag(b) == TAG_A
@@ -2773,8 +2780,9 @@ def test_buffer_roundtrip() -> None:
     assert read_int(b) == 255
     assert read_int(b) == -1
     assert read_int(b) == -255
-    assert read_int(b) == 1234512344
-    assert read_int(b) == 1234512345
+    assert read_int(b) == 536860911
+    assert read_int(b) == 536860912
+    assert read_int(b) == 1234567891
 
 def test_buffer_int_size() -> None:
     for i in (-10, -9, 0, 116, 117):
@@ -2783,18 +2791,64 @@ def test_buffer_int_size() -> None:
         assert len(b.getvalue()) == 1
         b = Buffer(b.getvalue())
         assert read_int(b) == i
-    for i in (-12345, -12344, -11, 118, 12344, 12345):
+    for i in (-100, -11, 118, 12344, 16283):
         b = Buffer()
         write_int(b, i)
-        assert len(b.getvalue()) <= 9  # sizeof(size_t) + 1
+        assert len(b.getvalue()) == 2
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+    for i in (-10000, 16284, 123456789):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) == 4
         b = Buffer(b.getvalue())
         assert read_int(b) == i
 
+def test_buffer_int_powers() -> None:
+    # 0, 1, 2 are tested above
+    for p in range(2, 200):
+        b = Buffer()
+        write_int(b, 1 << p)
+        write_int(b, (1 << p) - 1)
+        write_int(b, -1 << p)
+        write_int(b, (-1 << p) + 1)
+        b = Buffer(b.getvalue())
+        assert read_int(b) == 1 << p
+        assert read_int(b) == (1 << p) - 1
+        assert read_int(b) == -1 << p
+        assert read_int(b) == (-1 << p) + 1
+
+def test_positive_long_int_serialized_bytes() -> None:
+    b = Buffer()
+    n = 0x123456789ab
+    write_int(b, n)
+    x = b.getvalue()
+    # Two prefix bytes, followed by little endian encoded integer in variable-length format
+    assert x == b"\x0f\x2c\xab\x89\x67\x45\x23\x01"
+    b = Buffer(x)
+    assert read_int(b) == n
+
+def test_negative_long_int_serialized_bytes() -> None:
+    b = Buffer()
+    n = -0x123456789abcde
+    write_int(b, n)
+    x = b.getvalue()
+    assert x == b"\x0f\x32\xde\xbc\x9a\x78\x56\x34\x12"
+    b = Buffer(x)
+    assert read_int(b) == n
+
 def test_buffer_str_size() -> None:
-    for s in ("", "a", "a" * 127):
+    for s in ("", "a", "a" * 117):
         b = Buffer()
         write_str(b, s)
         assert len(b.getvalue()) == len(s) + 1
+        b = Buffer(b.getvalue())
+        assert read_str(b) == s
+
+    for s in ("a" * 118, "a" * 16283):
+        b = Buffer()
+        write_str(b, s)
+        assert len(b.getvalue()) == len(s) + 2
         b = Buffer(b.getvalue())
         assert read_str(b) == s
 
@@ -2805,6 +2859,9 @@ test_buffer_basic()
 test_buffer_roundtrip()
 test_buffer_int_size()
 test_buffer_str_size()
+test_buffer_int_powers()
+test_positive_long_int_serialized_bytes()
+test_negative_long_int_serialized_bytes()
 
 def test_buffer_basic_interpreted() -> None:
     b = Buffer(b"foo")
@@ -2819,8 +2876,8 @@ def test_buffer_roundtrip_interpreted() -> None:
     write_bytes(b, b"bar")
     write_bytes(b, b"bar" * 100)
     write_bytes(b, b"")
-    write_bytes(b, b"a" * 127)
-    write_bytes(b, b"a" * 128)
+    write_bytes(b, b"a" * 117)
+    write_bytes(b, b"a" * 118)
     write_float(b, 0.1)
     write_int(b, 0)
     write_int(b, 1)
@@ -2832,8 +2889,9 @@ def test_buffer_roundtrip_interpreted() -> None:
     write_int(b, 255)
     write_int(b, -1)
     write_int(b, -255)
-    write_int(b, 1234512344)
-    write_int(b, 1234512345)
+    write_int(b, 536860911)
+    write_int(b, 536860912)
+    write_int(b, 1234567891)
 
     b = Buffer(b.getvalue())
     assert read_str(b) == "foo"
@@ -2843,8 +2901,8 @@ def test_buffer_roundtrip_interpreted() -> None:
     assert read_bytes(b) == b"bar"
     assert read_bytes(b) == b"bar" * 100
     assert read_bytes(b) == b""
-    assert read_bytes(b) == b"a" * 127
-    assert read_bytes(b) == b"a" * 128
+    assert read_bytes(b) == b"a" * 117
+    assert read_bytes(b) == b"a" * 118
     assert read_float(b) == 0.1
     assert read_int(b) == 0
     assert read_int(b) == 1
@@ -2856,8 +2914,9 @@ def test_buffer_roundtrip_interpreted() -> None:
     assert read_int(b) == 255
     assert read_int(b) == -1
     assert read_int(b) == -255
-    assert read_int(b) == 1234512344
-    assert read_int(b) == 1234512345
+    assert read_int(b) == 536860911
+    assert read_int(b) == 536860912
+    assert read_int(b) == 1234567891
 
 def test_buffer_int_size_interpreted() -> None:
     for i in (-10, -9, 0, 116, 117):
@@ -2866,18 +2925,41 @@ def test_buffer_int_size_interpreted() -> None:
         assert len(b.getvalue()) == 1
         b = Buffer(b.getvalue())
         assert read_int(b) == i
-    for i in (-12345, -12344, -11, 118, 12344, 12345):
+    for i in (-100, -11, 118, 12344, 16283):
         b = Buffer()
         write_int(b, i)
-        assert len(b.getvalue()) <= 9  # sizeof(size_t) + 1
+        assert len(b.getvalue()) == 2
+        b = Buffer(b.getvalue())
+        assert read_int(b) == i
+    for i in (-10000, 16284, 123456789):
+        b = Buffer()
+        write_int(b, i)
+        assert len(b.getvalue()) == 4
         b = Buffer(b.getvalue())
         assert read_int(b) == i
 
+def test_buffer_int_powers_interpreted() -> None:
+    # 0, 1, 2 are tested above
+    for p in range(2, 9):
+        b = Buffer()
+        write_int(b, 1 << p)
+        write_int(b, -1 << p)
+        b = Buffer(b.getvalue())
+        assert read_int(b) == 1 << p
+        assert read_int(b) == -1 << p
+
 def test_buffer_str_size_interpreted() -> None:
-    for s in ("", "a", "a" * 127):
+    for s in ("", "a", "a" * 117):
         b = Buffer()
         write_str(b, s)
         assert len(b.getvalue()) == len(s) + 1
+        b = Buffer(b.getvalue())
+        assert read_str(b) == s
+
+    for s in ("a" * 118, "a" * 16283):
+        b = Buffer()
+        write_str(b, s)
+        assert len(b.getvalue()) == len(s) + 2
         b = Buffer(b.getvalue())
         assert read_str(b) == s
 
@@ -2885,6 +2967,7 @@ test_buffer_basic_interpreted()
 test_buffer_roundtrip_interpreted()
 test_buffer_int_size_interpreted()
 test_buffer_str_size_interpreted()
+test_buffer_int_powers_interpreted()
 
 [case testBufferEmpty_librt_internal]
 from librt.internal import Buffer, write_int, read_int
@@ -5276,3 +5359,71 @@ def test_deletable_attr() -> None:
     assert i.del_counter == 1
 
 test_deletable_attr()
+
+[case testBufferCorruptedData_librt_internal]
+from librt.internal import (
+    Buffer, read_bool, read_str, read_float, read_int, read_tag, read_bytes
+)
+from random import randbytes
+
+def check(data: bytes) -> None:
+    b = Buffer(data)
+    try:
+        while True:
+            read_bool(b)
+    except ValueError:
+        pass
+    b = Buffer(data)
+    read_tag(b)  # Always succeeds
+    try:
+        while True:
+            read_int(b)
+    except ValueError:
+        pass
+    b = Buffer(data)
+    try:
+        while True:
+            read_str(b)
+    except ValueError:
+        pass
+    b = Buffer(data)
+    try:
+        while True:
+            read_bytes(b)
+    except ValueError:
+        pass
+    b = Buffer(data)
+    try:
+        while True:
+            read_float(b)
+    except ValueError:
+        pass
+
+import time
+
+def test_read_corrupted_data() -> None:
+    # Test various deterministic byte sequences (1 to 4 bytes).
+    t0 = time.time()
+    for a in range(256):
+        check(bytes([a]))
+    for a in range(256):
+        for b in range(256):
+            check(bytes([a, b]))
+    for a in range(32):
+        for b in range(48):
+            for c in range(48):
+                check(bytes([a, b, c]))
+    for a in range(32):
+        for b in (0, 5, 17, 34):
+            for c in (0, 5, 17, 34):
+                for d in (0, 5, 17, 34):
+                    check(bytes([a, b, c, d]))
+    # Also test some random data.
+    for i in range(20000):
+        data = randbytes(16)
+        try:
+            check(data)
+        except BaseException as e:
+            print("RANDOMIZED TEST FAILURE -- please open an issue with the following context:")
+            print(">>>", e, data)
+            raise

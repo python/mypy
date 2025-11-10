@@ -28,8 +28,10 @@ from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Final, NoReturn, TextIO, TypedDict
 from typing_extensions import TypeAlias as _TypeAlias
 
+from librt.internal import cache_version
+
 import mypy.semanal_main
-from mypy.cache import Buffer, CacheMeta
+from mypy.cache import CACHE_VERSION, Buffer, CacheMeta
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
@@ -601,6 +603,7 @@ class BuildManager:
         self.options = options
         self.version_id = version_id
         self.modules: dict[str, MypyFile] = {}
+        self.import_map: dict[str, set[str]] = {}
         self.missing_modules: set[str] = set()
         self.fg_deps_meta: dict[str, FgDepMeta] = {}
         # fg_deps holds the dependencies of every module that has been
@@ -621,6 +624,7 @@ class BuildManager:
             self.incomplete_namespaces,
             self.errors,
             self.plugin,
+            self.import_map,
         )
         self.all_types: dict[Expression, Type] = {}  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
@@ -740,6 +744,26 @@ class BuildManager:
         else:
             return int(self.metastore.getmtime(path))
 
+    def correct_rel_imp(self, file: MypyFile, imp: ImportFrom | ImportAll) -> str:
+        """Function to correct for relative imports."""
+        file_id = file.fullname
+        rel = imp.relative
+        if rel == 0:
+            return imp.id
+        if os.path.basename(file.path).startswith("__init__."):
+            rel -= 1
+        if rel != 0:
+            file_id = ".".join(file_id.split(".")[:-rel])
+        new_id = file_id + "." + imp.id if imp.id else file_id
+
+        if not new_id:
+            self.errors.set_file(file.path, file.name, self.options)
+            self.errors.report(
+                imp.line, 0, "No parent module -- cannot perform relative import", blocker=True
+            )
+
+        return new_id
+
     def all_imported_modules_in_file(self, file: MypyFile) -> list[tuple[int, str, int]]:
         """Find all reachable import statements in a file.
 
@@ -748,27 +772,6 @@ class BuildManager:
 
         Can generate blocking errors on bogus relative imports.
         """
-
-        def correct_rel_imp(imp: ImportFrom | ImportAll) -> str:
-            """Function to correct for relative imports."""
-            file_id = file.fullname
-            rel = imp.relative
-            if rel == 0:
-                return imp.id
-            if os.path.basename(file.path).startswith("__init__."):
-                rel -= 1
-            if rel != 0:
-                file_id = ".".join(file_id.split(".")[:-rel])
-            new_id = file_id + "." + imp.id if imp.id else file_id
-
-            if not new_id:
-                self.errors.set_file(file.path, file.name, self.options)
-                self.errors.report(
-                    imp.line, 0, "No parent module -- cannot perform relative import", blocker=True
-                )
-
-            return new_id
-
         res: list[tuple[int, str, int]] = []
         for imp in file.imports:
             if not imp.is_unreachable:
@@ -783,7 +786,7 @@ class BuildManager:
                             ancestors.append(part)
                             res.append((ancestor_pri, ".".join(ancestors), imp.line))
                 elif isinstance(imp, ImportFrom):
-                    cur_id = correct_rel_imp(imp)
+                    cur_id = self.correct_rel_imp(file, imp)
                     all_are_submodules = True
                     # Also add any imported names that are submodules.
                     pri = import_priority(imp, PRI_MED)
@@ -803,7 +806,7 @@ class BuildManager:
                     res.append((pri, cur_id, imp.line))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
-                    res.append((pri, correct_rel_imp(imp), imp.line))
+                    res.append((pri, self.correct_rel_imp(file, imp), imp.line))
 
         # Sort such that module (e.g. foo.bar.baz) comes before its ancestors (e.g. foo
         # and foo.bar) so that, if FindModuleCache finds the target module in a
@@ -1334,12 +1337,18 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
             return None
     t1 = time.time()
     if isinstance(meta, bytes):
-        data_io = Buffer(meta)
+        # If either low-level buffer format or high-level cache layout changed, we
+        # cannot use the cache files, even with --skip-version-check.
+        # TODO: switch to something like librt.internal.read_byte() if this is slow.
+        if meta[0] != cache_version() or meta[1] != CACHE_VERSION:
+            manager.log(f"Metadata abandoned for {id}: incompatible cache format")
+            return None
+        data_io = Buffer(meta[2:])
         m = CacheMeta.read(data_io, data_file)
     else:
         m = CacheMeta.deserialize(meta, data_file)
     if m is None:
-        manager.log(f"Metadata abandoned for {id}: attributes are missing")
+        manager.log(f"Metadata abandoned for {id}: cannot deserialize data")
         return None
     t2 = time.time()
     manager.add_stats(
@@ -1671,7 +1680,9 @@ def write_cache_meta(meta: CacheMeta, manager: BuildManager, meta_file: str) -> 
     if manager.options.fixed_format_cache:
         data_io = Buffer()
         meta.write(data_io)
-        meta_bytes = data_io.getvalue()
+        # Prefix with both low- and high-level cache format versions for future validation.
+        # TODO: switch to something like librt.internal.write_byte() if this is slow.
+        meta_bytes = bytes([cache_version(), CACHE_VERSION]) + data_io.getvalue()
     else:
         meta_dict = meta.serialize()
         meta_bytes = json_dumps(meta_dict, manager.options.debug_cache)
@@ -2887,6 +2898,9 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         manager.log("Redoing load_graph without cache because too much was missing")
         manager.cache_enabled = False
         graph = load_graph(sources, manager)
+
+    for id in graph:
+        manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
 
     t1 = time.time()
     manager.add_stats(

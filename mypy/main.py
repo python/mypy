@@ -256,10 +256,19 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
         if "\n" in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
-        else:
-            # Assume we want argparse to manage wrapping, indenting, and
-            # formatting the text for us.
-            return argparse.HelpFormatter._fill_text(self, text, width, indent)
+        # Format the text like argparse, but overflow rather than
+        # breaking long words (like URLs)
+        text = self._whitespace_matcher.sub(" ", text).strip()
+        import textwrap
+
+        return textwrap.fill(
+            text,
+            width,
+            initial_indent=indent,
+            subsequent_indent=indent,
+            break_on_hyphens=False,
+            break_long_words=False,
+        )
 
 
 # Define pairs of flag prefixes with inverse meaning.
@@ -544,10 +553,15 @@ def define_options(
     #     Feel free to add subsequent sentences that add additional details.
     # 3.  If you cannot think of a meaningful description for a new group, omit it entirely.
     #     (E.g. see the "miscellaneous" sections).
-    # 4.  The group description should end with a period (unless the last line is a link). If you
-    #     do end the group description with a link, omit the 'http://' prefix. (Some links are too
-    #     long and will break up into multiple lines if we include that prefix, so for consistency
-    #     we omit the prefix on all links.)
+    # 4.  The text of the group description should end with a period, optionally followed
+    #     by a documentation reference (URL).
+    # 5.  If you want to include a documentation reference, place it at the end of the
+    #     description. Feel free to open with a brief reference ("See also:", "For more
+    #     information:", etc.), followed by a space, then the entire URL including
+    #     "https://" scheme identifier and fragment ("#some-target-heading"), if any.
+    #     Do not end with a period (or any other characters not part of the URL).
+    #     URLs longer than the available terminal width will overflow without being
+    #     broken apart. This facilitates both URL detection, and manual copy-pasting.
 
     general_group = parser.add_argument_group(title="Optional arguments")
     general_group.add_argument(
@@ -1034,7 +1048,7 @@ def define_options(
         "Mypy caches type information about modules into a cache to "
         "let you speed up future invocations of mypy. Also see "
         "mypy's daemon mode: "
-        "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
+        "https://mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
     )
     incremental_group.add_argument(
         "-i", "--incremental", action="store_true", help=argparse.SUPPRESS
@@ -1278,7 +1292,7 @@ def define_options(
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
-        "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
+        "https://mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
     )
     add_invertible_flag(
         "--explicit-package-bases",
