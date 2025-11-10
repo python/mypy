@@ -2941,6 +2941,9 @@ from native import *
 
 test_buffer_basic()
 test_buffer_grow()
+test_buffer_primitive_types()
+test_type_check_args_in_write_functions()
+test_type_check_buffer_in_read_functions()
 test_buffer_roundtrip()
 test_buffer_int_size()
 test_buffer_str_size()
