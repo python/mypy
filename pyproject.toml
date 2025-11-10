@@ -9,7 +9,7 @@ requires = [
     "mypy_extensions>=1.0.0",
     "pathspec>=0.9.0",
     "tomli>=1.1.0; python_version<'3.11'",
-    "librt>=0.3.0",
+    "librt>=0.4.0",
     # the following is from build-requirements.txt
     "types-psutil",
     "types-setuptools",
@@ -54,7 +54,7 @@ dependencies = [
   "mypy_extensions>=1.0.0",
   "pathspec>=0.9.0",
   "tomli>=1.1.0; python_version<'3.11'",
-  "librt>=0.3.0",
+  "librt>=0.4.0",
 ]
 dynamic = ["version"]
 
@@ -107,7 +107,7 @@ mypyc = [
 
 [tool.black]
 line-length = 99
-target-version = ["py39", "py310", "py311", "py312", "py313"]
+target-version = ["py39", "py310", "py311", "py312", "py313", "py314"]
 skip-magic-trailing-comma = true
 force-exclude = '''
 ^/mypy/typeshed|

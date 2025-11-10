@@ -162,7 +162,7 @@ def takes_callable_int(f: Callable[..., int]) -> None: ...
 def takes_callable_str(f: Callable[..., str]) -> None: ...
 takes_callable_int(p1)
 takes_callable_str(p1)  # E: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "Callable[..., str]" \
-                        # N: "partial[int].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], int]"
+                        # N: "partial[int].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> int"
 
 p2 = functools.partial(foo, 1)
 p2("a")  # OK
@@ -386,7 +386,7 @@ q: partial[bool] = partial(generic, resulting_type=str)  # E: Argument "resultin
 
 pc: Callable[..., str] = partial(generic, resulting_type=str)
 qc: Callable[..., bool] = partial(generic, resulting_type=str)  # E: Incompatible types in assignment (expression has type "partial[str]", variable has type "Callable[..., bool]") \
-                                                                # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
+                                                                # N: "partial[str].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> str"
 [builtins fixtures/tuple.pyi]
 
 [case testFunctoolsPartialNestedPartial]
@@ -697,11 +697,11 @@ use_int_callable(partial(func_b, b=""))
 use_func_callable(partial(func_b, b=""))
 use_int_callable(partial(func_c, b=""))
 use_func_callable(partial(func_c, b=""))
-use_int_callable(partial(func_fn, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Callable[[VarArg(Any), KwArg(Any)], Any]]"; expected "Callable[[int], int]" \
-                                          # N: "partial[Callable[[VarArg(Any), KwArg(Any)], Any]].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Callable[[VarArg(Any), KwArg(Any)], Any]]"
+use_int_callable(partial(func_fn, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[def (*Any, **Any) -> Any]"; expected "Callable[[int], int]" \
+                                          # N: "partial[def (*Any, **Any) -> Any].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> def (*Any, **Any) -> Any"
 use_func_callable(partial(func_fn, b=""))
-use_int_callable(partial(func_fn_unpack, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Callable[[VarArg(Any)], Any]]"; expected "Callable[[int], int]" \
-                                                 # N: "partial[Callable[[VarArg(Any)], Any]].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Callable[[VarArg(Any)], Any]]"
+use_int_callable(partial(func_fn_unpack, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[def (*Any) -> Any]"; expected "Callable[[int], int]" \
+                                                 # N: "partial[def (*Any) -> Any].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> def (*Any) -> Any"
 use_func_callable(partial(func_fn_unpack, b=""))
 
 # But we should not erase typevars that aren't bound by function
@@ -714,7 +714,7 @@ def outer_b(arg: Tb) -> None:
 
     reveal_type(partial(inner, b=""))  # N: Revealed type is "functools.partial[Tb`-1]"
     use_int_callable(partial(inner, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Tb]"; expected "Callable[[int], int]" \
-                                            # N: "partial[Tb].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Tb]"
+                                            # N: "partial[Tb].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> Tb"
 
 def outer_c(arg: Tc) -> None:
 
@@ -724,5 +724,5 @@ def outer_c(arg: Tc) -> None:
     reveal_type(partial(inner, b=""))  # N: Revealed type is "functools.partial[builtins.int]" \
                                        # N: Revealed type is "functools.partial[builtins.str]"
     use_int_callable(partial(inner, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[str]"; expected "Callable[[int], int]" \
-                                            # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
+                                            # N: "partial[str].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> str"
 [builtins fixtures/tuple.pyi]

@@ -21,6 +21,7 @@ static uint8_t read_tag_internal(PyObject *data);
 static int NativeInternal_ABI_Version(void);
 static char write_bytes_internal(PyObject *data, PyObject *value);
 static PyObject *read_bytes_internal(PyObject *data);
+static uint8_t cache_version_internal(void);
 
 #else
 
@@ -42,6 +43,7 @@ static void **NativeInternal_API;
 #define NativeInternal_ABI_Version (*(int (*)(void)) NativeInternal_API[13])
 #define write_bytes_internal (*(char (*)(PyObject *source, PyObject *value)) NativeInternal_API[14])
 #define read_bytes_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[15])
+#define cache_version_internal (*(uint8_t (*)(void)) NativeInternal_API[16])
 
 static int
 import_librt_internal(void)
