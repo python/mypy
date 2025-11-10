@@ -28,6 +28,7 @@ from mypy.cache import (
     LIST_STR,
     LITERAL_COMPLEX,
     LITERAL_NONE,
+    PLUGIN_FLAGS,
     Buffer,
     Tag,
     read_bool,
@@ -4469,6 +4470,57 @@ class PlaceholderNode(SymbolNode):
         return visitor.visit_placeholder_node(self)
 
 
+class PluginFlags:
+    """Checking customization for plugin-generated nodes.
+
+    This class is part of the public API. It can be used with the
+    `mypy.plugins.common.add_*_to_class` family of functions.
+
+    Args:
+        skip_override_checks: Allow this node to be an incompatible override.
+            A node having this flag set to True will not be required to be
+            LSP-compatible with the superclasses of its enclosing class.
+            This is helpful when the plugin generates a precise signature,
+            overriding a fallback signature defined in the base class.
+            This flag does not affect checking overrides *of* this node in
+            further subclasses.
+    """
+
+    def __init__(self, *, skip_override_checks: bool = False) -> None:
+        self.skip_override_checks = skip_override_checks
+
+    @staticmethod
+    def should_skip_override_checks(node: SymbolTableNode) -> bool:
+        if node.plugin_flags is None:
+            return False
+        return node.plugin_flags.skip_override_checks
+
+    def serialize(self) -> JsonDict:
+        data: JsonDict = {".class": "PluginFlags"}
+        if self.skip_override_checks:
+            data["skip_override_checks"] = True
+        return data
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> PluginFlags:
+        flags = PluginFlags()
+        if data.get("skip_override_checks"):
+            flags.skip_override_checks = True
+        return flags
+
+    def write(self, data: Buffer) -> None:
+        write_tag(data, PLUGIN_FLAGS)
+        write_bool(data, self.skip_override_checks)
+        write_tag(data, END_TAG)
+
+    @classmethod
+    def read(cls, data: Buffer) -> PluginFlags:
+        flags = PluginFlags()
+        flags.skip_override_checks = read_bool(data)
+        assert read_tag(data) == END_TAG
+        return flags
+
+
 class SymbolTableNode:
     """Description of a name binding in a symbol table.
 
@@ -4537,6 +4589,7 @@ class SymbolTableNode:
         "cross_ref",
         "implicit",
         "plugin_generated",
+        "plugin_flags",
         "no_serialize",
     )
 
@@ -4549,6 +4602,7 @@ class SymbolTableNode:
         module_hidden: bool = False,
         *,
         plugin_generated: bool = False,
+        plugin_flags: PluginFlags | None = None,
         no_serialize: bool = False,
     ) -> None:
         self.kind = kind
@@ -4558,6 +4612,7 @@ class SymbolTableNode:
         self.module_hidden = module_hidden
         self.cross_ref: str | None = None
         self.plugin_generated = plugin_generated
+        self.plugin_flags = plugin_flags
         self.no_serialize = no_serialize
 
     @property
@@ -4611,6 +4666,8 @@ class SymbolTableNode:
             data["implicit"] = True
         if self.plugin_generated:
             data["plugin_generated"] = True
+        if self.plugin_flags:
+            data["plugin_flags"] = self.plugin_flags.serialize()
         if isinstance(self.node, MypyFile):
             data["cross_ref"] = self.node.fullname
         else:
@@ -4650,6 +4707,8 @@ class SymbolTableNode:
             stnode.implicit = data["implicit"]
         if "plugin_generated" in data:
             stnode.plugin_generated = data["plugin_generated"]
+        if "plugin_flags" in data:
+            stnode.plugin_flags = PluginFlags.deserialize(data["plugin_flags"])
         return stnode
 
     def write(self, data: Buffer, prefix: str, name: str) -> None:
@@ -4681,6 +4740,10 @@ class SymbolTableNode:
         if cross_ref is None:
             assert self.node is not None
             self.node.write(data)
+        if self.plugin_flags is None:
+            write_literal(data, None)
+        else:
+            self.plugin_flags.write(data)
         write_tag(data, END_TAG)
 
     @classmethod
@@ -4696,6 +4759,10 @@ class SymbolTableNode:
             sym.node = read_symbol(data)
         else:
             sym.cross_ref = cross_ref
+        if (tag := read_tag(data)) == PLUGIN_FLAGS:
+            sym.plugin_flags = PluginFlags.read(data)
+        else:
+            assert tag == LITERAL_NONE
         assert read_tag(data) == END_TAG
         return sym
 

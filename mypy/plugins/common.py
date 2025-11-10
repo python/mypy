@@ -20,6 +20,7 @@ from mypy.nodes import (
     Node,
     OverloadedFuncDef,
     PassStmt,
+    PluginFlags,
     RefExpr,
     SymbolTableNode,
     TypeInfo,
@@ -220,6 +221,7 @@ class MethodSpec(NamedTuple):
     return_type: Type
     self_type: Type | None = None
     tvar_defs: list[TypeVarType] | None = None
+    flags: PluginFlags | None = None
 
 
 def add_method_to_class(
@@ -233,6 +235,7 @@ def add_method_to_class(
     tvar_def: list[TypeVarType] | TypeVarType | None = None,
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
+    flags: PluginFlags | None = None,
 ) -> FuncDef | Decorator:
     """Adds a new method to a class definition."""
     _prepare_class_namespace(cls, name)
@@ -244,7 +247,13 @@ def add_method_to_class(
         api,
         cls.info,
         name,
-        MethodSpec(args=args, return_type=return_type, self_type=self_type, tvar_defs=tvar_def),
+        MethodSpec(
+            args=args,
+            return_type=return_type,
+            self_type=self_type,
+            tvar_defs=tvar_def,
+            flags=flags,
+        ),
         is_classmethod=is_classmethod,
         is_staticmethod=is_staticmethod,
     )
@@ -260,6 +269,7 @@ def add_overloaded_method_to_class(
     items: list[MethodSpec],
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
+    flags: PluginFlags | None = None,
 ) -> OverloadedFuncDef:
     """Adds a new overloaded method to a class definition."""
     assert len(items) >= 2, "Overloads must contain at least two cases"
@@ -294,8 +304,7 @@ def add_overloaded_method_to_class(
     overload_def.info = cls.info
     overload_def.is_class = is_classmethod
     overload_def.is_static = is_staticmethod
-    sym = SymbolTableNode(MDEF, overload_def)
-    sym.plugin_generated = True
+    sym = SymbolTableNode(MDEF, overload_def, plugin_generated=True, plugin_flags=flags)
 
     cls.info.names[name] = sym
     cls.info.defn.defs.body.append(overload_def)
@@ -330,7 +339,7 @@ def _add_method_by_spec(
     is_classmethod: bool,
     is_staticmethod: bool,
 ) -> tuple[FuncDef | Decorator, SymbolTableNode]:
-    args, return_type, self_type, tvar_defs = spec
+    args, return_type, self_type, tvar_defs, flags = spec
 
     assert not (
         is_classmethod is True and is_staticmethod is True
@@ -383,8 +392,7 @@ def _add_method_by_spec(
         sym.plugin_generated = True
         return dec, sym
 
-    sym = SymbolTableNode(MDEF, func)
-    sym.plugin_generated = True
+    sym = SymbolTableNode(MDEF, func, plugin_generated=True, plugin_flags=flags)
     return func, sym
 
 
@@ -399,6 +407,7 @@ def add_attribute_to_class(
     fullname: str | None = None,
     is_classvar: bool = False,
     overwrite_existing: bool = False,
+    flags: PluginFlags | None = None,
 ) -> Var:
     """
     Adds a new attribute to a class definition.
@@ -428,7 +437,7 @@ def add_attribute_to_class(
         node._fullname = info.fullname + "." + name
 
     info.names[name] = SymbolTableNode(
-        MDEF, node, plugin_generated=True, no_serialize=no_serialize
+        MDEF, node, plugin_generated=True, no_serialize=no_serialize, plugin_flags=flags
     )
     return node
 

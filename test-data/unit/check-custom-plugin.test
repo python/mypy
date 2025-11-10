@@ -1087,6 +1087,59 @@ plugins=<ROOT>/test-data/unit/plugins/add_method.py
 enable_error_code = explicit-override
 [typing fixtures/typing-override.pyi]
 
+[case testAddMethodPluginExplicitOverrideIgnoreCompat]
+# flags: --python-version 3.12 --config-file tmp/mypy.ini --debug-serialize
+from typing import TypeVar
+
+T = TypeVar('T', bound=type)
+def inject_foo(t: T) -> T:
+    return t
+
+class BaseWithoutFoo:
+    pass
+
+@inject_foo
+class Child1(BaseWithoutFoo): ...
+
+class BaseWithSameFoo:
+    attr: None
+    def meth_ok(self) -> None: ...
+    def meth_bad(self) -> None: ...
+
+@inject_foo
+class Child2(BaseWithSameFoo): ...
+
+class BaseWithOtherFoo:
+    attr: int
+    def meth_ok(self) -> int: ...
+    def meth_bad(self) -> int: ...
+
+# `attr` is not reported because add_attribute_to_class does not generate a statement (yet).
+@inject_foo
+class Child3(BaseWithOtherFoo): ...  # E: Return type "None" of "meth_bad" incompatible with return type "int" in supertype "BaseWithOtherFoo"
+
+@inject_foo
+class ImmediatelyOverridden:
+    attr: int
+    def meth_ok(self) -> int: ...
+    def meth_bad(self) -> int: ...
+
+@inject_foo
+class Original:
+    ...
+class FurtherOverridden(Original):
+    attr: int  # E: Incompatible types in assignment (expression has type "int", base class "Original" defined the type as "None")
+    def meth_ok(self) -> int: ...  # E: Return type "int" of "meth_ok" incompatible with return type "None" in supertype "Original" \
+                                   # E: Method "meth_ok" is not using @override but is overriding a method in class "__main__.Original"
+    def meth_bad(self) -> int: ...  # E: Return type "int" of "meth_bad" incompatible with return type "None" in supertype "Original" \
+                                    # E: Method "meth_bad" is not using @override but is overriding a method in class "__main__.Original"
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_method_ignore_compat.py
+enable_error_code = explicit-override
+[typing fixtures/typing-override.pyi]
+
 [case testCustomErrorCodePlugin]
 # flags: --config-file tmp/mypy.ini  --show-error-codes
 def main() -> int:
