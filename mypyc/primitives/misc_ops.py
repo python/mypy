@@ -333,31 +333,32 @@ set_immortal_op = custom_primitive_op(
     error_kind=ERR_NEVER,
 )
 
-buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.Buffer"]
+write_buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.WriteBuffer"]
+read_buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.ReadBuffer"]
 
-# Buffer(source)
+# ReadBuffer(source)
 function_op(
-    name="librt.internal.Buffer",
+    name="librt.internal.ReadBuffer",
     arg_types=[bytes_rprimitive],
-    return_type=buffer_rprimitive,
-    c_function_name="Buffer_internal",
+    return_type=read_buffer_rprimitive,
+    c_function_name="ReadBuffer_internal",
     error_kind=ERR_MAGIC,
 )
 
-# Buffer()
+# WriteBuffer()
 function_op(
-    name="librt.internal.Buffer",
+    name="librt.internal.WriteBuffer",
     arg_types=[],
-    return_type=buffer_rprimitive,
-    c_function_name="Buffer_internal_empty",
+    return_type=write_buffer_rprimitive,
+    c_function_name="WriteBuffer_internal",
     error_kind=ERR_MAGIC,
 )
 
 method_op(
     name="getvalue",
-    arg_types=[buffer_rprimitive],
+    arg_types=[write_buffer_rprimitive],
     return_type=bytes_rprimitive,
-    c_function_name="Buffer_getvalue_internal",
+    c_function_name="WriteBuffer_getvalue_internal",
     error_kind=ERR_MAGIC,
 )
 

@@ -1,13 +1,16 @@
 #ifndef LIBRT_INTERNAL_H
 #define LIBRT_INTERNAL_H
 
-#define LIBRT_INTERNAL_ABI_VERSION 0
+#define LIBRT_INTERNAL_ABI_VERSION 1
+#define LIBRT_INTERNAL_API_LEN 19
 
 #ifdef LIBRT_INTERNAL_MODULE
 
-static PyObject *Buffer_internal(PyObject *source);
-static PyObject *Buffer_internal_empty(void);
-static PyObject *Buffer_getvalue_internal(PyObject *self);
+static PyObject *ReadBuffer_internal(PyObject *source);
+static PyObject *WriteBuffer_internal(void);
+static PyObject *WriteBuffer_getvalue_internal(PyObject *self);
+static PyObject *ReadBuffer_internal(PyObject *source);
+static PyObject *ReadBuffer_internal_empty(void);
 static char write_bool_internal(PyObject *data, char value);
 static char read_bool_internal(PyObject *data);
 static char write_str_internal(PyObject *data, PyObject *value);
@@ -22,14 +25,16 @@ static int NativeInternal_ABI_Version(void);
 static char write_bytes_internal(PyObject *data, PyObject *value);
 static PyObject *read_bytes_internal(PyObject *data);
 static uint8_t cache_version_internal(void);
+static PyTypeObject *ReadBuffer_type_internal(void);
+static PyTypeObject *WriteBuffer_type_internal(void);
 
 #else
 
-static void **NativeInternal_API;
+static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN];
 
-#define Buffer_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[0])
-#define Buffer_internal_empty (*(PyObject* (*)(void)) NativeInternal_API[1])
-#define Buffer_getvalue_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[2])
+#define ReadBuffer_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[0])
+#define WriteBuffer_internal (*(PyObject* (*)(void)) NativeInternal_API[1])
+#define WriteBuffer_getvalue_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[2])
 #define write_bool_internal (*(char (*)(PyObject *source, char value)) NativeInternal_API[3])
 #define read_bool_internal (*(char (*)(PyObject *source)) NativeInternal_API[4])
 #define write_str_internal (*(char (*)(PyObject *source, PyObject *value)) NativeInternal_API[5])
@@ -44,6 +49,8 @@ static void **NativeInternal_API;
 #define write_bytes_internal (*(char (*)(PyObject *source, PyObject *value)) NativeInternal_API[14])
 #define read_bytes_internal (*(PyObject* (*)(PyObject *source)) NativeInternal_API[15])
 #define cache_version_internal (*(uint8_t (*)(void)) NativeInternal_API[16])
+#define ReadBuffer_type_internal (*(PyTypeObject* (*)(void)) NativeInternal_API[17])
+#define WriteBuffer_type_internal (*(PyTypeObject* (*)(void)) NativeInternal_API[18])
 
 static int
 import_librt_internal(void)
@@ -52,9 +59,10 @@ import_librt_internal(void)
     if (mod == NULL)
         return -1;
     Py_DECREF(mod);  // we import just for the side effect of making the below work.
-    NativeInternal_API = (void **)PyCapsule_Import("librt.internal._C_API", 0);
-    if (NativeInternal_API == NULL)
+    void *capsule = PyCapsule_Import("librt.internal._C_API", 0);
+    if (capsule == NULL)
         return -1;
+    memcpy(NativeInternal_API, capsule, sizeof(NativeInternal_API));
     if (NativeInternal_ABI_Version() != LIBRT_INTERNAL_ABI_VERSION) {
         PyErr_SetString(PyExc_ValueError, "ABI version conflict for librt.internal");
         return -1;
@@ -63,4 +71,13 @@ import_librt_internal(void)
 }
 
 #endif
+
+static inline bool CPyReadBuffer_Check(PyObject *obj) {
+    return Py_TYPE(obj) == ReadBuffer_type_internal();
+}
+
+static inline bool CPyWriteBuffer_Check(PyObject *obj) {
+    return Py_TYPE(obj) == WriteBuffer_type_internal();
+}
+
 #endif  // LIBRT_INTERNAL_H
