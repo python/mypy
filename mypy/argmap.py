@@ -36,7 +36,7 @@ def map_actuals_to_formals(
     The result contains a list of caller argument indexes mapping to each
     callee argument index, indexed by callee index.
 
-    The caller_arg_type argument should evaluate to the type of the actual
+    The actual_arg_type argument should evaluate to the type of the actual
     argument type with the given index.
     """
     nformals = len(formal_kinds)
