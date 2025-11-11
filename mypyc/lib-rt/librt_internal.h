@@ -4,7 +4,7 @@
 // ABI version -- only an exact match is compatible. This will only be changed in
 // very exceptional cases (likely never) due to strict backward compatibility
 // requirements.
-#define LIBRT_INTERNAL_ABI_VERSION 1
+#define LIBRT_INTERNAL_ABI_VERSION 2
 
 // API version -- more recent versions must maintain backward compatibility, i.e.
 // we can add new features but not remove or change existing features (unless
