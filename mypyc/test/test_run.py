@@ -243,13 +243,15 @@ class TestRun(MypycDataSuite):
         # Use _librt_internal to test mypy-specific parts of librt (they have
         # some special-casing in mypyc), for everything else use _librt suffix.
         librt_internal = testcase.name.endswith("_librt_internal")
-        librt = librt_internal or testcase.name.endswith("_librt")
+        librt_base64 = testcase.name.endswith("_librt_base64")
+        librt = testcase.name.endswith("_librt") or "_librt_" in testcase.name
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file,
                 separate=self.separate,
                 strict_dunder_typing=self.strict_dunder_typing,
                 depends_on_librt_internal=librt_internal,
+                depends_on_librt_base64=librt_base64,
             )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,

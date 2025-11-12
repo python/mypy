@@ -1,4 +1,4 @@
-[case testBase64_librt]
+[case testBase64_librt_base64]
 import librt.base64
 #from librt.base64 import b64encode
 
