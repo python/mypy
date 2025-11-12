@@ -870,8 +870,12 @@ class InspectionStubGenerator(BaseStubGenerator):
                 # special case for __hash__
                 continue
             prop_type_name = self.strip_or_import(self.get_type_annotation(value))
-            classvar = self.add_name("typing.ClassVar")
-            static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
+            # Pybind supports native enums now
+            if issubclass(cls, enum.Enum) and attr in cls._member_names_:
+                static_properties.append(f"{self._indent}{attr} = ...")
+            else:
+                classvar = self.add_name("typing.ClassVar")
+                static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
 
         self.dedent()
 
