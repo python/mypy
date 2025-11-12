@@ -235,7 +235,7 @@ The preferred way to annotate the type of `None` is `None`.
 
     # error: NoneType should not be used as a type, please use None instead  [nonetype-type]
     x1: NoneType = None
-    x2: None = None #OK
+    x2: None = None # OK
 
 .. _code-metaclass:
 
