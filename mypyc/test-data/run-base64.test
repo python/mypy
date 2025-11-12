@@ -1,6 +1,13 @@
 [case testBase64_librt_base64]
+from typing import Any
+
 from librt.base64 import b64encode
 
 
-def test_basic() -> None:
+def test_encode_basic() -> None:
     assert b64encode(b"x") == b"eA=="
+
+
+def test_encode_wrapper() -> None:
+    enc: Any = b64encode
+    assert enc(b"x") == b"eA=="

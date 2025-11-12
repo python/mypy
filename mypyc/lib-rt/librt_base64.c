@@ -72,12 +72,16 @@ b64encode_internal(PyObject *obj) {
 }
 
 static PyObject*
-b64encode(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    return 0;
+b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (nargs != 1) {
+        PyErr_SetString(PyExc_TypeError, "b64encode() takes exactly one argument");
+        return 0;
+    }
+    return b64encode_internal(args[0]);
 }
 
 static PyMethodDef librt_base64_module_methods[] = {
-    {"b64encode", (PyCFunction)b64encode, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("Encode bytes-like object using Base64.")},
+    {"b64encode", (PyCFunction)b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes-like object using Base64.")},
     {NULL, NULL, 0, NULL}
 };
 
