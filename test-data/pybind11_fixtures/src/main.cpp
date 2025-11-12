@@ -236,7 +236,7 @@ void bind_demo(py::module& m) {
   py::class_<Point> pyPoint(m, "Point");
   py::enum_<Point::LengthUnit> pyLengthUnit(pyPoint, "LengthUnit");
   py::enum_<Point::AngleUnit> pyAngleUnit(pyPoint, "AngleUnit");
-  py::native_enum<Color>(m, "Color", "enum.Enum")
+  py::native_enum<Color>(m, "Color", "enum.Enum", "Color Enum")
     .value("RED", Color::RED)
     .value("GREEN", Color::GREEN)
     .finalize();

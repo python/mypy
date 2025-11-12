@@ -6,6 +6,7 @@ PI: float
 __version__: str
 
 class Color(enum.Enum):
+    """Color Enum"""
     __new__: ClassVar[Callable] = ...
     GREEN = 1
     RED = 0
