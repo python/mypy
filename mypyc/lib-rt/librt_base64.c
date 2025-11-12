@@ -5,7 +5,7 @@
 
 #ifdef MYPYC_EXPERIMENTAL
 
-// The b64encode_interal is lightly modified from CPython binascii module
+// b64encode_internal below is adapted from the CPython 3.14.0 binascii module
 
 static const unsigned char table_b2a_base64[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
