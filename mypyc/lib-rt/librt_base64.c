@@ -4,7 +4,7 @@
 
 static PyObject *
 b64encode_internal(PyObject *obj) {
-    return 0;
+    return PyBytes_FromStringAndSize("xyz", 3);
 }
 
 static PyObject*
@@ -34,7 +34,7 @@ librt_base64_module_exec(PyObject *m)
     static void *base64_api[LIBRT_BASE64_API_LEN] = {
         (void *)base64_abi_version,
         (void *)base64_api_version,
-        //(void *)b64encode_internal,
+        (void *)b64encode_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)base64_api, "librt.base64._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
