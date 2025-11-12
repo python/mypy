@@ -42,7 +42,10 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-LIBRT_MODULES = [("librt.internal", "librt_internal.c")]
+LIBRT_MODULES = [
+    ("librt.internal", "librt_internal.c"),
+    ("librt.base64", "librt_base64.c"),
+]
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
@@ -495,6 +498,7 @@ def mypycify(
     group_name: str | None = None,
     log_trace: bool = False,
     depends_on_librt_internal: bool = False,
+    depends_on_librt_base64: bool = False,
     install_librt: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
@@ -565,6 +569,7 @@ def mypycify(
         group_name=group_name,
         log_trace=log_trace,
         depends_on_librt_internal=depends_on_librt_internal,
+        depends_on_librt_base64=depends_on_librt_base64,
     )
 
     # Generate all the actual important C code

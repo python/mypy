@@ -1,8 +1,9 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "librt_base64.h"
 
 static PyObject *
-b64encode_internal(PyObject *) {
+b64encode_internal(PyObject *obj) {
     return 0;
 }
 
@@ -18,16 +19,22 @@ static PyMethodDef librt_base64_module_methods[] = {
 
 static int
 base64_abi_version(void) {
-    return 1;
+    return 0;
 }
 
 static int
-librt_internal_module_exec(PyObject *m)
+base64_api_version(void) {
+    return 0;
+}
+
+static int
+librt_base64_module_exec(PyObject *m)
 {
     // Export mypy internal C API, be careful with the order!
-    static void *base64_api[2] = {
+    static void *base64_api[LIBRT_BASE64_API_LEN] = {
         (void *)base64_abi_version,
-        (void *)b64encode_internal,
+        (void *)base64_api_version,
+        //(void *)b64encode_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)base64_api, "librt.base64._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

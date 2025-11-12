@@ -1,8 +1,9 @@
 [case testBase64_librt]
-from librt.internal import read_tag
-from librt.base64 import b64encode
+import librt.base64
+#from librt.base64 import b64encode
 
 
 def test_basic() -> None:
-    print(b64encode(b"x"))
-    assert b64encode(b"x") == b"eA=="
+    assert int() == 1
+    #print(b64encode(b"x"))
+    #assert b64encode(b"x") == b"eA=="

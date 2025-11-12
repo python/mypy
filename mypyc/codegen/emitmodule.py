@@ -604,6 +604,8 @@ class GroupGenerator:
         ext_declarations.emit_line("#include <CPy.h>")
         if self.compiler_options.depends_on_librt_internal:
             ext_declarations.emit_line("#include <librt_internal.h>")
+        if self.compiler_options.depends_on_librt_base64:
+            ext_declarations.emit_line("#include <librt_base64.h>")
 
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
@@ -1032,6 +1034,10 @@ class GroupGenerator:
         emitter.emit_lines(declaration, "{")
         if self.compiler_options.depends_on_librt_internal:
             emitter.emit_line("if (import_librt_internal() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if self.compiler_options.depends_on_librt_base64:
+            emitter.emit_line("if (import_librt_base64() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")
