@@ -224,6 +224,7 @@ The preferred way to annotate the type of `None` is `None`.
 `NoneType` is equivalent, but mypy won't allow it by default.
 
 .. code-block:: python
+
     from types import NoneType
     def f(x: None) -> None:
         reveal_type(x) # note: Revealed type is "None"
