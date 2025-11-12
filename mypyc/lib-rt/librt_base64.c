@@ -3,6 +3,8 @@
 #include "librt_base64.h"
 #include "pythoncapi_compat.h"
 
+#ifdef MYPYC_EXPERIMENTAL
+
 // The b64encode_interal is lightly modified from CPython binascii module
 
 static const unsigned char table_b2a_base64[] =
@@ -85,8 +87,12 @@ b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
     return b64encode_internal(args[0]);
 }
 
+#endif
+
 static PyMethodDef librt_base64_module_methods[] = {
+#ifdef MYPYC_EXPERIMENTAL
     {"b64encode", (PyCFunction)b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes-like object using Base64.")},
+#endif
     {NULL, NULL, 0, NULL}
 };
 
@@ -103,6 +109,7 @@ base64_api_version(void) {
 static int
 librt_base64_module_exec(PyObject *m)
 {
+#ifdef MYPYC_EXPERIMENTAL
     // Export mypy internal C API, be careful with the order!
     static void *base64_api[LIBRT_BASE64_API_LEN] = {
         (void *)base64_abi_version,
@@ -113,6 +120,7 @@ librt_base64_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
+#endif
     return 0;
 }
 

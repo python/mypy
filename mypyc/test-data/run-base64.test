@@ -1,4 +1,4 @@
-[case testBase64_librt_base64]
+[case testAllBase64Features_librt_base64_experimental]
 from typing import Any
 
 from librt.base64 import b64encode
@@ -22,3 +22,10 @@ def test_encode_wrapper() -> None:
 
     with assertRaises(TypeError):
         enc(b"x", b"y")
+
+[case testBase64FeaturesNotAvailableInNonExperimentalBuild_librt_base64]
+# This also ensures librt.base64 can be built without experimental features
+import librt.base64
+
+def test_b64encode_not_available() -> None:
+    assert not hasattr(librt.base64, "b64encode")
