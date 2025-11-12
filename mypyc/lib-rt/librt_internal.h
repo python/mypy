@@ -1,8 +1,19 @@
 #ifndef LIBRT_INTERNAL_H
 #define LIBRT_INTERNAL_H
 
-#define LIBRT_INTERNAL_ABI_VERSION 1
-#define LIBRT_INTERNAL_API_LEN 19
+// ABI version -- only an exact match is compatible. This will only be changed in
+// very exceptional cases (likely never) due to strict backward compatibility
+// requirements.
+#define LIBRT_INTERNAL_ABI_VERSION 2
+
+// API version -- more recent versions must maintain backward compatibility, i.e.
+// we can add new features but not remove or change existing features (unless
+// ABI version is changed, but see the comment above).
+ #define LIBRT_INTERNAL_API_VERSION 0
+
+// Number of functions in the capsule API. If you add a new function, also increase
+// LIBRT_INTERNAL_API_VERSION.
+#define LIBRT_INTERNAL_API_LEN 20
 
 #ifdef LIBRT_INTERNAL_MODULE
 
@@ -27,6 +38,7 @@ static PyObject *read_bytes_internal(PyObject *data);
 static uint8_t cache_version_internal(void);
 static PyTypeObject *ReadBuffer_type_internal(void);
 static PyTypeObject *WriteBuffer_type_internal(void);
+static int NativeInternal_API_Version(void);
 
 #else
 
@@ -51,6 +63,7 @@ static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN];
 #define cache_version_internal (*(uint8_t (*)(void)) NativeInternal_API[16])
 #define ReadBuffer_type_internal (*(PyTypeObject* (*)(void)) NativeInternal_API[17])
 #define WriteBuffer_type_internal (*(PyTypeObject* (*)(void)) NativeInternal_API[18])
+#define NativeInternal_API_Version (*(int (*)(void)) NativeInternal_API[19])
 
 static int
 import_librt_internal(void)
@@ -68,6 +81,16 @@ import_librt_internal(void)
         snprintf(err, sizeof(err), "ABI version conflict for librt.internal, expected %d, found %d",
             LIBRT_INTERNAL_ABI_VERSION,
             NativeInternal_ABI_Version()
+        );
+        PyErr_SetString(PyExc_ValueError, err);
+        return -1;
+    }
+    if (NativeInternal_API_Version() < LIBRT_INTERNAL_API_VERSION) {
+        char err[128];
+        snprintf(err, sizeof(err),
+                 "API version conflict for librt.internal, expected %d or newer, found %d (hint: upgrade librt)",
+            LIBRT_INTERNAL_API_VERSION,
+            NativeInternal_API_Version()
         );
         PyErr_SetString(PyExc_ValueError, err);
         return -1;

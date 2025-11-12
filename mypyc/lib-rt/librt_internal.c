@@ -963,6 +963,11 @@ NativeInternal_ABI_Version(void) {
 }
 
 static int
+NativeInternal_API_Version(void) {
+    return LIBRT_INTERNAL_API_VERSION;
+}
+
+static int
 librt_internal_module_exec(PyObject *m)
 {
     if (PyType_Ready(&ReadBufferType) < 0) {
@@ -999,6 +1004,7 @@ librt_internal_module_exec(PyObject *m)
         (void *)cache_version_internal,
         (void *)ReadBuffer_type_internal,
         (void *)WriteBuffer_type_internal,
+        (void *)NativeInternal_API_Version,
     };
     PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "librt.internal._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
