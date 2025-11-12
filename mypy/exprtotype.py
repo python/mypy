@@ -84,134 +84,24 @@ def expr_to_unanalyzed_type(
     """
     # The `parent` parameter is used in recursive calls to provide context for
     # understanding whether an CallableArgument is ok.
-    name: str | None = None
     if isinstance(expr, NameExpr):
-        name = expr.name
-        if name == "True":
-            return RawExpressionType(True, "builtins.bool", line=expr.line, column=expr.column)
-        elif name == "False":
-            return RawExpressionType(False, "builtins.bool", line=expr.line, column=expr.column)
-        else:
-            return UnboundType(name, line=expr.line, column=expr.column)
+        return _translate_name_expr(expr)
     elif isinstance(expr, MemberExpr):
-        fullname = get_member_expr_fullname(expr)
-        if fullname:
-            return UnboundType(fullname, line=expr.line, column=expr.column)
-        else:
-            raise TypeTranslationError()
+        return _translate_member_expr(expr)
     elif isinstance(expr, IndexExpr):
-        base = expr_to_unanalyzed_type(expr.base, options, allow_new_syntax, expr)
-        if isinstance(base, UnboundType):
-            if base.args:
-                raise TypeTranslationError()
-            if isinstance(expr.index, TupleExpr):
-                args = expr.index.items
-            else:
-                args = [expr.index]
-
-            if isinstance(expr.base, RefExpr):
-                # Check if the type is Annotated[...]. For this we need the fullname,
-                # which must be looked up if the expression hasn't been semantically analyzed.
-                base_fullname = None
-                if lookup_qualified is not None:
-                    sym = lookup_qualified(base.name, expr)
-                    if sym and sym.node:
-                        base_fullname = sym.node.fullname
-                else:
-                    base_fullname = expr.base.fullname
-
-                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES:
-                    # TODO: this is not the optimal solution as we are basically getting rid
-                    # of the Annotation definition and only returning the type information,
-                    # losing all the annotations.
-                    return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
-            base.args = tuple(
-                expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr, allow_unpack=True)
-                for arg in args
-            )
-            if not base.args:
-                base.empty_tuple_index = True
-            return base
-        else:
-            raise TypeTranslationError()
-    elif (
-        isinstance(expr, OpExpr)
-        and expr.op == "|"
-        and ((options.python_version >= (3, 10)) or allow_new_syntax)
-    ):
-        return UnionType(
-            [
-                expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
-                expr_to_unanalyzed_type(expr.right, options, allow_new_syntax),
-            ],
-            uses_pep604_syntax=True,
-        )
+        return _translate_index_expr(expr, options, allow_new_syntax, lookup_qualified)
+    elif isinstance(expr, OpExpr) and expr.op == "|":
+        return _translate_union_op(expr, options, allow_new_syntax)
     elif isinstance(expr, CallExpr) and isinstance(_parent, ListExpr):
-        c = expr.callee
-        names = []
-        # Go through the dotted member expr chain to get the full arg
-        # constructor name to look up
-        while True:
-            if isinstance(c, NameExpr):
-                names.append(c.name)
-                break
-            elif isinstance(c, MemberExpr):
-                names.append(c.name)
-                c = c.expr
-            else:
-                raise TypeTranslationError()
-        arg_const = ".".join(reversed(names))
-
-        # Go through the constructor args to get its name and type.
-        name = None
-        default_type = AnyType(TypeOfAny.unannotated)
-        typ: Type = default_type
-        for i, arg in enumerate(expr.args):
-            if expr.arg_names[i] is not None:
-                if expr.arg_names[i] == "name":
-                    if name is not None:
-                        # Two names
-                        raise TypeTranslationError()
-                    name = _extract_argument_name(arg)
-                    continue
-                elif expr.arg_names[i] == "type":
-                    if typ is not default_type:
-                        # Two types
-                        raise TypeTranslationError()
-                    typ = expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr)
-                    continue
-                else:
-                    raise TypeTranslationError()
-            elif i == 0:
-                typ = expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr)
-            elif i == 1:
-                name = _extract_argument_name(arg)
-            else:
-                raise TypeTranslationError()
-        return CallableArgument(typ, name, arg_const, expr.line, expr.column)
+        return _translate_callable_argument(expr, options, allow_new_syntax)
     elif isinstance(expr, ListExpr):
-        return TypeList(
-            [
-                expr_to_unanalyzed_type(t, options, allow_new_syntax, expr, allow_unpack=True)
-                for t in expr.items
-            ],
-            line=expr.line,
-            column=expr.column,
-        )
+        return _translate_list_expr(expr, options, allow_new_syntax)
     elif isinstance(expr, StrExpr):
         return parse_type_string(expr.value, "builtins.str", expr.line, expr.column)
     elif isinstance(expr, BytesExpr):
         return parse_type_string(expr.value, "builtins.bytes", expr.line, expr.column)
     elif isinstance(expr, UnaryExpr):
-        typ = expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax)
-        if isinstance(typ, RawExpressionType):
-            if isinstance(typ.literal_value, int):
-                if expr.op == "-":
-                    typ.literal_value *= -1
-                    return typ
-                elif expr.op == "+":
-                    return typ
-        raise TypeTranslationError()
+        return _translate_unary_expr(expr, options, allow_new_syntax)
     elif isinstance(expr, IntExpr):
         return RawExpressionType(expr.value, "builtins.int", line=expr.line, column=expr.column)
     elif isinstance(expr, FloatExpr):
@@ -228,25 +118,194 @@ def expr_to_unanalyzed_type(
             expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax), from_star_syntax=True
         )
     elif isinstance(expr, DictExpr):
-        if not expr.items:
+        return _translate_dict_expr(expr, options, allow_new_syntax)
+    else:
+        raise TypeTranslationError()
+
+
+def _translate_name_expr(expr: NameExpr) -> ProperType:
+    """Translate a name expression to a type."""
+    if expr.name == "True":
+        return RawExpressionType(True, "builtins.bool", line=expr.line, column=expr.column)
+    elif expr.name == "False":
+        return RawExpressionType(False, "builtins.bool", line=expr.line, column=expr.column)
+    else:
+        return UnboundType(expr.name, line=expr.line, column=expr.column)
+
+
+def _translate_member_expr(expr: MemberExpr) -> ProperType:
+    """Translate a member expression to a type."""
+    fullname = get_member_expr_fullname(expr)
+    if fullname:
+        return UnboundType(fullname, line=expr.line, column=expr.column)
+    else:
+        raise TypeTranslationError()
+
+
+def _translate_index_expr(
+    expr: IndexExpr,
+    options: Options,
+    allow_new_syntax: bool,
+    lookup_qualified: Callable[[str, Context], SymbolTableNode | None] | None,
+) -> ProperType:
+    """Translate an index expression (e.g., List[int]) to a type."""
+    base = expr_to_unanalyzed_type(expr.base, options, allow_new_syntax, expr)
+    if not isinstance(base, UnboundType):
+        raise TypeTranslationError()
+    if base.args:
+        raise TypeTranslationError()
+
+    if isinstance(expr.index, TupleExpr):
+        args = expr.index.items
+    else:
+        args = [expr.index]
+
+    # Handle Annotated type specially
+    if isinstance(expr.base, RefExpr):
+        base_fullname = _get_base_fullname(expr.base, base.name, expr, lookup_qualified)
+        if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES:
+            # TODO: this is not the optimal solution as we are basically getting rid
+            # of the Annotation definition and only returning the type information,
+            # losing all the annotations.
+            return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
+
+    base.args = tuple(
+        expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr, allow_unpack=True)
+        for arg in args
+    )
+    if not base.args:
+        base.empty_tuple_index = True
+    return base
+
+
+def _get_base_fullname(
+    base_expr: RefExpr,
+    base_name: str | None,
+    context: IndexExpr,
+    lookup_qualified: Callable[[str, Context], SymbolTableNode | None] | None,
+) -> str | None:
+    """Get the fullname of a base expression for type translation.
+
+    This is used to check if the type is Annotated[...], which needs special handling.
+    """
+    if lookup_qualified is not None and base_name is not None:
+        sym = lookup_qualified(base_name, context)
+        if sym and sym.node:
+            return sym.node.fullname
+        return None
+    return base_expr.fullname
+
+
+def _translate_union_op(expr: OpExpr, options: Options, allow_new_syntax: bool) -> ProperType:
+    """Translate a union expression (X | Y) to a type."""
+    if not ((options.python_version >= (3, 10)) or allow_new_syntax):
+        raise TypeTranslationError()
+
+    return UnionType(
+        [
+            expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
+            expr_to_unanalyzed_type(expr.right, options, allow_new_syntax),
+        ],
+        uses_pep604_syntax=True,
+    )
+
+
+def _translate_callable_argument(
+    expr: CallExpr, options: Options, allow_new_syntax: bool
+) -> ProperType:
+    """Translate a callable argument constructor call to a CallableArgument.
+
+    This handles expressions like Arg(int, "x") in callable type syntax.
+    """
+    # Go through the dotted member expr chain to get the full arg
+    # constructor name to look up
+    names = []
+    c = expr.callee
+    while True:
+        if isinstance(c, NameExpr):
+            names.append(c.name)
+            break
+        elif isinstance(c, MemberExpr):
+            names.append(c.name)
+            c = c.expr
+        else:
             raise TypeTranslationError()
-        items: dict[str, Type] = {}
-        extra_items_from = []
-        for item_name, value in expr.items:
-            if not isinstance(item_name, StrExpr):
-                if item_name is None:
-                    extra_items_from.append(
-                        expr_to_unanalyzed_type(value, options, allow_new_syntax, expr)
-                    )
-                    continue
+    arg_const = ".".join(reversed(names))
+
+    # Go through the constructor args to get its name and type.
+    name: str | None = None
+    default_type = AnyType(TypeOfAny.unannotated)
+    typ: Type = default_type
+    for i, arg in enumerate(expr.args):
+        if expr.arg_names[i] is not None:
+            if expr.arg_names[i] == "name":
+                if name is not None:
+                    # Two names
+                    raise TypeTranslationError()
+                name = _extract_argument_name(arg)
+                continue
+            elif expr.arg_names[i] == "type":
+                if typ is not default_type:
+                    # Two types
+                    raise TypeTranslationError()
+                typ = expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr)
+                continue
+            else:
                 raise TypeTranslationError()
+        elif i == 0:
+            typ = expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr)
+        elif i == 1:
+            name = _extract_argument_name(arg)
+        else:
+            raise TypeTranslationError()
+    return CallableArgument(typ, name, arg_const, expr.line, expr.column)
+
+
+def _translate_list_expr(expr: ListExpr, options: Options, allow_new_syntax: bool) -> ProperType:
+    """Translate a list expression to a TypeList."""
+    return TypeList(
+        [
+            expr_to_unanalyzed_type(t, options, allow_new_syntax, expr, allow_unpack=True)
+            for t in expr.items
+        ],
+        line=expr.line,
+        column=expr.column,
+    )
+
+
+def _translate_unary_expr(expr: UnaryExpr, options: Options, allow_new_syntax: bool) -> ProperType:
+    """Translate a unary expression (e.g., -42) to a type."""
+    typ = expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax)
+    if isinstance(typ, RawExpressionType) and isinstance(typ.literal_value, int):
+        if expr.op == "-":
+            typ.literal_value *= -1
+            return typ
+        elif expr.op == "+":
+            return typ
+    raise TypeTranslationError()
+
+
+def _translate_dict_expr(expr: DictExpr, options: Options, allow_new_syntax: bool) -> ProperType:
+    """Translate a dict expression to a TypedDictType."""
+    if not expr.items:
+        raise TypeTranslationError()
+
+    items: dict[str, Type] = {}
+    extra_items_from: list[ProperType] = []
+    for item_name, value in expr.items:
+        if isinstance(item_name, StrExpr):
             items[item_name.value] = expr_to_unanalyzed_type(
                 value, options, allow_new_syntax, expr
             )
-        result = TypedDictType(
-            items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
-        )
-        result.extra_items_from = extra_items_from
-        return result
-    else:
-        raise TypeTranslationError()
+        elif item_name is None:
+            extra_items_from.append(
+                expr_to_unanalyzed_type(value, options, allow_new_syntax, expr)
+            )
+        else:
+            raise TypeTranslationError()
+
+    result = TypedDictType(
+        items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
+    )
+    result.extra_items_from = extra_items_from
+    return result
