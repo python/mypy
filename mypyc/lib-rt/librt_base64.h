@@ -31,6 +31,16 @@ import_librt_base64(void)
         PyErr_SetString(PyExc_ValueError, err);
         return -1;
     }
+    if (LibRTBase64_APIVersion() < LIBRT_BASE64_API_VERSION) {
+        char err[128];
+        snprintf(err, sizeof(err),
+                 "API version conflict for librt.base64, expected %d or newer, found %d (hint: upgrade librt)",
+            LIBRT_BASE64_API_VERSION,
+            LibRTBase64_APIVersion()
+        );
+        PyErr_SetString(PyExc_ValueError, err);
+        return -1;
+    }
     return 0;
 }
 
