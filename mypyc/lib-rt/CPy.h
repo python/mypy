@@ -855,11 +855,6 @@ void CPy_AttributeError(const char *filename, const char *funcname, const char *
                         const char *attrname, int line, PyObject *globals);
 
 
-// Base64 operations
-
-PyObject *CPyBase64_Encode(PyObject *b);
-
-
 // Misc operations
 
 #define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_BEGIN(op, dealloc)
