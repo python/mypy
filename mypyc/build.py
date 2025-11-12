@@ -42,10 +42,7 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-LIBRT_MODULES = [
-    ("librt.internal", "librt_internal.c"),
-    ("librt.base64", "librt_base64.c"),
-]
+LIBRT_MODULES = [("librt.internal", "librt_internal.c"), ("librt.base64", "librt_base64.c")]
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils

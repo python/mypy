@@ -288,8 +288,13 @@ class TestRun(MypycDataSuite):
         with open(setup_file, "w", encoding="utf-8") as f:
             f.write(
                 setup_format.format(
-                    module_paths, separate, cfiles, self.multi_file, opt_level, librt,
-                    experimental_features
+                    module_paths,
+                    separate,
+                    cfiles,
+                    self.multi_file,
+                    opt_level,
+                    librt,
+                    experimental_features,
                 )
             )
 

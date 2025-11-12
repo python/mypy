@@ -116,7 +116,6 @@ else:
                 ],
                 include_dirs=[".", "base64"],
                 extra_compile_args=cflags,
-            )
-
+            ),
         ]
     )
