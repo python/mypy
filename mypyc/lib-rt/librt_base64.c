@@ -24,6 +24,11 @@ b64encode_internal(PyObject *obj) {
     PyBytesWriter *writer;
     int newline = 0; // TODO
 
+    if (!PyBytes_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "base64() expects a bytes object");
+        return NULL;
+    }
+
     bin_data = (const unsigned char *)PyBytes_AS_STRING(obj);
     bin_len = PyBytes_GET_SIZE(obj);
 

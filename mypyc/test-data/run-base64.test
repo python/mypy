@@ -3,11 +3,22 @@ from typing import Any
 
 from librt.base64 import b64encode
 
+from testutil import assertRaises
+
 
 def test_encode_basic() -> None:
     assert b64encode(b"x") == b"eA=="
+
+    with assertRaises(TypeError):
+        b64encode(bytearray(b"x"))
 
 
 def test_encode_wrapper() -> None:
     enc: Any = b64encode
     assert enc(b"x") == b"eA=="
+
+    with assertRaises(TypeError):
+        enc()
+
+    with assertRaises(TypeError):
+        enc(b"x", b"y")
