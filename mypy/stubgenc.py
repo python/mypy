@@ -48,7 +48,7 @@ SPECIAL_ENUM_ATTRS: Final = {
     "_unhashable_values_",
     "_use_args_",
     "_value2member_map_",
-    "_value_repr_"
+    "_value_repr_",
 }
 
 
@@ -888,7 +888,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                 static_properties.append(f"{self._indent}{attr} = {cls._member_map_[attr].value}")
             else:
                 classvar = self.add_name("typing.ClassVar")
-                static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
+                static_properties.append(
+                    f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ..."
+                )
 
         self.dedent()
 
