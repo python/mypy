@@ -1,4 +1,5 @@
 # Builtins stub used in slicing test cases.
+import collections
 from typing import Generic, TypeVar
 T = TypeVar('T')
 

@@ -2159,7 +2159,7 @@ class Custom(Base):
 Base(int()) == int()  # E: Non-overlapping equality check (left operand type: "Base", right operand type: "int")
 Base(int()) == tuple()
 Custom(int()) == int()
-[builtins fixtures/bool.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testCustomEqCheckStrictEqualityMeta]
 # flags: --strict-equality

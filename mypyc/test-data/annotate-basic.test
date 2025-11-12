@@ -389,6 +389,7 @@ def good1() -> int:
 [file nonnative.py]
 class C:
     def foo(self) -> None: pass
+[typing fixtures/typing-full.pyi]
 
 [case testAnnotateGetAttrAndSetAttrBuiltins]
 def f1(x, s: str):

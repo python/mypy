@@ -78,7 +78,7 @@ if x5["key"] == "A":
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': Literal['A'], 'foo': builtins.int})"
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': Literal['B'], 'foo': builtins.str})"
-[builtins fixtures/primitives.pyi]
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithEnumsBasic]

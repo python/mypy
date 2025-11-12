@@ -1,3 +1,4 @@
+import collections
 from typing import Tuple, TypeVar, Generic, Union, Type, Sequence, Mapping
 from typing_extensions import Protocol
 
