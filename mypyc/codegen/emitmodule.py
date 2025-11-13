@@ -27,7 +27,7 @@ from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
-from mypyc.analysis.implicit_deps import find_implicit_capsule_dependencies
+from mypyc.analysis.capsule_deps import find_implicit_capsule_dependencies
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
