@@ -472,4 +472,5 @@ function_op(
     return_type=bytes_rprimitive,
     c_function_name="LibRTBase64_b64encode_internal",
     error_kind=ERR_MAGIC,
+    experimental=True,
 )
