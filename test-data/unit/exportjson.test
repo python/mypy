@@ -170,6 +170,7 @@ def foo(a: int) -> None: ...
                     "is_ellipsis_args": false,
                     "implicit": false,
                     "is_bound": false,
+                    "original_self_type": null,
                     "type_guard": null,
                     "type_is": null,
                     "from_concatenate": false,
