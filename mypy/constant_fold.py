@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Final, Union
 
 from mypy.nodes import (
+    CastExpr,
     ComplexExpr,
     Expression,
     FloatExpr,
@@ -73,6 +74,8 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if value is not None:
             return constant_fold_unary_op(expr.op, value)
+    elif isinstance(expr, CastExpr):
+        return constant_fold_expr(expr.expr, cur_mod_id)
     return None
 
 
