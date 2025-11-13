@@ -4159,7 +4159,11 @@ def flatten_nested_unions(
             tp = t
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(
-                flatten_nested_unions(tp.items, handle_type_alias_type=handle_type_alias_type)
+                flatten_nested_unions(
+                    tp.items,
+                    handle_type_alias_type=handle_type_alias_type,
+                    handle_recursive=handle_recursive,
+                )
             )
         else:
             # Must preserve original aliases when possible.
