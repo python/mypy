@@ -17,7 +17,7 @@ def find_implicit_capsule_dependencies(fn: FuncIR) -> set[str] | None:
     deps: set[str] | None = None
     for block in fn.blocks:
         for op in block.ops:
-            # TODO: Also determine implicit type object dependencies (cast targets)
+            # TODO: Also determine implicit type object dependencies (e.g. cast targets)
             if isinstance(op, CallC) and op.capsule_dep is not None:
                 if deps is None:
                     deps = set()
