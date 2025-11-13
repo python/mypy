@@ -30,7 +30,8 @@ class ModuleIR:
         # These are only visible in the module that defined them, so no need
         # to serialize.
         self.type_var_names = type_var_names
-        self.implicit_imports: set[str] = set()
+        # Capsules needed by the module, specified via module names such as "librt.base64"
+        self.capsules: set[str] = set()
 
     def serialize(self) -> JsonDict:
         return {
@@ -39,7 +40,7 @@ class ModuleIR:
             "functions": [f.serialize() for f in self.functions],
             "classes": [c.serialize() for c in self.classes],
             "final_names": [(k, t.serialize()) for k, t in self.final_names],
-            "implicit_imports": list(self.implicit_imports),
+            "capsules": sorted(self.capsules),
         }
 
     @classmethod
@@ -52,7 +53,7 @@ class ModuleIR:
             [(k, deserialize_type(t, ctx)) for k, t in data["final_names"]],
             [],
         )
-        module.implicit_imports = set(data["implicit_imports"])
+        module.capsules = set(data["capsules"])
         return module
 
 

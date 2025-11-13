@@ -261,9 +261,9 @@ def compile_scc_to_ir(
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
             # Calculate implicit module dependencies (needed for librt)
-            capsule_deps = find_implicit_capsule_dependencies(fn)
-            if capsule_deps is not None:
-                module.implicit_imports.update(capsule_deps)
+            capsules = find_implicit_capsule_dependencies(fn)
+            if capsules is not None:
+                module.capsules.update(capsules)
             # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
@@ -609,7 +609,7 @@ class GroupGenerator:
         ext_declarations.emit_line("#include <CPy.h>")
         if self.compiler_options.depends_on_librt_internal:
             ext_declarations.emit_line("#include <librt_internal.h>")
-        if any("librt.base64" in mod.implicit_imports for mod in self.modules.values()):
+        if any("librt.base64" in mod.capsules for mod in self.modules.values()):
             ext_declarations.emit_line("#include <librt_base64.h>")
 
         declarations = Emitter(self.context)
@@ -1041,7 +1041,7 @@ class GroupGenerator:
             emitter.emit_line("if (import_librt_internal() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
-        if "librt.base64" in module.implicit_imports:
+        if "librt.base64" in module.capsules:
             emitter.emit_line("if (import_librt_base64() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
