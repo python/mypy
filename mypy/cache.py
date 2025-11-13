@@ -392,6 +392,9 @@ def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
 
 
 JsonValue: _TypeAlias = Union[None, int, str, bool, list["JsonValue"], dict[str, "JsonValue"]]
+JsonValueEx: _TypeAlias = Union[
+    None, int, str, bool, list["JsonValueEx"], dict[str, "JsonValueEx"], tuple["JsonValueEx", ...]
+]
 
 
 def read_json_value(data: ReadBuffer) -> JsonValue:
@@ -417,7 +420,7 @@ def read_json_value(data: ReadBuffer) -> JsonValue:
 
 # Currently tuples are used by mypyc plugin. They will be normalized to
 # JSON lists after a roundtrip.
-def write_json_value(data: WriteBuffer, value: JsonValue | tuple[JsonValue, ...]) -> None:
+def write_json_value(data: WriteBuffer, value: JsonValueEx) -> None:
     if value is None:
         write_tag(data, LITERAL_NONE)
     elif isinstance(value, bool):

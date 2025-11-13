@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import codecs
+import json
 import os
 import shutil
 import sys
@@ -64,6 +65,9 @@ class IPCBase:
         return bdata
 
     def read(self, size: int = 100000) -> str:
+        return self.read_bytes(size).decode("utf-8")
+
+    def read_bytes(self, size: int = 100000) -> bytes:
         """Read bytes from an IPC connection until we have a full frame."""
         bdata: bytearray | None = bytearray()
         if sys.platform == "win32":
@@ -118,14 +122,17 @@ class IPCBase:
         if not bdata:
             # Socket was empty and we didn't get any frame.
             # This should only happen if the socket was closed.
-            return ""
-        return codecs.decode(bdata, "base64").decode("utf8")
+            return b""
+        return codecs.decode(bdata, "base64")
 
     def write(self, data: str) -> None:
+        self.write_bytes(data.encode("utf-8"))
+
+    def write_bytes(self, data: bytes) -> None:
         """Write to an IPC connection."""
 
         # Frame the data by urlencoding it and separating by space.
-        encoded_data = codecs.encode(data.encode("utf8"), "base64") + b" "
+        encoded_data = codecs.encode(data, "base64") + b" "
 
         if sys.platform == "win32":
             try:
@@ -311,3 +318,31 @@ class IPCServer(IPCBase):
             name = self.sock.getsockname()
             assert isinstance(name, str)
             return name
+
+
+class BadStatus(Exception):
+    """Exception raised when there is something wrong with the status file.
+
+    For example:
+    - No status file found
+    - Status file malformed
+    - Process whose pid is in the status file does not exist
+    """
+
+
+def read_status(status_file: str) -> dict[str, object]:
+    """Read status file.
+
+    Raise BadStatus if the status file doesn't exist or contains
+    invalid JSON or the JSON is not a dict.
+    """
+    if not os.path.isfile(status_file):
+        raise BadStatus("No status file found")
+    with open(status_file) as f:
+        try:
+            data = json.load(f)
+        except Exception as e:
+            raise BadStatus("Malformed status file (not JSON)") from e
+    if not isinstance(data, dict):
+        raise BadStatus("Invalid status file (not a dict)")
+    return data
