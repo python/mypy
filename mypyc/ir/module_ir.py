@@ -30,6 +30,7 @@ class ModuleIR:
         # These are only visible in the module that defined them, so no need
         # to serialize.
         self.type_var_names = type_var_names
+        self.implicit_imports: set[str] = set()
 
     def serialize(self) -> JsonDict:
         return {
@@ -38,11 +39,12 @@ class ModuleIR:
             "functions": [f.serialize() for f in self.functions],
             "classes": [c.serialize() for c in self.classes],
             "final_names": [(k, t.serialize()) for k, t in self.final_names],
+            "implicit_imports": list(self.implicit_imports),
         }
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> ModuleIR:
-        return ModuleIR(
+        module = ModuleIR(
             data["fullname"],
             data["imports"],
             [ctx.functions[FuncDecl.get_id_from_json(f)] for f in data["functions"]],
@@ -50,6 +52,8 @@ class ModuleIR:
             [(k, deserialize_type(t, ctx)) for k, t in data["final_names"]],
             [],
         )
+        module.implicit_imports = set(data["implicit_imports"])
+        return module
 
 
 def deserialize_modules(data: dict[str, JsonDict], ctx: DeserMaps) -> dict[str, ModuleIR]:
