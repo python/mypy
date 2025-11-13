@@ -131,7 +131,7 @@ def f(arg):
 L0:
     r0 = __main__.globals :: static
     r1 = 'f'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = f_obj.__call__(r2, arg)
     return r3
 def g(arg):
@@ -262,7 +262,7 @@ def f(x):
 L0:
     r0 = __main__.globals :: static
     r1 = 'f'
-    r2 = CPyDict_GetItem(r0, r1)
+    r2 = CPyDict_GetItemUnsafe(r0, r1)
     r3 = f_obj.__call__(r2, x)
     return r3
 def test():
