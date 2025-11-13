@@ -50,3 +50,12 @@ import librt.base64
 
 def test_b64encode_not_available() -> None:
     assert not hasattr(librt.base64, "b64encode")
+
+[case testBase64UsedAtTopLevelOnly_librt_experimental]
+from librt.base64 import b64encode
+
+# The only reference to b64encode is at module top level
+encoded = b64encode(b"x")
+
+def test_top_level_only_encode() -> None:
+    assert encoded == b"eA=="
