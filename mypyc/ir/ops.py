@@ -1237,7 +1237,7 @@ class CallC(RegisterOp):
         *,
         is_pure: bool = False,
         returns_null: bool = False,
-        capsule_dep: str | None = None,
+        capsule: str | None = None,
     ) -> None:
         self.error_kind = error_kind
         super().__init__(line)
@@ -1257,7 +1257,7 @@ class CallC(RegisterOp):
         self.returns_null = returns_null
         # A capsule from this module must be imported and initialized before calling this
         # function (used for C functions exported from librt). Example value: "librt.base64"
-        self.capsule_dep = capsule_dep
+        self.capsule = capsule
         if is_pure or returns_null:
             assert error_kind == ERR_NEVER
 

@@ -18,10 +18,10 @@ def find_implicit_capsule_dependencies(fn: FuncIR) -> set[str] | None:
     for block in fn.blocks:
         for op in block.ops:
             # TODO: Also determine implicit type object dependencies (e.g. cast targets)
-            if isinstance(op, CallC) and op.capsule_dep is not None:
+            if isinstance(op, CallC) and op.capsule is not None:
                 if deps is None:
                     deps = set()
-                deps.add(op.capsule_dep)
+                deps.add(op.capsule)
             else:
                 assert not isinstance(op, PrimitiveOp), "Lowered IR is expected"
     return deps

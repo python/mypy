@@ -2075,7 +2075,7 @@ class LowLevelIRBuilder:
                 var_arg_idx,
                 is_pure=desc.is_pure,
                 returns_null=desc.returns_null,
-                capsule_dep=desc.capsule,
+                capsule=desc.capsule,
             )
         )
         if desc.is_borrowed:
