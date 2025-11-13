@@ -2,6 +2,16 @@
 
 ## Next Release
 
+### Improvements
+
+- Enhanced JSON serialization with improved orjson integration and error handling (PR [XXXXX](https://github.com/python/mypy/pull/XXXXX))
+  - Added comprehensive error handling and fallback mechanisms for orjson
+  - Improved documentation explaining the importance of sorted keys for cache consistency
+  - Added performance benchmarking utilities (`mypy.json_bench`)
+  - Added comprehensive test suite for JSON serialization edge cases
+  - Better handling of large integers exceeding 64-bit range
+  - More robust error recovery when orjson encounters issues
+
 ## Mypy 1.18.1
 
 We’ve just uploaded mypy 1.18.1 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).

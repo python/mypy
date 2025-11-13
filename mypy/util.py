@@ -925,28 +925,97 @@ def quote_docstring(docstr: str) -> str:
 
 
 def json_dumps(obj: object, debug: bool = False) -> bytes:
+    """Serialize object to JSON bytes with optional orjson optimization.
+
+    This function uses orjson for better performance when available, with automatic
+    fallback to the standard json module. Keys are always sorted to ensure
+    deterministic output, which is critical for incremental type checking and
+    cache consistency.
+
+    Args:
+        obj: The object to serialize. Must be JSON-serializable.
+        debug: If True, output will be indented for readability.
+
+    Returns:
+        JSON-encoded bytes representation of the object.
+
+    Raises:
+        TypeError: If the object contains non-serializable types (after attempting
+                   orjson-specific error handling).
+        ValueError: If the object contains circular references or other structural issues.
+
+    Note:
+        When orjson is available (install with: pip install mypy[faster-cache]),
+        serialization is significantly faster, especially for large objects.
+        The sorted keys requirement ensures that testIncrementalInternalScramble
+        and other cache-dependent tests produce consistent results.
+    """
     if orjson is not None:
         if debug:
             dumps_option = orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS
         else:
-            # TODO: If we don't sort keys here, testIncrementalInternalScramble fails
-            # We should document exactly what is going on there
+            # Keys must be sorted for deterministic output. This is critical for:
+            # 1. Incremental type checking cache consistency
+            # 2. Test reproducibility (e.g., testIncrementalInternalScramble)
+            # 3. Comparing serialized output across runs
             dumps_option = orjson.OPT_SORT_KEYS
 
         try:
             return orjson.dumps(obj, option=dumps_option)  # type: ignore[no-any-return]
         except TypeError as e:
-            if str(e) != "Integer exceeds 64-bit range":
+            # orjson has a 64-bit integer limit. Fall back to standard json
+            # for integers that exceed this range, which can handle arbitrary precision.
+            error_msg = str(e)
+            if "Integer exceeds 64-bit range" in error_msg or "exceeds 64-bit" in error_msg:
+                # Fall through to standard json implementation below
+                pass
+            else:
+                # Re-raise other TypeErrors (e.g., non-serializable objects)
                 raise
+        except (ValueError, OverflowError) as e:
+            # Handle other orjson-specific errors by falling back to standard json
+            # This includes issues like circular references or overflow errors
+            pass
 
+    # Fallback to standard json module (always used when orjson is not installed)
     if debug:
         return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
     else:
-        # See above for sort_keys comment
+        # Sort keys for consistency (see comment above)
+        # Use compact separators for smaller output size
         return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
 def json_loads(data: bytes) -> Any:
+    """Deserialize JSON bytes to a Python object with optional orjson optimization.
+
+    This function uses orjson for better performance when available, with automatic
+    fallback to the standard json module.
+
+    Args:
+        data: JSON-encoded bytes to deserialize.
+
+    Returns:
+        The deserialized Python object.
+
+    Raises:
+        json.JSONDecodeError: If the data is not valid JSON.
+        UnicodeDecodeError: If the bytes cannot be decoded as UTF-8.
+
+    Note:
+        When orjson is available (install with: pip install mypy[faster-cache]),
+        deserialization is significantly faster, especially for large JSON documents.
+    """
     if orjson is not None:
-        return orjson.loads(data)
+        try:
+            return orjson.loads(data)
+        except (orjson.JSONDecodeError, ValueError) as e:  # type: ignore[attr-defined]
+            # orjson.JSONDecodeError is a subclass of ValueError
+            # Fall back to standard json for better error messages
+            pass
+        except Exception:
+            # Catch any other unexpected orjson errors and fall back
+            pass
+
+    # Fallback to standard json module
     return json.loads(data)
