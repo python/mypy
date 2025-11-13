@@ -2192,3 +2192,15 @@ y3: A3[int]  # E: Type argument "int" of "A3" must be a subtype of "B3"
 z3: A3[None]
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasRecursiveTupleUnionNoCrash]
+from collections.abc import Hashable
+
+type HashableArg = int | tuple[Hashable | HashableArg]
+x: HashableArg
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, tuple[Union[typing.Hashable, ...]]]"
+if isinstance(x, tuple):
+    y, = x
+    reveal_type(y)  # N: Revealed type is "Union[typing.Hashable, Union[builtins.int, tuple[Union[typing.Hashable, ...]]]]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
