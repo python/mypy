@@ -3424,7 +3424,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             and lvalue_type is not None
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
-                elif self.options.allow_redefinition_new and lvalue_type is not None:
+                elif (
+                    self.options.allow_redefinition_new
+                    and lvalue_type is not None
+                    and not isinstance(lvalue_type, PartialType)
+                ):
                     # TODO: Can we use put() here?
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
 
