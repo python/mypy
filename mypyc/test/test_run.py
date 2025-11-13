@@ -244,7 +244,6 @@ class TestRun(MypycDataSuite):
         # Use _librt_internal to test mypy-specific parts of librt (they have
         # some special-casing in mypyc), for everything else use _librt suffix.
         librt_internal = testcase.name.endswith("_librt_internal")
-        librt_base64 = "_librt_base64" in testcase.name
         librt = testcase.name.endswith("_librt") or "_librt_" in testcase.name
         # Enable experimental features (local librt build also includes experimental features)
         experimental_features = testcase.name.endswith("_experimental")
@@ -254,7 +253,6 @@ class TestRun(MypycDataSuite):
                 separate=self.separate,
                 strict_dunder_typing=self.strict_dunder_typing,
                 depends_on_librt_internal=librt_internal,
-                depends_on_librt_base64=librt_base64,
                 experimental_features=experimental_features,
             )
             result = emitmodule.parse_and_typecheck(
