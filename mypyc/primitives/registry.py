@@ -144,6 +144,7 @@ def method_op(
         extra_int_constants,
         priority,
         is_pure=is_pure,
+        experimental=False,
     )
     ops.append(desc)
     return desc
@@ -162,6 +163,7 @@ def function_op(
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
+    experimental: bool = False,
 ) -> PrimitiveDescription:
     """Define a C function call op that replaces a function call.
 
@@ -190,6 +192,7 @@ def function_op(
         extra_int_constants=extra_int_constants,
         priority=priority,
         is_pure=False,
+        experimental=experimental,
     )
     ops.append(desc)
     return desc
@@ -236,6 +239,7 @@ def binary_op(
         extra_int_constants=extra_int_constants,
         priority=priority,
         is_pure=False,
+        experimental=False,
     )
     ops.append(desc)
     return desc
@@ -314,6 +318,7 @@ def custom_primitive_op(
         extra_int_constants=extra_int_constants,
         priority=0,
         is_pure=is_pure,
+        experimental=False,
     )
 
 
@@ -355,6 +360,7 @@ def unary_op(
         extra_int_constants=extra_int_constants,
         priority=priority,
         is_pure=is_pure,
+        experimental=False,
     )
     ops.append(desc)
     return desc

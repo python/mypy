@@ -2212,6 +2212,8 @@ class LowLevelIRBuilder:
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
+            if desc.experimental and not self.options.experimental_features:
+                continue
             if all(
                 # formal is not None and # TODO
                 is_subtype(actual.type, formal)

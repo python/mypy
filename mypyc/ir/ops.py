@@ -707,6 +707,7 @@ class PrimitiveDescription:
         extra_int_constants: list[tuple[int, RType]],
         priority: int,
         is_pure: bool,
+        experimental: bool,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -729,6 +730,9 @@ class PrimitiveDescription:
         self.is_pure: Final = is_pure
         if is_pure:
             assert error_kind == ERR_NEVER
+        # Experimental primitives are not used unless mypyc experimental features are
+        # explicitly enabled
+        self.experimental = experimental
 
     def __repr__(self) -> str:
         return f"<PrimitiveDescription {self.name!r}: {self.arg_types}>"
