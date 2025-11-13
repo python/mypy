@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern
-from typing import Any, Final, NamedTuple, NoReturn, Union
+from typing import Any, Callable, Final, NamedTuple, NoReturn, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 import pytest
@@ -52,6 +52,66 @@ def _file_arg_to_module(filename: str) -> str:
     if parts[-1] == "__init__":
         parts.pop()
     return ".".join(parts)
+
+
+def _handle_out_section(
+    item: TestItem,
+    case: DataDrivenTestCase,
+    output: list[str],
+    output2: dict[int, list[str]],
+    out_section_missing: bool,
+    item_fail: Callable[[str], NoReturn],
+) -> bool:
+    """Handle an "out" / "outN" section from a test item.
+
+    Mutates `output` (in-place) or `output2` and returns the updated
+    `out_section_missing` flag.
+    """
+    if item.arg is None:
+        args = []
+    else:
+        args = item.arg.split(",")
+
+    version_check = True
+    for arg in args:
+        if arg.startswith("version"):
+            compare_op = arg[7:9]
+            if compare_op not in {">=", "=="}:
+                item_fail("Only >= and == version checks are currently supported")
+            version_str = arg[9:]
+            try:
+                version = tuple(int(x) for x in version_str.split("."))
+            except ValueError:
+                item_fail(f"{version_str!r} is not a valid python version")
+            if compare_op == ">=":
+                if version <= defaults.PYTHON3_VERSION:
+                    item_fail(
+                        f"{arg} always true since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                    )
+                version_check = sys.version_info >= version
+            elif compare_op == "==":
+                if version < defaults.PYTHON3_VERSION:
+                    item_fail(
+                        f"{arg} always false since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                    )
+                if not 1 < len(version) < 4:
+                    item_fail(
+                        f'Only minor or patch version checks are currently supported with "==": {version_str!r}'
+                    )
+                version_check = sys.version_info[: len(version)] == version
+    if version_check:
+        tmp_output = [expand_variables(line) for line in item.data]
+        if os.path.sep == "\\" and case.normalize_output:
+            tmp_output = [fix_win_path(line) for line in tmp_output]
+        if item.id == "out" or item.id == "out1":
+            # modify in place so caller's `output` reference is preserved
+            output[:] = tmp_output
+        else:
+            passnum = int(item.id[len("out") :])
+            assert passnum > 1
+            output2[passnum] = tmp_output
+        out_section_missing = False
+    return out_section_missing
 
 
 def parse_test_case(case: DataDrivenTestCase) -> None:
@@ -150,49 +210,9 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r"out[0-9]*$", item.id):
-            if item.arg is None:
-                args = []
-            else:
-                args = item.arg.split(",")
-
-            version_check = True
-            for arg in args:
-                if arg.startswith("version"):
-                    compare_op = arg[7:9]
-                    if compare_op not in {">=", "=="}:
-                        _item_fail("Only >= and == version checks are currently supported")
-                    version_str = arg[9:]
-                    try:
-                        version = tuple(int(x) for x in version_str.split("."))
-                    except ValueError:
-                        _item_fail(f"{version_str!r} is not a valid python version")
-                    if compare_op == ">=":
-                        if version <= defaults.PYTHON3_VERSION:
-                            _item_fail(
-                                f"{arg} always true since minimum runtime version is {defaults.PYTHON3_VERSION}"
-                            )
-                        version_check = sys.version_info >= version
-                    elif compare_op == "==":
-                        if version < defaults.PYTHON3_VERSION:
-                            _item_fail(
-                                f"{arg} always false since minimum runtime version is {defaults.PYTHON3_VERSION}"
-                            )
-                        if not 1 < len(version) < 4:
-                            _item_fail(
-                                f'Only minor or patch version checks are currently supported with "==": {version_str!r}'
-                            )
-                        version_check = sys.version_info[: len(version)] == version
-            if version_check:
-                tmp_output = [expand_variables(line) for line in item.data]
-                if os.path.sep == "\\" and case.normalize_output:
-                    tmp_output = [fix_win_path(line) for line in tmp_output]
-                if item.id == "out" or item.id == "out1":
-                    output = tmp_output
-                else:
-                    passnum = int(item.id[len("out") :])
-                    assert passnum > 1
-                    output2[passnum] = tmp_output
-                out_section_missing = False
+            out_section_missing = _handle_out_section(
+                item, case, output, output2, out_section_missing, _item_fail
+            )
         elif item.id == "triggered" and item.arg is None:
             triggered = item.data
         else:
