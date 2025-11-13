@@ -466,7 +466,7 @@ _write_short_int(PyObject *data, Py_ssize_t real_value) {
         _CHECK_WRITE(data, 2)
 #if PY_BIG_ENDIAN
         uint16_t to_write = ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT;
-        _WRITE(data, uint16_t, reverse_16(to_write))
+        _WRITE(data, uint16_t, reverse_16(to_write));
 #else
         _WRITE(data, uint16_t, ((uint16_t)(real_value - MIN_TWO_BYTES_INT) << 2) | TWO_BYTES_INT_BIT);
 #endif
@@ -474,7 +474,7 @@ _write_short_int(PyObject *data, Py_ssize_t real_value) {
         _CHECK_WRITE(data, 4)
 #if PY_BIG_ENDIAN
         uint32_t to_write = ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER;
-        _WRITE(data, uint32_t, reverse_32(to_write))
+        _WRITE(data, uint32_t, reverse_32(to_write));
 #else
         _WRITE(data, uint32_t, ((uint32_t)(real_value - MIN_FOUR_BYTES_INT) << 3) | FOUR_BYTES_INT_TRAILER);
 #endif
