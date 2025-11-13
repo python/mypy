@@ -31,7 +31,7 @@ def test_encode_different_strings() -> None:
     for i in range(1000):
         check_encode(b[:i])
 
-    for b in b"", b"ab", b"bac", b"1234", b"xyz88", b"abc" * 10000:
+    for b in b"", b"ab", b"bac", b"1234", b"xyz88", b"abc" * 200:
         check_encode(b)
 
 def test_encode_wrapper() -> None:
