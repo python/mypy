@@ -410,7 +410,7 @@ L2:
     k = r8
     v = r7
     r9 = 'name'
-    r10 = CPyStr_Equal(k, r9)
+    r10 = CPyStr_EqualLiteral(k, r9, 4)
     if r10 goto L3 else goto L4 :: bool
 L3:
     name = v

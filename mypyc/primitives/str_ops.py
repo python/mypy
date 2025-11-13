@@ -88,6 +88,14 @@ str_eq = custom_primitive_op(
     error_kind=ERR_NEVER,
 )
 
+str_eq_literal = custom_primitive_op(
+    name="str_eq_literal",
+    c_function_name="CPyStr_EqualLiteral",
+    arg_types=[str_rprimitive, str_rprimitive, c_pyssize_t_rprimitive],
+    return_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
 unicode_compare = custom_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_int_rprimitive,

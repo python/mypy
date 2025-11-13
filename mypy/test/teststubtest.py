@@ -88,6 +88,8 @@ class _TypedDict(Mapping[str, object]):
     __total__: ClassVar[bool]
     __readonly_keys__: ClassVar[frozenset[str]]
     __mutable_keys__: ClassVar[frozenset[str]]
+    __closed__: ClassVar[bool | None]
+    __extra_items__: ClassVar[Any]
 def overload(func: _T) -> _T: ...
 def type_check_only(func: _T) -> _T: ...
 def final(func: _T) -> _T: ...
@@ -1480,6 +1482,30 @@ class StubtestUnit(unittest.TestCase):
                 __slots__ = ()
             """,
             error=None,
+        )
+        yield Case(
+            stub="""
+            class HasCompatibleValue(enum.Enum):
+                _value_: str
+                FOO = ...
+            """,
+            runtime="""
+            class HasCompatibleValue(enum.Enum):
+                FOO = "foo"
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class HasIncompatibleValue(enum.Enum):
+                _value_: int
+                FOO = ...
+            """,
+            runtime="""
+            class HasIncompatibleValue(enum.Enum):
+                FOO = "foo"
+            """,
+            error="HasIncompatibleValue.FOO",
         )
 
     @collect_cases

@@ -322,7 +322,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 default_value = get_default_value(i, arg)
                 if default_value is not _Missing.VALUE:
                     if arg in annotations:
-                        argtype = annotations[arg]
+                        argtype = get_annotation(arg)
                     else:
                         argtype = self.get_type_annotation(default_value)
                         if argtype == "None":

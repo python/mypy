@@ -707,6 +707,8 @@ class PrimitiveDescription:
         extra_int_constants: list[tuple[int, RType]],
         priority: int,
         is_pure: bool,
+        experimental: bool,
+        capsule: str | None,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -729,6 +731,12 @@ class PrimitiveDescription:
         self.is_pure: Final = is_pure
         if is_pure:
             assert error_kind == ERR_NEVER
+        # Experimental primitives are not used unless mypyc experimental features are
+        # explicitly enabled
+        self.experimental = experimental
+        # Capsule that needs to imported and configured to call the primitive
+        # (name of the target module, e.g. "librt.base64").
+        self.capsule = capsule
 
     def __repr__(self) -> str:
         return f"<PrimitiveDescription {self.name!r}: {self.arg_types}>"
@@ -1229,6 +1237,7 @@ class CallC(RegisterOp):
         *,
         is_pure: bool = False,
         returns_null: bool = False,
+        capsule: str | None = None,
     ) -> None:
         self.error_kind = error_kind
         super().__init__(line)
@@ -1246,6 +1255,9 @@ class CallC(RegisterOp):
         # The function might return a null value that does not indicate
         # an error.
         self.returns_null = returns_null
+        # A capsule from this module must be imported and initialized before calling this
+        # function (used for C functions exported from librt). Example value: "librt.base64"
+        self.capsule = capsule
         if is_pure or returns_null:
             assert error_kind == ERR_NEVER
 

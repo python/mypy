@@ -42,6 +42,8 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
+LIBRT_MODULES = [("librt.internal", "librt_internal.c"), ("librt.base64", "librt_base64.c")]
+
 try:
     # Import setuptools so that it monkey-patch overrides distutils
     import setuptools
@@ -492,8 +494,9 @@ def mypycify(
     strict_dunder_typing: bool = False,
     group_name: str | None = None,
     log_trace: bool = False,
-    depends_on_native_internal: bool = False,
-    install_native_libs: bool = False,
+    depends_on_librt_internal: bool = False,
+    install_librt: bool = False,
+    experimental_features: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -544,11 +547,14 @@ def mypycify(
                    mypyc_trace.txt (derived from executed operations). This is
                    useful for performance analysis, such as analyzing which
                    primitive ops are used the most and on which lines.
-        depends_on_native_internal: This is True only for mypy itself.
-        install_native_libs: If True, also build the native extension modules. Normally,
-                             those are build and published on PyPI separately, but during
-                             tests, we want to use their development versions (i.e. from
-                             current commit).
+        depends_on_librt_internal: This is True only for mypy itself.
+        install_librt: If True, also build the librt extension modules. Normally,
+                       those are build and published on PyPI separately, but during
+                       tests, we want to use their development versions (i.e. from
+                       current commit).
+        experimental_features: Enable experimental features (install_librt=True is
+                               also needed if using experimental librt features). These
+                               have no backward compatibility guarantees!
     """
 
     # Figure out our configuration
@@ -562,7 +568,8 @@ def mypycify(
         strict_dunder_typing=strict_dunder_typing,
         group_name=group_name,
         log_trace=log_trace,
-        depends_on_native_internal=depends_on_native_internal,
+        depends_on_librt_internal=depends_on_librt_internal,
+        experimental_features=experimental_features,
     )
 
     # Generate all the actual important C code
@@ -605,6 +612,8 @@ def mypycify(
         ]
         if log_trace:
             cflags.append("-DMYPYC_LOG_TRACE")
+        if experimental_features:
+            cflags.append("-DMYPYC_EXPERIMENTAL")
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
@@ -631,6 +640,8 @@ def mypycify(
             cflags += ["/GL-", "/wd9025"]  # warning about overriding /GL
         if log_trace:
             cflags.append("/DMYPYC_LOG_TRACE")
+        if experimental_features:
+            cflags.append("/DMYPYC_EXPERIMENTAL")
 
     # If configured to (defaults to yes in multi-file mode), copy the
     # runtime library in. Otherwise it just gets #included to save on
@@ -661,21 +672,24 @@ def mypycify(
                 build_single_module(group_sources, cfilenames + shared_cfilenames, cflags)
             )
 
-    if install_native_libs:
-        for name in ["native_internal.c"] + RUNTIME_C_FILES:
+    if install_librt:
+        for name in RUNTIME_C_FILES:
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
                 write_file(rt_file, f.read())
-        extensions.append(
-            get_extension()(
-                "native_internal",
-                sources=[
-                    os.path.join(build_dir, file)
-                    for file in ["native_internal.c"] + RUNTIME_C_FILES
-                ],
-                include_dirs=[include_dir()],
-                extra_compile_args=cflags,
+        for mod, file_name in LIBRT_MODULES:
+            rt_file = os.path.join(build_dir, file_name)
+            with open(os.path.join(include_dir(), file_name), encoding="utf-8") as f:
+                write_file(rt_file, f.read())
+            extensions.append(
+                get_extension()(
+                    mod,
+                    sources=[
+                        os.path.join(build_dir, file) for file in [file_name] + RUNTIME_C_FILES
+                    ],
+                    include_dirs=[include_dir()],
+                    extra_compile_args=cflags,
+                )
             )
-        )
 
     return extensions
