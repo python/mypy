@@ -495,7 +495,6 @@ def mypycify(
     group_name: str | None = None,
     log_trace: bool = False,
     depends_on_librt_internal: bool = False,
-    depends_on_librt_base64: bool = False,
     install_librt: bool = False,
     experimental_features: bool = False,
 ) -> list[Extension]:
@@ -570,7 +569,6 @@ def mypycify(
         group_name=group_name,
         log_trace=log_trace,
         depends_on_librt_internal=depends_on_librt_internal,
-        depends_on_librt_base64=depends_on_librt_base64,
         experimental_features=experimental_features,
     )
 

@@ -473,4 +473,5 @@ function_op(
     c_function_name="LibRTBase64_b64encode_internal",
     error_kind=ERR_MAGIC,
     experimental=True,
+    capsule="librt.base64",
 )
