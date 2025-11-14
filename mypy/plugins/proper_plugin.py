@@ -63,7 +63,7 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
         ) and is_dangerous_target(right):
             if is_special_target(right):
                 return ctx.default_return_type
-            ctx.api.fail(
+            parent_error = ctx.api.fail(
                 "Never apply isinstance() to unexpanded types;"
                 " use mypy.types.get_proper_type() first",
                 ctx.context,
@@ -72,6 +72,7 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
                 "If you pass on the original type"
                 " after the check, always use its unexpanded version",
                 ctx.context,
+                parent_error=parent_error,
             )
     return ctx.default_return_type
 
