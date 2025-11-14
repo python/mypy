@@ -14,7 +14,7 @@ else:
     import tomli as tomllib
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, Union
+from typing import Any, Callable, Final, TextIO, Union, cast
 from typing_extensions import Never, TypeAlias
 
 from mypy import defaults
@@ -306,7 +306,7 @@ def parse_config_file(
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> None:
-    """Parse a config file into an Options object.
+    """Parse a config file into an Options object, following config extend arguments.
 
     Errors are written to stderr but are not fatal.
 
@@ -315,36 +315,128 @@ def parse_config_file(
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
 
+    strict_found = False
+
+    def set_strict(value: bool) -> None:
+        nonlocal strict_found
+        strict_found = value
+
+    ret = _parse_and_extend_config_file(
+        template=options,
+        set_strict=set_strict,
+        filename=filename,
+        stdout=stdout,
+        stderr=stderr,
+        visited=set(),
+    )
+
+    if ret is None:
+        return
+
+    file_read, mypy_updates, mypy_report_dirs, module_updates = ret
+
+    if strict_found:
+        set_strict_flags()
+
+    options.config_file = file_read
+
+    for k, v in mypy_updates.items():
+        setattr(options, k, v)
+
+    options.report_dirs.update(mypy_report_dirs)
+
+    for glob, updates in module_updates.items():
+        options.per_module_options[glob] = updates
+
+
+def _merge_updates(existing: dict[str, object], new: dict[str, object]) -> None:
+    existing["disable_error_code"] = list(
+        set(
+            cast(list[str], existing.get("disable_error_code", []))
+            + cast(list[str], new.pop("disable_error_code", []))
+        )
+    )
+    existing["enable_error_code"] = list(
+        set(
+            cast(list[str], existing.get("enable_error_code", []))
+            + cast(list[str], new.pop("enable_error_code", []))
+        )
+    )
+    existing.update(new)
+
+
+def _parse_and_extend_config_file(
+    template: Options,
+    set_strict: Callable[[bool], None],
+    filename: str | None,
+    stdout: TextIO,
+    stderr: TextIO,
+    visited: set[str],
+) -> tuple[str, dict[str, object], dict[str, str], dict[str, dict[str, object]]] | None:
     ret = (
         _parse_individual_file(filename, stderr)
         if filename is not None
         else _find_config_file(stderr)
     )
     if ret is None:
-        return
+        return None
     parser, config_types, file_read = ret
 
-    options.config_file = file_read
-    os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(file_read))
+    abs_file_read = os.path.abspath(file_read)
+    if abs_file_read in visited:
+        print(f"Circular extend detected: {abs_file_read}", file=stderr)
+        return None
+    visited.add(abs_file_read)
+
+    if len(visited) == 1:
+        # set it only after the first config file is visited to allow for path variable expansions
+        # when parsing below, so recursive calls for config extend references won't overwrite it
+        os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(abs_file_read)
+
+    mypy_updates: dict[str, object] = {}
+    mypy_report_dirs: dict[str, str] = {}
+    module_updates: dict[str, dict[str, object]] = {}
 
     if "mypy" not in parser:
         if filename or os.path.basename(file_read) not in defaults.SHARED_CONFIG_NAMES:
             print(f"{file_read}: No [mypy] section in config file", file=stderr)
     else:
         section = parser["mypy"]
+
+        extend = section.pop("extend", None)
+        if extend:
+            parse_ret = _parse_and_extend_config_file(
+                template=template,
+                set_strict=set_strict,
+                # refer to extend relative to directory where we found current config
+                filename=os.path.relpath(
+                    os.path.normpath(
+                        os.path.join(os.path.dirname(abs_file_read), expand_path(extend))
+                    )
+                ),
+                stdout=stdout,
+                stderr=stderr,
+                visited=visited,
+            )
+
+            if parse_ret is None:
+                print(f"{extend} is not a valid path to extend from {abs_file_read}", file=stderr)
+            else:
+                _, mypy_updates, mypy_report_dirs, module_updates = parse_ret
+
         prefix = f"{file_read}: [mypy]: "
         updates, report_dirs = parse_section(
-            prefix, options, set_strict_flags, section, config_types, stderr
+            prefix, template, set_strict, section, config_types, stderr
         )
-        for k, v in updates.items():
-            setattr(options, k, v)
-        options.report_dirs.update(report_dirs)
+        # extend and overwrite existing values with new ones
+        _merge_updates(mypy_updates, updates)
+        mypy_report_dirs.update(report_dirs)
 
     for name, section in parser.items():
         if name.startswith("mypy-"):
             prefix = get_prefix(file_read, name)
             updates, report_dirs = parse_section(
-                prefix, options, set_strict_flags, section, config_types, stderr
+                prefix, template, set_strict, section, config_types, stderr
             )
             if report_dirs:
                 print(
@@ -381,7 +473,10 @@ def parse_config_file(
                         file=stderr,
                     )
                 else:
-                    options.per_module_options[glob] = updates
+                    # extend and overwrite existing values with new ones
+                    _merge_updates(module_updates.setdefault(glob, {}), updates)
+
+    return file_read, mypy_updates, mypy_report_dirs, module_updates
 
 
 def get_prefix(file_read: str, name: str) -> str:
@@ -483,7 +578,7 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
 def parse_section(
     prefix: str,
     template: Options,
-    set_strict_flags: Callable[[], None],
+    set_strict: Callable[[bool], None],
     section: Mapping[str, Any],
     config_types: dict[str, Any],
     stderr: TextIO = sys.stderr,
@@ -575,8 +670,7 @@ def parse_section(
             print(f"{prefix}{key}: {err}", file=stderr)
             continue
         if key == "strict":
-            if v:
-                set_strict_flags()
+            set_strict(v)
             continue
         results[options_key] = v
 
@@ -675,12 +769,12 @@ def parse_mypy_comments(
         stderr = StringIO()
         strict_found = False
 
-        def set_strict_flags() -> None:
+        def set_strict(value: bool) -> None:
             nonlocal strict_found
-            strict_found = True
+            strict_found = value
 
         new_sections, reports = parse_section(
-            "", template, set_strict_flags, parser["dummy"], ini_config_types, stderr=stderr
+            "", template, set_strict, parser["dummy"], ini_config_types, stderr=stderr
         )
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split("\n") if x)
         if reports:
