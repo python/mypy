@@ -3055,8 +3055,11 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
     log_configuration(manager, sources)
 
     t0 = time.time()
+    gc.disable()
     graph = load_graph(sources, manager)
-
+    gc.freeze()
+    gc.unfreeze()
+    gc.enable()
     print("Coordinator loaded graph", time.time() - t_import)
 
     # This is a kind of unfortunate hack to work around some of fine-grained's

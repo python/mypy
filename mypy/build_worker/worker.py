@@ -84,9 +84,11 @@ def main(argv: list[str]) -> None:
             stderr=sys.stderr,
         )
 
+        gc.disable()
         graph = load_graph(sources, manager)
-
-        print(len(gc.get_objects()))
+        gc.freeze()
+        gc.unfreeze()
+        gc.enable()
 
         for id in graph:
             manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
