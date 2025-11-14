@@ -42,7 +42,7 @@ enc_reshuffle_translate (const __m512i input)
 	const __m512i shifts = _mm512_set1_epi64(0x3036242a1016040alu);
 	__m512i shuffled_in = _mm512_multishift_epi64_epi8(shifts, in);
 
-	// Translate immediatedly after reshuffled.
+	// Translate immediately after reshuffled.
 	const __m512i lookup = _mm512_loadu_si512(base64_table_enc_6bit);
 
 	// Translation 6-bit values to ASCII.
