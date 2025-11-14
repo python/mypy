@@ -16,7 +16,7 @@ may not make much sense otherwise.
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.9 or later to run.  You can install mypy using pip:
+Mypy requires Python 3.10 or later to run.  You can install mypy using pip:
 
 .. code-block:: shell
 
