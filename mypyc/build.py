@@ -26,7 +26,7 @@ import re
 import sys
 import time
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, NoReturn, Union, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Union, cast, NamedTuple
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -42,7 +42,48 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-LIBRT_MODULES = [("librt.internal", "librt_internal.c"), ("librt.base64", "librt_base64.c")]
+class ModDesc(NamedTuple):
+    module: str
+    c_files: list[str]
+    other_files: list[str]
+    include_dirs: list[str]
+
+LIBRT_MODULES = [
+    ModDesc("librt.internal", ["librt_internal.c"], [], []),
+    ModDesc(
+        "librt.base64",
+        [
+            "librt_base64.c",
+            "base64/lib.c",
+            "base64/codec_choose.c",
+            "base64/tables/tables.c",
+            "base64/arch/generic/codec.c",
+            "base64/arch/ssse3/codec.c",
+            "base64/arch/sse41/codec.c",
+            "base64/arch/sse42/codec.c",
+            "base64/arch/avx/codec.c",
+            "base64/arch/avx2/codec.c",
+            "base64/arch/avx512/codec.c",
+            "base64/arch/neon32/codec.c",
+            "base64/arch/neon64/codec.c",
+        ],
+        [
+            "base64/arch/generic/32/enc_loop.c",
+            "base64/arch/generic/64/enc_loop.c",
+            "base64/arch/generic/32/dec_loop.c",
+            "base64/arch/generic/enc_head.c",
+            "base64/arch/generic/enc_tail.c",
+            "base64/arch/generic/dec_head.c",
+            "base64/arch/generic/dec_tail.c",
+            "base64/codecs.h",
+            "base64/env.h",
+            "base64/tables/tables.h",
+            "base64/tables/table_dec_32bit.h",
+            "base64/tables/table_enc_12bit.h",
+        ],
+        ["base64"],
+    ),
+]
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
@@ -677,17 +718,18 @@ def mypycify(
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
                 write_file(rt_file, f.read())
-        for mod, file_name in LIBRT_MODULES:
-            rt_file = os.path.join(build_dir, file_name)
-            with open(os.path.join(include_dir(), file_name), encoding="utf-8") as f:
-                write_file(rt_file, f.read())
+        for mod, file_names, addit_files, includes in LIBRT_MODULES:
+            for file_name in file_names + addit_files:
+                rt_file = os.path.join(build_dir, file_name)
+                with open(os.path.join(include_dir(), file_name), encoding="utf-8") as f:
+                    write_file(rt_file, f.read())
             extensions.append(
                 get_extension()(
                     mod,
                     sources=[
-                        os.path.join(build_dir, file) for file in [file_name] + RUNTIME_C_FILES
+                        os.path.join(build_dir, file) for file in file_names + RUNTIME_C_FILES
                     ],
-                    include_dirs=[include_dir()],
+                    include_dirs=[include_dir()] + [os.path.join(include_dir(), d) for d in includes],
                     extra_compile_args=cflags,
                 )
             )
