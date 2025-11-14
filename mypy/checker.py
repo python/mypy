@@ -3206,6 +3206,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
 
+        self.check_redundant_annotation(s)
+
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
         # as X | Y.
@@ -3257,6 +3259,32 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         with self.msg.filter_errors():
             alias_type = self.expr_checker.accept(s.rvalue)
         self.store_type(s.lvalues[-1], alias_type)
+
+    def check_redundant_annotation(self, s: AssignmentStmt) -> None:
+        if (
+            self.options.warn_redundant_annotation
+            and not s.is_final_def
+            and not s.is_alias_def
+            and s.unanalyzed_type is not None
+            and s.type is not None
+            and not is_same_type(s.type, AnyType(TypeOfAny.special_form))
+            and is_same_type(s.type, self.expr_checker.accept(s.rvalue))
+        ):
+            # skip ClassVar
+            if any(
+                isinstance(lvalue, NameExpr)
+                and isinstance(lvalue.node, Var)
+                and lvalue.node.is_classvar
+                for lvalue in s.lvalues
+            ):
+                return
+
+            # skip dataclass and NamedTuple
+            cls = self.scope.active_class()
+            if cls and (dataclasses_plugin.is_processed_dataclass(cls) or cls.is_named_tuple):
+                return
+
+            self.msg.redundant_annotation(s.type, s.rvalue)
 
     def check_assignment(
         self,
