@@ -8,6 +8,8 @@
 
 #define BASE64_MAXBIN ((PY_SSIZE_T_MAX - 3) / 2)
 
+#define STACK_BUFFER_SIZE 1024
+
 static PyObject *
 b64encode_internal(PyObject *obj) {
     unsigned char *ascii_data;
@@ -28,17 +30,28 @@ b64encode_internal(PyObject *obj) {
     bin_len = PyBytes_GET_SIZE(obj);
     assert(bin_len >= 0);
 
-    if ( bin_len > BASE64_MAXBIN ) {
+    if (bin_len > BASE64_MAXBIN) {
         PyErr_SetString(PyExc_ValueError, "Too much data for base64 line");
         return NULL;
     }
 
     Py_ssize_t buflen = 4 * bin_len / 3 + 4;
-    char *buf = malloc(buflen);
+    char *buf;
+    char stack_buf[STACK_BUFFER_SIZE];
+    if (buflen <= STACK_BUFFER_SIZE) {
+        buf = stack_buf;
+    } else {
+        buf = PyMem_Malloc(buflen);
+        if (buf == NULL) {
+            PyErr_NoMemory();
+            return NULL;
+        }
+    }
     size_t actual_len;
     base64_encode(bin_data, bin_len, buf, &actual_len, 0);
     PyObject *res = PyBytes_FromStringAndSize(buf, actual_len);
-    free(buf);
+    if (buflen > STACK_BUFFER_SIZE)
+        PyMem_Free(buf);
     return res;
 }
 
