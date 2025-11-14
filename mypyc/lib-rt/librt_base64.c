@@ -43,8 +43,7 @@ b64encode_internal(PyObject *obj) {
     } else {
         buf = PyMem_Malloc(buflen);
         if (buf == NULL) {
-            PyErr_NoMemory();
-            return NULL;
+            return PyErr_NoMemory();
         }
     }
     size_t actual_len;
