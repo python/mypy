@@ -266,7 +266,7 @@ f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "*tuple[A, B, B]"; ex
 f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "*tuple[B, B, C]"; expected "A"
 f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "*tuple[B, B]"; expected "C"
 f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-f(*(a, b))    # E: Missing positional arguments "b", "c" in call to "f"
+f(*(a, b))    # E: Missing positional argument "c" in call to "f"
 f(*(a, b, c, c)) # E: Too many arguments for "f"
 f(a, *(b, c, c)) # E: Too many arguments for "f"
 f(*(a, b, c))
@@ -342,7 +342,7 @@ f(b, *(b, b))   # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(b, b, *(b,))  # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(a, a, *(b,))  # E: Argument 2 to "f" has incompatible type "A"; expected "B"
 f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "*tuple[A]"; expected "B"
-f(*())          # E: Too few arguments for "f"
+f(*())          # E: Missing positional argument "a" in call to "f"
 f(*(a, b, b))
 f(a, *(b, b))
 f(a, b, *(b,))
@@ -400,7 +400,7 @@ class A: pass
 class B: pass
 
 a, b = None, None # type: (A, B)
-f(*())        # E: Too few arguments for "f"
+f(*())        # E: Missing positional argument "a" in call to "f"
 f(a, *[a])    # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "Optional[B]" \
               # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "B"
 f(a, b, *[a]) # E: Argument 3 to "f" has incompatible type "*list[A]"; expected "B"
