@@ -77,6 +77,8 @@ LIBRT_MODULES = [
             "base64/arch/generic/enc_tail.c",
             "base64/arch/generic/dec_head.c",
             "base64/arch/generic/dec_tail.c",
+            "base64/arch/neon64/dec_loop.c",
+            "base64/arch/neon64/enc_loop_asm.c",
             "base64/codecs.h",
             "base64/env.h",
             "base64/tables/tables.h",
