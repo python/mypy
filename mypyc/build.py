@@ -26,7 +26,7 @@ import re
 import sys
 import time
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, NoReturn, Union, cast, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -42,11 +42,13 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
+
 class ModDesc(NamedTuple):
     module: str
     c_files: list[str]
     other_files: list[str]
     include_dirs: list[str]
+
 
 LIBRT_MODULES = [
     ModDesc("librt.internal", ["librt_internal.c"], [], []),
@@ -729,7 +731,8 @@ def mypycify(
                     sources=[
                         os.path.join(build_dir, file) for file in file_names + RUNTIME_C_FILES
                     ],
-                    include_dirs=[include_dir()] + [os.path.join(include_dir(), d) for d in includes],
+                    include_dirs=[include_dir()]
+                    + [os.path.join(include_dir(), d) for d in includes],
                     extra_compile_args=cflags,
                 )
             )
