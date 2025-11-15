@@ -281,4 +281,6 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
+    if re.search("_experimental(_|$)", name):
+        options.experimental_features = True
     return options

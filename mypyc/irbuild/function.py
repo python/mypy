@@ -69,7 +69,7 @@ from mypyc.irbuild.callable_class import (
     instantiate_callable_class,
     setup_callable_class,
 )
-from mypyc.irbuild.context import FuncInfo
+from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_vars_to_env,
     finalize_env_class,
@@ -246,6 +246,12 @@ def gen_func_item(
     is_generator = fn_info.is_generator
     builder.enter(fn_info, ret_type=sig.ret_type)
 
+    if is_generator:
+        fitem = builder.fn_info.fitem
+        assert isinstance(fitem, FuncDef), fitem
+        generator_class_ir = builder.mapper.fdef_to_generator[fitem]
+        builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
+
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
     # store a variable denoting the next instruction to be executed when the __next__ function
@@ -357,8 +363,8 @@ def gen_func_ir(
                 builder.module_name,
                 sig,
                 func_decl.kind,
-                func_decl.is_prop_getter,
-                func_decl.is_prop_setter,
+                is_prop_getter=func_decl.is_prop_getter,
+                is_prop_setter=func_decl.is_prop_setter,
             )
             func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:

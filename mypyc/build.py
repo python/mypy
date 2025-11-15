@@ -42,7 +42,7 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-LIBRT_MODULES = [("librt.internal", "librt_internal.c")]
+LIBRT_MODULES = [("librt.internal", "librt_internal.c"), ("librt.base64", "librt_base64.c")]
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
@@ -496,6 +496,7 @@ def mypycify(
     log_trace: bool = False,
     depends_on_librt_internal: bool = False,
     install_librt: bool = False,
+    experimental_features: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -551,6 +552,9 @@ def mypycify(
                        those are build and published on PyPI separately, but during
                        tests, we want to use their development versions (i.e. from
                        current commit).
+        experimental_features: Enable experimental features (install_librt=True is
+                               also needed if using experimental librt features). These
+                               have no backward compatibility guarantees!
     """
 
     # Figure out our configuration
@@ -565,6 +569,7 @@ def mypycify(
         group_name=group_name,
         log_trace=log_trace,
         depends_on_librt_internal=depends_on_librt_internal,
+        experimental_features=experimental_features,
     )
 
     # Generate all the actual important C code
@@ -607,6 +612,8 @@ def mypycify(
         ]
         if log_trace:
             cflags.append("-DMYPYC_LOG_TRACE")
+        if experimental_features:
+            cflags.append("-DMYPYC_EXPERIMENTAL")
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
@@ -633,6 +640,8 @@ def mypycify(
             cflags += ["/GL-", "/wd9025"]  # warning about overriding /GL
         if log_trace:
             cflags.append("/DMYPYC_LOG_TRACE")
+        if experimental_features:
+            cflags.append("/DMYPYC_EXPERIMENTAL")
 
     # If configured to (defaults to yes in multi-file mode), copy the
     # runtime library in. Otherwise it just gets #included to save on

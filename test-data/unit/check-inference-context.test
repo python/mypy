@@ -709,6 +709,20 @@ f(
     A(), r=B())
 [builtins fixtures/isinstance.pyi]
 
+[case testLambdaWithFastContainerType]
+from collections.abc import Callable
+from typing import Never, TypeVar
+
+T = TypeVar("T")
+
+def f(a: Callable[[], T]) -> None: ...
+
+def foo(x: str) -> Never: ...
+
+f(lambda: [foo(0)])  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
+f(lambda: {"x": foo(0)})  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
+
 
 -- Overloads + generic functions
 -- -----------------------------

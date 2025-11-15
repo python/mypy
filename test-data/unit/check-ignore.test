@@ -275,6 +275,16 @@ class CD(six.with_metaclass(M)):  # E: Multiple metaclass definitions
 
 [builtins fixtures/tuple.pyi]
 
+[case testUnusedIgnoreCodeOrder]
+# flags: --warn-unused-ignores
+5 # type: ignore[import, steven] # E: Unused "type: ignore[import, steven]" comment
+-- User ordering of codes is preserved
+5 # type: ignore[steven, import] # E: Unused "type: ignore[steven, import]" comment
+-- Spacing is not preserved
+5 # type: ignore[  steven,      import ] # E: Unused "type: ignore[steven, import]" comment
+-- Make sure it works as intended in more complex situations
+1 + "ok" + "ok".foo # type: ignore[  operator,steven,attr-defined, import] # E: Unused "type: ignore[steven, import]" comment
+
 [case testUnusedIgnoreTryExcept]
 # flags: --warn-unused-ignores
 try:

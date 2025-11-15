@@ -33,6 +33,8 @@ Concatenate: _SpecialForm
 
 TypeAlias: _SpecialForm
 
+TypeForm: _SpecialForm
+
 TypeGuard: _SpecialForm
 TypeIs: _SpecialForm
 Never: _SpecialForm
