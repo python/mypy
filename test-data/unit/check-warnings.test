@@ -78,14 +78,20 @@ b: int = a
 [out]
 main:3: error: Annotation "int" is redundant (inferred type is the same)
 
-[case testRedundantAnnotationSkips]
+[case testRedundantAnnotationClassVar]
 # flags: --warn-redundant-annotation
-from dataclasses import dataclass
-from typing import ClassVar, NamedTuple
+from typing import ClassVar
 
 class a:
     b: ClassVar[int] = 1
-    c: ClassVar = 1
+    c: ClassVar = "test"
+[out]
+main:5: error: Annotation "int" is redundant (inferred type is the same)
+
+[case testRedundantAnnotationSkips]
+# flags: --warn-redundant-annotation
+from dataclasses import dataclass
+from typing import NamedTuple
 
 class d(NamedTuple):
     e: int = 1

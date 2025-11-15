@@ -3271,8 +3271,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and not is_same_type(s.type, AnyType(TypeOfAny.special_form))
             and is_same_type(s.type, self.expr_checker.accept(s.rvalue))
         ):
-            # skip ClassVar
-            if any(isinstance(lvalue, NameExpr) and is_class_var(lvalue) for lvalue in s.lvalues):
+            # skip bare ClassVar
+            if (
+                any(isinstance(lvalue, NameExpr) and is_class_var(lvalue) for lvalue in s.lvalues)
+                and isinstance(s.unanalyzed_type, UnboundType)
+                and not s.unanalyzed_type.args
+            ):
                 return
 
             # skip dataclass and NamedTuple
