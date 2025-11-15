@@ -345,11 +345,10 @@ class ClassIR:
             return None
         result = set(self.children)
         for child in self.children:
-            if child.children:
-                child_subs = child.subclasses()
-                if child_subs is None:
-                    return None
-                result.update(child_subs)
+            child_subs = child.subclasses()
+            if child_subs is None:
+                return None
+            result.update(child_subs)
         return result
 
     def concrete_subclasses(self) -> list[ClassIR] | None:
