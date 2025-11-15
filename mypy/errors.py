@@ -297,8 +297,9 @@ class IterationDependentErrors:
             ):
                 selected.add(candidate)
 
-        persistent_nonoverlaps: dict[NonOverlapErrorInfo, tuple[list[Type], list[Type]]
-        ] = defaultdict(lambda: ([], []))
+        persistent_nonoverlaps: dict[NonOverlapErrorInfo, tuple[list[Type], list[Type]]] = (
+            defaultdict(lambda: ([], []))
+        )
         for nonoverlaps in self.nonoverlapping_types:
             for candidate, (left, right) in nonoverlaps.items():
                 if candidate in selected:
