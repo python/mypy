@@ -1,0 +1,61 @@
+[case testAllBase64Features_librt_experimental]
+from typing import Any
+import base64
+
+from librt.base64 import b64encode
+
+from testutil import assertRaises
+
+def test_encode_basic() -> None:
+    assert b64encode(b"x") == b"eA=="
+
+    with assertRaises(TypeError):
+        b64encode(bytearray(b"x"))
+
+def check_encode(b: bytes) -> None:
+     assert b64encode(b) == getattr(base64, "b64encode")(b)
+
+def test_encode_different_strings() -> None:
+    for i in range(256):
+        check_encode(bytes([i]))
+        check_encode(bytes([i]) + b"x")
+        check_encode(bytes([i]) + b"xy")
+        check_encode(bytes([i]) + b"xyz")
+        check_encode(bytes([i]) + b"xyza")
+        check_encode(b"x" + bytes([i]))
+        check_encode(b"xy" + bytes([i]))
+        check_encode(b"xyz" + bytes([i]))
+        check_encode(b"xyza" + bytes([i]))
+
+    b = b"a\x00\xb7" * 1000
+    for i in range(1000):
+        check_encode(b[:i])
+
+    for b in b"", b"ab", b"bac", b"1234", b"xyz88", b"abc" * 200:
+        check_encode(b)
+
+def test_encode_wrapper() -> None:
+    enc: Any = b64encode
+    assert enc(b"x") == b"eA=="
+
+    with assertRaises(TypeError):
+        enc()
+
+    with assertRaises(TypeError):
+        enc(b"x", b"y")
+
+[case testBase64FeaturesNotAvailableInNonExperimentalBuild_librt_base64]
+# This also ensures librt.base64 can be built without experimental features
+import librt.base64
+
+def test_b64encode_not_available() -> None:
+    assert not hasattr(librt.base64, "b64encode")
+
+[case testBase64UsedAtTopLevelOnly_librt_experimental]
+from librt.base64 import b64encode
+
+# The only reference to b64encode is at module top level
+encoded = b64encode(b"x")
+
+def test_top_level_only_encode() -> None:
+    assert encoded == b"eA=="

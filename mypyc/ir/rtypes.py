@@ -514,7 +514,7 @@ range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refc
 
 KNOWN_NATIVE_TYPES: Final = {
     name: RPrimitive(name, is_unboxed=False, is_refcounted=True)
-    for name in ["librt.internal.Buffer"]
+    for name in ["librt.internal.WriteBuffer", "librt.internal.ReadBuffer"]
 }
 
 

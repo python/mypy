@@ -1530,3 +1530,28 @@ class Base:
         names = [name for name in namespace if fail]  # E: Name "fail" is not defined
         self.n = namedtuple("n", names)  # E: NamedTuple type as an attribute is not supported
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleDefaultValueDefer]
+# flags: --debug-serialize
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    foo: int = UNDEFINED  # E: Name "UNDEFINED" is not defined
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleDefaultValueDefer2]
+# flags: --debug-serialize
+from typing import NamedTuple
+
+class NT(NamedTuple):
+    foo: int = DEFERRED_INT
+
+class NT2(NamedTuple):
+    foo: int = DEFERRED_STR  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+from foo import DEFERRED_INT, DEFERRED_STR
+
+[file foo.py]
+DEFERRED_INT = 1
+DEFERRED_STR = "a"
+[builtins fixtures/tuple.pyi]

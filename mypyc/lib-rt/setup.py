@@ -96,6 +96,9 @@ else:
                 ],
                 include_dirs=["."],
                 extra_compile_args=cflags,
-            )
+            ),
+            Extension(
+                "librt.base64", ["librt_base64.c"], include_dirs=["."], extra_compile_args=cflags
+            ),
         ]
     )

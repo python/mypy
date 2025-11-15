@@ -83,6 +83,7 @@ from mypy.nodes import (
     TypeAliasExpr,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -539,6 +540,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_cast_expr(self, node: CastExpr) -> CastExpr:
         return CastExpr(self.expr(node.expr), self.type(node.type))
+
+    def visit_type_form_expr(self, node: TypeFormExpr) -> TypeFormExpr:
+        return TypeFormExpr(self.type(node.type))
 
     def visit_assert_type_expr(self, node: AssertTypeExpr) -> AssertTypeExpr:
         return AssertTypeExpr(self.expr(node.expr), self.type(node.type))
