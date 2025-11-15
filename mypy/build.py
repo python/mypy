@@ -1050,7 +1050,7 @@ class BuildManager:
                 _, _, scc = self.scc_queue.pop(0)
             send(self.workers[worker].conn, {"scc_id": scc.id})
 
-    def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool]:
+    def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
         """Wait for a stale SCC processing (in process) to finish.
 
         Return next processed SCC and whether we have more in the queue.
@@ -1059,26 +1059,28 @@ class BuildManager:
         """
         if not self.workers:
             if not self.scc_queue:
-                return [], False
+                return [], False, {}
             _, _, next_scc = self.scc_queue.pop(0)
             process_stale_scc(graph, next_scc, self)
-            return [next_scc], bool(self.scc_queue)
+            return [next_scc], bool(self.scc_queue), {}
 
         if not self.scc_queue and len(self.free_workers) == len(self.workers):
-            return [], False
+            return [], False, {}
 
         # TODO: don't select from free workers.
         conns = [w.conn.connection for w in self.workers]
         ready, _, _ = select(conns, [], [], 100)
         done_sccs = []
+        results = {}
         for r in ready:
             idx = conns.index(r)
             data = receive(self.workers[idx].conn)
             self.free_workers.add(idx)
             scc_id = data["scc_id"]
+            results.update(data["result"])
             done_sccs.append(self.scc_by_id[scc_id])
         self.submit([])  # advance after some workers are free.
-        return done_sccs, bool(self.scc_queue) or len(self.free_workers) < len(self.workers)
+        return done_sccs, bool(self.scc_queue) or len(self.free_workers) < len(self.workers), results
 
 
 def deps_to_json(x: dict[str, set[str]]) -> bytes:
@@ -1474,11 +1476,11 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
       A CacheMeta instance if the cache data was found and appears
       valid; otherwise None.
     """
+    t0 = time.time()
     # TODO: May need to take more build options into account
     meta_file, data_file, _ = get_cache_names(id, path, manager.options)
     manager.trace(f"Looking for {id} at {meta_file}")
     meta: bytes | dict[str, Any] | None
-    t0 = time.time()
     if manager.options.fixed_format_cache:
         meta = _load_ff_file(meta_file, manager, log_error=f"Could not load cache for {id}: ")
         if meta is None:
@@ -2184,6 +2186,12 @@ class State:
             self.compute_dependencies()
             if self.manager.workers:
                 self.tree = None
+
+    def reload_meta(self) -> None:
+        assert self.path is not None
+        self.meta = find_cache_meta(self.id, self.path, self.manager)
+        assert self.meta is not None
+        self.interface_hash = self.meta.interface_hash
 
     def add_ancestors(self) -> None:
         if self.path is not None:
@@ -3522,7 +3530,10 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if fresh:
             done = fresh
         else:
-            done, still_working = manager.wait_for_done(graph)
+            done, still_working, results = manager.wait_for_done(graph)
+            for id, (interface_cache, errors) in results.items():
+                graph[id].interface_hash = bytes.fromhex(interface_cache)
+                manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
         ready = []
         t0 = time.time()
         for done_scc in done:
@@ -3597,7 +3608,7 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
 
-def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
+def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> dict[str, tuple[str, list[str]]]:
     """Process the modules in one SCC from source code."""
     # First verify if all transitive dependencies are loaded in the current process.
     t0 = time.time()
@@ -3619,6 +3630,11 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
             manager.scc_by_id[sid] for sid in manager.top_order if sid in missing_sccs
         ]
         manager.add_stats(fresh_order_time=time.time() - ts)
+
+        for prev_scc in fresh_sccs_to_load:
+            for mod_id in prev_scc.mod_ids:
+                graph[mod_id].reload_meta()
+
         manager.log(f"Processing {len(fresh_sccs_to_load)} fresh SCCs")
         if (
             not manager.options.test_env
@@ -3721,6 +3737,10 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
         type_check_time=t5 - t4,
         flush_and_cache_time=time.time() - t5,
     )
+    scc_result = {}
+    for id in scc:
+        scc_result[id] = graph[id].interface_hash.hex(), errors_by_id.get(id, [])
+    return scc_result
 
 
 def prepare_sccs_full(

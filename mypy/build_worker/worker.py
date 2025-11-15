@@ -59,12 +59,10 @@ def main(argv: list[str]) -> None:
         errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
         plugin, snapshot = load_plugins(options, errors, sys.stdout, [])
 
-        messages = []
-
         def flush_errors(
             filename: str | None, new_messages: list[str], is_serious: bool
         ) -> None:
-            messages.extend(new_messages)
+            pass
 
         manager = BuildManager(
             data_dir,
@@ -110,12 +108,12 @@ def main(argv: list[str]) -> None:
             scc_id = data["scc_id"]
             scc = manager.scc_by_id[scc_id]
             t0 = time.time()
-            process_stale_scc(graph, scc, manager)
+            result = process_stale_scc(graph, scc, manager)
             manager.add_stats(
                 total_process_stale_time=time.time() - t0,
                 stale_sccs_processed=1,
             )
-            send(server, {"scc_id": scc_id})
+            send(server, {"scc_id": scc_id, "result": result})
 
     server.cleanup()
 
