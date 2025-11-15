@@ -29,6 +29,7 @@ from mypy.errors import (
     ErrorWatcher,
     IterationDependentErrors,
     IterationErrorWatcher,
+    NonOverlapErrorInfo,
 )
 from mypy.nodes import (
     ARG_NAMED,
@@ -1634,7 +1635,13 @@ class MessageBuilder:
                 break
             if isinstance(watcher, IterationErrorWatcher):
                 watcher.iteration_dependent_errors.nonoverlapping_types[-1][
-                    (ctx.line, ctx.column, ctx.end_line, ctx.end_column, kind)
+                    NonOverlapErrorInfo(
+                        line=ctx.line,
+                        column=ctx.column,
+                        end_line=ctx.end_line,
+                        end_column=ctx.end_column,
+                        kind=kind,
+                    )
                 ] = (left, right)
                 return
 

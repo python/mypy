@@ -6,7 +6,7 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from itertools import chain
-from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
+from typing import Callable, Final, NamedTuple, NoReturn, Optional, TextIO, TypeVar
 from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
@@ -229,6 +229,14 @@ class ErrorWatcher:
         return self._filtered
 
 
+class NonOverlapErrorInfo(NamedTuple):
+    line: int
+    column: int
+    end_line: int | None
+    end_column: int | None
+    kind: str
+
+
 class IterationDependentErrors:
     """An `IterationDependentErrors` instance serves to collect the `unreachable`,
     `redundant-expr`, and `redundant-casts` errors, as well as the revealed types and
@@ -249,11 +257,8 @@ class IterationDependentErrors:
     # end_line, end_column:
     revealed_types: dict[tuple[int, int, int | None, int | None], list[Type]]
 
-    # One dictionary of non-overlapping types per iteration step.  Meaning of the key
-    # tuple items: line, column, end_line, end_column, kind:
-    nonoverlapping_types: list[
-        dict[tuple[int, int, int | None, int | None, str], tuple[Type, Type]],
-    ]
+    # One dictionary of non-overlapping types per iteration step:
+    nonoverlapping_types: list[dict[NonOverlapErrorInfo, tuple[Type, Type]]]
 
     def __init__(self) -> None:
         self.uselessness_errors = []
@@ -287,7 +292,7 @@ class IterationDependentErrors:
         selected = set()
         for candidate in set(chain(*self.nonoverlapping_types)):
             if all(
-                (candidate in nonoverlap) or (candidate[0] in lines)
+                (candidate in nonoverlap) or (candidate.line in lines)
                 for nonoverlap, lines in zip(self.nonoverlapping_types, self.unreachable_lines)
             ):
                 selected.add(candidate)
@@ -303,10 +308,10 @@ class IterationDependentErrors:
                     types[1].append(right)
 
         for error_info, types in persistent_nonoverlaps.items():
-            context = Context(line=error_info[0], column=error_info[1])
-            context.end_line = error_info[2]
-            context.end_column = error_info[3]
-            yield (types[0], types[1]), error_info[4], context
+            context = Context(line=error_info.line, column=error_info.column)
+            context.end_line = error_info.end_line
+            context.end_column = error_info.end_column
+            yield (types[0], types[1]), error_info.kind, context
 
     def yield_revealed_type_infos(self) -> Iterator[tuple[list[Type], Context]]:
         """Yield all types revealed in at least one iteration step."""
