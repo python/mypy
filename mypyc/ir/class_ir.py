@@ -380,7 +380,7 @@ class ClassIR:
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
-            "allow_interpreted_subclasses": self._allow_interpreted_subclasses,
+            "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
             "needs_getseters": self.needs_getseters,
             "_serializable": self._serializable,
             "builtin_base": self.builtin_base,
