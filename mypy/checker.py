@@ -3284,7 +3284,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if cls and (dataclasses_plugin.is_processed_dataclass(cls) or cls.is_named_tuple):
                 return
 
-            self.msg.redundant_annotation(s.type, s.rvalue)
+            self.msg.redundant_annotation(s.type, s.type)
 
     def check_assignment(
         self,
