@@ -145,6 +145,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     get_func_def,
+    is_class_var,
     is_final_node,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
@@ -3271,12 +3272,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and is_same_type(s.type, self.expr_checker.accept(s.rvalue))
         ):
             # skip ClassVar
-            if any(
-                isinstance(lvalue, NameExpr)
-                and isinstance(lvalue.node, Var)
-                and lvalue.node.is_classvar
-                for lvalue in s.lvalues
-            ):
+            if any(isinstance(lvalue, NameExpr) and is_class_var(lvalue) for lvalue in s.lvalues):
                 return
 
             # skip dataclass and NamedTuple
