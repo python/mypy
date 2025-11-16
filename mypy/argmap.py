@@ -37,7 +37,7 @@ def map_actuals_to_formals(
     callee argument index, indexed by callee index.
 
     The actual_arg_type argument should evaluate to the type of the actual
-    argument type with the given index.
+    argument with the given index.
     """
     nformals = len(formal_kinds)
     formal_to_actual: list[list[int]] = [[] for i in range(nformals)]
