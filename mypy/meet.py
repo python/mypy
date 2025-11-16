@@ -10,6 +10,7 @@ from mypy.subtypes import (
     are_parameters_compatible,
     find_member,
     is_callable_compatible,
+    is_enum_value_pair,
     is_equivalent,
     is_proper_subtype,
     is_same_type,
@@ -571,9 +572,16 @@ def is_overlapping_types(
         right = right.fallback
 
     if isinstance(left, LiteralType) and isinstance(right, LiteralType):
-        if left.value == right.value:
+        if (
+            left.value == right.value
+            and left.fallback.type.is_enum == right.fallback.type.is_enum
+            or is_enum_value_pair(left, right)
+        ):
             # If values are the same, we still need to check if fallbacks are overlapping,
             # this is done below.
+            # Enums are more interesting:
+            # * if both sides are enums, they should have same values
+            # * if exactly one of them is a enum, fallback compatibibility is enough
             left = left.fallback
             right = right.fallback
         else:
