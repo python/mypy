@@ -28,10 +28,10 @@ import sys
 import time
 import types
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
+from heapq import heappop, heappush
 from select import select
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Final, NoReturn, TextIO, TypedDict
 from typing_extensions import TypeAlias as _TypeAlias
-from heapq import heappush, heappop
 
 from librt.internal import cache_version
 
@@ -42,7 +42,7 @@ from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.ipc import IPCClient, read_status, BadStatus, IPCBase
+from mypy.ipc import BadStatus, IPCBase, IPCClient, read_status
 from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
@@ -130,7 +130,9 @@ class SCC:
 
     id_counter: ClassVar[int] = 0
 
-    def __init__(self, ids: set[str], scc_id: int | None = None, deps: list[int] | None = None) -> None:
+    def __init__(
+        self, ids: set[str], scc_id: int | None = None, deps: list[int] | None = None
+    ) -> None:
         if scc_id is None:
             self.id = SCC.id_counter
             SCC.id_counter += 1
@@ -241,7 +243,7 @@ def start_worker(options_data: str, idx: int) -> None:
         "-m",
         "mypy.build_worker",
         f"--status-file={status_file}",
-        f'--options-data="{options_data}"'
+        f'--options-data="{options_data}"',
     ]
     subprocess.Popen(command)
 
@@ -315,14 +317,20 @@ def build(
             workers.append(get_worker(i))
 
     for worker in workers:
-        source_tuples = [
-            (s.path, s.module, s.text, s.base_dir, s.followed) for s in sources
-        ]
+        source_tuples = [(s.path, s.module, s.text, s.base_dir, s.followed) for s in sources]
         send(worker.conn, {"sources": source_tuples})
 
     try:
         result = build_inner(
-            sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr, extra_plugins, workers
+            sources,
+            options,
+            alt_lib_path,
+            flush_errors,
+            fscache,
+            stdout,
+            stderr,
+            extra_plugins,
+            workers,
         )
         result.errors = messages
         return result
@@ -1041,7 +1049,9 @@ class BuildManager:
                 _, _, scc = self.scc_queue.pop(0)
             send(self.workers[worker].conn, {"scc_id": scc.id})
 
-    def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
+    def wait_for_done(
+        self, graph: Graph
+    ) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
         """Wait for a stale SCC processing (in process) to finish.
 
         Return next processed SCC and whether we have more in the queue.
@@ -1068,10 +1078,19 @@ class BuildManager:
             data = receive(self.workers[idx].conn)
             self.free_workers.add(idx)
             scc_id = data["scc_id"]
+            if "blocker" in data:
+                blocker = data["blocker"]
+                raise CompileError(
+                    blocker["messages"], blocker["use_stdout"], blocker["module_with_blocker"]
+                )
             results.update(data["result"])
             done_sccs.append(self.scc_by_id[scc_id])
         self.submit([])  # advance after some workers are free.
-        return done_sccs, bool(self.scc_queue) or len(self.free_workers) < len(self.workers), results
+        return (
+            done_sccs,
+            bool(self.scc_queue) or len(self.free_workers) < len(self.workers),
+            results,
+        )
 
 
 def deps_to_json(x: dict[str, set[str]]) -> bytes:
@@ -2269,9 +2288,7 @@ class State:
         if self.options.fixed_format_cache:
             data = _load_ff_file(data_file, self.manager, "Could not load tree: ")
         else:
-            data = _load_json_file(
-                data_file, self.manager, "Load tree ", "Could not load tree: "
-            )
+            data = _load_json_file(data_file, self.manager, "Load tree ", "Could not load tree: ")
         if data is None:
             return
 
@@ -3611,7 +3628,9 @@ def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManage
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
 
-def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> dict[str, tuple[str, list[str]]]:
+def process_stale_scc(
+    graph: Graph, ascc: SCC, manager: BuildManager
+) -> dict[str, tuple[str, list[str]]]:
     """Process the modules in one SCC from source code."""
     # First verify if all transitive dependencies are loaded in the current process.
     t0 = time.time()

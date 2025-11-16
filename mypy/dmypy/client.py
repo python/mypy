@@ -19,7 +19,7 @@ from typing import Any, Callable, NoReturn
 
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
-from mypy.ipc import IPCClient, IPCException, BadStatus, read_status
+from mypy.ipc import BadStatus, IPCClient, IPCException, read_status
 from mypy.main import RECURSION_LIMIT
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__

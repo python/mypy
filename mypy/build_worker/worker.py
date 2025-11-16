@@ -10,12 +10,20 @@ import platform
 import sys
 import time
 
-from mypy.build import receive, send, BuildManager, load_plugins, load_graph, dump_graph, SCC, process_stale_scc
-from mypy.errors import Errors
+from mypy.build import (
+    SCC,
+    BuildManager,
+    load_graph,
+    load_plugins,
+    process_stale_scc,
+    receive,
+    send,
+)
+from mypy.errors import Errors, CompileError
 from mypy.fscache import FileSystemCache
 from mypy.ipc import IPCServer
 from mypy.main import RECURSION_LIMIT
-from mypy.modulefinder import BuildSource, compute_search_paths, BuildSourceSet
+from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
 from mypy.options import Options
 from mypy.util import read_py_file
 from mypy.version import __version__
@@ -59,9 +67,7 @@ def main(argv: list[str]) -> None:
         errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
         plugin, snapshot = load_plugins(options, errors, sys.stdout, [])
 
-        def flush_errors(
-            filename: str | None, new_messages: list[str], is_serious: bool
-        ) -> None:
+        def flush_errors(filename: str | None, new_messages: list[str], is_serious: bool) -> None:
             pass
 
         manager = BuildManager(
@@ -108,12 +114,18 @@ def main(argv: list[str]) -> None:
             scc_id = data["scc_id"]
             scc = manager.scc_by_id[scc_id]
             t0 = time.time()
-            result = process_stale_scc(graph, scc, manager)
-            manager.add_stats(
-                total_process_stale_time=time.time() - t0,
-                stale_sccs_processed=1,
-            )
-            send(server, {"scc_id": scc_id, "result": result})
+            try:
+                result = process_stale_scc(graph, scc, manager)
+            except CompileError as e:
+                blocker = {
+                    "messages": e.messages,
+                    "use_stdout": e.use_stdout,
+                    "module_with_blocker": e.module_with_blocker,
+                }
+                send(server, {"scc_id": scc_id, "blocker": blocker})
+            else:
+                send(server, {"scc_id": scc_id, "result": result})
+            manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
     server.cleanup()
 
