@@ -142,7 +142,7 @@ def get_mypyc_attrs(
             or (key == "allow_interpreted_subclasses" and value is True and attrs.get("native_class") is False)
         ):
             errors.error("'allow_interpreted_subclasses' cannot be True if 'native_class' is False"
-        
+
         if key in MYPYC_ATTRS:
             key = cast(MypycAttr, key)
             attrs[key] = value
