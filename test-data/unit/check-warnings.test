@@ -73,10 +73,14 @@ def f(q: Union[x, y, z]) -> None:
 
 [case testRedundantAnnotation]
 # flags: --warn-redundant-annotation
+from typing import Literal
 a = 1
 b: int = a
+c: Literal[1] = 1
+d: list[str] = []
 [out]
-main:3: error: Annotation "int" is redundant (inferred type is the same)
+main:4: error: Annotation "int" is redundant (inferred type is the same)
+main:5: error: Annotation "Literal[1]" is redundant (inferred type is the same)
 
 [case testRedundantAnnotationClassVar]
 # flags: --warn-redundant-annotation
@@ -87,6 +91,18 @@ class a:
     c: ClassVar = "test"
 [out]
 main:5: error: Annotation "int" is redundant (inferred type is the same)
+
+[case testRedundantAnnotationTypeVar]
+# flags: --warn-redundant-annotation
+from typing import Literal, TypeVar
+
+T = TypeVar("T")
+
+def f(x: T) -> T:
+  return x
+
+x: Literal[1] = f(1)
+y: list[str] = f([])
 
 [case testRedundantAnnotationSkips]
 # flags: --warn-redundant-annotation
