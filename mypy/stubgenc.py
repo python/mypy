@@ -14,7 +14,7 @@ import keyword
 import os.path
 from collections.abc import Mapping
 from types import FunctionType, ModuleType
-from typing import Any, Callable
+from typing import Any, Callable, Final
 
 from mypy.fastparse import parse_type_comment
 from mypy.moduleinspect import is_c_module
@@ -39,6 +39,17 @@ from mypy.stubutil import (
     infer_method_ret_type,
 )
 from mypy.util import quote_docstring
+
+SPECIAL_ENUM_ATTRS: Final = {
+    "_generate_next_value_",
+    "_member_map_",
+    "_member_names_",
+    "_member_type_",
+    "_unhashable_values_",
+    "_use_args_",
+    "_value2member_map_",
+    "_value_repr_",
+}
 
 
 class ExternalSignatureGenerator(SignatureGenerator):
@@ -862,6 +873,8 @@ class InspectionStubGenerator(BaseStubGenerator):
                 )
             elif inspect.isclass(value) and self.is_defined_in_module(value):
                 self.generate_class_stub(attr, value, types, parent_class=class_info)
+            elif attr in SPECIAL_ENUM_ATTRS:
+                pass
             else:
                 attrs.append((attr, value))
 
@@ -870,8 +883,14 @@ class InspectionStubGenerator(BaseStubGenerator):
                 # special case for __hash__
                 continue
             prop_type_name = self.strip_or_import(self.get_type_annotation(value))
-            classvar = self.add_name("typing.ClassVar")
-            static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
+            # Pybind supports native enums now
+            if issubclass(cls, enum.Enum) and attr in cls._member_names_:
+                static_properties.append(f"{self._indent}{attr} = {cls._member_map_[attr].value}")
+            else:
+                classvar = self.add_name("typing.ClassVar")
+                static_properties.append(
+                    f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ..."
+                )
 
         self.dedent()
 
