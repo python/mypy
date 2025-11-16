@@ -21,7 +21,6 @@ import json
 import os
 import pickle
 import platform
-import psutil
 import re
 import stat
 import subprocess
@@ -118,6 +117,8 @@ CORE_BUILTIN_MODULES: Final = {
 
 # We are careful now, we can increase this in future if safe/useful.
 MAX_GC_FREEZE_CYCLES = 1
+
+initial_gc_freeze_done = False
 
 Graph: _TypeAlias = dict[str, "State"]
 
@@ -248,9 +249,6 @@ def start_worker(options_data: str, idx: int) -> None:
 def get_worker(idx: int) -> WorkerClient:
     status_file = f".mypy_worker.{idx}.json"
     pid, connection_name = wait_for_worker(status_file)
-    proc = psutil.Process(pid=pid)
-    core = idx + 1
-    proc.cpu_affinity([core * 3, core * 3 + 1, core * 3 + 2])
     return WorkerClient(idx, IPCClient(connection_name, 10), pid)
 
 
@@ -307,11 +305,6 @@ def build(
     stderr = stderr or sys.stderr
     extra_plugins = extra_plugins or []
 
-    print("Starting workers", time.time() - t_import)
-
-    proc = psutil.Process()
-    proc.cpu_affinity([0, 1, 2])
-
     workers = []
     if options.num_workers > 0:
         pickled_options = pickle.dumps(options.snapshot())
@@ -326,8 +319,6 @@ def build(
             (s.path, s.module, s.text, s.base_dir, s.followed) for s in sources
         ]
         send(worker.conn, {"sources": source_tuples})
-
-    print("Sent sources to workers", time.time() - t_import)
 
     try:
         result = build_inner(
@@ -2603,6 +2594,7 @@ class State:
             self.free_state()
             if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
                 free_tree(self.tree)
+                self.tree.defs.clear()
         self.time_spent_us += time_spent_us(t0)
 
     def free_state(self) -> None:
@@ -3063,12 +3055,15 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
     log_configuration(manager, sources)
 
     t0 = time.time()
-    gc.disable()
+
+    global initial_gc_freeze_done
+    if (
+        not manager.options.test_env
+        and platform.python_implementation() == "CPython"
+        and not initial_gc_freeze_done
+    ):
+        gc.disable()
     graph = load_graph(sources, manager)
-    gc.freeze()
-    gc.unfreeze()
-    gc.enable()
-    print("Coordinator loaded graph", time.time() - t_import)
 
     # This is a kind of unfortunate hack to work around some of fine-grained's
     # fragility: if we have loaded less than 50% of the specified files from
@@ -3080,6 +3075,16 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         manager.log("Redoing load_graph without cache because too much was missing")
         manager.cache_enabled = False
         graph = load_graph(sources, manager)
+
+    if (
+        not manager.options.test_env
+        and platform.python_implementation() == "CPython"
+        and not initial_gc_freeze_done
+    ):
+        gc.freeze()
+        gc.unfreeze()
+        gc.enable()
+        initial_gc_freeze_done = True
 
     for id in graph:
         manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
@@ -3497,14 +3502,12 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
     for worker in manager.workers:
         data = receive(worker.conn)
-        print(worker.idx, data["status"])
+        assert data["status"] == "ok"
         send(worker.conn, {"sccs": [(list(scc.mod_ids), scc.id, list(scc.deps)) for scc in sccs]})
 
     for worker in manager.workers:
         data = receive(worker.conn)
-        print(worker.idx, data["status"])
-
-    print("Workers loaded graph", time.time() - t_import)
+        assert data["status"] == "ok"
 
     manager.free_workers = {w.idx for w in manager.workers}
 
@@ -3649,6 +3652,8 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> dict[st
             # a hack, but it gives huge performance wins for large third-party
             # libraries, like torch.
             tc = time.time()
+            if manager.gc_freeze_cycles > 0:
+                gc.collect()
             gc.disable()
             manager.add_stats(gc_pre_freeze_time=time.time() - tc)
         for prev_scc in fresh_sccs_to_load:
