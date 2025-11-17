@@ -81,6 +81,7 @@ LIBRT_MODULES = [
             "base64/arch/ssse3/dec_loop.c",
             "base64/arch/ssse3/enc_loop_asm.c",
             "base64/arch/ssse3/enc_translate.c",
+            "base64/arch/ssse3/enc_reshuffle.c",
             "base64/arch/neon64/dec_loop.c",
             "base64/arch/neon64/enc_loop_asm.c",
             "base64/codecs.h",
