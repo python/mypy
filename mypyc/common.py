@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 import sys
 import sysconfig
 from typing import Any, Final
@@ -43,6 +44,8 @@ SIZEOF_SIZE_T: Final = (
 )
 
 IS_32_BIT_PLATFORM: Final = int(SIZEOF_SIZE_T) == 4
+
+X86_64: Final = platform.machine() == "x86_64"
 
 PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 

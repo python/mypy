@@ -36,7 +36,7 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
+from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, X86_64, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
@@ -645,7 +645,6 @@ def mypycify(
         cflags += [
             f"-O{opt_level}",
             f"-g{debug_level}",
-            "-msse4.2",  # TODO
             "-Werror",
             "-Wno-unused-function",
             "-Wno-unused-label",
@@ -659,6 +658,9 @@ def mypycify(
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",
         ]
+        if X86_64:
+            # Enable SIMD extensions. All CPUs released since ~2010 support SSE4.2.
+            cflags.append("-msse4.2")
         if log_trace:
             cflags.append("-DMYPYC_LOG_TRACE")
         if experimental_features:
@@ -687,6 +689,10 @@ def mypycify(
             # that we actually get the compilation speed and memory
             # use wins that multi-file mode is intended for.
             cflags += ["/GL-", "/wd9025"]  # warning about overriding /GL
+        if X86_64:
+            # Enable SIMD extensions. All CPUs released since ~2010 support SSE4.2.
+            # Also Windows 11 requires SSE4.2 since 24H2.
+            cflags.append("/arch:SSE4.2")
         if log_trace:
             cflags.append("/DMYPYC_LOG_TRACE")
         if experimental_features:
