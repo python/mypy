@@ -19,7 +19,7 @@ from mypy.build import (
     receive,
     send,
 )
-from mypy.errors import Errors, CompileError
+from mypy.errors import CompileError, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
 from mypy.ipc import IPCServer
 from mypy.main import RECURSION_LIMIT
@@ -54,80 +54,90 @@ def main(argv: list[str]) -> None:
         json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
         f.write("\n")
 
-    with server:
+    fscache = FileSystemCache()
+    cached_read = fscache.read
+    errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
+
+    try:
+        with server:
+            serve(server, options, errors, fscache)
+    except OSError:
+        pass
+    except Exception as exc:
+        report_internal_error(exc, errors.file, 0, errors, options)
+    finally:
+        server.cleanup()
+
+
+def serve(server: IPCServer, options: Options, errors: Errors, fscache: FileSystemCache) -> None:
+    data = receive(server)
+    sources = [BuildSource(*st) for st in data["sources"]]
+
+    data_dir = os.path.dirname(os.path.dirname(__file__))
+    search_paths = compute_search_paths(sources, options, data_dir, None)
+
+    source_set = BuildSourceSet(sources)
+    plugin, snapshot = load_plugins(options, errors, sys.stdout, [])
+
+    def flush_errors(filename: str | None, new_messages: list[str], is_serious: bool) -> None:
+        pass
+
+    manager = BuildManager(
+        data_dir,
+        search_paths,
+        ignore_prefix=os.getcwd(),
+        source_set=source_set,
+        reports=None,
+        options=options,
+        version_id=__version__,
+        plugin=plugin,
+        plugins_snapshot=snapshot,
+        errors=errors,
+        error_formatter=None,
+        flush_errors=flush_errors,
+        fscache=fscache,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+
+    gc.disable()
+    graph = load_graph(sources, manager)
+    gc.freeze()
+    gc.unfreeze()
+    gc.enable()
+
+    for id in graph:
+        manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
+    send(server, {"status": "ok"})
+
+    data = receive(server)
+    sccs = [SCC(set(mod_ids), scc_id, deps) for (mod_ids, scc_id, deps) in data["sccs"]]
+
+    manager.scc_by_id = {scc.id: scc for scc in sccs}
+    manager.top_order = [scc.id for scc in sccs]
+
+    send(server, {"status": "ok"})
+
+    while True:
         data = receive(server)
-        sources = [BuildSource(*st) for st in data["sources"]]
-
-        data_dir = os.path.dirname(os.path.dirname(__file__))
-        fscache = FileSystemCache()
-        search_paths = compute_search_paths(sources, options, data_dir, None)
-
-        source_set = BuildSourceSet(sources)
-        cached_read = fscache.read
-        errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
-        plugin, snapshot = load_plugins(options, errors, sys.stdout, [])
-
-        def flush_errors(filename: str | None, new_messages: list[str], is_serious: bool) -> None:
-            pass
-
-        manager = BuildManager(
-            data_dir,
-            search_paths,
-            ignore_prefix=os.getcwd(),
-            source_set=source_set,
-            reports=None,
-            options=options,
-            version_id=__version__,
-            plugin=plugin,
-            plugins_snapshot=snapshot,
-            errors=errors,
-            error_formatter=None,
-            flush_errors=flush_errors,
-            fscache=fscache,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
-
-        gc.disable()
-        graph = load_graph(sources, manager)
-        gc.freeze()
-        gc.unfreeze()
-        gc.enable()
-
-        for id in graph:
-            manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
-        send(server, {"status": "ok"})
-
-        data = receive(server)
-        sccs = [SCC(set(mod_ids), scc_id, deps) for (mod_ids, scc_id, deps) in data["sccs"]]
-
-        manager.scc_by_id = {scc.id: scc for scc in sccs}
-        manager.top_order = [scc.id for scc in sccs]
-
-        send(server, {"status": "ok"})
-
-        while True:
-            data = receive(server)
-            if "final" in data:
-                manager.dump_stats()
-                break
-            scc_id = data["scc_id"]
-            scc = manager.scc_by_id[scc_id]
-            t0 = time.time()
-            try:
-                result = process_stale_scc(graph, scc, manager)
-            except CompileError as e:
-                blocker = {
-                    "messages": e.messages,
-                    "use_stdout": e.use_stdout,
-                    "module_with_blocker": e.module_with_blocker,
-                }
-                send(server, {"scc_id": scc_id, "blocker": blocker})
-            else:
-                send(server, {"scc_id": scc_id, "result": result})
-            manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
-
-    server.cleanup()
+        if "final" in data:
+            manager.dump_stats()
+            break
+        scc_id = data["scc_id"]
+        scc = manager.scc_by_id[scc_id]
+        t0 = time.time()
+        try:
+            result = process_stale_scc(graph, scc, manager)
+        except CompileError as e:
+            blocker = {
+                "messages": e.messages,
+                "use_stdout": e.use_stdout,
+                "module_with_blocker": e.module_with_blocker,
+            }
+            send(server, {"scc_id": scc_id, "blocker": blocker})
+        else:
+            send(server, {"scc_id": scc_id, "result": result})
+        manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
 
 def console_entry() -> None:

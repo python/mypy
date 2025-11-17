@@ -1083,7 +1083,7 @@ class BuildManager:
                 raise CompileError(
                     blocker["messages"], blocker["use_stdout"], blocker["module_with_blocker"]
                 )
-            results.update(data["result"])
+            results.update({k: tuple(v) for k, v in data["result"].items()})
             done_sccs.append(self.scc_by_id[scc_id])
         self.submit([])  # advance after some workers are free.
         return (
