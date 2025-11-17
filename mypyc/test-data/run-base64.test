@@ -50,8 +50,11 @@ def test_decode_basic() -> None:
     with assertRaises(TypeError):
         b64decode(bytearray(b"eA=="))
 
-def check_decode(b: bytes) -> None:
-     enc = b64encode(b)
+def check_decode(b: bytes, encoded: bool = False) -> None:
+     if encoded:
+         enc = b
+     else:
+         enc = b64encode(b)
      assert b64decode(enc) == getattr(base64, "b64decode")(enc)
 
 def test_decode_different_strings() -> None:
@@ -72,6 +75,16 @@ def test_decode_different_strings() -> None:
 
     for b in b"", b"ab", b"bac", b"1234", b"xyz88", b"abc" * 200:
         check_decode(b)
+
+def test_decode_wrapper() -> None:
+    dec: Any = b64decode
+    assert dec(b"eA==") == b"x"
+
+    with assertRaises(TypeError):
+        dec()
+
+    with assertRaises(TypeError):
+        dec(b"x", b"y")
 
 [case testBase64FeaturesNotAvailableInNonExperimentalBuild_librt_base64]
 # This also ensures librt.base64 can be built without experimental features

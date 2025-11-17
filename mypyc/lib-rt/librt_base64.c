@@ -107,7 +107,7 @@ b64decode_internal(PyObject *arg) {
     if (ret != 1) {
         Py_DECREF(out_bytes);
         if (ret == 0) {
-            PyErr_SetString(PyExc_ValueError, "invalid base64 input");
+            PyErr_SetString(PyExc_ValueError, "Only base64 data is allowed");
         } else if (ret == -1) {
             PyErr_SetString(PyExc_NotImplementedError, "base64 codec not available in this build");
         } else {
