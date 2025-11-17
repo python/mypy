@@ -341,7 +341,7 @@ class ClassIR:
         Return None if it is impossible to identify all subclasses, for example
         because we are performing separate compilation.
         """
-        if not self.is_ext_class or self.allow_interpreted_subclasses or self.children is None:
+        if (not self.is_ext_class and not self.is_final_class) or self.allow_interpreted_subclasses or self.children is None:
             return None
         result = set(self.children)
         for child in self.children:
