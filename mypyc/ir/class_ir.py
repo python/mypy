@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import NamedTuple
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
-from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import DeserMaps, Value
-from mypyc.ir.rtypes import RInstance, RType, deserialize_type
+from mypyc.ir.rtypes import RInstance, RType, deserialize_type, object_rprimitive
 from mypyc.namegen import NameGenerator, exported_name
 
 # Some notes on the vtable layout: Each concrete class has a vtable
@@ -133,6 +133,16 @@ class ClassIR:
         self.builtin_base: str | None = None
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
+        # Declare setup method that allocates and initializes an object. type is the
+        # type of the class being initialized, which could be another class if there
+        # is an interpreted subclass.
+        # TODO: Make it a regular method and generate its body in IR
+        self.setup = FuncDecl(
+            "__mypyc__" + name + "_setup",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("type", object_rprimitive)], RInstance(self)),
+        )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
         # Deletable attributes
@@ -203,6 +213,15 @@ class ClassIR:
 
         # If this is a generator environment class, what is the actual method for it
         self.env_user_function: FuncIR | None = None
+
+        # If True, keep one freed, cleared instance available for immediate reuse to
+        # speed up allocations. This helps if many objects are freed quickly, before
+        # other instances of the same class are allocated. This is effectively a
+        # per-type free "list" of up to length 1.
+        self.reuse_freed_instance = False
+
+        # Is this a class inheriting from enum.Enum? Such classes can be special-cased.
+        self.is_enum = False
 
     def __repr__(self) -> str:
         return (
@@ -403,6 +422,8 @@ class ClassIR:
             "_sometimes_initialized_attrs": sorted(self._sometimes_initialized_attrs),
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
+            "reuse_freed_instance": self.reuse_freed_instance,
+            "is_enum": self.is_enum,
         }
 
     @classmethod
@@ -458,6 +479,8 @@ class ClassIR:
         ir.env_user_function = (
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
+        ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.is_enum = data["is_enum"]
 
         return ir
 

@@ -83,12 +83,11 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         super().visit_type_alias_type(t)
-        if t in self.seen_aliases:
-            # Avoid infinite recursion on recursive type aliases.
-            # Note: it is fine to skip the aliases we have already seen in non-recursive
-            # types, since errors there have already been reported.
-            return
-        self.seen_aliases.add(t)
+        if t.is_recursive:
+            if t in self.seen_aliases:
+                # Avoid infinite recursion on recursive type aliases.
+                return
+            self.seen_aliases.add(t)
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
         is_error, is_invalid = self.validate_args(
             t.alias.name, tuple(t.args), t.alias.alias_tvars, t
@@ -101,7 +100,12 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
             # the expansion, most likely it will result in the same kind of error.
-            get_proper_type(t).accept(self)
+            if t.args:
+                # Since we always allow unbounded type variables in alias definitions, we need
+                # to verify the arguments satisfy the upper bounds of the expansion as well.
+                get_proper_type(t).accept(self)
+        if t.is_recursive:
+            self.seen_aliases.discard(t)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         t.items = flatten_nested_tuples(t.items)
@@ -147,7 +151,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
         is_error = False
         is_invalid = False
-        for (i, arg), tvar in zip(enumerate(args), type_vars):
+        for arg, tvar in zip(args, type_vars):
             context = ctx if arg.line < 0 else arg
             if isinstance(tvar, TypeVarType):
                 if isinstance(arg, ParamSpecType):
@@ -254,6 +258,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def check_type_var_values(
         self, name: str, actuals: list[Type], arg_name: str, valids: list[Type], context: Context
     ) -> bool:
+        if self.in_type_alias_expr:
+            # See testValidTypeAliasValues - we do not enforce typevar compatibility
+            # at the definition site. We check instantiation validity later.
+            return False
         is_error = False
         for actual in get_proper_types(actuals):
             # We skip UnboundType here, since they may appear in defn.bases,

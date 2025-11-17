@@ -512,3 +512,34 @@ def test_implement_trait_attribute() -> None:
     a.y = 8.0
     assert a.x == 7
     assert a.y == 8
+
+[case testIsInstance]
+from copysubclass import subc
+from testutil import float_vals
+from typing import Any
+def test_built_in() -> None:
+    for f in float_vals:
+        assert isinstance(float(0) + f, float)
+        assert isinstance(subc(f), float)
+
+    assert not isinstance(set(), float)
+    assert not isinstance((), float)
+    assert not isinstance((1.0, 2.0), float)
+    assert not isinstance({3.14}, float)
+    assert not isinstance(int() + 1, float)
+    assert not isinstance(str() + '4.2', float)
+
+def test_user_defined() -> None:
+    from userdefinedfloat import float
+
+    f: Any = 3.14
+    assert isinstance(float(), float)
+    assert not isinstance(f, float)
+
+[file copysubclass.py]
+class subc(float):
+    pass
+
+[file userdefinedfloat.py]
+class float:
+    pass

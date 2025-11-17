@@ -1272,3 +1272,67 @@ if FOO is not None:
 
     def func() -> int:
         return FOO
+
+[case testDisjointBase]
+from typing_extensions import disjoint_base
+
+@disjoint_base
+class Disjoint1: pass
+
+@disjoint_base
+class Disjoint2: pass
+
+@disjoint_base
+class DisjointChild(Disjoint1): pass
+
+class C1: pass
+class C2(Disjoint1, C1): pass
+class C3(DisjointChild, Disjoint1): pass
+
+class C4(Disjoint1, Disjoint2):  # E: Class "C4" has incompatible disjoint bases
+    pass
+
+class C5(Disjoint2, Disjoint1):  # E: Class "C5" has incompatible disjoint bases
+    pass
+
+class C6(Disjoint2, DisjointChild):  # E: Class "C6" has incompatible disjoint bases
+    pass
+
+class C7(DisjointChild, Disjoint2):  # E: Class "C7" has incompatible disjoint bases
+    pass
+
+class C8(DisjointChild, Disjoint1, Disjoint2):  # E: Class "C8" has incompatible disjoint bases
+    pass
+
+class C9(C2, Disjoint2):  # E: Class "C9" has incompatible disjoint bases
+    pass
+
+class C10(C3, Disjoint2):  # E: Class "C10" has incompatible disjoint bases
+    pass
+
+[builtins fixtures/tuple.pyi]
+[case testDisjointBaseSlots]
+class S1:
+    __slots__ = ("a",)
+
+class S2:
+    __slots__ = ("b",)
+
+class S3:
+    __slots__ = ()
+
+class S4(S1):
+    __slots__ = ("c",)
+
+class S5(S1, S2):  # E: Class "S5" has incompatible disjoint bases
+    pass
+
+class S6(S1, S3): pass  # OK
+class S7(S3, S1): pass  # OK
+
+class S8(S4, S1): pass  # OK
+
+class S9(S2, S4):  # E: Class "S9" has incompatible disjoint bases
+    pass
+
+[builtins fixtures/tuple.pyi]

@@ -11,50 +11,27 @@ def f():
     r1 :: str
     r2 :: object
     r3, r4 :: str
-    r5 :: i32
-    r6 :: bit
-    r7 :: object
-    r8, r9, r10 :: bit
-    r11, r12 :: bool
-    r13 :: object
-    r14 :: str
-    r15 :: object
-    r16 :: tuple[int, int]
-    r17, r18 :: object
-    r19, y :: bool
+    r5, r6, r7 :: bool
+    r8 :: object
+    r9, y :: bool
 L0:
     r0 = sys :: module
     r1 = 'platform'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = cast(str, r2)
     r4 = 'x'
-    r5 = PyUnicode_Compare(r3, r4)
-    r6 = r5 == -1
-    if r6 goto L1 else goto L3 :: bool
+    r5 = CPyStr_EqualLiteral(r3, r4, 1)
+    if r5 goto L2 else goto L1 :: bool
 L1:
-    r7 = PyErr_Occurred()
-    r8 = r7 != 0
-    if r8 goto L2 else goto L3 :: bool
+    r6 = r5
+    goto L3
 L2:
-    r9 = CPy_KeepPropagating()
+    r7 = raise RuntimeError('mypyc internal error: should be unreachable')
+    r8 = box(None, 1)
+    r9 = unbox(bool, r8)
+    r6 = r9
 L3:
-    r10 = r5 == 0
-    if r10 goto L5 else goto L4 :: bool
-L4:
-    r11 = r10
-    goto L6
-L5:
-    r12 = raise RuntimeError('mypyc internal error: should be unreachable')
-    r13 = box(None, 1)
-    r14 = 'version_info'
-    r15 = CPyObject_GetAttr(r13, r14)
-    r16 = (6, 10)
-    r17 = box(tuple[int, int], r16)
-    r18 = PyObject_RichCompare(r15, r17, 4)
-    r19 = unbox(bool, r18)
-    r11 = r19
-L6:
-    y = r11
+    y = r6
     return 1
 
 [case testUnreachableNameExpr]
@@ -68,41 +45,27 @@ def f():
     r1 :: str
     r2 :: object
     r3, r4 :: str
-    r5 :: i32
-    r6 :: bit
-    r7 :: object
-    r8, r9, r10 :: bit
-    r11, r12 :: bool
-    r13 :: object
-    r14, y :: bool
+    r5, r6, r7 :: bool
+    r8 :: object
+    r9, y :: bool
 L0:
     r0 = sys :: module
     r1 = 'platform'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = cast(str, r2)
     r4 = 'x'
-    r5 = PyUnicode_Compare(r3, r4)
-    r6 = r5 == -1
-    if r6 goto L1 else goto L3 :: bool
+    r5 = CPyStr_EqualLiteral(r3, r4, 1)
+    if r5 goto L2 else goto L1 :: bool
 L1:
-    r7 = PyErr_Occurred()
-    r8 = r7 != 0
-    if r8 goto L2 else goto L3 :: bool
+    r6 = r5
+    goto L3
 L2:
-    r9 = CPy_KeepPropagating()
+    r7 = raise RuntimeError('mypyc internal error: should be unreachable')
+    r8 = box(None, 1)
+    r9 = unbox(bool, r8)
+    r6 = r9
 L3:
-    r10 = r5 == 0
-    if r10 goto L5 else goto L4 :: bool
-L4:
-    r11 = r10
-    goto L6
-L5:
-    r12 = raise RuntimeError('mypyc internal error: should be unreachable')
-    r13 = box(None, 1)
-    r14 = unbox(bool, r13)
-    r11 = r14
-L6:
-    y = r11
+    y = r6
     return 1
 
 [case testUnreachableStatementAfterReturn]

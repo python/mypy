@@ -33,6 +33,7 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     Branch,
+    CallC,
     ControlOp,
     DecRef,
     Goto,
@@ -43,6 +44,7 @@ from mypyc.ir.ops import (
     Op,
     Register,
     RegisterOp,
+    Undef,
     Value,
 )
 
@@ -88,13 +90,15 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
 
 
 def is_maybe_undefined(post_must_defined: set[Value], src: Value) -> bool:
-    return isinstance(src, Register) and src not in post_must_defined
+    return (isinstance(src, Register) and src not in post_must_defined) or (
+        isinstance(src, CallC) and src.returns_null
+    )
 
 
 def maybe_append_dec_ref(
     ops: list[Op], dest: Value, defined: AnalysisDict[Value], key: tuple[BasicBlock, int]
 ) -> None:
-    if dest.type.is_refcounted and not isinstance(dest, Integer):
+    if dest.type.is_refcounted and not isinstance(dest, (Integer, Undef)):
         ops.append(DecRef(dest, is_xdec=is_maybe_undefined(defined[key], dest)))
 
 
@@ -127,7 +131,7 @@ def transform_block(
                 # For assignments to registers that were already live,
                 # decref the old value.
                 if dest not in pre_borrow[key] and dest in pre_live[key]:
-                    assert isinstance(op, Assign)
+                    assert isinstance(op, Assign), op
                     maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
         # Strip KeepAlive. Its only purpose is to help with this transform.

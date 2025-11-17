@@ -33,6 +33,8 @@ Concatenate: _SpecialForm
 
 TypeAlias: _SpecialForm
 
+TypeForm: _SpecialForm
+
 TypeGuard: _SpecialForm
 TypeIs: _SpecialForm
 Never: _SpecialForm
@@ -93,5 +95,6 @@ def dataclass_transform(
 
 def override(__arg: _T) -> _T: ...
 def deprecated(__msg: str) -> Callable[[_T], _T]: ...
+def disjoint_base(__arg: _T) -> _T: ...
 
 _FutureFeatureFixture = 0

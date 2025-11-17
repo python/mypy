@@ -290,3 +290,32 @@ reveal_type(A1().x)  # N: Revealed type is "builtins.int"
 reveal_type(A2().x)  # N: Revealed type is "builtins.int"
 reveal_type(A3().x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultToAnotherTypeVar]
+class A[X, Y = X, Z = Y]:
+    x: X
+    y: Y
+    z: Z
+
+a1: A[int]
+reveal_type(a1.x)  # N: Revealed type is "builtins.int"
+reveal_type(a1.y)  # N: Revealed type is "builtins.int"
+# TODO: this must reveal `int` as well:
+reveal_type(a1.z)  # N: Revealed type is "X`1"
+
+a2: A[int, str]
+reveal_type(a2.x)  # N: Revealed type is "builtins.int"
+reveal_type(a2.y)  # N: Revealed type is "builtins.str"
+reveal_type(a2.z)  # N: Revealed type is "builtins.str"
+
+a3: A[int, str, bool]
+reveal_type(a3.x)  # N: Revealed type is "builtins.int"
+reveal_type(a3.y)  # N: Revealed type is "builtins.str"
+reveal_type(a3.z)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultToAnotherTypeVarWrong]
+class A[Y = X, X = int]: ...  # E: Name "X" is not defined
+
+class B[Y = X]: ...  # E: Name "X" is not defined
+[builtins fixtures/tuple.pyi]

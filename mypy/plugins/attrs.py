@@ -458,7 +458,7 @@ def _analyze_class(
             if isinstance(node, PlaceholderNode):
                 # This node is not ready yet.
                 continue
-            assert isinstance(node, Var)
+            assert isinstance(node, Var), node
             node.is_initialized_in_class = False
 
     # Traverse the MRO and collect attributes from the parents.

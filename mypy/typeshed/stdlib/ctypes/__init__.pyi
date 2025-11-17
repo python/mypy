@@ -11,6 +11,7 @@ from _ctypes import (
     _CData as _CData,
     _CDataType as _CDataType,
     _CField as _CField,
+    _CTypeBaseType,
     _Pointer as _Pointer,
     _PointerLike as _PointerLike,
     _SimpleCData as _SimpleCData,
@@ -22,17 +23,17 @@ from _ctypes import (
     set_errno as set_errno,
     sizeof as sizeof,
 )
-from _typeshed import StrPath
+from _typeshed import StrPath, SupportsBool, SupportsLen
 from ctypes._endian import BigEndianStructure as BigEndianStructure, LittleEndianStructure as LittleEndianStructure
 from types import GenericAlias
-from typing import Any, ClassVar, Generic, Literal, TypeVar, overload, type_check_only
+from typing import Any, ClassVar, Final, Generic, Literal, TypeVar, overload, type_check_only
 from typing_extensions import Self, TypeAlias, deprecated
 
 if sys.platform == "win32":
     from _ctypes import FormatError as FormatError, get_last_error as get_last_error, set_last_error as set_last_error
 
     if sys.version_info >= (3, 14):
-        from _ctypes import COMError as COMError
+        from _ctypes import COMError as COMError, CopyComPointer as CopyComPointer
 
 if sys.version_info >= (3, 11):
     from ctypes._endian import BigEndianUnion as BigEndianUnion, LittleEndianUnion as LittleEndianUnion
@@ -54,7 +55,7 @@ if sys.version_info >= (3, 14):
 else:
     from _ctypes import POINTER as POINTER, pointer as pointer
 
-DEFAULT_MODE: int
+DEFAULT_MODE: Final[int]
 
 class ArgumentError(Exception): ...
 
@@ -161,8 +162,14 @@ def create_string_buffer(init: int | bytes, size: int | None = None) -> Array[c_
 c_buffer = create_string_buffer
 
 def create_unicode_buffer(init: int | str, size: int | None = None) -> Array[c_wchar]: ...
-@deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.15")
-def SetPointerType(pointer: type[_Pointer[Any]], cls: Any) -> None: ...
+
+if sys.version_info >= (3, 13):
+    @deprecated("Deprecated since Python 3.13; will be removed in Python 3.15.")
+    def SetPointerType(pointer: type[_Pointer[Any]], cls: _CTypeBaseType) -> None: ...
+
+else:
+    def SetPointerType(pointer: type[_Pointer[Any]], cls: _CTypeBaseType) -> None: ...
+
 def ARRAY(typ: _CT, len: int) -> Array[_CT]: ...  # Soft Deprecated, no plans to remove
 
 if sys.platform == "win32":
@@ -210,7 +217,7 @@ class py_object(_CanCastTo, _SimpleCData[_T]):
 
 class c_bool(_SimpleCData[bool]):
     _type_: ClassVar[Literal["?"]]
-    def __init__(self, value: bool = ...) -> None: ...
+    def __init__(self, value: SupportsBool | SupportsLen | None = ...) -> None: ...
 
 class c_byte(_SimpleCData[int]):
     _type_: ClassVar[Literal["b"]]

@@ -231,8 +231,37 @@ def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept al
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
-
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadImplOverlapVarArgsAndKwargs]
+from __future__ import annotations
+from typing import overload
+
+@overload
+def foo(x: int) -> None: ...
+@overload
+def foo(a: str, /) -> None: ...
+
+def foo(*args: int | str, **kw: int) -> None:
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeCheckOverloadImplOverlapVarArgsAndKwargsUnion]
+from __future__ import annotations
+from typing import overload
+
+class Foo: ...
+
+@overload
+def foo(x: int) -> None: ...
+@overload
+def foo(*, x: Foo) -> None: ...
+@overload
+def foo(a: str, /) -> None: ...
+
+def foo(*args: int | str, **kw: int | Foo) -> None:
+    pass
+[builtins fixtures/tuple.pyi]
 
 [case testTypeCheckOverloadWithImplTooSpecificRetType]
 from typing import overload, Any
@@ -6310,6 +6339,40 @@ reveal_type(f12(A()))  # N: Revealed type is "__main__.A"
 
 [typing fixtures/typing-medium.pyi]
 
+[case testAdjacentConditionalOverloads]
+# flags: --always-true true_alias
+from typing import overload
+
+true_alias = True
+
+if true_alias:
+    @overload
+    def ham(v: str) -> list[str]: ...
+
+    @overload
+    def ham(v: int) -> list[int]: ...
+
+def ham(v: "int | str") -> "list[str] | list[int]":
+    return []
+
+if true_alias:
+    @overload
+    def spam(v: str) -> str: ...
+
+    @overload
+    def spam(v: int) -> int: ...
+
+def spam(v: "int | str") -> "str | int":
+    return ""
+
+reveal_type(ham)  # N: Revealed type is "Overload(def (v: builtins.str) -> builtins.list[builtins.str], def (v: builtins.int) -> builtins.list[builtins.int])"
+reveal_type(spam)  # N: Revealed type is "Overload(def (v: builtins.str) -> builtins.str, def (v: builtins.int) -> builtins.int)"
+
+reveal_type(ham(""))  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(ham(0))  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(spam(""))  # N: Revealed type is "builtins.str"
+reveal_type(spam(0))  # N: Revealed type is "builtins.int"
+
 [case testOverloadIfUnconditionalFuncDef]
 # flags: --always-true True --always-false False
 from typing import overload
@@ -6603,7 +6666,6 @@ reveal_type(Snafu.snafu('123'))  # N: Revealed type is "builtins.str"
 [builtins fixtures/staticmethod.pyi]
 
 [case testOverloadedWithInternalTypeVars]
-# flags: --new-type-inference
 import m
 
 [file m.pyi]
@@ -6767,3 +6829,26 @@ class D(Generic[T]):
 a: D[str]  # E: Type argument "str" of "D" must be a subtype of "C"
 reveal_type(a.f(1))  # N: Revealed type is "builtins.int"
 reveal_type(a.f("x"))  # N: Revealed type is "builtins.str"
+
+[case testMultiAssignFromUnionInOverloadCached]
+from typing import Iterable, overload, Union, Optional
+
+@overload
+def always_bytes(str_or_bytes: None) -> None: ...
+@overload
+def always_bytes(str_or_bytes: Union[str, bytes]) -> bytes: ...
+def always_bytes(str_or_bytes: Union[None, str, bytes]) -> Optional[bytes]:
+    pass
+
+class Headers:
+    def __init__(self, iter: Iterable[tuple[bytes, bytes]]) -> None: ...
+
+headers: Union[Headers, dict[Union[str, bytes], Union[str, bytes]], Iterable[tuple[bytes, bytes]]]
+
+if isinstance(headers, dict):
+    headers = Headers(
+        (always_bytes(k), always_bytes(v)) for k, v in headers.items()
+    )
+
+reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iterable[tuple[builtins.bytes, builtins.bytes]]]"
+[builtins fixtures/isinstancelist.pyi]

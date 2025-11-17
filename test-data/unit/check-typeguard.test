@@ -731,6 +731,53 @@ assert a(x=x)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+# https://github.com/python/mypy/issues/19575
+[case testNoCrashOnDunderCallTypeGuardTemporaryObject]
+from typing_extensions import TypeGuard
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeGuard[int]:
+        return True
+x = object()
+if E()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnDunderCallTypeIsTemporaryObject]
+from typing_extensions import TypeIs
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeIs[int]:
+        return True
+x = object()
+if E()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnDunderCallTypeIsTemporaryObjectGeneric]
+from typing import Generic, TypeVar
+from typing_extensions import TypeIs
+T = TypeVar("T")
+class E(Generic[T]):
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeIs[T]:
+        return True
+x = object()
+if E[int]()(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardTemporaryObjectWithKeywordArg]
+from typing_extensions import TypeGuard
+class E:
+    def __init__(self) -> None: ...
+    def __call__(self, o: object) -> TypeGuard[int]:
+        return True
+x = object()
+if E()(o=x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeGuardRestrictAwaySingleInvariant]
 from typing import List
 from typing_extensions import TypeGuard
@@ -777,6 +824,26 @@ def handle(model: Model) -> int:
         return process_model(model)
     return 0
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardedTypeDoesNotLeakTypeVar]
+# flags: --debug-serialize
+# https://github.com/python/mypy/issues/20015
+from typing import Generic, TypeVar, TypeGuard
+
+class A: ...
+class B: ...
+
+def is_a(_: object) -> TypeGuard[A]: return True
+def is_b(_: object) -> TypeGuard[B]: return True
+
+_T = TypeVar("_T")
+
+class Foo(Generic[_T]):
+    def __init__(self, v: _T) -> None:
+        if is_a(v) or is_b(v):
+            self.v = v
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeGuardRestrictTypeVarUnion]
 from typing import Union, TypeVar

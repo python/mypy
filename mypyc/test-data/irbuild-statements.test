@@ -230,30 +230,27 @@ def f(ls: List[int]) -> int:
 def f(ls):
     ls :: list
     y :: int
-    r0 :: short_int
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: bit
-    r4 :: object
-    r5, x, r6 :: int
-    r7 :: short_int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, x, r5 :: int
+    r6 :: native_int
 L0:
     y = 0
     r0 = 0
 L1:
     r1 = var_object_size ls
-    r2 = r1 << 1
-    r3 = int_lt r0, r2
-    if r3 goto L2 else goto L4 :: bool
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r4 = list_get_item_unsafe ls, r0
-    r5 = unbox(int, r4)
-    x = r5
-    r6 = CPyTagged_Add(y, x)
-    y = r6
+    r3 = list_get_item_unsafe ls, r0
+    r4 = unbox(int, r3)
+    x = r4
+    r5 = CPyTagged_Add(y, x)
+    y = r5
 L3:
-    r7 = r0 + 2
-    r0 = r7
+    r6 = r0 + 1
+    r0 = r6
     goto L1
 L4:
     return y
@@ -269,39 +266,37 @@ def f(d):
     d :: dict
     r0 :: short_int
     r1 :: native_int
-    r2 :: short_int
-    r3 :: object
-    r4 :: tuple[bool, short_int, object]
-    r5 :: short_int
-    r6 :: bool
-    r7 :: object
-    r8, key :: int
-    r9, r10 :: object
-    r11 :: int
-    r12, r13 :: bit
+    r2 :: object
+    r3 :: tuple[bool, short_int, object]
+    r4 :: short_int
+    r5 :: bool
+    r6 :: object
+    r7, key :: int
+    r8, r9 :: object
+    r10 :: int
+    r11, r12 :: bit
 L0:
     r0 = 0
     r1 = PyDict_Size(d)
-    r2 = r1 << 1
-    r3 = CPyDict_GetKeysIter(d)
+    r2 = CPyDict_GetKeysIter(d)
 L1:
-    r4 = CPyDict_NextKey(r3, r0)
-    r5 = r4[1]
-    r0 = r5
-    r6 = r4[0]
-    if r6 goto L2 else goto L4 :: bool
+    r3 = CPyDict_NextKey(r2, r0)
+    r4 = r3[1]
+    r0 = r4
+    r5 = r3[0]
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r7 = r4[2]
-    r8 = unbox(int, r7)
-    key = r8
-    r9 = box(int, key)
-    r10 = CPyDict_GetItem(d, r9)
-    r11 = unbox(int, r10)
+    r6 = r3[2]
+    r7 = unbox(int, r6)
+    key = r7
+    r8 = box(int, key)
+    r9 = CPyDict_GetItem(d, r8)
+    r10 = unbox(int, r9)
 L3:
-    r12 = CPyDict_CheckSize(d, r2)
+    r11 = CPyDict_CheckSize(d, r1)
     goto L1
 L4:
-    r13 = CPy_NoErrOccurred()
+    r12 = CPy_NoErrOccurred()
 L5:
     return 1
 
@@ -321,54 +316,52 @@ def sum_over_even_values(d):
     s :: int
     r0 :: short_int
     r1 :: native_int
-    r2 :: short_int
-    r3 :: object
-    r4 :: tuple[bool, short_int, object]
-    r5 :: short_int
-    r6 :: bool
-    r7 :: object
-    r8, key :: int
-    r9, r10 :: object
-    r11, r12 :: int
-    r13 :: bit
-    r14, r15 :: object
-    r16, r17 :: int
-    r18, r19 :: bit
+    r2 :: object
+    r3 :: tuple[bool, short_int, object]
+    r4 :: short_int
+    r5 :: bool
+    r6 :: object
+    r7, key :: int
+    r8, r9 :: object
+    r10, r11 :: int
+    r12 :: bit
+    r13, r14 :: object
+    r15, r16 :: int
+    r17, r18 :: bit
 L0:
     s = 0
     r0 = 0
     r1 = PyDict_Size(d)
-    r2 = r1 << 1
-    r3 = CPyDict_GetKeysIter(d)
+    r2 = CPyDict_GetKeysIter(d)
 L1:
-    r4 = CPyDict_NextKey(r3, r0)
-    r5 = r4[1]
-    r0 = r5
-    r6 = r4[0]
-    if r6 goto L2 else goto L6 :: bool
+    r3 = CPyDict_NextKey(r2, r0)
+    r4 = r3[1]
+    r0 = r4
+    r5 = r3[0]
+    if r5 goto L2 else goto L6 :: bool
 L2:
-    r7 = r4[2]
-    r8 = unbox(int, r7)
-    key = r8
-    r9 = box(int, key)
-    r10 = CPyDict_GetItem(d, r9)
-    r11 = unbox(int, r10)
-    r12 = CPyTagged_Remainder(r11, 4)
-    r13 = r12 != 0
-    if r13 goto L3 else goto L4 :: bool
+    r6 = r3[2]
+    r7 = unbox(int, r6)
+    key = r7
+    r8 = box(int, key)
+    r9 = CPyDict_GetItem(d, r8)
+    r10 = unbox(int, r9)
+    r11 = CPyTagged_Remainder(r10, 4)
+    r12 = r11 != 0
+    if r12 goto L3 else goto L4 :: bool
 L3:
     goto L5
 L4:
-    r14 = box(int, key)
-    r15 = CPyDict_GetItem(d, r14)
-    r16 = unbox(int, r15)
-    r17 = CPyTagged_Add(s, r16)
-    s = r17
+    r13 = box(int, key)
+    r14 = CPyDict_GetItem(d, r13)
+    r15 = unbox(int, r14)
+    r16 = CPyTagged_Add(s, r15)
+    s = r16
 L5:
-    r18 = CPyDict_CheckSize(d, r2)
+    r17 = CPyDict_CheckSize(d, r1)
     goto L1
 L6:
-    r19 = CPy_NoErrOccurred()
+    r18 = CPy_NoErrOccurred()
 L7:
     return s
 
@@ -597,16 +590,16 @@ L0:
     r0 = CPySequence_CheckUnpackCount(l, 2)
     r1 = r0 >= 0 :: signed
     r2 = list_get_item_unsafe l, 0
-    r3 = list_get_item_unsafe l, 2
+    r3 = list_get_item_unsafe l, 1
     x = r2
     r4 = unbox(int, r3)
     y = r4
     r5 = CPySequence_CheckUnpackCount(t, 2)
     r6 = r5 >= 0 :: signed
-    r7 = CPySequenceTuple_GetItem(t, 0)
-    r8 = CPySequenceTuple_GetItem(t, 2)
-    r9 = unbox(int, r8)
+    r7 = CPySequenceTuple_GetItemUnsafe(t, 0)
+    r8 = CPySequenceTuple_GetItemUnsafe(t, 1)
     x = r7
+    r9 = unbox(int, r8)
     y = r9
     return 1
 
@@ -872,33 +865,32 @@ def g(x: Iterable[int]) -> None:
 [out]
 def f(a):
     a :: list
-    r0, r1 :: short_int
-    r2 :: native_int
-    r3 :: short_int
-    r4 :: bit
+    r0 :: short_int
+    r1, r2 :: native_int
+    r3 :: bit
     i :: int
-    r5 :: object
-    r6, x, r7 :: int
-    r8, r9 :: short_int
+    r4 :: object
+    r5, x, r6 :: int
+    r7 :: short_int
+    r8 :: native_int
 L0:
     r0 = 0
     r1 = 0
 L1:
     r2 = var_object_size a
-    r3 = r2 << 1
-    r4 = int_lt r1, r3
-    if r4 goto L2 else goto L4 :: bool
+    r3 = r1 < r2 :: signed
+    if r3 goto L2 else goto L4 :: bool
 L2:
     i = r0
-    r5 = list_get_item_unsafe a, r1
-    r6 = unbox(int, r5)
-    x = r6
-    r7 = CPyTagged_Add(i, x)
+    r4 = list_get_item_unsafe a, r1
+    r5 = unbox(int, r4)
+    x = r5
+    r6 = CPyTagged_Add(i, x)
 L3:
-    r8 = r0 + 2
-    r0 = r8
-    r9 = r1 + 2
-    r1 = r9
+    r7 = r0 + 2
+    r0 = r7
+    r8 = r1 + 1
+    r1 = r8
     goto L1
 L4:
 L5:
@@ -944,66 +936,65 @@ def g(a: Iterable[bool], b: List[int]) -> None:
 def f(a, b):
     a :: list
     b :: object
-    r0 :: short_int
+    r0 :: native_int
     r1 :: object
     r2 :: native_int
-    r3 :: short_int
-    r4 :: bit
-    r5, r6 :: object
-    r7, x :: int
-    r8, y :: bool
-    r9 :: i32
-    r10 :: bit
-    r11 :: bool
-    r12 :: short_int
-    r13 :: bit
+    r3 :: bit
+    r4, r5 :: object
+    r6, x :: int
+    r7, y :: bool
+    r8 :: i32
+    r9 :: bit
+    r10 :: bool
+    r11 :: native_int
+    r12 :: bit
 L0:
     r0 = 0
     r1 = PyObject_GetIter(b)
 L1:
     r2 = var_object_size a
-    r3 = r2 << 1
-    r4 = int_lt r0, r3
-    if r4 goto L2 else goto L7 :: bool
+    r3 = r0 < r2 :: signed
+    if r3 goto L2 else goto L7 :: bool
 L2:
-    r5 = PyIter_Next(r1)
-    if is_error(r5) goto L7 else goto L3
+    r4 = PyIter_Next(r1)
+    if is_error(r4) goto L7 else goto L3
 L3:
-    r6 = list_get_item_unsafe a, r0
-    r7 = unbox(int, r6)
-    x = r7
-    r8 = unbox(bool, r5)
-    y = r8
-    r9 = PyObject_IsTrue(b)
-    r10 = r9 >= 0 :: signed
-    r11 = truncate r9: i32 to builtins.bool
-    if r11 goto L4 else goto L5 :: bool
+    r5 = list_get_item_unsafe a, r0
+    r6 = unbox(int, r5)
+    x = r6
+    r7 = unbox(bool, r4)
+    y = r7
+    r8 = PyObject_IsTrue(b)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: i32 to builtins.bool
+    if r10 goto L4 else goto L5 :: bool
 L4:
     x = 2
 L5:
 L6:
-    r12 = r0 + 2
-    r0 = r12
+    r11 = r0 + 1
+    r0 = r11
     goto L1
 L7:
-    r13 = CPy_NoErrOccurred()
+    r12 = CPy_NoErrOccurred()
 L8:
     return 1
 def g(a, b):
     a :: object
     b :: list
     r0 :: object
-    r1, r2 :: short_int
+    r1 :: native_int
+    r2 :: short_int
     z :: int
     r3 :: object
     r4 :: native_int
-    r5 :: short_int
-    r6, r7 :: bit
-    r8, x :: bool
-    r9 :: object
-    r10, y :: int
-    r11, r12 :: short_int
-    r13 :: bit
+    r5, r6 :: bit
+    r7, x :: bool
+    r8 :: object
+    r9, y :: int
+    r10 :: native_int
+    r11 :: short_int
+    r12 :: bit
 L0:
     r0 = PyObject_GetIter(a)
     r1 = 0
@@ -1014,28 +1005,27 @@ L1:
     if is_error(r3) goto L6 else goto L2
 L2:
     r4 = var_object_size b
-    r5 = r4 << 1
-    r6 = int_lt r1, r5
-    if r6 goto L3 else goto L6 :: bool
+    r5 = r1 < r4 :: signed
+    if r5 goto L3 else goto L6 :: bool
 L3:
-    r7 = int_lt r2, 10
-    if r7 goto L4 else goto L6 :: bool
+    r6 = int_lt r2, 10
+    if r6 goto L4 else goto L6 :: bool
 L4:
-    r8 = unbox(bool, r3)
-    x = r8
-    r9 = list_get_item_unsafe b, r1
-    r10 = unbox(int, r9)
-    y = r10
+    r7 = unbox(bool, r3)
+    x = r7
+    r8 = list_get_item_unsafe b, r1
+    r9 = unbox(int, r8)
+    y = r9
     x = 0
 L5:
-    r11 = r1 + 2
-    r1 = r11
-    r12 = r2 + 2
-    r2 = r12
-    z = r12
+    r10 = r1 + 1
+    r1 = r10
+    r11 = r2 + 2
+    r2 = r11
+    z = r11
     goto L1
 L6:
-    r13 = CPy_NoErrOccurred()
+    r12 = CPy_NoErrOccurred()
 L7:
     return 1
 
