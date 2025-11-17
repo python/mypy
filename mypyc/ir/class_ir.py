@@ -333,7 +333,11 @@ class ClassIR:
         return any(name in ir.method_decls for ir in self.mro)
 
     def has_no_subclasses(self) -> bool:
-        return self.children == [] and not self.allow_interpreted_subclasses and (self.is_ext_class or self.is_final_class)
+        return (
+            self.children == []
+            and not self.allow_interpreted_subclasses
+            and (self.is_ext_class or self.is_final_class)
+        )
 
     def subclasses(self) -> set[ClassIR] | None:
         """Return all subclasses of this class, both direct and indirect.
