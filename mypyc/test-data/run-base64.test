@@ -2,7 +2,7 @@
 from typing import Any
 import base64
 
-from librt.base64 import b64encode
+from librt.base64 import b64encode, b64decode
 
 from testutil import assertRaises
 
@@ -43,6 +43,35 @@ def test_encode_wrapper() -> None:
 
     with assertRaises(TypeError):
         enc(b"x", b"y")
+
+def test_decode_basic() -> None:
+    assert b64decode(b"eA==") == b"x"
+
+    with assertRaises(TypeError):
+        b64decode(bytearray(b"eA=="))
+
+def check_decode(b: bytes) -> None:
+     enc = b64encode(b)
+     assert b64decode(enc) == getattr(base64, "b64decode")(enc)
+
+def test_decode_different_strings() -> None:
+    for i in range(256):
+        check_decode(bytes([i]))
+        check_decode(bytes([i]) + b"x")
+        check_decode(bytes([i]) + b"xy")
+        check_decode(bytes([i]) + b"xyz")
+        check_decode(bytes([i]) + b"xyza")
+        check_decode(b"x" + bytes([i]))
+        check_decode(b"xy" + bytes([i]))
+        check_decode(b"xyz" + bytes([i]))
+        check_decode(b"xyza" + bytes([i]))
+
+    b = b"a\x00\xb7" * 1000
+    for i in range(1000):
+        check_decode(b[:i])
+
+    for b in b"", b"ab", b"bac", b"1234", b"xyz88", b"abc" * 200:
+        check_decode(b)
 
 [case testBase64FeaturesNotAvailableInNonExperimentalBuild_librt_base64]
 # This also ensures librt.base64 can be built without experimental features
