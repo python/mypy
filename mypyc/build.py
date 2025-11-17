@@ -645,6 +645,7 @@ def mypycify(
         cflags += [
             f"-O{opt_level}",
             f"-g{debug_level}",
+            "-msse4.2",  # TODO
             "-Werror",
             "-Wno-unused-function",
             "-Wno-unused-label",
