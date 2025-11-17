@@ -6,6 +6,7 @@ The tests are written in C++ and use the Google Test framework.
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
 import sys
 from distutils import ccompiler, sysconfig
@@ -23,6 +24,8 @@ C_APIS_TO_TEST = [
     "generic_ops.c",
     "pythonsupport.c",
 ]
+
+X86_64 = platform.machine() in ("x86_64", "AMD64", "amd64")
 
 
 class BuildExtGtest(build_ext):
@@ -79,8 +82,12 @@ else:
     cflags: list[str] = []
     if compiler.compiler_type == "unix":
         cflags += ["-O3"]
+        if X86_64:
+            cflags.append("-msse4.2")  # Enable SIMD (see also mypyc/build.py)
     elif compiler.compiler_type == "msvc":
         cflags += ["/O2"]
+        if X86_64:
+            cflags.append("/arch:SSE4.2")  # Enable SIMD (see also mypyc/build.py)
 
     setup(
         ext_modules=[

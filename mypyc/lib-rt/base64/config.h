@@ -7,7 +7,12 @@
 #define BASE64_WITH_SSE41 0
 #define HAVE_SSE41 BASE64_WITH_SSE41
 
+#if defined(__x86_64__) || defined(_M_X64)
+#define BASE64_WITH_SSE42 1
+#else
 #define BASE64_WITH_SSE42 0
+#endif
+
 #define HAVE_SSE42 BASE64_WITH_SSE42
 
 #define BASE64_WITH_AVX 0
