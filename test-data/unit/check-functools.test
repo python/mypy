@@ -495,9 +495,9 @@ def main5(**d2: Unpack[D2]) -> None:
     partial(fn2, **d2)()  # E: Extra argument "a2" from **args for "fn2"
 
 def main6(a2good: A2Good, a2bad: A2Bad, **d1: Unpack[D1]) -> None:
-    partial(fn3, **d1)()  # E: Missing positional argument "a1" in call to "fn3"
+    partial(fn3, **d1)()  # E: Missing named argument "a2" for "fn3"
     partial(fn3, **d1)("asdf")  # E: Too many positional arguments for "fn3" \
-                                # E: Too few arguments for "fn3" \
+                                # E: Missing named argument "a2" for "fn3" \
                                 # E: Argument 1 to "fn3" has incompatible type "str"; expected "int"
     partial(fn3, **d1)(a2="asdf")
     partial(fn3, **d1)(**a2good)
@@ -530,7 +530,7 @@ reveal_type(first_kw(args=[1]))  # N: Revealed type is "builtins.int"
 
 # TODO: this is indeed invalid, but the error is incomprehensible.
 first_kw([1])  # E: Too many positional arguments for "get" \
-               # E: Too few arguments for "get" \
+               # E: Missing named argument "args" for "get" \
                # E: Argument 1 to "get" has incompatible type "list[int]"; expected "int"
 [builtins fixtures/list.pyi]
 

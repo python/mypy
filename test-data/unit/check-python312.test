@@ -889,7 +889,7 @@ def h(x: int, y: str) -> None: pass
 
 g(h, 1, y='x')
 g(h, 1, x=1)  # E: "g" gets multiple values for keyword argument "x" \
-              # E: Missing positional argument "y" in call to "g"
+              # E: Missing named argument "y" for "g"
 
 class C[**P, T]:
     def m(self, *args: P.args, **kwargs: P.kwargs) -> T: ...
