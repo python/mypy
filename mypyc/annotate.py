@@ -216,7 +216,7 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
                         ann = "Dynamic method call."
                 elif name in op_hints:
                     ann = op_hints[name]
-                elif name in ("CPyDict_GetItem", "CPyDict_SetItem"):
+                elif name in ("CPyDict_GetItemUnsafe", "CPyDict_SetItem"):
                     if (
                         isinstance(op.args[0], LoadStatic)
                         and isinstance(op.args[1], LoadLiteral)
