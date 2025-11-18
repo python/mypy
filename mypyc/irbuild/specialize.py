@@ -56,6 +56,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     c_int_rprimitive,
     dict_rprimitive,
+    float_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -69,6 +70,7 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_object_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -80,6 +82,9 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    create_synthetic_nameexpr,
+    expr_has_specialized_for_helper,
+    for_loop_helper,
     sequence_from_generator_preallocate_helper,
     translate_list_comprehension,
     translate_set_comprehension,
@@ -412,29 +417,70 @@ def translate_safe_generator_call(
 
 @specialize_function("builtins.any")
 def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
-    if (
-        len(expr.args) == 1
-        and expr.arg_kinds == [ARG_POS]
-        and isinstance(expr.args[0], GeneratorExpr)
-    ):
-        return any_all_helper(builder, expr.args[0], builder.false, lambda x: x, builder.true)
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg = expr.args[0]
+        if isinstance(arg, GeneratorExpr):
+            return any_all_helper(builder, arg, builder.false, lambda x: x, builder.true)
+        elif expr_has_specialized_for_helper(builder, arg):
+            retval = Register(bool_rprimitive)
+            builder.assign(retval, builder.false(), -1)
+            loop_exit = BasicBlock()
+            index_name = "__mypyc_any_item__"
+
+            def body_insts() -> None:
+                true_block = BasicBlock()
+                false_block = BasicBlock()
+                builder.add_bool_branch(builder.read(index_reg), true_block, false_block)
+                builder.activate_block(true_block)
+                builder.assign(retval, builder.true(), -1)
+                builder.goto(loop_exit)
+                builder.activate_block(false_block)
+
+            index_type = builder._analyze_iterable_item_type(arg)
+            index = create_synthetic_nameexpr(index_name, index_type)
+            index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))  # type: ignore [arg-type]
+
+            for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
+            builder.goto_and_activate(loop_exit)
+            return retval
     return None
 
 
 @specialize_function("builtins.all")
 def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
-    if (
-        len(expr.args) == 1
-        and expr.arg_kinds == [ARG_POS]
-        and isinstance(expr.args[0], GeneratorExpr)
-    ):
-        return any_all_helper(
-            builder,
-            expr.args[0],
-            builder.true,
-            lambda x: builder.unary_op(x, "not", expr.line),
-            builder.false,
-        )
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg = expr.args[0]
+        if isinstance(arg, GeneratorExpr):
+            return any_all_helper(
+                builder,
+                arg,
+                builder.true,
+                lambda x: builder.unary_op(x, "not", expr.line),
+                builder.false,
+            )
+
+        elif expr_has_specialized_for_helper(builder, arg):
+            retval = Register(bool_rprimitive)
+            builder.assign(retval, builder.true(), -1)
+            loop_exit = BasicBlock()
+            index_name = "__mypyc_all_item__"
+
+            def body_insts() -> None:
+                true_block = BasicBlock()
+                false_block = BasicBlock()
+                builder.add_bool_branch(builder.read(index_reg), true_block, false_block)
+                builder.activate_block(false_block)
+                builder.assign(retval, builder.false(), -1)
+                builder.goto(loop_exit)
+                builder.activate_block(true_block)
+
+            index_type = builder._analyze_iterable_item_type(arg)
+            index = create_synthetic_nameexpr(index_name, index_type)
+            index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))  # type: ignore [arg-type]
+
+            for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
+            builder.goto_and_activate(loop_exit)
+            return retval
     return None
 
 
@@ -470,11 +516,11 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
     # - only one or two arguments given (if not, sum() has been given invalid arguments)
     # - first argument is a Generator (there is no benefit to optimizing the performance of eg.
     #   sum([1, 2, 3]), so non-Generator Iterables are not handled)
-    if not (
-        len(expr.args) in (1, 2)
-        and expr.arg_kinds[0] == ARG_POS
-        and isinstance(expr.args[0], GeneratorExpr)
-    ):
+    if not (len(expr.args) in (1, 2) and expr.arg_kinds[0] == ARG_POS):
+        return None
+
+    arg = expr.args[0]
+    if not isinstance(arg, GeneratorExpr) and not expr_has_specialized_for_helper(builder, arg):
         return None
 
     # handle 'start' argument, if given
@@ -486,21 +532,51 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
     else:
         start_expr = IntExpr(0)
 
-    gen_expr = expr.args[0]
-    target_type = builder.node_type(expr)
-    retval = Register(target_type)
-    builder.assign(retval, builder.coerce(builder.accept(start_expr), target_type, -1), -1)
+    item_type = builder._analyze_iterable_item_type(arg)
+    item_rtype = builder.type_to_rtype(item_type)
+    start_rtype = builder.node_type(start_expr)
 
-    def gen_inner_stmts() -> None:
-        call_expr = builder.accept(gen_expr.left_expr)
-        builder.assign(retval, builder.binary_op(retval, call_expr, "+", -1), -1)
+    if item_rtype is start_rtype:
+        acc_rtype = item_rtype
+    elif is_float_rprimitive(item_rtype) and is_int_rprimitive(start_rtype):
+        acc_rtype = float_rprimitive
+    elif is_bool_rprimitive(item_rtype) and is_int_rprimitive(start_rtype):
+        acc_rtype = int_rprimitive
+    elif is_object_rprimitive(item_rtype) and is_int_rprimitive(start_rtype):
+        acc_rtype = object_rprimitive
 
-    loop_params = list(
-        zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists, gen_expr.is_async)
-    )
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen_expr.line)
+    else:
+        # escape hatch, maybe figure out a better way to handle this whole block
+        # seeking ideas in review
+        return None
 
-    return retval
+    retval = Register(acc_rtype)
+    builder.assign(retval, builder.coerce(builder.accept(start_expr), acc_rtype, -1), -1)
+
+    if isinstance(arg, GeneratorExpr):
+
+        def gen_inner_stmts() -> None:
+            call_expr = builder.accept(arg.left_expr)
+            builder.assign(retval, builder.binary_op(retval, call_expr, "+", -1), -1)
+
+        loop_params = list(zip(arg.indices, arg.sequences, arg.condlists, arg.is_async))
+        comprehension_helper(builder, loop_params, gen_inner_stmts, arg.line)
+
+        return retval
+
+    else:
+        index_name = "__mypyc_sum_item__"
+
+        def body_insts() -> None:
+            total = builder.binary_op(retval, builder.read(index_reg), "+", expr.line)
+            builder.assign(retval, total, expr.line)
+
+        index_type = builder._analyze_iterable_item_type(arg)
+        index = create_synthetic_nameexpr(index_name, index_type)
+        index_reg = builder.add_local_reg(index.node, builder.type_to_rtype(index_type))  # type: ignore [arg-type]
+
+        for_loop_helper(builder, index, arg, body_insts, None, is_async=False, line=expr.line)
+        return retval
 
 
 @specialize_function("dataclasses.field")
@@ -610,12 +686,9 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             return builder.builder.isinstance_helper(obj, irs, expr.line)
 
     if isinstance(type_expr, RefExpr):
-        node = type_expr.node
-        if node:
-            desc = isinstance_primitives.get(node.fullname)
-            if desc:
-                obj = builder.accept(obj_expr)
-                return builder.primitive_op(desc, [obj], expr.line)
+        if node := type_expr.node:
+            if desc := isinstance_primitives.get(node.fullname):
+                return builder.primitive_op(desc, [builder.accept(obj_expr)], expr.line)
 
     elif isinstance(type_expr, TupleExpr):
         node_names: list[str] = []
