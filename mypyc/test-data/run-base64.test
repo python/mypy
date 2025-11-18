@@ -50,12 +50,18 @@ def test_decode_basic() -> None:
     with assertRaises(TypeError):
         b64decode(bytearray(b"eA=="))
 
+    for non_ascii in "\x80", "foo\u100bar", "foo\ua1234bar":
+        with assertRaises(ValueError):
+            b64decode(non_ascii)
+
 def check_decode(b: bytes, encoded: bool = False) -> None:
      if encoded:
          enc = b
      else:
          enc = b64encode(b)
      assert b64decode(enc) == getattr(base64, "b64decode")(enc)
+     enc_str = enc.decode("ascii")
+     assert b64decode(enc_str) == getattr(base64, "b64decode")(enc_str)
 
 def test_decode_different_strings() -> None:
     for i in range(256):

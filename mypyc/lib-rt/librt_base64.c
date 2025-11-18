@@ -65,15 +65,26 @@ b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
 
 static PyObject *
 b64decode_internal(PyObject *arg) {
-    // Expect a bytes object
-    if (!PyBytes_Check(arg)) {
-        PyErr_SetString(PyExc_TypeError, "b64decode expects a 'bytes' object");
-        return NULL;
-    }
+    const char *src;
+    Py_ssize_t srclen_ssz;
 
     // Get input pointer and length
-    const char *src = PyBytes_AS_STRING(arg);           // returns char*, safe to treat as const
-    Py_ssize_t srclen_ssz = PyBytes_GET_SIZE(arg);
+    if (PyBytes_Check(arg)) {
+        src = PyBytes_AS_STRING(arg);
+        srclen_ssz = PyBytes_GET_SIZE(arg);
+    } else if (PyUnicode_Check(arg)) {
+        if (!PyUnicode_IS_ASCII(arg)) {
+            PyErr_SetString(PyExc_ValueError,
+                            "string argument should contain only ASCII characters");
+            return NULL;
+        }
+        src = (const char *)PyUnicode_1BYTE_DATA(arg);
+        srclen_ssz = PyUnicode_GET_LENGTH(arg);
+    } else {
+        PyErr_SetString(PyExc_TypeError,
+                        "argument should be a bytes-like object or ASCII string");
+        return NULL;
+    }
 
     // Fast-path: empty input
     if (srclen_ssz == 0) {
