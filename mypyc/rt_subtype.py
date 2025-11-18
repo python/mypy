@@ -27,6 +27,8 @@ from mypyc.ir.rtypes import (
     RVoid,
     is_bit_rprimitive,
     is_bool_rprimitive,
+    is_dict_rprimitive,
+    is_exact_dict_rprimitive,
     is_int_rprimitive,
     is_short_int_rprimitive,
 )
@@ -57,6 +59,8 @@ class RTSubtypeVisitor(RTypeVisitor[bool]):
         if is_short_int_rprimitive(left) and is_int_rprimitive(self.right):
             return True
         if is_bit_rprimitive(left) and is_bool_rprimitive(self.right):
+            return True
+        if is_exact_dict_rprimitive(left) and is_dict_rprimitive(self.right):
             return True
         return left is self.right
 
