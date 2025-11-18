@@ -964,7 +964,29 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_literal_type(self, left: LiteralType) -> bool:
         if isinstance(self.right, LiteralType):
-            return left == self.right
+            if left == self.right:
+                return True
+            # Special case: IntEnum/StrEnum literals are subtypes of int/str literals with
+            # the same value, e.g.: Literal[MyIntEnum.ONE] is a subtype of Literal[1]
+            #                       Literal[MyStrEnum.RED] is a subtype of Literal["red"]
+            # This handles IntEnum, StrEnum, and custom (int, Enum) or (str, Enum) subclasses
+            if (
+                left.is_enum_literal()
+                and isinstance(left.value, str)  # Enum literal values are member names
+                and self._is_subtype(left.fallback, self.right.fallback)
+            ):
+                # For IntEnum/StrEnum, check if the enum's actual value matches the literal
+                # The enum literal's value is the member name (e.g., "ONE" or "RED")
+                # We need to get the actual value from the enum
+                enum_value = left.fallback.type.get(left.value)
+                if enum_value is not None:
+                    enum_type = get_proper_type(enum_value.type)
+                    if isinstance(enum_type, Instance) and enum_type.last_known_value is not None:
+                        # enum_type.last_known_value is the actual value for IntEnum/StrEnum
+                        # members
+                        if enum_type.last_known_value.value == self.right.value:
+                            return True
+            return False
         else:
             return self._is_subtype(left.fallback, self.right)
 
