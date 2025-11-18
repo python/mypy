@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os.path
 from pathlib import PurePath
+
 provided_prefix = os.getenv("MYPY_TEST_PREFIX", None)
 if provided_prefix:
     PREFIX = provided_prefix
