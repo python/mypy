@@ -14,7 +14,7 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, TypeInfo, Var
+from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, Var
 from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
@@ -37,6 +37,7 @@ from mypy.typeops import (
 )
 from mypy.types import (
     AnyType,
+    FunctionLike,
     Instance,
     LiteralType,
     NoneType,
@@ -50,6 +51,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    callable_with_ellipsis,
     find_unpack_in_list,
     get_proper_type,
     split_with_prefix_and_suffix,
@@ -538,27 +540,29 @@ class PatternChecker(PatternVisitor[PatternType]):
         # Check class type
         #
         type_info = o.class_ref.node
-        if type_info is None:
-            typ: Type = AnyType(TypeOfAny.from_error)
-        elif isinstance(type_info, TypeAlias) and not type_info.no_args:
+        typ = self.chk.expr_checker.accept(o.class_ref)
+        p_typ = get_proper_type(typ)
+        if isinstance(type_info, TypeAlias) and not type_info.no_args:
             self.msg.fail(message_registry.CLASS_PATTERN_GENERIC_TYPE_ALIAS, o)
             return self.early_non_match()
-        elif isinstance(type_info, TypeInfo):
-            typ = fill_typevars_with_any(type_info)
-        elif isinstance(type_info, TypeAlias):
-            typ = type_info.target
+        elif isinstance(p_typ, FunctionLike) and p_typ.is_type_obj():
+            typ = fill_typevars_with_any(p_typ.type_object())
         elif (
             isinstance(type_info, Var)
             and type_info.type is not None
-            and isinstance(get_proper_type(type_info.type), AnyType)
+            and type_info.fullname == "typing.Callable"
         ):
-            typ = type_info.type
-        else:
-            if isinstance(type_info, Var) and type_info.type is not None:
-                name = type_info.type.str_with_options(self.options)
-            else:
-                name = type_info.name
-            self.msg.fail(message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(name), o)
+            # Create a `Callable[..., Any]`
+            fallback = self.chk.named_type("builtins.function")
+            any_type = AnyType(TypeOfAny.unannotated)
+            typ = callable_with_ellipsis(any_type, ret_type=any_type, fallback=fallback)
+        elif not isinstance(p_typ, AnyType):
+            self.msg.fail(
+                message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(
+                    typ.str_with_options(self.options)
+                ),
+                o,
+            )
             return self.early_non_match()
 
         new_type, rest_type = self.chk.conditional_types_with_intersection(
@@ -697,6 +701,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
             typ = typ.partial_fallback
+        if isinstance(typ, AnyType):
+            return False
         if isinstance(typ, Instance) and typ.type.get("__match_args__") is not None:
             # Named tuples and other subtypes of builtins that define __match_args__
             # should not self match.

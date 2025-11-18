@@ -170,7 +170,9 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     ):
         # We put this branch early to get T(bound=Union[A, B]) instead of
         # Union[T(bound=A), T(bound=B)] that will be confusing for users.
-        return declared.copy_modified(upper_bound=original_narrowed)
+        return declared.copy_modified(
+            upper_bound=narrow_declared_type(declared.upper_bound, original_narrowed)
+        )
     elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
         if state.strict_optional:
             return UninhabitedType()
@@ -185,12 +187,24 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
         return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
-        return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
+        return TypeType.make_normalized(
+            narrow_declared_type(declared.item, narrowed.item),
+            is_type_form=declared.is_type_form and narrowed.is_type_form,
+        )
     elif (
         isinstance(declared, TypeType)
         and isinstance(narrowed, Instance)
         and narrowed.type.is_metaclass()
     ):
+        if declared.is_type_form:
+            # The declared TypeForm[T] after narrowing must be a kind of
+            # type object at least as narrow as Type[T]
+            return narrow_declared_type(
+                TypeType.make_normalized(
+                    declared.item, line=declared.line, column=declared.column, is_type_form=False
+                ),
+                original_narrowed,
+            )
         # We'd need intersection types, so give up.
         return original_declared
     elif isinstance(declared, Instance):
@@ -344,7 +358,7 @@ def is_overlapping_types(
         seen_types = set()
     elif (left, right) in seen_types:
         return True
-    if isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType):
+    if is_recursive_pair(left, right):
         seen_types.add((left, right))
 
     left, right = get_proper_types((left, right))
@@ -1113,7 +1127,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, TypeType):
             typ = self.meet(t.item, self.s.item)
             if not isinstance(typ, NoneType):
-                typ = TypeType.make_normalized(typ, line=t.line)
+                typ = TypeType.make_normalized(
+                    typ, line=t.line, is_type_form=self.s.is_type_form and t.is_type_form
+                )
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":
             return t

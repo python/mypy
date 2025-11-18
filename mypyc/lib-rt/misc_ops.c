@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 // Misc primitive operations + C helpers
 //
 // These are registered in mypyc.primitives.misc_ops.
@@ -750,7 +752,7 @@ CPy_Super(PyObject *builtins, PyObject *self) {
 
 static bool import_single(PyObject *mod_id, PyObject **mod_static,
                           PyObject *globals_id, PyObject *globals_name, PyObject *globals) {
-    if (*mod_static == Py_None) {
+    if (Py_IsNone(*mod_static)) {
         CPyModule *mod = PyImport_Import(mod_id);
         if (mod == NULL) {
             return false;
