@@ -82,6 +82,17 @@ def test_decode_different_strings() -> None:
     for b in b"", b"ab", b"bac", b"1234", b"xyz88", b"abc" * 200:
         check_decode(b)
 
+def test_decode_with_non_base64_chars() -> None:
+    # For stdlib compatibility, non-base64 characters should be ignored.
+
+    # Invalid characters as a suffix use a fast path.
+    check_decode(b"eA== ", encoded=True)
+    check_decode(b"eA==\n", encoded=True)
+    check_decode(b"eA== \t\n", encoded=True)
+    check_decode(b"\n", encoded=True)
+
+    check_decode(b" e  A = = ", encoded=True)
+
 def test_decode_wrapper() -> None:
     dec: Any = b64decode
     assert dec(b"eA==") == b"x"

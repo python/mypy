@@ -6,6 +6,9 @@
 
 #ifdef MYPYC_EXPERIMENTAL
 
+static PyObject *
+b64decode_handle_invalid(PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen);
+
 #define BASE64_MAXBIN ((PY_SSIZE_T_MAX - 3) / 2)
 
 #define STACK_BUFFER_SIZE 1024
@@ -63,6 +66,12 @@ b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
     return b64encode_internal(args[0]);
 }
 
+static inline int
+is_valid_base64_char(char c) {
+    return ((c >= 'A' && c <= 'Z') | (c >= 'a' && c <= 'z') |
+            (c >= '0' && c <= '9') | (c == '+') | (c == '/') | (c == '='));
+}
+
 static PyObject *
 b64decode_internal(PyObject *arg) {
     const char *src;
@@ -91,6 +100,12 @@ b64decode_internal(PyObject *arg) {
         return PyBytes_FromStringAndSize(NULL, 0);
     }
 
+    // Quickly ignore invalid characters at the end. Other invalid characters
+    // are also accepted, but they need a slow path.
+    while (srclen_ssz > 0 && !is_valid_base64_char(src[srclen_ssz - 1])) {
+        srclen_ssz--;
+    }
+
     // Compute an output capacity that's at least 3/4 of input, without overflow:
     // ceil(3/4 * N) == N - floor(N/4)
     size_t srclen = (size_t)srclen_ssz;
@@ -112,14 +127,14 @@ b64decode_internal(PyObject *arg) {
     char *outbuf = PyBytes_AS_STRING(out_bytes);
     size_t outlen = max_out;
 
-    // Decode (flags = 0 for plain input)
     int ret = base64_decode(src, srclen, outbuf, &outlen, 0);
 
     if (ret != 1) {
-        Py_DECREF(out_bytes);
         if (ret == 0) {
-            PyErr_SetString(PyExc_ValueError, "Only base64 data is allowed");
-        } else if (ret == -1) {
+            return b64decode_handle_invalid(out_bytes, outbuf, max_out, src, srclen);
+        }
+        Py_DECREF(out_bytes);
+        if (ret == -1) {
             PyErr_SetString(PyExc_NotImplementedError, "base64 codec not available in this build");
         } else {
             PyErr_SetString(PyExc_RuntimeError, "base64_decode failed");
@@ -148,6 +163,45 @@ b64decode_internal(PyObject *arg) {
     return res; // may be NULL if allocation failed (exception set)
 #endif
 }
+
+static PyObject *
+b64decode_handle_invalid(PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen)
+{
+    size_t i;
+    char *newbuf = PyMem_Malloc(srclen);
+    size_t newbuf_len = 0;
+    for (i = 0; i < srclen; i++) {
+        char c = src[i];
+        if (is_valid_base64_char(c)) {
+            newbuf[newbuf_len++] = c;
+        }
+    }
+
+    size_t outlen = max_out;
+    int ret = base64_decode(newbuf, newbuf_len, outbuf, &outlen, 0);
+    PyMem_Free(newbuf);
+
+    if (ret != 1) {
+        Py_DECREF(out_bytes);
+        if (ret == 0) {
+            PyErr_SetString(PyExc_ValueError, "Only base64 data is allowed");
+        }
+        if (ret == -1) {
+            PyErr_SetString(PyExc_NotImplementedError, "base64 codec not available in this build");
+        } else {
+            PyErr_SetString(PyExc_RuntimeError, "base64_decode failed");
+        }
+        return NULL;
+    }
+
+    // Shrink in place to the actual decoded length
+    if (_PyBytes_Resize(&out_bytes, (Py_ssize_t)outlen) < 0) {
+        // _PyBytes_Resize sets an exception and may free the old object
+        return NULL;
+    }
+    return out_bytes;
+}
+
 
 static PyObject*
 b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
