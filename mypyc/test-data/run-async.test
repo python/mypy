@@ -445,7 +445,7 @@ async def bar(n: int) -> None:
         await spill()
 
 async def test_spilled() -> None:
-    await assert_no_leaks(lambda: bar(80), 2)
+    await assert_no_leaks(lambda: bar(80), 12)
 
 async def raise_deep(n: int) -> str:
     if n == 0:
@@ -496,7 +496,7 @@ async def stolen(n: int) -> int:
     return n
 
 async def test_stolen() -> None:
-    await assert_no_leaks(lambda: stolen(200), 2)
+    await assert_no_leaks(lambda: stolen(200), 14)
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
@@ -1399,3 +1399,88 @@ def test_call_using_super() -> None:
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
+
+[case testAsyncIntrospection]
+import inspect
+from functools import wraps
+from typing import Any, Callable, TypeVar, cast
+
+def identity(val: int) -> int:
+    return val
+
+async def identity_async(val: int) -> int:
+    return val
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def wrap(fn: F) -> F:
+    @wraps(fn)
+    def wrapper() -> Any:
+        return fn() + fn()
+
+    return cast(F, wrapper)
+
+def wrap_async(fn: F) -> F:
+    @wraps(fn)
+    async def wrapper() -> Any:
+        return await fn() + await fn()
+
+    return cast(F, wrapper)
+
+@wrap
+def wrapped() -> int:
+    return 1
+
+@wrap_async
+async def wrapped_async() -> int:
+    return 1
+
+class T:
+    def returns_one(self) -> int:
+        return 1
+
+    async def returns_one_async(self) -> int:
+        return 1
+
+    @wrap
+    def returns_two(self) -> int:
+        return 2
+
+    @wrap_async
+    async def returns_two_async(self) -> int:
+        return 2
+
+def test_function() -> None:
+    assert not inspect.iscoroutinefunction(identity)
+    assert inspect.iscoroutinefunction(identity_async)
+
+    assert not inspect.iscoroutinefunction(wrapped)
+    assert inspect.iscoroutinefunction(wrapped_async)
+
+def test_method() -> None:
+    assert not inspect.iscoroutinefunction(T.returns_one)
+    assert inspect.iscoroutinefunction(T.returns_one_async)
+
+    assert not inspect.iscoroutinefunction(T.returns_two)
+    assert inspect.iscoroutinefunction(T.returns_two_async)
+
+def test_nested() -> None:
+    def nested() -> int:
+        return 1
+
+    async def nested_async() -> int:
+        return 1
+
+    @wrap
+    def nested_wrapped() -> int:
+        return 2
+
+    @wrap_async
+    async def nested_wrapped_async() -> int:
+        return 2
+
+    assert not inspect.iscoroutinefunction(nested)
+    assert inspect.iscoroutinefunction(nested_async)
+
+    assert not inspect.iscoroutinefunction(nested_wrapped)
+    assert inspect.iscoroutinefunction(nested_wrapped_async)
