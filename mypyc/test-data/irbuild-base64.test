@@ -1,0 +1,37 @@
+[case testBase64_experimental]
+from librt.base64 import b64encode
+
+def enc(b: bytes) -> bytes:
+    return b64encode(b)
+[out]
+def enc(b):
+    b, r0 :: bytes
+L0:
+    r0 = LibRTBase64_b64encode_internal(b)
+    return r0
+
+[case testBase64ExperimentalDisabled]
+from librt.base64 import b64encode
+
+def enc(b: bytes) -> bytes:
+    return b64encode(b)
+[out]
+def enc(b):
+    b :: bytes
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: object[1]
+    r4 :: object_ptr
+    r5 :: object
+    r6 :: bytes
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'b64encode'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = [b]
+    r4 = load_address r3
+    r5 = PyObject_Vectorcall(r2, r4, 1, 0)
+    keep_alive b
+    r6 = cast(bytes, r5)
+    return r6

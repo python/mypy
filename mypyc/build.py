@@ -26,7 +26,7 @@ import re
 import sys
 import time
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, NoReturn, Union, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -36,13 +36,64 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
+from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, X86_64, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-LIBRT_MODULES = [("librt.internal", "librt_internal.c")]
+
+class ModDesc(NamedTuple):
+    module: str
+    c_files: list[str]
+    other_files: list[str]
+    include_dirs: list[str]
+
+
+LIBRT_MODULES = [
+    ModDesc("librt.internal", ["librt_internal.c"], [], []),
+    ModDesc(
+        "librt.base64",
+        [
+            "librt_base64.c",
+            "base64/lib.c",
+            "base64/codec_choose.c",
+            "base64/tables/tables.c",
+            "base64/arch/generic/codec.c",
+            "base64/arch/ssse3/codec.c",
+            "base64/arch/sse41/codec.c",
+            "base64/arch/sse42/codec.c",
+            "base64/arch/avx/codec.c",
+            "base64/arch/avx2/codec.c",
+            "base64/arch/avx512/codec.c",
+            "base64/arch/neon32/codec.c",
+            "base64/arch/neon64/codec.c",
+        ],
+        [
+            "base64/arch/generic/32/enc_loop.c",
+            "base64/arch/generic/64/enc_loop.c",
+            "base64/arch/generic/32/dec_loop.c",
+            "base64/arch/generic/enc_head.c",
+            "base64/arch/generic/enc_tail.c",
+            "base64/arch/generic/dec_head.c",
+            "base64/arch/generic/dec_tail.c",
+            "base64/arch/ssse3/dec_reshuffle.c",
+            "base64/arch/ssse3/dec_loop.c",
+            "base64/arch/ssse3/enc_loop_asm.c",
+            "base64/arch/ssse3/enc_translate.c",
+            "base64/arch/ssse3/enc_reshuffle.c",
+            "base64/arch/ssse3/enc_loop.c",
+            "base64/arch/neon64/dec_loop.c",
+            "base64/arch/neon64/enc_loop_asm.c",
+            "base64/codecs.h",
+            "base64/env.h",
+            "base64/tables/tables.h",
+            "base64/tables/table_dec_32bit.h",
+            "base64/tables/table_enc_12bit.h",
+        ],
+        ["base64"],
+    ),
+]
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
@@ -496,6 +547,7 @@ def mypycify(
     log_trace: bool = False,
     depends_on_librt_internal: bool = False,
     install_librt: bool = False,
+    experimental_features: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -551,6 +603,9 @@ def mypycify(
                        those are build and published on PyPI separately, but during
                        tests, we want to use their development versions (i.e. from
                        current commit).
+        experimental_features: Enable experimental features (install_librt=True is
+                               also needed if using experimental librt features). These
+                               have no backward compatibility guarantees!
     """
 
     # Figure out our configuration
@@ -565,6 +620,7 @@ def mypycify(
         group_name=group_name,
         log_trace=log_trace,
         depends_on_librt_internal=depends_on_librt_internal,
+        experimental_features=experimental_features,
     )
 
     # Generate all the actual important C code
@@ -605,8 +661,13 @@ def mypycify(
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",
         ]
+        if X86_64:
+            # Enable SIMD extensions. All CPUs released since ~2010 support SSE4.2.
+            cflags.append("-msse4.2")
         if log_trace:
             cflags.append("-DMYPYC_LOG_TRACE")
+        if experimental_features:
+            cflags.append("-DMYPYC_EXPERIMENTAL")
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
@@ -631,8 +692,14 @@ def mypycify(
             # that we actually get the compilation speed and memory
             # use wins that multi-file mode is intended for.
             cflags += ["/GL-", "/wd9025"]  # warning about overriding /GL
+        if X86_64:
+            # Enable SIMD extensions. All CPUs released since ~2010 support SSE4.2.
+            # Also Windows 11 requires SSE4.2 since 24H2.
+            cflags.append("/arch:SSE4.2")
         if log_trace:
             cflags.append("/DMYPYC_LOG_TRACE")
+        if experimental_features:
+            cflags.append("/DMYPYC_EXPERIMENTAL")
 
     # If configured to (defaults to yes in multi-file mode), copy the
     # runtime library in. Otherwise it just gets #included to save on
@@ -668,17 +735,19 @@ def mypycify(
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
                 write_file(rt_file, f.read())
-        for mod, file_name in LIBRT_MODULES:
-            rt_file = os.path.join(build_dir, file_name)
-            with open(os.path.join(include_dir(), file_name), encoding="utf-8") as f:
-                write_file(rt_file, f.read())
+        for mod, file_names, addit_files, includes in LIBRT_MODULES:
+            for file_name in file_names + addit_files:
+                rt_file = os.path.join(build_dir, file_name)
+                with open(os.path.join(include_dir(), file_name), encoding="utf-8") as f:
+                    write_file(rt_file, f.read())
             extensions.append(
                 get_extension()(
                     mod,
                     sources=[
-                        os.path.join(build_dir, file) for file in [file_name] + RUNTIME_C_FILES
+                        os.path.join(build_dir, file) for file in file_names + RUNTIME_C_FILES
                     ],
-                    include_dirs=[include_dir()],
+                    include_dirs=[include_dir()]
+                    + [os.path.join(include_dir(), d) for d in includes],
                     extra_compile_args=cflags,
                 )
             )

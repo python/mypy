@@ -1319,6 +1319,25 @@ from typing_extensions import TypeAlias
 Foo: TypeAlias = ClassVar[int]  # E: ClassVar[...] can't be used inside a type alias
 [builtins fixtures/tuple.pyi]
 
+[case testAnnotatedWithCallableAsParameterTypeAlias]
+from typing_extensions import Annotated, TypeAlias
+
+def something() -> None: ...
+
+A: TypeAlias = list[Annotated[str, something()]]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedWithCallableAsParameterTypeAliasDeeper]
+from typing_extensions import Annotated, TypeAlias
+
+def something() -> None: ...
+
+A: TypeAlias = list[Annotated[Annotated[str, something()], something()]]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
 
 [case testTypeAliasDict]
 D = dict[str, int]

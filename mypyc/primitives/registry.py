@@ -62,6 +62,7 @@ class CFunctionDescription(NamedTuple):
     priority: int
     is_pure: bool
     returns_null: bool
+    capsule: str | None
 
 
 # A description for C load operations including LoadGlobal and LoadAddress
@@ -100,6 +101,7 @@ def method_op(
     is_borrowed: bool = False,
     priority: int = 1,
     is_pure: bool = False,
+    capsule: str | None = None,
 ) -> PrimitiveDescription:
     """Define a c function call op that replaces a method call.
 
@@ -144,6 +146,8 @@ def method_op(
         extra_int_constants,
         priority,
         is_pure=is_pure,
+        experimental=False,
+        capsule=capsule,
     )
     ops.append(desc)
     return desc
@@ -162,6 +166,8 @@ def function_op(
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
+    experimental: bool = False,
+    capsule: str | None = None,
 ) -> PrimitiveDescription:
     """Define a C function call op that replaces a function call.
 
@@ -190,6 +196,8 @@ def function_op(
         extra_int_constants=extra_int_constants,
         priority=priority,
         is_pure=False,
+        experimental=experimental,
+        capsule=capsule,
     )
     ops.append(desc)
     return desc
@@ -209,6 +217,7 @@ def binary_op(
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
+    capsule: str | None = None,
 ) -> PrimitiveDescription:
     """Define a c function call op for a binary operation.
 
@@ -236,6 +245,8 @@ def binary_op(
         extra_int_constants=extra_int_constants,
         priority=priority,
         is_pure=False,
+        experimental=False,
+        capsule=capsule,
     )
     ops.append(desc)
     return desc
@@ -277,6 +288,7 @@ def custom_op(
         0,
         is_pure=is_pure,
         returns_null=returns_null,
+        capsule=None,
     )
 
 
@@ -293,6 +305,7 @@ def custom_primitive_op(
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     is_pure: bool = False,
+    capsule: str | None = None,
 ) -> PrimitiveDescription:
     """Define a primitive op that can't be automatically generated based on the AST.
 
@@ -314,6 +327,8 @@ def custom_primitive_op(
         extra_int_constants=extra_int_constants,
         priority=0,
         is_pure=is_pure,
+        experimental=False,
+        capsule=capsule,
     )
 
 
@@ -330,6 +345,7 @@ def unary_op(
     is_borrowed: bool = False,
     priority: int = 1,
     is_pure: bool = False,
+    capsule: str | None = None,
 ) -> PrimitiveDescription:
     """Define a primitive op for an unary operation.
 
@@ -355,6 +371,8 @@ def unary_op(
         extra_int_constants=extra_int_constants,
         priority=priority,
         is_pure=is_pure,
+        experimental=False,
+        capsule=capsule,
     )
     ops.append(desc)
     return desc

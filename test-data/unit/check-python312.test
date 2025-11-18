@@ -2170,6 +2170,25 @@ reveal_type(x[0])  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testAnnotatedWithCallableAsParameterTypeKeyword]
+from typing_extensions import Annotated
+
+def something() -> None: ...
+
+type A = list[Annotated[str, something()]]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedWithCallableAsParameterTypeKeywordDeeper]
+from typing_extensions import Annotated
+
+def something() -> None: ...
+
+type A = list[Annotated[Annotated[str, something()], something()]]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
 [case testPEP695TypeAliasRecursiveInParameterBound]
 from typing import Any
 
@@ -2190,5 +2209,17 @@ type B3 = None | A3[B3]
 x3: A3[B3]
 y3: A3[int]  # E: Type argument "int" of "A3" must be a subtype of "B3"
 z3: A3[None]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasRecursiveTupleUnionNoCrash]
+from collections.abc import Hashable
+
+type HashableArg = int | tuple[Hashable | HashableArg]
+x: HashableArg
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, tuple[Union[typing.Hashable, ...]]]"
+if isinstance(x, tuple):
+    y, = x
+    reveal_type(y)  # N: Revealed type is "Union[typing.Hashable, Union[builtins.int, tuple[Union[typing.Hashable, ...]]]]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]

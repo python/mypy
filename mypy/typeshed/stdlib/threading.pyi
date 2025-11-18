@@ -1,6 +1,6 @@
 import _thread
 import sys
-from _thread import _excepthook, _ExceptHookArgs, get_native_id as get_native_id
+from _thread import _ExceptHookArgs, get_native_id as get_native_id
 from _typeshed import ProfileFunction, TraceFunction
 from collections.abc import Callable, Iterable, Mapping
 from contextvars import ContextVar
@@ -169,7 +169,9 @@ class Event:
     def clear(self) -> None: ...
     def wait(self, timeout: float | None = None) -> bool: ...
 
-excepthook = _excepthook
+excepthook: Callable[[_ExceptHookArgs], object]
+if sys.version_info >= (3, 10):
+    __excepthook__: Callable[[_ExceptHookArgs], object]
 ExceptHookArgs = _ExceptHookArgs
 
 class Timer(Thread):

@@ -1948,7 +1948,7 @@ Foo().__dict__ = {}
 [out]
 _testInferenceOfDunderDictOnClassObjects.py:2: note: Revealed type is "types.MappingProxyType[builtins.str, Any]"
 _testInferenceOfDunderDictOnClassObjects.py:3: note: Revealed type is "builtins.dict[builtins.str, Any]"
-_testInferenceOfDunderDictOnClassObjects.py:4: error: Property "__dict__" defined in "type" is read-only
+_testInferenceOfDunderDictOnClassObjects.py:4: error: Cannot assign to final attribute "__dict__"
 _testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "dict[Never, Never]", variable has type "MappingProxyType[str, Any]")
 
 [case testTypeVarTuple]

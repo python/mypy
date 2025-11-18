@@ -666,15 +666,15 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             else:
                 # If not, check if we've seen a supertype of this type
                 for j, tj in enumerate(new_items):
-                    tj = get_proper_type(tj)
+                    proper_tj = get_proper_type(tj)
                     # If tj is an Instance with a last_known_value, do not remove proper_ti
                     # (unless it's an instance with the same last_known_value)
                     if (
-                        isinstance(tj, Instance)
-                        and tj.last_known_value is not None
+                        isinstance(proper_tj, Instance)
+                        and proper_tj.last_known_value is not None
                         and not (
                             isinstance(proper_ti, Instance)
-                            and tj.last_known_value == proper_ti.last_known_value
+                            and proper_tj.last_known_value == proper_ti.last_known_value
                         )
                     ):
                         continue

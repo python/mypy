@@ -465,3 +465,13 @@ function_op(
     c_function_name="cache_version_internal",
     error_kind=ERR_NEVER,
 )
+
+function_op(
+    name="librt.base64.b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    experimental=True,
+    capsule="librt.base64",
+)
