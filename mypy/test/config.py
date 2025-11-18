@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import os.path
-from pathlib import PurePath
+from pathlib import Path
 provided_prefix = os.getenv("MYPY_TEST_PREFIX", None)
 if provided_prefix:
     PREFIX = provided_prefix
 else:
-    this_file_dir = os.path.dirname(PurePath(__file__))
+    this_file_dir = (Path(__file__)).resolve().parent
     PREFIX = os.path.dirname(os.path.dirname(this_file_dir))
 
 # Location of test data files such as test case descriptions.
