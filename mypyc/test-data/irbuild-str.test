@@ -638,11 +638,11 @@ floating: Final = 3.14
 boolean: Final = True
 
 def test(x: str) -> str:
-    return f"{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}"
+    return f"{string[:3]}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}"
 def test2(x: str) -> str:
-    return f"{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
+    return f"{string[-3:]}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
 def test3(x: str) -> str:
-    return f"{x}{string}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
+    return f"{x}{string[:]}{integer}{floating}{boolean}{x}{boolean}{floating}{integer}{string}{x}{string}{integer}{floating}{boolean}{x}"
 
 [out]
 def test(x):
