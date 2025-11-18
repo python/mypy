@@ -3288,6 +3288,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         types: Sequence[Type | None],
         context: Context,
         skip_unsatisfied: bool = False,
+        *,
+        prefer_defaults: bool = False,
     ) -> CallableType:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
         return applytype.apply_generic_arguments(
@@ -3296,6 +3298,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.msg.incompatible_typevar_value,
             context,
             skip_unsatisfied=skip_unsatisfied,
+            prefer_defaults=prefer_defaults,
         )
 
     def check_any_type_call(self, args: list[Expression], callee: Type) -> tuple[Type, Type]:
@@ -5022,7 +5025,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     min_arg_count, len(type_vars), len(args), ctx
                 )
                 return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, self.split_for_callable(tp, args, ctx), ctx)
+            return self.apply_generic_arguments(
+                tp, self.split_for_callable(tp, args, ctx), ctx, prefer_defaults=True
+            )
         if isinstance(tp, Overloaded):
             for it in tp.items:
                 if tp.is_type_obj():
@@ -5041,7 +5046,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     return AnyType(TypeOfAny.from_error)
             return Overloaded(
                 [
-                    self.apply_generic_arguments(it, self.split_for_callable(it, args, ctx), ctx)
+                    self.apply_generic_arguments(
+                        it, self.split_for_callable(it, args, ctx), ctx, prefer_defaults=True
+                    )
                     for it in tp.items
                 ]
             )
