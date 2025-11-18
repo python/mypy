@@ -223,6 +223,9 @@ class ClassIR:
         # Is this a class inheriting from enum.Enum? Such classes can be special-cased.
         self.is_enum = False
 
+        # Is this a callable class representing a coroutine?
+        self.is_coroutine = False
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -424,6 +427,7 @@ class ClassIR:
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
             "is_enum": self.is_enum,
+            "is_coroutine": self.is_coroutine,
         }
 
     @classmethod
@@ -481,6 +485,7 @@ class ClassIR:
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
         ir.is_enum = data["is_enum"]
+        ir.is_coroutine = data["is_coroutine"]
 
         return ir
 

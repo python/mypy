@@ -7,8 +7,13 @@ from typing import Callable
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
-from mypyc.codegen.emitfunc import native_function_doc_initializer, native_function_header
+from mypyc.codegen.emit import (
+    Emitter,
+    HeaderDeclaration,
+    ReturnHandler,
+    native_function_doc_initializer,
+)
+from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_bin_op_wrapper,
     generate_bool_wrapper,
@@ -240,6 +245,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     dealloc_name = f"{name_prefix}_dealloc"
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
+    coroutine_setup_name = f"{name_prefix}_coroutine_setup"
 
     fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
@@ -347,6 +353,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             shadow_vtable_name = None
         vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter, shadow=False)
         emit_line()
+        generate_coroutine_setup(cl, coroutine_setup_name, module, emitter)
+        emit_line()
     if del_method:
         generate_finalize_for_class(del_method, finalize_name, emitter)
         emit_line()
@@ -390,6 +398,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             t=emitter.type_struct_name(cl)
         )
     )
+
+    if cl.is_coroutine:
+        cpyfunction = emitter.static_name(cl.name + "_cpyfunction", module)
+        emitter.emit_line(f"static PyObject *{cpyfunction} = NULL;")
 
     emitter.emit_line()
     if generate_full:
@@ -1254,3 +1266,32 @@ def native_class_doc_initializer(cl: ClassIR) -> str:
         text_sig = f"{cl.name}()"
     docstring = f"{text_sig}\n--\n\n"
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
+def generate_coroutine_setup(
+    cl: ClassIR, coroutine_setup_name: str, module_name: str, emitter: Emitter
+) -> None:
+    emitter.emit_line("static bool")
+    emitter.emit_line(f"{NATIVE_PREFIX}{coroutine_setup_name}(PyObject *type)")
+    emitter.emit_line("{")
+
+    if not any(fn.decl.is_coroutine for fn in cl.methods.values()):
+        emitter.emit_line("return 1;")
+        emitter.emit_line("}")
+        return
+
+    emitter.emit_line("PyTypeObject *tp = (PyTypeObject *)type;")
+
+    for fn in cl.methods.values():
+        if not fn.decl.is_coroutine:
+            continue
+
+        filepath = emitter.filepath or ""
+        wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath)
+        emitter.emit_line(
+            f'if (PyDict_SetItem(tp->tp_dict, PyUnicode_FromString("{fn.name}"), {wrapper_name}) < 0)'
+        )
+        emitter.emit_line("    return 2;")
+
+    emitter.emit_line("return 1;")
+    emitter.emit_line("}")
