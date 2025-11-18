@@ -74,7 +74,8 @@ def serve(server: IPCServer, options: Options, errors: Errors, fscache: FileSyst
     sources = [BuildSource(*st) for st in data["sources"]]
 
     data_dir = os.path.dirname(os.path.dirname(__file__))
-    search_paths = compute_search_paths(sources, options, data_dir, None)
+    alt_lib_path = os.environ.get("MYPY_ALT_LIB_PATH")
+    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
 
     source_set = BuildSourceSet(sources)
     plugin, snapshot = load_plugins(options, errors, sys.stdout, [])
@@ -101,7 +102,10 @@ def serve(server: IPCServer, options: Options, errors: Errors, fscache: FileSyst
     )
 
     gc.disable()
-    graph = load_graph(sources, manager)
+    try:
+        graph = load_graph(sources, manager)
+    except CompileError:
+        return
     gc.freeze()
     gc.unfreeze()
     gc.enable()

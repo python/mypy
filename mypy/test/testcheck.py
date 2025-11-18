@@ -143,7 +143,7 @@ class TypeCheckSuite(DataSuite):
         if "union-error" not in testcase.file and "Pep604" not in testcase.name:
             options.force_union_syntax = True
 
-        if incremental_step and options.incremental:
+        if incremental_step and options.incremental or options.num_workers > 0:
             # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True
         else:
