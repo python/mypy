@@ -1402,6 +1402,8 @@ def run(x: object) -> object: ...
 
 [case testAsyncIntrospection]
 import inspect
+import sys
+
 from functools import wraps
 from typing import Any, Callable, TypeVar, cast
 
@@ -1450,19 +1452,30 @@ class T:
     async def returns_two_async(self) -> int:
         return 2
 
-def test_function() -> None:
-    assert not inspect.iscoroutinefunction(identity)
-    assert inspect.iscoroutinefunction(identity_async)
+def is_coroutine(fn):
+    if sys.version_info >= (3, 10):
+        return inspect.iscoroutinefunction(fn)
 
-    assert not inspect.iscoroutinefunction(wrapped)
-    assert inspect.iscoroutinefunction(wrapped_async)
+    # inspect on older python versions does not support function-like objects.
+    # Below is a simplified implementation of iscoroutinefunction.
+    if not hasattr(fn, "__code__"):
+        return False
+    CO_COROUTINE = 0x0080
+    return bool(fn.__code__.co_flags & CO_COROUTINE)
+
+def test_function() -> None:
+    assert not is_coroutine(identity)
+    assert is_coroutine(identity_async)
+
+    assert not is_coroutine(wrapped)
+    assert is_coroutine(wrapped_async)
 
 def test_method() -> None:
-    assert not inspect.iscoroutinefunction(T.returns_one)
-    assert inspect.iscoroutinefunction(T.returns_one_async)
+    assert not is_coroutine(T.returns_one)
+    assert is_coroutine(T.returns_one_async)
 
-    assert not inspect.iscoroutinefunction(T.returns_two)
-    assert inspect.iscoroutinefunction(T.returns_two_async)
+    assert not is_coroutine(T.returns_two)
+    assert is_coroutine(T.returns_two_async)
 
 def test_nested() -> None:
     def nested() -> int:
@@ -1479,8 +1492,8 @@ def test_nested() -> None:
     async def nested_wrapped_async() -> int:
         return 2
 
-    assert not inspect.iscoroutinefunction(nested)
-    assert inspect.iscoroutinefunction(nested_async)
+    assert not is_coroutine(nested)
+    assert is_coroutine(nested_async)
 
-    assert not inspect.iscoroutinefunction(nested_wrapped)
-    assert inspect.iscoroutinefunction(nested_wrapped_async)
+    assert not is_coroutine(nested_wrapped)
+    assert is_coroutine(nested_wrapped_async)

@@ -157,8 +157,14 @@ static PyType_Spec CPyFunction_spec = {
     .name = "Function compiled with mypyc",
     .basicsize = sizeof(CPyFunction),
     .itemsize = 0,
-    .flags = Py_TPFLAGS_HAVE_VECTORCALL | Py_TPFLAGS_IMMUTABLETYPE | Py_TPFLAGS_MANAGED_DICT |
-             Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_BASETYPE,
+    .flags =
+#if PY_VERSION_HEX >= 0x030A0000
+             Py_TPFLAGS_IMMUTABLETYPE |
+#endif
+#if PY_VERSION_HEX >= 0x030C0000
+             Py_TPFLAGS_MANAGED_DICT |
+#endif
+             Py_TPFLAGS_HAVE_VECTORCALL | Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_BASETYPE,
     .slots = CPyFunction_slots,
 };
 
@@ -171,7 +177,7 @@ static PyObject* CPyFunction_Vectorcall(PyObject *func, PyObject *const *args, s
     PyCFunction meth = ((PyCFunctionObject *)f)->m_ml->ml_meth;
 
     self = ((PyCFunctionObject *)f)->m_self;
-    return ((PyCFunctionFastWithKeywords)(void(*)(void))meth)(self, args, nargs, kwnames);
+    return ((_PyCFunctionFastWithKeywords)(void(*)(void))meth)(self, args, nargs, kwnames);
 }
 
 
