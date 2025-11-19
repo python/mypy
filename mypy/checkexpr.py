@@ -4359,7 +4359,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         op = e.op
         if op == "not":
             result: Type = self.bool_type()
-            self.chk.check_for_truthy_type(operand_type, e.expr)
+            self.chk.check_for_appropriate_truthiness_in_boolean_context(operand_type, e.expr)
         else:
             method = operators.unary_op_methods[op]
             result, method_type = self.check_method_call_by_name(method, operand_type, [], [], e)
