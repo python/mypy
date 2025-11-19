@@ -7683,7 +7683,7 @@ class Child(metaclass=M, thing=0):
     pass
 [builtins fixtures/object_with_init_subclass.pyi]
 
-[case testTooManyArgsForObject]
+[case testTooManyArgsForObject_no_parallel]
 class A(thing=5):
     pass
 [out]
@@ -8498,7 +8498,7 @@ def identity_wrapper(func: FuncT) -> FuncT:
 def foo(self: Any) -> str:
     return ""
 
-[case testParentClassWithTypeAliasAndSubclassWithMethod]
+[case testParentClassWithTypeAliasAndSubclassWithMethod_no_parallel]
 from typing import Any, Callable, TypeVar
 
 class Parent:

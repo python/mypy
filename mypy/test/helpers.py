@@ -365,6 +365,8 @@ def parse_options(
 
     if testcase.config.getoption("--mypy-verbose"):
         options.verbosity = testcase.config.getoption("--mypy-verbose")
+    if testcase.config.getoption("--mypy-num-workers"):
+        options.num_workers = testcase.config.getoption("--mypy-num-workers")
 
     return options
 

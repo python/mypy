@@ -2496,54 +2496,43 @@ y = int()
 
 [case testImportFromReExportInCycleUsingRelativeImport1]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/__init__.py]
 from .one import One
 from .two import Two
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/one.py]
 class One:
     pass
 [file m/two.py]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 x: One
-reveal_type(x)
+reveal_type(x)  # N: Revealed type is "m.one.One"
 
 class Two(One):
     pass
 y: Two
-y = x
+y = x  # E: Incompatible types in assignment (expression has type "One", variable has type "Two")
 x = y
-[out]
-tmp/m/two.py:2: note: Revealed type is "def () -> m.one.One"
-tmp/m/two.py:4: note: Revealed type is "m.one.One"
-tmp/m/two.py:9: error: Incompatible types in assignment (expression has type "One", variable has type "Two")
-tmp/m/__init__.py:3: note: Revealed type is "def () -> m.one.One"
-main:2: note: Revealed type is "def () -> m.one.One"
 
 [case testImportReExportInCycleUsingRelativeImport2]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/__init__.py]
 from .one import One
 from .two import Two
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/one.py]
 class One:
     pass
 [file m/two.py]
 import m
-reveal_type(m.One)
+reveal_type(m.One)  # N: Revealed type is "def () -> m.one.One"
 x: m.One
-reveal_type(x)
+reveal_type(x)  # N: Revealed type is "m.one.One"
 class Two:
     pass
-[out]
-tmp/m/two.py:2: note: Revealed type is "def () -> m.one.One"
-tmp/m/two.py:4: note: Revealed type is "m.one.One"
-tmp/m/__init__.py:3: note: Revealed type is "def () -> m.one.One"
-main:2: note: Revealed type is "def () -> m.one.One"
 
 [case testImportReExportedNamedTupleInCycle1]
 from m import One
@@ -2604,7 +2593,7 @@ import p
 [file p/__init__.py]
 from . import a
 from . import b
-reveal_type(a.foo())
+reveal_type(a.foo())  # N: Revealed type is "builtins.int"
 [file p/a.py]
 import p
 def foo() -> int: pass
@@ -2612,11 +2601,8 @@ def foo() -> int: pass
 import p
 
 def run() -> None:
-    reveal_type(p.a.foo())
+    reveal_type(p.a.foo())  # N: Revealed type is "builtins.int"
 [builtins fixtures/module.pyi]
-[out]
-tmp/p/b.py:4: note: Revealed type is "builtins.int"
-tmp/p/__init__.py:3: note: Revealed type is "builtins.int"
 
 [case testMissingSubmoduleImportedWithIgnoreMissingImports]
 # flags: --ignore-missing-imports
@@ -2960,7 +2946,7 @@ class Some:
     name = __name__
 reveal_type(Some.name)  # N: Revealed type is "builtins.str"
 
-[case testReExportAllInStub]
+[case testReExportAllInStub_no_parallel]
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
 C()
