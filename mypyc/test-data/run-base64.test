@@ -61,8 +61,9 @@ def check_decode(b: bytes, encoded: bool = False) -> None:
      else:
          enc = b64encode(b)
      assert b64decode(enc) == getattr(base64, "b64decode")(enc)
-     enc_str = enc.decode("ascii")
-     assert b64decode(enc_str) == getattr(base64, "b64decode")(enc_str)
+     if getattr(enc, "isascii")():  # Test stub has no "isascii"
+        enc_str = enc.decode("ascii")
+        assert b64decode(enc_str) == getattr(base64, "b64decode")(enc_str)
 
 def test_decode_different_strings() -> None:
     for i in range(256):
@@ -83,6 +84,10 @@ def test_decode_different_strings() -> None:
     for b in b"", b"ab", b"bac", b"1234", b"xyz88", b"abc" * 200:
         check_decode(b)
 
+def is_base64_char(x: int) -> bool:
+    c = chr(x)
+    return ('a' <= c <= 'z') or ('A' <= c <= 'Z') or ('0' <= c <= '9') or c in '+/='
+
 def test_decode_with_non_base64_chars() -> None:
     # For stdlib compatibility, non-base64 characters should be ignored.
 
@@ -97,6 +102,14 @@ def test_decode_with_non_base64_chars() -> None:
     # Special case: Two different encodings of the same data
     check_decode(b"eAa=", encoded=True)
     check_decode(b"eAY=", encoded=True)
+
+    for x in range(256):
+        if not is_base64_char(x):
+            b = bytes([x])
+            check_decode(b, encoded=True)
+            check_decode(b"eA==" + b, encoded=True)
+            check_decode(b"e" + b + b"A==", encoded=True)
+            check_decode(b"eA=" + b + b"=", encoded=True)
 
 def check_decode_error(b: bytes, ignore_stdlib: bool = False) -> None:
     if not ignore_stdlib:
