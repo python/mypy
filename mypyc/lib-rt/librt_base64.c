@@ -253,8 +253,8 @@ b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
 
 static PyMethodDef librt_base64_module_methods[] = {
 #ifdef MYPYC_EXPERIMENTAL
-    {"b64encode", (PyCFunction)b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes-like object using Base64.")},
-    {"b64decode", (PyCFunction)b64decode, METH_FASTCALL, PyDoc_STR("Decode bytes-like object using Base64.")},
+    {"b64encode", (PyCFunction)b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using Base64.")},
+    {"b64decode", (PyCFunction)b64decode, METH_FASTCALL, PyDoc_STR("Decode a Base64 encoded bytes object or ASCII string.")},
 #endif
     {NULL, NULL, 0, NULL}
 };
@@ -298,7 +298,7 @@ static PyModuleDef_Slot librt_base64_module_slots[] = {
 static PyModuleDef librt_base64_module = {
     .m_base = PyModuleDef_HEAD_INIT,
     .m_name = "base64",
-    .m_doc = "base64 encoding and decoding optimized for mypyc",
+    .m_doc = "Fast base64 encoding and decoding optimized for mypyc",
     .m_size = 0,
     .m_methods = librt_base64_module_methods,
     .m_slots = librt_base64_module_slots,
