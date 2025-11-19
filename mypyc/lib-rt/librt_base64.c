@@ -160,7 +160,7 @@ b64decode_internal(PyObject *arg) {
     return out_bytes;
 }
 
-// Process non-base64 input by ignoring non-base64 characters, for compatiblity
+// Process non-base64 input by ignoring non-base64 characters, for compatibility
 // with stdlib b64decode.
 static PyObject *
 b64decode_handle_invalid_input(
