@@ -8,7 +8,8 @@
 #ifdef MYPYC_EXPERIMENTAL
 
 static PyObject *
-b64decode_handle_invalid(PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen);
+b64decode_handle_invalid_input(
+    PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen);
 
 #define BASE64_MAXBIN ((PY_SSIZE_T_MAX - 3) / 2)
 
@@ -132,7 +133,8 @@ b64decode_internal(PyObject *arg) {
 
     if (ret != 1) {
         if (ret == 0) {
-            return b64decode_handle_invalid(out_bytes, outbuf, max_out, src, srclen);
+            // Slow path: handle non-base64 input
+            return b64decode_handle_invalid_input(out_bytes, outbuf, max_out, src, srclen);
         }
         Py_DECREF(out_bytes);
         if (ret == -1) {
@@ -150,36 +152,39 @@ b64decode_internal(PyObject *arg) {
         return NULL;
     }
 
-#ifndef Py_LIMITED_API
     // Shrink in place to the actual decoded length
     if (_PyBytes_Resize(&out_bytes, (Py_ssize_t)outlen) < 0) {
         // _PyBytes_Resize sets an exception and may free the old object
         return NULL;
     }
     return out_bytes;
-#else
-    // PEP 384 limited-API fallback: copy into a right-sized bytes object
-    PyObject *res = PyBytes_FromStringAndSize(outbuf, (Py_ssize_t)outlen);
-    Py_DECREF(out_bytes);
-    return res; // may be NULL if allocation failed (exception set)
-#endif
 }
 
+// Process non-base64 input by ignoring non-base64 characters, for compatiblity
+// with stdlib b64decode.
 static PyObject *
-b64decode_handle_invalid(PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen)
+b64decode_handle_invalid_input(
+    PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen)
 {
-    size_t i;
-    char *newbuf = PyMem_Malloc(srclen);
+    // Copy input to a temporary buffer, with non-base64 characters and extra suffix
+    // characters removed
     size_t newbuf_len = 0;
-    for (i = 0; i < srclen; i++) {
+    char *newbuf = PyMem_Malloc(srclen);
+    if (newbuf == NULL) {
+        Py_DECREF(out_bytes);
+        return PyErr_NoMemory();
+    }
+
+    // Copy base64 characters and some padding to the new buffer
+    for (size_t i = 0; i < srclen; i++) {
         char c = src[i];
         if (is_valid_base64_char(c, false)) {
             newbuf[newbuf_len++] = c;
         } else if (c == '=') {
-            // Copy necessary amount of padding
+            // Copy a necessary amount of padding
             int remainder = newbuf_len % 4;
             if (remainder == 0) {
-                // No padding needed -- ignore padding
+                // No padding needed
                 break;
             }
             int numpad = 4 - remainder;
@@ -192,6 +197,7 @@ b64decode_handle_invalid(PyObject *out_bytes, char *outbuf, size_t max_out, cons
                 newbuf[newbuf_len++] = '=';
                 i++;
                 numpad--;
+                // Skip non-base64 alphabet characters within padding
                 while (i < srclen && !is_valid_base64_char(src[i], true)) {
                     i++;
                 }
@@ -200,7 +206,10 @@ b64decode_handle_invalid(PyObject *out_bytes, char *outbuf, size_t max_out, cons
         }
     }
 
+    // Stdlib always performs a non-strict padding check
     if (newbuf_len % 4 != 0) {
+        Py_DECREF(out_bytes);
+        PyMem_Free(newbuf);
         PyErr_SetString(PyExc_ValueError, "Incorrect padding");
         return NULL;
     }
