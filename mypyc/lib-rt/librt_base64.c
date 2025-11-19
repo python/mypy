@@ -70,8 +70,8 @@ b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
 
 static inline int
 is_valid_base64_char(char c, bool allow_padding) {
-    return ((c >= 'A' && c <= 'Z') | (c >= 'a' && c <= 'z') |
-            (c >= '0' && c <= '9') | (c == '+') | (c == '/') | (allow_padding && c == '='));
+    return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') || (c == '+') || (c == '/') || (allow_padding && c == '='));
 }
 
 static PyObject *
