@@ -234,7 +234,7 @@ def wait_for_worker(status_file: str, timeout: float = 5.0) -> tuple[int, str]:
     sys.exit(2)
 
 
-def start_worker(options_data: str, idx: int) -> subprocess.Popen[bytes]:
+def start_worker(options_data: str, idx: int, env: Mapping[str, str]) -> subprocess.Popen[bytes]:
     status_file = f".mypy_worker.{idx}.json"
     if os.path.isfile(status_file):
         os.unlink(status_file)
@@ -245,7 +245,7 @@ def start_worker(options_data: str, idx: int) -> subprocess.Popen[bytes]:
         f"--status-file={status_file}",
         f'--options-data="{options_data}"',
     ]
-    return subprocess.Popen(command)
+    return subprocess.Popen(command, env=env)
 
 
 def get_worker(idx: int, proc: subprocess.Popen[bytes]) -> WorkerClient:
@@ -268,6 +268,7 @@ def build(
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
     extra_plugins: Sequence[Plugin] | None = None,
+    worker_env: Mapping[str, str] | None = None,
 ) -> BuildResult:
     """Analyze a program.
 
@@ -311,15 +312,10 @@ def build(
     workers = []
     procs = []
     if options.num_workers > 0:
-        if options.use_builtins_fixtures:
-            os.environ["MYPY_TEST_PREFIX"] = os.path.dirname(os.path.dirname(__file__))
-        if alt_lib_path:
-            os.environ["MYPY_ALT_LIB_PATH"] = alt_lib_path
-
         pickled_options = pickle.dumps(options.snapshot())
         options_data = base64.b64encode(pickled_options).decode()
         for i in range(options.num_workers):
-            procs.append(start_worker(options_data, i))
+            procs.append(start_worker(options_data, i, worker_env or os.environ))
         for i, proc in enumerate(procs):
             workers.append(get_worker(i, proc))
 
@@ -350,6 +346,18 @@ def build(
         flush_errors(None, e.messages, serious)
         e.messages = messages
         raise
+    finally:
+        for worker in workers:
+            try:
+                send(worker.conn, {"final": True})
+            except OSError:
+                pass
+        for worker in workers:
+            worker.conn.close()
+            worker.proc.wait()
+            status_file = f".mypy_worker.{worker.idx}.json"
+            if os.path.isfile(status_file):
+                os.unlink(status_file)
 
 
 def build_inner(
@@ -426,19 +434,6 @@ def build_inner(
             dump_line_checking_stats(options.line_checking_stats, graph)
         return BuildResult(manager, graph)
     finally:
-
-        for worker in workers:
-            try:
-                send(worker.conn, {"final": True})
-            except OSError:
-                pass
-        for worker in workers:
-            worker.conn.close()
-            worker.proc.wait()
-            status_file = f".mypy_worker.{worker.idx}.json"
-            if os.path.isfile(status_file):
-                os.unlink(status_file)
-
         t0 = time.time()
         manager.metastore.commit()
         manager.add_stats(cache_commit_time=time.time() - t0)

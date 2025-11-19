@@ -1,3 +1,4 @@
+import collections
 import typing
 from typing import Any, Callable, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type, Union
 from typing import TYPE_CHECKING as TYPE_CHECKING

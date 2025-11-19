@@ -167,7 +167,6 @@ def main(
         # Exit without freeing objects -- it's faster.
         #
         # NOTE: We don't flush all open files on exit (or run other destructors)!
-        # TODO: use this for workers and join?
         util.hard_exit(code)
     elif code:
         sys.exit(code)

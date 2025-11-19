@@ -10,6 +10,7 @@ import platform
 import sys
 import time
 
+from mypy import util
 from mypy.build import (
     SCC,
     BuildManager,
@@ -68,47 +69,27 @@ def main(argv: list[str]) -> None:
     finally:
         server.cleanup()
 
+    if options.fast_exit:
+        util.hard_exit(0)
+
 
 def serve(server: IPCServer, options: Options, errors: Errors, fscache: FileSystemCache) -> None:
     data = receive(server)
     sources = [BuildSource(*st) for st in data["sources"]]
+    manager = setup_worker_manager(sources, options, errors, fscache)
+    if manager is None:
+        return
 
-    data_dir = os.path.dirname(os.path.dirname(__file__))
-    alt_lib_path = os.environ.get("MYPY_ALT_LIB_PATH")
-    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
-
-    source_set = BuildSourceSet(sources)
-    plugin, snapshot = load_plugins(options, errors, sys.stdout, [])
-
-    def flush_errors(filename: str | None, new_messages: list[str], is_serious: bool) -> None:
-        pass
-
-    manager = BuildManager(
-        data_dir,
-        search_paths,
-        ignore_prefix=os.getcwd(),
-        source_set=source_set,
-        reports=None,
-        options=options,
-        version_id=__version__,
-        plugin=plugin,
-        plugins_snapshot=snapshot,
-        errors=errors,
-        error_formatter=None,
-        flush_errors=flush_errors,
-        fscache=fscache,
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-    )
-
-    gc.disable()
+    if platform.python_implementation() == "CPython":
+        gc.disable()
     try:
         graph = load_graph(sources, manager)
     except CompileError:
         return
-    gc.freeze()
-    gc.unfreeze()
-    gc.enable()
+    if platform.python_implementation() == "CPython":
+        gc.freeze()
+        gc.unfreeze()
+        gc.enable()
 
     for id in graph:
         manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
@@ -142,6 +123,41 @@ def serve(server: IPCServer, options: Options, errors: Errors, fscache: FileSyst
         else:
             send(server, {"scc_id": scc_id, "result": result})
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
+
+
+def setup_worker_manager(
+    sources: list[BuildSource], options: Options, errors: Errors, fscache: FileSystemCache
+) -> BuildManager | None:
+    data_dir = os.path.dirname(os.path.dirname(__file__))
+    alt_lib_path = os.environ.get("MYPY_ALT_LIB_PATH")
+    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
+
+    source_set = BuildSourceSet(sources)
+    try:
+        plugin, snapshot = load_plugins(options, errors, sys.stdout, [])
+    except CompileError:
+        return None
+
+    def flush_errors(filename: str | None, new_messages: list[str], is_serious: bool) -> None:
+        pass
+
+    return BuildManager(
+        data_dir,
+        search_paths,
+        ignore_prefix=os.getcwd(),
+        source_set=source_set,
+        reports=None,
+        options=options,
+        version_id=__version__,
+        plugin=plugin,
+        plugins_snapshot=snapshot,
+        errors=errors,
+        error_formatter=None,
+        flush_errors=flush_errors,
+        fscache=fscache,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
 
 
 def console_entry() -> None:
