@@ -9,6 +9,7 @@ import pickle
 import platform
 import sys
 import time
+from typing import NamedTuple
 
 from mypy import util
 from mypy.build import (
@@ -36,6 +37,14 @@ parser.add_argument("--options-data", help="serialized mypy options")
 CONNECTION_NAME = "build_worker"
 
 
+class ServerContext(NamedTuple):
+    options: Options
+    disable_error_code: list[str]
+    enable_error_code: list[str]
+    errors: Errors
+    fscache: FileSystemCache
+
+
 def main(argv: list[str]) -> None:
     # Set recursion limit consistent with mypy/main.py
     sys.setrecursionlimit(RECURSION_LIMIT)
@@ -46,6 +55,8 @@ def main(argv: list[str]) -> None:
 
     options_dict = pickle.loads(base64.b64decode(args.options_data))
     options_obj = Options()
+    disable_error_code = options_dict.pop("disable_error_code", [])
+    enable_error_code = options_dict.pop("enable_error_code", [])
     options = options_obj.apply_changes(options_dict)
 
     status_file = args.status_file
@@ -59,9 +70,10 @@ def main(argv: list[str]) -> None:
     cached_read = fscache.read
     errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
 
+    ctx = ServerContext(options, disable_error_code, enable_error_code, errors, fscache)
     try:
         with server:
-            serve(server, options, errors, fscache)
+            serve(server, ctx)
     except OSError:
         pass
     except Exception as exc:
@@ -73,10 +85,10 @@ def main(argv: list[str]) -> None:
         util.hard_exit(0)
 
 
-def serve(server: IPCServer, options: Options, errors: Errors, fscache: FileSystemCache) -> None:
+def serve(server: IPCServer, ctx: ServerContext) -> None:
     data = receive(server)
     sources = [BuildSource(*st) for st in data["sources"]]
-    manager = setup_worker_manager(sources, options, errors, fscache)
+    manager = setup_worker_manager(sources, ctx)
     if manager is None:
         return
 
@@ -125,18 +137,21 @@ def serve(server: IPCServer, options: Options, errors: Errors, fscache: FileSyst
         manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
 
 
-def setup_worker_manager(
-    sources: list[BuildSource], options: Options, errors: Errors, fscache: FileSystemCache
-) -> BuildManager | None:
+def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> BuildManager | None:
     data_dir = os.path.dirname(os.path.dirname(__file__))
     alt_lib_path = os.environ.get("MYPY_ALT_LIB_PATH")
-    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
+    search_paths = compute_search_paths(sources, ctx.options, data_dir, alt_lib_path)
 
     source_set = BuildSourceSet(sources)
     try:
-        plugin, snapshot = load_plugins(options, errors, sys.stdout, [])
+        plugin, snapshot = load_plugins(ctx.options, ctx.errors, sys.stdout, [])
     except CompileError:
         return None
+
+    options = ctx.options
+    options.disable_error_code = ctx.disable_error_code
+    options.enable_error_code = ctx.enable_error_code
+    options.process_error_codes(error_callback=lambda msg: None)
 
     def flush_errors(filename: str | None, new_messages: list[str], is_serious: bool) -> None:
         pass
@@ -151,10 +166,10 @@ def setup_worker_manager(
         version_id=__version__,
         plugin=plugin,
         plugins_snapshot=snapshot,
-        errors=errors,
+        errors=ctx.errors,
         error_formatter=None,
         flush_errors=flush_errors,
-        fscache=fscache,
+        fscache=ctx.fscache,
         stdout=sys.stdout,
         stderr=sys.stderr,
     )
