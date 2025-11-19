@@ -1,6 +1,7 @@
 [case testAllBase64Features_librt_experimental]
 from typing import Any
 import base64
+import binascii
 
 from librt.base64 import b64encode, b64decode
 
@@ -92,6 +93,39 @@ def test_decode_with_non_base64_chars() -> None:
     check_decode(b"\n", encoded=True)
 
     check_decode(b" e  A = = ", encoded=True)
+
+    # Special case: Two different encodings of the same data
+    check_decode(b"eAa=", encoded=True)
+    check_decode(b"eAY=", encoded=True)
+
+def check_decode_error(b: bytes, ignore_stdlib: bool = False) -> None:
+    if not ignore_stdlib:
+        with assertRaises(binascii.Error):
+            getattr(base64, "b64decode")(b)
+
+    # The raised error is different, since librt shouldn't depend on binascii
+    with assertRaises(ValueError):
+        b64decode(b)
+
+def test_decode_with_invalid_padding() -> None:
+    check_decode_error(b"eA")
+    check_decode_error(b"eA=")
+    check_decode_error(b"eHk")
+    check_decode_error(b"eA = ")
+
+    # Here stdlib behavior seems nonsensical, so we don't try to duplicate it
+    check_decode_error(b"eA=a=", ignore_stdlib=True)
+
+def test_decode_with_extra_data_after_padding() -> None:
+    check_decode(b"=", encoded=True)
+    check_decode(b"==", encoded=True)
+    check_decode(b"===", encoded=True)
+    check_decode(b"====", encoded=True)
+    check_decode(b"eA===", encoded=True)
+    check_decode(b"eHk==", encoded=True)
+    check_decode(b"eA==x", encoded=True)
+    check_decode(b"eHk=x", encoded=True)
+    check_decode(b"eA==abc=======efg", encoded=True)
 
 def test_decode_wrapper() -> None:
     dec: Any = b64decode

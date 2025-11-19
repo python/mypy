@@ -1,5 +1,6 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <stdbool.h>
 #include "librt_base64.h"
 #include "libbase64.h"
 #include "pythoncapi_compat.h"
@@ -67,9 +68,9 @@ b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
 }
 
 static inline int
-is_valid_base64_char(char c) {
+is_valid_base64_char(char c, bool allow_padding) {
     return ((c >= 'A' && c <= 'Z') | (c >= 'a' && c <= 'z') |
-            (c >= '0' && c <= '9') | (c == '+') | (c == '/') | (c == '='));
+            (c >= '0' && c <= '9') | (c == '+') | (c == '/') | (allow_padding && c == '='));
 }
 
 static PyObject *
@@ -102,7 +103,7 @@ b64decode_internal(PyObject *arg) {
 
     // Quickly ignore invalid characters at the end. Other invalid characters
     // are also accepted, but they need a slow path.
-    while (srclen_ssz > 0 && !is_valid_base64_char(src[srclen_ssz - 1])) {
+    while (srclen_ssz > 0 && !is_valid_base64_char(src[srclen_ssz - 1], true)) {
         srclen_ssz--;
     }
 
@@ -172,9 +173,36 @@ b64decode_handle_invalid(PyObject *out_bytes, char *outbuf, size_t max_out, cons
     size_t newbuf_len = 0;
     for (i = 0; i < srclen; i++) {
         char c = src[i];
-        if (is_valid_base64_char(c)) {
+        if (is_valid_base64_char(c, false)) {
             newbuf[newbuf_len++] = c;
+        } else if (c == '=') {
+            // Copy necessary amount of padding
+            int remainder = newbuf_len % 4;
+            if (remainder == 0) {
+                // No padding needed -- ignore padding
+                break;
+            }
+            int numpad = 4 - remainder;
+            // Check that there is at least the required amount padding (CPython ignores
+            // extra padding)
+            while (numpad > 0) {
+                if (i == srclen || src[i] != '=') {
+                    break;
+                }
+                newbuf[newbuf_len++] = '=';
+                i++;
+                numpad--;
+                while (i < srclen && !is_valid_base64_char(src[i], true)) {
+                    i++;
+                }
+            }
+            break;
         }
+    }
+
+    if (newbuf_len % 4 != 0) {
+        PyErr_SetString(PyExc_ValueError, "Incorrect padding");
+        return NULL;
     }
 
     size_t outlen = max_out;
