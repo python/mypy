@@ -259,6 +259,8 @@ static PyMethodDef librt_base64_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+#ifdef MYPYC_EXPERIMENTAL
+
 static int
 base64_abi_version(void) {
     return LIBRT_BASE64_ABI_VERSION;
@@ -268,6 +270,8 @@ static int
 base64_api_version(void) {
     return LIBRT_BASE64_API_VERSION;
 }
+
+#endif
 
 static int
 librt_base64_module_exec(PyObject *m)
