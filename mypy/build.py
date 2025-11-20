@@ -122,8 +122,6 @@ initial_gc_freeze_done = False
 
 Graph: _TypeAlias = dict[str, "State"]
 
-t_import = time.time()
-
 
 class SCC:
     """A simple class that represents a strongly connected component (import cycle)."""

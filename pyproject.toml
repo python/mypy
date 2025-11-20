@@ -13,7 +13,6 @@ requires = [
     # the following is from build-requirements.txt
     "types-psutil",
     "types-setuptools",
-    "psutil>=4.0",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -60,7 +59,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-dmypy = []
+dmypy = ["psutil>=4.0"]
 mypyc = ["setuptools>=50"]
 python2 = []
 reports = ["lxml"]
