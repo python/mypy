@@ -172,6 +172,8 @@ class TypeCheckSuite(DataSuite):
         worker_env = None
         if options.num_workers > 0:
             worker_env = os.environ.copy()
+            # Make sure we are running tests with current worktree files, *not* with
+            # an installed version of mypy.
             root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
             worker_env["PYTHONPATH"] = os.pathsep.join([root_dir, plugin_dir])
             worker_env["MYPY_TEST_PREFIX"] = root_dir
@@ -215,6 +217,7 @@ class TypeCheckSuite(DataSuite):
             update_testcase_output(testcase, a, incremental_step=incremental_step)
 
         if options.num_workers > 0:
+            # TypeVarIds are not stable in parallel checking, normalize.
             a = remove_typevar_ids(a)
             output = remove_typevar_ids(output)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))

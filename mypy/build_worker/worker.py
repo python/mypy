@@ -1,3 +1,16 @@
+"""
+Mypy parallel build worker.
+
+The protocol of communication with the coordinator is as following:
+* Read (pickled) build options from command line.
+* Populate status file with pid and socket address.
+* Receive build sources from coordinator.
+* Load graph using the sources, and send "ok" to coordinator.
+* Receive SCC structure from coordinator, and ack it with an "ok".
+* Receive an SCC id from coordinator, process it, and send back the results.
+* When prompted by coordinator (with s "final" message), cleanup and shutdown.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +26,7 @@ from typing import NamedTuple
 
 from mypy import util
 from mypy.build import SCC, BuildManager, load_graph, load_plugins, process_stale_scc
-from mypy.defaults import RECURSION_LIMIT
+from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT
 from mypy.errors import CompileError, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
 from mypy.ipc import IPCServer, receive, send
@@ -38,13 +51,16 @@ class ServerContext(NamedTuple):
 
 
 def main(argv: list[str]) -> None:
-    # Set recursion limit consistent with mypy/main.py
+    # Set recursion limit and GC thresholds consistent with mypy/main.py
     sys.setrecursionlimit(RECURSION_LIMIT)
     if platform.python_implementation() == "CPython":
         gc.set_threshold(200 * 1000, 30, 30)
 
     args = parser.parse_args(argv)
 
+    # This mimics how daemon receives the options. Note we need to postpone
+    # processing error codes after plugins are loaded, because plugins can add
+    # custom error codes.
     options_dict = pickle.loads(base64.b64decode(args.options_data))
     options_obj = Options()
     disable_error_code = options_dict.pop("disable_error_code", [])
@@ -52,7 +68,7 @@ def main(argv: list[str]) -> None:
     options = options_obj.apply_changes(options_dict)
 
     status_file = args.status_file
-    server = IPCServer(CONNECTION_NAME, 10)
+    server = IPCServer(CONNECTION_NAME, WORKER_CONNECTION_TIMEOUT)
 
     with open(status_file, "w") as f:
         json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
@@ -74,6 +90,7 @@ def main(argv: list[str]) -> None:
         server.cleanup()
 
     if options.fast_exit:
+        # Exit fast if allowed, since coordinator is waiting on us.
         util.hard_exit(0)
 
 
@@ -84,29 +101,30 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
     if manager is None:
         return
 
+    # Mirror the GC freeze hack in the coordinator.
     if platform.python_implementation() == "CPython":
         gc.disable()
     try:
         graph = load_graph(sources, manager)
     except CompileError:
+        # CompileError during loading will be reported by the coordinator.
         return
     if platform.python_implementation() == "CPython":
         gc.freeze()
         gc.unfreeze()
         gc.enable()
-
     for id in graph:
         manager.import_map[id] = set(graph[id].dependencies + graph[id].suppressed)
-    send(server, {"status": "ok"})
 
+    # Notify worker we are done loading graph.
+    send(server, {"status": "ok"})
     data = receive(server)
     sccs = [SCC(set(mod_ids), scc_id, deps) for (mod_ids, scc_id, deps) in data["sccs"]]
-
     manager.scc_by_id = {scc.id: scc for scc in sccs}
     manager.top_order = [scc.id for scc in sccs]
 
+    # Notify coordinator we are ready to process SCCs.
     send(server, {"status": "ok"})
-
     while True:
         data = receive(server)
         if "final" in data:
@@ -131,6 +149,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
 
 def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> BuildManager | None:
     data_dir = os.path.dirname(os.path.dirname(__file__))
+    # This is used for testing only now.
     alt_lib_path = os.environ.get("MYPY_ALT_LIB_PATH")
     search_paths = compute_search_paths(sources, ctx.options, data_dir, alt_lib_path)
 
@@ -138,17 +157,20 @@ def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> Buil
     try:
         plugin, snapshot = load_plugins(ctx.options, ctx.errors, sys.stdout, [])
     except CompileError:
+        # CompileError while importing plugins will be reported by the coordinator.
         return None
 
+    # Process the rest of the options when plugins are loaded.
     options = ctx.options
     options.disable_error_code = ctx.disable_error_code
     options.enable_error_code = ctx.enable_error_code
     options.process_error_codes(error_callback=lambda msg: None)
 
     def flush_errors(filename: str | None, new_messages: list[str], is_serious: bool) -> None:
+        # We never flush errors in the worker, we send them back to coordinator.
         pass
 
-    return BuildManager(
+    manager = BuildManager(
         data_dir,
         search_paths,
         ignore_prefix=os.getcwd(),
@@ -165,6 +187,8 @@ def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> Buil
         stdout=sys.stdout,
         stderr=sys.stderr,
     )
+    manager.parallel_worker = True
+    return manager
 
 
 def console_entry() -> None:

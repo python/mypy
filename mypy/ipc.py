@@ -365,11 +365,22 @@ def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[
     return [connections.index(r) for r in ready]
 
 
+# TODO: switch send() and receive() to proper fixed binary format.
+def send(connection: IPCBase, data: dict[str, Any]) -> None:
+    """Send data to a connection encoded and framed.
+
+    The data must be a JSON object. We assume that a single send call is a
+    single frame to be sent.
+    """
+    buf = WriteBuffer()
+    write_json(buf, data)
+    connection.write_bytes(buf.getvalue())
+
+
 def receive(connection: IPCBase) -> dict[str, Any]:
     """Receive single JSON data frame from a connection.
 
-    Raise OSError if the data received is not valid JSON or if it is
-    not a dict.
+    Raise OSError if the data received is not valid.
     """
     bdata = connection.read_bytes()
     if not bdata:
@@ -380,14 +391,3 @@ def receive(connection: IPCBase) -> dict[str, Any]:
     except Exception as e:
         raise OSError("Data received is not valid JSON dict") from e
     return data
-
-
-def send(connection: IPCBase, data: dict[str, Any]) -> None:
-    """Send data to a connection encoded and framed.
-
-    The data must be JSON-serializable. We assume that a single send call is a
-    single frame to be sent on the connect.
-    """
-    buf = WriteBuffer()
-    write_json(buf, data)
-    connection.write_bytes(buf.getvalue())

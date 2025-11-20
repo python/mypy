@@ -123,6 +123,8 @@ CORE_BUILTIN_MODULES: Final = {
 # We are careful now, we can increase this in future if safe/useful.
 MAX_GC_FREEZE_CYCLES = 1
 
+# We store status of initial GC freeze as a global variable to avoid memory
+# leaks in tests, where we keep creating new BuildManagers in the same process.
 initial_gc_freeze_done = False
 
 Graph: _TypeAlias = dict[str, "State"]
@@ -153,6 +155,8 @@ class SCC:
         # make processing order more predictable. Dependents will be notified
         # that they may be ready in the order in this list.
         self.direct_dependents: list[int] = []
+        # Rough estimate of how much time processing this SCC will take, this
+        # is used for more efficient scheduling across multiple build workers.
         self.size_hint: int = 0
 
 
@@ -178,51 +182,54 @@ class BuildResult:
 
 
 class WorkerClient:
-    def __init__(self, status_file: str, conn: IPCClient, proc: subprocess.Popen[bytes]) -> None:
+    """A simple class that represents a mypy build worker."""
+
+    conn: IPCClient
+
+    def __init__(self, status_file: str, options_data: str, env: Mapping[str, str]) -> None:
         self.status_file = status_file
-        self.conn = conn
-        self.proc = proc
+        if os.path.isfile(status_file):
+            os.unlink(status_file)
 
+        command = [
+            sys.executable,
+            "-m",
+            "mypy.build_worker",
+            f"--status-file={status_file}",
+            f'--options-data="{options_data}"',
+        ]
+        # Return early without waiting, caller must call connect() before using the client.
+        self.proc = subprocess.Popen(command, env=env)
 
-def start_worker(options_data: str, idx: int, env: Mapping[str, str]) -> subprocess.Popen[bytes]:
-    status_file = f".mypy_worker.{idx}.json"
-    if os.path.isfile(status_file):
-        os.unlink(status_file)
-    command = [
-        sys.executable,
-        "-m",
-        "mypy.build_worker",
-        f"--status-file={status_file}",
-        f'--options-data="{options_data}"',
-    ]
-    return subprocess.Popen(command, env=env)
+    def connect(self) -> None:
+        end_time = time.time() + WORKER_START_TIMEOUT
+        while time.time() < end_time:
+            try:
+                data = read_status(self.status_file)
+            except BadStatus:
+                time.sleep(WORKER_START_INTERVAL)
+                continue
+            try:
+                pid, connection_name = data["pid"], data["connection_name"]
+                assert isinstance(pid, int) and isinstance(connection_name, str)
+                # Double-check this status file is created by us.
+                assert pid == self.proc.pid
+                self.conn = IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT)
+                return
+            except Exception:
+                break
+        print("Failed to establish connection with worker")
+        sys.exit(2)
 
-
-def wait_for_worker(idx: int, proc: subprocess.Popen[bytes]) -> WorkerClient:
-    """Wait until the worker is up.
-
-    Exit if it doesn't happen within the timeout.
-    """
-    status_file = f".mypy_worker.{idx}.json"
-    endtime = time.time() + WORKER_START_TIMEOUT
-    while time.time() < endtime:
+    def close(self) -> None:
+        self.conn.close()
+        # Technically we don't need to wait, but otherwise we will get ResourceWarnings.
         try:
-            data = read_status(status_file)
-        except BadStatus:
-            # If the file isn't there yet, retry later.
-            time.sleep(WORKER_START_INTERVAL)
-            continue
-        try:
-            pid, connection_name = data["pid"], data["connection_name"]
-            assert isinstance(pid, int) and isinstance(connection_name, str)
-            assert pid == proc.pid
-            return WorkerClient(
-                status_file, IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT), proc
-            )
-        except Exception:
-            break
-    print("Worker process failed to start")
-    sys.exit(2)
+            self.proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            pass
+        if os.path.isfile(self.status_file):
+            os.unlink(self.status_file)
 
 
 def build_error(msg: str) -> NoReturn:
@@ -260,7 +267,7 @@ def build(
         (takes precedence over other directories)
       flush_errors: optional function to flush errors after a file is processed
       fscache: optionally a file-system cacher
-
+      worker_env: An environment to start parallel build workers (used for tests)
     """
     # If we were not given a flush_errors, we use one that will populate those
     # fields for callers that want the traditional API.
@@ -283,16 +290,15 @@ def build(
     if options.num_workers > 0:
         pickled_options = pickle.dumps(options.snapshot())
         options_data = base64.b64encode(pickled_options).decode()
-        procs = [
-            start_worker(options_data, idx, worker_env or os.environ)
+        workers = [
+            WorkerClient(f".mypy_worker.{idx}.json", options_data, worker_env or os.environ)
             for idx in range(options.num_workers)
         ]
-        for idx, proc in enumerate(procs):
-            workers.append(wait_for_worker(idx, proc))
-
-    for worker in workers:
-        source_tuples = [(s.path, s.module, s.text, s.base_dir, s.followed) for s in sources]
-        send(worker.conn, {"sources": source_tuples})
+        for worker in workers:
+            # Start loading graph in each worker as soon as it is up.
+            worker.connect()
+            source_tuples = [(s.path, s.module, s.text, s.base_dir, s.followed) for s in sources]
+            send(worker.conn, {"sources": source_tuples})
 
     try:
         result = build_inner(
@@ -324,10 +330,7 @@ def build(
             except OSError:
                 pass
         for worker in workers:
-            worker.conn.close()
-            worker.proc.wait()
-            if os.path.isfile(worker.status_file):
-                os.unlink(worker.status_file)
+            worker.close()
 
 
 def build_inner(
@@ -800,15 +803,21 @@ class BuildManager:
         # Global topological order for SCCs. This exists to make order of processing
         # SCCs more predictable.
         self.top_order: list[int] = []
-        # Stale SCCs that are queued for processing. Note that as of now we have just
-        # one worker, that is the same process. In the future, we will support multiple
-        # parallel worker processes.
+        # Stale SCCs that are queued for processing. Each tuple contains SCC size hint,
+        # SCC adding order (tie-breaker), and the SCC itself.
         self.scc_queue: list[tuple[int, int, SCC]] = []
         # SCCs that have been fully processed.
         self.done_sccs: set[int] = set()
+        # Parallel build workers, list is empty for in-process type-checking.
         self.workers: list[WorkerClient] = []
+        # We track which workers are currently free in the coordinator process.
+        # This is a tiny bit faster and conceptually simpler than check which ones
+        # are writeable each time we want to submit an SCC for processing.
         self.free_workers: set[int] = set()
+        # A global adding order for SCC queue, see comment above.
         self.queue_order: int = 0
+        # Is this an instance used by a parallel worker?
+        self.parallel_worker = False
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1465,11 +1474,11 @@ def find_cache_meta(
       A CacheMeta instance if the cache data was found and appears
       valid; otherwise None.
     """
-    t0 = time.time()
     # TODO: May need to take more build options into account
     meta_file, data_file, _ = get_cache_names(id, path, manager.options)
     manager.trace(f"Looking for {id} at {meta_file}")
     meta: bytes | dict[str, Any] | None
+    t0 = time.time()
     if manager.options.fixed_format_cache:
         meta = _load_ff_file(meta_file, manager, log_error=f"Could not load cache for {id}: ")
         if meta is None:
@@ -2061,6 +2070,10 @@ class State:
     # on a given source code line).
     per_line_checking_time_ns: dict[int, int]
 
+    # Rough estimate of how much time it would take to process this file. Currently,
+    # we use file size as a proxy for complexity.
+    size_hint: int
+
     def __init__(
         self,
         id: str | None,
@@ -2176,9 +2189,17 @@ class State:
             self.parse_file(temporary=temporary)
             self.compute_dependencies()
             if self.manager.workers:
+                # We don't need parsed trees in coordinator process, we parse only to
+                # compute dependencies.
                 self.tree = None
 
     def reload_meta(self) -> None:
+        """Force reload of cache meta.
+
+        This is used by parallel checking workers to update shared information
+        that may ave changed after initial graph loading. Currently, this is only
+        the interface hash.
+        """
         assert self.path is not None
         self.meta = find_cache_meta(self.id, self.path, self.manager, skip_validation=True)
         assert self.meta is not None
@@ -2258,12 +2279,14 @@ class State:
         return self.manager.load_fine_grained_deps(self.id)
 
     def load_tree(self, temporary: bool = False) -> None:
-        # assert (
-        #     self.meta is not None
-        # ), "Internal error: this method must be called only for cached modules"
-
-        assert self.path is not None
-        _, data_file, _ = get_cache_names(self.id, self.path, self.manager.options)
+        if self.manager.parallel_worker:
+            assert self.path is not None
+            _, data_file, _ = get_cache_names(self.id, self.path, self.manager.options)
+        else:
+            assert (
+                self.meta is not None
+            ), "Internal error: this method must be called only for cached modules"
+            data_file = self.meta.data_file
 
         data: bytes | dict[str, Any] | None
         if self.options.fixed_format_cache:
@@ -3054,6 +3077,10 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
 
     t0 = time.time()
 
+    # We disable GC while loading the graph as a performance optimization for
+    # cold-cache runs. The parsed ASTs are trees, and therefore should not have any
+    # reference cycles. This is an important optimization, since we create a lot of
+    # new objects while parsing files.
     global initial_gc_freeze_done
     if (
         not manager.options.test_env
@@ -3434,7 +3461,6 @@ def find_stale_sccs(
     * The interface hashes of direct dependents matches those recorded in the cache.
     The first and second conditions are verified by is_fresh().
     """
-    t0 = time.time()
     stale_sccs = []
     fresh_sccs = []
     for ascc in sccs:
@@ -3483,7 +3509,6 @@ def find_stale_sccs(
             else:
                 manager.log("Scheduling SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             stale_sccs.append(ascc)
-    manager.add_stats(find_stale_time=time.time() - t0)
     return stale_sccs, fresh_sccs
 
 
@@ -3498,11 +3523,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     manager.scc_by_id = scc_by_id
     manager.top_order = [scc.id for scc in sccs]
 
+    # Broadcast SCC structure to the parallel workers, since they don't compute it.
     for worker in manager.workers:
         data = receive(worker.conn)
         assert data["status"] == "ok"
         send(worker.conn, {"sccs": [(list(scc.mod_ids), scc.id, list(scc.deps)) for scc in sccs]})
-
     for worker in manager.workers:
         data = receive(worker.conn)
         assert data["status"] == "ok"
@@ -3535,6 +3560,10 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             done = fresh
         else:
             done, still_working, results = manager.wait_for_done(graph)
+            # Expose the results of type-checking by workers. For in-process
+            # type-checking this is already done and results should be empty here.
+            if not manager.workers:
+                assert not results
             for id, (interface_cache, errors) in results.items():
                 new_hash = bytes.fromhex(interface_cache)
                 if new_hash != graph[id].interface_hash:
@@ -3542,14 +3571,12 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                     graph[id].interface_hash = new_hash
                 manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
         ready = []
-        t0 = time.time()
         for done_scc in done:
             for dependent in done_scc.direct_dependents:
                 scc_by_id[dependent].not_ready_deps.discard(done_scc.id)
                 if not scc_by_id[dependent].not_ready_deps:
                     not_ready.remove(scc_by_id[dependent])
                     ready.append(scc_by_id[dependent])
-        manager.add_stats(notify_dependents_time=time.time() - t0)
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_INDIRECT) -> list[str]:
@@ -3630,19 +3657,19 @@ def process_stale_scc(
         missing_sccs.add(dep_scc)
         sccs_to_find.update(manager.scc_by_id[dep_scc].deps)
 
-    t1 = time.time()
     if missing_sccs:
         # Load missing SCCs from cache.
         # TODO: speed-up ordering if this causes problems for large builds.
-        ts = time.time()
         fresh_sccs_to_load = [
             manager.scc_by_id[sid] for sid in manager.top_order if sid in missing_sccs
         ]
-        manager.add_stats(fresh_order_time=time.time() - ts)
 
-        for prev_scc in fresh_sccs_to_load:
-            for mod_id in prev_scc.mod_ids:
-                graph[mod_id].reload_meta()
+        if manager.parallel_worker:
+            # Update cache metas as well, cache data is loaded below
+            # in process_fresh_modules().
+            for prev_scc in fresh_sccs_to_load:
+                for mod_id in prev_scc.mod_ids:
+                    graph[mod_id].reload_meta()
 
         manager.log(f"Processing {len(fresh_sccs_to_load)} fresh SCCs")
         if (
@@ -3657,11 +3684,9 @@ def process_stale_scc(
             # generation with the freeze()/unfreeze() trick below. This is arguably
             # a hack, but it gives huge performance wins for large third-party
             # libraries, like torch.
-            tc = time.time()
             if manager.gc_freeze_cycles > 0:
                 gc.collect()
             gc.disable()
-            manager.add_stats(gc_pre_freeze_time=time.time() - tc)
         for prev_scc in fresh_sccs_to_load:
             manager.done_sccs.add(prev_scc.id)
             process_fresh_modules(graph, sorted(prev_scc.mod_ids), manager)
@@ -3671,17 +3696,15 @@ def process_stale_scc(
             and manager.gc_freeze_cycles < MAX_GC_FREEZE_CYCLES
         ):
             manager.gc_freeze_cycles += 1
-            tc = time.time()
             gc.freeze()
             gc.unfreeze()
             gc.enable()
-            manager.add_stats(gc_post_freeze_time=time.time() - tc)
 
-    t2 = time.time()
+    t1 = time.time()
     # Process the SCC in stable order.
     scc = order_ascc_ex(graph, ascc)
 
-    t3 = time.time()
+    t2 = time.time()
     stale = scc
     for id in stale:
         # We may already have parsed the module, or not.
@@ -3695,7 +3718,7 @@ def process_stale_scc(
         assert typing_mod, "The typing module was not parsed"
     mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
 
-    t4 = time.time()
+    t3 = time.time()
     # Track what modules aren't yet done, so we can finish them as soon
     # as possible, saving memory.
     unfinished_modules = set(stale)
@@ -3718,7 +3741,7 @@ def process_stale_scc(
         graph[id].generate_unused_ignore_notes()
         graph[id].generate_ignore_without_code_notes()
 
-    t5 = time.time()
+    t4 = time.time()
     # Flush errors, and write cache in two phases: first data files, then meta files.
     meta_tuples = {}
     errors_by_id = {}
@@ -3730,7 +3753,6 @@ def process_stale_scc(
             manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
             errors_by_id[id] = errors
         meta_tuples[id] = graph[id].write_cache()
-        graph[id].mark_as_rechecked()
     for id in stale:
         meta_tuple = meta_tuples[id]
         if meta_tuple is None:
@@ -3741,12 +3763,11 @@ def process_stale_scc(
         write_cache_meta(meta, manager, meta_file)
     manager.done_sccs.add(ascc.id)
     manager.add_stats(
-        find_missing_time=t1 - t0,
-        load_missing_time=t2 - t1,
-        order_scc_time=t3 - t2,
-        semanal_time=t4 - t3,
-        type_check_time=t5 - t4,
-        flush_and_cache_time=time.time() - t5,
+        load_missing_time=t1 - t0,
+        order_scc_time=t2 - t1,
+        semanal_time=t3 - t2,
+        type_check_time=t4 - t3,
+        flush_and_cache_time=time.time() - t4,
     )
     scc_result = {}
     for id in scc:
