@@ -259,15 +259,19 @@ static PyMethodDef librt_base64_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+#ifdef MYPYC_EXPERIMENTAL
+
 static int
 base64_abi_version(void) {
-    return 0;
+    return LIBRT_BASE64_ABI_VERSION;
 }
 
 static int
 base64_api_version(void) {
-    return 0;
+    return LIBRT_BASE64_API_VERSION;
 }
+
+#endif
 
 static int
 librt_base64_module_exec(PyObject *m)
@@ -278,6 +282,7 @@ librt_base64_module_exec(PyObject *m)
         (void *)base64_abi_version,
         (void *)base64_api_version,
         (void *)b64encode_internal,
+        (void *)b64decode_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)base64_api, "librt.base64._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
