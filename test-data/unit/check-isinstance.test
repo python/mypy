@@ -2716,12 +2716,42 @@ if type(x) == type(y) == int:
     reveal_type(y) # N: Revealed type is "builtins.int"
     reveal_type(x) # N: Revealed type is "builtins.int"
 
+z: Any
+if int == type(z) == int:
+    reveal_type(z) # N: Revealed type is "builtins.int"
+
 [case testTypeEqualsCheckUsingIs]
 from typing import Any
 
 y: Any
 if type(y) is int:
     reveal_type(y) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsCheckUsingImplicitTypes]
+from typing import Any
+
+x: str
+y: Any
+z: object
+if type(y) is type(x):
+    reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(y) # N: Revealed type is "builtins.str"
+
+if type(x) is type(z):
+    reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(z) # N: Revealed type is "builtins.str"
+
+[case testTypeEqualsCheckUsingDifferentSpecializedTypes]
+from collections import defaultdict
+
+x: defaultdict
+y: dict
+z: object
+if type(x) is type(y) is type(z):
+    reveal_type(x) # N: Revealed type is "collections.defaultdict[Any, Any]"
+    reveal_type(y) # N: Revealed type is "collections.defaultdict[Any, Any]"
+    reveal_type(z) # N: Revealed type is "collections.defaultdict[Any, Any]"
+
 
 [case testTypeEqualsCheckUsingIsNonOverlapping]
 # flags: --warn-unreachable
