@@ -134,7 +134,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
-        return TypeType.make_normalized(t.item.accept(self), line=t.line)
+        return TypeType.make_normalized(
+            t.item.accept(self), line=t.line, is_type_form=t.is_type_form
+        )
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         raise RuntimeError("Type aliases should be expanded before accepting this visitor")

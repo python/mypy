@@ -76,6 +76,7 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -288,6 +289,9 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_cast_expr(self, o: CastExpr, /) -> None:
         o.expr.accept(self)
+
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        pass
 
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         o.expr.accept(self)
@@ -737,6 +741,11 @@ class ExtendedTraverserVisitor(TraverserVisitor):
             return
         super().visit_cast_expr(o)
 
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_form_expr(o)
+
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         if not self.visit(o):
             return
@@ -933,6 +942,41 @@ def has_return_statement(fdef: FuncBase) -> bool:
     seeker = ReturnSeeker()
     fdef.accept(seeker)
     return seeker.found
+
+
+class NameAndMemberCollector(TraverserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.name_exprs: list[NameExpr] = []
+        self.member_exprs: list[MemberExpr] = []
+
+    def visit_name_expr(self, o: NameExpr, /) -> None:
+        self.name_exprs.append(o)
+        super().visit_name_expr(o)
+
+    def visit_member_expr(self, o: MemberExpr, /) -> None:
+        self.member_exprs.append(o)
+        super().visit_member_expr(o)
+
+
+def all_name_and_member_expressions(node: Expression) -> tuple[list[NameExpr], list[MemberExpr]]:
+    v = NameAndMemberCollector()
+    node.accept(v)
+    return (v.name_exprs, v.member_exprs)
+
+
+class StringSeeker(TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_str_expr(self, o: StrExpr, /) -> None:
+        self.found = True
+
+
+def has_str_expression(node: Expression) -> bool:
+    v = StringSeeker()
+    node.accept(v)
+    return v.found
 
 
 class FuncCollectorBase(TraverserVisitor):
