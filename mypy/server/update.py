@@ -631,6 +631,8 @@ def update_module_isolated(
 
     # Find any other modules brought in by imports.
     changed_modules = [(st.id, st.xpath) for st in new_modules]
+    for m in new_modules:
+        manager.import_map[m.id] = set(m.dependencies + m.suppressed)
 
     # If there are multiple modules to process, only process one of them and return
     # the remaining ones to the caller.
