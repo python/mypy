@@ -6256,7 +6256,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 current_type = self.get_isinstance_type(expr)
                 if current_type is None:
                     continue
-                if type_being_compared is not None:
+                if type_being_compared is not None and type_being_compared != current_type:
                     # It doesn't really make sense to have several types being
                     # compared to the output of type (like type(x) == int == str)
                     # because whether that's true is solely dependent on what the
