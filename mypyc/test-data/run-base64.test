@@ -41,15 +41,16 @@ def test_encode_different_strings() -> None:
     for b in rand_values:
         check_encode(b)
 
-def test_encode_wrapper() -> None:
-    enc: Any = b64encode
-    assert enc(b"x") == b"eA=="
+def test_encode_wrappers() -> None:
+    funcs: list[Any] = [b64encode, urlsafe_b64encode]
+    for enc in funcs:
+        assert enc(b"x") == b"eA=="
 
-    with assertRaises(TypeError):
-        enc()
+        with assertRaises(TypeError):
+            enc()
 
-    with assertRaises(TypeError):
-        enc(b"x", b"y")
+        with assertRaises(TypeError):
+            enc(b"x", b"y")
 
 def test_decode_basic() -> None:
     assert b64decode(b"eA==") == b"x"
@@ -149,15 +150,16 @@ def test_decode_with_extra_data_after_padding() -> None:
     check_decode(b"eHk=x", encoded=True)
     check_decode(b"eA==abc=======efg", encoded=True)
 
-def test_decode_wrapper() -> None:
-    dec: Any = b64decode
-    assert dec(b"eA==") == b"x"
+def test_decode_wrappers() -> None:
+    funcs: list[Any] = [b64decode, urlsafe_b64decode]
+    for dec in funcs:
+        assert dec(b"eA==") == b"x"
 
-    with assertRaises(TypeError):
-        dec()
+        with assertRaises(TypeError):
+            dec()
 
-    with assertRaises(TypeError):
-        dec(b"x", b"y")
+        with assertRaises(TypeError):
+            dec(b"x", b"y")
 
 def check_urlsafe_encode(b: bytes) -> None:
     assert urlsafe_b64encode(b) == getattr(base64, "urlsafe_b64encode")(b)
@@ -182,6 +184,7 @@ def check_urlsafe_decode(b: bytes) -> None:
     assert urlsafe_b64decode(enc2) == getattr(base64, "urlsafe_b64decode")(enc2)
 
 def test_urlsafe_b64decode() -> None:
+    # Don't test everything, since the implementation is mostly shared with b64decode.
     check_urlsafe_decode(b"")
     check_urlsafe_decode(b"a")
     check_urlsafe_decode(b"\xf8")
@@ -193,6 +196,13 @@ def test_urlsafe_b64decode() -> None:
 
     for b in rand_values:
         check_urlsafe_decode(b)
+
+    assert urlsafe_b64decode(b" e A = == !") == b"x"
+
+def test_urlsafe_b64decode_errors() -> None:
+    for b in b"eA", b"eA=", b"eHk":
+        with assertRaises(ValueError):
+            b64decode(b)
 
 [case testBase64FeaturesNotAvailableInNonExperimentalBuild_librt_base64]
 # This also ensures librt.base64 can be built without experimental features
