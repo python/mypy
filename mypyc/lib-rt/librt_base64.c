@@ -9,14 +9,42 @@
 
 static PyObject *
 b64decode_handle_invalid_input(
-    PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen);
+    PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen, bool freesrc);
 
 #define BASE64_MAXBIN ((PY_SSIZE_T_MAX - 3) / 2)
 
 #define STACK_BUFFER_SIZE 1024
 
+static void
+convert_encoded_to_urlsafe(char *buf, size_t len) {
+    // The loop is written to enable SIMD optimizations
+    for (size_t i = 0; i < len; i++) {
+        char ch = buf[i];
+        if (ch == '+') {
+            ch = '-';
+        } else if (ch == '/') {
+            ch = '_';
+        }
+        buf[i] = ch;
+    }
+}
+
+static void
+convert_urlsafe_to_encoded(const char *src, size_t len, char *buf) {
+    // The loop is written to enable SIMD optimizations
+    for (size_t i = 0; i < len; i++) {
+        char ch = src[i];
+        if (ch == '-') {
+            ch = '+';
+        } else if (ch == '_') {
+            ch = '/';
+        }
+        buf[i] = ch;
+    }
+}
+
 static PyObject *
-b64encode_internal(PyObject *obj) {
+b64encode_internal(PyObject *obj, bool urlsafe) {
     unsigned char *ascii_data;
     char *bin_data;
     int leftbits = 0;
@@ -53,6 +81,11 @@ b64encode_internal(PyObject *obj) {
     }
     size_t actual_len;
     base64_encode(bin_data, bin_len, buf, &actual_len, 0);
+
+    if (urlsafe) {
+        convert_encoded_to_urlsafe(buf, actual_len);
+    }
+
     PyObject *res = PyBytes_FromStringAndSize(buf, actual_len);
     if (buflen > STACK_BUFFER_SIZE)
         PyMem_Free(buf);
@@ -65,7 +98,16 @@ b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "b64encode() takes exactly one argument");
         return 0;
     }
-    return b64encode_internal(args[0]);
+    return b64encode_internal(args[0], false);
+}
+
+static PyObject*
+urlsafe_b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (nargs != 1) {
+        PyErr_SetString(PyExc_TypeError, "urlsafe_b64encode() takes exactly one argument");
+        return 0;
+    }
+    return b64encode_internal(args[0], true);
 }
 
 static inline int
@@ -75,7 +117,7 @@ is_valid_base64_char(char c, bool allow_padding) {
 }
 
 static PyObject *
-b64decode_internal(PyObject *arg) {
+b64decode_internal(PyObject *arg, bool urlsafe) {
     const char *src;
     Py_ssize_t srclen_ssz;
 
@@ -102,6 +144,15 @@ b64decode_internal(PyObject *arg) {
         return PyBytes_FromStringAndSize(NULL, 0);
     }
 
+    if (urlsafe) {
+        char *new_src = PyMem_Malloc(srclen_ssz + 1);
+        if (new_src == NULL) {
+            return PyErr_NoMemory();
+        }
+        convert_urlsafe_to_encoded(src, srclen_ssz, new_src);
+        src = new_src;
+    }
+
     // Quickly ignore invalid characters at the end. Other invalid characters
     // are also accepted, but they need a slow path.
     while (srclen_ssz > 0 && !is_valid_base64_char(src[srclen_ssz - 1], true)) {
@@ -123,6 +174,9 @@ b64decode_internal(PyObject *arg) {
     // Allocate output bytes (uninitialized) of the max capacity
     PyObject *out_bytes = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)max_out);
     if (out_bytes == NULL) {
+        if (urlsafe) {
+            PyMem_Free((void *)src);
+        }
         return NULL; // Propagate memory error
     }
 
@@ -134,15 +188,22 @@ b64decode_internal(PyObject *arg) {
     if (ret != 1) {
         if (ret == 0) {
             // Slow path: handle non-base64 input
-            return b64decode_handle_invalid_input(out_bytes, outbuf, max_out, src, srclen);
+            return b64decode_handle_invalid_input(out_bytes, outbuf, max_out, src, srclen, urlsafe);
         }
         Py_DECREF(out_bytes);
+        if (urlsafe) {
+            PyMem_Free((void *)src);
+        }
         if (ret == -1) {
             PyErr_SetString(PyExc_NotImplementedError, "base64 codec not available in this build");
         } else {
             PyErr_SetString(PyExc_RuntimeError, "base64_decode failed");
         }
         return NULL;
+    }
+
+    if (urlsafe) {
+        PyMem_Free((void *)src);
     }
 
     // Sanity-check contract (decoder must not overflow our buffer)
@@ -164,7 +225,7 @@ b64decode_internal(PyObject *arg) {
 // with stdlib b64decode.
 static PyObject *
 b64decode_handle_invalid_input(
-    PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen)
+    PyObject *out_bytes, char *outbuf, size_t max_out, const char *src, size_t srclen, bool freesrc)
 {
     // Copy input to a temporary buffer, with non-base64 characters and extra suffix
     // characters removed
@@ -172,6 +233,9 @@ b64decode_handle_invalid_input(
     char *newbuf = PyMem_Malloc(srclen);
     if (newbuf == NULL) {
         Py_DECREF(out_bytes);
+        if (freesrc) {
+            PyMem_Free((void *)src);
+        }
         return PyErr_NoMemory();
     }
 
@@ -208,6 +272,9 @@ b64decode_handle_invalid_input(
 
     // Stdlib always performs a non-strict padding check
     if (newbuf_len % 4 != 0) {
+        if (freesrc) {
+            PyMem_Free((void *)src);
+        }
         Py_DECREF(out_bytes);
         PyMem_Free(newbuf);
         PyErr_SetString(PyExc_ValueError, "Incorrect padding");
@@ -217,6 +284,9 @@ b64decode_handle_invalid_input(
     size_t outlen = max_out;
     int ret = base64_decode(newbuf, newbuf_len, outbuf, &outlen, 0);
     PyMem_Free(newbuf);
+    if (freesrc) {
+        PyMem_Free((void *)src);
+    }
 
     if (ret != 1) {
         Py_DECREF(out_bytes);
@@ -239,14 +309,22 @@ b64decode_handle_invalid_input(
     return out_bytes;
 }
 
-
 static PyObject*
 b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
     if (nargs != 1) {
         PyErr_SetString(PyExc_TypeError, "b64decode() takes exactly one argument");
         return 0;
     }
-    return b64decode_internal(args[0]);
+    return b64decode_internal(args[0], false);
+}
+
+static PyObject*
+urlsafe_b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (nargs != 1) {
+        PyErr_SetString(PyExc_TypeError, "urlsafe_b64decode() takes exactly one argument");
+        return 0;
+    }
+    return b64decode_internal(args[0], true);
 }
 
 #endif
@@ -255,6 +333,8 @@ static PyMethodDef librt_base64_module_methods[] = {
 #ifdef MYPYC_EXPERIMENTAL
     {"b64encode", (PyCFunction)b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using Base64.")},
     {"b64decode", (PyCFunction)b64decode, METH_FASTCALL, PyDoc_STR("Decode a Base64 encoded bytes object or ASCII string.")},
+    {"urlsafe_b64encode", (PyCFunction)urlsafe_b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using URL and file system safe Base64 alphabet.")},
+    {"urlsafe_b64decode", (PyCFunction)urlsafe_b64decode, METH_FASTCALL, PyDoc_STR("Decode bytes or ASCII string using URL and file system safe Base64 alphabet.")},
 #endif
     {NULL, NULL, 0, NULL}
 };
