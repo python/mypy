@@ -6231,9 +6231,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 compared
         """
 
-        def is_type_call(expr: CallExpr) -> bool:
+        def is_type_call(expr: Expression) -> TypeGuard[CallExpr]:
             """Is expr a call to type with one argument?"""
-            return refers_to_fullname(expr.callee, "builtins.type") and len(expr.args) == 1
+            return (
+                isinstance(expr, CallExpr)
+                and refers_to_fullname(expr.callee, "builtins.type")
+                and len(expr.args) == 1
+            )
 
         # exprs that are being passed into type
         exprs_in_type_calls: list[Expression] = []
@@ -6245,7 +6249,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         for index in expr_indices:
             expr = node.operands[index]
 
-            if isinstance(expr, CallExpr) and is_type_call(expr):
+            if is_type_call(expr):
                 exprs_in_type_calls.append(expr.args[0])
             else:
                 current_type = self.get_isinstance_type(expr)
