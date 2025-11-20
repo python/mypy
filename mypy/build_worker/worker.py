@@ -12,19 +12,11 @@ import time
 from typing import NamedTuple
 
 from mypy import util
-from mypy.build import (
-    SCC,
-    BuildManager,
-    load_graph,
-    load_plugins,
-    process_stale_scc,
-    receive,
-    send,
-)
+from mypy.build import SCC, BuildManager, load_graph, load_plugins, process_stale_scc
+from mypy.defaults import RECURSION_LIMIT
 from mypy.errors import CompileError, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
-from mypy.ipc import IPCServer
-from mypy.main import RECURSION_LIMIT
+from mypy.ipc import IPCServer, receive, send
 from mypy.modulefinder import BuildSource, BuildSourceSet, compute_search_paths
 from mypy.options import Options
 from mypy.util import read_py_file

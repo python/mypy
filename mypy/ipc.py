@@ -13,8 +13,13 @@ import os
 import shutil
 import sys
 import tempfile
+from select import select
 from types import TracebackType
-from typing import Callable, Final
+from typing import Any, Callable, Final
+
+from librt.internal import ReadBuffer, WriteBuffer
+
+from mypy.cache import read_json, write_json
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -346,3 +351,43 @@ def read_status(status_file: str) -> dict[str, object]:
     if not isinstance(data, dict):
         raise BadStatus("Invalid status file (not a dict)")
     return data
+
+
+def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[int]:
+    """Wait until some connections are readable.
+
+    Return index of each readable connection in the original list.
+    """
+    # TODO: add Windows support for this.
+    assert sys.platform != "win32"
+    connections = [conn.connection for conn in conns]
+    ready, _, _ = select(connections, [], [], timeout)
+    return [connections.index(r) for r in ready]
+
+
+def receive(connection: IPCBase) -> dict[str, Any]:
+    """Receive single JSON data frame from a connection.
+
+    Raise OSError if the data received is not valid JSON or if it is
+    not a dict.
+    """
+    bdata = connection.read_bytes()
+    if not bdata:
+        raise OSError("No data received")
+    try:
+        buf = ReadBuffer(bdata)
+        data = read_json(buf)
+    except Exception as e:
+        raise OSError("Data received is not valid JSON dict") from e
+    return data
+
+
+def send(connection: IPCBase, data: dict[str, Any]) -> None:
+    """Send data to a connection encoded and framed.
+
+    The data must be JSON-serializable. We assume that a single send call is a
+    single frame to be sent on the connect.
+    """
+    buf = WriteBuffer()
+    write_json(buf, data)
+    connection.write_bytes(buf.getvalue())

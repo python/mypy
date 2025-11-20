@@ -29,20 +29,25 @@ import time
 import types
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from heapq import heappop, heappush
-from select import select
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Final, NoReturn, TextIO, TypedDict
 from typing_extensions import TypeAlias as _TypeAlias
 
 from librt.internal import cache_version
 
 import mypy.semanal_main
-from mypy.cache import CACHE_VERSION, CacheMeta, ReadBuffer, WriteBuffer, read_json, write_json
+from mypy.cache import CACHE_VERSION, CacheMeta, ReadBuffer, WriteBuffer
 from mypy.checker import TypeChecker
+from mypy.defaults import (
+    WORKER_CONNECTION_TIMEOUT,
+    WORKER_DONE_TIMEOUT,
+    WORKER_START_INTERVAL,
+    WORKER_START_TIMEOUT,
+)
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.ipc import BadStatus, IPCBase, IPCClient, read_status
+from mypy.ipc import BadStatus, IPCClient, read_status, ready_to_read, receive, send
 from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
@@ -172,64 +177,11 @@ class BuildResult:
         self.errors: list[str] = []  # Filled in by build if desired
 
 
-def receive(connection: IPCBase) -> dict[str, Any]:
-    """Receive single JSON data frame from a connection.
-
-    Raise OSError if the data received is not valid JSON or if it is
-    not a dict.
-    """
-    bdata = connection.read_bytes()
-    if not bdata:
-        raise OSError("No data received")
-    try:
-        buf = ReadBuffer(bdata)
-        data = read_json(buf)
-    except Exception as e:
-        raise OSError("Data received is not valid JSON dict") from e
-    return data
-
-
-def send(connection: IPCBase, data: dict[str, Any]) -> None:
-    """Send data to a connection encoded and framed.
-
-    The data must be JSON-serializable. We assume that a single send call is a
-    single frame to be sent on the connect.
-    """
-    buf = WriteBuffer()
-    write_json(buf, data)
-    connection.write_bytes(buf.getvalue())
-
-
 class WorkerClient:
-    def __init__(self, idx: int, conn: IPCClient, proc: subprocess.Popen[bytes]) -> None:
-        self.idx = idx
+    def __init__(self, status_file: str, conn: IPCClient, proc: subprocess.Popen[bytes]) -> None:
+        self.status_file = status_file
         self.conn = conn
         self.proc = proc
-
-
-def wait_for_worker(status_file: str, timeout: float = 5.0) -> tuple[int, str]:
-    """Wait until the worker is up.
-
-    Exit if it doesn't happen within the timeout.
-    """
-    endtime = time.time() + timeout
-    while time.time() < endtime:
-        try:
-            data = read_status(status_file)
-        except BadStatus:
-            # If the file isn't there yet, retry later.
-            time.sleep(0.05)
-            continue
-        try:
-            pid = data["pid"]
-            connection_name = data["connection_name"]
-            assert isinstance(pid, int) and isinstance(connection_name, str)
-            return pid, connection_name
-        except Exception:
-            # If the file's content is bogus or the process is dead, fail.
-            pass
-    print("Worker process failed to start")
-    sys.exit(2)
 
 
 def start_worker(options_data: str, idx: int, env: Mapping[str, str]) -> subprocess.Popen[bytes]:
@@ -246,11 +198,31 @@ def start_worker(options_data: str, idx: int, env: Mapping[str, str]) -> subproc
     return subprocess.Popen(command, env=env)
 
 
-def get_worker(idx: int, proc: subprocess.Popen[bytes]) -> WorkerClient:
+def wait_for_worker(idx: int, proc: subprocess.Popen[bytes]) -> WorkerClient:
+    """Wait until the worker is up.
+
+    Exit if it doesn't happen within the timeout.
+    """
     status_file = f".mypy_worker.{idx}.json"
-    pid, connection_name = wait_for_worker(status_file)
-    assert pid == proc.pid
-    return WorkerClient(idx, IPCClient(connection_name, 10), proc)
+    endtime = time.time() + WORKER_START_TIMEOUT
+    while time.time() < endtime:
+        try:
+            data = read_status(status_file)
+        except BadStatus:
+            # If the file isn't there yet, retry later.
+            time.sleep(WORKER_START_INTERVAL)
+            continue
+        try:
+            pid, connection_name = data["pid"], data["connection_name"]
+            assert isinstance(pid, int) and isinstance(connection_name, str)
+            assert pid == proc.pid
+            return WorkerClient(
+                status_file, IPCClient(connection_name, WORKER_CONNECTION_TIMEOUT), proc
+            )
+        except Exception:
+            break
+    print("Worker process failed to start")
+    sys.exit(2)
 
 
 def build_error(msg: str) -> NoReturn:
@@ -308,14 +280,15 @@ def build(
     extra_plugins = extra_plugins or []
 
     workers = []
-    procs = []
     if options.num_workers > 0:
         pickled_options = pickle.dumps(options.snapshot())
         options_data = base64.b64encode(pickled_options).decode()
-        for i in range(options.num_workers):
-            procs.append(start_worker(options_data, i, worker_env or os.environ))
-        for i, proc in enumerate(procs):
-            workers.append(get_worker(i, proc))
+        procs = [
+            start_worker(options_data, idx, worker_env or os.environ)
+            for idx in range(options.num_workers)
+        ]
+        for idx, proc in enumerate(procs):
+            workers.append(wait_for_worker(idx, proc))
 
     for worker in workers:
         source_tuples = [(s.path, s.module, s.text, s.base_dir, s.followed) for s in sources]
@@ -353,9 +326,8 @@ def build(
         for worker in workers:
             worker.conn.close()
             worker.proc.wait()
-            status_file = f".mypy_worker.{worker.idx}.json"
-            if os.path.isfile(status_file):
-                os.unlink(status_file)
+            if os.path.isfile(worker.status_file):
+                os.unlink(worker.status_file)
 
 
 def build_inner(
@@ -1037,47 +1009,48 @@ class BuildManager:
         return self.stats
 
     def submit(self, sccs: list[SCC]) -> None:
-        """Submit a stale SCC for processing in current process."""
+        """Submit a stale SCC for processing in current process or parallel workers."""
         if self.workers:
+            self.submit_to_workers(sccs)
+        else:
+            self.scc_queue.extend([(0, 0, scc) for scc in sccs])
+
+    def submit_to_workers(self, sccs: list[SCC] | None = None) -> None:
+        if sccs is not None:
             for scc in sccs:
                 heappush(self.scc_queue, (-scc.size_hint, self.queue_order, scc))
                 self.queue_order += 1
-        else:
-            self.scc_queue.extend([(0, 0, scc) for scc in sccs])
         while self.scc_queue and self.free_workers:
-            worker = self.free_workers.pop()
-            if self.workers:
-                _, _, scc = heappop(self.scc_queue)
-            else:
-                _, _, scc = self.scc_queue.pop(0)
-            send(self.workers[worker].conn, {"scc_id": scc.id})
+            idx = self.free_workers.pop()
+            _, _, scc = heappop(self.scc_queue)
+            send(self.workers[idx].conn, {"scc_id": scc.id})
 
     def wait_for_done(
         self, graph: Graph
     ) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
-        """Wait for a stale SCC processing (in process) to finish.
+        """Wait for a stale SCC processing to finish.
 
-        Return next processed SCC and whether we have more in the queue.
-        This emulates the API we will have for parallel processing
-        in multiple worker processes.
+        Return a tuple three items:
+          * processed SCCs
+          * whether we have more in the queue
+          * new interface hash and list of errors for each module
+        The last item is only used for parallel processing.
         """
-        if not self.workers:
-            if not self.scc_queue:
-                return [], False, {}
-            _, _, next_scc = self.scc_queue.pop(0)
-            process_stale_scc(graph, next_scc, self)
-            return [next_scc], bool(self.scc_queue), {}
+        if self.workers:
+            return self.wait_for_done_workers()
+        if not self.scc_queue:
+            return [], False, {}
+        _, _, next_scc = self.scc_queue.pop(0)
+        process_stale_scc(graph, next_scc, self)
+        return [next_scc], bool(self.scc_queue), {}
 
+    def wait_for_done_workers(self) -> tuple[list[SCC], bool, dict[str, tuple[str, list[str]]]]:
         if not self.scc_queue and len(self.free_workers) == len(self.workers):
             return [], False, {}
 
-        # TODO: don't select from free workers.
-        conns = [w.conn.connection for w in self.workers]
-        ready, _, _ = select(conns, [], [], 100)
         done_sccs = []
         results = {}
-        for r in ready:
-            idx = conns.index(r)
+        for idx in ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT):
             data = receive(self.workers[idx].conn)
             self.free_workers.add(idx)
             scc_id = data["scc_id"]
@@ -1088,7 +1061,7 @@ class BuildManager:
                 )
             results.update({k: tuple(v) for k, v in data["result"].items()})
             done_sccs.append(self.scc_by_id[scc_id])
-        self.submit([])  # advance after some workers are free.
+        self.submit_to_workers()  # advance after some workers are free.
         return (
             done_sccs,
             bool(self.scc_queue) or len(self.free_workers) < len(self.workers),
@@ -3534,7 +3507,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         data = receive(worker.conn)
         assert data["status"] == "ok"
 
-    manager.free_workers = {w.idx for w in manager.workers}
+    manager.free_workers = set(range(manager.options.num_workers))
 
     # Prime the ready list with leaf SCCs (that have no dependencies).
     ready = []
