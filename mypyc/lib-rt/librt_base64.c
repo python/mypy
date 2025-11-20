@@ -17,6 +17,7 @@ b64decode_handle_invalid_input(
 
 static void
 convert_encoded_to_urlsafe(char *buf, size_t actual_len) {
+    // The loop is written to enable SIMD optimizations
     for (size_t i = 0; i < actual_len; i++) {
         char ch = buf[i];
         if (ch == '+') {
@@ -24,13 +25,13 @@ convert_encoded_to_urlsafe(char *buf, size_t actual_len) {
         } else if (ch == '/') {
             ch = '_';
         }
-        // Always assign to buf[i] to avoid mispredicted branches within loop body
         buf[i] = ch;
     }
 }
 
 static void
 convert_urlsafe_to_encoded(const char *src, size_t actual_len, char *buf) {
+    // The loop is written to enable SIMD optimizations
     for (size_t i = 0; i < actual_len; i++) {
         char ch = src[i];
         if (ch == '-') {
