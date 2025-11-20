@@ -678,7 +678,7 @@ def f3() -> int:
         pass
     finally:
         y = x  # E: Name "x" may be undefined
-    return x
+    return x  # E: Name "x" may be undefined
 
 def f4() -> int:
     try:
@@ -715,7 +715,7 @@ def f7() -> int:
             x = 1
         else:
             raise BaseException
-        return x  # E: Name "x" may be undefined
+        return x  # No error.
     finally:
         pass
     return 0
