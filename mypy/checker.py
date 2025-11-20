@@ -6,6 +6,7 @@ import itertools
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
+from functools import reduce
 from typing import (
     Callable,
     Final,
@@ -6271,6 +6272,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if not exprs_in_type_calls:
             return {}, {}
 
+        if type_being_compared is None:
+            # TODO: use more accurate lower bound analysis
+            least_type = self.least_type([self.lookup_type(expr) for expr in exprs_in_type_calls])
+            type_being_compared = (
+                None if least_type is None else [TypeRange(least_type, is_upper_bound=True)]
+            )
+
         if_maps: list[TypeMap] = []
         else_maps: list[TypeMap] = []
         for expr in exprs_in_type_calls:
@@ -6303,6 +6311,28 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             else_map = {}
         return if_map, else_map
+
+    def least_type(self, types: list[Type]) -> Type | None:
+        """Find the type of which all other types are supertypes.
+        `Any` types are i
+        For example, `least_type([dict, defaultdict, object]) => dict`.
+        However, `least_type[int, str]) => None`.
+
+        It would be better if we could represent an intersection of types.
+
+        For example, consider `s: str` and `i: int`.
+        `type(s) == type(i)` implies `s: str & int` and `i: str & int`,
+        even though `s: object` and `i: object` also hold.
+        """
+        types = [typ for typ in types if not isinstance(typ, AnyType)]
+        if not types:
+            return None
+        least_type = reduce(lambda t1, t2: t1 if is_subtype(t1, t2) else t2, types)
+
+        if all(typ is least_type or is_subtype(least_type, typ) for typ in types):
+            # Ensure that this is a least type
+            return least_type
+        return None
 
     def find_isinstance_check(
         self, node: Expression, *, in_boolean_context: bool = True
