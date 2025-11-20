@@ -262,6 +262,9 @@ class Options:
         self.enable_error_code: list[str] = []
         self.enabled_error_codes: set[ErrorCode] = set()
 
+        # Disable all type ignore comments
+        self.disable_ignores = False
+
         # Use script name instead of __main__
         self.scripts_are_modules = False
 
