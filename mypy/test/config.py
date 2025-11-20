@@ -6,8 +6,7 @@ provided_prefix = os.getenv("MYPY_TEST_PREFIX", None)
 if provided_prefix:
     PREFIX = provided_prefix
 else:
-    this_file_dir = (Path(__file__)).resolve().parent
-    PREFIX = os.path.dirname(os.path.dirname(this_file_dir))
+    PREFIX = str(Path(__file__).absolute().parent.parent.parent)
 
 # Location of test data files such as test case descriptions.
 test_data_prefix = os.path.join(PREFIX, "test-data", "unit")
