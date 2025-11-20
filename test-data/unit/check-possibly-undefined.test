@@ -708,6 +708,17 @@ def f6() -> int:
     finally:
         a = x  # E: Name "x" may be undefined
     return a
+
+def f7() -> int:
+    try:
+        if int():
+            x = 1
+        else:
+            raise BaseException
+        return x  # E: Name "x" may be undefined
+    finally:
+        pass
+    return 0
 [builtins fixtures/exception.pyi]
 
 [case testTryElse]
