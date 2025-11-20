@@ -16,9 +16,9 @@ b64decode_handle_invalid_input(
 #define STACK_BUFFER_SIZE 1024
 
 static void
-convert_encoded_to_urlsafe(char *buf, size_t actual_len) {
+convert_encoded_to_urlsafe(char *buf, size_t len) {
     // The loop is written to enable SIMD optimizations
-    for (size_t i = 0; i < actual_len; i++) {
+    for (size_t i = 0; i < len; i++) {
         char ch = buf[i];
         if (ch == '+') {
             ch = '-';
@@ -30,9 +30,9 @@ convert_encoded_to_urlsafe(char *buf, size_t actual_len) {
 }
 
 static void
-convert_urlsafe_to_encoded(const char *src, size_t actual_len, char *buf) {
+convert_urlsafe_to_encoded(const char *src, size_t len, char *buf) {
     // The loop is written to enable SIMD optimizations
-    for (size_t i = 0; i < actual_len; i++) {
+    for (size_t i = 0; i < len; i++) {
         char ch = src[i];
         if (ch == '-') {
             ch = '+';
@@ -144,6 +144,15 @@ b64decode_internal(PyObject *arg, bool urlsafe) {
         return PyBytes_FromStringAndSize(NULL, 0);
     }
 
+    if (urlsafe) {
+        char *new_src = PyMem_Malloc(srclen_ssz + 1);
+        if (new_src == NULL) {
+            return PyErr_NoMemory();
+        }
+        convert_urlsafe_to_encoded(src, srclen_ssz, new_src);
+        src = new_src;
+    }
+
     // Quickly ignore invalid characters at the end. Other invalid characters
     // are also accepted, but they need a slow path.
     while (srclen_ssz > 0 && !is_valid_base64_char(src[srclen_ssz - 1], true)) {
@@ -160,15 +169,6 @@ b64decode_internal(PyObject *arg, bool urlsafe) {
     if (max_out > (size_t)PY_SSIZE_T_MAX) {
         PyErr_SetString(PyExc_OverflowError, "input too large");
         return NULL;
-    }
-
-    if (urlsafe) {
-        char *new_src = PyMem_Malloc(srclen_ssz);
-        if (new_src == NULL) {
-            return PyErr_NoMemory();
-        }
-        convert_urlsafe_to_encoded(src, srclen_ssz, new_src);
-        src = new_src;
     }
 
     // Allocate output bytes (uninitialized) of the max capacity
