@@ -2197,7 +2197,7 @@ class State:
         """Force reload of cache meta.
 
         This is used by parallel checking workers to update shared information
-        that may ave changed after initial graph loading. Currently, this is only
+        that may have changed after initial graph loading. Currently, this is only
         the interface hash.
         """
         assert self.path is not None
