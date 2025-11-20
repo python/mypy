@@ -24,6 +24,7 @@ convert_encoded_to_urlsafe(char *buf, size_t actual_len) {
         } else if (ch == '/') {
             ch = '_';
         }
+        // Always assign to buf[i] to avoid mispredicted branches within loop body
         buf[i] = ch;
     }
 }
