@@ -175,6 +175,9 @@ class Options:
         # Also check typeshed for missing annotations
         self.warn_incomplete_stub = False
 
+        # Warn when an annotation is the same as its inferred type
+        self.warn_redundant_annotation = False
+
         # Warn about casting an expression to its inferred type
         self.warn_redundant_casts = False
 
