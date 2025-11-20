@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Final, TypeVar, cast, overload
 
-from mypy.nodes import ARG_STAR, FakeInfo, Var
+from mypy.nodes import ARG_STAR, ArgKind, FakeInfo, Var
 from mypy.state import state
 from mypy.types import (
     ANY_STRATEGY,
@@ -270,18 +270,101 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 ),
             )
         elif isinstance(repl, Parameters):
-            assert t.flavor == ParamSpecFlavor.BARE
-            return Parameters(
-                self.expand_types(t.prefix.arg_types) + repl.arg_types,
-                t.prefix.arg_kinds + repl.arg_kinds,
-                t.prefix.arg_names + repl.arg_names,
-                variables=[*t.prefix.variables, *repl.variables],
-                imprecise_arg_kinds=repl.imprecise_arg_kinds,
-            )
+            assert isinstance(t.upper_bound, ProperType) and isinstance(t.upper_bound, Instance)
+            if t.flavor == ParamSpecFlavor.BARE:
+                return Parameters(
+                    self.expand_types(t.prefix.arg_types) + repl.arg_types,
+                    t.prefix.arg_kinds + repl.arg_kinds,
+                    t.prefix.arg_names + repl.arg_names,
+                    variables=[*t.prefix.variables, *repl.variables],
+                    imprecise_arg_kinds=repl.imprecise_arg_kinds,
+                )
+            elif t.flavor == ParamSpecFlavor.ARGS:
+                assert all(k.is_positional() for k in t.prefix.arg_kinds)
+                return self._possible_callable_varargs(
+                    repl, list(t.prefix.arg_types), t.upper_bound
+                )
+            else:
+                assert t.flavor == ParamSpecFlavor.KWARGS
+                return self._possible_callable_kwargs(repl, t.upper_bound)
         else:
             # We could encode Any as trivial parameters etc., but it would be too verbose.
             # TODO: assert this is a trivial type, like Any, Never, or object.
             return repl
+
+    @classmethod
+    def _possible_callable_varargs(
+        cls, repl: Parameters, required_prefix: list[Type], tuple_type: Instance
+    ) -> ProperType:
+        """Given a callable, extract all parameters that can be passed as `*args`.
+
+        This builds a union of all (possibly variadic) tuples of the shape
+        [*all_required, *optional_suffix]
+        where all_required contains args that must be passed positionally,
+        all_optional contains args that may be omitted, and
+        optional_suffix is some prefix of all_optional.
+
+        This will grab the following argtypes of the function:
+
+        * posonly - required unless has a default
+        * pos-or-kw - always optional as it may be passed by name
+        * vararg - converted to an Unpack suffix
+        """
+        required_posargs = required_prefix
+        optional_posargs: list[Type] = []
+        for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
+            if kind.is_positional() and name is None:
+                if optional_posargs:
+                    # May happen following Unpack expansion without kinds correction
+                    required_posargs += optional_posargs
+                    optional_posargs = []
+                required_posargs.append(type)
+            elif kind.is_positional():
+                optional_posargs.append(type)
+            elif kind == ArgKind.ARG_STAR:
+                # UnpackType cannot be aliased
+                if isinstance(type, ProperType) and isinstance(type, UnpackType):
+                    optional_posargs.append(type)
+                else:
+                    optional_posargs.append(UnpackType(Instance(tuple_type.type, [type])))
+                break
+        return UnionType.make_union(
+            [
+                TupleType(required_posargs + optional_posargs[:i], fallback=tuple_type)
+                for i in range(len(optional_posargs) + 1)
+            ]
+        )
+
+    @classmethod
+    def _possible_callable_kwargs(cls, repl: Parameters, dict_type: Instance) -> ProperType:
+        """Given a callable, extract all parameters that can be passed as `**kwargs`.
+
+        If the function only accepts **kwargs, this will be a `dict[str, KwargsValueType]`.
+        Otherwise, this will be a `TypedDict` containing all explicit args and ignoring
+        `**kwargs` (until PEP 728 `extra_items` is supported).
+
+        This will grab the following argtypes of the function:
+
+        * kwonly - required unless has a default
+        * pos-or-kw - always optional as it may be passed positionally
+        * `**kwargs`
+        """
+        kwargs = {}
+        required_names = set()
+        extra_items: Type = UninhabitedType()
+        for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
+            if kind == ArgKind.ARG_NAMED and name is not None:
+                kwargs[name] = type
+                required_names.add(name)
+            elif kind == ArgKind.ARG_STAR2:
+                # Unpack[TypedDict] is normalized early, it isn't stored as Unpack
+                extra_items = type
+            elif not kind.is_star() and name is not None:
+                kwargs[name] = type
+        if not kwargs:
+            return Instance(dict_type.type, [dict_type.args[0], extra_items])
+        # TODO: when PEP 728 is implemented, pass extra_items below.
+        return TypedDictType(kwargs, required_names, set(), fallback=dict_type)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # Sometimes solver may need to expand a type variable with (a copy of) itself
