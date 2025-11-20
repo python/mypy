@@ -15,8 +15,21 @@ b64decode_handle_invalid_input(
 
 #define STACK_BUFFER_SIZE 1024
 
+static void
+convert_encoded_to_urlsafe(char *buf, size_t actual_len) {
+    for (size_t i = 0; i < actual_len; i++) {
+        char ch = buf[i];
+        if (ch == '+') {
+            ch = '-';
+        } else if (ch == '/') {
+            ch = '_';
+        }
+        buf[i] = ch;
+    }
+}
+
 static PyObject *
-b64encode_internal(PyObject *obj) {
+b64encode_internal(PyObject *obj, bool urlsafe) {
     unsigned char *ascii_data;
     char *bin_data;
     int leftbits = 0;
@@ -53,6 +66,11 @@ b64encode_internal(PyObject *obj) {
     }
     size_t actual_len;
     base64_encode(bin_data, bin_len, buf, &actual_len, 0);
+
+    if (urlsafe) {
+        convert_encoded_to_urlsafe(buf, actual_len);
+    }
+
     PyObject *res = PyBytes_FromStringAndSize(buf, actual_len);
     if (buflen > STACK_BUFFER_SIZE)
         PyMem_Free(buf);
@@ -65,7 +83,16 @@ b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "b64encode() takes exactly one argument");
         return 0;
     }
-    return b64encode_internal(args[0]);
+    return b64encode_internal(args[0], false);
+}
+
+static PyObject*
+urlsafe_b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (nargs != 1) {
+        PyErr_SetString(PyExc_TypeError, "urlsafe_b64encode() takes exactly one argument");
+        return 0;
+    }
+    return b64encode_internal(args[0], true);
 }
 
 static inline int
@@ -254,6 +281,7 @@ b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
 static PyMethodDef librt_base64_module_methods[] = {
 #ifdef MYPYC_EXPERIMENTAL
     {"b64encode", (PyCFunction)b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using Base64.")},
+    {"urlsafe_b64encode", (PyCFunction)urlsafe_b64encode, METH_FASTCALL, PyDoc_STR("Encode bytes object using URL and file system safe Base64 alphabet.")},
     {"b64decode", (PyCFunction)b64decode, METH_FASTCALL, PyDoc_STR("Decode a Base64 encoded bytes object or ASCII string.")},
 #endif
     {NULL, NULL, 0, NULL}

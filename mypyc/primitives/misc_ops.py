@@ -473,6 +473,18 @@ function_op(
     return_type=bytes_rprimitive,
     c_function_name="LibRTBase64_b64encode_internal",
     error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
     experimental=True,
     capsule="librt.base64",
 )
