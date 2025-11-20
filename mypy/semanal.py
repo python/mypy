@@ -2455,7 +2455,7 @@ class SemanticAnalyzer(
                 self.fail(
                     message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name), context
                 )
-            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr, self.fail, context)
             if last_tvar_name_with_default is not None and not tvar_def.has_default():
                 self.msg.tvar_without_default_type(
                     tvar_def.name, last_tvar_name_with_default, context
@@ -2473,19 +2473,18 @@ class SemanticAnalyzer(
         a simplified version of the logic we use for ClassDef bases. We duplicate
         some amount of code, because it is hard to refactor common pieces.
         """
-        tvars = []
+        tvars: dict[str, tuple[TypeVarLikeExpr, Expression]] = {}
         for base_expr in type_exprs:
             try:
                 base = self.expr_to_unanalyzed_type(base_expr)
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            base_tvars = self.find_type_var_likes(base)
-            tvars.extend(base_tvars)
-        tvars = remove_dups(tvars)  # Variables are defined in order of textual appearance.
+            for name, expr in self.find_type_var_likes(base):
+                tvars.setdefault(name, (expr, base_expr))
         tvar_defs = []
-        for name, tvar_expr in tvars:
-            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+        for name, (tvar_expr, context) in tvars.items():
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr, self.fail, context)
             tvar_defs.append(tvar_def)
         return tvar_defs
 
