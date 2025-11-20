@@ -1580,7 +1580,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # below happens at very early stage.
                     variables = []
                     for name, tvar_expr in self.find_type_var_likes(callable_args):
-                        variables.append(self.tvar_scope.bind_new(name, tvar_expr))
+                        variables.append(
+                            self.tvar_scope.bind_new(name, tvar_expr, self.fail_func, t)
+                        )
                     maybe_ret = self.analyze_callable_args_for_paramspec(
                         callable_args, ret_type, fallback
                     ) or self.analyze_callable_args_for_concatenate(
@@ -1852,7 +1854,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarLikeExpr)
-                binding = self.tvar_scope.bind_new(var.name, var_expr)
+                binding = self.tvar_scope.bind_new(var.name, var_expr, self.fail_func, fun_type)
                 defs.append(binding)
             return tuple(defs), has_self_type
         typevars, has_self_type = self.infer_type_variables(fun_type)
@@ -1865,7 +1867,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 err_msg = message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name)
                 self.fail(err_msg.value, defn, code=err_msg.code)
-            binding = self.tvar_scope.bind_new(name, tvar)
+            binding = self.tvar_scope.bind_new(name, tvar, self.fail_func, fun_type)
             defs.append(binding)
 
         return tuple(defs), has_self_type
