@@ -60,6 +60,9 @@ CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
 VALID_TYPE: Final = ErrorCode("valid-type", "Check that type (annotation) is valid", "General")
+NONETYPE_TYPE: Final = ErrorCode(
+    "nonetype-type", "Check that type (annotation) is not NoneType", "General"
+)
 VAR_ANNOTATED: Final = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
 )
