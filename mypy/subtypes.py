@@ -263,8 +263,7 @@ def is_same_type_ranges(
     subtype_context: SubtypeContext | None = None,
 ) -> bool:
     return len(a) == len(b) and all(
-        is_same_type_range(a, b, ignore_promotions, subtype_context)
-        for a, b in zip(a, b, strict=True)
+        is_same_type_range(x, y, ignore_promotions, subtype_context) for x, y in zip(a, b)
     )
 
 
