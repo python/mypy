@@ -14,17 +14,17 @@
 
 #define _CHECK_WRITE_BUFFER(data, err) if (unlikely(_check_write_buffer(data) == CPY_NONE_ERROR)) \
                                            return err;
-#define _CHECK_WRITE(data, need)        if (unlikely(_check_size((WriteBufferObject *)data, need) == CPY_NONE_ERROR)) \
+#define _CHECK_WRITE(data, need)        if (unlikely(_check_size((BytesWriterObject *)data, need) == CPY_NONE_ERROR)) \
                                            return CPY_NONE_ERROR;
 
 #define _WRITE(data, type, v) \
     do { \
-       *(type *)(((WriteBufferObject *)data)->ptr) = v; \
-       ((WriteBufferObject *)data)->ptr += sizeof(type); \
+       *(type *)(((BytesWriterObject *)data)->ptr) = v; \
+       ((BytesWriterObject *)data)->ptr += sizeof(type); \
     } while (0)
 
 //
-// WriteBuffer
+// BytesWriter
 //
 
 typedef struct {
@@ -32,19 +32,19 @@ typedef struct {
     char *buf;  // Beginning of the buffer
     char *ptr;  // Current write location in the buffer
     char *end;  // End of the buffer
-} WriteBufferObject;
+} BytesWriterObject;
 
-static PyTypeObject WriteBufferType;
+static PyTypeObject BytesWriterType;
 
 static PyObject*
-WriteBuffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (type != &WriteBufferType) {
-        PyErr_SetString(PyExc_TypeError, "WriteBuffer cannot be subclassed");
+    if (type != &BytesWriterType) {
+        PyErr_SetString(PyExc_TypeError, "BytesWriter cannot be subclassed");
         return NULL;
     }
 
-    WriteBufferObject *self = (WriteBufferObject *)type->tp_alloc(type, 0);
+    BytesWriterObject *self = (BytesWriterObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
         self->buf = NULL;
         self->ptr = NULL;
@@ -54,7 +54,7 @@ WriteBuffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static int
-WriteBuffer_init_internal(WriteBufferObject *self) {
+BytesWriter_init_internal(BytesWriterObject *self) {
     Py_ssize_t size = START_SIZE;
     self->buf = PyMem_Malloc(size + 1);
     if (self->buf == NULL) {
@@ -67,14 +67,14 @@ WriteBuffer_init_internal(WriteBufferObject *self) {
 }
 
 static PyObject*
-WriteBuffer_internal(void) {
-    WriteBufferObject *self = (WriteBufferObject *)WriteBufferType.tp_alloc(&WriteBufferType, 0);
+BytesWriter_internal(void) {
+    BytesWriterObject *self = (BytesWriterObject *)BytesWriterType.tp_alloc(&BytesWriterType, 0);
     if (self == NULL)
         return NULL;
     self->buf = NULL;
     self->ptr = NULL;
     self->end = NULL;
-    if (WriteBuffer_init_internal(self) == -1) {
+    if (BytesWriter_init_internal(self) == -1) {
         Py_DECREF(self);
         return NULL;
     }
@@ -82,7 +82,7 @@ WriteBuffer_internal(void) {
 }
 
 static int
-WriteBuffer_init(WriteBufferObject *self, PyObject *args, PyObject *kwds)
+BytesWriter_init(BytesWriterObject *self, PyObject *args, PyObject *kwds)
 {
     if (!PyArg_ParseTuple(args, "")) {
         return -1;
@@ -90,15 +90,15 @@ WriteBuffer_init(WriteBufferObject *self, PyObject *args, PyObject *kwds)
 
     if (kwds != NULL && PyDict_Size(kwds) > 0) {
         PyErr_SetString(PyExc_TypeError,
-                        "WriteBuffer() takes no keyword arguments");
+                        "BytesWriter() takes no keyword arguments");
         return -1;
     }
 
-    return WriteBuffer_init_internal(self);
+    return BytesWriter_init_internal(self);
 }
 
 static void
-WriteBuffer_dealloc(WriteBufferObject *self)
+BytesWriter_dealloc(BytesWriterObject *self)
 {
     PyMem_Free(self->buf);
     self->buf = NULL;
@@ -106,43 +106,43 @@ WriteBuffer_dealloc(WriteBufferObject *self)
 }
 
 static PyObject*
-WriteBuffer_getvalue_internal(PyObject *self)
+BytesWriter_getvalue_internal(PyObject *self)
 {
-    WriteBufferObject *obj = (WriteBufferObject *)self;
+    BytesWriterObject *obj = (BytesWriterObject *)self;
     return PyBytes_FromStringAndSize(obj->buf, obj->ptr - obj->buf);
 }
 
 static PyObject*
-WriteBuffer_getvalue(WriteBufferObject *self, PyObject *Py_UNUSED(ignored))
+BytesWriter_getvalue(BytesWriterObject *self, PyObject *Py_UNUSED(ignored))
 {
     return PyBytes_FromStringAndSize(self->buf, self->ptr - self->buf);
 }
 
-static PyMethodDef WriteBuffer_methods[] = {
-    {"getvalue", (PyCFunction) WriteBuffer_getvalue, METH_NOARGS,
+static PyMethodDef BytesWriter_methods[] = {
+    {"getvalue", (PyCFunction) BytesWriter_getvalue, METH_NOARGS,
      "Return the buffer content as bytes object"
     },
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject WriteBufferType = {
+static PyTypeObject BytesWriterType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "WriteBuffer",
-    .tp_doc = PyDoc_STR("Mypy cache buffer objects"),
-    .tp_basicsize = sizeof(WriteBufferObject),
+    .tp_name = "BytesWriter",
+    .tp_doc = PyDoc_STR("Memory buffer for building bytes objects from parts"),
+    .tp_basicsize = sizeof(BytesWriterObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_new = WriteBuffer_new,
-    .tp_init = (initproc) WriteBuffer_init,
-    .tp_dealloc = (destructor) WriteBuffer_dealloc,
-    .tp_methods = WriteBuffer_methods,
+    .tp_new = BytesWriter_new,
+    .tp_init = (initproc) BytesWriter_init,
+    .tp_dealloc = (destructor) BytesWriter_dealloc,
+    .tp_methods = BytesWriter_methods,
 };
 
 static inline char
 _check_write_buffer(PyObject *data) {
-    if (unlikely(Py_TYPE(data) != &WriteBufferType)) {
+    if (unlikely(Py_TYPE(data) != &BytesWriterType)) {
         PyErr_Format(
-            PyExc_TypeError, "data must be a WriteBuffer object, got %s", Py_TYPE(data)->tp_name
+            PyExc_TypeError, "data must be a BytesWriter object, got %s", Py_TYPE(data)->tp_name
         );
         return CPY_NONE_ERROR;
     }
@@ -150,7 +150,7 @@ _check_write_buffer(PyObject *data) {
 }
 
 static inline char
-_check_size(WriteBufferObject *data, Py_ssize_t need) {
+_check_size(BytesWriterObject *data, Py_ssize_t need) {
     if (data->end - data->ptr >= need)
         return CPY_NONE;
     Py_ssize_t index = data->ptr - data->buf;
@@ -186,9 +186,9 @@ write_bytes_internal(PyObject *data, PyObject *value) {
     }
     // Write bytes content.
     _CHECK_WRITE(data, size)
-    char *ptr = ((WriteBufferObject *)data)->ptr;
+    char *ptr = ((BytesWriterObject *)data)->ptr;
     memcpy(ptr, chunk, size);
-    ((WriteBufferObject *)data)->ptr += size;
+    ((BytesWriterObject *)data)->ptr += size;
     return CPY_NONE;
 }
 
@@ -243,8 +243,8 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
 }
 
 static PyTypeObject *
-WriteBuffer_type_internal(void) {
-    return &WriteBufferType;  // Return borrowed reference
+BytesWriter_type_internal(void) {
+    return &BytesWriterType;  // Return borrowed reference
 };
 
 static PyMethodDef librt_strings_module_methods[] = {
@@ -277,10 +277,10 @@ LibRTStringsl_APIVersion(void) {
 static int
 librt_strings_module_exec(PyObject *m)
 {
-    if (PyType_Ready(&WriteBufferType) < 0) {
+    if (PyType_Ready(&BytesWriterType) < 0) {
         return -1;
     }
-    if (PyModule_AddObjectRef(m, "WriteBuffer", (PyObject *) &WriteBufferType) < 0) {
+    if (PyModule_AddObjectRef(m, "BytesWriter", (PyObject *) &BytesWriterType) < 0) {
         return -1;
     }
 
@@ -288,11 +288,11 @@ librt_strings_module_exec(PyObject *m)
     static void *librt_strings_api[LIBRT_STRINGS_API_LEN] = {
         (void *)LibRTStrings_ABIVersion,
         (void *)LibRTStrings_APIVersion,
-        (void *)WriteBuffer_internal,
-        (void *)WriteBuffer_getvalue_internal,
+        (void *)BytesWriter_internal,
+        (void *)BytesWriter_getvalue_internal,
         (void *)write_tag_internal,
         (void *)write_bytes_internal,
-        (void *)WriteBuffer_type_internal,
+        (void *)BytesWriter_type_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
