@@ -6852,3 +6852,20 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iterable[tuple[builtins.bytes, builtins.bytes]]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testSelfOverloadWithAnySelf]
+from typing import Any, Generic, TypeVar, overload
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    @overload
+    def run(self: A[int]) -> int: ...
+    @overload
+    def run(self: A[str]) -> str: ...
+    def run(self: "A[int] | A[str]") -> "int | str": ...
+
+foo: A[Any]
+reveal_type(foo.run())  # N: Revealed type is "Any"
+reveal_type(A.run(foo))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]

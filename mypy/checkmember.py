@@ -1519,6 +1519,7 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
         arg_kinds=method.arg_kinds[1:],
         arg_names=method.arg_names[1:],
         is_bound=True,
+        original_self_type=method.arg_types[0],
     )
 
 
