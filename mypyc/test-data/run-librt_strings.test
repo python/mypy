@@ -1,0 +1,16 @@
+[case testLibrtStrings_librt_experimental]
+from typing import Any
+import base64
+import binascii
+import random
+
+from librt.strings import BytesWriter
+
+from testutil import assertRaises
+
+
+def test_basics() -> None:
+    b = BytesWriter()
+    assert b.getvalue() == b""
+
+

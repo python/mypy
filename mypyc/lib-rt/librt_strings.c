@@ -66,7 +66,7 @@ BytesWriter_init_internal(BytesWriterObject *self) {
     return 0;
 }
 
-static PyObject*
+static PyObject *
 BytesWriter_internal(void) {
     BytesWriterObject *self = (BytesWriterObject *)BytesWriterType.tp_alloc(&BytesWriterType, 0);
     if (self == NULL)
@@ -170,24 +170,13 @@ _check_size(BytesWriterObject *data, Py_ssize_t need) {
 }
 
 static char
-write_bytes_internal(PyObject *data, PyObject *value) {
-    const char *chunk = PyBytes_AsString(value);
-    if (unlikely(chunk == NULL))
-        return CPY_NONE_ERROR;
+write_bytes_internal(PyObject *self, PyObject *value) {
+    const char *data = PyBytes_AS_STRING(value);
     Py_ssize_t size = PyBytes_GET_SIZE(value);
-
-    // Write length.
-    if (likely(size >= MIN_FOUR_BYTES_INT && size <= MAX_FOUR_BYTES_INT)) {
-        if (_write_short_int(data, size) == CPY_NONE_ERROR)
-            return CPY_NONE_ERROR;
-    } else {
-        PyErr_SetString(PyExc_ValueError, "bytes too long to serialize");
-        return CPY_NONE_ERROR;
-    }
     // Write bytes content.
-    _CHECK_WRITE(data, size)
+    _CHECK_WRITE(self, size)
     char *ptr = ((BytesWriterObject *)data)->ptr;
-    memcpy(ptr, chunk, size);
+    memcpy(ptr, data, size);
     ((BytesWriterObject *)data)->ptr += size;
     return CPY_NONE;
 }
@@ -248,29 +237,18 @@ BytesWriter_type_internal(void) {
 };
 
 static PyMethodDef librt_strings_module_methods[] = {
-    {"write_bool", (PyCFunction)write_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a bool")},
-    {"read_bool", (PyCFunction)read_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a bool")},
-    {"write_str", (PyCFunction)write_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a string")},
-    {"read_str", (PyCFunction)read_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a string")},
     {"write_bytes", (PyCFunction)write_bytes, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write bytes")},
-    {"read_bytes", (PyCFunction)read_bytes, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read bytes")},
-    {"write_float", (PyCFunction)write_float, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a float")},
-    {"read_float", (PyCFunction)read_float, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a float")},
-    {"write_int", (PyCFunction)write_int, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write an int")},
-    {"read_int", (PyCFunction)read_int, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read an int")},
     {"write_tag", (PyCFunction)write_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a short int")},
-    {"read_tag", (PyCFunction)read_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a short int")},
-    {"cache_version", (PyCFunction)cache_version, METH_NOARGS, PyDoc_STR("cache format version")},
     {NULL, NULL, 0, NULL}
 };
 
 static int
-LibRTStrings_ABIVersion(void) {
+strings_abi_version(void) {
     return LIBRT_STRINGS_ABI_VERSION;
 }
 
 static int
-LibRTStringsl_APIVersion(void) {
+strings_api_version(void) {
     return LIBRT_STRINGS_API_VERSION;
 }
 
@@ -286,8 +264,8 @@ librt_strings_module_exec(PyObject *m)
 
     // Export mypy internal C API, be careful with the order!
     static void *librt_strings_api[LIBRT_STRINGS_API_LEN] = {
-        (void *)LibRTStrings_ABIVersion,
-        (void *)LibRTStrings_APIVersion,
+        (void *)strings_abi_version,
+        (void *)strings_api_version,
         (void *)BytesWriter_internal,
         (void *)BytesWriter_getvalue_internal,
         (void *)write_tag_internal,
