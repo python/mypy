@@ -268,8 +268,8 @@ def is_same_type_ranges(
 
 
 def is_same_type_range(
-    a: list[TypeRange],
-    b: list[TypeRange],
+    a: TypeRange,
+    b: TypeRange,
     ignore_promotions: bool = True,
     subtype_context: SubtypeContext | None = None,
 ) -> bool:
