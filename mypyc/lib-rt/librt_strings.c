@@ -202,10 +202,10 @@ BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject 
     return Py_None;
 }
 
-static char
-BytesWriter_append_internal(PyObject *data, uint8_t value) {
-    _CHECK_WRITE(data, 1)
-    _WRITE(data, uint8_t, value);
+static inline char
+BytesWriter_append_internal(PyObject *self, uint8_t value) {
+    _CHECK_WRITE(self, 1)
+    _WRITE(self, uint8_t, value);
     return CPY_NONE;
 }
 
