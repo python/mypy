@@ -380,6 +380,40 @@ class StubgenUtilSuite(unittest.TestCase):
             ],
         )
 
+    def test_infer_sig_from_docstring_overloads(self) -> None:
+
+        assert_equal(
+            infer_sig_from_docstring("\nfunc(x: int=3) -> int\nfunc(x: str) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func", args=[ArgSig(name="x", type="int", default=True)], ret_type="int"
+                ),
+                FunctionSig(
+                    name="func", args=[ArgSig(name="x", type="str", default=False)], ret_type="str"
+                ),
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x: foo.bar)\nfunc(x: str) -> foo.bar", "func"),
+            [
+                FunctionSig(name="func", args=[ArgSig(name="x", type="foo.bar")], ret_type="Any"),
+                FunctionSig(name="func", args=[ArgSig(name="x", type="str")], ret_type="foo.bar"),
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring(
+                "\nfunc(x: int=3) -> int\nfunc(x: invalid::type<with_template>)", "func"
+            ),
+            [
+                FunctionSig(
+                    name="func", args=[ArgSig(name="x", type="int", default=True)], ret_type="int"
+                ),
+                FunctionSig(name="func", args=[ArgSig(name="x", type=None)], ret_type="Any"),
+            ],
+        )
+
     def test_infer_sig_from_docstring_duplicate_args(self) -> None:
         assert_equal(
             infer_sig_from_docstring("\nfunc(x, x) -> str\nfunc(x, y) -> int", "func"),
@@ -435,30 +469,36 @@ class StubgenUtilSuite(unittest.TestCase):
         assert_equal(infer_sig_from_docstring("func(**kwargs, *args) -> int", "func"), [])
 
     def test_infer_sig_from_docstring_positional_only_arguments(self) -> None:
-        assert_equal(
-            infer_sig_from_docstring("func(self, /) -> str", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="self")], ret_type="str")],
-        )
 
         assert_equal(
             infer_sig_from_docstring("func(self, x, /) -> str", "func"),
             [
                 FunctionSig(
-                    name="func", args=[ArgSig(name="self"), ArgSig(name="x")], ret_type="str"
+                    name="func",
+                    args=[ArgSig(name="self"), ArgSig(name="x"), ArgSig(name="/")],
+                    ret_type="str",
                 )
             ],
         )
 
         assert_equal(
             infer_sig_from_docstring("func(x, /, y) -> int", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="int")],
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="x"), ArgSig(name="/"), ArgSig(name="y")],
+                    ret_type="int",
+                )
+            ],
         )
 
         assert_equal(
             infer_sig_from_docstring("func(x, /, *args) -> str", "func"),
             [
                 FunctionSig(
-                    name="func", args=[ArgSig(name="x"), ArgSig(name="*args")], ret_type="str"
+                    name="func",
+                    args=[ArgSig(name="x"), ArgSig(name="/"), ArgSig(name="*args")],
+                    ret_type="str",
                 )
             ],
         )
@@ -468,26 +508,58 @@ class StubgenUtilSuite(unittest.TestCase):
             [
                 FunctionSig(
                     name="func",
-                    args=[ArgSig(name="x"), ArgSig(name="kwonly"), ArgSig(name="**kwargs")],
+                    args=[
+                        ArgSig(name="x"),
+                        ArgSig(name="/"),
+                        ArgSig(name="*"),
+                        ArgSig(name="kwonly"),
+                        ArgSig(name="**kwargs"),
+                    ],
                     ret_type="str",
                 )
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(self, /) -> str\nfunc(self, x, /) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func", args=[ArgSig(name="self"), ArgSig(name="/")], ret_type="str"
+                ),
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="self"), ArgSig(name="x"), ArgSig(name="/")],
+                    ret_type="str",
+                ),
             ],
         )
 
     def test_infer_sig_from_docstring_keyword_only_arguments(self) -> None:
         assert_equal(
             infer_sig_from_docstring("func(*, x) -> str", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="x")], ret_type="str")],
+            [FunctionSig(name="func", args=[ArgSig(name="*"), ArgSig(name="x")], ret_type="str")],
         )
 
         assert_equal(
             infer_sig_from_docstring("func(x, *, y) -> str", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="x"), ArgSig(name="*"), ArgSig(name="y")],
+                    ret_type="str",
+                )
+            ],
         )
 
         assert_equal(
             infer_sig_from_docstring("func(*, x, y) -> str", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="*"), ArgSig(name="x"), ArgSig(name="y")],
+                    ret_type="str",
+                )
+            ],
         )
 
         assert_equal(
@@ -495,16 +567,48 @@ class StubgenUtilSuite(unittest.TestCase):
             [
                 FunctionSig(
                     name="func",
-                    args=[ArgSig(name="x"), ArgSig(name="kwonly"), ArgSig("**kwargs")],
+                    args=[
+                        ArgSig(name="x"),
+                        ArgSig(name="*"),
+                        ArgSig(name="kwonly"),
+                        ArgSig("**kwargs"),
+                    ],
                     ret_type="str",
                 )
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring(
+                "func(*, x) -> str\nfunc(x, *, kwonly, **kwargs) -> str", "func"
+            ),
+            [
+                FunctionSig(
+                    name="func", args=[ArgSig(name="*"), ArgSig(name="x")], ret_type="str"
+                ),
+                FunctionSig(
+                    name="func",
+                    args=[
+                        ArgSig(name="x"),
+                        ArgSig(name="*"),
+                        ArgSig(name="kwonly"),
+                        ArgSig("**kwargs"),
+                    ],
+                    ret_type="str",
+                ),
             ],
         )
 
     def test_infer_sig_from_docstring_pos_only_and_keyword_only_arguments(self) -> None:
         assert_equal(
             infer_sig_from_docstring("func(x, /, *, y) -> str", "func"),
-            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="x"), ArgSig(name="/"), ArgSig(name="*"), ArgSig(name="y")],
+                    ret_type="str",
+                )
+            ],
         )
 
         assert_equal(
@@ -512,7 +616,13 @@ class StubgenUtilSuite(unittest.TestCase):
             [
                 FunctionSig(
                     name="func",
-                    args=[ArgSig(name="x"), ArgSig(name="y"), ArgSig(name="z")],
+                    args=[
+                        ArgSig(name="x"),
+                        ArgSig(name="/"),
+                        ArgSig(name="y"),
+                        ArgSig(name="*"),
+                        ArgSig(name="z"),
+                    ],
                     ret_type="str",
                 )
             ],
@@ -525,7 +635,9 @@ class StubgenUtilSuite(unittest.TestCase):
                     name="func",
                     args=[
                         ArgSig(name="x"),
+                        ArgSig(name="/"),
                         ArgSig(name="y"),
+                        ArgSig(name="*"),
                         ArgSig(name="z"),
                         ArgSig("**kwargs"),
                     ],
