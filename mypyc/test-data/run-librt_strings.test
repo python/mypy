@@ -13,4 +13,4 @@ def test_basics() -> None:
     b.append(ord('a'))
     b.write(b'bc')
     assert b.getvalue() == b"abc"
-
+    assert repr(b) == "BytesWriter(b'abc')"

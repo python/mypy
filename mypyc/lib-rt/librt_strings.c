@@ -113,6 +113,23 @@ BytesWriter_getvalue_internal(PyObject *self)
 }
 
 static PyObject*
+BytesWriter_repr(BytesWriterObject *self)
+{
+    PyObject *value = BytesWriter_getvalue_internal((PyObject *)self);
+    if (value == NULL) {
+        return NULL;
+    }
+    PyObject *value_repr = PyObject_Repr(value);
+    Py_DECREF(value);
+    if (value_repr == NULL) {
+        return NULL;
+    }
+    PyObject *result = PyUnicode_FromFormat("BytesWriter(%U)", value_repr);
+    Py_DECREF(value_repr);
+    return result;
+}
+
+static PyObject*
 BytesWriter_getvalue(BytesWriterObject *self, PyObject *Py_UNUSED(ignored))
 {
     return PyBytes_FromStringAndSize(self->buf, self->ptr - self->buf);
@@ -145,6 +162,7 @@ static PyTypeObject BytesWriterType = {
     .tp_init = (initproc) BytesWriter_init,
     .tp_dealloc = (destructor) BytesWriter_dealloc,
     .tp_methods = BytesWriter_methods,
+    .tp_repr = (reprfunc)BytesWriter_repr,
 };
 
 static inline char
