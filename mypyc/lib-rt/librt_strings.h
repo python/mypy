@@ -21,8 +21,8 @@ static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 #define LibRTStrings_APIVersion (*(int (*)(void)) LibRTStrings_API[1])
 #define LibRTStrings_BytesWriter_internal (*(PyObject* (*)(void)) LibRTStrings_API[2])
 #define LibRTStrings_BytesWriter_getvalue_internal (*(PyObject* (*)(PyObject *source)) LibRTStrings_API[3])
-#define LibRTStrings_write_tag_internal (*(char (*)(PyObject *source, uint8_t value)) LibRTStrings_API[4])
-#define LibRTStrings_write_bytes_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[5])
+#define LibRTStrings_BytesWriter_append_internal (*(char (*)(PyObject *source, uint8_t value)) LibRTStrings_API[4])
+#define LibRTStrings_BytesWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[5])
 #define LibRTStrings_BytesWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[6])
 
 static int

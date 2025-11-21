@@ -393,4 +393,5 @@ import mypyc.primitives.list_ops
 import mypyc.primitives.misc_ops
 import mypyc.primitives.str_ops
 import mypyc.primitives.tuple_ops
+import mypyc.primitives.librt_strings_ops
 import mypyc.primitives.weakref_ops  # noqa: F401

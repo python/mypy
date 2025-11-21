@@ -1,0 +1,27 @@
+[case testLibrtStrings_experimental]
+from librt.strings import BytesWriter
+from mypy_extensions import u8
+
+def bytes_builder_basics() -> bytes:
+    b = BytesWriter()
+    x: u8 = 1
+    b.append(x)
+    b.write(b'foo')
+    return b.getvalue()
+[out]
+def bytes_builder_basics():
+    r0, b :: librt.strings.BytesWriter
+    x :: u8
+    r1 :: None
+    r2 :: bytes
+    r3 :: None
+    r4 :: bytes
+L0:
+    r0 = LibRTStrings_BytesWriter_internal()
+    b = r0
+    x = 1
+    r1 = LibRTStrings_BytesWriter_append_internal(b, x)
+    r2 = b'foo'
+    r3 = LibRTStrings_BytesWriter_write_internal(b, r2)
+    r4 = LibRTStrings_BytesWriter_getvalue_internal(b)
+    return r4
