@@ -4,8 +4,7 @@
 #include <Python.h>
 #include <stdint.h>
 #include "CPy.h"
-#define LIBRT_INTERNAL_MODULE
-#include "librt_internal.h"
+#include "librt_strings.h"
 
 #define START_SIZE 512
 
@@ -170,15 +169,6 @@ _check_size(WriteBufferObject *data, Py_ssize_t need) {
     return CPY_NONE;
 }
 
-static inline char
-_check_read(ReadBufferObject *data, Py_ssize_t need) {
-    if (unlikely((data->end - data->ptr) < need)) {
-        PyErr_SetString(PyExc_ValueError, "reading past the buffer end");
-        return CPY_NONE_ERROR;
-    }
-    return CPY_NONE;
-}
-
 static char
 write_bytes_internal(PyObject *data, PyObject *value) {
     const char *chunk = PyBytes_AsString(value);
@@ -257,7 +247,7 @@ WriteBuffer_type_internal(void) {
     return &WriteBufferType;  // Return borrowed reference
 };
 
-static PyMethodDef librt_internal_module_methods[] = {
+static PyMethodDef librt_strings_module_methods[] = {
     {"write_bool", (PyCFunction)write_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a bool")},
     {"read_bool", (PyCFunction)read_bool, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("read a bool")},
     {"write_str", (PyCFunction)write_str, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a string")},
@@ -275,17 +265,17 @@ static PyMethodDef librt_internal_module_methods[] = {
 };
 
 static int
-NativeInternal_ABI_Version(void) {
-    return LIBRT_INTERNAL_ABI_VERSION;
+LibRTStrings_ABIVersion(void) {
+    return LIBRT_STRINGS_ABI_VERSION;
 }
 
 static int
-NativeInternal_API_Version(void) {
-    return LIBRT_INTERNAL_API_VERSION;
+LibRTStringsl_APIVersion(void) {
+    return LIBRT_STRINGS_API_VERSION;
 }
 
 static int
-librt_internal_module_exec(PyObject *m)
+librt_strings_module_exec(PyObject *m)
 {
     if (PyType_Ready(&WriteBufferType) < 0) {
         return -1;
@@ -295,41 +285,41 @@ librt_internal_module_exec(PyObject *m)
     }
 
     // Export mypy internal C API, be careful with the order!
-    static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN] = {
-        (void *)NativeInternal_ABI_Version,
-        (void *)NativeInternal_API_Version,
+    static void *librt_strings_api[LIBRT_STRINGS_API_LEN] = {
+        (void *)LibRTStrings_ABIVersion,
+        (void *)LibRTStrings_APIVersion,
         (void *)WriteBuffer_internal,
         (void *)WriteBuffer_getvalue_internal,
         (void *)write_tag_internal,
         (void *)write_bytes_internal,
         (void *)WriteBuffer_type_internal,
     };
-    PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "librt.internal._C_API", NULL);
+    PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
     return 0;
 }
 
-static PyModuleDef_Slot librt_internal_module_slots[] = {
-    {Py_mod_exec, librt_internal_module_exec},
+static PyModuleDef_Slot librt_strings_module_slots[] = {
+    {Py_mod_exec, librt_strings_module_exec},
 #ifdef Py_MOD_GIL_NOT_USED
     {Py_mod_gil, Py_MOD_GIL_NOT_USED},
 #endif
     {0, NULL}
 };
 
-static PyModuleDef librt_internal_module = {
+static PyModuleDef librt_strings_module = {
     .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "internal",
-    .m_doc = "Mypy cache serialization utils",
+    .m_name = "strings",
+    .m_doc = "Utilities for working with str and bytes objects",
     .m_size = 0,
-    .m_methods = librt_internal_module_methods,
-    .m_slots = librt_internal_module_slots,
+    .m_methods = librt_strings_module_methods,
+    .m_slots = librt_strings_module_slots,
 };
 
 PyMODINIT_FUNC
-PyInit_internal(void)
+PyInit_strings(void)
 {
-    return PyModuleDef_Init(&librt_internal_module);
+    return PyModuleDef_Init(&librt_strings_module);
 }
