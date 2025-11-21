@@ -6,7 +6,6 @@ import itertools
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
-from functools import reduce
 from typing import (
     Callable,
     Final,
@@ -26,6 +25,7 @@ from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
 from mypy.checker_shared import CheckerScope, TypeCheckerSharedApi, TypeRange
 from mypy.checker_state import checker_state
+from mypy.checkexpr import type_info_from_type
 from mypy.checkmember import (
     MemberContext,
     analyze_class_attribute_access,
@@ -167,7 +167,6 @@ from mypy.subtypes import (
     is_more_precise,
     is_proper_subtype,
     is_same_type,
-    is_same_type_ranges,
     is_subtype,
     restrict_subtype_away,
     unify_generic_callable,
@@ -6239,56 +6238,104 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         # exprs that are being passed into type
         exprs_in_type_calls: list[Expression] = []
-        # type that is being compared to type(expr)
-        type_being_compared: list[TypeRange] | None = None
-        # whether the type being compared to is final
+        # all the types that an expression will have if the overall expression is truthy
+        target_types: list[Instance] = []
+        # only a single type can be used when passed directly (eg "str")
+        fixed_type: TypeRange | None = None
+        # is this single type final?
         is_final = False
+
+        def update_fixed_type(new_fixed_type: TypeRange, new_is_final: bool) -> bool:
+            """Returns if the update succeeds"""
+            nonlocal fixed_type, is_final
+            if update := (
+                fixed_type is None
+                or (
+                    new_fixed_type.is_upper_bound == fixed_type.is_upper_bound
+                    and is_same_type(new_fixed_type.item, fixed_type.item)
+                )
+            ):
+                fixed_type = new_fixed_type
+                is_final = new_is_final
+            return update
 
         for index in expr_indices:
             expr = node.operands[index]
 
             if isinstance(expr, CallExpr) and is_type_call(expr):
-                exprs_in_type_calls.append(expr.args[0])
-            else:
-                current_type = self.get_isinstance_type(expr)
-                if current_type is None:
+                arg = expr.args[0]
+                exprs_in_type_calls.append(arg)
+                typ = self.lookup_type(arg)
+                if typ is None:
                     continue
-                if type_being_compared is not None and not is_same_type_ranges(
-                    type_being_compared, current_type
-                ):
-                    # It doesn't really make sense to have several types being
-                    # compared to the output of type (like type(x) == int == str)
-                    # unless they are the same (like type(x) == float == float)
-                    # because whether that's true is solely dependent on what the
-                    # types being compared are, so we don't try to narrow types any
-                    # further because we can't really get any information about the
-                    # type of x from that check
-                    return {}, {}
-                else:
-                    if isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo):
-                        is_final = expr.node.is_final
-                    type_being_compared = current_type
+                type_range = self.isinstance_type_range(get_proper_type(typ))
+            else:
+                proper_type = get_proper_type(self.lookup_type(expr))
+                # cannot read type
+                if proper_type is None:
+                    continue
+                # get the range as though we were using isinstance
+                type_range = self.isinstance_type_range(proper_type)
+                # None range means this should not be used in comparison (eg tuple)
+                if type_range is None:
+                    fixed_type = TypeRange(UninhabitedType(), True)
+                    continue
+
+                if isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo):
+                    if not update_fixed_type(type_range, expr.node.is_final):
+                        return None, {}
+                typ = type_range.item
+
+            type_info = type_info_from_type(typ)
+            if type_info is not None:
+                target_types.append(
+                    Instance(
+                        type_info,
+                        [AnyType(TypeOfAny.special_form)] * len(type_info.defn.type_vars),
+                    )
+                )
 
         if not exprs_in_type_calls:
             return {}, {}
 
-        if type_being_compared is None:
-            least_type = reduce(
-                meet_types, (self.lookup_type(expr) for expr in exprs_in_type_calls)
-            )
-            type_being_compared = [TypeRange(least_type, is_upper_bound=True)]
+        if target_types:
+            least_type: Type | None = target_types[0]
+            for target_type in target_types[1:]:
+                if fixed_type is None:
+                    # intersect types if fixed type doesn't need keeping
+                    least_type = self.intersect_instances(
+                        (cast(Instance, least_type), target_type), []  # what to do with errors?
+                    )
+                else:
+                    # otherwise, be safe and use meet
+                    least_type = meet_types(cast(Type, least_type), target_type)
+                if least_type is None:
+                    break
+        elif fixed_type:
+            least_type = fixed_type.item
+        else:
+            # no bounds means no inference can be made
+            return {}, {}
+
+        # if the type differs from the fixed type, comparison cannot succeed
+        if least_type is None or (
+            fixed_type is not None and not is_same_type(least_type, fixed_type.item)
+        ):
+            return None, {}
+
+        shared_type = [TypeRange(least_type, not is_final)]
 
         if_maps: list[TypeMap] = []
         else_maps: list[TypeMap] = []
         for expr in exprs_in_type_calls:
-            current_if_type, current_else_type = self.conditional_types_with_intersection(
-                self.lookup_type(expr), type_being_compared, expr
+            if_map, else_map = conditional_types_to_typemaps(
+                expr,
+                *self.conditional_types_with_intersection(
+                    self.lookup_type(expr), shared_type, expr
+                ),
             )
-            current_if_map, current_else_map = conditional_types_to_typemaps(
-                expr, current_if_type, current_else_type
-            )
-            if_maps.append(current_if_map)
-            else_maps.append(current_else_map)
+            if_maps.append(if_map)
+            else_maps.append(else_map)
 
         def combine_maps(list_maps: list[TypeMap]) -> TypeMap:
             """Combine all typemaps in list_maps into one typemap"""
@@ -7050,7 +7097,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if_map, else_map = {}, {}
 
         if not non_optional_types or (len(non_optional_types) != len(chain_indices)):
-
             # Narrow e.g. `Optional[A] == "x"` or `Optional[A] is "x"` to `A` (which may be
             # convenient but is strictly not type-safe):
             for i in narrowable_operand_indices:
@@ -7972,35 +8018,41 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 return None
             return left + right
         all_types = get_proper_types(flatten_types(self.lookup_type(expr)))
-        types: list[TypeRange] = []
+        type_ranges: list[TypeRange] = []
         for typ in all_types:
-            if isinstance(typ, FunctionLike) and typ.is_type_obj():
-                # If a type is generic, `isinstance` can only narrow its variables to Any.
-                any_parameterized = fill_typevars_with_any(typ.type_object())
-                # Tuples may have unattended type variables among their items
-                if isinstance(any_parameterized, TupleType):
-                    erased_type = erase_typevars(any_parameterized)
-                else:
-                    erased_type = any_parameterized
-                types.append(TypeRange(erased_type, is_upper_bound=False))
-            elif isinstance(typ, TypeType):
-                # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
-                # we indicate this by setting is_upper_bound flag
-                is_upper_bound = True
-                if isinstance(typ.item, NoneType):
-                    # except for Type[None], because "'NoneType' is not an acceptable base type"
-                    is_upper_bound = False
-                types.append(TypeRange(typ.item, is_upper_bound=is_upper_bound))
-            elif isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
-                object_type = Instance(typ.type.mro[-1], [])
-                types.append(TypeRange(object_type, is_upper_bound=True))
-            elif isinstance(typ, Instance) and typ.type.fullname == "types.UnionType" and typ.args:
-                types.append(TypeRange(UnionType(typ.args), is_upper_bound=False))
-            elif isinstance(typ, AnyType):
-                types.append(TypeRange(typ, is_upper_bound=False))
-            else:  # we didn't see an actual type, but rather a variable with unknown value
+            type_range = self.isinstance_type_range(typ)
+            if type_range is None:
                 return None
-        return types
+            type_ranges.append(type_range)
+        return type_ranges
+
+    def isinstance_type_range(self, typ: ProperType) -> TypeRange | None:
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
+            # If a type is generic, `isinstance` can only narrow its variables to Any.
+            any_parameterized = fill_typevars_with_any(typ.type_object())
+            # Tuples may have unattended type variables among their items
+            if isinstance(any_parameterized, TupleType):
+                erased_type = erase_typevars(any_parameterized)
+            else:
+                erased_type = any_parameterized
+            return TypeRange(erased_type, is_upper_bound=False)
+        elif isinstance(typ, TypeType):
+            # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
+            # we indicate this by setting is_upper_bound flag
+            is_upper_bound = True
+            if isinstance(typ.item, NoneType):
+                # except for Type[None], because "'NoneType' is not an acceptable base type"
+                is_upper_bound = False
+            return TypeRange(typ.item, is_upper_bound=is_upper_bound)
+        elif isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
+            object_type = Instance(typ.type.mro[-1], [])
+            return TypeRange(object_type, is_upper_bound=True)
+        elif isinstance(typ, Instance) and typ.type.fullname == "types.UnionType" and typ.args:
+            return TypeRange(UnionType(typ.args), is_upper_bound=False)
+        elif isinstance(typ, AnyType):
+            return TypeRange(typ, is_upper_bound=False)
+        else:  # we didn't see an actual type, but rather a variable with unknown value
+            return None
 
     def is_literal_enum(self, n: Expression) -> bool:
         """Returns true if this expression (with the given type context) is an Enum literal.
