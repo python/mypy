@@ -118,7 +118,12 @@ BytesWriter_getvalue(BytesWriterObject *self, PyObject *Py_UNUSED(ignored))
     return PyBytes_FromStringAndSize(self->buf, self->ptr - self->buf);
 }
 
+static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+
 static PyMethodDef BytesWriter_methods[] = {
+    {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL | METH_KEYWORDS,
+     PyDoc_STR("Append a single byte to the buffer")
+    },
     {"getvalue", (PyCFunction) BytesWriter_getvalue, METH_NOARGS,
      "Return the buffer content as bytes object"
     },
@@ -211,20 +216,19 @@ BytesWriter_append_internal(PyObject *self, uint8_t value) {
 
 static PyObject*
 BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:append", kwlist, 0};
-    PyObject *data;
+    static const char * const kwlist[] = {"value", 0};
+    static CPyArg_Parser parser = {"O:append", kwlist, 0};
     PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
         return NULL;
     }
-    _CHECK_WRITE_BUFFER(data, NULL)
+    _CHECK_WRITE_BUFFER(self, NULL)
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
         return NULL;
     }
-    if (unlikely(BytesWriter_append_internal(data, unboxed) == CPY_NONE_ERROR)) {
+    if (unlikely(BytesWriter_append_internal(self, unboxed) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -238,7 +242,6 @@ BytesWriter_type_internal(void) {
 
 static PyMethodDef librt_strings_module_methods[] = {
     {"write", (PyCFunction)BytesWriter_write, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write bytes")},
-    {"append", (PyCFunction)BytesWriter_append, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a short int")},
     {NULL, NULL, 0, NULL}
 };
 

@@ -11,6 +11,7 @@ from testutil import assertRaises
 
 def test_basics() -> None:
     b = BytesWriter()
-    assert b.getvalue() == b""
+    b.append(ord('a'))
+    assert b.getvalue() == b"a"
 
 
