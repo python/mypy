@@ -51,6 +51,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl/filesystem.h>
+#include <pybind11/native_enum.h>
 
 namespace py = pybind11;
 
@@ -212,6 +213,11 @@ const Point Point::y_axis = Point(0, 1);
 Point::LengthUnit Point::length_unit = Point::LengthUnit::mm;
 Point::AngleUnit Point::angle_unit = Point::AngleUnit::radian;
 
+enum Color {
+  RED = 0,
+  GREEN = 1
+};
+
 } // namespace: demo
 
 // Bindings
@@ -230,6 +236,11 @@ void bind_demo(py::module& m) {
   py::class_<Point> pyPoint(m, "Point");
   py::enum_<Point::LengthUnit> pyLengthUnit(pyPoint, "LengthUnit");
   py::enum_<Point::AngleUnit> pyAngleUnit(pyPoint, "AngleUnit");
+  py::native_enum<Color>(m, "Color", "enum.Enum", "Color Enum")
+    .value("RED", Color::RED)
+    .value("GREEN", Color::GREEN)
+    .finalize();
+
 
   pyPoint
     .def(py::init<>())

@@ -1,8 +1,14 @@
+import enum
 import typing
-from typing import ClassVar, overload
+from typing import Callable, ClassVar, overload
 
 PI: float
 __version__: str
+
+class Color(enum.Enum):
+    __new__: ClassVar[Callable] = ...
+    GREEN = 1
+    RED = 0
 
 class Point:
     class AngleUnit:
