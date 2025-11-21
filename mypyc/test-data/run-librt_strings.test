@@ -8,10 +8,9 @@ from librt.strings import BytesWriter
 
 from testutil import assertRaises
 
-
 def test_basics() -> None:
     b = BytesWriter()
     b.append(ord('a'))
-    assert b.getvalue() == b"a"
-
+    b.write(b'bc')
+    assert b.getvalue() == b"abc"
 

@@ -119,10 +119,14 @@ BytesWriter_getvalue(BytesWriterObject *self, PyObject *Py_UNUSED(ignored))
 }
 
 static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
 
 static PyMethodDef BytesWriter_methods[] = {
     {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL | METH_KEYWORDS,
      PyDoc_STR("Append a single byte to the buffer")
+    },
+    {"write", (PyCFunction) BytesWriter_write, METH_FASTCALL | METH_KEYWORDS,
+     PyDoc_STR("Append bytes to the buffer")
     },
     {"getvalue", (PyCFunction) BytesWriter_getvalue, METH_NOARGS,
      "Return the buffer content as bytes object"
@@ -180,27 +184,26 @@ BytesWriter_write_internal(PyObject *self, PyObject *value) {
     Py_ssize_t size = PyBytes_GET_SIZE(value);
     // Write bytes content.
     _CHECK_WRITE(self, size)
-    char *ptr = ((BytesWriterObject *)data)->ptr;
+    char *ptr = ((BytesWriterObject *)self)->ptr;
     memcpy(ptr, data, size);
-    ((BytesWriterObject *)data)->ptr += size;
+    ((BytesWriterObject *)self)->ptr += size;
     return CPY_NONE;
 }
 
 static PyObject*
 BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
-    static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write", kwlist, 0};
-    PyObject *data;
+    static const char * const kwlist[] = {"value", 0};
+    static CPyArg_Parser parser = {"O:write", kwlist, 0};
     PyObject *value;
-    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
+    if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
         return NULL;
     }
-    _CHECK_WRITE_BUFFER(data, NULL)
+    _CHECK_WRITE_BUFFER(self, NULL)
     if (unlikely(!PyBytes_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes object");
         return NULL;
     }
-    if (unlikely(BytesWriter_write_internal(data, value) == CPY_NONE_ERROR)) {
+    if (unlikely(BytesWriter_write_internal(self, value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -241,7 +244,6 @@ BytesWriter_type_internal(void) {
 };
 
 static PyMethodDef librt_strings_module_methods[] = {
-    {"write", (PyCFunction)BytesWriter_write, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write bytes")},
     {NULL, NULL, 0, NULL}
 };
 
