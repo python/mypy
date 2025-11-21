@@ -8,6 +8,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 import mypy.applytype
 import mypy.constraints
 import mypy.typeops
+from mypy.checker_shared import TypeRange
 from mypy.checker_state import checker_state
 from mypy.erasetype import erase_type
 from mypy.expandtype import (
@@ -252,6 +253,29 @@ def is_equivalent(
         ignore_pos_arg_names=ignore_pos_arg_names,
         options=options,
         subtype_context=subtype_context,
+    )
+
+
+def is_same_type_ranges(
+    a: list[TypeRange],
+    b: list[TypeRange],
+    ignore_promotions: bool = True,
+    subtype_context: SubtypeContext | None = None,
+) -> bool:
+    return len(a) == len(b) and all(
+        is_same_type_range(a, b, ignore_promotions, subtype_context)
+        for a, b in zip(a, b, strict=True)
+    )
+
+
+def is_same_type_range(
+    a: list[TypeRange],
+    b: list[TypeRange],
+    ignore_promotions: bool = True,
+    subtype_context: SubtypeContext | None = None,
+) -> bool:
+    return a.is_upper_bound == b.is_upper_bound and is_same_type(
+        a.item, b.item, ignore_promotions, subtype_context
     )
 
 
