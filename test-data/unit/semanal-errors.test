@@ -361,15 +361,11 @@ main:2: error: "yield" outside function
 [case testInvalidLvalues1]
 1 = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues2]
 (1) = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues3]
@@ -408,36 +404,26 @@ main:3: error: Cannot assign to literal
 [case testInvalidLvalues10]
 x + x = 1
 [out]
-main:1: error: Cannot assign to operator
-[out version>=3.10]
 main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues11]
 -x = 1
 [out]
-main:1: error: Cannot assign to operator
-[out version>=3.10]
 main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues12]
 1.1 = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues13]
 'x' = 1
 [out]
-main:1: error: Cannot assign to literal
-[out version>=3.10]
 main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues14]
 x() = 1
 [out]
-main:1: error: Cannot assign to function call
-[out version>=3.10]
 main:1: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testTwoStarExpressions]
@@ -498,8 +484,6 @@ main:2: error: Cannot delete function call
 x = 1
 del x + 1
 [out]
-main:2: error: Cannot delete operator
-[out version>=3.10]
 main:2: error: Cannot delete expression
 
 [case testInvalidDel3]
@@ -881,8 +865,6 @@ import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: Cannot assign to function call
-[out version>=3.10]
 main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testIndexedAssignmentWithTypeDeclaration]
@@ -959,8 +941,6 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 a = 1
 a() = None # type: int
 [out]
-main:2: error: Cannot assign to function call
-[out version>=3.10]
 main:2: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalueWithExplicitType2]
@@ -1303,8 +1283,6 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main:3: error: Cannot assign to function call
-[out version>=3.10]
 main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidReferenceToAttributeOfOuterClass]

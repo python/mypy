@@ -2,6 +2,15 @@
 
 ## Next Release
 
+### Drop Support for Python 3.9
+
+Mypy no longer supports running with Python 3.9, which has reached end-of-life.
+When running mypy with Python 3.10+, it is still possible to type check code
+that needs to support Python 3.9 with the `--python-version 3.9` argument.
+Support for this will be dropped in the first half of 2026!
+
+Contributed by Marc Mueller (PR [20156](https://github.com/python/mypy/pull/20156)).
+
 ## Mypy 1.18.1
 
 We’ve just uploaded mypy 1.18.1 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
