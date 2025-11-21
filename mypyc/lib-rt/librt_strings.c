@@ -170,7 +170,7 @@ _check_size(BytesWriterObject *data, Py_ssize_t need) {
 }
 
 static char
-write_bytes_internal(PyObject *self, PyObject *value) {
+BytesWriter_write_internal(PyObject *self, PyObject *value) {
     const char *data = PyBytes_AS_STRING(value);
     Py_ssize_t size = PyBytes_GET_SIZE(value);
     // Write bytes content.
@@ -182,9 +182,9 @@ write_bytes_internal(PyObject *self, PyObject *value) {
 }
 
 static PyObject*
-write_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
     static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write_bytes", kwlist, 0};
+    static CPyArg_Parser parser = {"OO:write", kwlist, 0};
     PyObject *data;
     PyObject *value;
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
@@ -195,7 +195,7 @@ write_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnam
         PyErr_SetString(PyExc_TypeError, "value must be a bytes object");
         return NULL;
     }
-    if (unlikely(write_bytes_internal(data, value) == CPY_NONE_ERROR)) {
+    if (unlikely(BytesWriter_write_internal(data, value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -203,16 +203,16 @@ write_bytes(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnam
 }
 
 static char
-write_tag_internal(PyObject *data, uint8_t value) {
+BytesWriter_append_internal(PyObject *data, uint8_t value) {
     _CHECK_WRITE(data, 1)
     _WRITE(data, uint8_t, value);
     return CPY_NONE;
 }
 
 static PyObject*
-write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
+BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames) {
     static const char * const kwlist[] = {"data", "value", 0};
-    static CPyArg_Parser parser = {"OO:write_tag", kwlist, 0};
+    static CPyArg_Parser parser = {"OO:append", kwlist, 0};
     PyObject *data;
     PyObject *value;
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &data, &value))) {
@@ -224,7 +224,7 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames
         CPy_TypeError("u8", value);
         return NULL;
     }
-    if (unlikely(write_tag_internal(data, unboxed) == CPY_NONE_ERROR)) {
+    if (unlikely(BytesWriter_append_internal(data, unboxed) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -237,8 +237,8 @@ BytesWriter_type_internal(void) {
 };
 
 static PyMethodDef librt_strings_module_methods[] = {
-    {"write_bytes", (PyCFunction)write_bytes, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write bytes")},
-    {"write_tag", (PyCFunction)write_tag, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a short int")},
+    {"write", (PyCFunction)BytesWriter_write, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write bytes")},
+    {"append", (PyCFunction)BytesWriter_append, METH_FASTCALL | METH_KEYWORDS, PyDoc_STR("write a short int")},
     {NULL, NULL, 0, NULL}
 };
 
@@ -268,8 +268,8 @@ librt_strings_module_exec(PyObject *m)
         (void *)strings_api_version,
         (void *)BytesWriter_internal,
         (void *)BytesWriter_getvalue_internal,
-        (void *)write_tag_internal,
-        (void *)write_bytes_internal,
+        (void *)BytesWriter_append_internal,
+        (void *)BytesWriter_write_internal,
         (void *)BytesWriter_type_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
