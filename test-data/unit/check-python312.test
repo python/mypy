@@ -2223,3 +2223,17 @@ if isinstance(x, tuple):
     reveal_type(y)  # N: Revealed type is "Union[typing.Hashable, Union[builtins.int, tuple[Union[typing.Hashable, ...]]]]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695MultipleTypeVarTuples]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Us = TypeVarTuple("Us")
+
+class C[*Ts, *Us]:  # E: Can only use one type var tuple in a class def
+   pass
+
+class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
+                                    # E: Can only use one type var tuple in a class def
+    pass
+[builtins fixtures/tuple.pyi]
