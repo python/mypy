@@ -2269,11 +2269,17 @@ class SemanticAnalyzer(
         removed: list[int] = []
         declared_tvars: TypeVarLikeList = []
         is_protocol = False
+        has_type_var_tuple = False
         if defn.type_args is not None:
             for p in defn.type_args:
                 node = self.lookup(p.name, context)
                 assert node is not None
                 assert isinstance(node.node, TypeVarLikeExpr)
+                if isinstance(node.node, TypeVarTupleExpr):
+                    if has_type_var_tuple:
+                        self.fail("Can only use one type var tuple in a class def", context)
+                        continue
+                    has_type_var_tuple = True
                 declared_tvars.append((p.name, node.node))
 
         for i, base_expr in enumerate(base_type_exprs):
@@ -2286,7 +2292,7 @@ class SemanticAnalyzer(
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            result = self.analyze_class_typevar_declaration(base)
+            result = self.analyze_class_typevar_declaration(base, has_type_var_tuple)
             if result is not None:
                 tvars = result[0]
                 is_protocol |= result[1]
@@ -2340,7 +2346,9 @@ class SemanticAnalyzer(
         tvar_defs = self.tvar_defs_from_tvars(declared_tvars, context)
         return base_type_exprs, tvar_defs, is_protocol
 
-    def analyze_class_typevar_declaration(self, base: Type) -> tuple[TypeVarLikeList, bool] | None:
+    def analyze_class_typevar_declaration(
+        self, base: Type, has_type_var_tuple: bool
+    ) -> tuple[TypeVarLikeList, bool] | None:
         """Analyze type variables declared using Generic[...] or Protocol[...].
 
         Args:
@@ -2362,16 +2370,15 @@ class SemanticAnalyzer(
         ):
             is_proto = sym.node.fullname != "typing.Generic"
             tvars: TypeVarLikeList = []
-            have_type_var_tuple = False
             for arg in unbound.args:
                 tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
                     if isinstance(tvar[1], TypeVarTupleExpr):
-                        if have_type_var_tuple:
+                        if has_type_var_tuple:
                             self.fail("Can only use one type var tuple in a class def", base)
                             continue
-                        have_type_var_tuple = True
+                        has_type_var_tuple = True
                     tvars.append(tvar)
                 elif not self.found_incomplete_ref(tag):
                     self.fail("Free type variable expected in %s[...]" % sym.node.name, base)
