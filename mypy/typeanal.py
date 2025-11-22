@@ -116,6 +116,7 @@ from mypy.types import (
 )
 from mypy.types_utils import get_bad_type_type_item
 from mypy.typevars import fill_typevars
+from mypy.util import maybe_mangled
 
 T = TypeVar("T")
 
@@ -976,7 +977,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             isinstance(sym.node, Var)
             and sym.node.info
             and sym.node.info.is_enum
-            and not sym.node.name.startswith("__")
+            and not maybe_mangled(sym.node.name, sym.node.info.name)
         ):
             value = sym.node.name
             base_enum_short_name = sym.node.info.name
@@ -2014,7 +2015,7 @@ TypeVarLikeList = list[tuple[str, TypeVarLikeExpr]]
 
 class MsgCallback(Protocol):
     def __call__(
-        self, __msg: str, __ctx: Context, *, code: ErrorCode | None = None
+        self, msg: str, ctx: Context, /, *, code: ErrorCode | None = None
     ) -> ErrorInfo | None: ...
 
 

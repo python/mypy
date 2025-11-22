@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import sys
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import Any, Callable, Final, Literal, Optional, TypeVar, Union, cast, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
@@ -386,6 +386,104 @@ def find_disallowed_expression_in_annotation_scope(expr: ast3.expr | None) -> as
         if isinstance(node, (ast3.Yield, ast3.YieldFrom, ast3.NamedExpr, ast3.Await)):
             return node
     return None
+
+
+_T_FuncDef = TypeVar("_T_FuncDef", ast3.FunctionDef, ast3.AsyncFunctionDef)
+
+
+class NameMangler(ast3.NodeTransformer):
+    """Mangle (nearly) all private identifiers within a class body (including nested classes)."""
+
+    mangled2unmangled: dict[str, str]
+    _classname_complete: str
+    _classname_trimmed: str
+    _mangle_annotations: bool
+    _unmangled_args: set[str]
+
+    def __init__(self, classname: str, mangle_annotations: bool) -> None:
+        self.mangled2unmangled = {}
+        self._classname_complete = classname
+        self._classname_trimmed = classname.lstrip("_")
+        self._mangle_annotations = mangle_annotations
+        self._unmangled_args = set()
+
+    def _mangle_name(self, name: str) -> str:
+        if name.startswith("__") and not name.endswith("__"):
+            mangled = f"_{self._classname_trimmed}{name}"
+            self.mangled2unmangled[mangled] = name
+            return mangled
+        return name
+
+    def _mangle_slots(self, node: ast3.ClassDef) -> None:
+        for assign in node.body:
+            if isinstance(assign, ast3.Assign):
+                for target in assign.targets:
+                    if isinstance(target, ast3.Name) and (target.id == "__slots__"):
+                        constants: Iterable[ast3.expr] = ()
+                        if isinstance(values := assign.value, ast3.Constant):
+                            constants = (values,)
+                        elif isinstance(values, (ast3.Tuple, ast3.List)):
+                            constants = values.elts
+                        elif isinstance(values, ast3.Dict):
+                            constants = (key for key in values.keys if key is not None)
+                        for value in constants:
+                            if isinstance(value, ast3.Constant) and isinstance(value.value, str):
+                                value.value = self._mangle_name(value.value)
+
+    def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
+        if self._classname_complete == node.name:
+            for stmt in node.body:
+                self.visit(stmt)
+            self._mangle_slots(node)
+        else:
+            for dec in node.decorator_list:
+                self.visit(dec)
+            NameMangler(node.name, self._mangle_annotations).visit(node)
+            node.name = self._mangle_name(node.name)
+        return node
+
+    def _visit_funcdef(self, node: _T_FuncDef) -> _T_FuncDef:
+        node.name = self._mangle_name(node.name)
+        new = NameMangler(self._classname_complete, self._mangle_annotations)
+        new.mangled2unmangled = self.mangled2unmangled
+        new.visit(node.args)
+        for dec in node.decorator_list:
+            new.visit(dec)
+        if new._mangle_annotations and (node.returns is not None):
+            new.visit(node.returns)
+        for stmt in node.body:
+            new.visit(stmt)
+        return node
+
+    def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
+        return self._visit_funcdef(node)
+
+    def visit_AsyncFunctionDef(self, node: ast3.AsyncFunctionDef) -> ast3.AsyncFunctionDef:
+        return self._visit_funcdef(node)
+
+    def visit_arg(self, node: ast3.arg) -> ast3.arg:
+        self._unmangled_args.add(node.arg)
+        if self._mangle_annotations and (node.annotation is not None):
+            self.visit(node.annotation)
+        return node
+
+    def visit_AnnAssign(self, node: ast3.AnnAssign) -> ast3.AnnAssign:
+        self.visit(node.target)
+        if node.value is not None:
+            self.visit(node.value)
+        if self._mangle_annotations:
+            self.visit(node.annotation)
+        return node
+
+    def visit_Attribute(self, node: ast3.Attribute) -> ast3.Attribute:
+        node.attr = self._mangle_name(node.attr)
+        self.generic_visit(node)
+        return node
+
+    def visit_Name(self, node: Name) -> Name:
+        if node.id not in self._unmangled_args:
+            node.id = self._mangle_name(node.id)
+        return node
 
 
 class ASTConverter:
@@ -1198,6 +1296,15 @@ class ASTConverter:
         if sys.version_info >= (3, 12) and n.type_params:
             explicit_type_params = self.translate_type_params(n.type_params)
 
+        mangle_annotations = not self.is_stub and not any(
+            isinstance(i, ImportFrom)
+            and (i.id == "__future__")
+            and any(j[0] == "annotations" for j in i.names)
+            for i in self.imports
+        )
+        mangler = NameMangler(n.name, mangle_annotations)
+        mangler.visit(n)
+
         cdef = ClassDef(
             n.name,
             self.as_required_block(n.body),
@@ -1206,6 +1313,7 @@ class ASTConverter:
             metaclass=dict(keywords).get("metaclass"),
             keywords=keywords,
             type_args=explicit_type_params,
+            mangled2unmangled=mangler.mangled2unmangled,
         )
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         self.set_line(cdef, n)
