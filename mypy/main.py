@@ -1153,7 +1153,9 @@ def define_options(
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
     # Experimental parallel type-checking support.
-    internals_group.add_argument("--num-workers", type=int, default=0, help=argparse.SUPPRESS)
+    internals_group.add_argument(
+        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
+    )
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."

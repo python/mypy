@@ -35,7 +35,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 from librt.internal import cache_version
 
 import mypy.semanal_main
-from mypy.cache import CACHE_VERSION, CacheMeta, ReadBuffer, WriteBuffer
+from mypy.cache import CACHE_VERSION, CacheMeta, ReadBuffer, WriteBuffer, write_json
 from mypy.checker import TypeChecker
 from mypy.defaults import (
     WORKER_CONNECTION_TIMEOUT,
@@ -288,17 +288,18 @@ def build(
 
     workers = []
     if options.num_workers > 0:
+        # TODO: switch to something more efficient than pickle (also in the daemon).
         pickled_options = pickle.dumps(options.snapshot())
         options_data = base64.b64encode(pickled_options).decode()
         workers = [
             WorkerClient(f".mypy_worker.{idx}.json", options_data, worker_env or os.environ)
             for idx in range(options.num_workers)
         ]
+        sources_data = sources_to_bytes(sources)
         for worker in workers:
             # Start loading graph in each worker as soon as it is up.
             worker.connect()
-            source_tuples = [(s.path, s.module, s.text, s.base_dir, s.followed) for s in sources]
-            send(worker.conn, {"sources": source_tuples})
+            worker.conn.write_bytes(sources_data)
 
     try:
         result = build_inner(
@@ -3524,10 +3525,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     manager.top_order = [scc.id for scc in sccs]
 
     # Broadcast SCC structure to the parallel workers, since they don't compute it.
+    sccs_data = sccs_to_bytes(sccs)
     for worker in manager.workers:
         data = receive(worker.conn)
         assert data["status"] == "ok"
-        send(worker.conn, {"sccs": [(list(scc.mod_ids), scc.id, list(scc.deps)) for scc in sccs]})
+        worker.conn.write_bytes(sccs_data)
     for worker in manager.workers:
         data = receive(worker.conn)
         assert data["status"] == "ok"
@@ -3904,3 +3906,17 @@ def write_undocumented_ref_info(
 
     deps_json = get_undocumented_ref_info_json(state.tree, type_map)
     metastore.write(ref_info_file, json_dumps(deps_json))
+
+
+def sources_to_bytes(sources: list[BuildSource]) -> bytes:
+    source_tuples = [(s.path, s.module, s.text, s.base_dir, s.followed) for s in sources]
+    buf = WriteBuffer()
+    write_json(buf, {"sources": source_tuples})
+    return buf.getvalue()
+
+
+def sccs_to_bytes(sccs: list[SCC]) -> bytes:
+    scc_tuples = [(list(scc.mod_ids), scc.id, list(scc.deps)) for scc in sccs]
+    buf = WriteBuffer()
+    write_json(buf, {"sccs": scc_tuples})
+    return buf.getvalue()

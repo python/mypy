@@ -8,7 +8,7 @@ The protocol of communication with the coordinator is as following:
 * Load graph using the sources, and send "ok" to coordinator.
 * Receive SCC structure from coordinator, and ack it with an "ok".
 * Receive an SCC id from coordinator, process it, and send back the results.
-* When prompted by coordinator (with s "final" message), cleanup and shutdown.
+* When prompted by coordinator (with a "final" message), cleanup and shutdown.
 """
 
 from __future__ import annotations
