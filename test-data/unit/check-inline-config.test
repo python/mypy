@@ -211,6 +211,99 @@ enable_error_code = ignore-without-code, truthy-bool
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
 
+[case testInlineErrorCodesOverrideConfigSmall]
+# flags: --config-file tmp/mypy.ini
+import tests.baz
+[file tests/__init__.py]
+[file tests/baz.py]
+42 + "no"  # type: ignore
+
+[file mypy.ini]
+\[mypy]
+enable_error_code = ignore-without-code, truthy-bool
+
+\[mypy-tests.*]
+disable_error_code = ignore-without-code
+
+[case testInlineErrorCodesOverrideConfigSmall2]
+# flags: --config-file tmp/mypy.ini
+import tests.bar
+import tests.baz
+[file tests/__init__.py]
+[file tests/baz.py]
+42 + "no"  # type: ignore
+[file tests/bar.py]
+# mypy: enable-error-code="ignore-without-code"
+
+def foo() -> int: ...
+if foo: ...  # E: Function "foo" could always be true in boolean context
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+
+[file mypy.ini]
+\[mypy]
+enable_error_code = ignore-without-code, truthy-bool
+
+\[mypy-tests.*]
+disable_error_code = ignore-without-code
+
+
+[case testInlineErrorCodesOverrideConfigSmallBackward]
+# flags: --config-file tmp/mypy.ini
+import tests.bar
+import tests.baz
+[file tests/__init__.py]
+[file tests/baz.py]
+42 + "no"  # type: ignore # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+[file tests/bar.py]
+# mypy: disable-error-code="ignore-without-code"
+42 + "no"  # type: ignore
+
+[file mypy.ini]
+\[mypy]
+enable_error_code = ignore-without-code, truthy-bool
+
+\[mypy-tests.*]
+enable_error_code = ignore-without-code
+
+[case testInlineOverrideConfig]
+# flags: --config-file tmp/mypy.ini
+import foo
+import tests.bar
+import tests.baz
+[file foo.py]
+# mypy: disable-error-code="truthy-bool"
+class Foo:
+    pass
+
+foo = Foo()
+if foo: ...
+42 # type: ignore  # E: Unused "type: ignore" comment
+
+[file tests/__init__.py]
+[file tests/bar.py]
+# mypy: warn_unused_ignores
+
+def foo() -> int: ...
+if foo: ...  # E: Function "foo" could always be true in boolean context
+42 # type: ignore  # E: Unused "type: ignore" comment
+
+[file tests/baz.py]
+# mypy: disable-error-code="truthy-bool"
+class Foo:
+    pass
+
+foo = Foo()
+if foo: ...
+42 # type: ignore
+
+[file mypy.ini]
+\[mypy]
+warn_unused_ignores = True
+
+\[mypy-tests.*]
+warn_unused_ignores = False
+
+
 [case testIgnoreErrorsSimple]
 # mypy: ignore-errors=True
 
@@ -324,6 +417,61 @@ foo = Foo()
 if foo: ...
 42 + "no"  # type: ignore
 
-
 [case testInlinePythonVersion]
 # mypy: python-version=3.10  # E: python_version not supported in inline configuration
+
+[case testInlineErrorCodesArentRuinedByOthersBaseCase]
+# mypy: disable-error-code=name-defined
+a
+
+[case testInlineErrorCodesArentRuinedByOthersInvalid]
+# mypy: disable-error-code=name-defined
+# mypy: AMONGUS
+a
+[out]
+main:2: error: Unrecognized option: amongus = True
+
+[case testInlineErrorCodesArentRuinedByOthersInvalidBefore]
+# mypy: AMONGUS
+# mypy: disable-error-code=name-defined
+a
+[out]
+main:1: error: Unrecognized option: amongus = True
+
+[case testInlineErrorCodesArentRuinedByOthersSe]
+# mypy: disable-error-code=name-defined
+# mypy: strict-equality
+def is_magic(x: bytes) -> bool:
+    y
+    return x == 'magic' # E: Unsupported left operand type for == ("bytes")
+
+[case testInlineConfigErrorCodesOffAndOn]
+# mypy: disable-error-code=name-defined
+# mypy: enable-error-code=name-defined
+a # E: Name "a" is not defined
+
+[case testInlineConfigErrorCodesOnAndOff]
+# mypy: enable-error-code=name-defined
+# mypy: disable-error-code=name-defined
+a # E: Name "a" is not defined
+
+[case testConfigFileErrorCodesOnAndOff]
+# flags: --config-file tmp/mypy.ini
+import foo
+[file foo.py]
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+[file mypy.ini]
+\[mypy]
+enable_error_code = ignore-without-code
+disable_error_code = ignore-without-code
+
+[case testInlineConfigBaseCaseWui]
+# mypy: warn_unused_ignores
+x = 1 # type: ignore # E: Unused "type: ignore" comment
+
+[case testInlineConfigIsntRuinedByOthersInvalidWui]
+# mypy: warn_unused_ignores
+# mypy: AMONGUS
+x = 1 # type: ignore # E: Unused "type: ignore" comment
+[out]
+main:2: error: Unrecognized option: amongus = True

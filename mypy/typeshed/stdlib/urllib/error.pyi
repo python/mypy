@@ -6,6 +6,8 @@ __all__ = ["URLError", "HTTPError", "ContentTooShortError"]
 
 class URLError(OSError):
     reason: str | BaseException
+    # The `filename` attribute only exists if it was provided to `__init__` and wasn't `None`.
+    filename: str
     def __init__(self, reason: str | BaseException, filename: str | None = None) -> None: ...
 
 class HTTPError(URLError, addinfourl):
@@ -16,6 +18,9 @@ class HTTPError(URLError, addinfourl):
     @property
     def reason(self) -> str: ...  # type: ignore[override]
     code: int
+    msg: str
+    hdrs: Message
+    fp: IO[bytes]
     def __init__(self, url: str, code: int, msg: str, hdrs: Message, fp: IO[bytes] | None) -> None: ...
 
 class ContentTooShortError(URLError):

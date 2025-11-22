@@ -443,7 +443,7 @@ reveal_type(register(lambda: f(1)))  # N: Revealed type is "def ()"
 reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Literal[1]?)"
 register(lambda x: f(x))  # E: Cannot infer type of lambda \
                           # E: Argument 1 to "register" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
-register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "Callable[[Arg(int, 'x')], None]"; expected "Callable[[Arg(int, 'y')], None]"
+register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "def (x: int) -> None"; expected "def (y: int) -> None"
 reveal_type(register(lambda x: f(x), 1))  # N: Revealed type is "def (Literal[1]?)"
 reveal_type(register(lambda x, y: g(x, y), 1, "a"))  # N: Revealed type is "def (Literal[1]?, Literal['a']?)"
 reveal_type(register(lambda x, y: g(x, y), 1, y="a"))  # N: Revealed type is "def (Literal[1]?, y: Literal['a']?)"
@@ -623,10 +623,10 @@ def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None: ...
                     # N: This is likely because "one" has named arguments: "x". Consider marking them positional-only
 def one(x: str) -> int: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[int, NamedArg(int, 'x')], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "def two(*, x: int) -> int"; expected "def (int, /, *, x: int) -> int"
 def two(*, x: int) -> int: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[KwArg(int)], int]"; expected "Callable[[int, KwArg(int)], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "def three(**kwargs: int) -> int"; expected "def (int, /, **kwargs: int) -> int"
 def three(**kwargs: int) -> int: ...
 
 @expects_int_first # Accepted
@@ -921,8 +921,8 @@ class A:
     def func(self, action: Callable[_P, _R], *args: _P.args, **kwargs: _P.kwargs) -> _R:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`6, *_P.args, **_P.kwargs) -> _R`6"
-reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`10, *_P.args, **_P.kwargs) -> _R`10"
+reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`4, *_P.args, **_P.kwargs) -> _R`4"
+reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`8, *_P.args, **_P.kwargs) -> _R`8"
 
 def f(x: int) -> int:
     ...
@@ -953,8 +953,8 @@ class A:
     def func(self, action: Job[_P, None]) -> Job[_P, None]:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
-reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`6, None]) -> __main__.Job[_P`6, None]"
+reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`3, None]) -> __main__.Job[_P`3, None]"
+reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`5, None]) -> __main__.Job[_P`5, None]"
 reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
 
 def f(x: int, y: int) -> None: ...
@@ -1121,7 +1121,6 @@ reveal_type(jf(1))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
 [case testGenericsInInferredParamspecReturn]
-# flags: --new-type-inference
 from typing import Callable, TypeVar, Generic
 from typing_extensions import ParamSpec
 
@@ -1646,7 +1645,6 @@ def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecDecoratorAppliedToGeneric]
-# flags: --new-type-inference
 from typing import Callable, List, TypeVar
 from typing_extensions import ParamSpec
 
@@ -1684,7 +1682,6 @@ reveal_type(test(*ints))  # N: Revealed type is "__main__.Foo[[*builtins.int]]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecArgumentParamInferenceGeneric]
-# flags: --new-type-inference
 from typing import Callable, TypeVar
 from typing_extensions import ParamSpec
 
@@ -1702,7 +1699,6 @@ y: int = call(identity, 2)
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecNestedApplyNoCrash]
-# flags: --new-type-inference
 from typing import Callable, TypeVar
 from typing_extensions import ParamSpec
 
@@ -2158,7 +2154,7 @@ reveal_type(submit(  # N: Revealed type is "__main__.Result"
     backend="asyncio",
 ))
 submit(
-    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], R], VarArg(object), DefaultNamedArg(str, 'backend')], R]"; expected "Callable[[Callable[[], Result], int], Result]"
+    run,  # E: Argument 1 to "submit" has incompatible type "def [R] run(func: Callable[[], R], *args: object, backend: str = ...) -> R"; expected "Callable[[Callable[[], Result], int], Result]"
     run_portal,
     backend=int(),
 )

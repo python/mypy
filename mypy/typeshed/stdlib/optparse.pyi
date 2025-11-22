@@ -24,8 +24,7 @@ __all__ = [
     "BadOptionError",
     "check_choice",
 ]
-# pytype is not happy with `NO_DEFAULT: Final = ("NO", "DEFAULT")`
-NO_DEFAULT: Final[tuple[Literal["NO"], Literal["DEFAULT"]]]
+NO_DEFAULT: Final = ("NO", "DEFAULT")
 SUPPRESS_HELP: Final = "SUPPRESSHELP"
 SUPPRESS_USAGE: Final = "SUPPRESSUSAGE"
 

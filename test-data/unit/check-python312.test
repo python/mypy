@@ -1228,6 +1228,43 @@ class C[T]:
 def f[S, S](x: S) -> S:  # E: "S" already defined as a type parameter
     return x
 
+[case testPEP695TypeVarNameClashNoCrashForwardReference]
+# https://github.com/python/mypy/issues/18507
+from typing import TypeVar
+T = TypeVar("T", bound=Foo)  # E: Name "Foo" is used before definition
+
+class Foo: ...
+class Bar[T]: ...
+
+[case testPEP695TypeVarNameClashNoCrashDeferredSymbol]
+# https://github.com/python/mypy/issues/19526
+T = Unknown  # E: Name "Unknown" is not defined
+
+class Foo[T]: ...
+class Bar[*T]: ...
+class Baz[**T]: ...
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeVarNameClashTypeAlias]
+type Tb = object
+type Ta[Tb] = 'B[Tb]'
+class A[Ta]: ...
+class B[Tb](A[Ta]): ...
+
+[case testPEP695TypeVarNameClashStarImport]
+# Similar to
+# https://github.com/python/mypy/issues/19946
+import a
+
+[file a.py]
+from b import *
+class Foo[T]: ...
+
+[file b.py]
+from a import *
+class Bar[T]: ...
+[builtins fixtures/tuple.pyi]
+
 [case testPEP695ClassDecorator]
 from typing import Any
 
@@ -2020,6 +2057,7 @@ reveal_type(AA.XX)  # N: Revealed type is "def () -> __main__.XX"
 y: B.Y
 reveal_type(y)  # N: Revealed type is "__main__.Y"
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testPEP695TypeAliasRecursiveInvalid]
 type X = X  # E: Cannot resolve name "X" (possible cyclic definition)
@@ -2038,12 +2076,13 @@ class Z: ...  # E: Name "Z" already defined on line 2
 # https://github.com/python/mypy/issues/18856
 class A[*Ts]: ...
 
-A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
-a: A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
-def foo(a: A[*tuple[int, ...], *tuple[int, ...]]): ...  # E: More than one Unpack in a type is not allowed
+A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one variadic Unpack in a type is not allowed
+A[*tuple[*tuple[int, ...]], *tuple[*tuple[int, ...]]]  # E: More than one variadic Unpack in a type is not allowed
+a: A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one variadic Unpack in a type is not allowed
+def foo(a: A[*tuple[int, ...], *tuple[int, ...]]): ...  # E: More than one variadic Unpack in a type is not allowed
 
-tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
-b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
+tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one variadic Unpack in a type is not allowed
+b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one variadic Unpack in a type is not allowed
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2084,3 +2123,103 @@ reveal_type(A1().x)  # N: Revealed type is "builtins.int"
 reveal_type(A2().x)  # N: Revealed type is "builtins.int"
 reveal_type(A3().x)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/tuple.pyi]
+
+[case testDataclassWithTypeVarTuple]
+# flags: --python-version 3.13
+# https://github.com/python/mypy/issues/19559
+from typing import Callable
+from dataclasses import dataclass
+
+@dataclass
+class Test[*Ts, R]:
+    a: Callable[[*Ts], R]
+[builtins fixtures/dict.pyi]
+
+[case testPEP695AliasDoesNotReferToFullname]
+# https://github.com/python/mypy/issues/19698
+from typing import TypeAliasType
+type D = dict
+type T = type
+type TA = TypeAliasType
+
+D()          # E: "TypeAliasType" not callable
+X = TA("Y")  # E: "TypeAliasType" not callable
+
+x: object
+if T(x) is str:     # E: "TypeAliasType" not callable
+    reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasForwardReferenceInUnusedTypeVar]
+# https://discuss.python.org/t/103305
+type Alias1[T: "A"] = int
+type Alias2[T: ("A", int)] = int
+class A: ...
+
+x1: Alias1[A]  # ok
+x2: Alias2[A]  # ok
+
+[case testUndefinedUnpackInPEP696Base]
+# Typo below is intentional.
+class MyTuple[*Ts](tuple[*TS]):  # E: Name "TS" is not defined
+    ...
+
+x: MyTuple[int, str]
+reveal_type(x[0])  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testAnnotatedWithCallableAsParameterTypeKeyword]
+from typing_extensions import Annotated
+
+def something() -> None: ...
+
+type A = list[Annotated[str, something()]]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedWithCallableAsParameterTypeKeywordDeeper]
+from typing_extensions import Annotated
+
+def something() -> None: ...
+
+type A = list[Annotated[Annotated[str, something()], something()]]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
+[case testPEP695TypeAliasRecursiveInParameterBound]
+from typing import Any
+
+type A1[T: B1] = list[int]
+type B1 = None | A1[B1]
+x1: A1[B1]
+y1: A1[int]  # E: Type argument "int" of "A1" must be a subtype of "B1"
+z1: A1[None]
+
+type A2[T: B2] = list[T]
+type B2 = None | A2[Any]
+x2: A2[B2]
+y2: A2[int]  # E: Type argument "int" of "A2" must be a subtype of "B2"
+z2: A2[None]
+
+type A3[T: B3] = list[T]
+type B3 = None | A3[B3]
+x3: A3[B3]
+y3: A3[int]  # E: Type argument "int" of "A3" must be a subtype of "B3"
+z3: A3[None]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasRecursiveTupleUnionNoCrash]
+from collections.abc import Hashable
+
+type HashableArg = int | tuple[Hashable | HashableArg]
+x: HashableArg
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, tuple[Union[typing.Hashable, ...]]]"
+if isinstance(x, tuple):
+    y, = x
+    reveal_type(y)  # N: Revealed type is "Union[typing.Hashable, Union[builtins.int, tuple[Union[typing.Hashable, ...]]]]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

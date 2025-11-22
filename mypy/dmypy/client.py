@@ -36,9 +36,6 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 parser = argparse.ArgumentParser(
     prog="dmypy", description="Client for mypy daemon mode", fromfile_prefix_chars="@"
 )
-if sys.version_info >= (3, 14):
-    parser.color = True  # Set as init arg in 3.14
-
 parser.set_defaults(action=None)
 parser.add_argument(
     "--status-file", default=DEFAULT_STATUS_FILE, help="status file to retrieve daemon details"

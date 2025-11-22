@@ -1,8 +1,9 @@
 from tkinter import Event, Misc, Tk, Widget
-from typing import ClassVar, Protocol
+from typing import ClassVar, Protocol, type_check_only
 
 __all__ = ["dnd_start", "DndHandler"]
 
+@type_check_only
 class _DndSource(Protocol):
     def dnd_end(self, target: Widget | None, event: Event[Misc] | None, /) -> None: ...
 

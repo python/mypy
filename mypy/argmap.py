@@ -167,7 +167,7 @@ class ArgTypeExpander:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
-        self.kwargs_used: set[str] = set()
+        self.kwargs_used: set[str] | None = None
         # Type context for `*` and `**` arg kinds.
         self.context = context
 
@@ -241,6 +241,8 @@ class ArgTypeExpander:
             from mypy.subtypes import is_subtype
 
             if isinstance(actual_type, TypedDictType):
+                if self.kwargs_used is None:
+                    self.kwargs_used = set()
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
                     assert formal_name is not None

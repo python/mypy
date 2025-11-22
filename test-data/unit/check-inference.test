@@ -343,7 +343,7 @@ for var2 in [g, h, i, j, k, l]:
     reveal_type(var2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 for var3 in [m, n, o, p, q, r]:
-    reveal_type(var3)  # N: Revealed type is "Union[Any, builtins.int]"
+    reveal_type(var3)  # N: Revealed type is "Union[builtins.int, Any]"
 
 T = TypeVar("T", bound=Type[Foo])
 
@@ -1109,7 +1109,7 @@ def f(*, x: int) -> int: ...
 def g(*, y: int) -> int: ...
 def h(*, x: int) -> int: ...
 
-list_1 = [f, g]  # E: List item 0 has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[NamedArg(int, 'y')], int]"
+list_1 = [f, g]  # E: List item 0 has incompatible type "def f(*, x: int) -> int"; expected "def g(*, y: int) -> int"
 list_2 = [f, h]
 [builtins fixtures/list.pyi]
 
@@ -1247,7 +1247,7 @@ class X(TypedDict):
 
 x: X
 for a in ("hourly", "daily"):
-    reveal_type(a)  # N: Revealed type is "Union[Literal['daily']?, Literal['hourly']?]"
+    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
     reveal_type(x[a])  # N: Revealed type is "builtins.int"
     reveal_type(a.upper())  # N: Revealed type is "builtins.str"
     c = a
@@ -1405,14 +1405,12 @@ class B: pass
 [builtins fixtures/list.pyi]
 
 [case testUninferableLambda]
-# flags: --new-type-inference
 from typing import TypeVar, Callable
 X = TypeVar('X')
 def f(x: Callable[[X], X]) -> X: pass
 y = f(lambda x: x)  # E: Need type annotation for "y"
 
 [case testUninferableLambdaWithTypeError]
-# flags: --new-type-inference
 from typing import TypeVar, Callable
 X = TypeVar('X')
 def f(x: Callable[[X], X], y: str) -> X: pass
@@ -1436,7 +1434,7 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type "Callable[[VarArg(Any), KwArg(Any)], int]", argument has type "Callable[..., None]")
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type "def (*a: Any, **k: Any) -> int", argument has type "Callable[..., None]")
     pass
 [builtins fixtures/dict.pyi]
 
@@ -1964,6 +1962,31 @@ d = None
 if 'x' in d:  # E: "None" has no attribute "__iter__" (not iterable)
     pass
 reveal_type(d)  # N: Revealed type is "None"
+[builtins fixtures/dict.pyi]
+
+[case testNoWrongUnreachableWarningWithNoStrictOptionalAndFinalInstance]
+# flags: --no-strict-optional --warn-unreachable
+from typing import final, Optional
+
+@final
+class C: ...
+
+x: Optional[C]
+if not x:
+    x = C()
+[builtins fixtures/dict.pyi]
+
+[case testNoWrongUnreachableWarningWithNoStrictOptionalAndEnumLiteral]
+# flags: --no-strict-optional --warn-unreachable
+from enum import Enum
+from typing import Literal, Optional
+
+class E(Enum):
+    a = 1
+
+x: Optional[Literal[E.a]]
+if not x:
+    x = E.a
 [builtins fixtures/dict.pyi]
 
 [case testInferFromEmptyListWhenUsingInWithStrictEquality]
@@ -2499,7 +2522,6 @@ class C:
     def __init__(self) -> None:
         self.x = []  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable]
 from typing import Tuple, TypeVar
@@ -2511,7 +2533,6 @@ x = None
 (x,) = f('')
 reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable2]
 # flags: --no-local-partial-types
@@ -2520,11 +2541,10 @@ T = TypeVar('T', bound=str)
 
 def f() -> Tuple[T]:
     ...
-x = None
+x = None  # E: Need type annotation for "x"
 if int():
     (x,) = f()
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable3]
 from typing import Tuple, TypeVar
@@ -2536,7 +2556,76 @@ x = None
 (x, x) = f('')
 reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
+
+[case testRejectsPartialWithUninhabited]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Foo(Generic[T]): ...
+
+def check() -> None:
+    x = None  # E: Need type annotation for "x"
+    if int():
+        x = Foo()
+        reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
+    reveal_type(x)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+[case testRejectsPartialWithUninhabited2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Foo(Generic[T]): ...
+
+x = None  # E: Need type annotation for "x"
+
+def check() -> None:
+    global x
+    x = Foo()
+    reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
+
+reveal_type(x)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+[case testRejectsPartialWithUninhabited3]
+# Without force-rejecting Partial<None>, this crashes:
+# https://github.com/python/mypy/issues/16573
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Foo(Generic[T]): ...
+
+def check() -> None:
+    client = None  # E: Need type annotation for "client"
+
+    if client := Foo():
+        reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
+
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+    client = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Foo[Any]]")
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+[case testRejectsPartialWithUninhabitedIndependently]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Foo(Generic[T]): ...
+
+client = None  # E: Need type annotation for "client"
+
+def bad() -> None:
+    global client
+    client = Foo()
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
+
+def good() -> None:
+    global client
+    client = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Foo[Any]]")
+    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+
+def bad2() -> None:
+    global client
+    client = Foo()
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
 
 [case testInferenceNestedTuplesFromGenericIterable]
 from typing import Tuple, TypeVar
@@ -2551,7 +2640,6 @@ def main() -> None:
     reveal_type(a) # N: Revealed type is "builtins.int"
     reveal_type(b) # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testDontMarkUnreachableAfterInferenceUninhabited]
 from typing import TypeVar
@@ -3460,7 +3548,7 @@ if x:
 [builtins fixtures/dict.pyi]
 
 [case testSuggestPep604AnnotationForPartialNone]
-# flags: --local-partial-types --python-version 3.10
+# flags: --local-partial-types --python-version 3.10 --no-force-union-syntax
 x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
 [case testTupleContextFromIterable]
@@ -3681,7 +3769,7 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 def g(__x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "tuple[Never, Never]" \
                    # E: Argument 1 to "f" has incompatible type "Callable[[str], None]"; expected "Call[Never]" \
-                   # N: "Call[Never].__call__" has type "Callable[[NamedArg(Never, 'x')], None]"
+                   # N: "Call[Never].__call__" has type "def __call__(self, *, x: Never) -> None"
 [builtins fixtures/list.pyi]
 
 [case testCallableInferenceAgainstCallableNamedVsPosOnly]
@@ -3697,7 +3785,7 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(*, x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(str, 'x')], None]"; expected "Call[Never]" \
+                   # E: Argument 1 to "f" has incompatible type "def g(*, x: str) -> None"; expected "Call[Never]" \
                    # N: "Call[Never].__call__" has type "Callable[[Never], None]"
 [builtins fixtures/list.pyi]
 
@@ -3714,7 +3802,7 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(**x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[KwArg(str)], None]"; expected "Call[Never]" \
+                   # E: Argument 1 to "f" has incompatible type "def g(**x: str) -> None"; expected "Call[Never]" \
                    # N: "Call[Never].__call__" has type "Callable[[Never], None]"
 [builtins fixtures/list.pyi]
 
@@ -3731,8 +3819,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(*args: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]" \
-                   # N: "Call[Never].__call__" has type "Callable[[NamedArg(Never, 'x')], None]"
+                   # E: Argument 1 to "f" has incompatible type "def g(*args: str) -> None"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "def __call__(self, *, x: Never) -> None"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstTypeVarActualBound]
@@ -3783,10 +3871,18 @@ from typing import Any, Dict, NoReturn, NoReturn, Union
 
 def foo() -> Union[Dict[str, Any], Dict[int, Any]]:
     return {}
+[builtins fixtures/dict.pyi]
+
+[case testExistingEmptyCollectionDoesNotUpcast]
+from typing import Any, Dict, NoReturn, NoReturn, Union
 
 empty: Dict[NoReturn, NoReturn]
+
+def foo() -> Dict[str, Any]:
+    return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "dict[str, Any]")
+
 def bar() -> Union[Dict[str, Any], Dict[int, Any]]:
-    return empty
+    return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "Union[dict[str, Any], dict[int, Any]]")
 [builtins fixtures/dict.pyi]
 
 [case testUpperBoundInferenceFallbackNotOverused]

@@ -336,3 +336,35 @@ def test_dict_to_bool() -> None:
     for x in tmp_list:
         assert is_true(x)
         assert not is_false(x)
+
+[case testIsInstance]
+from copysubclass import subc
+def test_built_in() -> None:
+    assert isinstance({}, dict)
+    assert isinstance({'one': 1, 'two': 2}, dict)
+    assert isinstance({1: 1, 'two': 2}, dict)
+    assert isinstance(subc(), dict)
+    assert isinstance(subc({'a': 1, 'b': 2}), dict)
+    assert isinstance(subc({1: 'a', 2: 'b'}), dict)
+
+    assert not isinstance(set(), dict)
+    assert not isinstance((), dict)
+    assert not isinstance((1,2,3), dict)
+    assert not isinstance({'a','b'}, dict)
+    assert not isinstance(int() + 1, dict)
+    assert not isinstance(str() + 'a', dict)
+
+def test_user_defined() -> None:
+    from userdefineddict import dict
+
+    assert isinstance(dict(), dict)
+    assert not isinstance({1: dict()}, dict)
+
+[file copysubclass.py]
+from typing import Any
+class subc(dict[Any, Any]):
+    pass
+
+[file userdefineddict.py]
+class dict:
+    pass

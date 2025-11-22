@@ -46,6 +46,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     UnpackType,
+    flatten_nested_tuples,
     get_proper_type,
 )
 
@@ -290,7 +291,7 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     fallback = typ.partial_fallback
     assert fallback.type.fullname == "builtins.tuple"
     items = []
-    for item in typ.items:
+    for item in flatten_nested_tuples(typ.items):
         # TODO: this duplicates some logic in typeops.tuple_fallback().
         if isinstance(item, UnpackType):
             unpacked_type = get_proper_type(item.type)
@@ -302,7 +303,9 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
             ):
                 items.append(unpacked_type.args[0])
             else:
-                raise NotImplementedError
+                # This is called before semanal_typeargs.py fixes broken unpacks,
+                # where the error should also be generated.
+                items.append(AnyType(TypeOfAny.from_error))
         else:
             items.append(item)
     fallback.args = (make_simplified_union(items),)

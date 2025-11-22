@@ -119,12 +119,24 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def guess_type(self, path: StrPath) -> str: ...  # undocumented
 
 def executable(path: StrPath) -> bool: ...  # undocumented
-@deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.15")
-class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
-    cgi_directories: list[str]
-    have_fork: bool  # undocumented
-    def do_POST(self) -> None: ...
-    def is_cgi(self) -> bool: ...  # undocumented
-    def is_executable(self, path: StrPath) -> bool: ...  # undocumented
-    def is_python(self, path: StrPath) -> bool: ...  # undocumented
-    def run_cgi(self) -> None: ...  # undocumented
+
+if sys.version_info >= (3, 13):
+    @deprecated("Deprecated since Python 3.13; will be removed in Python 3.15.")
+    class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
+        cgi_directories: list[str]
+        have_fork: bool  # undocumented
+        def do_POST(self) -> None: ...
+        def is_cgi(self) -> bool: ...  # undocumented
+        def is_executable(self, path: StrPath) -> bool: ...  # undocumented
+        def is_python(self, path: StrPath) -> bool: ...  # undocumented
+        def run_cgi(self) -> None: ...  # undocumented
+
+else:
+    class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
+        cgi_directories: list[str]
+        have_fork: bool  # undocumented
+        def do_POST(self) -> None: ...
+        def is_cgi(self) -> bool: ...  # undocumented
+        def is_executable(self, path: StrPath) -> bool: ...  # undocumented
+        def is_python(self, path: StrPath) -> bool: ...  # undocumented
+        def run_cgi(self) -> None: ...  # undocumented
