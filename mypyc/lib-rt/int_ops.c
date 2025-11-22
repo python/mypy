@@ -597,6 +597,68 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
     return 1.0;
 }
 
+static PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, int little_endian, int signed_flag) {
+    // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
+    PyObject *result = PyBytes_FromStringAndSize(NULL, length);
+    if (!result) {
+        return NULL;
+    }
+    unsigned char *bytes = (unsigned char *)PyBytes_AS_STRING(result);
+#if PY_VERSION_HEX >= 0x030D0000  // 3.13.0
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag, 1);
+#else
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
+#endif
+    if (res < 0) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    return result;
+}
+
+// int.to_bytes(length, byteorder, signed=False)
+PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    if (!PyUnicode_Check(byteorder)) {
+        Py_DECREF(pyint);
+        PyErr_SetString(PyExc_TypeError, "byteorder must be str");
+        return NULL;
+    }
+    const char *order = PyUnicode_AsUTF8(byteorder);
+    if (!order) {
+        Py_DECREF(pyint);
+        return NULL;
+    }
+    int little_endian;
+    if (strcmp(order, "big") == 0) {
+        little_endian = 0;
+    } else if (strcmp(order, "little") == 0) {
+        little_endian = 1;
+    } else {
+        PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
+        return NULL;
+    }
+    PyObject *result = CPyLong_ToBytes(pyint, length, little_endian, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// int.to_bytes(length, byteorder="little", signed=False)
+PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    PyObject *result = CPyLong_ToBytes(pyint, length, 1, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// int.to_bytes(length, "big", signed=False)
+PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    PyObject *result = CPyLong_ToBytes(pyint, length, 0, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
 // int.bit_length()
 CPyTagged CPyTagged_BitLength(CPyTagged self) {
     // Handle zero
