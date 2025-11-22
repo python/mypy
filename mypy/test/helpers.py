@@ -365,6 +365,8 @@ def parse_options(
 
     if testcase.config.getoption("--mypy-verbose"):
         options.verbosity = testcase.config.getoption("--mypy-verbose")
+    if testcase.config.getoption("--mypy-num-workers"):
+        options.num_workers = testcase.config.getoption("--mypy-num-workers")
 
     return options
 
@@ -482,3 +484,7 @@ def find_test_files(pattern: str, exclude: list[str] | None = None) -> list[str]
         for path in (pathlib.Path(test_data_prefix).rglob(pattern))
         if path.name not in (exclude or [])
     ]
+
+
+def remove_typevar_ids(a: list[str]) -> list[str]:
+    return [re.sub(r"`-?\d+", "", line) for line in a]

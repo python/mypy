@@ -1747,7 +1747,7 @@ def f(blocks: Any): # E: Name "Any" is not defined \
     to_process = list(blocks)
 [builtins fixtures/list.pyi]
 
-[case testSpecialCaseEmptyListInitialization2]
+[case testSpecialCaseEmptyListInitialization2_no_parallel]
 def f(blocks: object):
     to_process = []
     to_process = list(blocks) # E: No overload variant of "list" matches argument type "object" \
@@ -3644,17 +3644,14 @@ class A:
 import a
 [file a.py]
 import b
-reveal_type(b.B.x)
+reveal_type(b.B.x)  # N: Revealed type is "builtins.int"
 class A:
     x = 42
 [file b.py]
 import a
-reveal_type(a.A.x)
+reveal_type(a.A.x)  # N: Revealed type is "builtins.int"
 class B:
     x = 42
-[out]
-tmp/b.py:2: note: Revealed type is "builtins.int"
-tmp/a.py:2: note: Revealed type is "builtins.int"
 
 [case testUnionTypeCallableInference]
 from typing import Callable, Type, TypeVar, Union

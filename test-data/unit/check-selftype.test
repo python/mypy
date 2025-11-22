@@ -749,7 +749,7 @@ def bad(x: str) -> str: ...
 reveal_type(ci.from_item(conv))  # N: Revealed type is "builtins.str"
 ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "Callable[[str], str]"; expected "Callable[[int], str]"
 
-[case testSelfTypeRestrictedMethodOverloadInit]
+[case testSelfTypeRestrictedMethodOverloadInit_no_parallel]
 from typing import TypeVar
 from lib import P, C
 

@@ -6902,7 +6902,7 @@ class TheClass:
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
 
 
-[case testIncrementalFunctoolsPartial]
+[case testIncrementalFunctoolsPartial_no_parallel]
 import a
 
 [file a.py]

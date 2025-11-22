@@ -3,7 +3,7 @@
 
 def main() -> None:
     return
-main() # E: Custom error  [custom]
+main()  # E: Custom error  [custom]
 
 [file mypy.ini]
 \[mypy]
@@ -25,7 +25,7 @@ plugins=<ROOT>/test-data/unit/plugins/custom_errorcode.py
 
 def main() -> None:
     return
-main() # E: Custom error  [custom]
+main()  # E: Custom error  [custom]
 
 [file mypy.ini]
 \[mypy]

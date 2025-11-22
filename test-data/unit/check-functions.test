@@ -1224,23 +1224,19 @@ import b
 from d import dec
 @dec
 def f(x: int) -> None: pass
-b.g(1) # E
+b.g(1)  # E: Argument 1 to "g" has incompatible type "int"; expected "str"
 
 [file b.py]
 import a
 from d import dec
 @dec
 def g(x: str) -> None: pass
-a.f('')
+a.f('')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [file d.py]
 from typing import TypeVar
 T = TypeVar('T')
 def dec(f: T) -> T: return f
-
-[out]
-tmp/b.py:5: error: Argument 1 to "f" has incompatible type "str"; expected "int"
-tmp/a.py:5: error: Argument 1 to "g" has incompatible type "int"; expected "str"
 
 [case testDecoratorWithNoAnnotationInImportCycle]
 import a
@@ -1270,22 +1266,18 @@ import b
 from d import dec
 @dec
 def f(x: int) -> str: pass
-b.g(1)()
+b.g(1)()  # E: "str" not callable
 
 [file b.py]
 import a
 from d import dec
 @dec
 def g(x: int) -> str: pass
-a.f(1)()
+a.f(1)()  # E: "str" not callable
 
 [file d.py]
 from typing import Callable
 def dec(f: Callable[[int], str]) -> Callable[[int], str]: return f
-
-[out]
-tmp/b.py:5: error: "str" not callable
-tmp/a.py:5: error: "str" not callable
 
 [case testDecoratorWithCallAndFixedReturnTypeInImportCycle]
 import a
@@ -1295,22 +1287,18 @@ import b
 from d import dec
 @dec()
 def f(x: int) -> str: pass
-b.g(1)()
+b.g(1)()  # E: "str" not callable
 
 [file b.py]
 import a
 from d import dec
 @dec()
 def g(x: int) -> str: pass
-a.f(1)()
+a.f(1)()  # E: "str" not callable
 
 [file d.py]
 from typing import Callable
 def dec() -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
-
-[out]
-tmp/b.py:5: error: "str" not callable
-tmp/a.py:5: error: "str" not callable
 
 [case testDecoratorWithCallAndFixedReturnTypeInImportCycleAndDecoratorArgs]
 import a
@@ -1318,26 +1306,20 @@ import a
 [file a.py]
 import b
 from d import dec
-@dec(1)
+@dec(1)  # E: Argument 1 to "dec" has incompatible type "int"; expected "str"
 def f(x: int) -> str: pass
-b.g(1)()
+b.g(1)()  # E: "str" not callable
 
 [file b.py]
 import a
 from d import dec
-@dec(1)
+@dec(1)  # E: Argument 1 to "dec" has incompatible type "int"; expected "str"
 def g(x: int) -> str: pass
-a.f(1)()
+a.f(1)()  # E: "str" not callable
 
 [file d.py]
 from typing import Callable
 def dec(x: str) -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
-
-[out]
-tmp/b.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
-tmp/b.py:5: error: "str" not callable
-tmp/a.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
-tmp/a.py:5: error: "str" not callable
 
 [case testUndefinedDecoratorInImportCycle]
 # cmd: mypy -m foo.base

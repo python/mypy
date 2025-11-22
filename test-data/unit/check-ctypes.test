@@ -166,11 +166,11 @@ reveal_type(intarr4(*int_values))  # N: Revealed type is "_ctypes.Array[ctypes.c
 reveal_type(intarr4(*c_int_values))  # N: Revealed type is "_ctypes.Array[ctypes.c_int]"
 reveal_type(intarr6(1, ctypes.c_int(2), *int_values))  # N: Revealed type is "_ctypes.Array[ctypes.c_int]"
 reveal_type(intarr6(1, ctypes.c_int(2), *c_int_values))  # N: Revealed type is "_ctypes.Array[ctypes.c_int]"
-[typing fixtures/typing-medium.pyi]
 
 float_values = [1.0, 2.0, 3.0, 4.0]
-intarr4(*float_values) # E: Array constructor argument 1 of type "List[float]" is not convertible to the array element type "Iterable[c_int]"
+intarr4(*float_values) # E: Array constructor argument 1 of type "list[float]" is not convertible to the array element type "Iterable[c_int]"
 [builtins fixtures/floatdict.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testCtypesArrayConstructorKwargs]
 import ctypes

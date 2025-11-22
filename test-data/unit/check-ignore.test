@@ -198,7 +198,7 @@ bar(Child())
 [out]
 main:19: error: Argument 1 to "bar" has incompatible type "Child"; expected "Base[str, str]"
 
-[case testTypeIgnoreLineNumberWithinFile]
+[case testTypeIgnoreLineNumberWithinFile_no_parallel]
 import m
 pass # type: ignore
 m.f(kw=1)

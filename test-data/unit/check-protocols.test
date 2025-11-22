@@ -3890,7 +3890,7 @@ other_flag = False
 def update() -> str: ...
 [builtins fixtures/module.pyi]
 
-[case testModuleAsProtocolImplementationClassObject]
+[case testModuleAsProtocolImplementationClassObject_no_parallel]
 import runner
 import bad_runner
 from typing import Callable, Protocol
@@ -3922,7 +3922,7 @@ class Run:
     def __init__(self, arg: str) -> None: ...
 [builtins fixtures/module.pyi]
 
-[case testModuleAsProtocolImplementationTypeAlias]
+[case testModuleAsProtocolImplementationTypeAlias_no_parallel]
 import runner
 import bad_runner
 from typing import Callable, Protocol

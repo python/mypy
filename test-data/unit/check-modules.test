@@ -947,21 +947,16 @@ accept_float(a.b.c.value)
 
 [file a/__init__.py]
 value = 3
-b.value
-a.b.value
+b.value  # E: Name "b" is not defined
+a.b.value  # E: Name "a" is not defined
 
 [file a/b/__init__.py]
 value = "a"
-c.value
-a.b.c.value
+c.value  # E: Name "c" is not defined
+a.b.c.value  # E: Name "a" is not defined
 
 [file a/b/c.py]
 value = 3.2
-[out]
-tmp/a/__init__.py:2: error: Name "b" is not defined
-tmp/a/__init__.py:3: error: Name "a" is not defined
-tmp/a/b/__init__.py:2: error: Name "c" is not defined
-tmp/a/b/__init__.py:3: error: Name "a" is not defined
 
 [case testSubmoduleMixingLocalAndQualifiedNames]
 from a.b import MyClass
@@ -2496,54 +2491,43 @@ y = int()
 
 [case testImportFromReExportInCycleUsingRelativeImport1]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/__init__.py]
 from .one import One
 from .two import Two
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/one.py]
 class One:
     pass
 [file m/two.py]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 x: One
-reveal_type(x)
+reveal_type(x)  # N: Revealed type is "m.one.One"
 
 class Two(One):
     pass
 y: Two
-y = x
+y = x  # E: Incompatible types in assignment (expression has type "One", variable has type "Two")
 x = y
-[out]
-tmp/m/two.py:2: note: Revealed type is "def () -> m.one.One"
-tmp/m/two.py:4: note: Revealed type is "m.one.One"
-tmp/m/two.py:9: error: Incompatible types in assignment (expression has type "One", variable has type "Two")
-tmp/m/__init__.py:3: note: Revealed type is "def () -> m.one.One"
-main:2: note: Revealed type is "def () -> m.one.One"
 
 [case testImportReExportInCycleUsingRelativeImport2]
 from m import One
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/__init__.py]
 from .one import One
 from .two import Two
-reveal_type(One)
+reveal_type(One)  # N: Revealed type is "def () -> m.one.One"
 [file m/one.py]
 class One:
     pass
 [file m/two.py]
 import m
-reveal_type(m.One)
+reveal_type(m.One)  # N: Revealed type is "def () -> m.one.One"
 x: m.One
-reveal_type(x)
+reveal_type(x)  # N: Revealed type is "m.one.One"
 class Two:
     pass
-[out]
-tmp/m/two.py:2: note: Revealed type is "def () -> m.one.One"
-tmp/m/two.py:4: note: Revealed type is "m.one.One"
-tmp/m/__init__.py:3: note: Revealed type is "def () -> m.one.One"
-main:2: note: Revealed type is "def () -> m.one.One"
 
 [case testImportReExportedNamedTupleInCycle1]
 from m import One
@@ -2604,7 +2588,7 @@ import p
 [file p/__init__.py]
 from . import a
 from . import b
-reveal_type(a.foo())
+reveal_type(a.foo())  # N: Revealed type is "builtins.int"
 [file p/a.py]
 import p
 def foo() -> int: pass
@@ -2612,11 +2596,8 @@ def foo() -> int: pass
 import p
 
 def run() -> None:
-    reveal_type(p.a.foo())
+    reveal_type(p.a.foo())  # N: Revealed type is "builtins.int"
 [builtins fixtures/module.pyi]
-[out]
-tmp/p/b.py:4: note: Revealed type is "builtins.int"
-tmp/p/__init__.py:3: note: Revealed type is "builtins.int"
 
 [case testMissingSubmoduleImportedWithIgnoreMissingImports]
 # flags: --ignore-missing-imports
@@ -2960,7 +2941,7 @@ class Some:
     name = __name__
 reveal_type(Some.name)  # N: Revealed type is "builtins.str"
 
-[case testReExportAllInStub]
+[case testReExportAllInStub_no_parallel]
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
 C()
@@ -3184,7 +3165,7 @@ from b import no_such_export
 [file b.py]
 from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
 
-[case testCyclicUndefinedImportWithStar1]
+[case testCyclicUndefinedImportWithStar1_no_parallel]
 import a
 [file a.py]
 from b import no_such_export
@@ -3194,7 +3175,7 @@ from a import *
 tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
 tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
-[case testCyclicUndefinedImportWithStar2]
+[case testCyclicUndefinedImportWithStar2_no_parallel]
 import a
 [file a.py]
 from b import no_such_export
