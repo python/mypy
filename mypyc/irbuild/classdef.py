@@ -30,7 +30,7 @@ from mypy.nodes import (
 from mypy.types import Instance, UnboundType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.ir.func_ir import FuncDecl, FuncSignature
+from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
     NAMESPACE_TYPE,
     BasicBlock,
@@ -472,6 +472,20 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
                 -1,
             )
         )
+
+        builder.add(
+            Call(
+                FuncDecl(
+                    cdef.name + "_coroutine_setup",
+                    None,
+                    builder.module_name,
+                    FuncSignature([RuntimeArg("type", object_rprimitive)], bool_rprimitive),
+                ),
+                [tp],
+                -1,
+            )
+        )
+
     # Populate a '__mypyc_attrs__' field containing the list of attrs
     builder.primitive_op(
         py_setattr_op,

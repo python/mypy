@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
-from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import (
     GENERATOR_ATTRIBUTE_PREFIX,
@@ -18,14 +17,7 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import (
-    FUNC_CLASSMETHOD,
-    FUNC_STATICMETHOD,
-    FuncDecl,
-    FuncIR,
-    all_values,
-    get_text_signature,
-)
+from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
     ERR_FALSE,
     NAMESPACE_MODULE,
@@ -115,14 +107,6 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
         name=emitter.native_function_name(fn),
         args=", ".join(args) or "void",
     )
-
-
-def native_function_doc_initializer(func: FuncIR) -> str:
-    text_sig = get_text_signature(func)
-    if text_sig is None:
-        return "NULL"
-    docstring = f"{text_sig}\n--\n\n"
-    return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
 
 
 def generate_native_function(
