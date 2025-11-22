@@ -6,6 +6,7 @@ import itertools
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
+from functools import reduce
 from typing import (
     Callable,
     Final,
@@ -166,6 +167,7 @@ from mypy.subtypes import (
     is_more_precise,
     is_proper_subtype,
     is_same_type,
+    is_same_type_ranges,
     is_subtype,
     restrict_subtype_away,
     unify_generic_callable,
@@ -6255,9 +6257,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 current_type = self.get_isinstance_type(expr)
                 if current_type is None:
                     continue
-                if type_being_compared is not None:
+                if type_being_compared is not None and not is_same_type_ranges(
+                    type_being_compared, current_type
+                ):
                     # It doesn't really make sense to have several types being
                     # compared to the output of type (like type(x) == int == str)
+                    # unless they are the same (like type(x) == float == float)
                     # because whether that's true is solely dependent on what the
                     # types being compared are, so we don't try to narrow types any
                     # further because we can't really get any information about the
@@ -6270,6 +6275,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if not exprs_in_type_calls:
             return {}, {}
+
+        if type_being_compared is None:
+            least_type = reduce(
+                meet_types, (self.lookup_type(expr) for expr in exprs_in_type_calls)
+            )
+            type_being_compared = [TypeRange(least_type, is_upper_bound=True)]
 
         if_maps: list[TypeMap] = []
         else_maps: list[TypeMap] = []
