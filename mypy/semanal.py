@@ -6506,7 +6506,7 @@ class SemanticAnalyzer(
         # 2b. Class attributes __qualname__ and __module__
         if self.type and not self.is_func_scope() and name in {"__qualname__", "__module__"}:
             v = Var(name, self.str_type())
-            v._fullname = name
+            v._fullname = self.qualified_name(name)
             return SymbolTableNode(MDEF, v)
         # 3. Local (function) scopes
         for table in reversed(self.locals):
