@@ -1842,8 +1842,10 @@ class SemanticAnalyzer(
                 return None
             tvs.append((p.name, tv))
 
-            if self.is_defined_type_param(p.name):
+            if old_tv := self.is_defined_type_param(p.name):
                 self.fail(f'"{p.name}" already defined as a type parameter', context)
+                # we rely on the typevar being at self.locals[-1] later, so this needs to happen
+                self.add_symbol(p.name, old_tv, context, no_progress=True, type_param=True)
             else:
                 assert self.add_symbol(
                     p.name, tv, context, no_progress=True, type_param=True
@@ -1851,15 +1853,15 @@ class SemanticAnalyzer(
 
         return tvs
 
-    def is_defined_type_param(self, name: str) -> bool:
+    def is_defined_type_param(self, name: str) -> TypeVarLikeExpr | None:
         for names in self.locals:
             if names is None:
                 continue
             if name in names:
                 node = names[name].node
                 if isinstance(node, TypeVarLikeExpr):
-                    return True
-        return False
+                    return node
+        return None
 
     def analyze_type_param(
         self, type_param: TypeParam, context: Context
@@ -2272,7 +2274,8 @@ class SemanticAnalyzer(
         has_type_var_tuple = False
         if defn.type_args is not None:
             for p in defn.type_args:
-                node = self.lookup(p.name, context)
+                assert self.locals[-1], "expected PEP 695 type vars in locals"
+                node = self.locals[-1][p.name]
                 assert node is not None
                 assert isinstance(node.node, TypeVarLikeExpr)
                 if isinstance(node.node, TypeVarTupleExpr):
