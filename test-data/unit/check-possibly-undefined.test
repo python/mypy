@@ -717,7 +717,7 @@ def f7() -> int:
             raise BaseException
         return x  # No error.
     finally:
-        pass
+        y = x  # E: Name "x" may be undefined
     return 0
 [builtins fixtures/exception.pyi]
 
