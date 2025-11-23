@@ -7030,7 +7030,12 @@ class SemanticAnalyzer(
             if not is_same_symbol(old, new):
                 if isinstance(new, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
                     self.add_redefinition(names, name, symbol)
-                if not (isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new)):
+                if isinstance(old, Var) and is_init_only(old):
+                    if old.has_explicit_value:
+                        self.fail("InitVar with default value cannot be redefined", context)
+                elif not (
+                    isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new)
+                ):
                     self.name_already_defined(name, context, existing)
         elif type_param or (
             name not in self.missing_names[-1] and "*" not in self.missing_names[-1]
@@ -8278,4 +8283,11 @@ def is_trivial_body(block: Block) -> bool:
 
     return isinstance(stmt, PassStmt) or (
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
+    )
+
+
+def is_init_only(node: Var) -> bool:
+    return (
+        isinstance(type := get_proper_type(node.type), Instance)
+        and type.type.fullname == "dataclasses.InitVar"
     )
