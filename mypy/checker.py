@@ -6266,14 +6266,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 arg = expr.args[0]
                 exprs_in_type_calls.append(arg)
                 typ = self.lookup_type(arg)
-                if typ is None:
-                    continue
-                type_range = self.isinstance_type_range(get_proper_type(typ))
             else:
                 proper_type = get_proper_type(self.lookup_type(expr))
-                # cannot read type
-                if proper_type is None:
-                    continue
                 # get the range as though we were using isinstance
                 type_range = self.isinstance_type_range(proper_type)
                 # None range means this should not be used in comparison (eg tuple)
