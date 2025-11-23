@@ -61,6 +61,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     try:
         with temp_source(source) as fnam:
             node = native_parse(fnam)
+            node.path = "main"
             a = node.str_with_options(options).split("\n")
     except CompileError as e:
         a = e.messages

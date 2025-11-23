@@ -2,7 +2,6 @@
 print("hello")
 [out]
 MypyFile:1(
-
   ExpressionStmt:1(
     CallExpr:1(
       NameExpr(print)
@@ -13,7 +12,6 @@ MypyFile:1(
 foo_bar.xyz2
 [out]
 MypyFile:1(
-
   ExpressionStmt:1(
     MemberExpr:1(
       NameExpr(foo_bar)

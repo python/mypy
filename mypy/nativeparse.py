@@ -61,7 +61,9 @@ def native_parse(filename: str) -> MypyFile:
     defs = []
     for i in range(n):
         defs.append(read_statement(data))
-    return MypyFile(defs, [])
+    node = MypyFile(defs, [])
+    node.path = filename
+    return node
 
 
 def parse_to_binary_ast(filename: str) -> bytes:
