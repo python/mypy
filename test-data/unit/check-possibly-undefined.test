@@ -628,7 +628,7 @@ def f7() -> int:
             x = 1
         assert False
     except:
-        pass
+        y = x  # E: Name "x" may be undefined
     return x  # E: Name "x" may be undefined
 [builtins fixtures/exception.pyi]
 
