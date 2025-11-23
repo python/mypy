@@ -37,6 +37,7 @@ from mypy.nodes import (
     CallExpr,
     Expression,
     ExpressionStmt,
+    MemberExpr,
     MypyFile,
     NameExpr,
     Node,
@@ -99,6 +100,13 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, ne)
         expect_end_tag(data)
         return ne
+    elif tag == nodes.MEMBER_EXPR:
+        e = read_expression(data)
+        attr = read_str(data)
+        m = MemberExpr(e, attr)
+        read_loc(data, m)
+        expect_end_tag(data)
+        return m
     elif tag == nodes.STR_EXPR:
         se = StrExpr(read_str(data))
         read_loc(data, se)

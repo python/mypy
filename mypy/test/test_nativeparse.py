@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from mypy import nodes
 from mypy.cache import END_TAG, LIST_GEN, LITERAL_INT, LITERAL_STR, LOCATION
 from mypy.nativeparse import native_parse, parse_to_binary_ast
-from mypy.nodes import MypyFile
+from mypy.nodes import ExpressionStmt, MemberExpr, MypyFile
 
 gc.set_threshold(200 * 1000, 30, 30)
 
@@ -48,6 +48,13 @@ class TestNativeParse(unittest.TestCase):
         with temp_source("print('hello')") as fnam:
             node = native_parse(fnam)
             assert isinstance(node, MypyFile)
+
+    def test_deserialize_member_expr(self) -> None:
+        with temp_source("foo_bar.xyz2") as fnam:
+            node = native_parse(fnam)
+            assert isinstance(node, MypyFile)
+            assert isinstance(node.defs[0], ExpressionStmt)
+            assert isinstance(node.defs[0].expr, MemberExpr)
 
     def test_deserialize_bench(self) -> None:
         with temp_source("print('hello')\n" * 4000) as fnam:

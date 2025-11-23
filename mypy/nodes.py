@@ -5021,6 +5021,8 @@ EXPR_STMT: Final[Tag] = 160
 CALL_EXPR: Final[Tag] = 161
 NAME_EXPR: Final[Tag] = 162
 STR_EXPR: Final[Tag] = 163
+IMPORT: Final[Tag] = 164
+MEMBER_EXPR: Final[Tag] = 165
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
