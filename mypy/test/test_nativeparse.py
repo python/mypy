@@ -1,3 +1,7 @@
+"""Tests for the native mypy parser."""
+
+from __future__ import annotations
+
 import contextlib
 import gc
 import os
@@ -5,12 +9,64 @@ import tempfile
 import unittest
 from collections.abc import Iterator
 
-from mypy import nodes
+from mypy import defaults, nodes
 from mypy.cache import END_TAG, LIST_GEN, LITERAL_INT, LITERAL_STR, LOCATION
+from mypy.config_parser import parse_mypy_comments
+from mypy.errors import CompileError
 from mypy.nativeparse import native_parse, parse_to_binary_ast
 from mypy.nodes import ExpressionStmt, MemberExpr, MypyFile
+from mypy.options import Options
+from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.helpers import assert_string_arrays_equal
+from mypy.util import get_mypy_comments
 
 gc.set_threshold(200 * 1000, 30, 30)
+
+
+class NativeParserSuite(DataSuite):
+    required_out_section = True
+    base_path = "."
+    files = ["native-parser.test"]
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        test_parser(testcase)
+
+
+def test_parser(testcase: DataDrivenTestCase) -> None:
+    """Perform a single native parser test case.
+
+    The argument contains the description of the test case.
+    """
+    options = Options()
+    options.hide_error_codes = True
+
+    if testcase.file.endswith("python310.test"):
+        options.python_version = (3, 10)
+    elif testcase.file.endswith("python312.test"):
+        options.python_version = (3, 12)
+    elif testcase.file.endswith("python313.test"):
+        options.python_version = (3, 13)
+    elif testcase.file.endswith("python314.test"):
+        options.python_version = (3, 14)
+    else:
+        options.python_version = defaults.PYTHON3_VERSION
+
+    source = "\n".join(testcase.input)
+
+    # Apply mypy: comments to options.
+    comments = get_mypy_comments(source)
+    changes, _ = parse_mypy_comments(comments, options)
+    options = options.apply_changes(changes)
+
+    try:
+        with temp_source(source) as fnam:
+            node = native_parse(fnam)
+            a = node.str_with_options(options).split("\n")
+    except CompileError as e:
+        a = e.messages
+    assert_string_arrays_equal(
+        testcase.output, a, f"Invalid parser output ({testcase.file}, line {testcase.line})"
+    )
 
 
 class TestNativeParse(unittest.TestCase):

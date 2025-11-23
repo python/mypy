@@ -1,0 +1,20 @@
+[case testHello]
+print("hello")
+[out]
+MypyFile:1(
+
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(print)
+      Args(
+        StrExpr(hello)))))
+
+[case testMemberExpr]
+foo_bar.xyz2
+[out]
+MypyFile:1(
+
+  ExpressionStmt:1(
+    MemberExpr:1(
+      NameExpr(foo_bar)
+      xyz2)))
