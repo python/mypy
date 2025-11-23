@@ -322,6 +322,17 @@ if sys.version_info[:2] > (3, 5):
     assert TestEnum.b.name == 'b'
     assert TestEnum.b.value == 2
 
+[case testRunSuperYieldFromDict]
+from typing import Any, Iterator
+
+class DictSubclass(dict):
+    def items(self) -> Iterator[Any]:
+        yield 1
+        yield from super().items()
+
+def test_sub_dict() -> None:
+    assert list(DictSubclass().items()) == [1]
+
 [case testGetAttribute]
 class C:
     x: int

@@ -296,8 +296,8 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         # Grab first argument
         vself: Value = next(iter_env)
         if builder.fn_info.is_generator:
-            # grab sixth argument (see comment in translate_super_method_call)
-            self_targ = list(builder.symtables[-1].values())[6]
+            # grab seventh argument (see comment in translate_super_method_call)
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         elif not ir.is_ext_class:
             vself = next(iter_env)  # second argument is self if non_extension class
