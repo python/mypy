@@ -5017,10 +5017,10 @@ TYPE_ALIAS: Final[Tag] = 59
 CLASS_DEF: Final[Tag] = 60
 SYMBOL_TABLE_NODE: Final[Tag] = 61
 
-EXPR_STMT: Final[Tag] = 11
-CALL_EXPR: Final[Tag] = 12
-NAME_EXPR: Final[Tag] = 13
-STR_EXPR: Final[Tag] = 14
+EXPR_STMT: Final[Tag] = 160
+CALL_EXPR: Final[Tag] = 161
+NAME_EXPR: Final[Tag] = 162
+STR_EXPR: Final[Tag] = 163
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

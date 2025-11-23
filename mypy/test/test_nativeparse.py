@@ -1,14 +1,14 @@
 import contextlib
+import gc
 import os
 import tempfile
 import unittest
 from collections.abc import Iterator
 
 from mypy import nodes
+from mypy.cache import END_TAG, LIST_GEN, LITERAL_INT, LITERAL_STR, LOCATION
 from mypy.nativeparse import native_parse, parse_to_binary_ast
 from mypy.nodes import MypyFile
-
-import gc
 
 gc.set_threshold(200 * 1000, 30, 30)
 
@@ -20,25 +20,28 @@ class TestNativeParse(unittest.TestCase):
 
         def locs(start_line: int, start_column: int, end_line: int, end_column) -> list[int]:
             return [
+                LOCATION,
                 int_enc(start_line),
                 int_enc(start_column),
                 int_enc(end_line - start_line),
-                int_enc(end_column),
+                int_enc(end_column - start_column),
             ]
 
         with temp_source("print('hello')") as fnam:
             b = parse_to_binary_ast(fnam)
             assert list(b) == (
-                [22, nodes.EXPR_STMT, nodes.CALL_EXPR]
-                + [nodes.NAME_EXPR]
-                + [10]
+                [LITERAL_INT, 22, nodes.EXPR_STMT, nodes.CALL_EXPR]
+                + [nodes.NAME_EXPR, LITERAL_STR]
+                + [int_enc(5)]
                 + list(b"print")
                 + locs(1, 1, 1, 6)
-                + [22, nodes.STR_EXPR]
-                + [10]
+                + [END_TAG, LIST_GEN, 22, nodes.STR_EXPR]
+                + [LITERAL_STR, int_enc(5)]
                 + list(b"hello")
                 + locs(1, 7, 1, 14)
+                + [END_TAG]
                 + locs(1, 1, 1, 15)
+                + [END_TAG, END_TAG]
             )
 
     def test_deserialize_hello(self) -> None:
@@ -49,6 +52,7 @@ class TestNativeParse(unittest.TestCase):
     def test_deserialize_bench(self) -> None:
         with temp_source("print('hello')\n" * 4000) as fnam:
             import time
+
             for i in range(10):
                 native_parse(fnam)
             t0 = time.time()
@@ -62,9 +66,11 @@ class TestNativeParse(unittest.TestCase):
     def test_parse_bench(self) -> None:
         with temp_source("print('hello')\n" * 4000) as fnam:
             import time
-            from mypy.parse import parse
+
             from mypy.errors import Errors
             from mypy.options import Options
+            from mypy.parse import parse
+
             o = Options()
 
             for i in range(10):
