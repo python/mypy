@@ -2772,7 +2772,7 @@ x: X = z
 y: Y = z
 if type(x) is type(y):
     reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
-    reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
+    reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.Y" and "__main__.X">"
     x.y + y.x
 
 if isinstance(x, type(y)) and isinstance(y, type(x)):
@@ -2788,10 +2788,9 @@ from typing import Union
 
 y: str
 if type(y) is int:
-    y # E: Statement is unreachable
+    y
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
-[builtins fixtures/isinstance.pyi]
 
 [case testTypeEqualsCheckUsingIsNonOverlappingChild-xfail]
 # flags: --warn-unreachable
