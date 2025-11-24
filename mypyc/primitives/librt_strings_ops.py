@@ -1,11 +1,8 @@
 from typing import Final
 
 from mypyc.ir.ops import ERR_MAGIC
-from mypyc.primitives.registry import (
-    function_op,
-    method_op,
-)
 from mypyc.ir.rtypes import KNOWN_NATIVE_TYPES, bytes_rprimitive, none_rprimitive, uint8_rprimitive
+from mypyc.primitives.registry import function_op, method_op
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
 
