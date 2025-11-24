@@ -26,8 +26,6 @@ typedef struct {
 #define _CHECK_BYTES_WRITER(data, err) if (unlikely(_check_bytes_writer(data) == CPY_NONE_ERROR)) \
                                            return err;
 
-#define _ENSURE_SIZE(data, n) _ensure_size((BytesWriterObject *)data, n)
-
 #define _WRITE(data, type, v) \
     do { \
        *(type *)(((BytesWriterObject *)data)->ptr) = v; \
@@ -55,7 +53,7 @@ _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
 }
 
 static inline bool
-_ensure_size(BytesWriterObject *data, Py_ssize_t n) {
+ensure_bytes_writer_size(BytesWriterObject *data, Py_ssize_t n) {
     if (likely(data->end - data->ptr >= n)) {
         return true;
     } else {
@@ -204,7 +202,7 @@ _check_bytes_writer(PyObject *data) {
 }
 
 static char
-BytesWriter_write_internal(PyObject *self, PyObject *value) {
+BytesWriter_write_internal(BytesWriterObject *self, PyObject *value) {
     const char *data;
     Py_ssize_t size;
     if (likely(PyBytes_Check(value))) {
@@ -215,7 +213,7 @@ BytesWriter_write_internal(PyObject *self, PyObject *value) {
         size = PyByteArray_GET_SIZE(value);
     }
     // Write bytes content.
-    if (!_ENSURE_SIZE(self, size))
+    if (!ensure_bytes_writer_size(self, size))
         return CPY_NONE_ERROR;
     char *ptr = ((BytesWriterObject *)self)->ptr;
     memcpy(ptr, data, size);
@@ -236,7 +234,7 @@ BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject 
         PyErr_SetString(PyExc_TypeError, "value must be a bytes or bytearray object");
         return NULL;
     }
-    if (unlikely(BytesWriter_write_internal(self, value) == CPY_NONE_ERROR)) {
+    if (unlikely(BytesWriter_write_internal((BytesWriterObject *)self, value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -244,8 +242,8 @@ BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject 
 }
 
 static inline char
-BytesWriter_append_internal(PyObject *self, uint8_t value) {
-    if (!_ENSURE_SIZE(self, 1))
+BytesWriter_append_internal(BytesWriterObject *self, uint8_t value) {
+    if (!ensure_bytes_writer_size(self, 1))
         return CPY_NONE_ERROR;
     _WRITE(self, uint8_t, value);
     return CPY_NONE;
@@ -265,7 +263,7 @@ BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject
         CPy_TypeError("u8", value);
         return NULL;
     }
-    if (unlikely(BytesWriter_append_internal(self, unboxed) == CPY_NONE_ERROR)) {
+    if (unlikely(BytesWriter_append_internal((BytesWriterObject *)self, unboxed) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
