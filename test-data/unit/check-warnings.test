@@ -78,19 +78,21 @@ a = 1
 b: int = a
 c: Literal[1] = 1
 d: list[str] = []
-[out]
-main:4: error: Annotation "int" is redundant (inferred type is the same)
-main:5: error: Annotation "Literal[1]" is redundant (inferred type is the same)
+def f() -> None:
+    a = 1
+    b: int = a  # E: Annotation "int" is redundant (inferred type is the same)
+    c: Literal[1] = 1  # E: Annotation "Literal[1]" is redundant (inferred type is the same)
+    d: list[str] = []
 
-[case testRedundantAnnotationClassVar]
-# flags: --warn-redundant-annotation
-from typing import ClassVar
+class x:
+    def __init__(self) -> None:
+        self.a: int = 1
 
-class a:
-    b: ClassVar[int] = 1
-    c: ClassVar = "test"
-[out]
-main:5: error: Annotation "int" is redundant (inferred type is the same)
+    def f(self) -> None:
+        a = 1
+        b: int = a  # E: Annotation "int" is redundant (inferred type is the same)
+        c: Literal[1] = 1  # E: Annotation "Literal[1]" is redundant (inferred type is the same)
+        d: list[str] = []
 
 [case testRedundantAnnotationTypeVar]
 # flags: --warn-redundant-annotation
@@ -101,13 +103,18 @@ T = TypeVar("T")
 def f(x: T) -> T:
   return x
 
-x: Literal[1] = f(1)
-y: list[str] = f([])
+def g() -> None:
+    x: Literal[1] = f(1)
+    y: list[str] = f([])
 
 [case testRedundantAnnotationSkips]
 # flags: --warn-redundant-annotation
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import ClassVar, NamedTuple
+
+class a:
+    b: ClassVar[int] = 1
+    c: ClassVar = "test"
 
 class d(NamedTuple):
     e: int = 1

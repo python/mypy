@@ -71,8 +71,8 @@ Example:
 Check that annotation is not redundant [redundant-annotation]
 -------------------------------------------------------------
 
-If you use :option:`--warn-redundant-annotation <mypy --warn-redundant-annotation>`, mypy will generate an error if the
-annotation type is the same as the inferred type.
+If you use :option:`--warn-redundant-annotation <mypy --warn-redundant-annotation>`, mypy will generate an error if a
+function local annotation type is the same as the inferred type.
 
 Example:
 

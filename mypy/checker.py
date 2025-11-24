@@ -145,7 +145,6 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     get_func_def,
-    is_class_var,
     is_final_node,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
@@ -3270,20 +3269,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and s.type is not None
             and not is_same_type(s.type, AnyType(TypeOfAny.special_form))
             and is_same_type(s.type, self.expr_checker.accept(s.rvalue))
+            and (defn := self.scope.current_function()) is not None
+            and defn.name != "__init__"
         ):
-            # skip bare ClassVar
-            if (
-                any(isinstance(lvalue, NameExpr) and is_class_var(lvalue) for lvalue in s.lvalues)
-                and isinstance(s.unanalyzed_type, UnboundType)
-                and not s.unanalyzed_type.args
-            ):
-                return
-
-            # skip dataclass and NamedTuple
-            cls = self.scope.active_class()
-            if cls and (dataclasses_plugin.is_processed_dataclass(cls) or cls.is_named_tuple):
-                return
-
             self.msg.redundant_annotation(s.type, s.type)
 
     def check_assignment(
