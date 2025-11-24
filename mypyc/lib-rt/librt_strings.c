@@ -23,9 +23,6 @@ typedef struct {
     char *end;  // End of the buffer
 } BytesWriterObject;
 
-#define _CHECK_BYTES_WRITER(data, err) if (unlikely(_check_bytes_writer(data) == CPY_NONE_ERROR)) \
-                                           return err;
-
 #define _WRITE(data, type, v) \
     do { \
        *(type *)(((BytesWriterObject *)data)->ptr) = v; \
@@ -190,15 +187,15 @@ static PyTypeObject BytesWriterType = {
     .tp_repr = (reprfunc)BytesWriter_repr,
 };
 
-static inline char
-_check_bytes_writer(PyObject *data) {
+static inline bool
+check_bytes_writer(PyObject *data) {
     if (unlikely(Py_TYPE(data) != &BytesWriterType)) {
         PyErr_Format(
             PyExc_TypeError, "data must be a BytesWriter object, got %s", Py_TYPE(data)->tp_name
         );
-        return CPY_NONE_ERROR;
+        return false;
     }
-    return CPY_NONE;
+    return true;
 }
 
 static char
@@ -229,7 +226,9 @@ BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject 
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
         return NULL;
     }
-    _CHECK_BYTES_WRITER(self, NULL)
+    if (!check_bytes_writer(self)) {
+        return NULL;
+    }
     if (unlikely(!PyBytes_Check(value) && !PyByteArray_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes or bytearray object");
         return NULL;
@@ -257,7 +256,9 @@ BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
         return NULL;
     }
-    _CHECK_BYTES_WRITER(self, NULL)
+    if (!check_bytes_writer(self)) {
+        return NULL;
+    }
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
