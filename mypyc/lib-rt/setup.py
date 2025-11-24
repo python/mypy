@@ -108,7 +108,7 @@ else:
                 "librt.strings",
                 [
                     "librt_strings.c",
-                    "init.c",  # TODO check which of these are actually needed
+                    "init.c",
                     "int_ops.c",
                     "exc_ops.c",
                     "pythonsupport.c",
