@@ -10,6 +10,10 @@ from testutil import assertRaises
 
 def test_bytes_writer_basics() -> None:
     w = BytesWriter()
+    assert w.getvalue() == b""
+    assert repr(w) == "BytesWriter(b'')"
+
+    w = BytesWriter()
     w.append(ord('a'))
     w.write(b'bc')
     assert w.getvalue() == b"abc"
