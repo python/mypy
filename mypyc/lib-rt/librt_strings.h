@@ -1,6 +1,17 @@
 #ifndef LIBRT_STRINGS_H
 #define LIBRT_STRINGS_H
 
+#ifndef MYPYC_EXPERIMENTAL
+
+static int
+import_librt_strings(void)
+{
+    // All librt.base64 features are experimental for now, so don't set up the API here
+    return 0;
+}
+
+#else  // MYPYC_EXPERIMENTAL
+
 // ABI version -- only an exact match is compatible. This will only be changed in
 // very exceptional cases (likely never) due to strict backward compatibility
 // requirements.
@@ -61,5 +72,7 @@ import_librt_strings(void)
 static inline bool CPyBytesWriter_Check(PyObject *obj) {
     return Py_TYPE(obj) == LibRTStrings_BytesWriter_type_internal();
 }
+
+#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // LIBRT_STRINGS_H

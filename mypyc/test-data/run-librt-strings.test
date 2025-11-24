@@ -86,3 +86,10 @@ def test_bytes_writer_wrapper_functions() -> None:
 
     with assertRaises(TypeError):
         b.append(-1)
+
+[case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
+# This also ensures librt.strings can be built without experimental features
+import librt.strings
+
+def test_bytes_writer_not_available() -> None:
+    assert not hasattr(librt.strings, "BytesWriter")

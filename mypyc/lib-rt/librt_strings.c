@@ -280,6 +280,8 @@ static PyMethodDef librt_strings_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+#ifdef MYPYC_EXPERIMENTAL
+
 static int
 strings_abi_version(void) {
     return LIBRT_STRINGS_ABI_VERSION;
@@ -290,9 +292,12 @@ strings_api_version(void) {
     return LIBRT_STRINGS_API_VERSION;
 }
 
+#endif
+
 static int
 librt_strings_module_exec(PyObject *m)
 {
+#ifdef MYPYC_EXPERIMENTAL
     if (PyType_Ready(&BytesWriterType) < 0) {
         return -1;
     }
@@ -314,6 +319,7 @@ librt_strings_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
+#endif
     return 0;
 }
 
