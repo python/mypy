@@ -8927,6 +8927,11 @@ class C:
         __module__  # E: Name "__module__" is not defined
         __qualname__  # E: Name "__qualname__" is not defined
 
+    x: __module__  # E: Variable "__main__.C.__module__" is not valid as a type \
+                   # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    y: __qualname__  # E: Variable "__main__.C.__qualname__" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
 [case testPropertySetterType]
 class A:
     @property

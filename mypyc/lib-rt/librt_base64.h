@@ -12,15 +12,16 @@ import_librt_base64(void)
 
 #else  // MYPYC_EXPERIMENTAL
 
-#define LIBRT_BASE64_ABI_VERSION 0
-#define LIBRT_BASE64_API_VERSION 0
-#define LIBRT_BASE64_API_LEN 3
+#define LIBRT_BASE64_ABI_VERSION 1
+#define LIBRT_BASE64_API_VERSION 2
+#define LIBRT_BASE64_API_LEN 4
 
 static void *LibRTBase64_API[LIBRT_BASE64_API_LEN];
 
 #define LibRTBase64_ABIVersion (*(int (*)(void)) LibRTBase64_API[0])
 #define LibRTBase64_APIVersion (*(int (*)(void)) LibRTBase64_API[1])
-#define LibRTBase64_b64encode_internal (*(PyObject* (*)(PyObject *source)) LibRTBase64_API[2])
+#define LibRTBase64_b64encode_internal (*(PyObject* (*)(PyObject *source, bool urlsafe)) LibRTBase64_API[2])
+#define LibRTBase64_b64decode_internal (*(PyObject* (*)(PyObject *source, bool urlsafe)) LibRTBase64_API[3])
 
 static int
 import_librt_base64(void)

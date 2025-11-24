@@ -5,6 +5,7 @@ from __future__ import annotations
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
+    RUnion,
     bit_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
@@ -472,6 +473,40 @@ function_op(
     return_type=bytes_rprimitive,
     c_function_name="LibRTBase64_b64encode_internal",
     error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
     experimental=True,
     capsule="librt.base64",
 )
