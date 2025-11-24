@@ -198,8 +198,15 @@ _check_size(BytesWriterObject *data, Py_ssize_t need) {
 
 static char
 BytesWriter_write_internal(PyObject *self, PyObject *value) {
-    const char *data = PyBytes_AS_STRING(value);
-    Py_ssize_t size = PyBytes_GET_SIZE(value);
+    const char *data;
+    Py_ssize_t size;
+    if (likely(PyBytes_Check(value))) {
+        data = PyBytes_AS_STRING(value);
+        size = PyBytes_GET_SIZE(value);
+    } else {
+        data = PyByteArray_AS_STRING(value);
+        size = PyByteArray_GET_SIZE(value);
+    }
     // Write bytes content.
     _CHECK_WRITE(self, size)
     char *ptr = ((BytesWriterObject *)self)->ptr;

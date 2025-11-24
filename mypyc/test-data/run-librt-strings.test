@@ -46,3 +46,10 @@ def test_bytes_writer_write_grow() -> None:
         w.write(segment)
         a.append(segment)
     assert w.getvalue() == b"".join(a)
+
+def test_write_bytearray() -> None:
+    w = BytesWriter()
+    w.write(bytearray(b"foobar"))
+    w.write(bytearray(b""))
+    w.write(bytearray(b"\x00\xf8"))
+    assert w.getvalue() == b"foobar\x00\xf8"
