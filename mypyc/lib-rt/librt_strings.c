@@ -6,8 +6,6 @@
 #include "CPy.h"
 #include "librt_strings.h"
 
-#define START_SIZE 512
-
 #define CPY_BOOL_ERROR 2
 #define CPY_NONE_ERROR 2
 #define CPY_NONE 1
@@ -16,11 +14,15 @@
 // BytesWriter
 //
 
+// Length of the default buffer embedded directly in a BytesWriter object
+#define WRITER_EMBEDDED_BUF_LEN 512
+
 typedef struct {
     PyObject_HEAD
     char *buf;  // Beginning of the buffer
     char *ptr;  // Current write location in the buffer
     char *end;  // End of the buffer
+    char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
 } BytesWriterObject;
 
 #define _WRITE(data, type, v) \
@@ -36,10 +38,15 @@ _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
     Py_ssize_t index = data->ptr - data->buf;
     Py_ssize_t target = index + n;
     Py_ssize_t size = data->end - data->buf;
+    Py_ssize_t old_size = size;
     do {
         size *= 2;
     } while (target >= size);
-    data->buf = PyMem_Realloc(data->buf, size);
+    if (old_size == WRITER_EMBEDDED_BUF_LEN) {
+        data->buf = PyMem_Malloc(size);
+    } else {
+        data->buf = PyMem_Realloc(data->buf, size);
+    }
     if (unlikely(data->buf == NULL)) {
         PyErr_NoMemory();
         return false;
@@ -58,6 +65,13 @@ ensure_bytes_writer_size(BytesWriterObject *data, Py_ssize_t n) {
     }
 }
 
+static inline void
+BytesWriter_init_internal(BytesWriterObject *self) {
+    self->buf = self->data;
+    self->ptr = self->data;
+    self->end = self->data + WRITER_EMBEDDED_BUF_LEN;
+}
+
 static PyObject*
 BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -68,24 +82,9 @@ BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
     BytesWriterObject *self = (BytesWriterObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        self->buf = NULL;
-        self->ptr = NULL;
-        self->end = NULL;
+        BytesWriter_init_internal(self);
     }
     return (PyObject *)self;
-}
-
-static int
-BytesWriter_init_internal(BytesWriterObject *self) {
-    Py_ssize_t size = START_SIZE;
-    self->buf = PyMem_Malloc(size + 1);
-    if (self->buf == NULL) {
-        PyErr_NoMemory();
-        return -1;
-    }
-    self->ptr = self->buf;
-    self->end = self->buf + size;
-    return 0;
 }
 
 static PyObject *
@@ -93,13 +92,7 @@ BytesWriter_internal(void) {
     BytesWriterObject *self = (BytesWriterObject *)BytesWriterType.tp_alloc(&BytesWriterType, 0);
     if (self == NULL)
         return NULL;
-    self->buf = NULL;
-    self->ptr = NULL;
-    self->end = NULL;
-    if (BytesWriter_init_internal(self) == -1) {
-        Py_DECREF(self);
-        return NULL;
-    }
+    BytesWriter_init_internal(self);
     return (PyObject *)self;
 }
 
@@ -116,14 +109,17 @@ BytesWriter_init(BytesWriterObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    return BytesWriter_init_internal(self);
+    BytesWriter_init_internal(self);
+    return 0;
 }
 
 static void
 BytesWriter_dealloc(BytesWriterObject *self)
 {
-    PyMem_Free(self->buf);
-    self->buf = NULL;
+    if (self->buf != self->data) {
+        PyMem_Free(self->buf);
+        self->buf = NULL;
+    }
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
