@@ -48,7 +48,12 @@ from mypy.errors import (
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
-from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
+from mypy.meet import (
+    is_overlapping_erased_types,
+    is_overlapping_types,
+    meet_types,
+    narrow_declared_type,
+)
 from mypy.message_registry import ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
@@ -6292,17 +6297,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if_maps = []
         else_maps = []
         for expr in exprs_in_type_calls:
-            expr_type = get_proper_type(self.lookup_type(expr))
+            expr_type: Type = get_proper_type(self.lookup_type(expr))
             for type_range in target_types:
-                new_expr_type, _ = self.conditional_types_with_intersection(
+                restriction, _ = self.conditional_types_with_intersection(
                     expr_type, type_range, expr
                 )
-                if new_expr_type is not None:
-                    new_expr_type = get_proper_type(new_expr_type)
-                    if isinstance(expr_type, AnyType):
-                        expr_type = new_expr_type
-                    elif not isinstance(new_expr_type, AnyType):
-                        expr_type = meet_types(expr_type, new_expr_type)
+                if restriction is not None:
+                    narrowed_type = get_proper_type(narrow_declared_type(expr_type, restriction))
+                    # Cannot be guaranteed that this is unreachable, so use fallback type.
+                    if isinstance(narrowed_type, UninhabitedType):
+                        expr_type = restriction
+                    else:
+                        expr_type = narrowed_type
                 _, else_map = conditional_types_to_typemaps(
                     expr,
                     *self.conditional_types_with_intersection(
@@ -6310,8 +6316,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     ),
                 )
                 else_maps.append(else_map)
+
             if fixed_type and expr_type is not None:
-                expr_type = meet_types(expr_type, fixed_type)
+                expr_type = narrow_declared_type(expr_type, fixed_type)
 
             if_map, _ = conditional_types_to_typemaps(expr, expr_type, None)
             if_maps.append(if_map)
