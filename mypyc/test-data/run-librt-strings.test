@@ -8,9 +8,37 @@ from librt.strings import BytesWriter
 
 from testutil import assertRaises
 
-def test_basics() -> None:
-    b = BytesWriter()
-    b.append(ord('a'))
-    b.write(b'bc')
-    assert b.getvalue() == b"abc"
-    assert repr(b) == "BytesWriter(b'abc')"
+def test_bytes_writer_basics() -> None:
+    w = BytesWriter()
+    w.append(ord('a'))
+    w.write(b'bc')
+    assert w.getvalue() == b"abc"
+    assert repr(w) == "BytesWriter(b'abc')"
+
+def test_bytes_writer_append_grow() -> None:
+    w = BytesWriter()
+    for i in range(16384):
+        w.append((i ^ (i >> 8)) & 255)
+    b = w.getvalue()
+    for i in range(16384):
+        assert b[i] == (i ^ (i >> 8)) & 255
+
+def test_bytes_writer_write_grow() -> None:
+    w = BytesWriter()
+    for i in range(16384):
+        w.write(bytes([(i ^ (i >> 8)) & 255]))
+    b = w.getvalue()
+    for i in range(16384):
+        assert b[i] == (i ^ (i >> 8)) & 255
+
+    w = BytesWriter()
+    a = []
+    for i in range(16384):
+        w.write(bytes())
+        if i & 1 == 0:
+            segment = b"foobarz"
+        else:
+            segment = b"\x7f\x00ab!"
+        w.write(segment)
+        a.append(segment)
+    assert w.getvalue() == b"".join(a)
