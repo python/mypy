@@ -53,3 +53,23 @@ def test_write_bytearray() -> None:
     w.write(bytearray(b""))
     w.write(bytearray(b"\x00\xf8"))
     assert w.getvalue() == b"foobar\x00\xf8"
+
+def test_cast_bytes_writer() -> None:
+    a: Any = BytesWriter()
+    b: BytesWriter = a
+    assert b.getvalue() == b""
+
+    a2: Any = "x"
+    with assertRaises(TypeError):
+        b = a2
+
+def test_bytes_writer_wrapper_functions() -> None:
+    cls: Any = BytesWriter
+    b: Any = cls()
+    b.append(ord('a'))
+    b.append(0)
+    b.append(255)
+    b.write(b"foo")
+    b.write(bytearray(b"bar"))
+    assert b.getvalue() == b"a\x00\xfffoobar"
+    assert isinstance(b, cls)

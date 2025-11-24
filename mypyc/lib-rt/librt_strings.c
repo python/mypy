@@ -224,8 +224,8 @@ BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject 
         return NULL;
     }
     _CHECK_WRITE_BUFFER(self, NULL)
-    if (unlikely(!PyBytes_Check(value))) {
-        PyErr_SetString(PyExc_TypeError, "value must be a bytes object");
+    if (unlikely(!PyBytes_Check(value) && !PyByteArray_Check(value))) {
+        PyErr_SetString(PyExc_TypeError, "value must be a bytes or bytearray object");
         return NULL;
     }
     if (unlikely(BytesWriter_write_internal(self, value) == CPY_NONE_ERROR)) {
