@@ -140,7 +140,7 @@ class TypeCheckSuite(DataSuite):
             options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
-        if "union-error" not in testcase.file:
+        if "union-error" not in testcase.file and "Pep604" not in testcase.name:
             options.force_union_syntax = True
 
         if incremental_step and options.incremental:

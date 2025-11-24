@@ -2075,6 +2075,7 @@ class LowLevelIRBuilder:
                 var_arg_idx,
                 is_pure=desc.is_pure,
                 returns_null=desc.returns_null,
+                capsule=desc.capsule,
             )
         )
         if desc.is_borrowed:
@@ -2159,6 +2160,7 @@ class LowLevelIRBuilder:
                 desc.priority,
                 is_pure=desc.is_pure,
                 returns_null=False,
+                capsule=desc.capsule,
             )
             return self.call_c(c_desc, args, line, result_type=result_type)
 
@@ -2211,6 +2213,8 @@ class LowLevelIRBuilder:
         matching: PrimitiveDescription | None = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
+                continue
+            if desc.experimental and not self.options.experimental_features:
                 continue
             if all(
                 # formal is not None and # TODO

@@ -1297,6 +1297,8 @@ from typing import final, Coroutine, Any, TypeVar
 
 import asyncio
 
+from mypy_extensions import trait
+
 class Base1:
     async def foo(self) -> int:
         return 1
@@ -1362,6 +1364,38 @@ async def base3_foo(b: Base3) -> int:
 def test_override_non_async() -> None:
      assert asyncio.run(base3_foo(Base3())) == 7
      assert asyncio.run(base3_foo(Derived3())) == 8
+
+class Base4: pass
+
+@trait
+class TraitBase:
+    async def foo(self, value: int) -> int:
+        raise NotImplementedError()
+
+class DerivedFromTrait(Base4, TraitBase):
+    async def foo(self, value: int) -> int:
+        return value + 3
+
+async def trait_foo(o: TraitBase, x: int) -> int:
+    return await o.foo(x)
+
+def test_override_trait() -> None:
+    assert asyncio.run(trait_foo(DerivedFromTrait(), 7)) == 10
+
+class Base5:
+    def __init__(self) -> None:
+        self._name = "test"
+
+    async def foo(self, x: int) -> int:
+        assert self._name == "test"
+        return x + 11
+
+class Derived5(Base5):
+    async def foo(self, x: int) -> int:
+        return await super().foo(x) + 22
+
+def test_call_using_super() -> None:
+    assert asyncio.run(Derived5().foo(5)) == 38
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
