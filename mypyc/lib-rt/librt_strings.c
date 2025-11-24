@@ -12,17 +12,6 @@
 #define CPY_NONE_ERROR 2
 #define CPY_NONE 1
 
-#define _CHECK_WRITE_BUFFER(data, err) if (unlikely(_check_write_buffer(data) == CPY_NONE_ERROR)) \
-                                           return err;
-#define _CHECK_WRITE(data, need)        if (unlikely(_check_size((BytesWriterObject *)data, need) == CPY_NONE_ERROR)) \
-                                           return CPY_NONE_ERROR;
-
-#define _WRITE(data, type, v) \
-    do { \
-       *(type *)(((BytesWriterObject *)data)->ptr) = v; \
-       ((BytesWriterObject *)data)->ptr += sizeof(type); \
-    } while (0)
-
 //
 // BytesWriter
 //
@@ -34,7 +23,45 @@ typedef struct {
     char *end;  // End of the buffer
 } BytesWriterObject;
 
+#define _CHECK_BYTES_WRITER(data, err) if (unlikely(_check_bytes_writer(data) == CPY_NONE_ERROR)) \
+                                           return err;
+
+#define _ENSURE_SIZE(data, n) _ensure_size((BytesWriterObject *)data, n)
+
+#define _WRITE(data, type, v) \
+    do { \
+       *(type *)(((BytesWriterObject *)data)->ptr) = v; \
+       ((BytesWriterObject *)data)->ptr += sizeof(type); \
+    } while (0)
+
 static PyTypeObject BytesWriterType;
+
+static bool
+_grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
+    Py_ssize_t index = data->ptr - data->buf;
+    Py_ssize_t target = index + n;
+    Py_ssize_t size = data->end - data->buf;
+    do {
+        size *= 2;
+    } while (target >= size);
+    data->buf = PyMem_Realloc(data->buf, size);
+    if (unlikely(data->buf == NULL)) {
+        PyErr_NoMemory();
+        return false;
+    }
+    data->ptr = data->buf + index;
+    data->end = data->buf + size;
+    return true;
+}
+
+static inline bool
+_ensure_size(BytesWriterObject *data, Py_ssize_t n) {
+    if (likely(data->end - data->ptr >= n)) {
+        return true;
+    } else {
+        return _grow_buffer(data, n);
+    }
+}
 
 static PyObject*
 BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -166,33 +193,13 @@ static PyTypeObject BytesWriterType = {
 };
 
 static inline char
-_check_write_buffer(PyObject *data) {
+_check_bytes_writer(PyObject *data) {
     if (unlikely(Py_TYPE(data) != &BytesWriterType)) {
         PyErr_Format(
             PyExc_TypeError, "data must be a BytesWriter object, got %s", Py_TYPE(data)->tp_name
         );
         return CPY_NONE_ERROR;
     }
-    return CPY_NONE;
-}
-
-static inline char
-_check_size(BytesWriterObject *data, Py_ssize_t need) {
-    if (data->end - data->ptr >= need)
-        return CPY_NONE;
-    Py_ssize_t index = data->ptr - data->buf;
-    Py_ssize_t target = index + need;
-    Py_ssize_t size = data->end - data->buf;
-    do {
-        size *= 2;
-    } while (target >= size);
-    data->buf = PyMem_Realloc(data->buf, size);
-    if (unlikely(data->buf == NULL)) {
-        PyErr_NoMemory();
-        return CPY_NONE_ERROR;
-    }
-    data->ptr = data->buf + index;
-    data->end = data->buf + size;
     return CPY_NONE;
 }
 
@@ -208,7 +215,8 @@ BytesWriter_write_internal(PyObject *self, PyObject *value) {
         size = PyByteArray_GET_SIZE(value);
     }
     // Write bytes content.
-    _CHECK_WRITE(self, size)
+    if (!_ENSURE_SIZE(self, size))
+        return CPY_NONE_ERROR;
     char *ptr = ((BytesWriterObject *)self)->ptr;
     memcpy(ptr, data, size);
     ((BytesWriterObject *)self)->ptr += size;
@@ -223,7 +231,7 @@ BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject 
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
         return NULL;
     }
-    _CHECK_WRITE_BUFFER(self, NULL)
+    _CHECK_BYTES_WRITER(self, NULL)
     if (unlikely(!PyBytes_Check(value) && !PyByteArray_Check(value))) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes or bytearray object");
         return NULL;
@@ -237,7 +245,8 @@ BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject 
 
 static inline char
 BytesWriter_append_internal(PyObject *self, uint8_t value) {
-    _CHECK_WRITE(self, 1)
+    if (!_ENSURE_SIZE(self, 1))
+        return CPY_NONE_ERROR;
     _WRITE(self, uint8_t, value);
     return CPY_NONE;
 }
@@ -250,7 +259,7 @@ BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject
     if (unlikely(!CPyArg_ParseStackAndKeywordsSimple(args, nargs, kwnames, &parser, &value))) {
         return NULL;
     }
-    _CHECK_WRITE_BUFFER(self, NULL)
+    _CHECK_BYTES_WRITER(self, NULL)
     uint8_t unboxed = CPyLong_AsUInt8(value);
     if (unlikely(unboxed == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
