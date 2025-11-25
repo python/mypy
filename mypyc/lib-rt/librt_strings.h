@@ -28,12 +28,23 @@ import_librt_strings(void)
 
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
+// Length of the default buffer embedded directly in a BytesWriter object
+#define WRITER_EMBEDDED_BUF_LEN 512
+
+typedef struct {
+    PyObject_HEAD
+    char *buf;  // Beginning of the buffer
+    Py_ssize_t len;  // Current length (number of bytes written)
+    Py_ssize_t capacity;  // Total capacity of the buffer
+    char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
+} BytesWriterObject;
+
 #define LibRTStrings_ABIVersion (*(int (*)(void)) LibRTStrings_API[0])
 #define LibRTStrings_APIVersion (*(int (*)(void)) LibRTStrings_API[1])
 #define LibRTStrings_BytesWriter_internal (*(PyObject* (*)(void)) LibRTStrings_API[2])
 #define LibRTStrings_BytesWriter_getvalue_internal (*(PyObject* (*)(PyObject *source)) LibRTStrings_API[3])
 #define LibRTStrings_BytesWriter_append_internal (*(char (*)(PyObject *source, uint8_t value)) LibRTStrings_API[4])
-#define LibRTStrings_BytesWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[5])
+#define LibRTStrings_ByteWriter_grow_buffer_internal (*(bool (*)(BytesWriterObject *obj, Py_ssize_t size)) LibRTStrings_API[5])
 #define LibRTStrings_BytesWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[6])
 #define LibRTStrings_BytesWriter_len_internal (*(CPyTagged (*)(PyObject *self)) LibRTStrings_API[7])
 #define LibRTStrings_BytesWriter_truncate_internal (*(char (*)(PyObject *self, int64_t size)) LibRTStrings_API[8])
@@ -73,6 +84,54 @@ import_librt_strings(void)
 
 static inline bool CPyBytesWriter_Check(PyObject *obj) {
     return Py_TYPE(obj) == LibRTStrings_BytesWriter_type_internal();
+}
+
+static inline bool
+CPyBytesWriter_EnsureSize(BytesWriterObject *data, Py_ssize_t n) {
+    if (likely(data->capacity - data->len >= n)) {
+        return true;
+    } else {
+        return LibRTStrings_ByteWriter_grow_buffer_internal(data, n);
+    }
+}
+
+static inline char
+CPyBytesWriter_Append(PyObject *obj, uint8_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    // Store length in a local variable to enable additional optimizations
+    Py_ssize_t len = self->len;
+    if (!CPyBytesWriter_EnsureSize(self, 1))
+        return CPY_NONE_ERROR;
+    self->buf[len] = value;
+    self->len = len + 1;
+    return CPY_NONE;
+}
+
+static char
+CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    const char *data;
+    Py_ssize_t size;
+    if (likely(PyBytes_Check(value))) {
+        data = PyBytes_AS_STRING(value);
+        size = PyBytes_GET_SIZE(value);
+    } else {
+        data = PyByteArray_AS_STRING(value);
+        size = PyByteArray_GET_SIZE(value);
+    }
+    // Write bytes content.
+    if (!CPyBytesWriter_EnsureSize(self, size))
+        return CPY_NONE_ERROR;
+    if (size < 8) {
+        char *p = self->buf + self->len;
+        for (Py_ssize_t i = 0; i < size; i++) {
+            p[i] = data[i];
+        }
+    } else {
+        memcpy(self->buf + self->len, data, size);
+    }
+    self->len += size;
+    return CPY_NONE;
 }
 
 #endif  // MYPYC_EXPERIMENTAL

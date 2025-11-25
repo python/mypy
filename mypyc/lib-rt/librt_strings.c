@@ -7,23 +7,10 @@
 #include "librt_strings.h"
 
 #define CPY_BOOL_ERROR 2
-#define CPY_NONE_ERROR 2
-#define CPY_NONE 1
 
 //
 // BytesWriter
 //
-
-// Length of the default buffer embedded directly in a BytesWriter object
-#define WRITER_EMBEDDED_BUF_LEN 512
-
-typedef struct {
-    PyObject_HEAD
-    char *buf;  // Beginning of the buffer
-    Py_ssize_t len;  // Current length (number of bytes written)
-    Py_ssize_t capacity;  // Total capacity of the buffer
-    char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
-} BytesWriterObject;
 
 #define _WRITE(data, type, v) \
     do { \
@@ -426,7 +413,7 @@ librt_strings_module_exec(PyObject *m)
         (void *)BytesWriter_internal,
         (void *)BytesWriter_getvalue_internal,
         (void *)BytesWriter_append_internal,
-        (void *)BytesWriter_write_internal,
+        (void *)_grow_buffer,
         (void *)BytesWriter_type_internal,
         (void *)BytesWriter_len_internal,
         (void *)BytesWriter_truncate_internal,
