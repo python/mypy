@@ -97,6 +97,27 @@ def test_bytes_writer_write_grow() -> None:
         a.append(segment)
     assert w.getvalue() == b"".join(a)
 
+def test_bytes_writer_truncate() -> None:
+    b = BytesWriter()
+    b.write(b"foobar")
+    b.truncate(6)  # No-op
+    assert len(b) == 6
+    assert b.getvalue() == b"foobar"
+    b.truncate(5)
+    assert len(b) == 5
+    assert b.getvalue() == b"fooba"
+    b.truncate(0)
+    assert len(b) == 0
+    assert b.getvalue() == b""
+
+    with assertRaises(ValueError):
+        b.truncate(1)
+
+    b = BytesWriter()
+    b.write(b"foobar")
+    with assertRaises(ValueError):
+        b.truncate(-1)
+
 def test_write_bytearray() -> None:
     w = BytesWriter()
     w.write(bytearray(b"foobar"))

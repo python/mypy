@@ -41,7 +41,7 @@ _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
     do {
         size *= 2;
     } while (target >= size);
-    if (old_size == WRITER_EMBEDDED_BUF_LEN) {
+    if (data->buf == data->data) {
         // Move from embedded buffer to heap-allocated buffer
         data->buf = PyMem_Malloc(size);
         if (data->buf != NULL) {
@@ -213,6 +213,7 @@ static PySequenceMethods BytesWriter_as_sequence = {
 
 static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
 static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs);
 
 static PyMethodDef BytesWriter_methods[] = {
     {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL | METH_KEYWORDS,
@@ -223,6 +224,9 @@ static PyMethodDef BytesWriter_methods[] = {
     },
     {"getvalue", (PyCFunction) BytesWriter_getvalue, METH_NOARGS,
      "Return the buffer content as bytes object"
+    },
+    {"truncate", (PyCFunction) BytesWriter_truncate, METH_FASTCALL,
+     PyDoc_STR("Truncate the buffer to the specified size")
     },
     {NULL}  /* Sentinel */
 };
@@ -300,6 +304,42 @@ BytesWriter_append_internal(BytesWriterObject *self, uint8_t value) {
         return CPY_NONE_ERROR;
     _WRITE(self, uint8_t, value);
     return CPY_NONE;
+}
+
+static PyObject*
+BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "truncate() takes exactly 1 argument (%zu given)", nargs);
+        return NULL;
+    }
+    if (!check_bytes_writer(self)) {
+        return NULL;
+    }
+
+    PyObject *size_obj = args[0];
+    int overflow;
+    long long size = PyLong_AsLongLongAndOverflow(size_obj, &overflow);
+
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    if (overflow != 0 || size < 0) {
+        PyErr_SetString(PyExc_ValueError, "size must be non-negative");
+        return NULL;
+    }
+
+    BytesWriterObject *writer = (BytesWriterObject *)self;
+    Py_ssize_t current_size = writer->ptr - writer->buf;
+
+    if (size > current_size) {
+        PyErr_SetString(PyExc_ValueError, "size cannot be larger than current buffer size");
+        return NULL;
+    }
+
+    writer->ptr = writer->buf + size;
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 static PyObject*
