@@ -54,7 +54,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### Mypyc: Support for `__getattr__` and `__setattr__`
 - Support deleting attributes in `__setattr__` wrapper (Piotr Sawicki, PR [19997](https://github.com/python/mypy/pull/19997))
-- Generate _`_setattr__` wrapper (Piotr Sawicki, PR [19937](https://github.com/python/mypy/pull/19937))
+- Generate `__setattr__` wrapper (Piotr Sawicki, PR [19937](https://github.com/python/mypy/pull/19937))
 - Generate `__getattr__` wrapper (Piotr Sawicki, PR [19909](https://github.com/python/mypy/pull/19909))
 
 ### Miscellaneous Mypyc Improvements
