@@ -5,8 +5,8 @@ from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
     bytes_rprimitive,
     int64_rprimitive,
-    short_int_rprimitive,
     none_rprimitive,
+    short_int_rprimitive,
     uint8_rprimitive,
 )
 from mypyc.primitives.registry import function_op, method_op

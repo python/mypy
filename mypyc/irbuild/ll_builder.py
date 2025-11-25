@@ -179,9 +179,9 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     CFunctionDescription,
     binary_ops,
+    function_ops,
     method_call_ops,
     unary_ops,
-    function_ops,
 )
 from mypyc.primitives.set_ops import new_set_op
 from mypyc.primitives.str_ops import (
