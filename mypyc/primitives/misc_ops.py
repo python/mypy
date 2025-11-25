@@ -5,6 +5,7 @@ from __future__ import annotations
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
+    RUnion,
     bit_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
@@ -333,36 +334,37 @@ set_immortal_op = custom_primitive_op(
     error_kind=ERR_NEVER,
 )
 
-buffer_rprimitive = KNOWN_NATIVE_TYPES["native_internal.Buffer"]
+write_buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.WriteBuffer"]
+read_buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.ReadBuffer"]
 
-# Buffer(source)
+# ReadBuffer(source)
 function_op(
-    name="native_internal.Buffer",
+    name="librt.internal.ReadBuffer",
     arg_types=[bytes_rprimitive],
-    return_type=buffer_rprimitive,
-    c_function_name="Buffer_internal",
+    return_type=read_buffer_rprimitive,
+    c_function_name="ReadBuffer_internal",
     error_kind=ERR_MAGIC,
 )
 
-# Buffer()
+# WriteBuffer()
 function_op(
-    name="native_internal.Buffer",
+    name="librt.internal.WriteBuffer",
     arg_types=[],
-    return_type=buffer_rprimitive,
-    c_function_name="Buffer_internal_empty",
+    return_type=write_buffer_rprimitive,
+    c_function_name="WriteBuffer_internal",
     error_kind=ERR_MAGIC,
 )
 
 method_op(
     name="getvalue",
-    arg_types=[buffer_rprimitive],
+    arg_types=[write_buffer_rprimitive],
     return_type=bytes_rprimitive,
-    c_function_name="Buffer_getvalue_internal",
+    c_function_name="WriteBuffer_getvalue_internal",
     error_kind=ERR_MAGIC,
 )
 
 function_op(
-    name="native_internal.write_bool",
+    name="librt.internal.write_bool",
     arg_types=[object_rprimitive, bool_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_bool_internal",
@@ -370,7 +372,7 @@ function_op(
 )
 
 function_op(
-    name="native_internal.read_bool",
+    name="librt.internal.read_bool",
     arg_types=[object_rprimitive],
     return_type=bool_rprimitive,
     c_function_name="read_bool_internal",
@@ -378,7 +380,7 @@ function_op(
 )
 
 function_op(
-    name="native_internal.write_str",
+    name="librt.internal.write_str",
     arg_types=[object_rprimitive, str_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_str_internal",
@@ -386,7 +388,7 @@ function_op(
 )
 
 function_op(
-    name="native_internal.read_str",
+    name="librt.internal.read_str",
     arg_types=[object_rprimitive],
     return_type=str_rprimitive,
     c_function_name="read_str_internal",
@@ -394,7 +396,23 @@ function_op(
 )
 
 function_op(
-    name="native_internal.write_float",
+    name="librt.internal.write_bytes",
+    arg_types=[object_rprimitive, bytes_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="write_bytes_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.read_bytes",
+    arg_types=[object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="read_bytes_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="librt.internal.write_float",
     arg_types=[object_rprimitive, float_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_float_internal",
@@ -402,15 +420,15 @@ function_op(
 )
 
 function_op(
-    name="native_internal.read_float",
+    name="librt.internal.read_float",
     arg_types=[object_rprimitive],
     return_type=float_rprimitive,
     c_function_name="read_float_internal",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
 function_op(
-    name="native_internal.write_int",
+    name="librt.internal.write_int",
     arg_types=[object_rprimitive, int_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_int_internal",
@@ -418,7 +436,7 @@ function_op(
 )
 
 function_op(
-    name="native_internal.read_int",
+    name="librt.internal.read_int",
     arg_types=[object_rprimitive],
     return_type=int_rprimitive,
     c_function_name="read_int_internal",
@@ -426,7 +444,7 @@ function_op(
 )
 
 function_op(
-    name="native_internal.write_tag",
+    name="librt.internal.write_tag",
     arg_types=[object_rprimitive, uint8_rprimitive],
     return_type=none_rprimitive,
     c_function_name="write_tag_internal",
@@ -434,9 +452,61 @@ function_op(
 )
 
 function_op(
-    name="native_internal.read_tag",
+    name="librt.internal.read_tag",
     arg_types=[object_rprimitive],
     return_type=uint8_rprimitive,
     c_function_name="read_tag_internal",
     error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+function_op(
+    name="librt.internal.cache_version",
+    arg_types=[],
+    return_type=uint8_rprimitive,
+    c_function_name="cache_version_internal",
+    error_kind=ERR_NEVER,
+)
+
+function_op(
+    name="librt.base64.b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
 )

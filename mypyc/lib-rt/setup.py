@@ -1,4 +1,4 @@
-"""Build script for mypyc C runtime library unit tests.
+"""Build script for mypyc C runtime library and C API unit tests.
 
 The tests are written in C++ and use the Google Test framework.
 """
@@ -6,11 +6,14 @@ The tests are written in C++ and use the Google Test framework.
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
 import sys
-from distutils.command.build_ext import build_ext
-from distutils.core import Extension, setup
+from distutils import ccompiler, sysconfig
 from typing import Any
+
+from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
 
 C_APIS_TO_TEST = [
     "init.c",
@@ -21,6 +24,8 @@ C_APIS_TO_TEST = [
     "generic_ops.c",
     "pythonsupport.c",
 ]
+
+X86_64 = platform.machine() in ("x86_64", "AMD64", "amd64")
 
 
 class BuildExtGtest(build_ext):
@@ -72,12 +77,24 @@ if "--run-capi-tests" in sys.argv:
 else:
     # TODO: we need a way to share our preferred C flags and get_extension() logic with
     # mypyc/build.py without code duplication.
+    compiler = ccompiler.new_compiler()
+    sysconfig.customize_compiler(compiler)
+    cflags: list[str] = []
+    if compiler.compiler_type == "unix":
+        cflags += ["-O3"]
+        if X86_64:
+            cflags.append("-msse4.2")  # Enable SIMD (see also mypyc/build.py)
+    elif compiler.compiler_type == "msvc":
+        cflags += ["/O2"]
+        if X86_64:
+            cflags.append("/arch:SSE4.2")  # Enable SIMD (see also mypyc/build.py)
+
     setup(
         ext_modules=[
             Extension(
-                "native_internal",
+                "librt.internal",
                 [
-                    "native_internal.c",
+                    "librt_internal.c",
                     "init.c",
                     "int_ops.c",
                     "exc_ops.c",
@@ -85,6 +102,27 @@ else:
                     "getargsfast.c",
                 ],
                 include_dirs=["."],
-            )
+                extra_compile_args=cflags,
+            ),
+            Extension(
+                "librt.base64",
+                [
+                    "librt_base64.c",
+                    "base64/lib.c",
+                    "base64/codec_choose.c",
+                    "base64/tables/tables.c",
+                    "base64/arch/generic/codec.c",
+                    "base64/arch/ssse3/codec.c",
+                    "base64/arch/sse41/codec.c",
+                    "base64/arch/sse42/codec.c",
+                    "base64/arch/avx/codec.c",
+                    "base64/arch/avx2/codec.c",
+                    "base64/arch/avx512/codec.c",
+                    "base64/arch/neon32/codec.c",
+                    "base64/arch/neon64/codec.c",
+                ],
+                include_dirs=[".", "base64"],
+                extra_compile_args=cflags,
+            ),
         ]
     )

@@ -569,6 +569,14 @@ def hash_digest(data: bytes) -> str:
     return hashlib.sha1(data).hexdigest()
 
 
+def hash_digest_bytes(data: bytes) -> bytes:
+    """Compute a hash digest of some data.
+
+    Similar to above but returns a bytes object.
+    """
+    return hashlib.sha1(data).digest()
+
+
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
     assert sys.platform != "win32", "curses is not available on Windows"
