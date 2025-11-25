@@ -135,8 +135,7 @@ CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
 
 static inline CPyTagged
 CPyBytesWriter_Len(PyObject *obj) {
-    BytesWriterObject *self = (BytesWriterObject *)obj;
-    return (CPyTagged)self->len << 1;
+    return (CPyTagged)((BytesWriterObject *)obj)->len << 1;
 }
 
 #endif  // MYPYC_EXPERIMENTAL
