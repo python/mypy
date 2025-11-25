@@ -24,7 +24,7 @@ import_librt_strings(void)
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
-#define LIBRT_STRINGS_API_LEN 9
+#define LIBRT_STRINGS_API_LEN 8
 
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
@@ -46,8 +46,7 @@ typedef struct {
 #define LibRTStrings_BytesWriter_append_internal (*(char (*)(PyObject *source, uint8_t value)) LibRTStrings_API[4])
 #define LibRTStrings_ByteWriter_grow_buffer_internal (*(bool (*)(BytesWriterObject *obj, Py_ssize_t size)) LibRTStrings_API[5])
 #define LibRTStrings_BytesWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[6])
-#define LibRTStrings_BytesWriter_len_internal (*(CPyTagged (*)(PyObject *self)) LibRTStrings_API[7])
-#define LibRTStrings_BytesWriter_truncate_internal (*(char (*)(PyObject *self, int64_t size)) LibRTStrings_API[8])
+#define LibRTStrings_BytesWriter_truncate_internal (*(char (*)(PyObject *self, int64_t size)) LibRTStrings_API[7])
 
 static int
 import_librt_strings(void)
@@ -132,6 +131,12 @@ CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
     }
     self->len += size;
     return CPY_NONE;
+}
+
+static inline CPyTagged
+CPyBytesWriter_Len(PyObject *obj) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    return (CPyTagged)self->len << 1;
 }
 
 #endif  // MYPYC_EXPERIMENTAL

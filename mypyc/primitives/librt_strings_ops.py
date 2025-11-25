@@ -66,7 +66,7 @@ function_op(
     name="builtins.len",
     arg_types=[bytes_writer_rprimitive],
     return_type=short_int_rprimitive,
-    c_function_name="LibRTStrings_BytesWriter_len_internal",
+    c_function_name="CPyBytesWriter_Len",
     error_kind=ERR_NEVER,
     experimental=True,
     dependencies=[LIBRT_STRINGS],
