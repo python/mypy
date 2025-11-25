@@ -101,6 +101,7 @@ def method_op(
     is_borrowed: bool = False,
     priority: int = 1,
     is_pure: bool = False,
+    experimental: bool = False,
     capsule: str | None = None,
 ) -> PrimitiveDescription:
     """Define a c function call op that replaces a method call.
@@ -146,7 +147,7 @@ def method_op(
         extra_int_constants,
         priority,
         is_pure=is_pure,
-        experimental=False,
+        experimental=experimental,
         capsule=capsule,
     )
     ops.append(desc)

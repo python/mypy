@@ -22,6 +22,8 @@ method_op(
     return_type=bytes_rprimitive,
     c_function_name="LibRTStrings_BytesWriter_getvalue_internal",
     error_kind=ERR_MAGIC,
+    experimental=True,
+    capsule="librt.strings",
 )
 
 method_op(
@@ -30,6 +32,8 @@ method_op(
     return_type=none_rprimitive,
     c_function_name="LibRTStrings_BytesWriter_write_internal",
     error_kind=ERR_MAGIC,
+    experimental=True,
+    capsule="librt.strings",
 )
 
 method_op(
@@ -38,4 +42,6 @@ method_op(
     return_type=none_rprimitive,
     c_function_name="LibRTStrings_BytesWriter_append_internal",
     error_kind=ERR_MAGIC,
+    experimental=True,
+    capsule="librt.strings",
 )
