@@ -298,17 +298,10 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     ) -> ProperType:
         """Given a callable, extract all parameters that can be passed as `*args`.
 
-        This builds a union of all (possibly variadic) tuples of the shape
-        [*all_required, *optional_suffix]
-        where all_required contains args that must be passed positionally,
-        all_optional contains args that may be omitted, and
-        optional_suffix is some prefix of all_optional.
-
-        This will grab the following argtypes of the function:
-
-        * posonly - required unless has a default
-        * pos-or-kw - always optional as it may be passed by name
-        * vararg - converted to an Unpack suffix
+        This builds a union of all (possibly variadic) tuples representing all possible
+        argument sequences that can be passed positionally. Each such tuple starts with
+        all required (pos-only without a default) arguments, followed by some prefix
+        of other arguments that can be passed positionally.
         """
         required_posargs = required_prefix
         optional_posargs: list[Type] = []
@@ -340,13 +333,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
         If the function only accepts **kwargs, this will be a `dict[str, KwargsValueType]`.
         Otherwise, this will be a `TypedDict` containing all explicit args and ignoring
-        `**kwargs` (until PEP 728 `extra_items` is supported).
-
-        This will grab the following argtypes of the function:
-
-        * kwonly - required unless has a default
-        * pos-or-kw - always optional as it may be passed positionally
-        * `**kwargs`
+        `**kwargs` (until PEP 728 `extra_items` is supported). TypedDict entries will
+        be required iff the corresponding argument is kw-only and has no default.
         """
         kwargs = {}
         required_names = set()
