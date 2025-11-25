@@ -181,6 +181,7 @@ from mypyc.primitives.registry import (
     binary_ops,
     method_call_ops,
     unary_ops,
+    function_ops,
 )
 from mypyc.primitives.set_ops import new_set_op
 from mypyc.primitives.str_ops import (
@@ -2489,7 +2490,11 @@ class LowLevelIRBuilder:
             self.activate_block(ok)
             return length
 
-        # generic case
+        op = self.matching_primitive_op(function_ops["builtins.len"], [val], line)
+        if op is not None:
+            return op
+
+        # Fallback generic case
         if use_pyssize_t:
             return self.call_c(generic_ssize_t_len_op, [val], line)
         else:

@@ -370,10 +370,10 @@ BytesWriter_type_internal(void) {
     return &BytesWriterType;  // Return borrowed reference
 };
 
-static int64_t
+static CPyTagged
 BytesWriter_len_internal(PyObject *self) {
     BytesWriterObject *writer = (BytesWriterObject *)self;
-    return (int64_t)(writer->ptr - writer->buf);
+    return (writer->ptr - writer->buf) << 1;
 }
 
 static PyMethodDef librt_strings_module_methods[] = {

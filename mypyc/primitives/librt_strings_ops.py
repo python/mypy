@@ -1,7 +1,13 @@
 from typing import Final
 
-from mypyc.ir.ops import ERR_MAGIC
-from mypyc.ir.rtypes import KNOWN_NATIVE_TYPES, bytes_rprimitive, none_rprimitive, uint8_rprimitive
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
+from mypyc.ir.rtypes import (
+    KNOWN_NATIVE_TYPES,
+    bytes_rprimitive,
+    short_int_rprimitive,
+    none_rprimitive,
+    uint8_rprimitive,
+)
 from mypyc.primitives.registry import function_op, method_op
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
@@ -42,6 +48,16 @@ method_op(
     return_type=none_rprimitive,
     c_function_name="LibRTStrings_BytesWriter_append_internal",
     error_kind=ERR_MAGIC,
+    experimental=True,
+    capsule="librt.strings",
+)
+
+function_op(
+    name="builtins.len",
+    arg_types=[bytes_writer_rprimitive],
+    return_type=short_int_rprimitive,
+    c_function_name="LibRTStrings_BytesWriter_len_internal",
+    error_kind=ERR_NEVER,
     experimental=True,
     capsule="librt.strings",
 )
