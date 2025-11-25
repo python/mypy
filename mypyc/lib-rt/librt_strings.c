@@ -20,24 +20,23 @@
 typedef struct {
     PyObject_HEAD
     char *buf;  // Beginning of the buffer
-    char *ptr;  // Current write location in the buffer
-    char *end;  // End of the buffer
+    Py_ssize_t len;  // Current length (number of bytes written)
+    Py_ssize_t capacity;  // Total capacity of the buffer
     char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
 } BytesWriterObject;
 
 #define _WRITE(data, type, v) \
     do { \
-       *(type *)(((BytesWriterObject *)data)->ptr) = v; \
-       ((BytesWriterObject *)data)->ptr += sizeof(type); \
+       *(type *)(((BytesWriterObject *)data)->buf + ((BytesWriterObject *)data)->len) = v; \
+       ((BytesWriterObject *)data)->len += sizeof(type); \
     } while (0)
 
 static PyTypeObject BytesWriterType;
 
 static bool
 _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
-    Py_ssize_t index = data->ptr - data->buf;
-    Py_ssize_t target = index + n;
-    Py_ssize_t size = data->end - data->buf;
+    Py_ssize_t target = data->len + n;
+    Py_ssize_t size = data->capacity;
     Py_ssize_t old_size = size;
     do {
         size *= 2;
@@ -55,14 +54,13 @@ _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
         PyErr_NoMemory();
         return false;
     }
-    data->ptr = data->buf + index;
-    data->end = data->buf + size;
+    data->capacity = size;
     return true;
 }
 
 static inline bool
 ensure_bytes_writer_size(BytesWriterObject *data, Py_ssize_t n) {
-    if (likely(data->end - data->ptr >= n)) {
+    if (likely(data->capacity - data->len >= n)) {
         return true;
     } else {
         return _grow_buffer(data, n);
@@ -72,8 +70,8 @@ ensure_bytes_writer_size(BytesWriterObject *data, Py_ssize_t n) {
 static inline void
 BytesWriter_init_internal(BytesWriterObject *self) {
     self->buf = self->data;
-    self->ptr = self->data;
-    self->end = self->data + WRITER_EMBEDDED_BUF_LEN;
+    self->len = 0;
+    self->capacity = WRITER_EMBEDDED_BUF_LEN;
 }
 
 static PyObject*
@@ -131,7 +129,7 @@ static PyObject*
 BytesWriter_getvalue_internal(PyObject *self)
 {
     BytesWriterObject *obj = (BytesWriterObject *)self;
-    return PyBytes_FromStringAndSize(obj->buf, obj->ptr - obj->buf);
+    return PyBytes_FromStringAndSize(obj->buf, obj->len);
 }
 
 static PyObject*
@@ -154,7 +152,7 @@ BytesWriter_repr(BytesWriterObject *self)
 static PyObject*
 BytesWriter_getvalue(BytesWriterObject *self, PyObject *Py_UNUSED(ignored))
 {
-    return PyBytes_FromStringAndSize(self->buf, self->ptr - self->buf);
+    return PyBytes_FromStringAndSize(self->buf, self->len);
 }
 
 static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
@@ -212,9 +210,8 @@ BytesWriter_write_internal(BytesWriterObject *self, PyObject *value) {
     // Write bytes content.
     if (!ensure_bytes_writer_size(self, size))
         return CPY_NONE_ERROR;
-    char *ptr = ((BytesWriterObject *)self)->ptr;
-    memcpy(ptr, data, size);
-    ((BytesWriterObject *)self)->ptr += size;
+    memcpy(self->buf + self->len, data, size);
+    self->len += size;
     return CPY_NONE;
 }
 
