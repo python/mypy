@@ -38,6 +38,35 @@ def test_bytes_writer_get_item() -> None:
     with assertRaises(IndexError):
         w[-(1 << 50)]
 
+def test_bytes_writer_set_item() -> None:
+    w = BytesWriter()
+    w.write(b"foobar")
+    w[0] = 255
+    assert w[0] == 255
+    w[5] = 0
+    assert w[5] == 0
+    assert w.getvalue() == b"\xffooba\x00"
+
+    with assertRaises(IndexError):
+        w[6] = 0
+    with assertRaises(IndexError):
+        w[-7] = 0
+    with assertRaises(IndexError):
+        w[1 << 50] = 0
+    with assertRaises(IndexError):
+        w[-(1 << 50)] = 0
+
+    with assertRaises(TypeError):
+        w[0] = int() - 1
+    with assertRaises(TypeError):
+        w[0] = int() + 256
+
+    # Grow BytesWriter
+    w.write(b"xy" * 512)
+    w[1024 + 5] = 66
+    assert w[1024 + 5] == 66
+    assert w[0] == 255
+
 def test_bytes_writer_append_grow() -> None:
     w = BytesWriter()
     for i in range(16384):
@@ -96,10 +125,21 @@ def test_bytes_writer_wrapper_functions() -> None:
     b.write(bytearray(b"bar"))
     assert b.getvalue() == b"a\x00\xfffoobar"
     assert len(b) == 9
+
     assert b[0] == ord('a')
     assert b[8] == ord('r')
     assert b[-1] == ord('r')
     assert b[-9] == ord('a')
+
+    b[0] = 215
+    b[8] = 0
+    assert b[0] == 215
+    assert b[8] == 0
+    b[-1] = 1
+    assert b[8] == 1
+    b[-9] = 2
+    assert b[0] == 2
+
     assert isinstance(b, cls)
 
     with assertRaises(TypeError):
@@ -116,9 +156,17 @@ def test_bytes_writer_wrapper_functions() -> None:
 
     with assertRaises(IndexError):
         b[9]
-
     with assertRaises(IndexError):
         b[-10]
+    with assertRaises(IndexError):
+        b[9] = 0
+    with assertRaises(IndexError):
+        b[-10] = 0
+
+    with assertRaises(TypeError):
+        b[0] = -1
+    with assertRaises(TypeError):
+        b[0] = 256
 
 [case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.strings can be built without experimental features
