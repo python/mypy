@@ -7512,3 +7512,87 @@ tmp/impl.py:31: note: Revealed type is "builtins.object"
 tmp/impl.py:32: note: Revealed type is "Union[builtins.int, builtins.str, lib.Unrelated]"
 tmp/impl.py:33: note: Revealed type is "builtins.object"
 tmp/impl.py:34: note: Revealed type is "builtins.object"
+
+[case testIncrementalAccessSubmoduleWithoutExplicitImport]
+import b
+import a
+
+[file a.py]
+import pkg
+
+pkg.submod.foo()
+
+[file a.py.2]
+import pkg
+
+pkg.submod.foo()
+x = 1
+
+[file b.py]
+import c
+
+[file c.py]
+from pkg import submod
+
+[file pkg/__init__.pyi]
+[file pkg/submod.pyi]
+def foo() -> None: pass
+[out]
+tmp/a.py:3: error: "object" has no attribute "submod"
+[out2]
+tmp/a.py:3: error: "object" has no attribute "submod"
+
+[case testIncrementalAccessSubmoduleWithoutExplicitImportNested]
+import a
+
+[file a.py]
+import pandas
+pandas.core.dtypes
+
+[file a.py.2]
+import pandas
+pandas.core.dtypes
+# touch
+
+[file pandas/__init__.py]
+import pandas.core.api
+
+[file pandas/core/__init__.py]
+[file pandas/core/api.py]
+import pandas.core.dtypes.dtypes
+
+[file pandas/core/dtypes/__init__.py]
+[file pandas/core/dtypes/dtypes.py]
+X = 0
+[out]
+[out2]
+
+[case testIncrementalAccessSubmoduleWithoutExplicitImportNestedFrom]
+import a
+
+[file a.py]
+import pandas
+
+# Although this actually works at runtime, we do not support this, since
+# this would cause major slowdown for a rare edge case. This test verifies
+# that we fail consistently on cold and warm runs.
+pandas.core.dtypes
+
+[file a.py.2]
+import pandas
+pandas.core.dtypes
+
+[file pandas/__init__.py]
+import pandas.core.api
+
+[file pandas/core/__init__.py]
+[file pandas/core/api.py]
+from pandas.core.dtypes.dtypes import X
+
+[file pandas/core/dtypes/__init__.py]
+[file pandas/core/dtypes/dtypes.py]
+X = 0
+[out]
+tmp/a.py:6: error: "object" has no attribute "dtypes"
+[out2]
+tmp/a.py:2: error: "object" has no attribute "dtypes"

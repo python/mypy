@@ -296,8 +296,8 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         # Grab first argument
         vself: Value = next(iter_env)
         if builder.fn_info.is_generator:
-            # grab sixth argument (see comment in translate_super_method_call)
-            self_targ = list(builder.symtables[-1].values())[6]
+            # grab seventh argument (see comment in translate_super_method_call)
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         elif not ir.is_ext_class:
             vself = next(iter_env)  # second argument is self if non_extension class
@@ -504,12 +504,12 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         if decl.kind == FUNC_CLASSMETHOD:
             vself = builder.primitive_op(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
-            # For generator classes, the self target is the 6th value
+            # For generator classes, the self target is the 7th value
             # in the symbol table (which is an ordered dict). This is sort
             # of ugly, but we can't search by name since the 'self' parameter
             # could be named anything, and it doesn't get added to the
             # environment indexes.
-            self_targ = list(builder.symtables[-1].values())[6]
+            self_targ = list(builder.symtables[-1].values())[7]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         arg_values.insert(0, vself)
         arg_kinds.insert(0, ARG_POS)

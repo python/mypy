@@ -1453,7 +1453,7 @@ class TestOverload:
 from typing import Final
 from mypy_extensions import u8
 from librt.internal import (
-    Buffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
+    WriteBuffer, ReadBuffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag, write_bytes, read_bytes,
     cache_version,
 )
@@ -1462,7 +1462,7 @@ Tag = u8
 TAG: Final[Tag] = 1
 
 def foo() -> None:
-    b = Buffer()
+    b = WriteBuffer()
     write_str(b, "foo")
     write_bytes(b, b"bar")
     write_bool(b, True)
@@ -1470,23 +1470,23 @@ def foo() -> None:
     write_int(b, 1)
     write_tag(b, TAG)
 
-    b = Buffer(b.getvalue())
-    x = read_str(b)
-    xb = read_bytes(b)
-    y = read_bool(b)
-    z = read_float(b)
-    t = read_int(b)
-    u = read_tag(b)
+    rb = ReadBuffer(b.getvalue())
+    x = read_str(rb)
+    xb = read_bytes(rb)
+    y = read_bool(rb)
+    z = read_float(rb)
+    t = read_int(rb)
+    u = read_tag(rb)
     v = cache_version()
 [out]
 def foo():
-    r0, b :: librt.internal.Buffer
+    r0, b :: librt.internal.WriteBuffer
     r1 :: str
     r2 :: None
     r3 :: bytes
     r4, r5, r6, r7, r8 :: None
     r9 :: bytes
-    r10 :: librt.internal.Buffer
+    r10, rb :: librt.internal.ReadBuffer
     r11, x :: str
     r12, xb :: bytes
     r13, y :: bool
@@ -1494,7 +1494,7 @@ def foo():
     r15, t :: int
     r16, u, r17, v :: u8
 L0:
-    r0 = Buffer_internal_empty()
+    r0 = WriteBuffer_internal()
     b = r0
     r1 = 'foo'
     r2 = write_str_internal(b, r1)
@@ -1504,20 +1504,20 @@ L0:
     r6 = write_float_internal(b, 0.1)
     r7 = write_int_internal(b, 2)
     r8 = write_tag_internal(b, 1)
-    r9 = Buffer_getvalue_internal(b)
-    r10 = Buffer_internal(r9)
-    b = r10
-    r11 = read_str_internal(b)
+    r9 = WriteBuffer_getvalue_internal(b)
+    r10 = ReadBuffer_internal(r9)
+    rb = r10
+    r11 = read_str_internal(rb)
     x = r11
-    r12 = read_bytes_internal(b)
+    r12 = read_bytes_internal(rb)
     xb = r12
-    r13 = read_bool_internal(b)
+    r13 = read_bool_internal(rb)
     y = r13
-    r14 = read_float_internal(b)
+    r14 = read_float_internal(rb)
     z = r14
-    r15 = read_int_internal(b)
+    r15 = read_int_internal(rb)
     t = r15
-    r16 = read_tag_internal(b)
+    r16 = read_tag_internal(rb)
     u = r16
     r17 = cache_version_internal()
     v = r17

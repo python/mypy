@@ -5,6 +5,7 @@ from __future__ import annotations
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
+    RUnion,
     bit_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
@@ -333,31 +334,32 @@ set_immortal_op = custom_primitive_op(
     error_kind=ERR_NEVER,
 )
 
-buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.Buffer"]
+write_buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.WriteBuffer"]
+read_buffer_rprimitive = KNOWN_NATIVE_TYPES["librt.internal.ReadBuffer"]
 
-# Buffer(source)
+# ReadBuffer(source)
 function_op(
-    name="librt.internal.Buffer",
+    name="librt.internal.ReadBuffer",
     arg_types=[bytes_rprimitive],
-    return_type=buffer_rprimitive,
-    c_function_name="Buffer_internal",
+    return_type=read_buffer_rprimitive,
+    c_function_name="ReadBuffer_internal",
     error_kind=ERR_MAGIC,
 )
 
-# Buffer()
+# WriteBuffer()
 function_op(
-    name="librt.internal.Buffer",
+    name="librt.internal.WriteBuffer",
     arg_types=[],
-    return_type=buffer_rprimitive,
-    c_function_name="Buffer_internal_empty",
+    return_type=write_buffer_rprimitive,
+    c_function_name="WriteBuffer_internal",
     error_kind=ERR_MAGIC,
 )
 
 method_op(
     name="getvalue",
-    arg_types=[buffer_rprimitive],
+    arg_types=[write_buffer_rprimitive],
     return_type=bytes_rprimitive,
-    c_function_name="Buffer_getvalue_internal",
+    c_function_name="WriteBuffer_getvalue_internal",
     error_kind=ERR_MAGIC,
 )
 
@@ -463,4 +465,48 @@ function_op(
     return_type=uint8_rprimitive,
     c_function_name="cache_version_internal",
     error_kind=ERR_NEVER,
+)
+
+function_op(
+    name="librt.base64.b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    capsule="librt.base64",
 )

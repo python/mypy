@@ -19,7 +19,7 @@ import sys
 from typing import Any, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
-from librt.internal import Buffer
+from librt.internal import ReadBuffer
 
 from mypy.nodes import (
     FUNCBASE_FLAGS,
@@ -78,7 +78,7 @@ class Config:
 
 
 def convert_binary_cache_to_json(data: bytes, *, implicit_names: bool = True) -> Json:
-    tree = MypyFile.read(Buffer(data))
+    tree = MypyFile.read(ReadBuffer(data))
     return convert_mypy_file_to_json(tree, Config(implicit_names=implicit_names))
 
 

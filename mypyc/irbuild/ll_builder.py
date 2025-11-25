@@ -179,6 +179,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     CFunctionDescription,
     binary_ops,
+    function_ops,
     method_call_ops,
     unary_ops,
 )
@@ -2075,6 +2076,7 @@ class LowLevelIRBuilder:
                 var_arg_idx,
                 is_pure=desc.is_pure,
                 returns_null=desc.returns_null,
+                capsule=desc.capsule,
             )
         )
         if desc.is_borrowed:
@@ -2159,6 +2161,7 @@ class LowLevelIRBuilder:
                 desc.priority,
                 is_pure=desc.is_pure,
                 returns_null=False,
+                capsule=desc.capsule,
             )
             return self.call_c(c_desc, args, line, result_type=result_type)
 
@@ -2211,6 +2214,8 @@ class LowLevelIRBuilder:
         matching: PrimitiveDescription | None = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
+                continue
+            if desc.experimental and not self.options.experimental_features:
                 continue
             if all(
                 # formal is not None and # TODO
@@ -2485,7 +2490,11 @@ class LowLevelIRBuilder:
             self.activate_block(ok)
             return length
 
-        # generic case
+        op = self.matching_primitive_op(function_ops["builtins.len"], [val], line)
+        if op is not None:
+            return op
+
+        # Fallback generic case
         if use_pyssize_t:
             return self.call_c(generic_ssize_t_len_op, [val], line)
         else:

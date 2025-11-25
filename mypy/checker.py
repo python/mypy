@@ -2578,7 +2578,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         continue
                     if not is_subtype(original_arg_type, erase_override(override_arg_type)):
                         context: Context = node
-                        if isinstance(node, FuncDef) and not node.is_property:
+                        if (
+                            isinstance(node, FuncDef)
+                            and not node.is_property
+                            and (
+                                not node.is_decorated  # fast path
+                                # allow trivial decorators like @classmethod and @override
+                                or not (sym := node.info.get(node.name))
+                                or not isinstance(sym.node, Decorator)
+                                or not sym.node.decorators
+                            )
+                        ):
+                            # If there's any decorator, we can no longer map arguments 1:1 reliably.
                             arg_node = node.arguments[i + override.bound()]
                             if arg_node.line != -1:
                                 context = arg_node
@@ -3413,7 +3424,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             and lvalue_type is not None
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
-                elif self.options.allow_redefinition_new and lvalue_type is not None:
+                elif (
+                    self.options.allow_redefinition_new
+                    and lvalue_type is not None
+                    and not isinstance(lvalue_type, PartialType)
+                ):
                     # TODO: Can we use put() here?
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
 
@@ -5134,13 +5149,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
 
-        if (
-            isinstance(typ, Instance)
-            and typ.type.fullname in {"builtins._NotImplementedType", "types.NotImplementedType"}
-        ) or (
+        if (isinstance(typ, Instance) and typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES) or (
             isinstance(e, CallExpr)
             and isinstance(e.callee, RefExpr)
-            and e.callee.fullname in {"builtins.NotImplemented"}
+            and e.callee.fullname == "builtins.NotImplemented"
         ):
             self.fail(
                 message_registry.INVALID_EXCEPTION.with_additional_msg(

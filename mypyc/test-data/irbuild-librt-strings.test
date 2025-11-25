@@ -1,0 +1,43 @@
+[case testLibrtStrings_experimental]
+from librt.strings import BytesWriter
+from mypy_extensions import u8, i64
+
+def bytes_writer_basics() -> bytes:
+    b = BytesWriter()
+    x: u8 = 1
+    b.append(x)
+    b.write(b'foo')
+    n: i64 = 2
+    b.truncate(n)
+    return b.getvalue()
+def bytes_writer_len(b: BytesWriter) -> i64:
+    return len(b)
+[out]
+def bytes_writer_basics():
+    r0, b :: librt.strings.BytesWriter
+    x :: u8
+    r1 :: None
+    r2 :: bytes
+    r3 :: None
+    n :: i64
+    r4 :: None
+    r5 :: bytes
+L0:
+    r0 = LibRTStrings_BytesWriter_internal()
+    b = r0
+    x = 1
+    r1 = LibRTStrings_BytesWriter_append_internal(b, x)
+    r2 = b'foo'
+    r3 = LibRTStrings_BytesWriter_write_internal(b, r2)
+    n = 2
+    r4 = LibRTStrings_BytesWriter_truncate_internal(b, n)
+    r5 = LibRTStrings_BytesWriter_getvalue_internal(b)
+    return r5
+def bytes_writer_len(b):
+    b :: librt.strings.BytesWriter
+    r0 :: short_int
+    r1 :: i64
+L0:
+    r0 = LibRTStrings_BytesWriter_len_internal(b)
+    r1 = r0 >> 1
+    return r1
