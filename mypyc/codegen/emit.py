@@ -1213,7 +1213,7 @@ class Emitter:
         self.emit_line(failure)
         self.emit_line("}")
 
-    def emit_cpyfunction_instance(self, fn: FuncIR, filepath: str) -> str:
+    def emit_cpyfunction_instance(self, fn: FuncIR, filepath: str, error_stmt: str) -> str:
         module = self.static_name(fn.decl.module_name, None, prefix=MODULE_PREFIX)
         name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
         cname = f"{PREFIX}{fn.cname(self.names)}"
@@ -1226,6 +1226,8 @@ class Emitter:
         self.emit_line(
             f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {func_flags}, {doc}, {fn.line}, {code_flags});'
         )
+        self.emit_line(f"if (unlikely(!{wrapper_name}))")
+        self.emit_line(error_stmt)
         return wrapper_name
 
 

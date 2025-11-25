@@ -1041,12 +1041,16 @@ class GroupGenerator:
                 continue
 
             filepath = self.source_paths[module.fullname]
-            wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath)
-            name_obj = f'PyUnicode_FromString("{fn.name}")'
+            error_stmt = "    goto fail;"
+            wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath, error_stmt)
+            name_obj = f"{wrapper_name}_name"
+            emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
+            emitter.emit_line(f"if (unlikely(!{name_obj}))")
+            emitter.emit_line(error_stmt)
             emitter.emit_line(
-                f"if(PyDict_SetItem({globals}, {name_obj}, (PyObject *){wrapper_name}) < 0)"
+                f"if (PyDict_SetItem({globals}, {name_obj}, (PyObject *){wrapper_name}) < 0)"
             )
-            emitter.emit_line("    goto fail;")
+            emitter.emit_line(error_stmt)
 
     def emit_module_exec_func(
         self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
@@ -1103,18 +1107,19 @@ class GroupGenerator:
             type_struct = emitter.type_struct_name(cl)
             type_structs.append(type_struct)
             if cl.is_generated:
+                error_stmt = "    goto fail;"
                 emitter.emit_lines(
                     "{t} = (PyTypeObject *)CPyType_FromTemplate("
                     "(PyObject *){t}_template, NULL, modname);".format(t=type_struct)
                 )
-                emitter.emit_lines(f"if (unlikely(!{type_struct}))", "    goto fail;")
+                emitter.emit_lines(f"if (unlikely(!{type_struct}))", error_stmt)
                 name_prefix = cl.name_prefix(emitter.names)
                 emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
 
                 if cl.is_coroutine:
                     fn = cl.methods["__call__"]
                     filepath = self.source_paths[module.fullname]
-                    wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath)
+                    wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath, error_stmt)
                     static_name = emitter.static_name(cl.name + "_cpyfunction", module.fullname)
                     emitter.emit_line(f"{static_name} = {wrapper_name};")
 

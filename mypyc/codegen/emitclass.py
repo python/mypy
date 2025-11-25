@@ -1287,11 +1287,16 @@ def generate_coroutine_setup(
             continue
 
         filepath = emitter.filepath or ""
-        wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath)
+        error_stmt = "    return 2;"
+        wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath, error_stmt)
+        name_obj = f"{wrapper_name}_name"
+        emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
+        emitter.emit_line(f"if (unlikely(!{name_obj}))")
+        emitter.emit_line(error_stmt)
         emitter.emit_line(
-            f'if (PyDict_SetItem(tp->tp_dict, PyUnicode_FromString("{fn.name}"), {wrapper_name}) < 0)'
+            f'if (PyDict_SetItem(tp->tp_dict, {name_obj}, {wrapper_name}) < 0)'
         )
-        emitter.emit_line("    return 2;")
+        emitter.emit_line(error_stmt)
 
     emitter.emit_line("return 1;")
     emitter.emit_line("}")

@@ -205,12 +205,18 @@ static CPyFunction* CPyFunction_Init(CPyFunction *op, PyMethodDef *ml, PyObject*
 
 static PyObject* CPyCode_New(const char *filename, const char *funcname, int first_line, int flags) {
     PyCodeObject *code_obj = PyCode_NewEmpty(filename, funcname, first_line);
+    if (unlikely(!code_obj)) {
+        return NULL;
+    }
     code_obj->co_flags = flags;
     return (PyObject *)code_obj;
 }
 
 static PyMethodDef* CPyMethodDef_New(const char *name, PyCFunction func, int flags, const char *doc) {
     PyMethodDef *method = (PyMethodDef *)PyMem_Malloc(sizeof(PyMethodDef));
+    if (unlikely(!method)) {
+        return NULL;
+    }
     method->ml_name = name;
     method->ml_meth = func;
     method->ml_flags = flags;
@@ -227,9 +233,20 @@ PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *fu
     }
 
     PyMethodDef *method = CPyMethodDef_New(funcname, func, func_flags, func_doc);
+    if (unlikely(!method)) {
+        return NULL;
+    }
     PyObject *code = CPyCode_New(filename, funcname, first_line, code_flags);
+    if (unlikely(!code)) {
+        PyMem_Free(method);
+        return NULL;
+    }
     PyObject *op = (PyObject *)CPyFunction_Init(PyObject_GC_New(CPyFunction, CPyFunctionType),
                                                 method, PyUnicode_FromString(funcname), module, code);
+    if (unlikely(!op)) {
+        PyMem_Free(method);
+        return NULL;
+    }
     PyObject_GC_Track(op);
     return op;
 }
