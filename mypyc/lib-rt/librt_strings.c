@@ -370,6 +370,12 @@ BytesWriter_type_internal(void) {
     return &BytesWriterType;  // Return borrowed reference
 };
 
+static int64_t
+BytesWriter_len_internal(PyObject *self) {
+    BytesWriterObject *writer = (BytesWriterObject *)self;
+    return (int64_t)(writer->ptr - writer->buf);
+}
+
 static PyMethodDef librt_strings_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
@@ -408,6 +414,7 @@ librt_strings_module_exec(PyObject *m)
         (void *)BytesWriter_append_internal,
         (void *)BytesWriter_write_internal,
         (void *)BytesWriter_type_internal,
+        (void *)BytesWriter_len_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
