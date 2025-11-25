@@ -76,7 +76,7 @@ def test_bytes_writer_wrapper_functions() -> None:
     assert isinstance(b, cls)
 
     with assertRaises(TypeError):
-        b.append(1.0)
+        b.append("x")
 
     with assertRaises(TypeError):
         b.write("foo")
