@@ -11,6 +11,7 @@ from testutil import assertRaises
 def test_bytes_writer_basics() -> None:
     w = BytesWriter()
     assert w.getvalue() == b""
+    assert len(w) == 0
     assert repr(w) == "BytesWriter(b'')"
 
     w = BytesWriter()
@@ -23,6 +24,7 @@ def test_bytes_writer_append_grow() -> None:
     w = BytesWriter()
     for i in range(16384):
         w.append((i ^ (i >> 8)) & 255)
+        assert len(w) == i + 1
     b = w.getvalue()
     for i in range(16384):
         assert b[i] == (i ^ (i >> 8)) & 255

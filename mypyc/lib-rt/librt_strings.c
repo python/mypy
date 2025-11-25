@@ -155,6 +155,16 @@ BytesWriter_getvalue(BytesWriterObject *self, PyObject *Py_UNUSED(ignored))
     return PyBytes_FromStringAndSize(self->buf, self->len);
 }
 
+static Py_ssize_t
+BytesWriter_length(BytesWriterObject *self)
+{
+    return self->ptr - self->buf;
+}
+
+static PySequenceMethods BytesWriter_as_sequence = {
+    .sq_length = (lenfunc)BytesWriter_length,
+};
+
 static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
 static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
 
@@ -182,6 +192,7 @@ static PyTypeObject BytesWriterType = {
     .tp_init = (initproc) BytesWriter_init,
     .tp_dealloc = (destructor) BytesWriter_dealloc,
     .tp_methods = BytesWriter_methods,
+    .tp_as_sequence = &BytesWriter_as_sequence,
     .tp_repr = (reprfunc)BytesWriter_repr,
 };
 
