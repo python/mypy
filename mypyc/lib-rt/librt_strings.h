@@ -20,11 +20,11 @@ import_librt_strings(void)
 // API version -- more recent versions must maintain backward compatibility, i.e.
 // we can add new features but not remove or change existing features (unless
 // ABI version is changed, but see the comment above).
- #define LIBRT_STRINGS_API_VERSION 0
+ #define LIBRT_STRINGS_API_VERSION 1
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
-#define LIBRT_STRINGS_API_LEN 7
+#define LIBRT_STRINGS_API_LEN 9
 
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
@@ -35,6 +35,8 @@ static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 #define LibRTStrings_BytesWriter_append_internal (*(char (*)(PyObject *source, uint8_t value)) LibRTStrings_API[4])
 #define LibRTStrings_BytesWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[5])
 #define LibRTStrings_BytesWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[6])
+#define LibRTStrings_BytesWriter_len_internal (*(CPyTagged (*)(PyObject *self)) LibRTStrings_API[7])
+#define LibRTStrings_BytesWriter_truncate_internal (*(char (*)(PyObject *self, int64_t size)) LibRTStrings_API[8])
 
 static int
 import_librt_strings(void)

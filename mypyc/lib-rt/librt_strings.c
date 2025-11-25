@@ -41,7 +41,7 @@ _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
     do {
         size *= 2;
     } while (target >= size);
-    if (old_size == WRITER_EMBEDDED_BUF_LEN) {
+    if (data->buf == data->data) {
         // Move from embedded buffer to heap-allocated buffer
         data->buf = PyMem_Malloc(size);
         if (data->buf != NULL) {
@@ -155,8 +155,65 @@ BytesWriter_getvalue(BytesWriterObject *self, PyObject *Py_UNUSED(ignored))
     return PyBytes_FromStringAndSize(self->buf, self->len);
 }
 
+static Py_ssize_t
+BytesWriter_length(BytesWriterObject *self)
+{
+    return self->len;
+}
+
+static PyObject*
+BytesWriter_item(BytesWriterObject *self, Py_ssize_t index)
+{
+    Py_ssize_t length = self->len;
+
+    // Check bounds
+    if (index < 0 || index >= length) {
+        PyErr_SetString(PyExc_IndexError, "BytesWriter index out of range");
+        return NULL;
+    }
+
+    // Return the byte at the given index as a Python int
+    return PyLong_FromLong((unsigned char)self->buf[index]);
+}
+
+static int
+BytesWriter_ass_item(BytesWriterObject *self, Py_ssize_t index, PyObject *value)
+{
+    Py_ssize_t length = self->len;
+
+    // Check bounds
+    if (index < 0 || index >= length) {
+        PyErr_SetString(PyExc_IndexError, "BytesWriter index out of range");
+        return -1;
+    }
+
+    // Check that value is not NULL (deletion not supported)
+    if (value == NULL) {
+        PyErr_SetString(PyExc_TypeError, "BytesWriter does not support item deletion");
+        return -1;
+    }
+
+    // Convert value to uint8
+    uint8_t byte_value = CPyLong_AsUInt8(value);
+    if (unlikely(byte_value == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
+        CPy_TypeError("u8", value);
+        return -1;
+    }
+
+    // Assign the byte
+    self->buf[index] = (char)byte_value;
+    return 0;
+}
+
+static PySequenceMethods BytesWriter_as_sequence = {
+    .sq_length = (lenfunc)BytesWriter_length,
+    .sq_item = (ssizeargfunc)BytesWriter_item,
+    .sq_ass_item = (ssizeobjargproc)BytesWriter_ass_item,
+};
+
 static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
 static PyObject* BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);
+static PyObject* BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs);
 
 static PyMethodDef BytesWriter_methods[] = {
     {"append", (PyCFunction) BytesWriter_append, METH_FASTCALL | METH_KEYWORDS,
@@ -167,6 +224,9 @@ static PyMethodDef BytesWriter_methods[] = {
     },
     {"getvalue", (PyCFunction) BytesWriter_getvalue, METH_NOARGS,
      "Return the buffer content as bytes object"
+    },
+    {"truncate", (PyCFunction) BytesWriter_truncate, METH_FASTCALL,
+     PyDoc_STR("Truncate the buffer to the specified size")
     },
     {NULL}  /* Sentinel */
 };
@@ -182,6 +242,7 @@ static PyTypeObject BytesWriterType = {
     .tp_init = (initproc) BytesWriter_init,
     .tp_dealloc = (destructor) BytesWriter_dealloc,
     .tp_methods = BytesWriter_methods,
+    .tp_as_sequence = &BytesWriter_as_sequence,
     .tp_repr = (reprfunc)BytesWriter_repr,
 };
 
@@ -268,10 +329,67 @@ BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject
     return Py_None;
 }
 
+static char
+BytesWriter_truncate_internal(PyObject *self, int64_t size) {
+    BytesWriterObject *writer = (BytesWriterObject *)self;
+    Py_ssize_t current_size = writer->len;
+
+    // Validate size is non-negative
+    if (size < 0) {
+        PyErr_SetString(PyExc_ValueError, "size must be non-negative");
+        return CPY_NONE_ERROR;
+    }
+
+    // Validate size doesn't exceed current size
+    if (size > current_size) {
+        PyErr_SetString(PyExc_ValueError, "size cannot be larger than current buffer size");
+        return CPY_NONE_ERROR;
+    }
+
+    writer->len = size;
+    return CPY_NONE;
+}
+
+static PyObject*
+BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "truncate() takes exactly 1 argument (%zu given)", nargs);
+        return NULL;
+    }
+    if (!check_bytes_writer(self)) {
+        return NULL;
+    }
+
+    PyObject *size_obj = args[0];
+    int overflow;
+    long long size = PyLong_AsLongLongAndOverflow(size_obj, &overflow);
+
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    if (overflow != 0) {
+        PyErr_SetString(PyExc_ValueError, "integer out of range");
+        return NULL;
+    }
+
+    if (unlikely(BytesWriter_truncate_internal(self, size) == CPY_NONE_ERROR)) {
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyTypeObject *
 BytesWriter_type_internal(void) {
     return &BytesWriterType;  // Return borrowed reference
 };
+
+static CPyTagged
+BytesWriter_len_internal(PyObject *self) {
+    BytesWriterObject *writer = (BytesWriterObject *)self;
+    return writer->len << 1;
+}
 
 static PyMethodDef librt_strings_module_methods[] = {
     {NULL, NULL, 0, NULL}
@@ -311,6 +429,8 @@ librt_strings_module_exec(PyObject *m)
         (void *)BytesWriter_append_internal,
         (void *)BytesWriter_write_internal,
         (void *)BytesWriter_type_internal,
+        (void *)BytesWriter_len_internal,
+        (void *)BytesWriter_truncate_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
