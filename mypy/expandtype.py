@@ -304,6 +304,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         of other arguments that can be passed positionally.
         """
         required_posargs = required_prefix
+        if repl.variables:
+            # We will tear the callable apart, do not leak type variables
+            return tuple_type
         optional_posargs: list[Type] = []
         for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
             if kind == ArgKind.ARG_POS and name is None:
@@ -336,6 +339,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         `**kwargs` (until PEP 728 `extra_items` is supported). TypedDict entries will
         be required iff the corresponding argument is kw-only and has no default.
         """
+        if repl.variables:
+            # We will tear the callable apart, do not leak type variables
+            return dict_type
         kwargs = {}
         required_names = set()
         extra_items: Type = UninhabitedType()

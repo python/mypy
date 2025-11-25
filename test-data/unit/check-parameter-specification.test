@@ -2680,6 +2680,33 @@ reveal_type(SneakyPrefix(f10, 1, '', '').args)  # N: Revealed type is "Union[tup
 reveal_type(Sneaky(f11).args)  # N: Revealed type is "Union[tuple[()], tuple[builtins.int]]"
 [builtins fixtures/paramspec.pyi]
 
+[case testRevealBoundParamSpecGeneric]
+from typing import Callable, Generic, ParamSpec, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+P = ParamSpec("P")
+Ts = TypeVarTuple("Ts")
+
+class SplitSneaky(Generic[P]):
+    def __init__(self, target: Callable[P, None]) -> None:
+        ...
+
+    def run(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.args = args
+        self.kwargs = kwargs
+
+def f1(x: T) -> None: ...
+def f2(*xs: Unpack[Ts]) -> None: ...
+def f3(fn: Callable[P, None]) -> None: ...
+
+reveal_type(SplitSneaky(f1).args)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(SplitSneaky(f1).kwargs)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(SplitSneaky(f2).args)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(SplitSneaky(f2).kwargs)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(SplitSneaky(f3).args)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(SplitSneaky(f3).kwargs)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+[builtins fixtures/paramspec.pyi]
 
 [case testRevealBoundParamSpecKwargs]
 from typing import Callable, Generic, ParamSpec
