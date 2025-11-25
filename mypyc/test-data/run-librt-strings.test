@@ -88,12 +88,18 @@ def test_bytes_writer_wrapper_functions() -> None:
     cls: Any = BytesWriter
     b: Any = cls()
     assert repr(b) == "BytesWriter(b'')"
+    assert len(b) == 0
     b.append(ord('a'))
     b.append(0)
     b.append(255)
     b.write(b"foo")
     b.write(bytearray(b"bar"))
     assert b.getvalue() == b"a\x00\xfffoobar"
+    assert len(b) == 9
+    assert b[0] == ord('a')
+    assert b[8] == ord('r')
+    assert b[-1] == ord('r')
+    assert b[-9] == ord('a')
     assert isinstance(b, cls)
 
     with assertRaises(TypeError):
@@ -107,6 +113,12 @@ def test_bytes_writer_wrapper_functions() -> None:
 
     with assertRaises(TypeError):
         b.append(-1)
+
+    with assertRaises(IndexError):
+        b[9]
+
+    with assertRaises(IndexError):
+        b[-10]
 
 [case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
 # This also ensures librt.strings can be built without experimental features
