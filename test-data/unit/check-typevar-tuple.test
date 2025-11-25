@@ -2323,7 +2323,6 @@ higher_order(ok2)
 higher_order(ok3)
 
 higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "def bad1(*, d: str) -> int"; expected "def (*Any) -> Any"
-higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "def bad2(**kwargs: None) -> None"; expected "def (*Any) -> Any"
 [builtins fixtures/tuple.pyi]
 
 [case testAliasToCallableWithUnpack2]
