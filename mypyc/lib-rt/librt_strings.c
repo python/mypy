@@ -161,8 +161,24 @@ BytesWriter_length(BytesWriterObject *self)
     return self->ptr - self->buf;
 }
 
+static PyObject*
+BytesWriter_item(BytesWriterObject *self, Py_ssize_t index)
+{
+    Py_ssize_t length = self->ptr - self->buf;
+
+    // Check bounds
+    if (index < 0 || index >= length) {
+        PyErr_SetString(PyExc_IndexError, "BytesWriter index out of range");
+        return NULL;
+    }
+
+    // Return the byte at the given index as a Python int
+    return PyLong_FromLong((unsigned char)self->buf[index]);
+}
+
 static PySequenceMethods BytesWriter_as_sequence = {
     .sq_length = (lenfunc)BytesWriter_length,
+    .sq_item = (ssizeargfunc)BytesWriter_item,
 };
 
 static PyObject* BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames);

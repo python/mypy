@@ -20,6 +20,24 @@ def test_bytes_writer_basics() -> None:
     assert w.getvalue() == b"abc"
     assert repr(w) == "BytesWriter(b'abc')"
 
+def test_bytes_writer_get_item() -> None:
+    w = BytesWriter()
+    w.write(b"foobar")
+    assert w[0] == ord("f")
+    assert w[5] == ord("r")
+    assert w[-1] == ord("r")
+    assert w[-2] == ord("a")
+    assert w[-6] == ord("f")
+
+    with assertRaises(IndexError):
+        w[6]
+    with assertRaises(IndexError):
+        w[-7]
+    with assertRaises(IndexError):
+        w[1 << 50]
+    with assertRaises(IndexError):
+        w[-(1 << 50)]
+
 def test_bytes_writer_append_grow() -> None:
     w = BytesWriter()
     for i in range(16384):
@@ -36,6 +54,7 @@ def test_bytes_writer_write_grow() -> None:
     b = w.getvalue()
     for i in range(16384):
         assert b[i] == (i ^ (i >> 8)) & 255
+        assert b[i] == w[i]
 
     w = BytesWriter()
     a = []
