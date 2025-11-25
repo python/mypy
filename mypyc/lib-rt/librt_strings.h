@@ -24,7 +24,7 @@ import_librt_strings(void)
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
-#define LIBRT_STRINGS_API_LEN 8
+#define LIBRT_STRINGS_API_LEN 9
 
 static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
@@ -36,6 +36,7 @@ static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 #define LibRTStrings_BytesWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[5])
 #define LibRTStrings_BytesWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[6])
 #define LibRTStrings_BytesWriter_len_internal (*(CPyTagged (*)(PyObject *self)) LibRTStrings_API[7])
+#define LibRTStrings_BytesWriter_truncate_internal (*(char (*)(PyObject *self, int64_t size)) LibRTStrings_API[8])
 
 static int
 import_librt_strings(void)

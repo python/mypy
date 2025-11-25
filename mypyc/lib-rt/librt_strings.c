@@ -376,6 +376,27 @@ BytesWriter_len_internal(PyObject *self) {
     return (writer->ptr - writer->buf) << 1;
 }
 
+static char
+BytesWriter_truncate_internal(PyObject *self, int64_t size) {
+    BytesWriterObject *writer = (BytesWriterObject *)self;
+    Py_ssize_t current_size = writer->ptr - writer->buf;
+
+    // Validate size is non-negative
+    if (size < 0) {
+        PyErr_SetString(PyExc_ValueError, "size must be non-negative");
+        return CPY_NONE_ERROR;
+    }
+
+    // Validate size doesn't exceed current size
+    if (size > current_size) {
+        PyErr_SetString(PyExc_ValueError, "size cannot be larger than current buffer size");
+        return CPY_NONE_ERROR;
+    }
+
+    writer->ptr = writer->buf + size;
+    return CPY_NONE;
+}
+
 static PyMethodDef librt_strings_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
@@ -415,6 +436,7 @@ librt_strings_module_exec(PyObject *m)
         (void *)BytesWriter_write_internal,
         (void *)BytesWriter_type_internal,
         (void *)BytesWriter_len_internal,
+        (void *)BytesWriter_truncate_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {

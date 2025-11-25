@@ -4,6 +4,7 @@ from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
     bytes_rprimitive,
+    int64_rprimitive,
     short_int_rprimitive,
     none_rprimitive,
     uint8_rprimitive,
@@ -50,6 +51,14 @@ method_op(
     error_kind=ERR_MAGIC,
     experimental=True,
     capsule="librt.strings",
+)
+
+method_op(
+    name="truncate",
+    arg_types=[bytes_writer_rprimitive, int64_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="LibRTStrings_BytesWriter_truncate_internal",
+    error_kind=ERR_MAGIC,
 )
 
 function_op(
