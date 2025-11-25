@@ -158,13 +158,13 @@ BytesWriter_getvalue(BytesWriterObject *self, PyObject *Py_UNUSED(ignored))
 static Py_ssize_t
 BytesWriter_length(BytesWriterObject *self)
 {
-    return self->ptr - self->buf;
+    return self->len;
 }
 
 static PyObject*
 BytesWriter_item(BytesWriterObject *self, Py_ssize_t index)
 {
-    Py_ssize_t length = self->ptr - self->buf;
+    Py_ssize_t length = self->len;
 
     // Check bounds
     if (index < 0 || index >= length) {
@@ -179,7 +179,7 @@ BytesWriter_item(BytesWriterObject *self, Py_ssize_t index)
 static int
 BytesWriter_ass_item(BytesWriterObject *self, Py_ssize_t index, PyObject *value)
 {
-    Py_ssize_t length = self->ptr - self->buf;
+    Py_ssize_t length = self->len;
 
     // Check bounds
     if (index < 0 || index >= length) {
@@ -330,14 +330,14 @@ BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs) {
     }
 
     BytesWriterObject *writer = (BytesWriterObject *)self;
-    Py_ssize_t current_size = writer->ptr - writer->buf;
+    Py_ssize_t current_size = writer->len;
 
     if (size > current_size) {
         PyErr_SetString(PyExc_ValueError, "size cannot be larger than current buffer size");
         return NULL;
     }
 
-    writer->ptr = writer->buf + size;
+    writer->len = size;
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -373,13 +373,13 @@ BytesWriter_type_internal(void) {
 static CPyTagged
 BytesWriter_len_internal(PyObject *self) {
     BytesWriterObject *writer = (BytesWriterObject *)self;
-    return (writer->ptr - writer->buf) << 1;
+    return writer->len << 1;
 }
 
 static char
 BytesWriter_truncate_internal(PyObject *self, int64_t size) {
     BytesWriterObject *writer = (BytesWriterObject *)self;
-    Py_ssize_t current_size = writer->ptr - writer->buf;
+    Py_ssize_t current_size = writer->len;
 
     // Validate size is non-negative
     if (size < 0) {
@@ -393,7 +393,7 @@ BytesWriter_truncate_internal(PyObject *self, int64_t size) {
         return CPY_NONE_ERROR;
     }
 
-    writer->ptr = writer->buf + size;
+    writer->len = size;
     return CPY_NONE;
 }
 
