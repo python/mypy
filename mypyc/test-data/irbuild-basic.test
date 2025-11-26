@@ -3093,18 +3093,8 @@ def f() -> int:
     return x - 1
 [out]
 def f():
-    r0 :: int
-    r1 :: bool
-    r2 :: int
 L0:
-    r0 = __main__.x :: static
-    if is_error(r0) goto L1 else goto L2
-L1:
-    r1 = raise NameError('value for final name "x" was not set')
-    unreachable
-L2:
-    r2 = CPyTagged_Subtract(r0, 2)
-    return r2
+    return 0
 
 [case testFinalRestrictedTypeVar]
 from typing import TypeVar

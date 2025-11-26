@@ -99,11 +99,22 @@ hot blocks: [0, 1]
 [case testRareBranch_freq]
 from typing import Final
 
-x: Final = str()
+def setter() -> str:
+    # we need this helper to ensure `x` cannot be constant folded
+    return ""
+
+x: Final = setter()
 
 def f() -> str:
     return x
 [out]
+def setter():
+    r0 :: str
+L0:
+    r0 = ''
+    inc_ref r0
+    return r0
+hot blocks: [0]
 def f():
     r0 :: str
     r1 :: bool
@@ -113,7 +124,7 @@ L0:
     if is_error(r0) goto L1 else goto L3
 L1:
     r1 = raise NameError('value for final name "x" was not set')
-    if not r1 goto L4 (error at f:6) else goto L2 :: bool
+    if not r1 goto L4 (error at f:10) else goto L2 :: bool
 L2:
     unreachable
 L3:
