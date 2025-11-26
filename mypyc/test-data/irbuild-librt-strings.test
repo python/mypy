@@ -1,4 +1,4 @@
-[case testLibrtStrings_experimental]
+[case testLibrtStrings_experimental_64bit]
 from librt.strings import BytesWriter
 from mypy_extensions import u8, i64
 
