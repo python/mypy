@@ -2209,8 +2209,14 @@ class LowLevelIRBuilder:
         args: list[Value],
         line: int,
         result_type: RType | None = None,
+        *,
         can_borrow: bool = False,
+        strict: bool = True,
     ) -> Value | None:
+        """Find primitive operation that is compatible with types of args.
+
+        Return None if none of them match.
+        """
         matching: PrimitiveDescription | None = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
@@ -2219,7 +2225,7 @@ class LowLevelIRBuilder:
                 continue
             if all(
                 # formal is not None and # TODO
-                is_subtype(actual.type, formal)
+                is_subtype(actual.type, formal, relaxed=not strict)
                 for actual, formal in zip(args, desc.arg_types)
             ) and (not desc.is_borrowed or can_borrow):
                 if matching:
@@ -2232,6 +2238,12 @@ class LowLevelIRBuilder:
                     matching = desc
         if matching:
             return self.primitive_op(matching, args, line=line, result_type=result_type)
+        if strict and any(prim.is_ambiguous for prim in candidates):
+            # Also try a non-exact match if any primitives have ambiguous types.
+            return self.matching_primitive_op(
+                candidates, args, line, result_type, can_borrow=can_borrow, strict=False
+            )
+
         return None
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:
