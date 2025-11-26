@@ -99,7 +99,7 @@ from mypyc.primitives.dict_ops import (
     isinstance_dict,
 )
 from mypyc.primitives.float_ops import isinstance_float
-from mypyc.primitives.generic_ops import generic_setattr
+from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import isinstance_int
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
@@ -1103,7 +1103,7 @@ def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     method_args = fn.fitem.arg_names
     if isinstance(typ_arg, NameExpr) and len(method_args) > 0 and method_args[0] == typ_arg.name:
         subtype = builder.accept(expr.args[0])
-        return builder.add(Call(ir.setup, [subtype], expr.line))
+        return builder.call_c(setup_object, [subtype], expr.line)
 
     return None
 
