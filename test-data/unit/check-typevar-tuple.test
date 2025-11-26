@@ -2657,8 +2657,8 @@ def task(a: int, b: str, *, task_status: TaskStatus[str]) -> None: ...
 
 def test() -> None:
     reveal_type(nursery_start(task, "a", 2))  # N: Revealed type is "builtins.str" \
-                                              # E: Argument 1 to "nursery_start" has incompatible type "Callable[[int, str, NamedArg(TaskStatus[str], 'task_status')], None]"; expected "NurseryStartFunc[str, int, str]" \
-                                              # N: "NurseryStartFunc[str, int, str].__call__" has type "Callable[[str, int, NamedArg(TaskStatus[str], 'task_status')], object]"
+                                              # E: Argument 1 to "nursery_start" has incompatible type "def task(a: int, b: str, *, task_status: TaskStatus[str]) -> None"; expected "NurseryStartFunc[str, int, str]" \
+                                              # N: "NurseryStartFunc[str, int, str].__call__" has type "def __call__(str, int, /, *, task_status: TaskStatus[str]) -> object"
     reveal_type(nursery_start(task, 1, "b"))  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
