@@ -1460,6 +1460,22 @@ class T:
     async def returns_two_async(self) -> int:
         return 1
 
+    @staticmethod
+    def static() -> int:
+        return 2
+
+    @staticmethod
+    async def static_async() -> int:
+        return 2
+
+    @classmethod
+    def class_method(cls) -> int:
+        return 3
+
+    @classmethod
+    async def class_method_async(cls) -> int:
+        return 3
+
 def is_coroutine(fn):
     if sys.version_info >= (3, 10):
         return inspect.iscoroutinefunction(fn)
@@ -1505,6 +1521,14 @@ def test_method() -> None:
     assert not is_coroutine(T.returns_two)
     assert is_coroutine(T.returns_two_async)
     assert asyncio.run(t.returns_two_async()) == 2
+
+    assert not is_coroutine(T.static)
+    assert is_coroutine(T.static_async)
+    assert asyncio.run(T.static_async()) == 2
+
+    assert not is_coroutine(T.class_method)
+    assert is_coroutine(T.class_method_async)
+    assert asyncio.run(T.class_method_async()) == 3
 
 def test_nested() -> None:
     def nested() -> int:
