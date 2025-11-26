@@ -16,7 +16,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 - Switch to a more dynamic SCC processing logic (Ivan Levkivskyi, PR [20053](https://github.com/python/mypy/pull/20053))
 - Try some aliases speed-up (Ivan Levkivskyi, PR [19810](https://github.com/python/mypy/pull/19810))
 
-### Fixed‑Format Cache (Experimental)
+### Fixed‑Format Cache
 - Force-discard cache if cache format changed (Ivan Levkivskyi, PR [20152](https://github.com/python/mypy/pull/20152))
 - Use more efficient serialization format for long integers in cache files (Jukka Lehtosalo, PR [20151](https://github.com/python/mypy/pull/20151))
 - More robust packing of flats in FF cache (Ivan Levkivskyi, PR [20150](https://github.com/python/mypy/pull/20150))
@@ -45,14 +45,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 - Fix crash on invalid unpack in base class (Ivan Levkivskyi, PR [19962](https://github.com/python/mypy/pull/19962))
 - Traverse ParamSpec prefix where we should (Ivan Levkivskyi, PR [19800](https://github.com/python/mypy/pull/19800))
 
-### Mypyc: Lib-rt
-- Add efficient `librt.base64.b64decode` (Jukka Lehtosalo, PR [20263](https://github.com/python/mypy/pull/20263))
-- Enable SIMD for `librt.base64` on x86-64 (Jukka Lehtosalo, PR [20244](https://github.com/python/mypy/pull/20244))
-- Use faster base64 encode implementation in `librt.base64` (Jukka Lehtosalo, PR [20237](https://github.com/python/mypy/pull/20237))
-- Import `librt.base64` capsule automatically if needed (Jukka Lehtosalo, PR [20233](https://github.com/python/mypy/pull/20233))
-- Add minimal, experimental `librt.base64` module (Jukka Lehtosalo, PR [20226](https://github.com/python/mypy/pull/20226))
-
-### Mypyc: Support for `__getattr__` and `__setattr__`
+### Mypyc: Support for `__getattr__`, `__setattr__`, and `__delattr__`
 - Support deleting attributes in `__setattr__` wrapper (Piotr Sawicki, PR [19997](https://github.com/python/mypy/pull/19997))
 - Generate `__setattr__` wrapper (Piotr Sawicki, PR [19937](https://github.com/python/mypy/pull/19937))
 - Generate `__getattr__` wrapper (Piotr Sawicki, PR [19909](https://github.com/python/mypy/pull/19909))
