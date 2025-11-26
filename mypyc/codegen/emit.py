@@ -20,7 +20,6 @@ from mypyc.common import (
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
-    short_id_from_name,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FuncDecl, FuncIR, get_text_signature
@@ -1213,9 +1212,10 @@ class Emitter:
         self.emit_line(failure)
         self.emit_line("}")
 
-    def emit_cpyfunction_instance(self, fn: FuncIR, filepath: str, error_stmt: str) -> str:
+    def emit_cpyfunction_instance(
+        self, fn: FuncIR, name: str, filepath: str, error_stmt: str
+    ) -> str:
         module = self.static_name(fn.decl.module_name, None, prefix=MODULE_PREFIX)
-        name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
         cname = f"{PREFIX}{fn.cname(self.names)}"
         wrapper_name = f"{cname}_wrapper"
         cfunc = f"(PyCFunction){cname}"

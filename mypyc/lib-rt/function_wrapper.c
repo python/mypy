@@ -227,26 +227,36 @@ static PyMethodDef* CPyMethodDef_New(const char *name, PyCFunction func, int fla
 PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
                           PyCFunction func, int func_flags, const char *func_doc,
                           int first_line, int code_flags) {
+    PyMethodDef *method = NULL;
+    PyObject *code = NULL, *op = NULL;
+
     if (!CPyFunctionType) {
         CPyFunctionType = (PyTypeObject *)PyType_FromSpec(&CPyFunction_spec);
-        assert(CPyFunctionType);
+        if (unlikely(!CPyFunctionType)) {
+            goto err;
+        }
     }
 
-    PyMethodDef *method = CPyMethodDef_New(funcname, func, func_flags, func_doc);
+    method = CPyMethodDef_New(funcname, func, func_flags, func_doc);
     if (unlikely(!method)) {
-        return NULL;
+        goto err;
     }
-    PyObject *code = CPyCode_New(filename, funcname, first_line, code_flags);
+    code = CPyCode_New(filename, funcname, first_line, code_flags);
     if (unlikely(!code)) {
-        PyMem_Free(method);
-        return NULL;
+        goto err;
     }
-    PyObject *op = (PyObject *)CPyFunction_Init(PyObject_GC_New(CPyFunction, CPyFunctionType),
-                                                method, PyUnicode_FromString(funcname), module, code);
+    op = (PyObject *)CPyFunction_Init(PyObject_GC_New(CPyFunction, CPyFunctionType),
+                                      method, PyUnicode_FromString(funcname), module, code);
     if (unlikely(!op)) {
-        PyMem_Free(method);
-        return NULL;
+        goto err;
     }
     PyObject_GC_Track(op);
     return op;
+
+err:
+    CPyError_OutOfMemory();
+    if (method) {
+        PyMem_Free(method);
+    }
+    return NULL;
 }

@@ -1042,7 +1042,8 @@ class GroupGenerator:
 
             filepath = self.source_paths[module.fullname]
             error_stmt = "    goto fail;"
-            wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath, error_stmt)
+            name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
+            wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
             name_obj = f"{wrapper_name}_name"
             emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
             emitter.emit_line(f"if (unlikely(!{name_obj}))")
@@ -1116,10 +1117,13 @@ class GroupGenerator:
                 name_prefix = cl.name_prefix(emitter.names)
                 emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
 
-                if cl.is_coroutine:
+                if cl.coroutine_name:
                     fn = cl.methods["__call__"]
                     filepath = self.source_paths[module.fullname]
-                    wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath, error_stmt)
+                    name = cl.coroutine_name
+                    wrapper_name = emitter.emit_cpyfunction_instance(
+                        fn, name, filepath, error_stmt
+                    )
                     static_name = emitter.static_name(cl.name + "_cpyfunction", module.fullname)
                     emitter.emit_line(f"{static_name} = {wrapper_name};")
 

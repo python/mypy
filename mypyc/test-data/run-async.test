@@ -1407,8 +1407,10 @@ def test_call_using_super() -> None:
 def run(x: object) -> object: ...
 
 [case testAsyncIntrospection]
+import asyncio
 import inspect
 import sys
+import weakref
 
 from functools import wraps
 from typing import Any, Callable, TypeVar, cast
@@ -1423,25 +1425,25 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 def wrap(fn: F) -> F:
     @wraps(fn)
-    def wrapper() -> Any:
-        return fn() + fn()
+    def wrapper(*args) -> Any:
+        return fn(*args) + fn(*args)
 
     return cast(F, wrapper)
 
 def wrap_async(fn: F) -> F:
     @wraps(fn)
-    async def wrapper() -> Any:
-        return await fn() + await fn()
+    async def wrapper(*args) -> Any:
+        return await fn(*args) + await fn(*args)
 
     return cast(F, wrapper)
 
 @wrap
-def wrapped() -> int:
-    return 1
+def wrapped(val: int) -> int:
+    return val
 
 @wrap_async
-async def wrapped_async() -> int:
-    return 1
+async def wrapped_async(val: int) -> int:
+    return val
 
 class T:
     def returns_one(self) -> int:
@@ -1452,11 +1454,11 @@ class T:
 
     @wrap
     def returns_two(self) -> int:
-        return 2
+        return 1
 
     @wrap_async
     async def returns_two_async(self) -> int:
-        return 2
+        return 1
 
 def is_coroutine(fn):
     if sys.version_info >= (3, 10):
@@ -1472,16 +1474,37 @@ def is_coroutine(fn):
 def test_function() -> None:
     assert not is_coroutine(identity)
     assert is_coroutine(identity_async)
+    assert str(identity_async).startswith("<function identity_async"), str(identity_async)
+    assert asyncio.run(identity_async(42)) == 42
+
+    wr = weakref.ref(identity_async)
+    f = wr()
+    assert f
+    assert asyncio.run(f(43)) == 43
+
+    assert getattr(identity_async, "__name__") == "identity_async", getattr(identity_async, "__name__")
+    setattr(identity_async, "__name__", "some custom name")
+    assert getattr(identity_async, "__name__") == "some custom name", getattr(identity_async, "__name__")
+    assert getattr(identity_async, "__code__") != None, getattr(identity_async, "__code__")
+    assert getattr(identity_async, "__defaults__") == None, getattr(identity_async, "__defaults__")
+    assert getattr(identity_async, "__kwdefaults__") == None, getattr(identity_async, "__kwdefaults__")
+    assert getattr(identity_async, "__annotations__") == None, getattr(identity_async, "__annotations__")
 
     assert not is_coroutine(wrapped)
     assert is_coroutine(wrapped_async)
+    assert asyncio.run(wrapped_async(22)) == 44
 
 def test_method() -> None:
     assert not is_coroutine(T.returns_one)
     assert is_coroutine(T.returns_one_async)
+    assert str(T.returns_one_async).startswith("<function T.returns_one_async"), str(T.returns_one_async)
+
+    t = T()
+    assert asyncio.run(t.returns_one_async()) == 1
 
     assert not is_coroutine(T.returns_two)
     assert is_coroutine(T.returns_two_async)
+    assert asyncio.run(t.returns_two_async()) == 2
 
 def test_nested() -> None:
     def nested() -> int:
@@ -1500,6 +1523,19 @@ def test_nested() -> None:
 
     assert not is_coroutine(nested)
     assert is_coroutine(nested_async)
+    assert asyncio.run(nested_async()) == 1
+
+    assert getattr(nested_async, "__name__") == "nested_async", getattr(nested_async, "__name__")
+    setattr(nested_async, "__name__", "some custom name")
+    assert getattr(nested_async, "__name__") == "some custom name", getattr(nested_async, "__name__")
+    assert getattr(nested_async, "__code__") != None, getattr(nested_async, "__code__")
+    assert getattr(nested_async, "__defaults__") == None, getattr(nested_async, "__defaults__")
+    assert getattr(nested_async, "__kwdefaults__") == None, getattr(nested_async, "__kwdefaults__")
+    assert getattr(nested_async, "__annotations__") == None, getattr(nested_async, "__annotations__")
 
     assert not is_coroutine(nested_wrapped)
     assert is_coroutine(nested_wrapped_async)
+    assert asyncio.run(nested_wrapped_async()) == 4
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...

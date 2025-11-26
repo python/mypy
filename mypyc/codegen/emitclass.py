@@ -26,7 +26,14 @@ from mypyc.codegen.emitwrapper import (
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
+from mypyc.common import (
+    BITMAP_BITS,
+    BITMAP_TYPE,
+    NATIVE_PREFIX,
+    PREFIX,
+    REG_PREFIX,
+    short_id_from_name,
+)
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -399,7 +406,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         )
     )
 
-    if cl.is_coroutine:
+    if cl.coroutine_name:
         cpyfunction = emitter.static_name(cl.name + "_cpyfunction", module)
         emitter.emit_line(f"static PyObject *{cpyfunction} = NULL;")
 
@@ -1288,14 +1295,13 @@ def generate_coroutine_setup(
 
         filepath = emitter.filepath or ""
         error_stmt = "    return 2;"
-        wrapper_name = emitter.emit_cpyfunction_instance(fn, filepath, error_stmt)
+        name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
+        wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
         name_obj = f"{wrapper_name}_name"
         emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
         emitter.emit_line(f"if (unlikely(!{name_obj}))")
         emitter.emit_line(error_stmt)
-        emitter.emit_line(
-            f'if (PyDict_SetItem(tp->tp_dict, {name_obj}, {wrapper_name}) < 0)'
-        )
+        emitter.emit_line(f"if (PyDict_SetItem(tp->tp_dict, {name_obj}, {wrapper_name}) < 0)")
         emitter.emit_line(error_stmt)
 
     emitter.emit_line("return 1;")

@@ -98,14 +98,16 @@ def setup_callable_class(builder: IRBuilder) -> None:
     builder.fn_info.callable_class.self_reg = builder.read(self_target, builder.fn_info.fitem.line)
 
     if not builder.fn_info.in_non_ext and builder.fn_info.is_coroutine:
-        add_coroutine_properties(builder, callable_class_ir)
+        add_coroutine_properties(builder, callable_class_ir, builder.fn_info.name)
 
 
-def add_coroutine_properties(builder: IRBuilder, callable_class_ir: ClassIR) -> None:
+def add_coroutine_properties(
+    builder: IRBuilder, callable_class_ir: ClassIR, coroutine_name: str
+) -> None:
     """Adds properties to the class to make it look like a regular python function.
     Needed to make introspection functions like inspect.iscoroutinefunction work.
     """
-    callable_class_ir.is_coroutine = True
+    callable_class_ir.coroutine_name = coroutine_name
 
     properties = {
         "__name__": cpyfunction_get_name,
