@@ -36,7 +36,6 @@ from mypy.nodes import (
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
     BasicBlock,
-    Call,
     Extend,
     Integer,
     PrimitiveDescription,
