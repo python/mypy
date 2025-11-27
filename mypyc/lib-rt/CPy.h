@@ -783,6 +783,7 @@ PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
 PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
+PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table);
 
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);

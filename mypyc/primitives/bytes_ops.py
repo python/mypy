@@ -128,6 +128,15 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# bytes.translate(table)
+method_op(
+    name="translate",
+    arg_types=[bytes_rprimitive, object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyBytes_Translate",
+    error_kind=ERR_MAGIC,
+)
+
 # Join bytes objects and return a new bytes.
 # The first argument is the total number of the following bytes.
 bytes_build_op = custom_op(

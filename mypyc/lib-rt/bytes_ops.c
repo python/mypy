@@ -171,3 +171,52 @@ PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count) {
     }
     return PySequence_Repeat(bytes, temp_count);
 }
+
+PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table) {
+    // Fast path: exact bytes object with exact bytes table
+    if (PyBytes_CheckExact(bytes) && PyBytes_CheckExact(table)) {
+        Py_ssize_t table_len = PyBytes_GET_SIZE(table);
+        if (table_len != 256) {
+            PyErr_SetString(PyExc_ValueError,
+                           "translation table must be 256 characters long");
+            return NULL;
+        }
+
+        Py_ssize_t len = PyBytes_GET_SIZE(bytes);
+        const char *input = PyBytes_AS_STRING(bytes);
+        const char *trans_table = PyBytes_AS_STRING(table);
+
+        PyObject *result = PyBytes_FromStringAndSize(NULL, len);
+        if (result == NULL) {
+            return NULL;
+        }
+
+        char *output = PyBytes_AS_STRING(result);
+        bool changed = false;
+        for (Py_ssize_t i = 0; i < len; i++) {
+            char orig_char = input[i];
+            char new_char = trans_table[(unsigned char)orig_char];
+            output[i] = new_char;
+            if (new_char != orig_char) {
+                changed = true;
+            }
+        }
+
+        // If nothing changed, discard result and return the original object
+        if (!changed) {
+            Py_DECREF(result);
+            Py_INCREF(bytes);
+            return bytes;
+        }
+
+        return result;
+    }
+
+    // Fallback to Python method call for non-exact types or non-standard tables
+    _Py_IDENTIFIER(translate);
+    PyObject *name = _PyUnicode_FromId(&PyId_translate);
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodOneArg(bytes, name, table);
+}
