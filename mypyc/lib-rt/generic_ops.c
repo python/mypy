@@ -75,13 +75,10 @@ PyObject *CPy_SetupObject(PyObject *type) {
         }
 
         if (!strcmp(def->ml_name, "__internal_mypyc_setup")) {
-            break;
+            return ((SetupFunction)(void(*)(void))def->ml_meth)(type);
         }
     }
-    if (!def || !def->ml_name) {
-        PyErr_SetString(PyExc_RuntimeError, "Internal mypyc error: Unable to find object setup function");
-        return NULL;
-    }
 
-    return ((SetupFunction)(void(*)(void))def->ml_meth)(type);
+    PyErr_SetString(PyExc_RuntimeError, "Internal mypyc error: Unable to find object setup function");
+    return NULL;
 }
