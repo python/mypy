@@ -1685,6 +1685,13 @@ class Test:
         obj.val = val
         return obj
 
+class Test2:
+    def __new__(cls) -> Test2:
+        return super().__new__(cls)
+
+class Sub(Test2):
+    pass
+
 def fn() -> Test:
     return Test.__new__(Test, 42)
 
@@ -1712,15 +1719,20 @@ class NotTransformed:
 def Test.__new__(cls, val):
     cls :: object
     val :: int
-    r0 :: object
-    r1, obj :: __main__.Test
-    r2 :: bool
+    r0, obj :: __main__.Test
+    r1 :: bool
+L0:
+    r0 = __mypyc__Test_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def Test2.__new__(cls):
+    cls, r0 :: object
+    r1 :: __main__.Test2
 L0:
     r0 = CPy_SetupObject(cls)
-    r1 = cast(__main__.Test, r0)
-    obj = r1
-    obj.val = val; r2 = is_error
-    return obj
+    r1 = cast(__main__.Test2, r0)
+    return r1
 def fn():
     r0 :: object
     r1 :: __main__.Test
@@ -1731,14 +1743,12 @@ L0:
 def NewClassMethod.__new__(cls, val):
     cls :: object
     val :: int
-    r0 :: object
-    r1, obj :: __main__.NewClassMethod
-    r2 :: bool
+    r0, obj :: __main__.NewClassMethod
+    r1 :: bool
 L0:
-    r0 = CPy_SetupObject(cls)
-    r1 = cast(__main__.NewClassMethod, r0)
-    obj = r1
-    obj.val = val; r2 = is_error
+    r0 = __mypyc__NewClassMethod_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
     return obj
 def fn2():
     r0 :: object
@@ -1826,6 +1836,13 @@ class Test:
         obj.val = val
         return obj
 
+class Test2:
+    def __new__(cls) -> Test2:
+        return object.__new__(cls)
+
+class Sub(Test2):
+    pass
+
 def fn() -> Test:
     return Test.__new__(Test, 42)
 
@@ -1871,15 +1888,20 @@ def object_new_outside_class() -> None:
 def Test.__new__(cls, val):
     cls :: object
     val :: int
-    r0 :: object
-    r1, obj :: __main__.Test
-    r2 :: bool
+    r0, obj :: __main__.Test
+    r1 :: bool
+L0:
+    r0 = __mypyc__Test_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
+    return obj
+def Test2.__new__(cls):
+    cls, r0 :: object
+    r1 :: __main__.Test2
 L0:
     r0 = CPy_SetupObject(cls)
-    r1 = cast(__main__.Test, r0)
-    obj = r1
-    obj.val = val; r2 = is_error
-    return obj
+    r1 = cast(__main__.Test2, r0)
+    return r1
 def fn():
     r0 :: object
     r1 :: __main__.Test
@@ -1890,14 +1912,12 @@ L0:
 def NewClassMethod.__new__(cls, val):
     cls :: object
     val :: int
-    r0 :: object
-    r1, obj :: __main__.NewClassMethod
-    r2 :: bool
+    r0, obj :: __main__.NewClassMethod
+    r1 :: bool
 L0:
-    r0 = CPy_SetupObject(cls)
-    r1 = cast(__main__.NewClassMethod, r0)
-    obj = r1
-    obj.val = val; r2 = is_error
+    r0 = __mypyc__NewClassMethod_setup(cls)
+    obj = r0
+    obj.val = val; r1 = is_error
     return obj
 def fn2():
     r0 :: object
