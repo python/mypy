@@ -34,7 +34,6 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import AnyType, TypeOfAny
-from mypyc.ir.class_ir import all_concrete_classes
 from mypyc.ir.ops import (
     BasicBlock,
     Call,
@@ -1104,8 +1103,8 @@ def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     method_args = fn.fitem.arg_names
     if isinstance(typ_arg, NameExpr) and len(method_args) > 0 and method_args[0] == typ_arg.name:
         subtype = builder.accept(expr.args[0])
-        classes = all_concrete_classes(ir)
-        if classes and len(classes) == 1:
+        subs = ir.subclasses()
+        if subs is not None and len(subs) == 0:
             return builder.add(Call(ir.setup, [subtype], expr.line))
         # Call a function that dynamically resolves the setup function of extension classes from the type object.
         # This is necessary because the setup involves default attribute initialization and setting up
