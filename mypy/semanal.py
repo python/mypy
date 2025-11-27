@@ -2269,11 +2269,17 @@ class SemanticAnalyzer(
         removed: list[int] = []
         declared_tvars: TypeVarLikeList = []
         is_protocol = False
+        has_type_var_tuple = False
         if defn.type_args is not None:
             for p in defn.type_args:
                 node = self.lookup(p.name, context)
                 assert node is not None
                 assert isinstance(node.node, TypeVarLikeExpr)
+                if isinstance(node.node, TypeVarTupleExpr):
+                    if has_type_var_tuple:
+                        self.fail("Can only use one type var tuple in a class def", context)
+                        continue
+                    has_type_var_tuple = True
                 declared_tvars.append((p.name, node.node))
 
         for i, base_expr in enumerate(base_type_exprs):
@@ -2286,7 +2292,7 @@ class SemanticAnalyzer(
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            result = self.analyze_class_typevar_declaration(base)
+            result = self.analyze_class_typevar_declaration(base, has_type_var_tuple)
             if result is not None:
                 tvars = result[0]
                 is_protocol |= result[1]
@@ -2340,7 +2346,9 @@ class SemanticAnalyzer(
         tvar_defs = self.tvar_defs_from_tvars(declared_tvars, context)
         return base_type_exprs, tvar_defs, is_protocol
 
-    def analyze_class_typevar_declaration(self, base: Type) -> tuple[TypeVarLikeList, bool] | None:
+    def analyze_class_typevar_declaration(
+        self, base: Type, has_type_var_tuple: bool
+    ) -> tuple[TypeVarLikeList, bool] | None:
         """Analyze type variables declared using Generic[...] or Protocol[...].
 
         Args:
@@ -2362,16 +2370,15 @@ class SemanticAnalyzer(
         ):
             is_proto = sym.node.fullname != "typing.Generic"
             tvars: TypeVarLikeList = []
-            have_type_var_tuple = False
             for arg in unbound.args:
                 tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
                     if isinstance(tvar[1], TypeVarTupleExpr):
-                        if have_type_var_tuple:
+                        if has_type_var_tuple:
                             self.fail("Can only use one type var tuple in a class def", base)
                             continue
-                        have_type_var_tuple = True
+                        has_type_var_tuple = True
                     tvars.append(tvar)
                 elif not self.found_incomplete_ref(tag):
                     self.fail("Free type variable expected in %s[...]" % sym.node.name, base)
@@ -2455,7 +2462,7 @@ class SemanticAnalyzer(
                 self.fail(
                     message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name), context
                 )
-            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr, self.fail, context)
             if last_tvar_name_with_default is not None and not tvar_def.has_default():
                 self.msg.tvar_without_default_type(
                     tvar_def.name, last_tvar_name_with_default, context
@@ -2473,19 +2480,18 @@ class SemanticAnalyzer(
         a simplified version of the logic we use for ClassDef bases. We duplicate
         some amount of code, because it is hard to refactor common pieces.
         """
-        tvars = []
+        tvars: dict[str, tuple[TypeVarLikeExpr, Expression]] = {}
         for base_expr in type_exprs:
             try:
                 base = self.expr_to_unanalyzed_type(base_expr)
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            base_tvars = self.find_type_var_likes(base)
-            tvars.extend(base_tvars)
-        tvars = remove_dups(tvars)  # Variables are defined in order of textual appearance.
+            for name, expr in self.find_type_var_likes(base):
+                tvars.setdefault(name, (expr, base_expr))
         tvar_defs = []
-        for name, tvar_expr in tvars:
-            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+        for name, (tvar_expr, context) in tvars.items():
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr, self.fail, context)
             tvar_defs.append(tvar_def)
         return tvar_defs
 
@@ -6505,7 +6511,9 @@ class SemanticAnalyzer(
                 implicit_node = node
         # 2b. Class attributes __qualname__ and __module__
         if self.type and not self.is_func_scope() and name in {"__qualname__", "__module__"}:
-            return SymbolTableNode(MDEF, Var(name, self.str_type()))
+            v = Var(name, self.str_type())
+            v._fullname = self.qualified_name(name)
+            return SymbolTableNode(MDEF, v)
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:
@@ -7022,7 +7030,12 @@ class SemanticAnalyzer(
             if not is_same_symbol(old, new):
                 if isinstance(new, (FuncDef, Decorator, OverloadedFuncDef, TypeInfo)):
                     self.add_redefinition(names, name, symbol)
-                if not (isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new)):
+                if isinstance(old, Var) and is_init_only(old):
+                    if old.has_explicit_value:
+                        self.fail("InitVar with default value cannot be redefined", context)
+                elif not (
+                    isinstance(new, (FuncDef, Decorator)) and self.set_original_def(old, new)
+                ):
                     self.name_already_defined(name, context, existing)
         elif type_param or (
             name not in self.missing_names[-1] and "*" not in self.missing_names[-1]
@@ -8270,4 +8283,11 @@ def is_trivial_body(block: Block) -> bool:
 
     return isinstance(stmt, PassStmt) or (
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
+    )
+
+
+def is_init_only(node: Var) -> bool:
+    return (
+        isinstance(type := get_proper_type(node.type), Instance)
+        and type.type.fullname == "dataclasses.InitVar"
     )

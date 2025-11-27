@@ -770,6 +770,7 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
+PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count);
 
 
 // Bytes operations
@@ -781,6 +782,7 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
+PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
 
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);
@@ -957,6 +959,8 @@ static inline PyObject *CPyObject_GenericGetAttr(PyObject *self, PyObject *name)
 static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObject *value) {
     return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
 }
+
+PyObject *CPy_SetupObject(PyObject *type);
 
 #if CPY_3_11_FEATURES
 PyObject *CPy_GetName(PyObject *obj);

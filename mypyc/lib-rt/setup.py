@@ -105,6 +105,19 @@ else:
                 extra_compile_args=cflags,
             ),
             Extension(
+                "librt.strings",
+                [
+                    "librt_strings.c",
+                    "init.c",
+                    "int_ops.c",
+                    "exc_ops.c",
+                    "pythonsupport.c",
+                    "getargsfast.c",
+                ],
+                include_dirs=["."],
+                extra_compile_args=cflags,
+            ),
+            Extension(
                 "librt.base64",
                 [
                     "librt_base64.c",

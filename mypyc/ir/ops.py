@@ -37,6 +37,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
+    RUnion,
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
@@ -44,6 +45,7 @@ from mypyc.ir.rtypes import (
     float_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
+    is_fixed_width_rtype,
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
@@ -688,7 +690,7 @@ class PrimitiveDescription:
     Primitives get lowered into lower-level ops before code generation.
 
     If c_function_name is provided, a primitive will be lowered into a CallC op.
-    Otherwise custom logic will need to be implemented to transform the
+    Otherwise, custom logic will need to be implemented to transform the
     primitive into lower-level ops.
     """
 
@@ -737,9 +739,22 @@ class PrimitiveDescription:
         # Capsule that needs to imported and configured to call the primitive
         # (name of the target module, e.g. "librt.base64").
         self.capsule = capsule
+        # Native integer types such as u8 can cause ambiguity in primitive
+        # matching, since these are assignable to plain int *and* vice versa.
+        # If this flag is set, the primitive has native integer types and must
+        # be matched using more complex rules.
+        self.is_ambiguous = any(has_fixed_width_int(t) for t in arg_types)
 
     def __repr__(self) -> str:
         return f"<PrimitiveDescription {self.name!r}: {self.arg_types}>"
+
+
+def has_fixed_width_int(t: RType) -> bool:
+    if isinstance(t, RTuple):
+        return any(has_fixed_width_int(t) for t in t.types)
+    elif isinstance(t, RUnion):
+        return any(has_fixed_width_int(t) for t in t.items)
+    return is_fixed_width_rtype(t)
 
 
 @final
