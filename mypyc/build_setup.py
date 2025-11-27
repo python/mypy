@@ -39,9 +39,8 @@ def spawn(self, cmd, **kwargs) -> None:  # type: ignore[no-untyped-def]
     if X86_64 and extra_options is not None:
         # filenames are closer to the end of command line
         for argument in reversed(new_cmd):
-            # Check if argument contains a filename. We must check for all
-            # possible extensions; checking for target extension is faster.
-            if self.obj_extension and not str(argument).endswith(self.obj_extension):
+            # Check if the matching argument contains a source filename.
+            if not str(argument).endswith(".c"):
                 continue
 
             for path in extra_options.keys():
