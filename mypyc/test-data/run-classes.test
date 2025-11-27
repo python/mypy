@@ -3859,6 +3859,7 @@ Add(1, 0)=1
 [case testInheritedDunderNew]
 from __future__ import annotations
 from mypy_extensions import mypyc_attr
+from testutil import assertRaises
 from typing_extensions import Self
 
 from m import interpreted_subclass
@@ -3875,7 +3876,11 @@ class Base:
     def __init__(self, val: int) -> None:
         self.init_val = val
 
+    def method(self) -> int:
+        raise NotImplementedError
+
 class Sub(Base):
+
     def __new__(cls, val: int) -> Self:
         return super().__new__(cls, val + 1)
 
@@ -3883,10 +3888,19 @@ class Sub(Base):
         super().__init__(val)
         self.init_val = self.init_val * 2
 
+    def method(self) -> int:
+        return 0
+
 class SubWithoutNew(Base):
+    sub_only_str = ""
+    sub_only_int: int
+
     def __init__(self, val: int) -> None:
         super().__init__(val)
         self.init_val = self.init_val * 2
+
+    def method(self) -> int:
+        return 1
 
 class BaseWithoutInterpretedSubclasses:
     val: int
@@ -3899,6 +3913,9 @@ class BaseWithoutInterpretedSubclasses:
     def __init__(self, val: int) -> None:
         self.init_val = val
 
+    def method(self) -> int:
+        raise NotImplementedError
+
 class SubNoInterpreted(BaseWithoutInterpretedSubclasses):
     def __new__(cls, val: int) -> Self:
         return super().__new__(cls, val + 1)
@@ -3907,48 +3924,68 @@ class SubNoInterpreted(BaseWithoutInterpretedSubclasses):
         super().__init__(val)
         self.init_val = self.init_val * 2
 
+    def method(self) -> int:
+        return 0
+
 class SubNoInterpretedWithoutNew(BaseWithoutInterpretedSubclasses):
     def __init__(self, val: int) -> None:
         super().__init__(val)
         self.init_val = self.init_val * 2
+
+    def method(self) -> int:
+        return 1
 
 def test_inherited_dunder_new() -> None:
     b = Base(42)
     assert type(b) == Base
     assert b.val == 43
     assert b.init_val == 42
+    with assertRaises(NotImplementedError):
+        b.method()
 
     s = Sub(42)
     assert type(s) == Sub
     assert s.val == 44
     assert s.init_val == 84
+    assert s.method() == 0
 
     s2 = SubWithoutNew(42)
     assert type(s2) == SubWithoutNew
     assert s2.val == 43
     assert s2.init_val == 84
+    assert s2.method() == 1
+    assert s2.sub_only_str == ""
+    with assertRaises(AttributeError):
+        s2.sub_only_int
+    s2.sub_only_int = 11
+    assert s2.sub_only_int == 11
 
 def test_inherited_dunder_new_without_interpreted_subclasses() -> None:
     b = BaseWithoutInterpretedSubclasses(42)
     assert type(b) == BaseWithoutInterpretedSubclasses
     assert b.val == 43
     assert b.init_val == 42
+    with assertRaises(NotImplementedError):
+        b.method()
 
     s = SubNoInterpreted(42)
     assert type(s) == SubNoInterpreted
     assert s.val == 44
     assert s.init_val == 84
+    assert s.method() == 0
 
     s2 = SubNoInterpretedWithoutNew(42)
     assert type(s2) == SubNoInterpretedWithoutNew
     assert s2.val == 43
     assert s2.init_val == 84
+    assert s2.method() == 1
 
 def test_interpreted_subclass() -> None:
     interpreted_subclass(Base)
 
 [file m.py]
 from __future__ import annotations
+from testutil import assertRaises
 from typing_extensions import Self
 
 def interpreted_subclass(base) -> None:
@@ -3956,6 +3993,8 @@ def interpreted_subclass(base) -> None:
     assert type(b) == base
     assert b.val == 43
     assert b.init_val == 42
+    with assertRaises(NotImplementedError):
+        b.method()
 
     class InterpretedSub(base):
         def __new__(cls, val: int) -> Self:
@@ -3965,20 +4004,36 @@ def interpreted_subclass(base) -> None:
             super().__init__(val)
             self.init_val : int = self.init_val * 2
 
+        def method(self) -> int:
+            return 3
+
     s = InterpretedSub(42)
     assert type(s) == InterpretedSub
     assert s.val == 44
     assert s.init_val == 84
+    assert s.method() == 3
 
     class InterpretedSubWithoutNew(base):
+        sub_only_str = ""
+        sub_only_int: int
+
         def __init__(self, val: int) -> None:
             super().__init__(val)
             self.init_val : int = self.init_val * 2
+
+        def method(self) -> int:
+            return 4
 
     s2 = InterpretedSubWithoutNew(42)
     assert type(s2) == InterpretedSubWithoutNew
     assert s2.val == 43
     assert s2.init_val == 84
+    assert s2.method() == 4
+    assert s2.sub_only_str == ""
+    with assertRaises(AttributeError):
+        s2.sub_only_int
+    s2.sub_only_int = 11
+    assert s2.sub_only_int == 11
 
 [typing fixtures/typing-full.pyi]
 

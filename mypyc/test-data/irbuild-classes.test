@@ -1685,6 +1685,13 @@ class Test:
         obj.val = val
         return obj
 
+class Test2:
+    def __new__(cls) -> Test2:
+        return super().__new__(cls)
+
+class Sub(Test2):
+    pass
+
 def fn() -> Test:
     return Test.__new__(Test, 42)
 
@@ -1719,6 +1726,13 @@ L0:
     obj = r0
     obj.val = val; r1 = is_error
     return obj
+def Test2.__new__(cls):
+    cls, r0 :: object
+    r1 :: __main__.Test2
+L0:
+    r0 = CPy_SetupObject(cls)
+    r1 = cast(__main__.Test2, r0)
+    return r1
 def fn():
     r0 :: object
     r1 :: __main__.Test
@@ -1822,6 +1836,13 @@ class Test:
         obj.val = val
         return obj
 
+class Test2:
+    def __new__(cls) -> Test2:
+        return object.__new__(cls)
+
+class Sub(Test2):
+    pass
+
 def fn() -> Test:
     return Test.__new__(Test, 42)
 
@@ -1874,6 +1895,13 @@ L0:
     obj = r0
     obj.val = val; r1 = is_error
     return obj
+def Test2.__new__(cls):
+    cls, r0 :: object
+    r1 :: __main__.Test2
+L0:
+    r0 = CPy_SetupObject(cls)
+    r1 = cast(__main__.Test2, r0)
+    return r1
 def fn():
     r0 :: object
     r1 :: __main__.Test

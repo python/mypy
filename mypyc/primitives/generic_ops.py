@@ -417,3 +417,10 @@ generic_setattr = custom_op(
     c_function_name="CPyObject_GenericSetAttr",
     error_kind=ERR_NEG_INT,
 )
+
+setup_object = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_SetupObject",
+    error_kind=ERR_MAGIC,
+)
