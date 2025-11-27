@@ -217,3 +217,24 @@ L2:
 L3:
     keep_alive y
     return r2
+
+[case testBytesMultiply]
+def b_times_i(s: bytes, n: int) -> bytes:
+    return s * n
+def i_times_b(s: bytes, n: int) -> bytes:
+    return n * s
+[out]
+def b_times_i(s, n):
+    s :: bytes
+    n :: int
+    r0 :: bytes
+L0:
+    r0 = CPyBytes_Multiply(s, n)
+    return r0
+def i_times_b(s, n):
+    s :: bytes
+    n :: int
+    r0 :: bytes
+L0:
+    r0 = CPyBytes_Multiply(s, n)
+    return r0

@@ -621,3 +621,12 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
         PyExc_TypeError, "ord() expected a character, but a string of length %zd found", s);
     return CPY_INT_TAG;
 }
+
+PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
+    Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
+    if (temp_count == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+    return PySequence_Repeat(str, temp_count);
+}

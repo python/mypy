@@ -134,6 +134,40 @@ def test_ord_bytesarray() -> None:
     with assertRaises(TypeError):
         ord(bytearray(b''))
 
+def test_multiply() -> None:
+    # Use bytes() and int() to avoid constant folding
+    b = b'ab' + bytes()
+    zero = int()
+    one = 1 + zero
+    three = 3 + zero
+    neg_one = -1 + zero
+
+    assert b * zero == b''
+    assert b * one == b'ab'
+    assert b * three == b'ababab'
+    assert b * neg_one == b''
+    assert zero * b == b''
+    assert one * b == b'ab'
+    assert three * b == b'ababab'
+    assert neg_one * b == b''
+
+    # Test with empty bytes
+    empty = bytes()
+    five = 5 + zero
+    assert empty * five == b''
+    assert five * empty == b''
+
+    # Test with single byte
+    single = b'\xff' + bytes()
+    four = 4 + zero
+    assert single * four == b'\xff\xff\xff\xff'
+    assert four * single == b'\xff\xff\xff\xff'
+
+    # Test type preservation
+    two = 2 + zero
+    result = b * two
+    assert type(result) == bytes
+
 [case testBytesSlicing]
 def test_bytes_slicing() -> None:
     b = b'abcdefg'
