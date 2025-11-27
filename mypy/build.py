@@ -696,6 +696,7 @@ class BuildManager:
         stdout: TextIO,
         stderr: TextIO,
         error_formatter: ErrorFormatter | None = None,
+        parallel_worker: bool = False,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
         self.stdout = stdout
@@ -769,7 +770,7 @@ class BuildManager:
                 ]
             )
 
-        self.metastore = create_metastore(options)
+        self.metastore = create_metastore(options, parallel_worker)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -818,7 +819,7 @@ class BuildManager:
         # A global adding order for SCC queue, see comment above.
         self.queue_order: int = 0
         # Is this an instance used by a parallel worker?
-        self.parallel_worker = False
+        self.parallel_worker = parallel_worker
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1397,10 +1398,13 @@ def exclude_from_backups(target_dir: str) -> None:
         pass
 
 
-def create_metastore(options: Options) -> MetadataStore:
+def create_metastore(options: Options, parallel_worker: bool = False) -> MetadataStore:
     """Create the appropriate metadata store."""
     if options.sqlite_cache:
-        mds: MetadataStore = SqliteMetadataStore(_cache_dir_prefix(options))
+        # We use this flag in both coordinator and workers to seep up commits,
+        # see mypy.metastore.connect_db() for details.
+        sync_off = options.num_workers > 0 or parallel_worker
+        mds: MetadataStore = SqliteMetadataStore(_cache_dir_prefix(options), sync_off=sync_off)
     else:
         mds = FilesystemMetadataStore(_cache_dir_prefix(options))
     return mds

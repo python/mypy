@@ -135,6 +135,8 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         t0 = time.time()
         try:
             result = process_stale_scc(graph, scc, manager)
+            # We must commit after each SCC, otherwise we break --sqlite-cache.
+            manager.metastore.commit()
         except CompileError as e:
             blocker = {
                 "messages": e.messages,
@@ -170,7 +172,7 @@ def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> Buil
         # We never flush errors in the worker, we send them back to coordinator.
         pass
 
-    manager = BuildManager(
+    return BuildManager(
         data_dir,
         search_paths,
         ignore_prefix=os.getcwd(),
@@ -186,9 +188,8 @@ def setup_worker_manager(sources: list[BuildSource], ctx: ServerContext) -> Buil
         fscache=ctx.fscache,
         stdout=sys.stdout,
         stderr=sys.stderr,
+        parallel_worker=True,
     )
-    manager.parallel_worker = True
-    return manager
 
 
 def console_entry() -> None:
