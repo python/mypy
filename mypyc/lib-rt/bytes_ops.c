@@ -193,13 +193,13 @@ PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table) {
 
         char *output = PyBytes_AS_STRING(result);
         bool changed = false;
-        for (Py_ssize_t i = 0; i < len; i++) {
-            char orig_char = input[i];
-            char new_char = trans_table[(unsigned char)orig_char];
-            output[i] = new_char;
-            if (new_char != orig_char) {
+
+        // Without a loop unrolling hint performance can be worse than CPython
+        CPY_UNROLL_LOOP(4)
+        for (Py_ssize_t i = len; --i >= 0;) {
+            char c = *input++;
+            if ((*output++ = trans_table[(unsigned char)c]) != c)
                 changed = true;
-            }
         }
 
         // If nothing changed, discard result and return the original object
