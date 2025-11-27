@@ -1102,6 +1102,10 @@ def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     method_args = fn.fitem.arg_names
     if isinstance(typ_arg, NameExpr) and len(method_args) > 0 and method_args[0] == typ_arg.name:
         subtype = builder.accept(expr.args[0])
+        # Call a function that dynamically resolves the setup function of extension classes from the type object.
+        # This is necessary because the setup involves default attribute initialization and setting up
+        # the vtable which are specific to a given type and will not work if a subtype is created using
+        # the setup function of its base.
         return builder.call_c(setup_object, [subtype], expr.line)
 
     return None

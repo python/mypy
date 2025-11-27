@@ -965,6 +965,9 @@ def generate_methods_table(
 ) -> None:
     emitter.emit_line(f"static PyMethodDef {name}[] = {{")
     if setup_name:
+        # Store pointer to the setup function so it can be resolved dynamically
+        # in case of instance creation in __new__.
+        # CPy_SetupObject expects this method to be the first one in tp_methods.
         emitter.emit_line(
             f'{{"__internal_mypyc_setup", (PyCFunction){setup_name}, METH_O, NULL}},'
         )

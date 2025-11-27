@@ -70,19 +70,16 @@ PyObject *CPy_SetupObject(PyObject *type) {
     PyMethodDef *def = NULL;
     for(; tp; tp = tp->tp_base) {
         def = tp->tp_methods;
-        if (!def) {
+        if (!def || !def->ml_name) {
             continue;
         }
 
-        while (def->ml_name && strcmp(def->ml_name, "__internal_mypyc_setup")) {
-            ++def;
-        }
-        if (def->ml_name) {
+        if (!strcmp(def->ml_name, "__internal_mypyc_setup")) {
             break;
         }
     }
     if (!def || !def->ml_name) {
-        PyErr_SetString(PyExc_LookupError, "Internal error: Unable to find object setup function");
+        PyErr_SetString(PyExc_RuntimeError, "Internal error: Unable to find object setup function");
         return NULL;
     }
 
