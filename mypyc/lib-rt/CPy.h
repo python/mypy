@@ -960,6 +960,8 @@ static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObj
     return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
 }
 
+PyObject *CPy_SetupObject(PyObject *type);
+
 #if CPY_3_11_FEATURES
 PyObject *CPy_GetName(PyObject *obj);
 #endif

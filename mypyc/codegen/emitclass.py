@@ -359,7 +359,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if cl.is_trait:
         generate_new_for_trait(cl, new_name, emitter)
 
-    generate_methods_table(cl, methods_name, emitter)
+    generate_methods_table(cl, methods_name, setup_name if generate_full else None, emitter)
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
@@ -960,8 +960,17 @@ def generate_finalize_for_class(
     emitter.emit_line("}")
 
 
-def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
+def generate_methods_table(
+    cl: ClassIR, name: str, setup_name: str | None, emitter: Emitter
+) -> None:
     emitter.emit_line(f"static PyMethodDef {name}[] = {{")
+    if setup_name:
+        # Store pointer to the setup function so it can be resolved dynamically
+        # in case of instance creation in __new__.
+        # CPy_SetupObject expects this method to be the first one in tp_methods.
+        emitter.emit_line(
+            f'{{"__internal_mypyc_setup", (PyCFunction){setup_name}, METH_O, NULL}},'
+        )
     for fn in cl.methods.values():
         if fn.decl.is_prop_setter or fn.decl.is_prop_getter or fn.internal:
             continue
