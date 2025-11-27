@@ -19,10 +19,11 @@ You can read the full documentation for this release on [Read the Docs](http://m
 ### Fixed‑Format Cache Improvements
 
 Mypy uses a cache by default to speed up incremental runs by reusing partial results
-from earlier runs. Mypy 1.18 added a new binary, fixed-format cache representation as
+from earlier runs. Mypy 1.18 added a new binary fixed-format cache representation as
 an experimental feature. The feature is no longer experimental, and we are planning
 to enable it by default in a future mypy release (possibly 1.20), since it's faster
-and uses less space than the original, JSON-based cache format.
+and uses less space than the original, JSON-based cache format. Use
+`--fixed-format-cache` to enable the fixed-format cache.
 
 Mypy now has an extra dependency on the `librt` PyPI package, as it's needed for
 cache serialization and deserialization.
@@ -41,7 +42,7 @@ This release includes these improvements:
 - Force-discard cache if cache format changed (Ivan Levkivskyi, PR [20152](https://github.com/python/mypy/pull/20152))
 - Add tool to convert binary cache files to JSON (Jukka Lehtosalo, PR [20071](https://github.com/python/mypy/pull/20071))
 - Use more efficient serialization format for long integers in cache files (Jukka Lehtosalo, PR [20151](https://github.com/python/mypy/pull/20151))
-- More robust packing of flats in fixed-format cache (Ivan Levkivskyi, PR [20150](https://github.com/python/mypy/pull/20150))
+- More robust packing of floats in fixed-format cache (Ivan Levkivskyi, PR [20150](https://github.com/python/mypy/pull/20150))
 - Use self-descriptive cache with type tags (Ivan Levkivskyi, PR [20137](https://github.com/python/mypy/pull/20137))
 - Use fixed format for cache metas (Ivan Levkivskyi, PR [20088](https://github.com/python/mypy/pull/20088))
 - Make metas more compact; fix indirect suppression (Ivan Levkivskyi, PR [20075](https://github.com/python/mypy/pull/20075))
