@@ -963,6 +963,24 @@ static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObj
 
 PyObject *CPy_SetupObject(PyObject *type);
 
+typedef struct {
+    PyCMethodObject func;
+
+    PyObject *func_name;
+    PyObject *func_code;
+} CPyFunction;
+
+PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
+                          PyCFunction func, int func_flags, const char *func_doc,
+                          int first_line, int code_flags);
+PyObject* CPyFunction_get_name(PyObject *op, void *context);
+int CPyFunction_set_name(PyObject *op, PyObject *value, void *context);
+PyObject* CPyFunction_get_code(PyObject *op, void *context);
+PyObject* CPyFunction_get_defaults(PyObject *op, void *context);
+PyObject* CPyFunction_get_kwdefaults(PyObject *op, void *context);
+PyObject* CPyFunction_get_annotations(PyObject *op, void *context);
+int CPyFunction_set_annotations(PyObject *op, PyObject *value, void *context);
+
 #if CPY_3_11_FEATURES
 PyObject *CPy_GetName(PyObject *obj);
 #endif

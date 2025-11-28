@@ -29,13 +29,15 @@ from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
 from mypyc.analysis.capsule_deps import find_implicit_capsule_dependencies
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
-from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
-from mypyc.codegen.emitfunc import (
-    generate_native_function,
+from mypyc.codegen.emit import (
+    Emitter,
+    EmitterContext,
+    HeaderDeclaration,
+    c_array_initializer,
     native_function_doc_initializer,
-    native_function_header,
 )
+from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
+from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_legacy_wrapper_function,
     generate_wrapper_function,
@@ -566,7 +568,7 @@ class GroupGenerator:
 
         for module_name, module in self.modules.items():
             if multi_file:
-                emitter = Emitter(self.context)
+                emitter = Emitter(self.context, filepath=self.source_paths[module_name])
                 emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
                 emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
 
@@ -986,6 +988,9 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
+            # Coroutines are added to the module dict when the module is initialized.
+            if fn.decl.is_coroutine:
+                continue
             name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
             if is_fastcall_supported(fn, emitter.capi_version):
                 flag = "METH_FASTCALL"
@@ -1023,6 +1028,30 @@ class GroupGenerator:
             emitter.emit_line("NULL,")
         emitter.emit_line("};")
         emitter.emit_line()
+
+    def emit_coroutine_wrappers(self, emitter: Emitter, module: ModuleIR, globals: str) -> None:
+        """Emit insertion of coroutines into the module dict when the module is initialized.
+        Coroutines are wrapped in CPyFunction objects to enable introspection by functions like
+        inspect.iscoroutinefunction(fn).
+        """
+        for fn in module.functions:
+            if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
+                continue
+            if not fn.decl.is_coroutine:
+                continue
+
+            filepath = self.source_paths[module.fullname]
+            error_stmt = "    goto fail;"
+            name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
+            wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
+            name_obj = f"{wrapper_name}_name"
+            emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
+            emitter.emit_line(f"if (unlikely(!{name_obj}))")
+            emitter.emit_line(error_stmt)
+            emitter.emit_line(
+                f"if (PyDict_SetItem({globals}, {name_obj}, (PyObject *){wrapper_name}) < 0)"
+            )
+            emitter.emit_line(error_stmt)
 
     def emit_module_exec_func(
         self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
@@ -1071,19 +1100,32 @@ class GroupGenerator:
                 "    goto fail;",
             )
 
+        self.emit_coroutine_wrappers(emitter, module, module_globals)
+
         # HACK: Manually instantiate generated classes here
         type_structs: list[str] = []
         for cl in module.classes:
             type_struct = emitter.type_struct_name(cl)
             type_structs.append(type_struct)
             if cl.is_generated:
+                error_stmt = "    goto fail;"
                 emitter.emit_lines(
                     "{t} = (PyTypeObject *)CPyType_FromTemplate("
                     "(PyObject *){t}_template, NULL, modname);".format(t=type_struct)
                 )
-                emitter.emit_lines(f"if (unlikely(!{type_struct}))", "    goto fail;")
+                emitter.emit_lines(f"if (unlikely(!{type_struct}))", error_stmt)
                 name_prefix = cl.name_prefix(emitter.names)
                 emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
+
+                if cl.coroutine_name:
+                    fn = cl.methods["__call__"]
+                    filepath = self.source_paths[module.fullname]
+                    name = cl.coroutine_name
+                    wrapper_name = emitter.emit_cpyfunction_instance(
+                        fn, name, filepath, error_stmt
+                    )
+                    static_name = emitter.static_name(cl.name + "_cpyfunction", module.fullname)
+                    emitter.emit_line(f"{static_name} = {wrapper_name};")
 
         emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
 

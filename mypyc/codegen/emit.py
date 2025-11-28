@@ -7,19 +7,22 @@ import sys
 import textwrap
 from typing import Callable, Final
 
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     HAVE_IMMORTAL,
+    MODULE_PREFIX,
     NATIVE_PREFIX,
+    PREFIX,
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.ir.func_ir import FuncDecl
+from mypyc.ir.func_ir import FuncDecl, FuncIR, get_text_signature
 from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import (
     RInstance,
@@ -169,6 +172,7 @@ class Emitter:
         context: EmitterContext,
         value_names: dict[Value, str] | None = None,
         capi_version: tuple[int, int] | None = None,
+        filepath: str | None = None,
     ) -> None:
         self.context = context
         self.capi_version = capi_version or sys.version_info[:2]
@@ -176,6 +180,7 @@ class Emitter:
         self.value_names = value_names or {}
         self.fragments: list[str] = []
         self._indent = 0
+        self.filepath = filepath
 
     # Low-level operations
 
@@ -1207,6 +1212,24 @@ class Emitter:
         self.emit_line(failure)
         self.emit_line("}")
 
+    def emit_cpyfunction_instance(
+        self, fn: FuncIR, name: str, filepath: str, error_stmt: str
+    ) -> str:
+        module = self.static_name(fn.decl.module_name, None, prefix=MODULE_PREFIX)
+        cname = f"{PREFIX}{fn.cname(self.names)}"
+        wrapper_name = f"{cname}_wrapper"
+        cfunc = f"(PyCFunction){cname}"
+        func_flags = "METH_FASTCALL | METH_KEYWORDS"
+        doc = f"PyDoc_STR({native_function_doc_initializer(fn)})"
+
+        code_flags = "CO_COROUTINE"
+        self.emit_line(
+            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {func_flags}, {doc}, {fn.line}, {code_flags});'
+        )
+        self.emit_line(f"if (unlikely(!{wrapper_name}))")
+        self.emit_line(error_stmt)
+        return wrapper_name
+
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
     """Construct an initializer for a C array variable.
@@ -1238,3 +1261,11 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
     # Multi-line result
     res.append(indent + ", ".join(current))
     return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"
+
+
+def native_function_doc_initializer(func: FuncIR) -> str:
+    text_sig = get_text_signature(func)
+    if text_sig is None:
+        return "NULL"
+    docstring = f"{text_sig}\n--\n\n"
+    return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
