@@ -238,3 +238,13 @@ def i_times_b(s, n):
 L0:
     r0 = CPyBytes_Multiply(s, n)
     return r0
+
+[case testBytesTranslate]
+def f(b: bytes, table: bytes) -> bytes:
+    return b.translate(table)
+[out]
+def f(b, table):
+    b, table, r0 :: bytes
+L0:
+    r0 = CPyBytes_Translate(b, table)
+    return r0
