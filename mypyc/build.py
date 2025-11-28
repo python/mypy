@@ -39,6 +39,8 @@ from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
 from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
+from mypyc.ir.deps import SourceDep
+from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
@@ -276,20 +278,30 @@ def include_dir() -> str:
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), "lib-rt")
 
 
+def collect_source_dependencies(modules: dict[str, ModuleIR]) -> set[SourceDep]:
+    """Collect all SourceDep dependencies from all modules."""
+    source_deps: set[SourceDep] = set()
+    for module in modules.values():
+        for dep in module.dependencies:
+            if isinstance(dep, SourceDep):
+                source_deps.add(dep)
+    return source_deps
+
+
 def generate_c(
     sources: list[BuildSource],
     options: Options,
     groups: emitmodule.Groups,
     fscache: FileSystemCache,
     compiler_options: CompilerOptions,
-) -> tuple[list[list[tuple[str, str]]], str]:
+) -> tuple[list[list[tuple[str, str]]], str, list[SourceDep]]:
     """Drive the actual core compilation step.
 
     The groups argument describes how modules are assigned to C
     extension modules. See the comments on the Groups type in
     mypyc.emitmodule for details.
 
-    Returns the C source code and (for debugging) the pretty printed IR.
+    Returns the C source code, (for debugging) the pretty printed IR, and list of SourceDeps.
     """
     t0 = time.time()
 
@@ -325,7 +337,10 @@ def generate_c(
     if options.mypyc_annotation_file:
         generate_annotated_html(options.mypyc_annotation_file, result, modules, mapper)
 
-    return ctext, "\n".join(format_modules(modules))
+    # Collect SourceDep dependencies
+    source_deps = sorted(collect_source_dependencies(modules), key=lambda d: d.path)
+
+    return ctext, "\n".join(format_modules(modules)), source_deps
 
 
 def build_using_shared_lib(
@@ -488,7 +503,7 @@ def mypyc_build(
     only_compile_paths: Iterable[str] | None = None,
     skip_cgen_input: Any | None = None,
     always_use_shared_lib: bool = False,
-) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]]]:
+) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]], list[SourceDep]]:
     """Do the front and middle end of mypyc building, producing and writing out C source."""
     fscache = FileSystemCache()
     mypyc_sources, all_sources, options = get_mypy_config(
@@ -511,8 +526,9 @@ def mypyc_build(
 
     # We let the test harness just pass in the c file contents instead
     # so that it can do a corner-cutting version without full stubs.
+    source_deps: list[SourceDep] = []
     if not skip_cgen_input:
-        group_cfiles, ops_text = generate_c(
+        group_cfiles, ops_text, source_deps = generate_c(
             all_sources, options, groups, fscache, compiler_options=compiler_options
         )
         # TODO: unique names?
@@ -535,7 +551,7 @@ def mypyc_build(
         deps = [os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)]
         group_cfilenames.append((cfilenames, deps))
 
-    return groups, group_cfilenames
+    return groups, group_cfilenames, source_deps
 
 
 def mypycify(
@@ -633,7 +649,7 @@ def mypycify(
     )
 
     # Generate all the actual important C code
-    groups, group_cfilenames = mypyc_build(
+    groups, group_cfilenames, source_deps = mypyc_build(
         paths,
         only_compile_paths=only_compile_paths,
         compiler_options=compiler_options,
@@ -708,11 +724,20 @@ def mypycify(
     # compiler invocations.
     shared_cfilenames = []
     if not compiler_options.include_runtime_files:
-        for name in RUNTIME_C_FILES:
+        # Collect all files to copy: runtime files + conditional source files
+        files_to_copy = list(RUNTIME_C_FILES)
+        for source_dep in source_deps:
+            files_to_copy.append(source_dep.path)
+            files_to_copy.append(source_dep.get_header())
+
+        # Copy all files
+        for name in files_to_copy:
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
                 write_file(rt_file, f.read())
-            shared_cfilenames.append(rt_file)
+            # Only add .c files to shared_cfilenames
+            if name.endswith('.c'):
+                shared_cfilenames.append(rt_file)
 
     extensions = []
     for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):

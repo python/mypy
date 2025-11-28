@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mypyc.ir.deps import BYTES_EXTRA_OPS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RUnion,
@@ -135,6 +136,7 @@ method_op(
     return_type=bytes_rprimitive,
     c_function_name="CPyBytes_Translate",
     error_kind=ERR_MAGIC,
+    dependencies=[BYTES_EXTRA_OPS],
 )
 
 # Join bytes objects and return a new bytes.

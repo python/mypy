@@ -32,9 +32,15 @@ class SourceDep:
     def __hash__(self) -> int:
         return hash(("SourceDep", self.path))
 
+    def get_header(self) -> str:
+        """Get the header file path by replacing .c with .h"""
+        return self.path.replace('.c', '.h')
+
 
 Dependency = Union[Capsule, SourceDep]
 
 
 LIBRT_STRINGS: Final = Capsule("librt.strings")
 LIBRT_BASE64: Final = Capsule("librt.base64")
+
+BYTES_EXTRA_OPS: Final = SourceDep("bytes_extra_ops.c")
