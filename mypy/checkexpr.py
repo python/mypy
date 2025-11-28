@@ -3298,7 +3298,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             skip_unsatisfied=skip_unsatisfied,
         )
 
-    def check_any_type_call(self, args: list[Expression], arg_kinds: list[ArgKind], callee: Type, context: Context) -> tuple[Type, Type]:
+    def check_any_type_call(
+        self, args: list[Expression], arg_kinds: list[ArgKind], callee: Type, context: Context
+    ) -> tuple[Type, Type]:
         arg_types = self.infer_arg_types_in_empty_context(args)
         for arg_type, arg_kind in zip(arg_types, arg_kinds):
             arg_type = get_proper_type(arg_type)
