@@ -56,10 +56,8 @@ files = [
     "irbuild-weakref.test",
     "irbuild-librt-strings.test",
     "irbuild-base64.test",
+    "irbuild-match.test",
 ]
-
-if sys.version_info >= (3, 10):
-    files.append("irbuild-match.test")
 
 
 class TestGenOps(MypycDataSuite):

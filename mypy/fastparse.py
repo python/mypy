@@ -149,29 +149,6 @@ def ast3_parse(
         )
 
 
-if sys.version_info >= (3, 10):
-    Match = ast3.Match
-    MatchValue = ast3.MatchValue
-    MatchSingleton = ast3.MatchSingleton
-    MatchSequence = ast3.MatchSequence
-    MatchStar = ast3.MatchStar
-    MatchMapping = ast3.MatchMapping
-    MatchClass = ast3.MatchClass
-    MatchAs = ast3.MatchAs
-    MatchOr = ast3.MatchOr
-    AstNode = Union[ast3.expr, ast3.stmt, ast3.pattern, ast3.ExceptHandler]
-else:
-    Match = Any
-    MatchValue = Any
-    MatchSingleton = Any
-    MatchSequence = Any
-    MatchStar = Any
-    MatchMapping = Any
-    MatchClass = Any
-    MatchAs = Any
-    MatchOr = Any
-    AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
-
 if sys.version_info >= (3, 11):
     TryStar = ast3.TryStar
 else:
@@ -444,7 +421,7 @@ class ASTConverter:
 
         return visitor(node)
 
-    def set_line(self, node: N, n: AstNode) -> N:
+    def set_line(self, node: N, n: ast3.expr | ast3.stmt | ast3.pattern | ast3.ExceptHandler) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None)
@@ -1781,7 +1758,7 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
-    def visit_Match(self, n: Match) -> MatchStmt:
+    def visit_Match(self, n: ast3.Match) -> MatchStmt:
         node = MatchStmt(
             self.visit(n.subject),
             [self.visit(c.pattern) for c in n.cases],
@@ -1790,15 +1767,15 @@ class ASTConverter:
         )
         return self.set_line(node, n)
 
-    def visit_MatchValue(self, n: MatchValue) -> ValuePattern:
+    def visit_MatchValue(self, n: ast3.MatchValue) -> ValuePattern:
         node = ValuePattern(self.visit(n.value))
         return self.set_line(node, n)
 
-    def visit_MatchSingleton(self, n: MatchSingleton) -> SingletonPattern:
+    def visit_MatchSingleton(self, n: ast3.MatchSingleton) -> SingletonPattern:
         node = SingletonPattern(n.value)
         return self.set_line(node, n)
 
-    def visit_MatchSequence(self, n: MatchSequence) -> SequencePattern:
+    def visit_MatchSequence(self, n: ast3.MatchSequence) -> SequencePattern:
         patterns = [self.visit(p) for p in n.patterns]
         stars = [p for p in patterns if isinstance(p, StarredPattern)]
         assert len(stars) < 2
@@ -1806,7 +1783,7 @@ class ASTConverter:
         node = SequencePattern(patterns)
         return self.set_line(node, n)
 
-    def visit_MatchStar(self, n: MatchStar) -> StarredPattern:
+    def visit_MatchStar(self, n: ast3.MatchStar) -> StarredPattern:
         if n.name is None:
             node = StarredPattern(None)
         else:
@@ -1815,7 +1792,7 @@ class ASTConverter:
 
         return self.set_line(node, n)
 
-    def visit_MatchMapping(self, n: MatchMapping) -> MappingPattern:
+    def visit_MatchMapping(self, n: ast3.MatchMapping) -> MappingPattern:
         keys = [self.visit(k) for k in n.keys]
         values = [self.visit(v) for v in n.patterns]
 
@@ -1827,7 +1804,7 @@ class ASTConverter:
         node = MappingPattern(keys, values, rest)
         return self.set_line(node, n)
 
-    def visit_MatchClass(self, n: MatchClass) -> ClassPattern:
+    def visit_MatchClass(self, n: ast3.MatchClass) -> ClassPattern:
         class_ref = self.visit(n.cls)
         assert isinstance(class_ref, RefExpr)
         positionals = [self.visit(p) for p in n.patterns]
@@ -1838,7 +1815,7 @@ class ASTConverter:
         return self.set_line(node, n)
 
     # MatchAs(expr pattern, identifier name)
-    def visit_MatchAs(self, n: MatchAs) -> AsPattern:
+    def visit_MatchAs(self, n: ast3.MatchAs) -> AsPattern:
         if n.name is None:
             name = None
         else:
@@ -1848,7 +1825,7 @@ class ASTConverter:
         return self.set_line(node, n)
 
     # MatchOr(expr* pattern)
-    def visit_MatchOr(self, n: MatchOr) -> OrPattern:
+    def visit_MatchOr(self, n: ast3.MatchOr) -> OrPattern:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 

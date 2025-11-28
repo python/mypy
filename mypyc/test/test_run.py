@@ -75,10 +75,9 @@ files = [
     "run-python38.test",
     "run-librt-strings.test",
     "run-base64.test",
+    "run-match.test",
 ]
 
-if sys.version_info >= (3, 10):
-    files.append("run-match.test")
 if sys.version_info >= (3, 12):
     files.append("run-python312.test")
 
