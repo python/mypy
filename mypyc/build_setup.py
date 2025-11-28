@@ -1,6 +1,6 @@
+import os
 import platform
 import sys
-import os
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
