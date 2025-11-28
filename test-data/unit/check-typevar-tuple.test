@@ -2736,5 +2736,6 @@ def foo() -> str:
     return "hello"
 
 
+# this is a false positive, but it no longer crashes
 call(run, foo, some_kwarg="a")  # E: Argument 1 to "call" has incompatible type "def [Ts`-1, T] run(func: def (*Unpack[Ts]) -> T, *args: Unpack[Ts], some_kwarg: str = ...) -> T"; expected "Callable[[Callable[[], str], str], str]"
 [builtins fixtures/tuple.pyi]
