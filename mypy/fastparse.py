@@ -4,7 +4,7 @@ import re
 import sys
 import warnings
 from collections.abc import Sequence
-from typing import Any, Callable, Final, Literal, TypeVar, Union, cast, overload
+from typing import Any, Callable, Final, Literal, TypeVar, cast, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
