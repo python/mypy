@@ -38,8 +38,6 @@ import pytest
 typecheck_files = find_test_files(pattern="check-*.test")
 
 # Tests that use Python version specific features:
-if sys.version_info < (3, 10):
-    typecheck_files.remove("check-python310.test")
 if sys.version_info < (3, 11):
     typecheck_files.remove("check-python311.test")
 if sys.version_info < (3, 12):
