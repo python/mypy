@@ -12,6 +12,11 @@ improvements and bug fixes. You can install it as follows:
 
 You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
 
+### Python 3.9 Support Ending Soon
+
+This is the last mypy feature release that supports Python 3.9, which reached
+end of life in October 2025.
+
 ### Performance Improvements
 - Switch to a more dynamic SCC processing logic (Ivan Levkivskyi, PR [20053](https://github.com/python/mypy/pull/20053))
 - Speed up type aliases (Ivan Levkivskyi, PR [19810](https://github.com/python/mypy/pull/19810))
