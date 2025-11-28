@@ -1601,7 +1601,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 callee, args, arg_kinds, arg_names, callable_name, object_type, context
             )
         elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
-            return self.check_any_type_call(args, callee)
+            return self.check_any_type_call(args, arg_kinds, callee, context)
         elif isinstance(callee, UnionType):
             return self.check_union_call(callee, args, arg_kinds, arg_names, context)
         elif isinstance(callee, Instance):
@@ -2513,10 +2513,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         The check_call docstring describes some of the arguments.
         """
-        check_arg = check_arg or self.check_arg
-        # Keep track of consumed tuple *arg items.
-        mapper = ArgTypeExpander(self.argument_infer_context())
-
         for arg_type, arg_kind in zip(arg_types, arg_kinds):
             arg_type = get_proper_type(arg_type)
             if arg_kind == nodes.ARG_STAR and not self.is_valid_var_arg(arg_type):
@@ -2526,6 +2522,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     arg_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
                 )
                 self.msg.invalid_keyword_var_arg(arg_type, is_mapping, context)
+
+        check_arg = check_arg or self.check_arg
+        # Keep track of consumed tuple *arg items.
+        mapper = ArgTypeExpander(self.argument_infer_context())
 
         for i, actuals in enumerate(formal_to_actual):
             orig_callee_arg_type = get_proper_type(callee.arg_types[i])
@@ -3298,8 +3298,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             skip_unsatisfied=skip_unsatisfied,
         )
 
-    def check_any_type_call(self, args: list[Expression], callee: Type) -> tuple[Type, Type]:
-        self.infer_arg_types_in_empty_context(args)
+    def check_any_type_call(self, args: list[Expression], arg_kinds: list[ArgKind], callee: Type, context: Context) -> tuple[Type, Type]:
+        arg_types = self.infer_arg_types_in_empty_context(args)
+        for arg_type, arg_kind in zip(arg_types, arg_kinds):
+            arg_type = get_proper_type(arg_type)
+            if arg_kind == nodes.ARG_STAR and not self.is_valid_var_arg(arg_type):
+                self.msg.invalid_var_arg(arg_type, context)
+            if arg_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(arg_type):
+                is_mapping = is_subtype(
+                    arg_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
+                )
+                self.msg.invalid_keyword_var_arg(arg_type, is_mapping, context)
+
         callee = get_proper_type(callee)
         if isinstance(callee, AnyType):
             return (
