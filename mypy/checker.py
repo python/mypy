@@ -6,16 +6,7 @@ import itertools
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
-from typing import (
-    Callable,
-    Final,
-    Generic,
-    Literal,
-    NamedTuple,
-    TypeVar,
-    cast,
-    overload,
-)
+from typing import Callable, Final, Generic, Literal, NamedTuple, TypeVar, cast, overload
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.checkexpr
