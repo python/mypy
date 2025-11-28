@@ -7,8 +7,13 @@ from typing import Callable
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
-from mypyc.codegen.emitfunc import native_function_doc_initializer, native_function_header
+from mypyc.codegen.emit import (
+    Emitter,
+    HeaderDeclaration,
+    ReturnHandler,
+    native_function_doc_initializer,
+)
+from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_bin_op_wrapper,
     generate_bool_wrapper,
@@ -21,7 +26,14 @@ from mypyc.codegen.emitwrapper import (
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
+from mypyc.common import (
+    BITMAP_BITS,
+    BITMAP_TYPE,
+    NATIVE_PREFIX,
+    PREFIX,
+    REG_PREFIX,
+    short_id_from_name,
+)
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -240,6 +252,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     dealloc_name = f"{name_prefix}_dealloc"
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
+    coroutine_setup_name = f"{name_prefix}_coroutine_setup"
 
     fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
@@ -347,6 +360,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             shadow_vtable_name = None
         vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter, shadow=False)
         emit_line()
+        generate_coroutine_setup(cl, coroutine_setup_name, module, emitter)
+        emit_line()
     if del_method:
         generate_finalize_for_class(del_method, finalize_name, emitter)
         emit_line()
@@ -359,7 +374,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if cl.is_trait:
         generate_new_for_trait(cl, new_name, emitter)
 
-    generate_methods_table(cl, methods_name, emitter)
+    generate_methods_table(cl, methods_name, setup_name if generate_full else None, emitter)
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
@@ -390,6 +405,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             t=emitter.type_struct_name(cl)
         )
     )
+
+    if cl.coroutine_name:
+        cpyfunction = emitter.static_name(cl.name + "_cpyfunction", module)
+        emitter.emit_line(f"static PyObject *{cpyfunction} = NULL;")
 
     emitter.emit_line()
     if generate_full:
@@ -960,8 +979,17 @@ def generate_finalize_for_class(
     emitter.emit_line("}")
 
 
-def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
+def generate_methods_table(
+    cl: ClassIR, name: str, setup_name: str | None, emitter: Emitter
+) -> None:
     emitter.emit_line(f"static PyMethodDef {name}[] = {{")
+    if setup_name:
+        # Store pointer to the setup function so it can be resolved dynamically
+        # in case of instance creation in __new__.
+        # CPy_SetupObject expects this method to be the first one in tp_methods.
+        emitter.emit_line(
+            f'{{"__internal_mypyc_setup", (PyCFunction){setup_name}, METH_O, NULL}},'
+        )
     for fn in cl.methods.values():
         if fn.decl.is_prop_setter or fn.decl.is_prop_getter or fn.internal:
             continue
@@ -1245,3 +1273,36 @@ def native_class_doc_initializer(cl: ClassIR) -> str:
         text_sig = f"{cl.name}()"
     docstring = f"{text_sig}\n--\n\n"
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
+def generate_coroutine_setup(
+    cl: ClassIR, coroutine_setup_name: str, module_name: str, emitter: Emitter
+) -> None:
+    emitter.emit_line("static bool")
+    emitter.emit_line(f"{NATIVE_PREFIX}{coroutine_setup_name}(PyObject *type)")
+    emitter.emit_line("{")
+
+    if not any(fn.decl.is_coroutine for fn in cl.methods.values()):
+        emitter.emit_line("return 1;")
+        emitter.emit_line("}")
+        return
+
+    emitter.emit_line("PyTypeObject *tp = (PyTypeObject *)type;")
+
+    for fn in cl.methods.values():
+        if not fn.decl.is_coroutine:
+            continue
+
+        filepath = emitter.filepath or ""
+        error_stmt = "    return 2;"
+        name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
+        wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
+        name_obj = f"{wrapper_name}_name"
+        emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
+        emitter.emit_line(f"if (unlikely(!{name_obj}))")
+        emitter.emit_line(error_stmt)
+        emitter.emit_line(f"if (PyDict_SetItem(tp->tp_dict, {name_obj}, {wrapper_name}) < 0)")
+        emitter.emit_line(error_stmt)
+
+    emitter.emit_line("return 1;")
+    emitter.emit_line("}")

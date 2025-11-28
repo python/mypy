@@ -8,8 +8,8 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 9, 0):  # noqa: UP036, RUF100
-    sys.stderr.write("ERROR: You need Python 3.9 or later to use mypy.\n")
+if sys.version_info < (3, 10, 0):  # noqa: UP036, RUF100
+    sys.stderr.write("ERROR: You need Python 3.10 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -99,6 +99,7 @@ if USE_MYPYC:
         os.path.join("mypyc", "lib-rt", "setup.py"),
         # Uses __file__ at top level https://github.com/mypyc/mypyc/issues/700
         os.path.join("mypyc", "__main__.py"),
+        os.path.join("mypyc", "build_setup.py"),  # for monkeypatching
     )
 
     everything = [os.path.join("mypy", x) for x in find_package_data("mypy", ["*.py"])] + [

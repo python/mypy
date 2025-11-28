@@ -31,28 +31,22 @@ jobs:
         include:
         # Make sure to run mypyc compiled unit tests for both
         # the oldest and newest supported Python versions
-        - name: Test suite with py39-ubuntu, mypyc-compiled
-          python: '3.9'
-          os: ubuntu-24.04-arm
-          toxenv: py
-          tox_extra_args: "-n 4"
-          test_mypyc: true
-        - name: Test suite with py310-ubuntu
+        - name: Test suite with py310-ubuntu, mypyc-compiled
           python: '3.10'
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
+          test_mypyc: true
         - name: Test suite with py311-ubuntu
           python: '3.11'
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
-        - name: Test suite with py312-ubuntu, mypyc-compiled
+        - name: Test suite with py312-ubuntu
           python: '3.12'
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
-          test_mypyc: true
         - name: Test suite with py313-ubuntu, mypyc-compiled
           python: '3.13'
           os: ubuntu-24.04-arm
@@ -101,12 +95,12 @@ jobs:
         #   tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
         #   debug_build: true
 
-        - name: Type check our own code (py39-ubuntu)
-          python: '3.9'
+        - name: Type check our own code (py310-ubuntu)
+          python: '3.10'
           os: ubuntu-latest
           toxenv: type
-        - name: Type check our own code (py39-windows-64)
-          python: '3.9'
+        - name: Type check our own code (py310-windows-64)
+          python: '3.10'
           os: windows-latest
           toxenv: type
 

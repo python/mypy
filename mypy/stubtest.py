@@ -59,7 +59,7 @@ class Missing:
 MISSING: Final = Missing()
 
 T = TypeVar("T")
-MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
+MaybeMissing: typing_extensions.TypeAlias = T | Missing
 
 
 class Unrepresentable:

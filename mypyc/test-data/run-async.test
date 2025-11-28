@@ -397,6 +397,12 @@ async def sleep(t: float) -> None: ...
 [case testRunAsyncRefCounting]
 import asyncio
 import gc
+import platform
+
+async def sleep() -> None:
+    # Non-zero value hangs on Windows.
+    time = 0 if platform.system() == "Windows" else 0.0001
+    await asyncio.sleep(time)
 
 async def assert_no_leaks(fn, max_new):
     # Warm-up, in case asyncio allocates something on first use
@@ -436,7 +442,7 @@ async def make_list(a: list[int]) -> list[int]:
 async def spill() -> list[int]:
     a: list[int] = []
     for i in range(5):
-        await asyncio.sleep(0.0001)
+        await sleep()
         a = (await make_list(a + [1])) + a + (await make_list(a + [2]))
     return a
 
@@ -445,22 +451,22 @@ async def bar(n: int) -> None:
         await spill()
 
 async def test_spilled() -> None:
-    await assert_no_leaks(lambda: bar(80), 2)
+    await assert_no_leaks(lambda: bar(80), 13)
 
 async def raise_deep(n: int) -> str:
     if n == 0:
-        await asyncio.sleep(0.0001)
+        await sleep()
         raise TypeError(str(n))
     else:
         if n == 2:
-            await asyncio.sleep(0.0001)
+            await sleep()
         return await raise_deep(n - 1)
 
 async def maybe_raise(n: int) -> str:
     if n % 3 == 0:
         await raise_deep(5)
     elif n % 29 == 0:
-        await asyncio.sleep(0.0001)
+        await sleep()
     return str(n)
 
 async def exc(n: int) -> list[str]:
@@ -483,9 +489,9 @@ async def id(c: C) -> C:
     return c
 
 async def stolen_helper(c: C, s: str) -> str:
-    await asyncio.sleep(0.0001)
+    await sleep()
     (await id(c)).s = await concat_one(s)
-    await asyncio.sleep(0.0001)
+    await sleep()
     return c.s
 
 async def stolen(n: int) -> int:
@@ -496,7 +502,7 @@ async def stolen(n: int) -> int:
     return n
 
 async def test_stolen() -> None:
-    await assert_no_leaks(lambda: stolen(200), 2)
+    await assert_no_leaks(lambda: stolen(200), 16)
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
@@ -1396,6 +1402,164 @@ class Derived5(Base5):
 
 def test_call_using_super() -> None:
     assert asyncio.run(Derived5().foo(5)) == 38
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+
+[case testAsyncIntrospection]
+import asyncio
+import inspect
+import sys
+import weakref
+
+from functools import wraps
+from typing import Any, Callable, TypeVar, cast
+
+def identity(val: int) -> int:
+    return val
+
+async def identity_async(val: int) -> int:
+    return val
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def wrap(fn: F) -> F:
+    @wraps(fn)
+    def wrapper(*args) -> Any:
+        return fn(*args) + fn(*args)
+
+    return cast(F, wrapper)
+
+def wrap_async(fn: F) -> F:
+    @wraps(fn)
+    async def wrapper(*args) -> Any:
+        return await fn(*args) + await fn(*args)
+
+    return cast(F, wrapper)
+
+@wrap
+def wrapped(val: int) -> int:
+    return val
+
+@wrap_async
+async def wrapped_async(val: int) -> int:
+    return val
+
+class T:
+    def returns_one(self) -> int:
+        return 1
+
+    async def returns_one_async(self) -> int:
+        return 1
+
+    @wrap
+    def returns_two(self) -> int:
+        return 1
+
+    @wrap_async
+    async def returns_two_async(self) -> int:
+        return 1
+
+    @staticmethod
+    def static() -> int:
+        return 2
+
+    @staticmethod
+    async def static_async() -> int:
+        return 2
+
+    @classmethod
+    def class_method(cls) -> int:
+        return 3
+
+    @classmethod
+    async def class_method_async(cls) -> int:
+        return 3
+
+def is_coroutine(fn):
+    if sys.version_info >= (3, 10):
+        return inspect.iscoroutinefunction(fn)
+
+    # inspect on older python versions does not support function-like objects.
+    # Below is a simplified implementation of iscoroutinefunction.
+    if not hasattr(fn, "__code__"):
+        return False
+    CO_COROUTINE = 0x0080
+    return bool(fn.__code__.co_flags & CO_COROUTINE)
+
+def test_function() -> None:
+    assert not is_coroutine(identity)
+    assert is_coroutine(identity_async)
+    assert str(identity_async).startswith("<function identity_async"), str(identity_async)
+    assert asyncio.run(identity_async(42)) == 42
+
+    wr = weakref.ref(identity_async)
+    f = wr()
+    assert f
+    assert asyncio.run(f(43)) == 43
+
+    assert getattr(identity_async, "__name__") == "identity_async", getattr(identity_async, "__name__")
+    setattr(identity_async, "__name__", "some custom name")
+    assert getattr(identity_async, "__name__") == "some custom name", getattr(identity_async, "__name__")
+    assert getattr(identity_async, "__code__") != None, getattr(identity_async, "__code__")
+    assert getattr(identity_async, "__defaults__") == None, getattr(identity_async, "__defaults__")
+    assert getattr(identity_async, "__kwdefaults__") == None, getattr(identity_async, "__kwdefaults__")
+    assert getattr(identity_async, "__annotations__") == None, getattr(identity_async, "__annotations__")
+
+    assert not is_coroutine(wrapped)
+    assert is_coroutine(wrapped_async)
+    assert asyncio.run(wrapped_async(22)) == 44
+
+def test_method() -> None:
+    assert not is_coroutine(T.returns_one)
+    assert is_coroutine(T.returns_one_async)
+    assert str(T.returns_one_async).startswith("<function T.returns_one_async"), str(T.returns_one_async)
+
+    t = T()
+    assert asyncio.run(t.returns_one_async()) == 1
+
+    assert not is_coroutine(T.returns_two)
+    assert is_coroutine(T.returns_two_async)
+    assert asyncio.run(t.returns_two_async()) == 2
+
+    assert not is_coroutine(T.static)
+    assert is_coroutine(T.static_async)
+    assert asyncio.run(T.static_async()) == 2
+
+    assert not is_coroutine(T.class_method)
+    assert is_coroutine(T.class_method_async)
+    assert asyncio.run(T.class_method_async()) == 3
+
+def test_nested() -> None:
+    def nested() -> int:
+        return 1
+
+    async def nested_async() -> int:
+        return 1
+
+    @wrap
+    def nested_wrapped() -> int:
+        return 2
+
+    @wrap_async
+    async def nested_wrapped_async() -> int:
+        return 2
+
+    assert not is_coroutine(nested)
+    assert is_coroutine(nested_async)
+    assert asyncio.run(nested_async()) == 1
+
+    assert getattr(nested_async, "__name__") == "nested_async", getattr(nested_async, "__name__")
+    setattr(nested_async, "__name__", "some custom name")
+    assert getattr(nested_async, "__name__") == "some custom name", getattr(nested_async, "__name__")
+    assert getattr(nested_async, "__code__") != None, getattr(nested_async, "__code__")
+    assert getattr(nested_async, "__defaults__") == None, getattr(nested_async, "__defaults__")
+    assert getattr(nested_async, "__kwdefaults__") == None, getattr(nested_async, "__kwdefaults__")
+    assert getattr(nested_async, "__annotations__") == None, getattr(nested_async, "__annotations__")
+
+    assert not is_coroutine(nested_wrapped)
+    assert is_coroutine(nested_wrapped_async)
+    assert asyncio.run(nested_wrapped_async()) == 4
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...

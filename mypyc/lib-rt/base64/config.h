@@ -1,28 +1,14 @@
 #ifndef BASE64_CONFIG_H
 #define BASE64_CONFIG_H
 
-#define BASE64_WITH_SSSE3 0
-#define HAVE_SSSE3 BASE64_WITH_SSSE3
-
-#define BASE64_WITH_SSE41 0
-#define HAVE_SSE41 BASE64_WITH_SSE41
-
-#if defined(__x86_64__) || defined(_M_X64)
-#define BASE64_WITH_SSE42 1
-#else
-#define BASE64_WITH_SSE42 0
+#if !defined(__APPLE__) && ((defined(__x86_64__) && defined(__LP64__)) || defined(_M_X64))
+  #define HAVE_SSSE3 1
+  #define HAVE_SSE41 1
+  #define HAVE_SSE42 1
+  #define HAVE_AVX 1
+  #define HAVE_AVX2 1
+  #define HAVE_AVX512 0
 #endif
-
-#define HAVE_SSE42 BASE64_WITH_SSE42
-
-#define BASE64_WITH_AVX 0
-#define HAVE_AVX BASE64_WITH_AVX
-
-#define BASE64_WITH_AVX2 0
-#define HAVE_AVX2 BASE64_WITH_AVX2
-
-#define BASE64_WITH_AVX512 0
-#define HAVE_AVX512 BASE64_WITH_AVX512
 
 #define BASE64_WITH_NEON32 0
 #define HAVE_NEON32 BASE64_WITH_NEON32
