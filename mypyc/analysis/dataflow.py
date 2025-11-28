@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Dict, Generic, Iterable, Iterator, Set, Tuple, TypeVar
+from collections.abc import Iterable, Iterator
+from typing import Generic, TypeVar
 
-from mypyc.ir.func_ir import all_values
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -17,6 +17,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    DecRef,
     Extend,
     Float,
     FloatComparisonOp,
@@ -25,6 +26,7 @@ from mypyc.ir.ops import (
     GetAttr,
     GetElementPtr,
     Goto,
+    IncRef,
     InitStatic,
     Integer,
     IntOp,
@@ -43,12 +45,14 @@ from mypyc.ir.ops import (
     RegisterOp,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -77,12 +81,11 @@ class CFG:
         return f"exits: {exits}\nsucc: {self.succ}\npred: {self.pred}"
 
 
-def get_cfg(blocks: list[BasicBlock]) -> CFG:
+def get_cfg(blocks: list[BasicBlock], *, use_yields: bool = False) -> CFG:
     """Calculate basic block control-flow graph.
 
-    The result is a dictionary like this:
-
-         basic block index -> (successors blocks, predecesssor blocks)
+    If use_yields is set, then we treat returns inserted by yields as gotos
+    instead of exits.
     """
     succ_map = {}
     pred_map: dict[BasicBlock, list[BasicBlock]] = {}
@@ -92,7 +95,10 @@ def get_cfg(blocks: list[BasicBlock]) -> CFG:
             isinstance(op, ControlOp) for op in block.ops[:-1]
         ), "Control-flow ops must be at the end of blocks"
 
-        succ = list(block.terminator.targets())
+        if use_yields and isinstance(block.terminator, Return) and block.terminator.yield_target:
+            succ = [block.terminator.yield_target]
+        else:
+            succ = list(block.terminator.targets())
         if not succ:
             exits.add(block)
 
@@ -155,7 +161,7 @@ def cleanup_cfg(blocks: list[BasicBlock]) -> None:
 
 T = TypeVar("T")
 
-AnalysisDict = Dict[Tuple[BasicBlock, int], Set[T]]
+AnalysisDict = dict[tuple[BasicBlock, int], set[T]]
 
 
 class AnalysisResult(Generic[T]):
@@ -167,7 +173,7 @@ class AnalysisResult(Generic[T]):
         return f"before: {self.before}\nafter: {self.after}\n"
 
 
-GenAndKill = Tuple[Set[T], Set[T]]
+GenAndKill = tuple[set[T], set[T]]
 
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
@@ -266,6 +272,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_set_element(self, op: SetElement) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
     def visit_load_address(self, op: LoadAddress) -> GenAndKill[T]:
@@ -437,31 +446,10 @@ class UndefinedVisitor(BaseAnalysisVisitor[Value]):
         return set(), set()
 
 
-def analyze_undefined_regs(
-    blocks: list[BasicBlock], cfg: CFG, initial_defined: set[Value]
-) -> AnalysisResult[Value]:
-    """Calculate potentially undefined registers at each CFG location.
-
-    A register is undefined if there is some path from initial block
-    where it has an undefined value.
-
-    Function arguments are assumed to be always defined.
-    """
-    initial_undefined = set(all_values([], blocks)) - initial_defined
-    return run_analysis(
-        blocks=blocks,
-        cfg=cfg,
-        gen_and_kill=UndefinedVisitor(),
-        initial=initial_undefined,
-        backward=False,
-        kind=MAYBE_ANALYSIS,
-    )
-
-
 def non_trivial_sources(op: Op) -> set[Value]:
     result = set()
     for source in op.sources():
-        if not isinstance(source, (Integer, Float)):
+        if not isinstance(source, (Integer, Float, Undef)):
             result.add(source)
     return result
 
@@ -494,6 +482,12 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
         return non_trivial_sources(op), set()
+
+    def visit_inc_ref(self, op: IncRef) -> GenAndKill[Value]:
+        return set(), set()
+
+    def visit_dec_ref(self, op: DecRef) -> GenAndKill[Value]:
+        return set(), set()
 
 
 def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Value]:
@@ -563,7 +557,7 @@ def run_analysis(
     # Set up initial state for worklist algorithm.
     worklist = list(blocks)
     if not backward:
-        worklist = worklist[::-1]  # Reverse for a small performance improvement
+        worklist.reverse()  # Reverse for a small performance improvement
     workset = set(worklist)
     before: dict[BasicBlock, set[T]] = {}
     after: dict[BasicBlock, set[T]] = {}

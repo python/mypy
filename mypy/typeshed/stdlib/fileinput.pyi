@@ -1,12 +1,9 @@
 import sys
 from _typeshed import AnyStr_co, StrOrBytesPath
 from collections.abc import Callable, Iterable, Iterator
-from types import TracebackType
-from typing import IO, Any, AnyStr, Literal, Protocol, overload
+from types import GenericAlias, TracebackType
+from typing import IO, Any, AnyStr, Literal, Protocol, overload, type_check_only
 from typing_extensions import Self, TypeAlias
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 __all__ = [
     "input",
@@ -28,6 +25,7 @@ if sys.version_info >= (3, 11):
 else:
     _TextMode: TypeAlias = Literal["r", "rU", "U"]
 
+@type_check_only
 class _HasReadlineAndFileno(Protocol[AnyStr_co]):
     def readline(self) -> AnyStr_co: ...
     def fileno(self) -> int: ...
@@ -199,8 +197,7 @@ class FileInput(Iterator[AnyStr]):
     def fileno(self) -> int: ...
     def isfirstline(self) -> bool: ...
     def isstdin(self) -> bool: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 if sys.version_info >= (3, 10):
     def hook_compressed(

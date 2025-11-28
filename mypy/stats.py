@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 from collections import Counter
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Final, Iterator
+from typing import Final
 
 from mypy import nodes
 from mypy.argmap import map_formals_to_actuals
@@ -42,6 +43,7 @@ from mypy.nodes import (
     YieldFromExpr,
 )
 from mypy.traverser import TraverserVisitor
+from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
     AnyType,
@@ -51,7 +53,6 @@ from mypy.types import (
     TupleType,
     Type,
     TypeOfAny,
-    TypeQuery,
     TypeVarType,
     get_proper_type,
     get_proper_types,
@@ -452,9 +453,9 @@ def is_imprecise(t: Type) -> bool:
     return t.accept(HasAnyQuery())
 
 
-class HasAnyQuery(TypeQuery[bool]):
+class HasAnyQuery(BoolTypeQuery):
     def __init__(self) -> None:
-        super().__init__(any)
+        super().__init__(ANY_STRATEGY)
 
     def visit_any(self, t: AnyType) -> bool:
         return not is_special_form_any(t)

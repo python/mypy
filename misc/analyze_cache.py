@@ -6,12 +6,13 @@ import json
 import os
 import os.path
 from collections import Counter
-from typing import Any, Dict, Final, Iterable
+from collections.abc import Iterable
+from typing import Any, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 ROOT: Final = ".mypy_cache/3.5"
 
-JsonDict: _TypeAlias = Dict[str, Any]
+JsonDict: _TypeAlias = dict[str, Any]
 
 
 class CacheData:
@@ -40,7 +41,7 @@ def extract_classes(chunks: Iterable[CacheData]) -> Iterable[JsonDict]:
             if isinstance(chunk, dict):
                 yield chunk
                 yield from extract(chunk.values())
-            elif isinstance(chunk, list):
+            elif isinstance(chunk, list):  # type: ignore[unreachable] #TODO: is this actually unreachable, or are our types wrong?
                 yield from extract(chunk)
 
     yield from extract([chunk.data for chunk in chunks])
@@ -92,7 +93,7 @@ def compress(chunk: JsonDict) -> JsonDict:
     def helper(chunk: JsonDict) -> JsonDict:
         nonlocal counter
         if not isinstance(chunk, dict):
-            return chunk
+            return chunk  # type: ignore[unreachable] #TODO: is this actually unreachable, or are our types wrong?
 
         if len(chunk) <= 2:
             return chunk
@@ -123,7 +124,7 @@ def decompress(chunk: JsonDict) -> JsonDict:
 
     def helper(chunk: JsonDict) -> JsonDict:
         if not isinstance(chunk, dict):
-            return chunk
+            return chunk  # type: ignore[unreachable] #TODO: is this actually unreachable, or are our types wrong?
         if ".id" in chunk:
             return cache[chunk[".id"]]
 

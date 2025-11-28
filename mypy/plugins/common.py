@@ -164,7 +164,7 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
 
 
 def _get_callee_type(call: CallExpr) -> CallableType | None:
-    """Return the type of the callee, regardless of its syntatic form."""
+    """Return the type of the callee, regardless of its syntactic form."""
 
     callee_node: Node | None = call.callee
 
@@ -282,7 +282,6 @@ def add_overloaded_method_to_class(
             var = Var(func.name, func.type)
             var.set_line(func.line)
             func.is_decorated = True
-            func.deco_line = func.line
 
             deco = Decorator(func, [], var)
         else:
@@ -361,7 +360,7 @@ def _add_method_by_spec(
 
     signature = CallableType(arg_types, arg_kinds, arg_names, return_type, function_type)
     if tvar_defs:
-        signature.variables = tvar_defs
+        signature.variables = tuple(tvar_defs)
 
     func = FuncDef(name, args, Block([PassStmt()]))
     func.info = info

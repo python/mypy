@@ -1,46 +1,59 @@
 import sys
-from _typeshed import StrEnum, StrOrBytesPath
+from _typeshed import StrOrBytesPath
 from collections.abc import Iterable
 from cProfile import Profile as _cProfile
+from dataclasses import dataclass
 from profile import Profile
 from typing import IO, Any, Literal, overload
 from typing_extensions import Self, TypeAlias
 
-if sys.version_info >= (3, 9):
-    __all__ = ["Stats", "SortKey", "FunctionProfile", "StatsProfile"]
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
 else:
-    __all__ = ["Stats", "SortKey"]
+    from enum import Enum
+
+__all__ = ["Stats", "SortKey", "FunctionProfile", "StatsProfile"]
 
 _Selector: TypeAlias = str | float | int
 
-class SortKey(StrEnum):
-    CALLS = "calls"
-    CUMULATIVE = "cumulative"
-    FILENAME = "filename"
-    LINE = "line"
-    NAME = "name"
-    NFL = "nfl"
-    PCALLS = "pcalls"
-    STDNAME = "stdname"
-    TIME = "time"
+if sys.version_info >= (3, 11):
+    class SortKey(StrEnum):
+        CALLS = "calls"
+        CUMULATIVE = "cumulative"
+        FILENAME = "filename"
+        LINE = "line"
+        NAME = "name"
+        NFL = "nfl"
+        PCALLS = "pcalls"
+        STDNAME = "stdname"
+        TIME = "time"
 
-if sys.version_info >= (3, 9):
-    from dataclasses import dataclass
+else:
+    class SortKey(str, Enum):
+        CALLS = "calls"
+        CUMULATIVE = "cumulative"
+        FILENAME = "filename"
+        LINE = "line"
+        NAME = "name"
+        NFL = "nfl"
+        PCALLS = "pcalls"
+        STDNAME = "stdname"
+        TIME = "time"
 
-    @dataclass(unsafe_hash=True)
-    class FunctionProfile:
-        ncalls: str
-        tottime: float
-        percall_tottime: float
-        cumtime: float
-        percall_cumtime: float
-        file_name: str
-        line_number: int
+@dataclass(unsafe_hash=True)
+class FunctionProfile:
+    ncalls: str
+    tottime: float
+    percall_tottime: float
+    cumtime: float
+    percall_cumtime: float
+    file_name: str
+    line_number: int
 
-    @dataclass(unsafe_hash=True)
-    class StatsProfile:
-        total_tt: float
-        func_profiles: dict[str, FunctionProfile]
+@dataclass(unsafe_hash=True)
+class StatsProfile:
+    total_tt: float
+    func_profiles: dict[str, FunctionProfile]
 
 _SortArgDict: TypeAlias = dict[str, tuple[tuple[tuple[int, int], ...], str]]
 
@@ -67,9 +80,7 @@ class Stats:
     def strip_dirs(self) -> Self: ...
     def calc_callees(self) -> None: ...
     def eval_print_amount(self, sel: _Selector, list: list[str], msg: str) -> tuple[list[str], str]: ...
-    if sys.version_info >= (3, 9):
-        def get_stats_profile(self) -> StatsProfile: ...
-
+    def get_stats_profile(self) -> StatsProfile: ...
     def get_print_list(self, sel_list: Iterable[_Selector]) -> tuple[int, list[str]]: ...
     def print_stats(self, *amount: _Selector) -> Self: ...
     def print_callees(self, *amount: _Selector) -> Self: ...

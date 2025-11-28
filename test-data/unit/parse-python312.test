@@ -1,5 +1,5 @@
 [case testPEP695TypeAlias]
-# mypy: enable-incomplete-feature=NewGenericSyntax
+# comment
 type A[T] = C[T]
 [out]
 MypyFile:1(
@@ -15,7 +15,7 @@ MypyFile:1(
             NameExpr(T)))))))
 
 [case testPEP695GenericFunction]
-# mypy: enable-incomplete-feature=NewGenericSyntax
+# comment
 
 def f[T](): pass
 def g[T: str](): pass
@@ -46,7 +46,7 @@ MypyFile:1(
       PassStmt:5())))
 
 [case testPEP695ParamSpec]
-# mypy: enable-incomplete-feature=NewGenericSyntax
+# comment
 
 def f[**P](): pass
 class C[T: int, **P]: pass
@@ -68,7 +68,7 @@ MypyFile:1(
     PassStmt:4()))
 
 [case testPEP695TypeVarTuple]
-# mypy: enable-incomplete-feature=NewGenericSyntax
+# comment
 
 def f[*Ts](): pass
 class C[T: int, *Ts]: pass

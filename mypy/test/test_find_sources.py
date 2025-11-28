@@ -17,20 +17,20 @@ class FakeFSCache(FileSystemCache):
     def __init__(self, files: set[str]) -> None:
         self.files = {os.path.abspath(f) for f in files}
 
-    def isfile(self, file: str) -> bool:
-        return file in self.files
+    def isfile(self, path: str) -> bool:
+        return path in self.files
 
-    def isdir(self, dir: str) -> bool:
-        if not dir.endswith(os.sep):
-            dir += os.sep
-        return any(f.startswith(dir) for f in self.files)
+    def isdir(self, path: str) -> bool:
+        if not path.endswith(os.sep):
+            path += os.sep
+        return any(f.startswith(path) for f in self.files)
 
-    def listdir(self, dir: str) -> list[str]:
-        if not dir.endswith(os.sep):
-            dir += os.sep
-        return list({f[len(dir) :].split(os.sep)[0] for f in self.files if f.startswith(dir)})
+    def listdir(self, path: str) -> list[str]:
+        if not path.endswith(os.sep):
+            path += os.sep
+        return list({f[len(path) :].split(os.sep)[0] for f in self.files if f.startswith(path)})
 
-    def init_under_package_root(self, file: str) -> bool:
+    def init_under_package_root(self, path: str) -> bool:
         return False
 
 

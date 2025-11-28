@@ -79,9 +79,9 @@ class Calendar:
     def monthdatescalendar(self, year: int, month: int) -> list[list[datetime.date]]: ...
     def monthdays2calendar(self, year: int, month: int) -> list[list[tuple[int, int]]]: ...
     def monthdayscalendar(self, year: int, month: int) -> list[list[int]]: ...
-    def yeardatescalendar(self, year: int, width: int = 3) -> list[list[int]]: ...
-    def yeardays2calendar(self, year: int, width: int = 3) -> list[list[tuple[int, int]]]: ...
-    def yeardayscalendar(self, year: int, width: int = 3) -> list[list[int]]: ...
+    def yeardatescalendar(self, year: int, width: int = 3) -> list[list[list[list[datetime.date]]]]: ...
+    def yeardays2calendar(self, year: int, width: int = 3) -> list[list[list[list[tuple[int, int]]]]]: ...
+    def yeardayscalendar(self, year: int, width: int = 3) -> list[list[list[list[int]]]]: ...
     def itermonthdays3(self, year: int, month: int) -> Iterable[tuple[int, int, int]]: ...
     def itermonthdays4(self, year: int, month: int) -> Iterable[tuple[int, int, int, int]]: ...
 
@@ -167,18 +167,18 @@ if sys.version_info >= (3, 12):
         NOVEMBER = 11
         DECEMBER = 12
 
-    JANUARY = Month.JANUARY
-    FEBRUARY = Month.FEBRUARY
-    MARCH = Month.MARCH
-    APRIL = Month.APRIL
-    MAY = Month.MAY
-    JUNE = Month.JUNE
-    JULY = Month.JULY
-    AUGUST = Month.AUGUST
-    SEPTEMBER = Month.SEPTEMBER
-    OCTOBER = Month.OCTOBER
-    NOVEMBER = Month.NOVEMBER
-    DECEMBER = Month.DECEMBER
+    JANUARY: Final = Month.JANUARY
+    FEBRUARY: Final = Month.FEBRUARY
+    MARCH: Final = Month.MARCH
+    APRIL: Final = Month.APRIL
+    MAY: Final = Month.MAY
+    JUNE: Final = Month.JUNE
+    JULY: Final = Month.JULY
+    AUGUST: Final = Month.AUGUST
+    SEPTEMBER: Final = Month.SEPTEMBER
+    OCTOBER: Final = Month.OCTOBER
+    NOVEMBER: Final = Month.NOVEMBER
+    DECEMBER: Final = Month.DECEMBER
 
     class Day(enum.IntEnum):
         MONDAY = 0
@@ -189,13 +189,13 @@ if sys.version_info >= (3, 12):
         SATURDAY = 5
         SUNDAY = 6
 
-    MONDAY = Day.MONDAY
-    TUESDAY = Day.TUESDAY
-    WEDNESDAY = Day.WEDNESDAY
-    THURSDAY = Day.THURSDAY
-    FRIDAY = Day.FRIDAY
-    SATURDAY = Day.SATURDAY
-    SUNDAY = Day.SUNDAY
+    MONDAY: Final = Day.MONDAY
+    TUESDAY: Final = Day.TUESDAY
+    WEDNESDAY: Final = Day.WEDNESDAY
+    THURSDAY: Final = Day.THURSDAY
+    FRIDAY: Final = Day.FRIDAY
+    SATURDAY: Final = Day.SATURDAY
+    SUNDAY: Final = Day.SUNDAY
 else:
     MONDAY: Final = 0
     TUESDAY: Final = 1

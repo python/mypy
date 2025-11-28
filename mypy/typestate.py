@@ -5,7 +5,7 @@ and potentially other mutable TypeInfo state. This module contains mutable globa
 
 from __future__ import annotations
 
-from typing import Dict, Final, Set, Tuple
+from typing import Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import VARIANCE_NOT_READY, TypeInfo
@@ -16,15 +16,15 @@ MAX_NEGATIVE_CACHE_TYPES: Final = 1000
 MAX_NEGATIVE_CACHE_ENTRIES: Final = 10000
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
-SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]
+SubtypeRelationship: _TypeAlias = tuple[Instance, Instance]
 
 # A tuple encoding the specific conditions under which we performed the subtype check.
 # (e.g. did we want a proper subtype? A regular subtype while ignoring variance?)
-SubtypeKind: _TypeAlias = Tuple[bool, ...]
+SubtypeKind: _TypeAlias = tuple[bool, ...]
 
 # A cache that keeps track of whether the given TypeInfo is a part of a particular
 # subtype relationship
-SubtypeCache: _TypeAlias = Dict[TypeInfo, Dict[SubtypeKind, Set[SubtypeRelationship]]]
+SubtypeCache: _TypeAlias = dict[TypeInfo, dict[SubtypeKind, set[SubtypeRelationship]]]
 
 
 class TypeState:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from typing import Iterator
+from collections.abc import Iterator
 
 from mypy.test.data import DataDrivenTestCase, DataFileCollector, DataFileFix, parse_test_data
 
@@ -69,7 +69,7 @@ def _iter_fixes(
                 source_line = source_line[: comment_match.start("indent")]  # strip old comment
             if reports:
                 indent = comment_match.group("indent") if comment_match else "  "
-                # multiline comments are on the first line and then on subsequent lines emtpy lines
+                # multiline comments are on the first line and then on subsequent lines empty lines
                 # with a continuation backslash
                 for j, (severity, msg) in enumerate(reports):
                     out_l = source_line if j == 0 else " " * len(source_line)

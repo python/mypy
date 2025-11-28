@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import io
 import json
+from collections.abc import Iterable, Iterator
 from types import TracebackType
-from typing import Any, Final, Iterable, Iterator, TextIO
+from typing import Any, Final, TextIO
 
 from mypy.ipc import IPCBase
 
@@ -104,8 +105,7 @@ class WriteToConn(TextIO):
         raise io.UnsupportedOperation
 
     def write(self, output: str) -> int:
-        resp: dict[str, Any] = {}
-        resp[self.output_key] = output
+        resp: dict[str, Any] = {self.output_key: output}
         send(self.server, resp)
         return len(output)
 

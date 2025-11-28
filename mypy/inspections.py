@@ -335,7 +335,7 @@ class InspectionEngine:
             node = expression.node
             names = sorted(node.names)
             if "__builtins__" in names:
-                # This is just to make tests stable. No one will really need ths name.
+                # This is just to make tests stable. No one will really need this name.
                 names.remove("__builtins__")
             mod_dict = {f'"<{node.fullname}>"': [f'"{name}"' for name in names]}
         else:
@@ -469,8 +469,7 @@ class InspectionEngine:
 
     def missing_node(self, expression: Expression) -> str:
         return (
-            f'Cannot find definition for "{type(expression).__name__}"'
-            f" at {expr_span(expression)}"
+            f'Cannot find definition for "{type(expression).__name__}" at {expr_span(expression)}'
         )
 
     def add_prefixes(self, result: str, expression: Expression) -> str:
@@ -565,7 +564,7 @@ class InspectionEngine:
     ) -> dict[str, object]:
         """Top-level logic to inspect expression(s) at a location.
 
-        This can be re-used by various simple inspections.
+        This can be reused by various simple inspections.
         """
         try:
             file, pos = parse_location(location)

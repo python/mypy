@@ -190,7 +190,9 @@ exit! a exception!
 ((1,), 'exception!')
 
 [case testYieldNested]
-from typing import Callable, Generator
+from typing import Callable, Generator, Iterator, TypeVar, overload
+
+from testutil import run_generator
 
 def normal(a: int, b: float) -> Callable:
     def generator(x: int, y: str) -> Generator:
@@ -235,15 +237,52 @@ def outer() -> Generator:
             yield i
     return recursive(10)
 
-[file driver.py]
-from native import normal, generator, triple, another_triple, outer
-from testutil import run_generator
+def test_return_nested_generator() -> None:
+    assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
+    assert run_generator(generator(1)) == ((1, 2, 3), None)
+    assert run_generator(triple()()) == ((1, 2, 3), None)
+    assert run_generator(another_triple()()) == ((1,), None)
+    assert run_generator(outer()) == ((0, 1, 2, 3, 4), None)
 
-assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
-assert run_generator(generator(1)) == ((1, 2, 3), None)
-assert run_generator(triple()()) == ((1, 2, 3), None)
-assert run_generator(another_triple()()) == ((1,), None)
-assert run_generator(outer()) == ((0, 1, 2, 3, 4), None)
+def call_nested(x: int) -> list[int]:
+    def generator() -> Iterator[int]:
+        n = int() + 2
+        yield x
+        yield n * x
+
+    a = []
+    for x in generator():
+        a.append(x)
+    return a
+
+T = TypeVar("T")
+
+def deco(f: T) -> T:
+    return f
+
+def call_nested_decorated(x: int) -> list[int]:
+    @deco
+    def generator() -> Iterator[int]:
+        n = int() + 3
+        yield x
+        yield n * x
+
+    a = []
+    for x in generator():
+        a.append(x)
+    return a
+
+def call_nested_recursive(x: int) -> Iterator:
+    def recursive(x: int) -> Iterator:
+        if x > 0:
+            yield from recursive(x - 1)
+        yield x
+
+    yield from recursive(x)
+
+def test_call_nested_generator_in_function() -> None:
+    assert call_nested_decorated(5) == [5, 15]
+    assert list(call_nested_recursive(5)) == [0, 1, 2, 3, 4, 5]
 
 [case testYieldThrow]
 from typing import Generator, Iterable, Any, Union
@@ -587,15 +626,21 @@ else:
 from typing import Iterator
 
 class Foo:
-    flag: bool
+    flag = False
 
 class C:
-    foo: Foo
+    foo = Foo()
 
     def genf(self) -> Iterator[None]:
         self.foo.flag = True
         yield
         self.foo.flag = False
+
+def test_near_yield() -> None:
+    c = C()
+    for x in c.genf():
+        pass
+    assert c.foo.flag == False
 
 [case testGeneratorEarlyReturnWithBorrows]
 from typing import Iterator
@@ -608,6 +653,12 @@ class Foo:
             self.bar.bar += 1
             return
         yield 0
+
+def test_early_return() -> None:
+    foo = Foo()
+    for x in foo.f():
+        pass
+    assert foo.bar.bar == 1
 
 [case testBorrowingInGeneratorInTupleAssignment]
 from typing import Iterator
@@ -680,3 +731,208 @@ def test_basic() -> None:
     with context:
         assert context.x == 1
     assert context.x == 0
+
+[case testYieldSpill]
+from typing import Generator
+from testutil import run_generator
+
+def f() -> int:
+    return 1
+
+def yield_spill() -> Generator[str, int, int]:
+    return f() + (yield "foo")
+
+def test_basic() -> None:
+    x = run_generator(yield_spill(), [2])
+    yields, val = x
+    assert yields == ('foo',)
+    assert val == 3, val
+
+[case testGeneratorReuse]
+from typing import Iterator, Any
+
+def gen(x: list[int]) -> Iterator[list[int]]:
+    y = [9]
+    for z in x:
+        yield y + [z]
+    yield y
+
+def gen_range(n: int) -> Iterator[int]:
+    for x in range(n):
+        yield x
+
+def test_use_generator_multiple_times_one_at_a_time() -> None:
+    for i in range(100):
+        a = []
+        for x in gen([2, i]):
+            a.append(x)
+        assert a == [[9, 2], [9, i], [9]]
+
+def test_use_multiple_generator_instances_at_same_time() -> None:
+    a = []
+    for x in gen([2]):
+        a.append(x)
+        for y in gen([3, 4]):
+            a.append(y)
+    assert a == [[9, 2], [9, 3], [9, 4], [9], [9], [9, 3], [9, 4], [9]]
+
+def test_use_multiple_generator_instances_at_same_time_2() -> None:
+    a = []
+    for x in gen_range(2):
+        a.append(x)
+        b = []
+        for y in gen_range(3):
+            b.append(y)
+            c = []
+            for z in gen_range(4):
+                c.append(z)
+            assert c == [0, 1, 2, 3]
+        assert b == [0, 1, 2]
+    assert a == [0, 1]
+    assert list(gen_range(5)) == list(range(5))
+
+def gen_a(x: int) -> Iterator[int]:
+    yield x + 1
+
+def gen_b(x: int) -> Iterator[int]:
+    yield x + 2
+
+def test_generator_identities() -> None:
+    # Sanity check: two distinct live objects can't reuse the same memory location
+    g1 = gen_a(1)
+    g2 = gen_a(1)
+    assert g1 is not g2
+
+    # If two generators have non-overlapping lifetimes, they should reuse a memory location
+    g3 = gen_b(1)
+    id1 = id(g3)
+    g3 = gen_b(1)
+    assert id(g3) == id1
+
+    # More complex case of reuse: allocate other objects in between
+    g4: Any = gen_a(1)
+    id2 = id(g4)
+    g4 = gen_b(1)
+    g4 = [gen_b(n) for n in range(100)]
+    g4 = gen_a(1)
+    assert id(g4) == id2
+
+[case testGeneratorReuseWithGilDisabled]
+import sys
+import threading
+from typing import Iterator
+
+def gen() -> Iterator[int]:
+    yield 1
+
+def is_gil_disabled() -> bool:
+    return hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled()
+
+def test_each_thread_gets_separate_instance() -> None:
+    if not is_gil_disabled():
+        # This only makes sense if GIL is disabled
+        return
+
+    g = gen()
+    id1 = id(g)
+
+    id2 = 0
+
+    def run() -> None:
+        nonlocal id2
+        g = gen()
+        id2 = id(g)
+
+    t = threading.Thread(target=run)
+    t.start()
+    t.join()
+
+    # Each thread should get a separate reused instance
+    assert id1 != id2
+
+[case testGeneratorWithUndefinedLocalInEnvironment]
+from typing import Iterator
+
+from testutil import assertRaises
+
+def gen(set: bool) -> Iterator[float]:
+    if set:
+        y = float("-113.0")
+    yield 1.0
+    yield y
+
+def test_bitmap_is_cleared_when_object_is_reused() -> None:
+    # This updates the bitmap of the shared instance.
+    list(gen(True))
+
+    # Ensure bitmap has been cleared.
+    with assertRaises(AttributeError):  # TODO: Should be UnboundLocalError
+      list(gen(False))
+
+def gen2(set: bool) -> Iterator[int]:
+    if set:
+        y = int("5")
+    yield 1
+    yield y
+
+def test_undefined_int_in_environment() -> None:
+    list(gen2(True))
+
+    with assertRaises(AttributeError):  # TODO: Should be UnboundLocalError
+      list(gen2(False))
+
+[case testVariableWithSameNameAsHelperMethod]
+from testutil import assertRaises
+from typing import Iterator
+
+def gen_send() -> Iterator[int]:
+    send = 1
+    yield send + 1
+
+def gen_throw() -> Iterator[int]:
+    throw = 42
+    yield throw * 2
+
+def undefined() -> Iterator[int]:
+    if int():
+        send = 1
+    yield send + 1
+
+def test_same_names() -> None:
+    assert list(gen_send()) == [2]
+    assert list(gen_throw()) == [84]
+
+    with assertRaises(AttributeError, "attribute 'send' of 'undefined_gen' undefined"):
+        # TODO: Should be UnboundLocalError, this test verifies that the attribute name
+        # matches the variable name in the input code, since internally it's generated
+        # with a prefix.
+        list(undefined())
+
+[case testGeneratorInheritance]
+from typing import Iterator
+
+class Base1:
+    def foo(self) -> Iterator[int]:
+        yield 1
+
+class Derived1(Base1):
+    def foo(self) -> Iterator[int]:
+        yield 2
+        yield 3
+
+def base1_foo(b: Base1) -> list[int]:
+    a = []
+    for x in b.foo():
+        a.append(x)
+    return a
+
+def derived1_foo(b: Derived1) -> list[int]:
+    a = []
+    for x in b.foo():
+        a.append(x)
+    return a
+
+def test_generator_override() -> None:
+     assert base1_foo(Base1()) == [1]
+     assert base1_foo(Derived1()) == [2, 3]
+     assert derived1_foo(Derived1()) == [2, 3]

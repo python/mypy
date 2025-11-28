@@ -8,13 +8,15 @@ meet_types(), join_types() etc. We don't want to keep them in mypy/types.py for 
 
 from __future__ import annotations
 
-from typing import Callable, Iterable, cast
+from collections.abc import Iterable
+from typing import Callable, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2, FuncItem, TypeAlias
 from mypy.types import (
     AnyType,
     CallableType,
     Instance,
+    LiteralType,
     NoneType,
     Overloaded,
     ParamSpecType,
@@ -75,21 +77,33 @@ def is_invalid_recursive_alias(seen_nodes: set[TypeAlias], target: Type) -> bool
     return False
 
 
-def is_bad_type_type_item(item: Type) -> bool:
+def get_bad_type_type_item(item: Type) -> str | None:
     """Prohibit types like Type[Type[...]].
 
     Such types are explicitly prohibited by PEP 484. Also, they cause problems
     with recursive types like T = Type[T], because internal representation of
     TypeType item is normalized (i.e. always a proper type).
+
+    Also forbids `Type[Literal[...]]`, because typing spec does not allow it.
     """
+    # TODO: what else cannot be present in `type[...]`?
     item = get_proper_type(item)
     if isinstance(item, TypeType):
-        return True
+        return "Type[...]"
+    if isinstance(item, LiteralType):
+        return "Literal[...]"
     if isinstance(item, UnionType):
-        return any(
-            isinstance(get_proper_type(i), TypeType) for i in flatten_nested_unions(item.items)
-        )
-    return False
+        items = [
+            bad_item
+            for typ in flatten_nested_unions(item.items)
+            if (bad_item := get_bad_type_type_item(typ)) is not None
+        ]
+        if not items:
+            return None
+        if len(items) == 1:
+            return items[0]
+        return f"Union[{', '.join(items)}]"
+    return None
 
 
 def is_union_with_any(tp: Type) -> bool:

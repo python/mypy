@@ -31,6 +31,7 @@ def infer_decorator_signature_if_simple(
     """
     if dec.var.is_property:
         # Decorators are expected to have a callable type (it's a little odd).
+        # TODO: this may result in wrong type if @property is applied to decorated method.
         if dec.func.type is None:
             dec.var.type = CallableType(
                 [AnyType(TypeOfAny.special_form)],
@@ -47,6 +48,8 @@ def infer_decorator_signature_if_simple(
     for expr in dec.decorators:
         preserve_type = False
         if isinstance(expr, RefExpr) and isinstance(expr.node, FuncDef):
+            if expr.fullname == "typing.no_type_check":
+                return
             if expr.node.type and is_identity_signature(expr.node.type):
                 preserve_type = True
         if not preserve_type:
