@@ -6,18 +6,7 @@ import itertools
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
-from typing import (
-    Callable,
-    Final,
-    Generic,
-    Literal,
-    NamedTuple,
-    Optional,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import Callable, Final, Generic, Literal, NamedTuple, TypeVar, cast, overload
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.checkexpr
@@ -249,8 +238,8 @@ DEFAULT_LAST_PASS: Final = 2  # Pass numbers start at 0
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
 MAX_PRECISE_TUPLE_SIZE: Final = 8
 
-DeferredNodeType: _TypeAlias = Union[FuncDef, OverloadedFuncDef, Decorator]
-FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
+DeferredNodeType: _TypeAlias = FuncDef | OverloadedFuncDef | Decorator
+FineGrainedDeferredNodeType: _TypeAlias = FuncDef | MypyFile | OverloadedFuncDef
 
 
 # A node which is postponed to be processed during the next pass.
@@ -283,7 +272,7 @@ class FineGrainedDeferredNode(NamedTuple):
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
-TypeMap: _TypeAlias = Optional[dict[Expression, Type]]
+TypeMap: _TypeAlias = dict[Expression, Type] | None
 
 
 # Keeps track of partial types in a single scope. In fine-grained incremental

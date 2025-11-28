@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern
-from typing import Any, Final, NamedTuple, NoReturn, Union
+from typing import Any, Final, NamedTuple, NoReturn
 from typing_extensions import TypeAlias as _TypeAlias
 
 import pytest
@@ -43,7 +43,7 @@ class DeleteFile(NamedTuple):
     path: str
 
 
-FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
+FileOperation: _TypeAlias = UpdateFile | DeleteFile
 
 
 def _file_arg_to_module(filename: str) -> str:

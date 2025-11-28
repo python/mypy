@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 from re import Match, Pattern
-from typing import Callable, Final, Union, cast
+from typing import Callable, Final, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
@@ -64,7 +64,7 @@ from mypy.types import (
     get_proper_types,
 )
 
-FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr]
+FormatStringExpr: _TypeAlias = StrExpr | BytesExpr
 Checkers: _TypeAlias = tuple[Callable[[Expression], None], Callable[[Type], bool]]
 MatchMap: _TypeAlias = dict[tuple[int, int], Match[str]]  # span -> match
 

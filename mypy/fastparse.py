@@ -4,7 +4,7 @@ import re
 import sys
 import warnings
 from collections.abc import Sequence
-from typing import Any, Callable, Final, Literal, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Final, Literal, TypeVar, Union, cast, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
@@ -714,7 +714,7 @@ class ASTConverter:
                     current_overload.extend(if_block_with_overload.body[-1].items)
                 else:
                     current_overload.append(
-                        cast(Union[Decorator, FuncDef], if_block_with_overload.body[0])
+                        cast(Decorator | FuncDef, if_block_with_overload.body[0])
                     )
             else:
                 if last_if_stmt is not None:
@@ -760,7 +760,7 @@ class ASTConverter:
                             cast(list[IfStmt], if_block_with_overload.body[:-1])
                         )
                         last_if_overload = cast(
-                            Union[Decorator, FuncDef, OverloadedFuncDef],
+                            Decorator | FuncDef | OverloadedFuncDef,
                             if_block_with_overload.body[-1],
                         )
                     last_if_unknown_truth_value = if_unknown_truth_value
@@ -806,9 +806,7 @@ class ASTConverter:
         ):
             return None
 
-        overload_name = cast(
-            Union[Decorator, FuncDef, OverloadedFuncDef], stmt.body[0].body[-1]
-        ).name
+        overload_name = cast(Decorator | FuncDef | OverloadedFuncDef, stmt.body[0].body[-1]).name
         if stmt.else_body is None:
             return overload_name
 
@@ -991,7 +989,7 @@ class ASTConverter:
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
                     # Use a cast to work around `list` invariance
-                    arg_types = cast(list[Optional[Type]], translated_args)
+                    arg_types = cast(list[Type | None], translated_args)
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
@@ -1646,7 +1644,7 @@ class ASTConverter:
             self.visit(n.func),
             arg_types,
             arg_kinds,
-            cast("list[Optional[str]]", [None] * len(args)) + keyword_names,
+            cast("list[str | None]", [None] * len(args)) + keyword_names,
         )
         return self.set_line(e, n)
 

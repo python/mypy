@@ -6,7 +6,7 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from itertools import chain
-from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
+from typing import Callable, Final, NoReturn, TextIO, TypeVar
 from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
@@ -155,7 +155,7 @@ class ErrorInfo:
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
-ErrorTuple: _TypeAlias = tuple[Optional[str], int, int, int, int, str, str, Optional[ErrorCode]]
+ErrorTuple: _TypeAlias = tuple[str | None, int, int, int, int, str, str, ErrorCode | None]
 
 
 class ErrorWatcher:

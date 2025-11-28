@@ -14,7 +14,7 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Final, Optional, cast
+from typing import Callable, Final, cast
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -122,7 +122,7 @@ from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 #
 # Specializers take three arguments: the IRBuilder, the CallExpr being
 # compiled, and the RefExpr that is the left hand side of the call.
-Specializer = Callable[["IRBuilder", CallExpr, RefExpr], Optional[Value]]
+Specializer = Callable[["IRBuilder", CallExpr, RefExpr], Value | None]
 
 # Dictionary containing all configured specializers.
 #

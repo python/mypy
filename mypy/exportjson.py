@@ -16,7 +16,7 @@ down mypy development).
 import argparse
 import json
 import sys
-from typing import Any, Union
+from typing import Any
 from typing_extensions import TypeAlias as _TypeAlias
 
 from librt.internal import ReadBuffer
@@ -69,7 +69,7 @@ from mypy.types import (
     get_proper_type,
 )
 
-Json: _TypeAlias = Union[dict[str, Any], str]
+Json: _TypeAlias = dict[str, Any] | str
 
 
 class Config:

@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from collections.abc import Iterable
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from mypy.build import (
     BuildResult,
@@ -94,7 +94,7 @@ from mypyc.transform.uninit import insert_uninit_checks
 # its modules along with the name of the group. (Which can be None
 # only if we are compiling only a single group with a single file in it
 # and not using shared libraries).
-Group = tuple[list[BuildSource], Optional[str]]
+Group = tuple[list[BuildSource], str | None]
 Groups = list[Group]
 
 # A list of (file name, file contents) pairs.
