@@ -23,7 +23,12 @@ from mypy.test.helpers import (
 # Semantic analysis test case description files.
 semanal_files = find_test_files(
     pattern="semanal-*.test",
-    exclude=["semanal-errors.test", "semanal-typeinfo.test", "semanal-symtable.test"],
+    exclude=[
+        "semanal-errors.test",
+        "semanal-errors-python310.test",
+        "semanal-typeinfo.test",
+        "semanal-symtable.test",
+    ],
 )
 
 
@@ -81,7 +86,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 
 
 class SemAnalErrorSuite(DataSuite):
-    files = ["semanal-errors.test"]
+    files = ["semanal-errors.test", "semanal-errors-python310.test"]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)

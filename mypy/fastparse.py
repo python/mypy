@@ -149,6 +149,8 @@ def ast3_parse(
         )
 
 
+AstNode = ast3.expr | ast3.stmt | ast3.pattern | ast3.ExceptHandler
+
 if sys.version_info >= (3, 11):
     TryStar = ast3.TryStar
 else:
@@ -421,7 +423,7 @@ class ASTConverter:
 
         return visitor(node)
 
-    def set_line(self, node: N, n: ast3.expr | ast3.stmt | ast3.pattern | ast3.ExceptHandler) -> N:
+    def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None)
