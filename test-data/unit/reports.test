@@ -118,7 +118,7 @@ class A(object):
 [outfile report/html/n.py.html]
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="../mypy-html.css">
 </head>
 <body>
@@ -172,7 +172,7 @@ T = TypeVar('T')
 [outfile report/html/n.py.html]
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="../mypy-html.css">
 </head>
 <body>
@@ -214,7 +214,7 @@ def bar(x):
 [outfile report/html/n.py.html]
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="../mypy-html.css">
 </head>
 <body>
@@ -255,7 +255,7 @@ old_stdout = sys.stdout
 [outfile report/html/n.py.html]
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="../mypy-html.css">
 </head>
 <body>
@@ -487,7 +487,7 @@ DisplayToSource = Callable[[int], int]
 [outfile report/html/n.py.html]
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="../mypy-html.css">
 </head>
 <body>
@@ -529,7 +529,7 @@ namespace_packages = True
 [outfile report/html/folder/subfolder/something.py.html]
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="../../../mypy-html.css">
 </head>
 <body>

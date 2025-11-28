@@ -235,6 +235,19 @@ class DocStringParser:
 
         elif (
             token.type == tokenize.OP
+            and token.string == ":"
+            and self.state[-1] == STATE_ARGUMENT_TYPE
+            and self.accumulator == ""
+        ):
+            # We thought we were after the colon of an "arg_name: arg_type"
+            # stanza, so we were expecting an "arg_type" now. However, we ended
+            # up with "arg_name::" (with two colons). That's a C++ type name,
+            # not an argument name followed by a Python type. This function
+            # signature is malformed / invalid.
+            self.reset()
+
+        elif (
+            token.type == tokenize.OP
             and token.string == "="
             and self.state[-1] in (STATE_ARGUMENT_LIST, STATE_ARGUMENT_TYPE)
         ):

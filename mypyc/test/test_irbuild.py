@@ -54,6 +54,8 @@ files = [
     "irbuild-glue-methods.test",
     "irbuild-math.test",
     "irbuild-weakref.test",
+    "irbuild-librt-strings.test",
+    "irbuild-base64.test",
 ]
 
 if sys.version_info >= (3, 10):

@@ -179,6 +179,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     CFunctionDescription,
     binary_ops,
+    function_ops,
     method_call_ops,
     unary_ops,
 )
@@ -2075,6 +2076,7 @@ class LowLevelIRBuilder:
                 var_arg_idx,
                 is_pure=desc.is_pure,
                 returns_null=desc.returns_null,
+                capsule=desc.capsule,
             )
         )
         if desc.is_borrowed:
@@ -2159,6 +2161,7 @@ class LowLevelIRBuilder:
                 desc.priority,
                 is_pure=desc.is_pure,
                 returns_null=False,
+                capsule=desc.capsule,
             )
             return self.call_c(c_desc, args, line, result_type=result_type)
 
@@ -2206,15 +2209,23 @@ class LowLevelIRBuilder:
         args: list[Value],
         line: int,
         result_type: RType | None = None,
+        *,
         can_borrow: bool = False,
+        strict: bool = True,
     ) -> Value | None:
+        """Find primitive operation that is compatible with types of args.
+
+        Return None if none of them match.
+        """
         matching: PrimitiveDescription | None = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
+            if desc.experimental and not self.options.experimental_features:
+                continue
             if all(
                 # formal is not None and # TODO
-                is_subtype(actual.type, formal)
+                is_subtype(actual.type, formal, relaxed=not strict)
                 for actual, formal in zip(args, desc.arg_types)
             ) and (not desc.is_borrowed or can_borrow):
                 if matching:
@@ -2227,6 +2238,12 @@ class LowLevelIRBuilder:
                     matching = desc
         if matching:
             return self.primitive_op(matching, args, line=line, result_type=result_type)
+        if strict and any(prim.is_ambiguous for prim in candidates):
+            # Also try a non-exact match if any primitives have ambiguous types.
+            return self.matching_primitive_op(
+                candidates, args, line, result_type, can_borrow=can_borrow, strict=False
+            )
+
         return None
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:
@@ -2485,7 +2502,11 @@ class LowLevelIRBuilder:
             self.activate_block(ok)
             return length
 
-        # generic case
+        op = self.matching_primitive_op(function_ops["builtins.len"], [val], line)
+        if op is not None:
+            return op
+
+        # Fallback generic case
         if use_pyssize_t:
             return self.call_c(generic_ssize_t_len_op, [val], line)
         else:
