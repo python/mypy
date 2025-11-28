@@ -2123,11 +2123,8 @@ def get_typeshed_stdlib_modules(
 
 def get_importable_stdlib_modules() -> set[str]:
     """Return all importable stdlib modules at runtime."""
-    all_stdlib_modules: AbstractSet[str]
-    all_stdlib_modules = sys.stdlib_module_names
-
     importable_stdlib_modules: set[str] = set()
-    for module_name in all_stdlib_modules:
+    for module_name in sys.stdlib_module_names:
         if module_name in ANNOYING_STDLIB_MODULES:
             continue
 
