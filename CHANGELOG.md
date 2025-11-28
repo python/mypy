@@ -138,6 +138,7 @@ Related PRs:
 - Support deleting attributes in `__setattr__` wrapper (Piotr Sawicki, PR [19997](https://github.com/python/mypy/pull/19997))
 
 ### Miscellaneous Mypyc Improvements
+- Fix `__new__` in native classes with inheritance (Piotr Sawicki, PR [20302](https://github.com/python/mypy/pull/20302))
 - Fix crash on `super` in generator (Ivan Levkivskyi, PR [20291](https://github.com/python/mypy/pull/20291))
 - Fix calling base class async method using `super()` (Jukka Lehtosalo, PR [20254](https://github.com/python/mypy/pull/20254))
 - Fix async or generator methods in traits (Jukka Lehtosalo, PR [20246](https://github.com/python/mypy/pull/20246))
