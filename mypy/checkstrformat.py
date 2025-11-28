@@ -64,7 +64,7 @@ from mypy.types import (
     get_proper_types,
 )
 
-FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr]
+FormatStringExpr: _TypeAlias = StrExpr | BytesExpr
 Checkers: _TypeAlias = tuple[Callable[[Expression], None], Callable[[Type], bool]]
 MatchMap: _TypeAlias = dict[tuple[int, int], Match[str]]  # span -> match
 

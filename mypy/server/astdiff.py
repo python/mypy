@@ -114,7 +114,7 @@ from mypy.util import get_prefix
 # For example, the snapshot of the 'int' type is ('Instance', 'builtins.int', ()).
 
 # Type snapshots are strict, they must be hashable and ordered (e.g. for Unions).
-Primitive: _TypeAlias = Union[str, float, int, bool]  # float is for Literal[3.14] support.
+Primitive: _TypeAlias = str | float | int | bool  # float is for Literal[3.14] support.
 SnapshotItem: _TypeAlias = tuple[Union[Primitive, "SnapshotItem"], ...]
 
 # Symbol snapshots can be more lenient.

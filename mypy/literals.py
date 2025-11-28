@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Final, Optional
+from typing import Any, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (
@@ -164,7 +164,7 @@ def extract_var_from_literal_hash(key: Key) -> Var | None:
     return None
 
 
-class _Hasher(ExpressionVisitor[Optional[Key]]):
+class _Hasher(ExpressionVisitor[Key | None]):
     def visit_int_expr(self, e: IntExpr) -> Key:
         return ("Literal", e.value)
 

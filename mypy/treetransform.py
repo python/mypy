@@ -194,7 +194,7 @@ class TransformVisitor(NodeVisitor[Node]):
             node.name,
             [self.copy_argument(arg) for arg in node.arguments],
             self.block(node.body),
-            cast(Optional[FunctionLike], self.optional_type(node.type)),
+            cast(FunctionLike | None, self.optional_type(node.type)),
         )
 
         self.copy_function_attributes(new, node)
@@ -224,7 +224,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new = LambdaExpr(
             [self.copy_argument(arg) for arg in node.arguments],
             self.block(node.body),
-            cast(Optional[FunctionLike], self.optional_type(node.type)),
+            cast(FunctionLike | None, self.optional_type(node.type)),
         )
         self.copy_function_attributes(new, node)
         return new
@@ -528,7 +528,7 @@ class TransformVisitor(NodeVisitor[Node]):
             node.op,
             self.expr(node.left),
             self.expr(node.right),
-            cast(Optional[TypeAliasExpr], self.optional_expr(node.analyzed)),
+            cast(TypeAliasExpr | None, self.optional_expr(node.analyzed)),
         )
         new.method_type = self.optional_type(node.method_type)
         return new

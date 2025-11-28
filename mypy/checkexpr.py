@@ -217,7 +217,7 @@ from mypy.visitor import ExpressionVisitor
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
 ArgChecker: _TypeAlias = Callable[
-    [Type, Type, ArgKind, Type, int, int, CallableType, Optional[Type], Context, Context], None
+    [Type, Type, ArgKind, Type, int, int, CallableType, Type | None, Context, Context], None
 ]
 
 # Maximum nesting level for math union in overloads, setting this to large values

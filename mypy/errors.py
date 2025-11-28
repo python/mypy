@@ -155,7 +155,7 @@ class ErrorInfo:
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
-ErrorTuple: _TypeAlias = tuple[Optional[str], int, int, int, int, str, str, Optional[ErrorCode]]
+ErrorTuple: _TypeAlias = tuple[str | None, int, int, int, int, str, str, ErrorCode | None]
 
 
 class ErrorWatcher:

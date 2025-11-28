@@ -119,7 +119,7 @@ if TYPE_CHECKING:
 
         from setuptools import Extension as _setuptools_Extension
 
-        Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+        Extension: TypeAlias = _setuptools_Extension | _distutils_Extension
 
 if sys.version_info >= (3, 12):
     # From setuptools' monkeypatch

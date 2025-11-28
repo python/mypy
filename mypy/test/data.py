@@ -43,7 +43,7 @@ class DeleteFile(NamedTuple):
     path: str
 
 
-FileOperation: _TypeAlias = Union[UpdateFile, DeleteFile]
+FileOperation: _TypeAlias = UpdateFile | DeleteFile
 
 
 def _file_arg_to_module(filename: str) -> str:

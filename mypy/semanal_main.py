@@ -358,12 +358,12 @@ def process_top_level_function(
 
 
 TargetInfo: _TypeAlias = tuple[
-    str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+    str, MypyFile | FuncDef | OverloadedFuncDef | Decorator, TypeInfo | None
 ]
 
 # Same as above but includes module as first item.
 FullTargetInfo: _TypeAlias = tuple[
-    str, str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+    str, str, MypyFile | FuncDef | OverloadedFuncDef | Decorator, TypeInfo | None
 ]
 
 

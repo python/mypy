@@ -39,7 +39,7 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars_with_any
 
-BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, NameExpr]
+BindableExpression: _TypeAlias = IndexExpr | MemberExpr | NameExpr
 
 
 class CurrentType(NamedTuple):
@@ -81,7 +81,7 @@ class Frame:
         return f"Frame({self.id}, {self.types}, {self.unreachable}, {self.conditional_frame})"
 
 
-Assigns = defaultdict[Expression, list[tuple[Type, Optional[Type]]]]
+Assigns = defaultdict[Expression, list[tuple[Type, Type | None]]]
 
 
 class ConditionalTypeBinder:

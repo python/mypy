@@ -69,7 +69,7 @@ from mypy.types import (
     get_proper_type,
 )
 
-Json: _TypeAlias = Union[dict[str, Any], str]
+Json: _TypeAlias = dict[str, Any] | str
 
 
 class Config:

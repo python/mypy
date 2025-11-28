@@ -555,7 +555,7 @@ class BlockedUpdate(NamedTuple):
     messages: list[str]
 
 
-UpdateResult: _TypeAlias = Union[NormalUpdate, BlockedUpdate]
+UpdateResult: _TypeAlias = NormalUpdate | BlockedUpdate
 
 
 def update_module_isolated(

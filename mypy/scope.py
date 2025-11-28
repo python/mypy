@@ -12,7 +12,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import FuncBase, TypeInfo
 
-SavedScope: _TypeAlias = tuple[str, Optional[TypeInfo], Optional[FuncBase]]
+SavedScope: _TypeAlias = tuple[str, TypeInfo | None, FuncBase | None]
 
 
 class Scope:
