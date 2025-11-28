@@ -27,15 +27,10 @@ from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
-from mypyc.analysis.capsule_deps import find_implicit_capsule_dependencies
+from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import (
-    Emitter,
-    EmitterContext,
-    HeaderDeclaration,
-    c_array_initializer,
-    native_function_doc_initializer,
-)
+from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS
+from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer, native_function_doc_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -263,9 +258,9 @@ def compile_scc_to_ir(
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
             # Calculate implicit module dependencies (needed for librt)
-            capsules = find_implicit_capsule_dependencies(fn)
-            if capsules is not None:
-                module.capsules.update(capsules)
+            deps = find_implicit_op_dependencies(fn)
+            if deps is not None:
+                module.dependencies.update(deps)
             # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
@@ -611,9 +606,9 @@ class GroupGenerator:
         ext_declarations.emit_line("#include <CPy.h>")
         if self.compiler_options.depends_on_librt_internal:
             ext_declarations.emit_line("#include <librt_internal.h>")
-        if any("librt.base64" in mod.capsules for mod in self.modules.values()):
+        if any(LIBRT_BASE64 in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <librt_base64.h>")
-        if any("librt.strings" in mod.capsules for mod in self.modules.values()):
+        if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <librt_strings.h>")
 
         declarations = Emitter(self.context)
@@ -1072,11 +1067,11 @@ class GroupGenerator:
             emitter.emit_line("if (import_librt_internal() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
-        if "librt.base64" in module.capsules:
+        if LIBRT_BASE64 in module.dependencies:
             emitter.emit_line("if (import_librt_base64() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
-        if "librt.strings" in module.capsules:
+        if LIBRT_STRINGS in module.dependencies:
             emitter.emit_line("if (import_librt_strings() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")

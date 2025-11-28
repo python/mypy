@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mypyc.ir.deps import LIBRT_BASE64
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
@@ -475,7 +476,7 @@ function_op(
     error_kind=ERR_MAGIC,
     extra_int_constants=[(0, bool_rprimitive)],
     experimental=True,
-    capsule="librt.base64",
+    dependencies=[LIBRT_BASE64],
 )
 
 function_op(
@@ -486,7 +487,7 @@ function_op(
     error_kind=ERR_MAGIC,
     extra_int_constants=[(1, bool_rprimitive)],
     experimental=True,
-    capsule="librt.base64",
+    dependencies=[LIBRT_BASE64],
 )
 
 function_op(
@@ -497,7 +498,7 @@ function_op(
     error_kind=ERR_MAGIC,
     extra_int_constants=[(0, bool_rprimitive)],
     experimental=True,
-    capsule="librt.base64",
+    dependencies=[LIBRT_BASE64],
 )
 
 function_op(
@@ -508,7 +509,7 @@ function_op(
     error_kind=ERR_MAGIC,
     extra_int_constants=[(1, bool_rprimitive)],
     experimental=True,
-    capsule="librt.base64",
+    dependencies=[LIBRT_BASE64],
 )
 
 cpyfunction_get_name = function_op(

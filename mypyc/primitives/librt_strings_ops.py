@@ -1,5 +1,6 @@
 from typing import Final
 
+from mypyc.ir.deps import LIBRT_STRINGS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
@@ -20,7 +21,7 @@ function_op(
     c_function_name="LibRTStrings_BytesWriter_internal",
     error_kind=ERR_MAGIC,
     experimental=True,
-    capsule="librt.strings",
+    dependencies=[LIBRT_STRINGS],
 )
 
 method_op(
@@ -30,7 +31,7 @@ method_op(
     c_function_name="LibRTStrings_BytesWriter_getvalue_internal",
     error_kind=ERR_MAGIC,
     experimental=True,
-    capsule="librt.strings",
+    dependencies=[LIBRT_STRINGS],
 )
 
 method_op(
@@ -40,7 +41,7 @@ method_op(
     c_function_name="LibRTStrings_BytesWriter_write_internal",
     error_kind=ERR_MAGIC,
     experimental=True,
-    capsule="librt.strings",
+    dependencies=[LIBRT_STRINGS],
 )
 
 method_op(
@@ -50,7 +51,7 @@ method_op(
     c_function_name="LibRTStrings_BytesWriter_append_internal",
     error_kind=ERR_MAGIC,
     experimental=True,
-    capsule="librt.strings",
+    dependencies=[LIBRT_STRINGS],
 )
 
 method_op(
@@ -68,5 +69,5 @@ function_op(
     c_function_name="LibRTStrings_BytesWriter_len_internal",
     error_kind=ERR_NEVER,
     experimental=True,
-    capsule="librt.strings",
+    dependencies=[LIBRT_STRINGS],
 )
