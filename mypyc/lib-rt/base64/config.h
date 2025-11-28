@@ -13,7 +13,7 @@
 #define BASE64_WITH_NEON32 0
 #define HAVE_NEON32 BASE64_WITH_NEON32
 
-#if defined(__APPLE__) && defined(__aarch64__)
+#if (defined(__APPLE__) && defined(__aarch64__)) || (defined(__wasm__) && defined(__wasm_simd128__))
 #define BASE64_WITH_NEON64 1
 #else
 #define BASE64_WITH_NEON64 0
