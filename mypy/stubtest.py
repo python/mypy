@@ -26,7 +26,7 @@ import typing
 import typing_extensions
 import warnings
 from collections import defaultdict
-from collections.abc import Iterator, Set as AbstractSet
+from collections.abc import Iterator
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
