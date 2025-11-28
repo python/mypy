@@ -12,9 +12,7 @@ from typing import (
     Generic,
     Literal,
     NamedTuple,
-    Optional,
     TypeVar,
-    Union,
     cast,
     overload,
 )

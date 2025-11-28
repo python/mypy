@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 from re import Match, Pattern
-from typing import Callable, Final, Union, cast
+from typing import Callable, Final, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes

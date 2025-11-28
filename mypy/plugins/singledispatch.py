@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import NamedTuple, TypeVar, Union
+from typing import NamedTuple, TypeVar
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.messages import format_type

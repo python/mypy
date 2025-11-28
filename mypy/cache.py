@@ -48,7 +48,7 @@ bump CACHE_VERSION below.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final, Union
+from typing import Any, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 from librt.internal import (

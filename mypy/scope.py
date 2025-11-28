@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
-from typing import Optional
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import FuncBase, TypeInfo

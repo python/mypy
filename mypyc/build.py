@@ -26,7 +26,7 @@ import re
 import sys
 import time
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, Union, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, cast
 
 import mypyc.build_setup  # noqa: F401
 from mypy.build import BuildSource

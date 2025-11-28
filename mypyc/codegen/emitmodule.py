@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from collections.abc import Iterable
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from mypy.build import (
     BuildResult,
