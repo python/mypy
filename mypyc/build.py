@@ -28,6 +28,7 @@ import time
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, Union, cast
 
+import mypyc.build_setup  # noqa: F401
 from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
@@ -36,7 +37,7 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, X86_64, shared_lib_name
+from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
@@ -71,6 +72,13 @@ LIBRT_MODULES = [
             "base64/arch/neon64/codec.c",
         ],
         [
+            "base64/arch/avx/enc_loop_asm.c",
+            "base64/arch/avx2/enc_loop.c",
+            "base64/arch/avx2/enc_loop_asm.c",
+            "base64/arch/avx2/enc_reshuffle.c",
+            "base64/arch/avx2/enc_translate.c",
+            "base64/arch/avx2/dec_loop.c",
+            "base64/arch/avx2/dec_reshuffle.c",
             "base64/arch/generic/32/enc_loop.c",
             "base64/arch/generic/64/enc_loop.c",
             "base64/arch/generic/32/dec_loop.c",
@@ -662,9 +670,6 @@ def mypycify(
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",
         ]
-        if X86_64:
-            # Enable SIMD extensions. All CPUs released since ~2010 support SSE4.2.
-            cflags.append("-msse4.2")
         if log_trace:
             cflags.append("-DMYPYC_LOG_TRACE")
         if experimental_features:
@@ -693,10 +698,6 @@ def mypycify(
             # that we actually get the compilation speed and memory
             # use wins that multi-file mode is intended for.
             cflags += ["/GL-", "/wd9025"]  # warning about overriding /GL
-        if X86_64:
-            # Enable SIMD extensions. All CPUs released since ~2010 support SSE4.2.
-            # Also Windows 11 requires SSE4.2 since 24H2.
-            cflags.append("/arch:SSE4.2")
         if log_trace:
             cflags.append("/DMYPYC_LOG_TRACE")
         if experimental_features:
