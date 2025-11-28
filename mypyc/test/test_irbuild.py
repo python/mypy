@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os.path
-import sys
 
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir

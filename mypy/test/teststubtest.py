@@ -2356,9 +2356,7 @@ assert annotations
         yield Case(stub="A = TypeVar('A')", runtime="A = TypeVar('A')", error=None)
         yield Case(stub="B = TypeVar('B')", runtime="B = 5", error="B")
         yield Case(
-            stub="from typing import ParamSpec",
-            runtime="from typing import ParamSpec",
-            error=None,
+            stub="from typing import ParamSpec", runtime="from typing import ParamSpec", error=None
         )
         yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
 

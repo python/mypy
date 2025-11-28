@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
@@ -25,11 +23,7 @@ from mypy.test.helpers import (
 # Semantic analysis test case description files.
 semanal_files = find_test_files(
     pattern="semanal-*.test",
-    exclude=[
-        "semanal-errors.test",
-        "semanal-typeinfo.test",
-        "semanal-symtable.test",
-    ],
+    exclude=["semanal-errors.test", "semanal-typeinfo.test", "semanal-symtable.test"],
 )
 
 
