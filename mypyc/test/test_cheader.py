@@ -7,8 +7,8 @@ import os
 import re
 import unittest
 
-from mypyc.primitives import registry
 from mypyc.ir.deps import SourceDep
+from mypyc.primitives import registry
 
 
 class TestHeaderInclusion(unittest.TestCase):

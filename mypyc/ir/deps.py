@@ -1,4 +1,4 @@
-from typing import Final, Union
+from typing import Final
 
 
 class Capsule:
@@ -34,10 +34,10 @@ class SourceDep:
 
     def get_header(self) -> str:
         """Get the header file path by replacing .c with .h"""
-        return self.path.replace('.c', '.h')
+        return self.path.replace(".c", ".h")
 
 
-Dependency = Union[Capsule, SourceDep]
+Dependency = Capsule | SourceDep
 
 
 LIBRT_STRINGS: Final = Capsule("librt.strings")

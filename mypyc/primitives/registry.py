@@ -39,9 +39,9 @@ from __future__ import annotations
 
 from typing import Final, NamedTuple
 
+from mypyc.ir.deps import Dependency
 from mypyc.ir.ops import PrimitiveDescription, StealsDescription
 from mypyc.ir.rtypes import RType
-from mypyc.ir.deps import Dependency
 
 # Error kind for functions that return negative integer on exception. This
 # is only used for primitives. We translate it away during IR building.

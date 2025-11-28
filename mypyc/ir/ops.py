@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, final
 
 from mypy_extensions import trait
 
+from mypyc.ir.deps import Dependency
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
@@ -55,7 +56,6 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
     void_rtype,
 )
-from mypyc.ir.deps import Dependency
 
 if TYPE_CHECKING:
     from mypyc.codegen.literals import LiteralValue

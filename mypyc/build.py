@@ -40,7 +40,6 @@ from mypyc.codegen import emitmodule
 from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.deps import SourceDep
-from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
@@ -278,16 +277,6 @@ def include_dir() -> str:
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), "lib-rt")
 
 
-def collect_source_dependencies(modules: dict[str, ModuleIR]) -> set[SourceDep]:
-    """Collect all SourceDep dependencies from all modules."""
-    source_deps: set[SourceDep] = set()
-    for module in modules.values():
-        for dep in module.dependencies:
-            if isinstance(dep, SourceDep):
-                source_deps.add(dep)
-    return source_deps
-
-
 def generate_c(
     sources: list[BuildSource],
     options: Options,
@@ -338,7 +327,7 @@ def generate_c(
         generate_annotated_html(options.mypyc_annotation_file, result, modules, mapper)
 
     # Collect SourceDep dependencies
-    source_deps = sorted(collect_source_dependencies(modules), key=lambda d: d.path)
+    source_deps = sorted(emitmodule.collect_source_dependencies(modules), key=lambda d: d.path)
 
     return ctext, "\n".join(format_modules(modules)), source_deps
 
@@ -736,7 +725,7 @@ def mypycify(
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
                 write_file(rt_file, f.read())
             # Only add .c files to shared_cfilenames
-            if name.endswith('.c'):
+            if name.endswith(".c"):
                 shared_cfilenames.append(rt_file)
 
     extensions = []

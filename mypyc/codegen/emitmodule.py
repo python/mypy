@@ -29,8 +29,13 @@ from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
 from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS
-from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer, native_function_doc_initializer
+from mypyc.codegen.emit import (
+    Emitter,
+    EmitterContext,
+    HeaderDeclaration,
+    c_array_initializer,
+    native_function_doc_initializer,
+)
 from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -51,6 +56,7 @@ from mypyc.common import (
     short_id_from_name,
 )
 from mypyc.errors import Errors
+from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, SourceDep
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -424,8 +430,6 @@ def load_scc_from_cache(
 
 def collect_source_dependencies(modules: dict[str, ModuleIR]) -> set[SourceDep]:
     """Collect all SourceDep dependencies from all modules."""
-    from mypyc.ir.deps import SourceDep
-
     source_deps: set[SourceDep] = set()
     for module in modules.values():
         for dep in module.dependencies:
