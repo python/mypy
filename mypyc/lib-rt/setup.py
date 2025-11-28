@@ -99,7 +99,7 @@ if "--run-capi-tests" in sys.argv:
     kwargs: dict[str, Any]
     if sys.platform == "darwin":
         kwargs = {"language": "c++"}
-        compile_args = []
+        compile_args: list[str] = []
     else:
         kwargs = {}
         compile_args = ["--std=c++11"]
