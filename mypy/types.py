@@ -1923,6 +1923,25 @@ class FormalArgument:
         return hash((self.name, self.pos, self.typ, self.required))
 
 
+def _synthesize_arg_from_vararg(vararg: FormalArgument | None, position: int | None) -> FormalArgument | None:
+    if vararg is None:
+        return None
+    typ = vararg.typ
+    if isinstance(typ, UnpackType):
+        # Similar to logic in ExpressionChecker.visit_tuple_index_helper
+        unpacked = get_proper_type(typ.type)
+        if isinstance(unpacked, TypeVarTupleType):
+            bound = get_proper_type(unpacked.upper_bound)
+            assert isinstance(bound, Instance)
+            assert bound.type.fullname == "builtins.tuple"
+            typ = bound.args[0]
+        else:
+            assert isinstance(unpacked, Instance)
+            assert unpacked.type.fullname == "builtins.tuple"
+            typ = unpacked.args[0]
+    return FormalArgument(None, position, typ, False)
+
+
 class Parameters(ProperType):
     """Type that represents the parameters to a function.
 
@@ -2069,11 +2088,7 @@ class Parameters(ProperType):
             return None
 
     def try_synthesizing_arg_from_vararg(self, position: int | None) -> FormalArgument | None:
-        var_arg = self.var_arg()
-        if var_arg is not None:
-            return FormalArgument(None, position, var_arg.typ, False)
-        else:
-            return None
+        return _synthesize_arg_from_vararg(self.var_arg(), position)
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_parameters(self)
@@ -2418,11 +2433,7 @@ class CallableType(FunctionLike):
             return None
 
     def try_synthesizing_arg_from_vararg(self, position: int | None) -> FormalArgument | None:
-        var_arg = self.var_arg()
-        if var_arg is not None:
-            return FormalArgument(None, position, var_arg.typ, False)
-        else:
-            return None
+        return _synthesize_arg_from_vararg(self.var_arg(), position)
 
     @property
     def items(self) -> list[CallableType]:

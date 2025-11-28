@@ -508,7 +508,7 @@ def erase_to_bound(t: Type) -> Type:
 def callable_corresponding_argument(
     typ: NormalizedCallableType | Parameters, model: FormalArgument
 ) -> FormalArgument | None:
-    """Return the argument a function that corresponds to `model`"""
+    """Return the argument of a function that corresponds to `model`"""
 
     by_name = typ.argument_by_name(model.name)
     by_pos = typ.argument_by_position(model.pos)
@@ -522,7 +522,7 @@ def callable_corresponding_argument(
         # taking both *args and **args, or a pair of functions like so:
 
         # def right(a: int = ...) -> None: ...
-        # def left(__a: int = ..., *, a: int = ...) -> None: ...
+        # def left(x: int = ..., /, *, a: int = ...) -> None: ...
         from mypy.meet import meet_types
 
         if (
@@ -533,6 +533,8 @@ def callable_corresponding_argument(
             return FormalArgument(
                 by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
             )
+        return by_name
+
     return by_name if by_name is not None else by_pos
 
 
