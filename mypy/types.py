@@ -1923,7 +1923,9 @@ class FormalArgument:
         return hash((self.name, self.pos, self.typ, self.required))
 
 
-def _synthesize_arg_from_vararg(vararg: FormalArgument | None, position: int | None) -> FormalArgument | None:
+def _synthesize_arg_from_vararg(
+    vararg: FormalArgument | None, position: int | None
+) -> FormalArgument | None:
     if vararg is None:
         return None
     typ = vararg.typ
