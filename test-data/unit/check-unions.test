@@ -725,9 +725,10 @@ bad: Union[int, str]
 
 x, y = bad # E: "int" object is not iterable \
            # E: Unpacking a string is disallowed
-reveal_type(x) # N: Revealed type is "Any"
-reveal_type(y) # N: Revealed type is "Any"
-[out]
+reveal_type(x) # N: Revealed type is "Union[Any, builtins.str]"
+reveal_type(y) # N: Revealed type is "Union[Any, builtins.str]"
+[builtins fixtures/primitives.pyi]
+
 
 [case testUnionAlwaysTooMany]
 from typing import Union, Tuple
