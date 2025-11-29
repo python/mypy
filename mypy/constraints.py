@@ -167,15 +167,18 @@ def infer_constraints_for_callable(
                     allow_unpack=True,
                 )
 
-                if arg_kinds[actual] != ARG_STAR or isinstance(
-                    get_proper_type(actual_arg_type), TupleType
-                ):
-                    actual_types.append(expanded_actual)
+                if arg_kinds[actual] == ARG_STAR:
+                    # Use the expanded form, one of TupleType | IterableType | ParamSpecType | AnyType
+                    star_args_type = mapper.parse_star_args_type(actual_arg_type)
+                    if isinstance(star_args_type, TupleType):
+                        actual_types.append(expanded_actual)
+                    else:
+                        # If we are expanding an iterable inside * actual, append a homogeneous item instead
+                        actual_types.append(
+                            UnpackType(tuple_instance.copy_modified(args=[expanded_actual]))
+                        )
                 else:
-                    # If we are expanding an iterable inside * actual, append a homogeneous item instead
-                    actual_types.append(
-                        UnpackType(tuple_instance.copy_modified(args=[expanded_actual]))
-                    )
+                    actual_types.append(expanded_actual)
 
             if isinstance(unpacked_type, TypeVarTupleType):
                 constraints.append(
@@ -1011,13 +1014,15 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 if isinstance(item, UnpackType):
                     unpacked = get_proper_type(item.type)
                     if isinstance(unpacked, TypeVarTupleType):
-                        # Cannot infer anything for T from [T, ...] <: *Ts
-                        continue
-                    assert (
-                        isinstance(unpacked, Instance)
-                        and unpacked.type.fullname == "builtins.tuple"
-                    )
-                    item = unpacked.args[0]
+                        # Iterable[T] :> tuple[*Ts] => T :> Union[*Ts]
+                        # Since Union[*Ts] is currently not available, use Any instead.
+                        item = AnyType(TypeOfAny.from_omitted_generics)
+                    else:
+                        assert (
+                            isinstance(unpacked, Instance)
+                            and unpacked.type.fullname == "builtins.tuple"
+                        )
+                        item = unpacked.args[0]
                 cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
                 res.extend(cb)
             return res
