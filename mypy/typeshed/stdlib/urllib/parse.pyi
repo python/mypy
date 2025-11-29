@@ -1,10 +1,8 @@
 import sys
-from collections.abc import Callable, Iterable, Mapping, Sequence
-from typing import Any, AnyStr, Generic, Literal, NamedTuple, TypeVar, overload
+from collections.abc import Iterable, Mapping, Sequence
+from types import GenericAlias
+from typing import Any, AnyStr, Final, Generic, Literal, NamedTuple, Protocol, overload, type_check_only
 from typing_extensions import TypeAlias
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 __all__ = [
     "urlparse",
@@ -30,23 +28,26 @@ __all__ = [
     "SplitResultBytes",
 ]
 
-uses_relative: list[str]
-uses_netloc: list[str]
-uses_params: list[str]
-non_hierarchical: list[str]
-uses_query: list[str]
-uses_fragment: list[str]
-scheme_chars: str
+uses_relative: Final[list[str]]
+uses_netloc: Final[list[str]]
+uses_params: Final[list[str]]
+non_hierarchical: Final[list[str]]
+uses_query: Final[list[str]]
+uses_fragment: Final[list[str]]
+scheme_chars: Final[str]
 if sys.version_info < (3, 11):
-    MAX_CACHE_SIZE: int
+    MAX_CACHE_SIZE: Final[int]
 
 class _ResultMixinStr:
+    __slots__ = ()
     def encode(self, encoding: str = "ascii", errors: str = "strict") -> _ResultMixinBytes: ...
 
 class _ResultMixinBytes:
+    __slots__ = ()
     def decode(self, encoding: str = "ascii", errors: str = "strict") -> _ResultMixinStr: ...
 
 class _NetlocResultMixinBase(Generic[AnyStr]):
+    __slots__ = ()
     @property
     def username(self) -> AnyStr | None: ...
     @property
@@ -55,11 +56,13 @@ class _NetlocResultMixinBase(Generic[AnyStr]):
     def hostname(self) -> AnyStr | None: ...
     @property
     def port(self) -> int | None: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): ...
-class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes): ...
+class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr):
+    __slots__ = ()
+
+class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes):
+    __slots__ = ()
 
 class _DefragResultBase(NamedTuple, Generic[AnyStr]):
     url: AnyStr
@@ -127,13 +130,7 @@ def quote_from_bytes(bs: bytes | bytearray, safe: str | Iterable[int] = "/") -> 
 def quote_plus(string: str, safe: str | Iterable[int] = "", encoding: str | None = None, errors: str | None = None) -> str: ...
 @overload
 def quote_plus(string: bytes | bytearray, safe: str | Iterable[int] = "") -> str: ...
-
-if sys.version_info >= (3, 9):
-    def unquote(string: str | bytes, encoding: str = "utf-8", errors: str = "replace") -> str: ...
-
-else:
-    def unquote(string: str, encoding: str = "utf-8", errors: str = "replace") -> str: ...
-
+def unquote(string: str | bytes, encoding: str = "utf-8", errors: str = "replace") -> str: ...
 def unquote_to_bytes(string: str | bytes | bytearray) -> bytes: ...
 def unquote_plus(string: str, encoding: str = "utf-8", errors: str = "replace") -> str: ...
 @overload
@@ -141,38 +138,32 @@ def urldefrag(url: str) -> DefragResult: ...
 @overload
 def urldefrag(url: bytes | bytearray | None) -> DefragResultBytes: ...
 
-_Q = TypeVar("_Q", bound=str | Iterable[int])
+# The values are passed through `str()` (unless they are bytes), so anything is valid.
 _QueryType: TypeAlias = (
-    Mapping[Any, Any] | Mapping[Any, Sequence[Any]] | Sequence[tuple[Any, Any]] | Sequence[tuple[Any, Sequence[Any]]]
+    Mapping[str, object]
+    | Mapping[bytes, object]
+    | Mapping[str | bytes, object]
+    | Mapping[str, Sequence[object]]
+    | Mapping[bytes, Sequence[object]]
+    | Mapping[str | bytes, Sequence[object]]
+    | Sequence[tuple[str | bytes, object]]
+    | Sequence[tuple[str | bytes, Sequence[object]]]
 )
 
-@overload
+@type_check_only
+class _QuoteVia(Protocol):
+    @overload
+    def __call__(self, string: str, safe: str | bytes, encoding: str, errors: str, /) -> str: ...
+    @overload
+    def __call__(self, string: bytes, safe: str | bytes, /) -> str: ...
+
 def urlencode(
     query: _QueryType,
     doseq: bool = False,
-    safe: str = "",
+    safe: str | bytes = "",
     encoding: str | None = None,
     errors: str | None = None,
-    quote_via: Callable[[AnyStr, str, str, str], str] = ...,
-) -> str: ...
-@overload
-def urlencode(
-    query: _QueryType,
-    doseq: bool,
-    safe: _Q,
-    encoding: str | None = None,
-    errors: str | None = None,
-    quote_via: Callable[[AnyStr, _Q, str, str], str] = ...,
-) -> str: ...
-@overload
-def urlencode(
-    query: _QueryType,
-    doseq: bool = False,
-    *,
-    safe: _Q,
-    encoding: str | None = None,
-    errors: str | None = None,
-    quote_via: Callable[[AnyStr, _Q, str, str], str] = ...,
+    quote_via: _QuoteVia = ...,
 ) -> str: ...
 def urljoin(base: AnyStr, url: AnyStr | None, allow_fragments: bool = True) -> AnyStr: ...
 @overload

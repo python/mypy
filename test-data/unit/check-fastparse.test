@@ -1,6 +1,6 @@
 [case testFastParseSyntaxError]
 
-1 +  # E: invalid syntax
+1 +  # E: Invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
 
@@ -158,7 +158,7 @@ def f(a,        # type: A
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 
-def f(*, # type: int  # E: bare * has associated type comment
+def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
       ):
       # type: (...) -> int
@@ -241,37 +241,37 @@ assert 1, f()  # E: Name "f" is not defined
 
 [case testFastParserConsistentFunctionTypes]
 
-def f(x, y, z):
+def f1(x, y, z):
   # type: (int, int, int) -> int
   pass
 
-def f(x,  # type: int  # E: Function has duplicate type signatures
+def f2(x,  # type: int  # E: Function has duplicate type signatures
       y,  # type: int
       z   # type: int
     ):
     # type: (int, int, int) -> int
     pass
 
-def f(x,  # type: int
+def f3(x,  # type: int
       y,  # type: int
       z   # type: int
     ):
     # type: (...) -> int
     pass
 
-def f(x, y, z):
+def f4(x, y, z):
   # type: (int, int, int) -> int
   pass
 
-def f(x) -> int:  # E: Function has duplicate type signatures
+def f5(x) -> int:  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
-def f(x: int, y: int, z: int):
+def f6(x: int, y: int, z: int):
   # type: (...) -> int
   pass
 
-def f(x: int):  # E: Function has duplicate type signatures
+def f7(x: int):  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
@@ -324,3 +324,18 @@ class Bla:
 def call() -> str: pass
 
 [builtins fixtures/module.pyi]
+
+[case testInvalidEscapeSequenceWarningsSuppressed]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+# Test that SyntaxWarnings for invalid escape sequences are suppressed
+# when parsing potential type expressions containing regex patterns or
+# similar strings. Callable arguments are always potential type expressions.
+from typing import TypeForm
+
+def identity(typx: TypeForm) -> TypeForm:
+    return typx
+
+# This should not generate SyntaxWarning despite invalid escape sequence
+identity(r"re\.match")  # E: Argument 1 to "identity" has incompatible type "str"; expected "TypeForm[Any]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

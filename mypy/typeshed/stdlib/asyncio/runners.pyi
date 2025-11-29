@@ -7,6 +7,7 @@ from typing_extensions import Self
 
 from .events import AbstractEventLoop
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 11):
     __all__ = ("Runner", "run")
 else:
@@ -25,7 +26,7 @@ if sys.version_info >= (3, 11):
 
 if sys.version_info >= (3, 12):
     def run(
-        main: Coroutine[Any, Any, _T], *, debug: bool | None = ..., loop_factory: Callable[[], AbstractEventLoop] | None = ...
+        main: Coroutine[Any, Any, _T], *, debug: bool | None = None, loop_factory: Callable[[], AbstractEventLoop] | None = None
     ) -> _T: ...
 
 else:

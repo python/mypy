@@ -46,21 +46,18 @@ define dataclasses. For example:
     UnorderedPoint(1, 2) < UnorderedPoint(3, 4)  # Error: Unsupported operand types
 
 Dataclasses can be generic and can be used in any other way a normal
-class can be used:
+class can be used (Python 3.12 syntax):
 
 .. code-block:: python
 
     from dataclasses import dataclass
-    from typing import Generic, TypeVar
-
-    T = TypeVar('T')
 
     @dataclass
-    class BoxedData(Generic[T]):
+    class BoxedData[T]:
         data: T
         label: str
 
-    def unbox(bd: BoxedData[T]) -> T:
+    def unbox[T](bd: BoxedData[T]) -> T:
         ...
 
     val = unbox(BoxedData(42, "<important>"))  # OK, inferred type is int
@@ -98,17 +95,16 @@ does **not** work:
 
 
 To have Mypy recognize a wrapper of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`
-as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transform` decorator:
+as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transform`
+decorator (example uses Python 3.12 syntax):
 
 .. code-block:: python
 
     from dataclasses import dataclass, Field
-    from typing import TypeVar, dataclass_transform
-
-    T = TypeVar('T')
+    from typing import dataclass_transform
 
     @dataclass_transform(field_specifiers=(Field,))
-    def my_dataclass(cls: type[T]) -> type[T]:
+    def my_dataclass[T](cls: type[T]) -> type[T]:
         ...
         return dataclass(cls)
 
@@ -367,20 +363,20 @@ Extended Callable types
    This feature is deprecated.  You can use
    :ref:`callback protocols <callback_protocols>` as a replacement.
 
-As an experimental mypy extension, you can specify :py:data:`~typing.Callable` types
+As an experimental mypy extension, you can specify :py:class:`~collections.abc.Callable` types
 that support keyword arguments, optional arguments, and more.  When
-you specify the arguments of a :py:data:`~typing.Callable`, you can choose to supply just
+you specify the arguments of a :py:class:`~collections.abc.Callable`, you can choose to supply just
 the type of a nameless positional argument, or an "argument specifier"
 representing a more complicated form of argument.  This allows one to
 more closely emulate the full range of possibilities given by the
 ``def`` statement in Python.
 
 As an example, here's a complicated function definition and the
-corresponding :py:data:`~typing.Callable`:
+corresponding :py:class:`~collections.abc.Callable`:
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
    from mypy_extensions import (Arg, DefaultArg, NamedArg,
                                 DefaultNamedArg, VarArg, KwArg)
 
@@ -453,7 +449,7 @@ purpose:
 In all cases, the ``type`` argument defaults to ``Any``, and if the
 ``name`` argument is omitted the argument has no name (the name is
 required for ``NamedArg`` and ``DefaultNamedArg``).  A basic
-:py:data:`~typing.Callable` such as
+:py:class:`~collections.abc.Callable` such as
 
 .. code-block:: python
 
@@ -465,7 +461,7 @@ is equivalent to the following:
 
    MyFunc = Callable[[Arg(int), Arg(str), Arg(int)], float]
 
-A :py:data:`~typing.Callable` with unspecified argument types, such as
+A :py:class:`~collections.abc.Callable` with unspecified argument types, such as
 
 .. code-block:: python
 

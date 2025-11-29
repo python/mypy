@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Final, Iterable, Mapping, Sequence, TypeVar, cast, overload
+from collections.abc import Iterable, Mapping
+from typing import Final, TypeVar, cast, overload
 
 from mypy.nodes import ARG_STAR, FakeInfo, Var
 from mypy.state import state
@@ -121,7 +122,7 @@ def freshen_function_type_vars(callee: F) -> F:
     """Substitute fresh type variables for generic function type variables."""
     if isinstance(callee, CallableType):
         if not callee.is_generic():
-            return cast(F, callee)
+            return callee
         tvs = []
         tvmap: dict[TypeVarId, Type] = {}
         for v in callee.variables:
@@ -179,8 +180,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
+        super().__init__()
         self.variables = variables
-        self.recursive_tvar_guard: dict[TypeVarId, Type | None] = {}
+        self.recursive_tvar_guard: dict[TypeVarId, Type | None] | None = None
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -207,7 +209,10 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        args = self.expand_types_with_unpack(list(t.args))
+        if len(t.args) == 0:
+            return t
+
+        args = self.expand_type_tuple_with_unpack(t.args)
 
         if isinstance(t.type, FakeInfo):
             # The type checker expands function definitions and bodies
@@ -224,6 +229,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             if isinstance(arg, UnpackType):
                 unpacked = get_proper_type(arg.type)
                 if isinstance(unpacked, Instance):
+                    # TODO: this and similar asserts below may be unsafe because get_proper_type()
+                    # may be called during semantic analysis before all invalid types are removed.
                     assert unpacked.type.fullname == "builtins.tuple"
                     args = list(unpacked.args)
         return t.copy_modified(args=args)
@@ -239,12 +246,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # If I try to remove this special-casing ~40 tests fail on reveal_type().
             return repl.copy_modified(last_known_value=None)
         if isinstance(repl, TypeVarType) and repl.has_default():
+            if self.recursive_tvar_guard is None:
+                self.recursive_tvar_guard = {}
             if (tvar_id := repl.id) in self.recursive_tvar_guard:
                 return self.recursive_tvar_guard[tvar_id] or repl
             self.recursive_tvar_guard[tvar_id] = None
-            repl = repl.accept(self)
-            if isinstance(repl, TypeVarType):
-                repl.default = repl.default.accept(self)
+            repl.default = repl.default.accept(self)
+            expanded = repl.accept(self)  # Note: `expanded is repl` may be true.
+            repl = repl if isinstance(expanded, TypeVarType) else expanded
             self.recursive_tvar_guard[tvar_id] = repl
         return repl
 
@@ -331,10 +340,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
         var_arg_type = get_proper_type(var_arg.type)
         new_unpack: Type
-        if isinstance(var_arg_type, Instance):
-            # we have something like Unpack[Tuple[Any, ...]]
-            new_unpack = UnpackType(var_arg.type.accept(self))
-        elif isinstance(var_arg_type, TupleType):
+        if isinstance(var_arg_type, TupleType):
             # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
             expanded_tuple = var_arg_type.accept(self)
             assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
@@ -346,6 +352,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             fallback = var_arg_type.tuple_fallback
             expanded_items = self.expand_unpack(var_arg)
             new_unpack = UnpackType(TupleType(expanded_items, fallback))
+        # Since get_proper_type() may be called in semanal.py before callable
+        # normalization happens, we need to also handle non-normal cases here.
+        elif isinstance(var_arg_type, Instance):
+            # we have something like Unpack[Tuple[Any, ...]]
+            new_unpack = UnpackType(var_arg.type.accept(self))
         else:
             # We have invalid type in Unpack. This can happen when expanding aliases
             # to Callable[[*Invalid], Ret]
@@ -425,7 +436,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             items.append(new_item)
         return Overloaded(items)
 
-    def expand_types_with_unpack(self, typs: Sequence[Type]) -> list[Type]:
+    def expand_type_list_with_unpack(self, typs: list[Type]) -> list[Type]:
         """Expands a list of types that has an unpack."""
         items: list[Type] = []
         for item in typs:
@@ -435,8 +446,19 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 items.append(item.accept(self))
         return items
 
+    def expand_type_tuple_with_unpack(self, typs: tuple[Type, ...]) -> list[Type]:
+        """Expands a tuple of types that has an unpack."""
+        # Micro-optimization: Specialized variant of expand_type_list_with_unpack
+        items: list[Type] = []
+        for item in typs:
+            if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
+                items.extend(self.expand_unpack(item))
+            else:
+                items.append(item.accept(self))
+        return items
+
     def visit_tuple_type(self, t: TupleType) -> Type:
-        items = self.expand_types_with_unpack(t.items)
+        items = self.expand_type_list_with_unpack(t.items)
         if len(items) == 1:
             # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
             item = items[0]
@@ -454,15 +476,25 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         return t.copy_modified(items=items, fallback=fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        if cached := self.get_cached(t):
+            return cached
         fallback = t.fallback.accept(self)
         assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
-        return t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
+        result = t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
+        self.set_cached(t, result)
+        return result
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         # TODO: Verify this implementation is correct
         return t
 
     def visit_union_type(self, t: UnionType) -> Type:
+        # Use cache to avoid O(n**2) or worse expansion of types during translation
+        # (only for large unions, since caching adds overhead)
+        use_cache = len(t.items) > 3
+        if use_cache and (cached := self.get_cached(t)):
+            return cached
+
         expanded = self.expand_types(t.items)
         # After substituting for type variables in t.items, some resulting types
         # might be subtypes of others, however calling  make_simplified_union()
@@ -475,7 +507,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # otherwise a single item union of a type alias will break it. Note this should not
         # cause infinite recursion since pathological aliases like A = Union[A, B] are
         # banned at the semantic analysis level.
-        return get_proper_type(simplified)
+        result = get_proper_type(simplified)
+
+        if use_cache:
+            self.set_cached(t, result)
+        return result
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
@@ -485,12 +521,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # union of instances or Any).  Sadly we can't report errors
         # here yet.
         item = t.item.accept(self)
-        return TypeType.make_normalized(item)
+        return TypeType.make_normalized(item, is_type_form=t.is_type_form)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Target of the type alias cannot contain type variables (not bound by the type
         # alias itself), so we just expand the arguments.
-        args = self.expand_types_with_unpack(t.args)
+        if len(t.args) == 0:
+            return t
+        args = self.expand_type_list_with_unpack(t.args)
         # TODO: normalize if target is Tuple, and args are [*tuple[X, ...]]?
         return t.copy_modified(args=args)
 

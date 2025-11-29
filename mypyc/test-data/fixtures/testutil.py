@@ -44,8 +44,8 @@ float_vals = [
 def assertRaises(typ: type, msg: str = '') -> Iterator[None]:
     try:
         yield
-    except Exception as e:
-        assert isinstance(e, typ), f"{e!r} is not a {typ.__name__}"
+    except BaseException as e:
+        assert type(e) is typ, f"{e!r} is not a {typ.__name__}"
         assert msg in str(e), f'Message "{e}" does not match "{msg}"'
     else:
         assert False, f"Expected {typ.__name__} but got no exception"

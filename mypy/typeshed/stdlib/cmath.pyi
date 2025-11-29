@@ -1,13 +1,13 @@
-from typing import SupportsComplex, SupportsFloat, SupportsIndex
+from typing import Final, SupportsComplex, SupportsFloat, SupportsIndex
 from typing_extensions import TypeAlias
 
-e: float
-pi: float
-inf: float
-infj: complex
-nan: float
-nanj: complex
-tau: float
+e: Final[float]
+pi: Final[float]
+inf: Final[float]
+infj: Final[complex]
+nan: Final[float]
+nanj: Final[complex]
+tau: Final[float]
 
 _C: TypeAlias = SupportsFloat | SupportsComplex | SupportsIndex | complex
 
@@ -23,7 +23,7 @@ def exp(z: _C, /) -> complex: ...
 def isclose(a: _C, b: _C, *, rel_tol: SupportsFloat = 1e-09, abs_tol: SupportsFloat = 0.0) -> bool: ...
 def isinf(z: _C, /) -> bool: ...
 def isnan(z: _C, /) -> bool: ...
-def log(x: _C, base: _C = ..., /) -> complex: ...
+def log(z: _C, base: _C = ..., /) -> complex: ...
 def log10(z: _C, /) -> complex: ...
 def phase(z: _C, /) -> float: ...
 def polar(z: _C, /) -> tuple[float, float]: ...

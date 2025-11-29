@@ -1,48 +1,5 @@
 -- Test cases for generic aliases
 
-[case testGenericBuiltinWarning]
-# flags: --python-version 3.8
-t1: list
-t2: list[int]  # E: "list" is not subscriptable, use "typing.List" instead
-t3: list[str]  # E: "list" is not subscriptable, use "typing.List" instead
-
-t4: tuple
-t5: tuple[int]  # E: "tuple" is not subscriptable, use "typing.Tuple" instead
-t6: tuple[int, str]  # E: "tuple" is not subscriptable, use "typing.Tuple" instead
-t7: tuple[int, ...]  # E: Unexpected "..." \
-                     # E: "tuple" is not subscriptable, use "typing.Tuple" instead
-
-t8: dict = {}
-t9: dict[int, str]  # E: "dict" is not subscriptable, use "typing.Dict" instead
-
-t10: type
-t11: type[int]  # E: "type" expects no type arguments, but 1 given
-[builtins fixtures/dict.pyi]
-
-
-[case testGenericBuiltinSetWarning]
-# flags: --python-version 3.8
-t1: set
-t2: set[int]  # E: "set" is not subscriptable, use "typing.Set" instead
-[builtins fixtures/set.pyi]
-
-
-[case testGenericCollectionsWarning]
-# flags: --python-version 3.8
-import collections
-
-t01: collections.deque
-t02: collections.deque[int]  # E: "deque" is not subscriptable, use "typing.Deque" instead
-t03: collections.defaultdict
-t04: collections.defaultdict[int, str]  # E: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
-t05: collections.OrderedDict
-t06: collections.OrderedDict[int, str]
-t07: collections.Counter
-t08: collections.Counter[int]  # E: "Counter" is not subscriptable, use "typing.Counter" instead
-t09: collections.ChainMap
-t10: collections.ChainMap[int, str]  # E: "ChainMap" is not subscriptable, use "typing.ChainMap" instead
-
-
 [case testGenericBuiltinFutureAnnotations]
 from __future__ import annotations
 t1: list
@@ -80,7 +37,6 @@ t10: collections.ChainMap[int, str]
 
 
 [case testGenericAliasBuiltinsReveal]
-# flags: --python-version 3.9
 t1: list
 t2: list[int]
 t3: list[str]
@@ -101,19 +57,18 @@ reveal_type(t2)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(t3)  # N: Revealed type is "builtins.list[builtins.str]"
 reveal_type(t4)  # N: Revealed type is "builtins.tuple[Any, ...]"
 # TODO: ideally these would reveal builtins.tuple
-reveal_type(t5)  # N: Revealed type is "Tuple[builtins.int]"
-reveal_type(t6)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(t5)  # N: Revealed type is "tuple[builtins.int]"
+reveal_type(t6)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 # TODO: this is incorrect, see #9522
 reveal_type(t7)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 reveal_type(t8)  # N: Revealed type is "builtins.dict[Any, Any]"
 reveal_type(t9)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
 reveal_type(t10)  # N: Revealed type is "builtins.type"
-reveal_type(t11)  # N: Revealed type is "Type[builtins.int]"
+reveal_type(t11)  # N: Revealed type is "type[builtins.int]"
 [builtins fixtures/dict.pyi]
 
 
 [case testGenericAliasBuiltinsSetReveal]
-# flags: --python-version 3.9
 t1: set
 t2: set[int]
 t3: set[str]
@@ -125,7 +80,6 @@ reveal_type(t3)  # N: Revealed type is "builtins.set[builtins.str]"
 
 
 [case testGenericAliasCollectionsReveal]
-# flags: --python-version 3.9
 import collections
 
 t1: collections.deque[int]
@@ -143,7 +97,6 @@ reveal_type(t5)  # N: Revealed type is "collections.ChainMap[builtins.int, built
 
 
 [case testGenericAliasCollectionsABCReveal]
-# flags: --python-version 3.9
 import collections.abc
 
 t01: collections.abc.Awaitable[int]
@@ -196,6 +149,38 @@ t23: collections.abc.ValuesView[str]
 # reveal_type(t23)  # Nx Revealed type is "collections.abc.ValuesView[builtins.str]"
 [builtins fixtures/tuple.pyi]
 
+[case testGenericAliasIsinstanceUnreachable]
+# flags: --warn-unreachable --python-version 3.10
+from collections.abc import Iterable
+
+class A: ...
+
+def test(dependencies: list[A] | None) -> None:
+    if dependencies is None:
+        dependencies = []
+    elif not isinstance(dependencies, Iterable):
+        dependencies = [dependencies]  # E: Statement is unreachable
+
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testGenericAliasRedundantExprCompoundIfExpr]
+# flags: --warn-unreachable --enable-error-code=redundant-expr --python-version 3.10
+
+from typing import Any, reveal_type
+from collections.abc import Iterable
+
+def test_example(x: Iterable[Any]) -> None:
+    if isinstance(x, Iterable) and not isinstance(x, str):  # E: Left operand of "and" is always true
+        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
+
+def test_counterexample(x: Any) -> None:
+    if isinstance(x, Iterable) and not isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
+
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 [case testGenericBuiltinTupleTyping]
 from typing import Tuple
@@ -213,8 +198,6 @@ t09: Tuple[int, ...] = (1, 2, 3)
 
 
 [case testGenericBuiltinTuple]
-# flags: --python-version 3.9
-
 t01: tuple = ()
 t02: tuple[int] = (1, )
 t03: tuple[int, str] = (1, 'a')
@@ -230,16 +213,14 @@ t10: Tuple[int, ...] = t09
 [builtins fixtures/tuple.pyi]
 
 [case testTypeAliasWithBuiltinTuple]
-# flags: --python-version 3.9
-
 A = tuple[int, ...]
 a: A = ()
 b: A = (1, 2, 3)
-c: A = ('x', 'y')  # E: Incompatible types in assignment (expression has type "Tuple[str, str]", variable has type "Tuple[int, ...]")
+c: A = ('x', 'y')  # E: Incompatible types in assignment (expression has type "tuple[str, str]", variable has type "tuple[int, ...]")
 
 B = tuple[int, str]
 x: B = (1, 'x')
-y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[str, int]", variable has type "Tuple[int, str]")
+y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "tuple[str, int]", variable has type "tuple[int, str]")
 
 reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
@@ -247,7 +228,7 @@ reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.i
 [case testTypeAliasWithBuiltinTupleInStub]
 import m
 reveal_type(m.a)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(m.b)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(m.b)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 
 [file m.pyi]
 A = tuple[int, ...]
@@ -261,7 +242,7 @@ import m
 reveal_type(m.a)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(m.b)  # N: Revealed type is "builtins.list[builtins.list[builtins.int]]"
 m.C  # has complex representation, ignored
-reveal_type(m.d)  # N: Revealed type is "Type[builtins.str]"
+reveal_type(m.d)  # N: Revealed type is "type[builtins.str]"
 
 [file m.pyi]
 A = list[int]

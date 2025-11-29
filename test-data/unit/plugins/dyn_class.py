@@ -6,7 +6,7 @@ from mypy.nodes import GDEF, Block, ClassDef, SymbolTable, SymbolTableNode, Type
 from mypy.plugin import ClassDefContext, DynamicClassDefContext, Plugin
 from mypy.types import Instance, get_proper_type
 
-DECL_BASES = set()
+DECL_BASES: set[str] = set()
 
 
 class DynPlugin(Plugin):

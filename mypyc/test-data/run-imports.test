@@ -212,9 +212,10 @@ import shared
 def do_import() -> None:
     import a
 
-assert shared.counter == 0
-do_import()
-assert shared.counter == 1
+def test_lazy() -> None:
+    assert shared.counter == 0
+    do_import()
+    assert shared.counter == 1
 
 [file a.py]
 import shared
@@ -224,9 +225,10 @@ shared.counter += 1
 counter = 0
 
 [case testDelayedImport]
-import a
-print("inbetween")
-import b
+def test_delayed() -> None:
+    import a
+    print("inbetween")
+    import b
 
 [file a.py]
 print("first")
@@ -240,19 +242,21 @@ inbetween
 last
 
 [case testImportErrorLineNumber]
-try:
-    import enum
-    import dataclasses, missing  # type: ignore[import]
-except ImportError as e:
-    line = e.__traceback__.tb_lineno # type: ignore[attr-defined]
-    assert line == 3, f"traceback's line number is {line}, expected 3"
+def test_error() -> None:
+    try:
+        import enum
+        import dataclasses, missing  # type: ignore[import]
+    except ImportError as e:
+        line = e.__traceback__.tb_lineno # type: ignore[attr-defined]
+        assert line == 4, f"traceback's line number is {line}, expected 4"
 
 [case testImportGroupIsolation]
 def func() -> None:
     import second
 
-import first
-func()
+def test_isolation() -> None:
+    import first
+    func()
 
 [file first.py]
 print("first")

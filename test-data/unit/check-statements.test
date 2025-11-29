@@ -519,6 +519,13 @@ if object():
     raise BaseException from f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.pyi]
 
+[case testRaiseNotImplementedFails]
+if object():
+    raise NotImplemented    # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
+if object():
+    raise NotImplemented()  # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
+[builtins fixtures/notimplemented.pyi]
+
 [case testTryFinallyStatement]
 import typing
 try:
@@ -787,6 +794,57 @@ def error_in_union(exc: Union[Type[E1], int]) -> None:
         pass
 
 def error_in_variadic(exc: Tuple[int, ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        pass
+
+[builtins fixtures/tuple.pyi]
+
+[case testExceptWithMultipleTypes5]
+from typing import Tuple, Type, Union
+
+class E1(BaseException): pass
+class E2(BaseException): pass
+class E3(BaseException): pass
+
+def union_in_variadic(exc: Tuple[Union[Type[E1], Type[E2]], ...]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2]"
+
+def nested_union_in_variadic(exc: Tuple[Union[Type[E1], Union[Type[E2], Type[E3]]], ...]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2, __main__.E3]"
+
+def union_in_tuple(exc: Tuple[Union[Type[E1], Type[E2]], Type[E3]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2, __main__.E3]"
+
+def error_in_variadic_union(exc: Tuple[Union[Type[E1], int], ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        pass
+
+def error_in_variadic_nested_union(exc: Tuple[Union[Type[E1], Union[Type[E2], int]], ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        pass
+
+def error_in_tuple_inside_variadic_nested_union(exc: Tuple[Union[Type[E1], Union[Type[E2], Tuple[Type[E3]]]], ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        pass
+
+def error_in_tuple_union(exc: Tuple[Union[Type[E1], Type[E2]], Union[Type[E3], int]]) -> None:
     try:
         pass
     except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
@@ -1298,13 +1356,13 @@ def g() -> Iterator[List[int]]:
     yield [2, 3, 4]
 def f() -> Iterator[List[int]]:
     yield from g()
-    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "List[int]")
+    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "list[int]")
 [builtins fixtures/for.pyi]
 [out]
 
 [case testYieldFromNotAppliedToNothing]
 def h():
-    yield from  # E: invalid syntax
+    yield from  # E: Invalid syntax
 [out]
 
 [case testYieldFromAndYieldTogether]
@@ -1469,7 +1527,7 @@ with A():
 with A() as a:  # type: Tuple[int, int]
     pass
 
-with A() as b:  # type: Tuple[int, str]  # E: Incompatible types in assignment (expression has type "Tuple[int, int]", variable has type "Tuple[int, str]")
+with A() as b:  # type: Tuple[int, str]  # E: Incompatible types in assignment (expression has type "tuple[int, int]", variable has type "tuple[int, str]")
     pass
 
 with A() as (c, d):  # type: int, int
@@ -1520,13 +1578,13 @@ from typing import Optional
 
 class InvalidReturn1:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 
 class InvalidReturn2:
     def __exit__(self, x, y, z) -> Optional[bool]:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         if int():
             return False
@@ -1535,7 +1593,7 @@ class InvalidReturn2:
 
 class InvalidReturn3:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         def nested() -> bool:
             return True
@@ -1543,7 +1601,7 @@ class InvalidReturn3:
 [builtins fixtures/bool.pyi]
 
 [case testWithStmtBoolExitReturnOkay]
-from typing_extensions import Literal
+from typing import Literal
 
 class GoodReturn1:
     def __exit__(self, x, y, z) -> bool:
@@ -2022,7 +2080,7 @@ cs: List[B]
 if int():
     *bs, b = bs
 if int():
-    *bs, c = cs  # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
+    *bs, c = cs  # E: Incompatible types in assignment (expression has type "list[B]", variable has type "list[A]")
     if int():
         *ns, c = cs
 if int():
@@ -2175,8 +2233,7 @@ class M(N): pass
 [out]
 
 [case testForwardRefsInWithStatementImplicit]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[N]
 
 with cm as g:
@@ -2184,12 +2241,11 @@ with cm as g:
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testForwardRefsInWithStatement]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[Any]
 
 with cm as g:  # type: N
@@ -2197,7 +2253,7 @@ with cm as g:  # type: N
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testGlobalWithoutInitialization]
@@ -2276,6 +2332,20 @@ def get_strings(foo: bool) -> Iterator[str]:
         yield "bar2"
 [builtins fixtures/tuple.pyi]
 
+[case testYieldFromInvalidType]
+from collections.abc import Iterator
+
+class A:
+    def list(self) -> None: ...
+
+    def foo(self) -> list[int]:  # E: Function "__main__.A.list" is not valid as a type \
+                                 # N: Perhaps you need "Callable[...]" or a callback protocol?
+        return []
+
+def fn() -> Iterator[int]:
+    yield from A().foo()  # E: "list?[builtins.int]" has no attribute "__iter__" (not iterable)
+[builtins fixtures/tuple.pyi]
+
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
@@ -2339,6 +2409,6 @@ describe(CAny())
 describe(C())
 describe(CNone())
 describe(CWrong())  # E: Argument 1 to "describe" has incompatible type "CWrong"; expected "Callable[[], None]" \
-                    # N: "CWrong.__call__" has type "Callable[[Arg(int, 'x')], None]"
+                    # N: "CWrong.__call__" has type "def __call__(self, x: int) -> None"
 describe(f)
 [builtins fixtures/isinstancelist.pyi]

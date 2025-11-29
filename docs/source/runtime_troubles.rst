@@ -8,10 +8,9 @@ version of Python considers legal code. This section describes these scenarios
 and explains how to get your code running again. Generally speaking, we have
 three tools at our disposal:
 
-* Use of ``from __future__ import annotations`` (:pep:`563`)
-  (this behaviour may eventually be made the default in a future Python version)
 * Use of string literal types or type comments
 * Use of ``typing.TYPE_CHECKING``
+* Use of ``from __future__ import annotations`` (:pep:`563`)
 
 We provide a description of these before moving onto discussion of specific
 problems you may encounter.
@@ -21,8 +20,9 @@ problems you may encounter.
 String literal types and type comments
 --------------------------------------
 
-Mypy allows you to add type annotations using ``# type:`` type comments.
-For example:
+Mypy lets you add type annotations using the (now deprecated) ``# type:``
+type comment syntax. These were required with Python versions older than 3.6,
+since they didn't support type annotations on variables. Example:
 
 .. code-block:: python
 
@@ -69,7 +69,7 @@ Future annotations import (PEP 563)
 -----------------------------------
 
 Many of the issues described here are caused by Python trying to evaluate
-annotations. Future Python versions (potentially Python 3.12) will by default no
+annotations. Future Python versions (potentially Python 3.14) will by default no
 longer attempt to evaluate function and variable annotations. This behaviour is
 made available in Python 3.7 and later through the use of
 ``from __future__ import annotations``.
@@ -84,7 +84,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
     still require string literals or result in errors, typically involving use
     of forward references or generics in:
 
-    * :ref:`type aliases <type-aliases>`;
+    * :ref:`type aliases <type-aliases>` not defined using the ``type`` statement;
     * :ref:`type narrowing <type-narrowing>`;
     * type definitions (see :py:class:`~typing.TypeVar`, :py:class:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
     * base classes.
@@ -93,6 +93,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
 
         # base class example
         from __future__ import annotations
+
         class A(tuple['B', 'C']): ... # String literal types needed here
         class B: ...
         class C: ...
@@ -244,7 +245,8 @@ complicated and you need to use :ref:`typing.TYPE_CHECKING
    task_queue: Tasks
    reveal_type(task_queue.get())  # Reveals str
 
-If your subclass is also generic, you can use the following:
+If your subclass is also generic, you can use the following (using the
+legacy syntax for generic classes):
 
 .. code-block:: python
 
@@ -262,14 +264,16 @@ If your subclass is also generic, you can use the following:
    task_queue: MyQueue[str]
    reveal_type(task_queue.get())  # Reveals str
 
-In Python 3.9, we can just inherit directly from ``Queue[str]`` or ``Queue[T]``
+In Python 3.9 and later, we can just inherit directly from ``Queue[str]`` or ``Queue[T]``
 since its :py:class:`queue.Queue` implements :py:meth:`~object.__class_getitem__`, so
-the class object can be subscripted at runtime without issue.
+the class object can be subscripted at runtime. You may still encounter issues (even if
+you use a recent Python version) when subclassing generic classes defined in third-party
+libraries if types are generic only in stubs.
 
 Using types defined in stubs but not at runtime
 -----------------------------------------------
 
-Sometimes stubs that you're using may define types you wish to re-use that do
+Sometimes stubs that you're using may define types you wish to reuse that do
 not exist at runtime. Importing these types naively will cause your code to fail
 at runtime with ``ImportError`` or ``ModuleNotFoundError``. Similar to previous
 sections, these can be dealt with by using :ref:`typing.TYPE_CHECKING
@@ -315,8 +319,8 @@ notes at :ref:`future annotations import<future-annotations>`.
 Using X | Y syntax for Unions
 -----------------------------
 
-Starting with Python 3.10 (:pep:`604`), you can spell union types as ``x: int |
-str``, instead of ``x: typing.Union[int, str]``.
+Starting with Python 3.10 (:pep:`604`), you can spell union types as
+``x: int | str``, instead of ``x: typing.Union[int, str]``.
 
 There is limited support for using this syntax in Python 3.7 and later as well:
 if you use ``from __future__ import annotations``, mypy will understand this
@@ -330,16 +334,14 @@ Using new additions to the typing module
 ----------------------------------------
 
 You may find yourself wanting to use features added to the :py:mod:`typing`
-module in earlier versions of Python than the addition, for example, using any
-of ``Literal``, ``Protocol``, ``TypedDict`` with Python 3.6.
+module in earlier versions of Python than the addition.
 
 The easiest way to do this is to install and use the ``typing_extensions``
 package from PyPI for the relevant imports, for example:
 
 .. code-block:: python
 
-   from typing_extensions import Literal
-   x: Literal["open", "close"]
+   from typing_extensions import TypeIs
 
 If you don't want to rely on ``typing_extensions`` being installed on newer
 Pythons, you could alternatively use:
@@ -347,12 +349,10 @@ Pythons, you could alternatively use:
 .. code-block:: python
 
    import sys
-   if sys.version_info >= (3, 8):
-       from typing import Literal
+   if sys.version_info >= (3, 13):
+       from typing import TypeIs
    else:
-       from typing_extensions import Literal
-
-   x: Literal["open", "close"]
+       from typing_extensions import TypeIs
 
 This plays nicely well with following :pep:`508` dependency specification:
-``typing_extensions; python_version<"3.8"``
+``typing_extensions; python_version<"3.13"``
