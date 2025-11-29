@@ -5,7 +5,8 @@ from __future__ import annotations
 import pprint
 import sys
 import textwrap
-from typing import Callable, Final
+from collections.abc import Callable
+from typing import Final
 
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.literals import Literals

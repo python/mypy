@@ -13,9 +13,9 @@ implementation simple.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from re import Match, Pattern
-from typing import Callable, Final, cast
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final, TypeAlias as _TypeAlias, cast
 
 import mypy.errorcodes as codes
 from mypy import message_registry

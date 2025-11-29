@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import Final
-from typing_extensions import TypeGuard
+from typing import Final, TypeGuard
 
 # Supported Python literal types. All tuple / frozenset items must have supported
 # literal types as well, but we can't represent the type precisely.

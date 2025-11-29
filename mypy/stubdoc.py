@@ -12,8 +12,7 @@ import keyword
 import re
 import tokenize
 from collections.abc import MutableMapping, MutableSequence, Sequence
-from typing import Any, Final, NamedTuple
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, NamedTuple, TypeAlias as _TypeAlias
 
 import mypy.util
 

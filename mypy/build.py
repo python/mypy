@@ -24,9 +24,17 @@ import stat
 import sys
 import time
 import types
-from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Final, NoReturn, TextIO, TypedDict
-from typing_extensions import TypeAlias as _TypeAlias
+from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Final,
+    NoReturn,
+    TextIO,
+    TypeAlias as _TypeAlias,
+    TypedDict,
+)
 
 from librt.internal import cache_version
 

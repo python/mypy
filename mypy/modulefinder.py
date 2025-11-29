@@ -13,8 +13,7 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-from typing import Final
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final, TypeAlias as _TypeAlias
 
 from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPatternError

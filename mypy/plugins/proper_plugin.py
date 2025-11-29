@@ -9,7 +9,7 @@ It finds missing ``get_proper_type()`` call, which can lead to multiple errors.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from mypy.checker import TypeChecker
 from mypy.nodes import TypeInfo
