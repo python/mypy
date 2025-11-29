@@ -116,7 +116,7 @@ force-exclude = '''
 
 [tool.ruff]
 line-length = 99
-target-version = "py39"
+target-version = "py310"
 fix = true
 
 extend-exclude = [
@@ -160,6 +160,7 @@ ignore = [
   "B007",  # Loop control variable not used within the loop body.
   "B011",  # Don't use assert False
   "B023",  # Function definition does not bind loop variable
+  "B905",  # zip-without-explicit-strict
   "E2",    # conflicts with black
   "E402",  # module level import not at top of file
   "E501",  # conflicts with black
