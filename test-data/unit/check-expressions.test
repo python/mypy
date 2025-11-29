@@ -2496,14 +2496,16 @@ T()  # E: "TypeVar" not callable
 [case testStringDisallowedUnpacking]
 d: dict[str, str]
 
-for a1, b1 in d: # E: Unpacking a string is disallowed
+for a1, b1 in d: # E: Unpacking a string is disallowed \
+                 # E: "str" object is not iterable
     reveal_type(a1)  # E: Cannot determine type of "a1" \
                      # N: Revealed type is "Any"
     reveal_type(b1)  # E: Cannot determine type of "b1" \
                      # N: Revealed type is "Any"
 
 s = "foo"
-a2, b2 = s # E: Unpacking a string is disallowed
+a2, b2 = s # E: Unpacking a string is disallowed \
+           # E: "str" object is not iterable
 reveal_type(a2)  # E: Cannot determine type of "a2" \
                  # N: Revealed type is "Any"
 reveal_type(b2)  # E: Cannot determine type of "b2" \
