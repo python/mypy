@@ -1151,6 +1151,25 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
     print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
 
+.. _code-str-unpack:
+
+Check that ``str`` is not unpacked [str-unpack]
+---------------------------------------------------------
+
+It can sometimes be surprising that ``str`` is iterable, especially when unpacking
+in an assignment.
+
+Example:
+
+.. code-block:: python
+
+    def print_dict(d: dict[str, str]) -> int:
+        # We meant to do d.items(), but instead we're unpacking the str keys of d
+
+        # Error: Unpacking a string is disallowed
+        for k, v in d:
+            print(k, v)
+
 .. _code-overload-overlap:
 
 Check that overloaded functions don't overlap [overload-overlap]
