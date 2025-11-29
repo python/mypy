@@ -1439,16 +1439,6 @@ def validate_meta(
     t0 = time.time()
     bazel = manager.options.bazel
     assert path is not None, "Internal error: meta was provided without a path"
-    if not manager.options.skip_cache_mtime_checks:
-        # Check data_file; assume if its mtime matches it's good.
-        try:
-            data_mtime = manager.getmtime(meta.data_file)
-        except OSError:
-            manager.log(f"Metadata abandoned for {id}: failed to stat data_file")
-            return None
-        if data_mtime != meta.data_mtime:
-            manager.log(f"Metadata abandoned for {id}: data cache is modified")
-            return None
 
     if bazel:
         # Normalize path under bazel to make sure it isn't absolute
@@ -2101,7 +2091,11 @@ class State:
     def load_fine_grained_deps(self) -> dict[str, set[str]]:
         return self.manager.load_fine_grained_deps(self.id)
 
-    def load_tree(self, temporary: bool = False) -> None:
+    def load_tree(self, temporary: bool = False) -> bool:
+        """Load the cached tree.
+
+        Returns True if the load was successful, False otherwise.
+        """
         assert (
             self.meta is not None
         ), "Internal error: this method must be called only for cached modules"
@@ -2114,7 +2108,24 @@ class State:
                 self.meta.data_file, self.manager, "Load tree ", "Could not load tree: "
             )
         if data is None:
-            return
+            return False
+
+        if not self.manager.options.skip_cache_mtime_checks and self.meta.data_mtime != 0:
+            # A lot of time might have passed since we have loaded meta.
+            # If the mtime is inconsistent, we should discard the cache entry.
+            # We do this **after** reading the file: if avoids the race condition.
+            # Discarding is safe, we'll just reprocess everything if someone wrote
+            # to that file since we have read from it.
+            try:
+                actual_mtime = self.manager.getmtime(self.meta.data_file)
+            except OSError:
+                self.manager.log(f"Cache data abandoned for {self.id}: failed to stat data_file")
+                return False
+            if actual_mtime != self.meta.data_mtime:
+                self.manager.log(
+                    f"Cache data abandoned for {self.id}: inconsistent data_file mtime"
+                )
+                return False
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
@@ -2128,6 +2139,7 @@ class State:
         if not temporary:
             self.manager.modules[self.id] = self.tree
             self.manager.add_stats(fresh_trees=1)
+        return True
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -3398,20 +3410,24 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_INDIRECT
     return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
 
 
-def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManager) -> None:
+def process_fresh_modules(graph: Graph, modules: list[str], manager: BuildManager) -> bool:
     """Process the modules in one group of modules from their cached data.
 
     This can be used to process an SCC of modules. This involves loading the tree (i.e.
     module symbol tables) from cache file and then fixing cross-references in the symbols.
     """
     t0 = time.time()
-    for id in modules:
-        graph[id].load_tree()
+    for i, id in enumerate(modules):
+        if not graph[id].load_tree():
+            for id in modules[i:]:
+                graph[id].tree = None
+            return False
     t1 = time.time()
     for id in modules:
         graph[id].fix_cross_refs()
     t2 = time.time()
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
+    return True
 
 
 def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
@@ -3449,7 +3465,8 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
             gc.disable()
         for prev_scc in fresh_sccs_to_load:
             manager.done_sccs.add(prev_scc.id)
-            process_fresh_modules(graph, sorted(prev_scc.mod_ids), manager)
+            if not process_fresh_modules(graph, sorted(prev_scc.mod_ids), manager):
+                process_stale_scc(graph, prev_scc, manager)
         if (
             not manager.options.test_env
             and platform.python_implementation() == "CPython"
