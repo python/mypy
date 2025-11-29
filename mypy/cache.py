@@ -48,7 +48,7 @@ bump CACHE_VERSION below.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final, Union
+from typing import Any, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 from librt.internal import (
@@ -391,10 +391,8 @@ def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
         write_str_opt(data, item)
 
 
-JsonValue: _TypeAlias = Union[None, int, str, bool, list["JsonValue"], dict[str, "JsonValue"]]
-JsonValueEx: _TypeAlias = Union[
-    None, int, str, bool, list["JsonValueEx"], dict[str, "JsonValueEx"], tuple["JsonValueEx", ...]
-]
+JsonValue: _TypeAlias = None | int | str | bool | list["JsonValue"] | dict[str, "JsonValue"]
+JsonValueEx: _TypeAlias = None | int | str | bool | list["JsonValueEx"] | dict[str, "JsonValueEx"] | tuple["JsonValueEx", ...]
 
 
 def read_json_value(data: ReadBuffer) -> JsonValue:

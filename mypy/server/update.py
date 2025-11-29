@@ -119,7 +119,7 @@ import re
 import sys
 import time
 from collections.abc import Sequence
-from typing import Callable, Final, NamedTuple, Union
+from typing import Callable, Final, NamedTuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.build import (
@@ -555,7 +555,7 @@ class BlockedUpdate(NamedTuple):
     messages: list[str]
 
 
-UpdateResult: _TypeAlias = Union[NormalUpdate, BlockedUpdate]
+UpdateResult: _TypeAlias = NormalUpdate | BlockedUpdate
 
 
 def update_module_isolated(

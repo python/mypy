@@ -26,7 +26,7 @@ import typing
 import typing_extensions
 import warnings
 from collections import defaultdict
-from collections.abc import Iterator, Set as AbstractSet
+from collections.abc import Iterator
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
@@ -59,7 +59,7 @@ class Missing:
 MISSING: Final = Missing()
 
 T = TypeVar("T")
-MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
+MaybeMissing: typing_extensions.TypeAlias = T | Missing
 
 
 class Unrepresentable:
@@ -2123,30 +2123,8 @@ def get_typeshed_stdlib_modules(
 
 def get_importable_stdlib_modules() -> set[str]:
     """Return all importable stdlib modules at runtime."""
-    all_stdlib_modules: AbstractSet[str]
-    if sys.version_info >= (3, 10):
-        all_stdlib_modules = sys.stdlib_module_names
-    else:
-        all_stdlib_modules = set(sys.builtin_module_names)
-        modules_by_finder: defaultdict[importlib.machinery.FileFinder, set[str]] = defaultdict(set)
-        for m in pkgutil.iter_modules():
-            if isinstance(m.module_finder, importlib.machinery.FileFinder):
-                modules_by_finder[m.module_finder].add(m.name)
-        for finder, module_group in modules_by_finder.items():
-            if (
-                "site-packages" not in Path(finder.path).parts
-                # if "_queue" is present, it's most likely the module finder
-                # for stdlib extension modules;
-                # if "queue" is present, it's most likely the module finder
-                # for pure-Python stdlib modules.
-                # In either case, we'll want to add all the modules that the finder has to offer us.
-                # This is a bit hacky, but seems to work well in a cross-platform way.
-                and {"_queue", "queue"} & module_group
-            ):
-                all_stdlib_modules.update(module_group)
-
     importable_stdlib_modules: set[str] = set()
-    for module_name in all_stdlib_modules:
+    for module_name in sys.stdlib_module_names:
         if module_name in ANNOYING_STDLIB_MODULES:
             continue
 

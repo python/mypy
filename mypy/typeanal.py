@@ -920,7 +920,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail(
                 "NoneType should not be used as a type, please use None instead",
                 ctx,
-                code=codes.VALID_TYPE,
+                code=codes.NONETYPE_TYPE,
             )
             return NoneType(ctx.line, ctx.column)
 

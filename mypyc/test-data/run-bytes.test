@@ -168,6 +168,38 @@ def test_multiply() -> None:
     result = b * two
     assert type(result) == bytes
 
+def test_translate() -> None:
+    # Identity translation table (fast path - exact bytes)
+    identity = bytes(range(256))
+    b = b'hello world' + bytes()
+    assert b.translate(identity) == b'hello world'
+
+    # ROT13-like translation for lowercase letters
+    table = bytearray(range(256))
+    for i in range(ord('a'), ord('z') + 1):
+        table[i] = ord('a') + (i - ord('a') + 13) % 26
+    table_bytes = bytes(table)
+    assert b'hello'.translate(table_bytes) == b'uryyb'
+    assert (b'abc' + bytes()).translate(table_bytes) == b'nop'
+
+    # Test with special characters
+    assert b'\x00\x01\xff'.translate(identity) == b'\x00\x01\xff'
+
+    # Test with bytearray table (slow path - fallback to Python method)
+    bytearray_table = bytearray(range(256))
+    assert b'hello'.translate(bytearray_table) == b'hello'
+    # Modify bytearray table to uppercase
+    for i in range(ord('a'), ord('z') + 1):
+        bytearray_table[i] = ord('A') + (i - ord('a'))
+    assert b'hello world'.translate(bytearray_table) == b'HELLO WORLD'
+    assert (b'test' + bytes()).translate(bytearray_table) == b'TEST'
+
+    # Test error on wrong table size
+    with assertRaises(ValueError, "translation table must be 256 characters long"):
+        b'test'.translate(b'short')
+    with assertRaises(ValueError, "translation table must be 256 characters long"):
+        b'test'.translate(bytes(100))
+
 [case testBytesSlicing]
 def test_bytes_slicing() -> None:
     b = b'abcdefg'
