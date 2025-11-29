@@ -12,9 +12,11 @@ implementation simple.
 
 from __future__ import annotations
 
+import itertools
 import re
+from collections.abc import Iterator, Sequence
 from re import Match, Pattern
-from typing import Callable, Final, Iterator, Sequence, cast
+from typing import Callable, Final, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
@@ -338,7 +340,7 @@ class StringFormatterChecker:
         Basically zip specs with expressions and the next expression
         """
         optional_expression: Sequence[Expression | None] = expressions
-        expression_it = chain(optional_expression, [None])
+        expression_it = itertools.chain(optional_expression, [None])
         next(expression_it)
         return zip(specs, expressions, expression_it)
 
