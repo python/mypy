@@ -529,6 +529,10 @@ def callable_corresponding_argument(
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
+            # This is not principled, but prevents a crash. It's weird to have a FormalArgument
+            # that has an UnpackType.
+            and not isinstance(by_name.typ, UnpackType)
+            and not isinstance(by_pos.typ, UnpackType)
         ):
             return FormalArgument(
                 by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
