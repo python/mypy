@@ -392,7 +392,15 @@ def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
 
 
 JsonValue: _TypeAlias = None | int | str | bool | list["JsonValue"] | dict[str, "JsonValue"]
-JsonValueEx: _TypeAlias = None | int | str | bool | list["JsonValueEx"] | dict[str, "JsonValueEx"] | tuple["JsonValueEx", ...]
+JsonValueEx: _TypeAlias = (
+    None
+    | int
+    | str
+    | bool
+    | list["JsonValueEx"]
+    | dict[str, "JsonValueEx"]
+    | tuple["JsonValueEx", ...]
+)
 
 
 def read_json_value(data: ReadBuffer) -> JsonValue:
