@@ -7,9 +7,8 @@ See the docstring of class LowLevelIRBuilder for more information.
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
-from typing import Callable, Final, cast
-from typing_extensions import TypeGuard
+from collections.abc import Callable, Sequence
+from typing import Final, TypeGuard, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind

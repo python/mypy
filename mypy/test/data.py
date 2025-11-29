@@ -14,8 +14,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern
-from typing import Any, Final, NamedTuple, NoReturn
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, NamedTuple, NoReturn, TypeAlias as _TypeAlias
 
 import pytest
 

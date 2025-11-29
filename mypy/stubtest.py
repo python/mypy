@@ -30,8 +30,8 @@ from collections.abc import Iterator
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Final, Generic, TypeVar, Union
-from typing_extensions import get_origin, is_typeddict
+from typing import Any, Final, Generic, TypeVar, Union, get_origin
+from typing_extensions import is_typeddict
 
 import mypy.build
 import mypy.checkexpr

@@ -14,8 +14,8 @@ import pickle
 import sys
 import time
 import traceback
-from collections.abc import Mapping
-from typing import Any, Callable, NoReturn
+from collections.abc import Callable, Mapping
+from typing import Any, NoReturn
 
 from mypy.defaults import RECURSION_LIMIT
 from mypy.dmypy_os import alive, kill

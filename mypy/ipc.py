@@ -13,13 +13,12 @@ import os
 import shutil
 import sys
 import tempfile
-from select import select
+from collections.abc import Callable
 from types import TracebackType
-from typing import Any, Callable, Final
+from typing import Any, Final
 
 from librt.internal import ReadBuffer, WriteBuffer
 
-from mypy.cache import read_json, write_json
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable

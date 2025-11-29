@@ -8,9 +8,9 @@ import re
 import shutil
 import sys
 import time
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from re import Pattern
-from typing import IO, Any, Callable
+from typing import IO, Any
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
