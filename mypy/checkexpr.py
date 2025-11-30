@@ -1821,15 +1821,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ):
             proper_arg = get_proper_type(arg_types[0])
             if isinstance(proper_arg, Instance) and proper_arg.type.is_protocol:
-                callee = callee.copy_modified(
-                    ret_type=UnionType(
-                        [
-                            self.named_type("builtins.type"),
-                            self.named_type("types.ModuleType"),
-                            AnyType(TypeOfAny.special_form),
-                        ]
-                    )
-                )
+                callee = callee.copy_modified(ret_type=self.named_type("builtins.type"))
             else:
                 callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
 
