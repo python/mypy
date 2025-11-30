@@ -7596,3 +7596,33 @@ X = 0
 tmp/a.py:6: error: "object" has no attribute "dtypes"
 [out2]
 tmp/a.py:2: error: "object" has no attribute "dtypes"
+
+[case testStarImportCycleRedefinition]
+import m
+
+[file m.py]
+import a
+
+[file m.py.2]
+import a
+reveal_type(a.C)
+
+[file a/__init__.py]
+from a.b import *
+from a.c import *
+x = 1
+
+[file a/b.py]
+from other import C
+from a.c import y
+class C: ...  # type: ignore
+
+[file a/c.py]
+from other import C
+from a import x
+y = 1
+
+[file other.py]
+class C: ...
+[out2]
+tmp/m.py:2: note: Revealed type is "def () -> other.C"
