@@ -346,6 +346,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
             tvar_def = self.tvar_scope.get_binding(sym)
+            if tvar_def is not None:
+                # We need to cover special-case explained in get_typevarlike_argument() here,
+                # since otherwise the deferral will not be triggered if the type variable is
+                # used in a different module. Using isinstance() should be safe for this purpose.
+                tvar_params = [tvar_def.upper_bound, tvar_def.default]
+                if isinstance(tvar_def, TypeVarType):
+                    tvar_params += tvar_def.values
+                if any(isinstance(tp, PlaceholderType) for tp in tvar_params):
+                    self.api.defer()
             if isinstance(sym.node, ParamSpecExpr):
                 if tvar_def is None:
                     if self.allow_unbound_tvars:
