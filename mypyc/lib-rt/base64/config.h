@@ -8,17 +8,15 @@
   #define HAVE_AVX 1
   #define HAVE_AVX2 1
   #define HAVE_AVX512 0
+#elif (defined(__APPLE__) && defined(__aarch64__))
+  #define HAVE_NEON64 1
+#elif (defined(__wasm__) && defined(__wasm_simd128__))
+  #include "emscripten/version.h"
+  #if __EMSCRIPTEN_major__ == 3
+    #define HAVE_NEON32 1
+  #elif __EMSCRIPTEN_major__ > 3
+    #define HAVE_NEON64 1
+  #endif
 #endif
-
-#define BASE64_WITH_NEON32 0
-#define HAVE_NEON32 BASE64_WITH_NEON32
-
-#if (defined(__APPLE__) && defined(__aarch64__)) || (defined(__wasm__) && defined(__wasm_simd128__))
-#define BASE64_WITH_NEON64 1
-#else
-#define BASE64_WITH_NEON64 0
-#endif
-
-#define HAVE_NEON64 BASE64_WITH_NEON64
 
 #endif // BASE64_CONFIG_H
