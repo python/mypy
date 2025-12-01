@@ -604,6 +604,12 @@ def pytest_addoption(parser: Any) -> None:
         help="Update test data to reflect actual output (supported only for certain tests)",
     )
     group.addoption(
+        "--mypy-num-workers",
+        type=int,
+        default=0,
+        help="Run tests using multiple worker processes for each test case",
+    )
+    group.addoption(
         "--save-failures-to",
         default=None,
         help="Copy the temp directories from failing tests to a target directory",

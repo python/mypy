@@ -17,10 +17,10 @@ import traceback
 from collections.abc import Callable, Mapping
 from typing import Any, NoReturn
 
+from mypy.defaults import RECURSION_LIMIT
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
-from mypy.ipc import IPCClient, IPCException
-from mypy.main import RECURSION_LIMIT
+from mypy.ipc import BadStatus, IPCClient, IPCException, read_status
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
@@ -254,16 +254,6 @@ p.add_argument("--options-data", help=argparse.SUPPRESS)
 help_parser = p = subparsers.add_parser("help")
 
 del p
-
-
-class BadStatus(Exception):
-    """Exception raised when there is something wrong with the status file.
-
-    For example:
-    - No status file found
-    - Status file malformed
-    - Process whose pid is in the status file does not exist
-    """
 
 
 def main(argv: list[str]) -> None:
@@ -725,24 +715,6 @@ def check_status(data: dict[str, Any]) -> tuple[int, str]:
     if not isinstance(connection_name, str):
         raise BadStatus("connection_name field is not a string")
     return pid, connection_name
-
-
-def read_status(status_file: str) -> dict[str, object]:
-    """Read status file.
-
-    Raise BadStatus if the status file doesn't exist or contains
-    invalid JSON or the JSON is not a dict.
-    """
-    if not os.path.isfile(status_file):
-        raise BadStatus("No status file found")
-    with open(status_file) as f:
-        try:
-            data = json.load(f)
-        except Exception as e:
-            raise BadStatus("Malformed status file (not JSON)") from e
-    if not isinstance(data, dict):
-        raise BadStatus("Invalid status file (not a dict)")
-    return data
 
 
 def is_running(status_file: str) -> bool:

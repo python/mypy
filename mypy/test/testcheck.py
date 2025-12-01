@@ -22,6 +22,7 @@ from mypy.test.helpers import (
     normalize_error_messages,
     parse_options,
     perform_file_operations,
+    remove_typevar_ids,
 )
 from mypy.test.update_data import update_testcase_output
 
@@ -131,6 +132,13 @@ class TypeCheckSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
 
+        if options.num_workers:
+            options.fixed_format_cache = True
+            if testcase.output_files:
+                raise pytest.skip("Reports are not supported in parallel mode")
+            if testcase.name.endswith("_no_parallel"):
+                raise pytest.skip("Test not supported in parallel mode yet")
+
         # Enable some options automatically based on test file name.
         if "columns" in testcase.file:
             options.show_column_numbers = True
@@ -141,7 +149,7 @@ class TypeCheckSuite(DataSuite):
         if "union-error" not in testcase.file and "Pep604" not in testcase.name:
             options.force_union_syntax = True
 
-        if incremental_step and options.incremental:
+        if incremental_step and options.incremental or options.num_workers > 0:
             # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True
         else:
@@ -158,12 +166,24 @@ class TypeCheckSuite(DataSuite):
             )
 
         plugin_dir = os.path.join(test_data_prefix, "plugins")
-        sys.path.insert(0, plugin_dir)
 
+        worker_env = None
+        if options.num_workers > 0:
+            worker_env = os.environ.copy()
+            # Make sure we are running tests with current worktree files, *not* with
+            # an installed version of mypy.
+            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            worker_env["PYTHONPATH"] = os.pathsep.join([root_dir, plugin_dir])
+            worker_env["MYPY_TEST_PREFIX"] = root_dir
+            worker_env["MYPY_ALT_LIB_PATH"] = test_temp_dir
+
+        sys.path.insert(0, plugin_dir)
         res = None
         blocker = False
         try:
-            res = build.build(sources=sources, options=options, alt_lib_path=test_temp_dir)
+            res = build.build(
+                sources=sources, options=options, alt_lib_path=test_temp_dir, worker_env=worker_env
+            )
             a = res.errors
         except CompileError as e:
             a = e.messages
@@ -194,6 +214,10 @@ class TypeCheckSuite(DataSuite):
         if output != a and testcase.config.getoption("--update-data", False):
             update_testcase_output(testcase, a, incremental_step=incremental_step)
 
+        if options.num_workers > 0:
+            # TypeVarIds are not stable in parallel checking, normalize.
+            a = remove_typevar_ids(a)
+            output = remove_typevar_ids(output)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
@@ -209,7 +233,8 @@ class TypeCheckSuite(DataSuite):
                 for module, target in res.manager.processed_targets
                 if module in testcase.test_modules
             ]
-            if expected is not None:
+            # TODO: check targets in parallel mode (e.g. per SCC).
+            if options.num_workers == 0 and expected is not None:
                 assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = "" if incremental_step == 2 else str(incremental_step - 1)

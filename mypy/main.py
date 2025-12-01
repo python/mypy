@@ -20,6 +20,7 @@ from mypy.config_parser import (
     parse_version,
     validate_package_allow_list,
 )
+from mypy.defaults import RECURSION_LIMIT
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -42,7 +43,6 @@ if TYPE_CHECKING:
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
-RECURSION_LIMIT: Final = 2**14
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -1151,6 +1151,11 @@ def define_options(
     )
     # This undocumented feature exports limited line-level dependency information.
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
+
+    # Experimental parallel type-checking support.
+    internals_group.add_argument(
+        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
+    )
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."

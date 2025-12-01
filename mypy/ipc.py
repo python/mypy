@@ -8,13 +8,19 @@ from __future__ import annotations
 
 import base64
 import codecs
+import json
 import os
 import shutil
 import sys
 import tempfile
 from collections.abc import Callable
+from select import select
 from types import TracebackType
-from typing import Final
+from typing import Any, Final
+
+from librt.internal import ReadBuffer, WriteBuffer
+
+from mypy.cache import read_json, write_json
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -65,6 +71,9 @@ class IPCBase:
         return bdata
 
     def read(self, size: int = 100000) -> str:
+        return self.read_bytes(size).decode("utf-8")
+
+    def read_bytes(self, size: int = 100000) -> bytes:
         """Read bytes from an IPC connection until we have a full frame."""
         bdata: bytearray | None = bytearray()
         if sys.platform == "win32":
@@ -119,14 +128,17 @@ class IPCBase:
         if not bdata:
             # Socket was empty and we didn't get any frame.
             # This should only happen if the socket was closed.
-            return ""
-        return codecs.decode(bdata, "base64").decode("utf8")
+            return b""
+        return codecs.decode(bdata, "base64")
 
     def write(self, data: str) -> None:
+        self.write_bytes(data.encode("utf-8"))
+
+    def write_bytes(self, data: bytes) -> None:
         """Write to an IPC connection."""
 
         # Frame the data by urlencoding it and separating by space.
-        encoded_data = codecs.encode(data.encode("utf8"), "base64") + b" "
+        encoded_data = codecs.encode(data, "base64") + b" "
 
         if sys.platform == "win32":
             try:
@@ -312,3 +324,71 @@ class IPCServer(IPCBase):
             name = self.sock.getsockname()
             assert isinstance(name, str)
             return name
+
+
+class BadStatus(Exception):
+    """Exception raised when there is something wrong with the status file.
+
+    For example:
+    - No status file found
+    - Status file malformed
+    - Process whose pid is in the status file does not exist
+    """
+
+
+def read_status(status_file: str) -> dict[str, object]:
+    """Read status file.
+
+    Raise BadStatus if the status file doesn't exist or contains
+    invalid JSON or the JSON is not a dict.
+    """
+    if not os.path.isfile(status_file):
+        raise BadStatus("No status file found")
+    with open(status_file) as f:
+        try:
+            data = json.load(f)
+        except Exception as e:
+            raise BadStatus("Malformed status file (not JSON)") from e
+    if not isinstance(data, dict):
+        raise BadStatus("Invalid status file (not a dict)")
+    return data
+
+
+def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[int]:
+    """Wait until some connections are readable.
+
+    Return index of each readable connection in the original list.
+    """
+    # TODO: add Windows support for this.
+    assert sys.platform != "win32"
+    connections = [conn.connection for conn in conns]
+    ready, _, _ = select(connections, [], [], timeout)
+    return [connections.index(r) for r in ready]
+
+
+# TODO: switch send() and receive() to proper fixed binary format.
+def send(connection: IPCBase, data: dict[str, Any]) -> None:
+    """Send data to a connection encoded and framed.
+
+    The data must be a JSON object. We assume that a single send call is a
+    single frame to be sent.
+    """
+    buf = WriteBuffer()
+    write_json(buf, data)
+    connection.write_bytes(buf.getvalue())
+
+
+def receive(connection: IPCBase) -> dict[str, Any]:
+    """Receive single JSON data frame from a connection.
+
+    Raise OSError if the data received is not valid.
+    """
+    bdata = connection.read_bytes()
+    if not bdata:
+        raise OSError("No data received")
+    try:
+        buf = ReadBuffer(bdata)
+        data = read_json(buf)
+    except Exception as e:
+        raise OSError("Data received is not valid JSON dict") from e
+    return data

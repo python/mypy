@@ -359,6 +359,7 @@ class Options:
         self.test_env = False
 
         # -- experimental options --
+        self.num_workers: int = 0
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
