@@ -124,3 +124,24 @@ class Scope:
             with self.class_scope(info) if info else nullcontext():
                 with self.function_scope(function) if function else nullcontext():
                     yield
+
+    @contextmanager
+    def without_function_locals(self):
+        """Temporarily disable the current function scope (used for nested class definitions)."""
+        # Save current function
+        saved_function = self.function
+        saved_ignored = self.ignored
+        saved_functions_stack = list(self.functions)
+
+        # Temporarily remove the current function scope
+        self.function = None
+        self.functions = []
+        self.ignored = 0
+
+        try:
+            yield
+        finally:
+            # Restore the previous function context
+            self.function = saved_function
+            self.functions = saved_functions_stack
+            self.ignored = saved_ignored
