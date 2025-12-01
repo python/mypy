@@ -1763,7 +1763,6 @@ class SemanticAnalyzer(
     #
     # Classes
     #
-
     def visit_class_def(self, defn: ClassDef) -> None:
         self.statement = defn
         self.incomplete_type_stack.append(not defn.info)
@@ -1773,9 +1772,30 @@ class SemanticAnalyzer(
                 self.mark_incomplete(defn.name, defn)
                 return
 
-            self.analyze_class(defn)
+            # --- PATCH START ---
+            # If the class is defined inside a function, skip that function's locals
+            if self.scope.active_function() is not None:
+                with self.scope.without_function_locals():
+                    self.analyze_class(defn)
+            else:
+                self.analyze_class(defn)
+            # --- PATCH END ---
+
             self.pop_type_args(defn.type_args)
         self.incomplete_type_stack.pop()
+
+    # def visit_class_def(self, defn: ClassDef) -> None:
+    #     self.statement = defn
+    #     self.incomplete_type_stack.append(not defn.info)
+    #     namespace = self.qualified_name(defn.name)
+    #     with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
+    #         if self.push_type_args(defn.type_args, defn) is None:
+    #             self.mark_incomplete(defn.name, defn)
+    #             return
+
+    #         self.analyze_class(defn)
+    #         self.pop_type_args(defn.type_args)
+    #     self.incomplete_type_stack.pop()
 
     def push_type_args(
         self, type_args: list[TypeParam] | None, context: Context
