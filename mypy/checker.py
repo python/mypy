@@ -4116,16 +4116,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 lvalues, rvalue, rvalue_type, context, infer_lvalue_type
             )
         else:
+            rvalue_literal = rvalue_type
             if isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
-                if rvalue_type.last_known_value is None or (
-                    isinstance(rvalue_type.last_known_value, str)
-                    and len(rvalue_type.last_known_value) != len(lvalues)
-                ):
-                    self.msg.unpacking_strings_disallowed(context)
+                if rvalue_type.last_known_value is not None:
+                    rvalue_literal = rvalue_type.last_known_value
             if (
-                isinstance(rvalue_type, LiteralType)
-                and isinstance(rvalue_type.value, str)
-                and len(lvalues) != len(rvalue_type.value)
+                isinstance(rvalue_literal, LiteralType)
+                and isinstance(rvalue_literal.value, str)
+                and len(lvalues) != len(rvalue_literal.value)
             ):
                 self.msg.unpacking_strings_disallowed(context)
 
