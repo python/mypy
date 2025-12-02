@@ -312,6 +312,29 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_transparent_type_check_only_subclasses(self) -> Iterator[Case]:
+        # See https://github.com/python/mypy/issues/20223
+        yield Case(
+            stub="""
+            from typing import type_check_only
+
+            class UFunc: ...
+
+            @type_check_only
+            class _BinaryUFunc(UFunc): ...
+
+            equal: _BinaryUFunc
+            """,
+            runtime="""
+            class UFunc:
+                pass
+
+            equal = UFunc()
+            """,
+            error=None,
+        )
+
+    @collect_cases
     def test_coroutines(self) -> Iterator[Case]:
         yield Case(stub="def bar() -> int: ...", runtime="async def bar(): return 5", error="bar")
         # Don't error for this one -- we get false positives otherwise
