@@ -1075,7 +1075,8 @@ class A:
 a: A
 o: object
 if int():
-    a = f()         # E: "f" does not return a value (it only ever returns None)
+    a = f()         # E: "f" does not return a value (it only ever returns None) \
+                    # E: Incompatible types in assignment (expression has type "None", variable has type "A")
 if int():
     o = a()         # E: Function does not return a value (it only ever returns None)
 if int():
@@ -1083,7 +1084,8 @@ if int():
 if int():
     o = A.g(a, a)   # E: "g" of "A" does not return a value (it only ever returns None)
 A().g(f())      # E: "f" does not return a value (it only ever returns None)
-x: A = f()      # E: "f" does not return a value (it only ever returns None)
+x: A = f()      # E: "f" does not return a value (it only ever returns None) \
+                # E: Incompatible types in assignment (expression has type "None", variable has type "A")
 f()
 A().g(a)
 [builtins fixtures/tuple.pyi]
@@ -1100,7 +1102,8 @@ while f(): # E: "f" does not return a value (it only ever returns None)
     pass
 def g() -> object:
     return f() # E: "f" does not return a value (it only ever returns None)
-raise f() # E: "f" does not return a value (it only ever returns None)
+raise f() # E: Exception must be derived from BaseException \
+          # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/exception.pyi]
 
 [case testNoneReturnTypeWithExpressions]
@@ -1112,12 +1115,16 @@ class A:
 
 a: A
 [f()]       # E: "f" does not return a value (it only ever returns None)
-f() + a     # E: "f" does not return a value (it only ever returns None)
-a + f()     # E: "f" does not return a value (it only ever returns None)
+f() + a     # E: "f" does not return a value (it only ever returns None) \
+            # E: Unsupported left operand type for + ("None")
+a + f()     # E: "f" does not return a value (it only ever returns None) \
+            # E: Unsupported operand types for + ("A" and "None")
 f() == a    # E: "f" does not return a value (it only ever returns None)
-a != f()    # E: "f" does not return a value (it only ever returns None)
+a != f()    # E: Unsupported left operand type for != ("A") \
+            # E: "f" does not return a value (it only ever returns None)
 cast(A, f())
-f().foo     # E: "f" does not return a value (it only ever returns None)
+f().foo     # E: "f" does not return a value (it only ever returns None) \
+            # E: "None" has no attribute "foo"
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
@@ -1130,11 +1137,16 @@ class A:
 
 a: A
 b: bool
-f() in a   # E: "f" does not return a value (it only ever returns None)  # E: Unsupported right operand type for in ("A")
-a < f()    # E: "f" does not return a value (it only ever returns None)
-f() <= a   # E: "f" does not return a value (it only ever returns None)
-a in f()   # E: "f" does not return a value (it only ever returns None)
--f()       # E: "f" does not return a value (it only ever returns None)
+f() in a   # E: "f" does not return a value (it only ever returns None) \
+           # E: Unsupported right operand type for in ("A")
+a < f()    # E: Unsupported left operand type for < ("A") \
+           # E: "f" does not return a value (it only ever returns None)
+f() <= a   # E: "f" does not return a value (it only ever returns None) \
+           # E: Unsupported left operand type for <= ("None")
+a in f()   # E: Unsupported right operand type for in ("None") \
+           # E: "f" does not return a value (it only ever returns None)
+-f()       # E: Unsupported operand type for unary - ("None") \
+           # E: "f" does not return a value (it only ever returns None)
 not f()    # E: "f" does not return a value (it only ever returns None)
 f() and b  # E: "f" does not return a value (it only ever returns None)
 b or f()   # E: "f" does not return a value (it only ever returns None)

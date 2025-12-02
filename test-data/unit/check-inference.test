@@ -1180,7 +1180,8 @@ for e, f in [[]]:  # E: Need type annotation for "e" \
 [case testForStatementInferenceWithVoid]
 def f() -> None: pass
 
-for x in f(): # E: "f" does not return a value (it only ever returns None)
+for x in f(): # E: "f" does not return a value (it only ever returns None) \
+              # E: "None" has no attribute "__iter__" (not iterable)
     pass
 [builtins fixtures/for.pyi]
 
@@ -2176,6 +2177,7 @@ arr.append(arr.append(1))
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: "append" of "list" does not return a value (it only ever returns None)
+main:3: error: Argument 1 to "append" of "list" has incompatible type "None"; expected "int"
 
 -- Multipass
 -- ---------
