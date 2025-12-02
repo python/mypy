@@ -4118,7 +4118,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             rvalue_literal = rvalue_type
             if isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
-                if rvalue_type.last_known_value is not None:
+                if rvalue_type.last_known_value is None:
+                    self.msg.unpacking_strings_disallowed(context)
+                else:
                     rvalue_literal = rvalue_type.last_known_value
             if (
                 isinstance(rvalue_literal, LiteralType)
