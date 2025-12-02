@@ -45,6 +45,7 @@ import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.evalexpr import UNKNOWN, evaluate_expression
+from mypy.maptype import map_instance_to_supertype
 from mypy.options import Options
 from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
@@ -1852,10 +1853,39 @@ def describe_runtime_callable(signature: inspect.Signature, *, is_async: bool) -
     return f'{"async " if is_async else ""}def {signature}'
 
 
+class _TypeCheckOnlyBaseMapper(mypy.types.TypeTranslator):
+    """Rewrites @type_check_only instances to the nearest runtime-visible base class."""
+
+    def visit_instance(self, t: mypy.types.Instance, /) -> mypy.types.Type:
+        instance = mypy.types.get_proper_type(super().visit_instance(t))
+        assert isinstance(instance, mypy.types.Instance)
+
+        if instance.type.is_type_check_only:
+            # find the nearest non-@type_check_only base class
+            for base_info in instance.type.mro[1:]:
+                if not base_info.is_type_check_only:
+                    return map_instance_to_supertype(instance, base_info)
+
+            msg = f"all base classes of {instance.type.fullname!r} are @type_check_only"
+            assert False, msg
+
+        return instance
+
+    def visit_type_alias_type(self, t: mypy.types.TypeAliasType, /) -> mypy.types.Type:
+        return t
+
+
+_TYPE_CHECK_ONLY_BASE_MAPPER = _TypeCheckOnlyBaseMapper()
+
+
+def _relax_type_check_only_type(typ: mypy.types.ProperType) -> mypy.types.ProperType:
+    return mypy.types.get_proper_type(typ.accept(_TYPE_CHECK_ONLY_BASE_MAPPER))
+
+
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     """Checks whether ``left`` is a subtype of ``right``."""
-    left = mypy.types.get_proper_type(left)
-    right = mypy.types.get_proper_type(right)
+    left = _relax_type_check_only_type(mypy.types.get_proper_type(left))
+    right = _relax_type_check_only_type(mypy.types.get_proper_type(right))
     if (
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
