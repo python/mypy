@@ -17,6 +17,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    TupleType,
     Type,
     TypeAliasType,
     TypeVarId,
@@ -26,8 +27,18 @@ from mypy.types import (
     UninhabitedType,
     UnpackType,
     get_proper_type,
+    get_proper_types,
     remove_dups,
 )
+
+
+def _is_tuple_any(typ: ProperType) -> bool:
+    return (
+        isinstance(typ, Instance)
+        and typ.type.fullname == "builtins.tuple"
+        and len(typ.args) == 1
+        and isinstance(get_proper_type(typ.args[0]), AnyType)
+    )
 
 
 def get_target_type(
@@ -55,6 +66,18 @@ def get_target_type(
             # is also a legal value of T.
             if all(any(mypy.subtypes.is_same_type(v, v1) for v in values) for v1 in p_type.values):
                 return type
+        if _is_tuple_any(p_type) and all(
+            isinstance(v, TupleType)
+            or isinstance(v, Instance)
+            and v.type.fullname == "builtins.tuple"
+            for v in get_proper_types(values)
+        ):
+            # tuple[Any, ...] is compatible with any tuple bounds. It is important
+            # to not select one of the values in cases like numpy arrays shape. Given
+            # T = TypeVar("T", tuple[()], tuple[int], tuple[int, int])
+            # and a proposed solution `tuple[Any, ...]`, we do not want to choose
+            # tuple[()] arbitrarily.
+            return type
         matching = []
         for value in values:
             if mypy.subtypes.is_subtype(type, value):
