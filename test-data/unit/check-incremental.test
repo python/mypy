@@ -1090,7 +1090,7 @@ import foo # type: ignore
 [builtins fixtures/module.pyi]
 [stale]
 
-[case testIncrementalWithSilentImportsAndIgnore]
+[case testIncrementalWithSilentImportsAndIgnore_no_parallel]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
 # flags: --follow-imports=skip
