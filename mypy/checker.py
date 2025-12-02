@@ -1750,32 +1750,43 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
-        def is_unannotated_any(t: Type) -> bool:
+        def is_unannotated_any(t: Type | None) -> bool:
             if not isinstance(t, ProperType):
                 return False
             return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
 
+        unannotated_args = [
+            a.variable.name
+            for a in fdef.arguments
+            if not (a.variable.is_cls or a.variable.is_self)
+            and is_unannotated_any(a.variable.type)
+        ]
+
         has_explicit_annotation = isinstance(fdef.type, CallableType) and any(
-            not is_unannotated_any(t) for t in fdef.type.arg_types + [fdef.type.ret_type]
+            unannotated_args + [fdef.type.ret_type]
         )
 
-        show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
-        check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
-        if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
-            if fdef.type is None and self.options.disallow_untyped_defs:
-                if not fdef.arguments or (
-                    len(fdef.arguments) == 1
-                    and (fdef.arg_names[0] == "self" or fdef.arg_names[0] == "cls")
-                ):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                    if not has_return_statement(fdef) and not fdef.is_generator:
-                        self.note(
-                            'Use "-> None" if function does not return a value',
+        def handle_function_args_type_annotation() -> None:
+            if isinstance(fdef.type, CallableType):
+                if unannotated_args:
+                    if len(unannotated_args) < 5:
+                        self.fail(
+                            message_registry.ARGUMENT_TYPE_EXPECTED.format(
+                                ", ".join(f'"{arg}"' for arg in unannotated_args)
+                            ),
                             fdef,
-                            code=codes.NO_UNTYPED_DEF,
                         )
-                else:
-                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+                    else:
+                        self.fail(
+                            message_registry.ARGUMENT_TYPE_EXPECTED.format(
+                                str(", ".join(f'"{arg}"' for arg in unannotated_args[:5]) + "...")
+                            ),
+                            fdef,
+                        )
+
+        def handle_return_type_annotation() -> None:
+            if fdef.type is None and self.options.disallow_untyped_defs:
+                self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = get_proper_type(fdef.type.ret_type)
                 if is_unannotated_any(ret_type):
@@ -1788,8 +1799,29 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 elif fdef.is_coroutine and isinstance(ret_type, Instance):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                if any(is_unannotated_any(t) for t in fdef.type.arg_types):
-                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+
+        show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
+        check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
+
+        if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
+            if fdef.type is None and self.options.disallow_untyped_defs:
+                if not fdef.arguments or (
+                    len(fdef.arguments) == 1
+                    and (fdef.arguments[0].variable.is_self or fdef.arguments[0].variable.is_cls)
+                ):
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                else:
+                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+
+                if not has_return_statement(fdef) and not fdef.is_generator:
+                    self.note(
+                        'Use "-> None" if function does not return a value',
+                        fdef,
+                        code=codes.NO_UNTYPED_DEF,
+                    )
+            elif isinstance(fdef.type, CallableType):
+                handle_return_type_annotation()
+                handle_function_args_type_annotation()
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)
@@ -7047,7 +7079,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if_map, else_map = {}, {}
 
         if not non_optional_types or (len(non_optional_types) != len(chain_indices)):
-
             # Narrow e.g. `Optional[A] == "x"` or `Optional[A] is "x"` to `A` (which may be
             # convenient but is strictly not type-safe):
             for i in narrowable_operand_indices:
