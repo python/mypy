@@ -2203,6 +2203,11 @@ def f3(x: IE | IE2) -> None:
      else:
          reveal_type(x)  # N: Revealed type is "Union[__main__.IE, __main__.IE2]"
 
+     if x == 1:
+         reveal_type(x)  # N: Revealed type is "Union[__main__.IE, __main__.IE2]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[__main__.IE, __main__.IE2]"
+
 def f4(x: IE | E) -> None:
      if x == IE.X:
          reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
