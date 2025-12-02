@@ -1067,7 +1067,12 @@ class JoinSuite(Suite):
             "tvar2",
             TypeVarId(-101),
             [],
-            upper_bound=UnionType([TupleType([any_type], self.fx.std_tuple), TupleType([any_type, any_type], self.fx.std_tuple)]),
+            upper_bound=UnionType(
+                [
+                    TupleType([any_type], self.fx.std_tuple),
+                    TupleType([any_type, any_type], self.fx.std_tuple),
+                ]
+            ),
             default=AnyType(TypeOfAny.from_omitted_generics),
             variance=INVARIANT,
         )
