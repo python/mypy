@@ -1479,7 +1479,7 @@ class D(C): pass
 
 type A[T: C] = list[T]
 a1: A
-reveal_type(a1)  # N: Revealed type is "builtins.list[Any]"
+reveal_type(a1)  # N: Revealed type is "builtins.list[T`1]"
 a2: A[Any]
 a3: A[C]
 a4: A[D]
@@ -1491,7 +1491,7 @@ x2 = cast(A[None], a1)  # E: Type argument "None" of "A" must be a subtype of "C
 
 type A2[T: (int, C)] = list[T]
 b1: A2
-reveal_type(b1)  # N: Revealed type is "builtins.list[Any]"
+reveal_type(b1)  # N: Revealed type is "builtins.list[T`1]"
 b2: A2[Any]
 b3: A2[int]
 b4: A2[C]
@@ -2237,3 +2237,24 @@ class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
                                     # E: Can only use one type var tuple in a class def
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testPep695GenericTypeAliasReassignmentAndUsage]
+import types
+from typing import reveal_type
+
+type A[T] = list[T] | str
+
+# 1. Assignment (The Fix)
+B = A
+reveal_type(B)  # N: Revealed type is "types.UnionType[builtins.list[T`1], builtins.str]"
+
+# 2. Usage (The Regression Check)
+def foo(x: B[int]) -> None:  # E: Bad number of arguments for type alias, expected 0, given 1
+    reveal_type(x)  # N: Revealed type is "Union[builtins.list[T`1], builtins.str]"
+
+[file types.pyi]
+class UnionType: ...
+class GenericAlias: ...
+
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]

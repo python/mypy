@@ -2150,6 +2150,9 @@ def instantiate_type_alias(
         and act_len == 0
         and not (empty_tuple_index and node.tvar_tuple_index is not None)
     ):
+        if node.python_3_12_type_alias:
+            # Pass original type variables to preserve genericity in the alias reference
+            return TypeAliasType(node, list(node.alias_tvars), line=ctx.line, column=ctx.column)
         # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
         return set_any_tvars(
             node,
@@ -2167,7 +2170,6 @@ def instantiate_type_alias(
             # Note: this is the only case where we use an eager expansion. See more info about
             # no_args aliases like L = List in the docstring for TypeAlias class.
             return Instance(node.target.type, [], line=ctx.line, column=ctx.column)
-        return TypeAliasType(node, [], line=ctx.line, column=ctx.column)
     if (
         max_tv_count == 0
         and act_len > 0
