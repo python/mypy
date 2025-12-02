@@ -3622,4 +3622,3 @@ t2.foo = [B()]
 t2.foo = [C()]
 t2.foo = [1]  # E: Value of type variable "T" of "foo" of "Test" cannot be "int"
 [builtins fixtures/property.pyi]
-
