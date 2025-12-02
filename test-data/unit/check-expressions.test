@@ -2492,3 +2492,16 @@ x + T  # E: Unsupported left operand type for + ("int")
 T()  # E: "TypeVar" not callable
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testStringDisallowedUnpacking]
+d: dict[str, str]
+
+for a1, b1 in d: # E: Unpacking a string is disallowed
+    reveal_type(a1)  # N: Revealed type is "builtins.str"
+    reveal_type(b1)  # N: Revealed type is "builtins.str"
+
+s = "foo"
+a2, b2 = s # E: Unpacking a string is disallowed
+reveal_type(a2)  # N: Revealed type is "builtins.str"
+reveal_type(b2)  # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
