@@ -25,9 +25,13 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree  # type: ignore[import-untyped]
+    if sys.version_info >= (3, 14) and not sys._is_gil_enabled():
+        # lxml doesn't support free-threading yet
+        LXML_INSTALLED = False
+    else:
+        from lxml import etree  # type: ignore[import-untyped]
 
-    LXML_INSTALLED = True
+        LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
 
