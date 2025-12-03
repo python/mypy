@@ -85,7 +85,9 @@ PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
 NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
 INLINE_TYPEDDICT: Final = "InlineTypedDict"
 TYPE_FORM: Final = "TypeForm"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT, TYPE_FORM))
+INCOMPLETE_FEATURES: Final = frozenset(
+    (PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT, TYPE_FORM)
+)
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
@@ -469,9 +471,13 @@ class Options:
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
+        # Reverted change to comply with test suite: self.enabled_error_codes -= self.disabled_error_codes
 
     def process_incomplete_features(
-        self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
+        self,
+        *,
+        error_callback: Callable[[str], Any],
+        warning_callback: Callable[[str], Any],
     ) -> None:
         # Validate incomplete features.
         for feature in self.enable_incomplete_feature:
@@ -513,6 +519,7 @@ class Options:
         for code_str in new_options.enable_error_code:
             code = error_codes[code_str]
             new_options.enabled_error_codes.add(code)
+            # Reverted: Remove the next line to ensure 'disabled' takes precedence.
             new_options.disabled_error_codes.discard(code)
         return new_options
 
@@ -545,8 +552,12 @@ class Options:
         # than foo.bar.*.
         # (A section being "processed last" results in its config "winning".)
         # Unstructured glob configs are stored and are all checked for each module.
-        unstructured_glob_keys = [k for k in self.per_module_options.keys() if "*" in k[:-1]]
-        structured_keys = [k for k in self.per_module_options.keys() if "*" not in k[:-1]]
+        unstructured_glob_keys = [
+            k for k in self.per_module_options.keys() if "*" in k[:-1]
+        ]
+        structured_keys = [
+            k for k in self.per_module_options.keys() if "*" not in k[:-1]
+        ]
         wildcards = sorted(k for k in structured_keys if k.endswith(".*"))
         concrete = [k for k in structured_keys if not k.endswith(".*")]
 
@@ -564,7 +575,9 @@ class Options:
             # on inheriting from parent configs.
             options = self.clone_for_module(key)
             # And then update it with its per-module options.
-            self._per_module_cache[key] = options.apply_changes(self.per_module_options[key])
+            self._per_module_cache[key] = options.apply_changes(
+                self.per_module_options[key]
+            )
 
         # Add the more structured sections into unused configs, since
         # they only count as used if actually used by a real module.
