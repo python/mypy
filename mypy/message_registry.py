@@ -114,7 +114,7 @@ RETURN_TYPE_CANNOT_BE_CONTRAVARIANT: Final = ErrorMessage(
     "Cannot use a contravariant type variable as return type"
 )
 FUNCTION_PARAMETER_CANNOT_BE_COVARIANT: Final = ErrorMessage(
-    "Cannot use a covariant type variable as a parameter"
+    "Cannot use a covariant type variable as a parameter except for __init__, __new__, and instance method's self"
 )
 INCOMPATIBLE_IMPORT_OF: Final = ErrorMessage('Incompatible import of "{}"', code=codes.ASSIGNMENT)
 FUNCTION_TYPE_EXPECTED: Final = ErrorMessage(
