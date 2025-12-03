@@ -71,6 +71,9 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
                     return
         mypy_cmdline.extend(additional_flags)
 
+    if "--no-force-union-syntax" not in mypy_cmdline:
+        mypy_cmdline.append("--force-union-syntax")
+
     # Write the program to a file.
     program = "_" + testcase.name + ".py"
     program_path = os.path.join(test_temp_dir, program)

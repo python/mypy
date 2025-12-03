@@ -54,15 +54,12 @@ import a
 from b import B
 class A: pass
 y: B
-y()
+y()  # E: "B" not callable
 [file b.py]
 from a import A
 class B: pass
 x: A
-x()
-[out]
-tmp/b.py:4: error: "A" not callable
-tmp/a.py:4: error: "B" not callable
+x()  # E: "A" not callable
 
 [case testNewAnalyzerTypeAnnotationCycle3]
 import b
@@ -2205,7 +2202,8 @@ from typing import TypeVar, Any
 from b import B, C
 
 T = TypeVar('T', bound=B[Any])
-T = TypeVar('T', bound=C)
+T = TypeVar('T', bound=C)  # E: Cannot redefine "T" as a type variable \
+                           # E: Invalid assignment target
 
 [file b.py]
 from typing import Generic, Any
@@ -2215,16 +2213,11 @@ class B(Generic[T]):
     x: T
 class C: ...
 
-x: B[int]
+x: B[int]  # E: Type argument "int" of "B" must be a subtype of "B[Any]"
 y: B[B[Any]]
-reveal_type(y.x)
+reveal_type(y.x)  # N: Revealed type is "b.B[Any]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
-[out]
-tmp/b.py:8: error: Type argument "int" of "B" must be a subtype of "B[Any]"
-tmp/b.py:10: note: Revealed type is "b.B[Any]"
-tmp/a.py:5: error: Cannot redefine "T" as a type variable
-tmp/a.py:5: error: Invalid assignment target
 
 [case testNewAnalyzerDuplicateTypeVarImportCycleWithAliases]
 # flags: --disable-error-code used-before-def
@@ -2234,7 +2227,8 @@ from typing import TypeVar, Any
 from b import BA, C
 
 T = TypeVar('T', bound=BAA[Any])
-T = TypeVar('T', bound=C)
+T = TypeVar('T', bound=C)  # E: Cannot redefine "T" as a type variable \
+                           # E: Invalid assignment target
 BAA = BA
 
 [file b.py]
@@ -2246,14 +2240,9 @@ class B(Generic[T]):
     x: T
 class C: ...
 
-x: B[int]
+x: B[int]  # E: Type argument "int" of "B" must be a subtype of "B[Any]"
 y: B[B[Any]]
-reveal_type(y.x)
-[out]
-tmp/b.py:9: error: Type argument "int" of "B" must be a subtype of "B[Any]"
-tmp/b.py:11: note: Revealed type is "b.B[Any]"
-tmp/a.py:5: error: Cannot redefine "T" as a type variable
-tmp/a.py:5: error: Invalid assignment target
+reveal_type(y.x)  # N: Revealed type is "b.B[Any]"
 
 [case testNewAnalyzerTypeVarBoundInCycle]
 import factory, box

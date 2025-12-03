@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import platform
 import sys
 import sysconfig
 from typing import Any, Final
@@ -45,8 +44,6 @@ SIZEOF_SIZE_T: Final = (
 
 IS_32_BIT_PLATFORM: Final = int(SIZEOF_SIZE_T) == 4
 
-X86_64: Final = platform.machine() in ("x86_64", "AMD64", "amd64")
-
 PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 
 # Maximum value for a short tagged integer.
@@ -85,6 +82,7 @@ RUNTIME_C_FILES: Final = [
     "misc_ops.c",
     "generic_ops.c",
     "pythonsupport.c",
+    "function_wrapper.c",
 ]
 
 # Python 3.12 introduced immortal objects, specified via a special reference count

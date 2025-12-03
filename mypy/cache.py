@@ -48,8 +48,7 @@ bump CACHE_VERSION below.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 
 from librt.internal import (
     ReadBuffer as ReadBuffer,
@@ -391,7 +390,14 @@ def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
         write_str_opt(data, item)
 
 
-JsonValue: _TypeAlias = Union[None, int, str, bool, list["JsonValue"], dict[str, "JsonValue"]]
+Value: _TypeAlias = None | int | str | bool
+JsonValue: _TypeAlias = Value | list["JsonValue"] | dict[str, "JsonValue"]
+
+# Currently tuples are used by mypyc plugin. They will be normalized to
+# JSON lists after a roundtrip.
+JsonValueEx: _TypeAlias = (
+    Value | list["JsonValueEx"] | dict[str, "JsonValueEx"] | tuple["JsonValueEx", ...]
+)
 
 
 def read_json_value(data: ReadBuffer) -> JsonValue:
@@ -415,9 +421,7 @@ def read_json_value(data: ReadBuffer) -> JsonValue:
     assert False, f"Invalid JSON tag: {tag}"
 
 
-# Currently tuples are used by mypyc plugin. They will be normalized to
-# JSON lists after a roundtrip.
-def write_json_value(data: WriteBuffer, value: JsonValue | tuple[JsonValue, ...]) -> None:
+def write_json_value(data: WriteBuffer, value: JsonValueEx) -> None:
     if value is None:
         write_tag(data, LITERAL_NONE)
     elif isinstance(value, bool):
