@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 
@@ -27,7 +28,7 @@ from mypy.test.helpers import (
 from mypy.test.update_data import update_testcase_output
 
 try:
-    if sys.version_info >= (3, 14) and not sys._is_gil_enabled():
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
         # lxml doesn't support free-threading yet
         lxml = None
     else:

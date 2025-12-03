@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import sys
+import sysconfig
 import time
 import tokenize
 from abc import ABCMeta, abstractmethod
@@ -25,7 +26,7 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    if sys.version_info >= (3, 14) and not sys._is_gil_enabled():
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
         # lxml doesn't support free-threading yet
         LXML_INSTALLED = False
     else:

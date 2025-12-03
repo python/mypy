@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import sys
+import sysconfig
 import textwrap
 
 from mypy.report import CoberturaPackage, get_line_rate
 from mypy.test.helpers import Suite, assert_equal
 
 try:
-    if sys.version_info >= (3, 14) and not sys._is_gil_enabled():
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
         # lxml doesn't support free-threading yet
         lxml = None
     else:
