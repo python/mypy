@@ -437,6 +437,16 @@ Platform configuration
 
     This option may only be set in the global section (``[mypy]``).
 
+    .. note::
+
+    **Using multiple Python versions in a monorepo**
+
+    Mypy currently supports only **one global target Python version** per run.
+    The configuration option :confval:`python_version` can be set **only in the
+    global section** of the configuration file. This means that a single
+    invocation of mypy cannot type-check different parts of a monorepo using
+    different Python versions.
+
 .. confval:: platform
 
     :type: string
