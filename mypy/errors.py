@@ -286,7 +286,7 @@ class IterationDependentErrors:
     def yield_nonoverlapping_types(
         self,
     ) -> Iterator[tuple[tuple[list[Type], list[Type]], str, Context]]:
-        """Report expressions were non-overlapping types were detected for all iterations
+        """Report expressions where non-overlapping types were detected for all iterations
         were the expression was reachable."""
 
         selected = set()
