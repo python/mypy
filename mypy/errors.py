@@ -290,7 +290,7 @@ class IterationDependentErrors:
         were the expression was reachable."""
 
         selected = set()
-        for candidate in set(chain(*self.nonoverlapping_types)):
+        for candidate in set(chain.from_iterable(self.nonoverlapping_types)):
             if all(
                 (candidate in nonoverlap) or (candidate.line in lines)
                 for nonoverlap, lines in zip(self.nonoverlapping_types, self.unreachable_lines)
