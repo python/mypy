@@ -233,7 +233,7 @@ Without the annotation mypy can't always figure out the
 precise type of ``a``.
 
 .. code-block:: python
-    
+
    a = []  # error: Need type annotation for "a" (hint: "a: list[<type>] = ...")
 
 You often need to specify the type when you assign an empty list or
