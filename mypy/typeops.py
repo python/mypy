@@ -1035,6 +1035,10 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
         return UnionType.make_union(items)
 
     if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+        if isinstance(typ.last_known_value, LiteralType):
+            # fallback for Literal[True] and Literal[False]
+            return typ
+
         if typ.type.fullname == "builtins.bool":
             return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
