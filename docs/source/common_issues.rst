@@ -134,7 +134,7 @@ module:
 
 .. code-block:: python
 
-    import frobnicate  # Error: No module "frobnicate"
+    import frobnicate  # error: Cannot find implementation or library stub for module named "frobnicate"
     frobnicate.start()
 
 You can add a ``# type: ignore`` comment to tell mypy to ignore this
@@ -229,15 +229,19 @@ Mypy may depend on orjson by default in the future.
 Types of empty collections
 --------------------------
 
+Without the annotation mypy can't always figure out the
+precise type of ``a``.
+
+.. code-block:: python
+    
+   a = []  # error: Need type annotation for "a" (hint: "a: list[<type>] = ...")
+
 You often need to specify the type when you assign an empty list or
 dict to a new variable, as mentioned earlier:
 
 .. code-block:: python
 
    a: list[int] = []
-
-Without the annotation mypy can't always figure out the
-precise type of ``a``.
 
 You can use a simple empty list literal in a dynamically typed function (as the
 type of ``a`` would be implicitly ``Any`` and need not be inferred), if type
@@ -306,7 +310,9 @@ unexpected errors when combined with type inference. For example:
 
    lst = [A(), A()]  # Inferred type is list[A]
    new_lst = [B(), B()]  # inferred type is list[B]
-   lst = new_lst  # mypy will complain about this, because List is invariant
+   lst = new_lst  # error: Incompatible types in assignment (expression has type "list[B]", variable has type "list[A]")
+   # note: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+   # note: Consider using "Sequence" instead, which is covariant
 
 Possible strategies in such situations are:
 
@@ -329,7 +335,7 @@ Possible strategies in such situations are:
 
      def f_bad(x: list[A]) -> A:
          return x[0]
-     f_bad(new_lst) # Fails
+     f_bad(new_lst) # error: Argument 1 to "f_bad" has incompatible type List[B]; expected List[A]
 
      def f_good(x: Sequence[A]) -> A:
          return x[0]
