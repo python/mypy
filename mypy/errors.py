@@ -6,16 +6,9 @@ import traceback
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from itertools import chain
-from typing import (
-    Final,
-    Literal,
-    NamedTuple,
-    NoReturn,
-    TextIO,
-    TypeAlias as _TypeAlias,
-    TypeVar,
-)
+from typing import Final, Literal, NamedTuple, NoReturn, TextIO, TypeAlias as _TypeAlias, TypeVar
 from typing_extensions import Self
+
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
 from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
