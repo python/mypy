@@ -4,10 +4,19 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
-from typing import Callable, Final, Generic, Literal, NamedTuple, TypeVar, cast, overload
-from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
+from typing import (
+    Final,
+    Generic,
+    Literal,
+    NamedTuple,
+    TypeAlias as _TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    overload,
+)
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
@@ -4106,9 +4115,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.check_multi_assignment_from_union(
                 lvalues, rvalue, rvalue_type, context, infer_lvalue_type
             )
-        elif isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
-            self.msg.unpacking_strings_disallowed(context)
         else:
+            if isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
+                self.msg.unpacking_strings_disallowed(context)
             self.check_multi_assignment_from_iterable(
                 lvalues, rvalue_type, context, infer_lvalue_type
             )
@@ -5298,16 +5307,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Helper for check_except_handler_test to retrieve handler types."""
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
-            return typ.items
+            merged_type = make_simplified_union(typ.items)
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
+        elif is_named_instance(typ, "builtins.tuple"):
+            # variadic tuple
+            merged_type = make_simplified_union((typ.args[0],))
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
         elif isinstance(typ, UnionType):
             return [
                 union_typ
                 for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
-        elif is_named_instance(typ, "builtins.tuple"):
-            # variadic tuple
-            return [typ.args[0]]
         else:
             return [typ]
 

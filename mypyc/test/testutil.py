@@ -7,8 +7,7 @@ import os
 import os.path
 import re
 import shutil
-from collections.abc import Iterator
-from typing import Callable
+from collections.abc import Callable, Iterator
 
 from mypy import build
 from mypy.errors import CompileError

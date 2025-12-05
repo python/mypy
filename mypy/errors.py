@@ -4,11 +4,9 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from itertools import chain
-from typing import Callable, Final, NamedTuple, NoReturn, TextIO, TypeVar
-from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
-
+from typing import Callable, Final, NamedTuple, Literal, NoReturn, TextIO, TypeAlias as _TypeAlias, TypeVar
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
 from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes

@@ -6,10 +6,10 @@ import enum
 import itertools
 import time
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager, nullcontext
-from typing import Callable, ClassVar, Final, cast, overload
-from typing_extensions import TypeAlias as _TypeAlias, assert_never
+from typing import ClassVar, Final, TypeAlias as _TypeAlias, cast, overload
+from typing_extensions import assert_never
 
 import mypy.checker
 import mypy.errorcodes as codes
@@ -666,7 +666,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             and self.always_returns_none(e.callee)
         ):
             self.chk.msg.does_not_return_value(callee_type, e)
-            return AnyType(TypeOfAny.from_error)
         return ret_type
 
     def check_str_format_call(self, e: CallExpr) -> None:

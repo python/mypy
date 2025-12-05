@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Final, TypeVar
+from collections.abc import Callable
+from typing import Final, TypeVar
 
 from mypyc.ir.ops import Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder

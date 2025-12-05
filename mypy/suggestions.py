@@ -28,9 +28,9 @@ import itertools
 import json
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Callable, NamedTuple, TypedDict, TypeVar, cast
+from typing import NamedTuple, TypedDict, TypeVar, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State

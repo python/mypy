@@ -115,7 +115,7 @@ if TYPE_CHECKING:
         from setuptools import Extension
     else:
         from distutils.core import Extension as _distutils_Extension
-        from typing_extensions import TypeAlias
+        from typing import TypeAlias
 
         from setuptools import Extension as _setuptools_Extension
 

@@ -2716,3 +2716,26 @@ class MyTuple(tuple[Unpack[Union[int, str]]], Generic[Unpack[Ts]]):  # E: "Union
 x: MyTuple[int, str]
 reveal_type(x[0])  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testHigherOrderFunctionUnpackTypeVarTupleViaParamSpec]
+from typing import Callable, ParamSpec, TypeVar, TypeVarTuple, Unpack
+
+P = ParamSpec("P")
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+def call(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    return func(*args, **kwargs)
+
+
+def run(func: Callable[[Unpack[Ts]], T], *args: Unpack[Ts], some_kwarg: str = "asdf") -> T:
+    raise
+
+
+def foo() -> str:
+    return "hello"
+
+
+# this is a false positive, but it no longer crashes
+call(run, foo, some_kwarg="a")  # E: Argument 1 to "call" has incompatible type "def [Ts`-1, T] run(func: def (*Unpack[Ts]) -> T, *args: Unpack[Ts], some_kwarg: str = ...) -> T"; expected "Callable[[Callable[[], str], str], str]"
+[builtins fixtures/tuple.pyi]

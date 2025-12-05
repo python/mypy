@@ -24,7 +24,7 @@ from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeGuard
+    from typing import TypeGuard
 
 
 def is_list_of_setuptools_extension(items: list[Any]) -> TypeGuard[list[Extension]]:
@@ -81,6 +81,7 @@ if USE_MYPYC:
             "__main__.py",
             "pyinfo.py",
             os.path.join("dmypy", "__main__.py"),
+            os.path.join("build_worker", "__main__.py"),
             "exportjson.py",
             # Uses __getattr__/__setattr__
             "split_namespace.py",

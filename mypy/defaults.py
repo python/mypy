@@ -42,3 +42,10 @@ REPORTER_NAMES: Final = [
 # Threshold after which we sometimes filter out most errors to avoid very
 # verbose output. The default is to show all errors.
 MANY_ERRORS_THRESHOLD: Final = -1
+
+RECURSION_LIMIT: Final = 2**14
+
+WORKER_START_INTERVAL: Final = 0.01
+WORKER_START_TIMEOUT: Final = 3
+WORKER_CONNECTION_TIMEOUT: Final = 10
+WORKER_DONE_TIMEOUT: Final = 600

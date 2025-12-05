@@ -14,8 +14,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern
-from typing import Any, Final, NamedTuple, NoReturn
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, NamedTuple, NoReturn, TypeAlias as _TypeAlias
 
 import pytest
 
@@ -603,6 +602,12 @@ def pytest_addoption(parser: Any) -> None:
         action="store_true",
         default=False,
         help="Update test data to reflect actual output (supported only for certain tests)",
+    )
+    group.addoption(
+        "--mypy-num-workers",
+        type=int,
+        default=0,
+        help="Run tests using multiple worker processes for each test case",
     )
     group.addoption(
         "--save-failures-to",

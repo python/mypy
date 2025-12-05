@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, Final
+from collections.abc import Callable
+from typing import Final
 
 from mypy.nodes import (
     EXCLUDED_ENUM_ATTRIBUTES,

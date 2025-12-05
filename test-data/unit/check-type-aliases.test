@@ -1339,7 +1339,7 @@ a: A
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/tuple.pyi]
 
-[case testTypeAliasDict]
+[case testTypeAliasDict_no_parallel]
 D = dict[str, int]
 d = D()
 reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
@@ -1351,3 +1351,93 @@ reveal_type(D(x="asdf"))  # E: No overload variant of "dict" matches argument ty
                           # N:     def __init__(self, arg: Iterable[tuple[str, int]], **kwargs: int) -> dict[str, int] \
                           # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
+
+[case testTypeAliasesInCyclicImport1]
+import p.aliases
+
+[file p/__init__.py]
+[file p/aliases.py]
+from typing_extensions import TypeAlias
+from .defs import C, Alias1
+
+Alias2: TypeAlias = Alias1[C]
+
+[file p/defs.py]
+from typing import TypeVar
+from typing_extensions import TypeAlias
+import p.aliases
+
+C = TypeVar("C", bound="SomeClass")
+Alias1: TypeAlias = C
+
+class SomeClass:
+    pass
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypeAliasesInCyclicImport2]
+import p.aliases
+
+[file p/__init__.py]
+[file p/aliases.py]
+from typing_extensions import TypeAlias
+from .defs import C, Alias1
+
+Alias2: TypeAlias = Alias1[C]
+
+[file p/defs.py]
+from typing import TypeVar, Union
+from typing_extensions import TypeAlias
+import p.aliases
+
+C = TypeVar("C", bound="SomeClass")
+Alias1: TypeAlias = Union[C, int]
+
+class SomeClass:
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeAliasesInCyclicImport3]
+import p.aliases
+
+[file p/__init__.py]
+[file p/aliases.py]
+from typing_extensions import TypeAlias
+from .defs import C, Alias1
+
+Alias2: TypeAlias = Alias1[C]
+
+[file p/defs.py]
+from typing import TypeVar
+from typing_extensions import TypeAlias
+import p.aliases
+
+C = TypeVar("C", bound="list[SomeClass]")
+Alias1: TypeAlias = C
+
+class SomeClass:
+    pass
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypeAliasesInCyclicImport4]
+import p.aliases
+
+[file p/__init__.py]
+[file p/aliases.py]
+from typing_extensions import TypeAlias
+from .defs import C, Alias1
+
+Alias2: TypeAlias = Alias1[C]
+
+[file p/defs.py]
+from typing import TypeVar, Union
+from typing_extensions import TypeAlias
+import p.aliases
+
+C = TypeVar("C", bound="list[SomeClass]")
+Alias1: TypeAlias = Union[C, int]
+
+class SomeClass:
+    pass
+[builtins fixtures/tuple.pyi]

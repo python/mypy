@@ -7,8 +7,7 @@ and mypyc.irbuild.builder.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
-from typing import Callable
+from collections.abc import Callable, Sequence
 
 from mypy.nodes import (
     ARG_NAMED,
