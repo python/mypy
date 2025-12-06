@@ -11,6 +11,9 @@ import sys
 from distutils import ccompiler, sysconfig
 from typing import Any
 
+# we'll import stuff from the source tree, let's ensure is on the sys path
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
 import build_setup  # noqa: F401
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
