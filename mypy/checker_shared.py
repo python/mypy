@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Sequence, Set as AbstractSet
 from contextlib import contextmanager
 from typing import NamedTuple, overload
 
@@ -243,6 +243,17 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         ctx: Context,
         default: Type | None = None,
     ) -> tuple[Type | None, Type | None]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def narrow_type_by_equality(
+        self,
+        operator: str,
+        operands: list[Expression],
+        operand_types: list[Type],
+        expr_indices: list[int],
+        narrowable_indices: AbstractSet[int],
+    ) -> tuple[dict[Expression, Type] | None, dict[Expression, Type] | None]:
         raise NotImplementedError
 
     @abstractmethod
