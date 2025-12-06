@@ -258,7 +258,7 @@ def sequence_from_generator_preallocate_helper(
             get_item_ops: list[LoadLiteral | TupleGet]
             if all(isinstance(typ, LiteralType) for typ in proper_types):
                 get_item_ops = [
-                    LoadLiteral(cast(LiteralType, typ.value), object_rprimitive)
+                    LoadLiteral(cast(LiteralType, typ).value, object_rprimitive)
                     for typ in proper_types
                 ]
 
