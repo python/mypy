@@ -37,7 +37,6 @@ static bool
 _grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
     Py_ssize_t target = data->len + n;
     Py_ssize_t size = data->capacity;
-    Py_ssize_t old_size = size;
     do {
         size *= 2;
     } while (target >= size);
