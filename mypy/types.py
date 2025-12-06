@@ -3736,6 +3736,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     Notes:
      - Represent unbound types as Foo? or Foo?[...].
      - Represent the NoneType type as None.
+     - Represent Union[x, y] as x | y
     """
 
     def __init__(self, id_mapper: IdMapper | None = None, *, options: Options) -> None:

@@ -815,6 +815,10 @@ def define_options(
     add_invertible_flag(
         "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
     )
+    # For internal use only! Will be removed once Mypy drops support for Python 3.9.
+    add_invertible_flag(
+        "--overwrite-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
+    )
 
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
