@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -20,7 +21,11 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore[import-untyped]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        lxml = None
+    else:
+        import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
