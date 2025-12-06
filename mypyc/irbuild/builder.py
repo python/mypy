@@ -991,7 +991,7 @@ class IRBuilder:
             return self.get_sequence_type_from_type(target_type.upper_bound)
         elif isinstance(target_type, TupleType):
             items = target_type.items
-            assert items, f"This function does not support empty tuples"
+            assert items, "This function does not support empty tuples"
             # Tuple might have elements of different types.
             rtypes = set(map(self.mapper.type_to_rtype, items))
             if len(rtypes) == 1:
