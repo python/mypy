@@ -98,6 +98,7 @@ if USE_MYPYC:
     ) + (
         # Don't want to grab this accidentally
         os.path.join("mypyc", "lib-rt", "setup.py"),
+        os.path.join("mypyc", "lib-rt", "build_setup.py"),
         # Uses __file__ at top level https://github.com/mypyc/mypyc/issues/700
         os.path.join("mypyc", "__main__.py"),
         os.path.join("mypyc", "build_setup.py"),  # for monkeypatching
