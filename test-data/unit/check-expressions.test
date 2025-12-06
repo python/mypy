@@ -2517,3 +2517,24 @@ a2, b2 = s # E: Unpacking a string is disallowed
 reveal_type(a2)  # N: Revealed type is "builtins.str"
 reveal_type(b2)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
+
+[case testStringLiteralUnpacking]
+from typing import Literal, Final
+
+def takes_literal(xy: Literal["xy"]):
+    x, y = xy
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(y)  # N: Revealed type is "builtins.str"
+
+    x, y, z = xy  # E: Unpacking a string is disallowed
+    reveal_type(z)  # N: Revealed type is "builtins.str"
+
+def last_known_value() -> None:
+    xy: Final = "xy"
+    x, y = xy
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(y)  # N: Revealed type is "builtins.str"
+
+    x, y, z = xy  # E: Unpacking a string is disallowed
+    reveal_type(z)  # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
