@@ -8,7 +8,7 @@ such special case.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from mypy.nodes import (
     ARG_POS,
@@ -255,8 +255,9 @@ def sequence_from_generator_preallocate_helper(
 
             proper_types = get_proper_types(proper_type.items)
 
+            get_item_ops: list[LoadLiteral | TupleGet]
             if all(isinstance(typ, LiteralType) for typ in proper_types):
-                get_item_ops = [LoadLiteral(typ.value, object_rprimitive) for typ in proper_types]
+                get_item_ops = [LoadLiteral(cast(LiteralType, typ.value), object_rprimitive) for typ in proper_types]
 
             else:
                 sequence = builder.accept(sequence_expr)
