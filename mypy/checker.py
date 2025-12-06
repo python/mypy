@@ -6525,7 +6525,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # Step 1: Obtain the types of each operand and whether or not we can
         # narrow their types. (For example, we shouldn't try narrowing the
         # types of literal string or enum expressions).
-
         operands = [collapse_walrus(x) for x in node.operands]
         operand_types = []
         narrowable_operand_index_to_hash = {}
@@ -6601,6 +6600,30 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             and is_overlapping_erased_types(item_type, collection_item_type)
                         ):
                             if_map[operands[left_index]] = remove_optional(item_type)
+                if_map[operands[left_index]] = remove_optional(item_type)
+                literal_types = []
+                if isinstance(get_proper_type(iterable_type), TupleType):
+                    # Check if this is an enum instance that can be narrowed
+                    tuple_type = get_proper_type(iterable_type)
+                    for i, item_type in enumerate(tuple_type.items):
+                        if isinstance(item_type, Instance):
+
+                            if item_type.type.is_enum:
+                                # Enum values in tuples are represented as Instance types, not LiteralType
+                                if (
+                                    hasattr(item_type, "last_known_value")
+                                    and item_type.last_known_value
+                                ):
+                                    # Use the existing literal representation
+                                    literal_types.append(item_type.last_known_value)
+                                else:
+                                    # using the instance directly
+                                    literal_types.append(item_type)
+                    # If we found enum literals in the tuple, narrow the left operand
+                    if literal_types:
+                        union_type = make_simplified_union(literal_types)
+                        # Applying type narrowing for the true branch of the 'in' check
+                        if_map[operands[left_index]] = union_type
 
                 if right_index in narrowable_operand_index_to_hash:
                     if_type, else_type = self.conditional_types_for_iterable(
