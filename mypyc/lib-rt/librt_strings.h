@@ -1,0 +1,80 @@
+#ifndef LIBRT_STRINGS_H
+#define LIBRT_STRINGS_H
+
+#ifndef MYPYC_EXPERIMENTAL
+
+static int
+import_librt_strings(void)
+{
+    // All librt.base64 features are experimental for now, so don't set up the API here
+    return 0;
+}
+
+#else  // MYPYC_EXPERIMENTAL
+
+// ABI version -- only an exact match is compatible. This will only be changed in
+// very exceptional cases (likely never) due to strict backward compatibility
+// requirements.
+#define LIBRT_STRINGS_ABI_VERSION 0
+
+// API version -- more recent versions must maintain backward compatibility, i.e.
+// we can add new features but not remove or change existing features (unless
+// ABI version is changed, but see the comment above).
+ #define LIBRT_STRINGS_API_VERSION 1
+
+// Number of functions in the capsule API. If you add a new function, also increase
+// LIBRT_STRINGS_API_VERSION.
+#define LIBRT_STRINGS_API_LEN 9
+
+static void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
+
+#define LibRTStrings_ABIVersion (*(int (*)(void)) LibRTStrings_API[0])
+#define LibRTStrings_APIVersion (*(int (*)(void)) LibRTStrings_API[1])
+#define LibRTStrings_BytesWriter_internal (*(PyObject* (*)(void)) LibRTStrings_API[2])
+#define LibRTStrings_BytesWriter_getvalue_internal (*(PyObject* (*)(PyObject *source)) LibRTStrings_API[3])
+#define LibRTStrings_BytesWriter_append_internal (*(char (*)(PyObject *source, uint8_t value)) LibRTStrings_API[4])
+#define LibRTStrings_BytesWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[5])
+#define LibRTStrings_BytesWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[6])
+#define LibRTStrings_BytesWriter_len_internal (*(CPyTagged (*)(PyObject *self)) LibRTStrings_API[7])
+#define LibRTStrings_BytesWriter_truncate_internal (*(char (*)(PyObject *self, int64_t size)) LibRTStrings_API[8])
+
+static int
+import_librt_strings(void)
+{
+    PyObject *mod = PyImport_ImportModule("librt.strings");
+    if (mod == NULL)
+        return -1;
+    Py_DECREF(mod);  // we import just for the side effect of making the below work.
+    void *capsule = PyCapsule_Import("librt.strings._C_API", 0);
+    if (capsule == NULL)
+        return -1;
+    memcpy(LibRTStrings_API, capsule, sizeof(LibRTStrings_API));
+    if (LibRTStrings_ABIVersion() != LIBRT_STRINGS_ABI_VERSION) {
+        char err[128];
+        snprintf(err, sizeof(err), "ABI version conflict for librt.strings, expected %d, found %d",
+            LIBRT_STRINGS_ABI_VERSION,
+            LibRTStrings_ABIVersion()
+        );
+        PyErr_SetString(PyExc_ValueError, err);
+        return -1;
+    }
+    if (LibRTStrings_APIVersion() < LIBRT_STRINGS_API_VERSION) {
+        char err[128];
+        snprintf(err, sizeof(err),
+                 "API version conflict for librt.strings, expected %d or newer, found %d (hint: upgrade librt)",
+            LIBRT_STRINGS_API_VERSION,
+            LibRTStrings_APIVersion()
+        );
+        PyErr_SetString(PyExc_ValueError, err);
+        return -1;
+    }
+    return 0;
+}
+
+static inline bool CPyBytesWriter_Check(PyObject *obj) {
+    return Py_TYPE(obj) == LibRTStrings_BytesWriter_type_internal();
+}
+
+#endif  // MYPYC_EXPERIMENTAL
+
+#endif  // LIBRT_STRINGS_H

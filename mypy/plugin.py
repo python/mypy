@@ -119,7 +119,8 @@ analyzed.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 
 from mypy_extensions import mypyc_attr, trait
 

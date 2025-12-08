@@ -771,3 +771,24 @@ L0:
     r0 = 'literal'
     r1 = 'literal'
     return 1
+
+[case testStrMultiply]
+def s_times_i(s: str, n: int) -> str:
+    return s * n
+def i_times_s(s: str, n: int) -> str:
+    return n * s
+[out]
+def s_times_i(s, n):
+    s :: str
+    n :: int
+    r0 :: str
+L0:
+    r0 = CPyStr_Multiply(s, n)
+    return r0
+def i_times_s(s, n):
+    s :: str
+    n :: int
+    r0 :: str
+L0:
+    r0 = CPyStr_Multiply(s, n)
+    return r0
