@@ -283,6 +283,8 @@ class TypeFixer(TypeVisitor[None]):
             ct.ret_type.accept(self)
         for v in ct.variables:
             v.accept(self)
+        if ct.original_self_type is not None:
+            ct.original_self_type.accept(self)
         if ct.type_guard is not None:
             ct.type_guard.accept(self)
         if ct.type_is is not None:
