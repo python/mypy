@@ -2753,7 +2753,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Foo:
-    a: Final[int] = field() 
+    a: Final[int] = field()
 
 Foo().a # E: Missing positional argument "a" in call to "Foo"
 [builtins fixtures/dataclasses.pyi]
@@ -2764,9 +2764,9 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Foo:
-    a: Final[int] = field() 
+    a: Final[int] = field()
 
-Foo(1).a 
+Foo(1).a
 [builtins fixtures/dataclasses.pyi]
 
 [case testFinalFieldPostInit]
@@ -2780,7 +2780,7 @@ class Foo:
     def __post_init__(self):
         self.a = 1
 
-Foo().a 
+Foo().a
 [builtins fixtures/dataclasses.pyi]
 
 [case testFinalFieldInitFalseWithDefault]

@@ -655,8 +655,7 @@ class DataclassTransformer:
                 has_post_init = cls.info.get("__post_init__") is not None
                 if not has_post_init:
                     self._api.fail(
-                        f'Final field with init=False must have a default value',
-                        stmt.rvalue
+                        "Final field with init=False must have a default value", stmt.rvalue
                     )
 
             if not has_default and self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
