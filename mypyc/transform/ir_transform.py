@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, Optional
+from typing import Final
 
 from mypyc.ir.ops import (
     Assign,
@@ -52,7 +52,7 @@ from mypyc.ir.ops import (
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 
-class IRTransform(OpVisitor[Optional[Value]]):
+class IRTransform(OpVisitor[Value | None]):
     """Identity transform.
 
     Subclass and override to perform changes to IR.

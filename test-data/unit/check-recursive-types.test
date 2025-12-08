@@ -1024,3 +1024,19 @@ L = list[T]
 
 A = L[A]
 a: A = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+
+[case testRecursiveAliasInstanceOverlapCheck]
+# flags: --warn-unreachable
+from typing_extensions import TypeAlias
+
+OneClass: TypeAlias = 'list[OneClass]'
+
+class TwoClass(list['TwoClass']):
+    pass
+
+def f(obj: OneClass) -> None:
+    if isinstance(obj, TwoClass):
+        reveal_type(obj)  # N: Revealed type is "__main__.TwoClass"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.list[...]"
+[builtins fixtures/isinstancelist.pyi]
