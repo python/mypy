@@ -1,7 +1,7 @@
 # Test cases for "range" objects, "for" and "while" loops (compile and run)
 
 [case testFor]
-from typing import List, Tuple
+from typing import Any, List, Tuple
 def count(n: int) -> None:
     for i in range(n):
         print(i)
@@ -22,6 +22,7 @@ def tuple_iter(l: Tuple[int, ...]) -> None:
     for i in l:
         print(i)
 def empty_tuple_iter(l: Tuple[()]) -> None:
+    i: Any
     for i in l:
         print(i)
 def str_iter(l: str) -> None:
