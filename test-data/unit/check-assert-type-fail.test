@@ -30,7 +30,7 @@ def f(si: arr.array[int]):
 [case testAssertTypeFailCallableArgKind]
 from typing import assert_type, Callable
 def myfunc(arg: int) -> None: pass
-assert_type(myfunc, Callable[[int], None])  # E: Expression is of type "Callable[[Arg(int, 'arg')], None]", not "Callable[[int], None]"
+assert_type(myfunc, Callable[[int], None])  # E: Expression is of type "def myfunc(arg: int) -> None", not "Callable[[int], None]"
 
 [case testAssertTypeOverload]
 from typing import assert_type, overload

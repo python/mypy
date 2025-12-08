@@ -1038,10 +1038,6 @@ public static void main(String[] args)
 [file pkg/y.py]
 x: str = 0
 [out]
-pkg/x.py:1: error: Invalid syntax
-Found 1 error in 1 file (errors prevented further checking)
-== Return code: 2
-[out version>=3.10]
 pkg/x.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
@@ -1393,3 +1389,21 @@ Ts = TypeVarTuple("Ts")
 Warning: TypeVarTuple is already enabled by default
 Warning: Unpack is already enabled by default
 == Return code: 0
+
+[case testImportlibImportCannotBeResolved]
+# cmd: mypy a.py
+# This test is here because it needs use_builtins_fixtures off.
+
+[file a.py]
+from typing import NamedTuple
+
+class CodecKey(NamedTuple):
+    def foo(self) -> "CodecKey":
+        ...
+
+[file mypy.ini]
+\[mypy]
+
+\[mypy-importlib.*]
+follow_imports = skip
+follow_imports_for_stubs = True
