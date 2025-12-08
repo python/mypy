@@ -99,8 +99,7 @@ Contents
    common_issues
    supported_python_features
    error_codes
-   error_code_list
-   error_code_list2
+   error_codes_merged 
    additional_features
    faq
    changelog
