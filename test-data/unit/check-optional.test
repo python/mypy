@@ -365,7 +365,8 @@ def g(x: Optional[int]) -> int:
   pass
 
 x = f()  # E: "f" does not return a value (it only ever returns None)
-f() + 1  # E: "f" does not return a value (it only ever returns None)
+f() + 1  # E: "f" does not return a value (it only ever returns None) \
+         # E: Unsupported left operand type for + ("None")
 g(f())  # E: "f" does not return a value (it only ever returns None)
 
 [case testEmptyReturn]

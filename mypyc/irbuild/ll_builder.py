@@ -7,8 +7,8 @@ See the docstring of class LowLevelIRBuilder for more information.
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
-from typing import Callable, Final, Optional
+from collections.abc import Callable, Sequence
+from typing import Final, TypeGuard, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
@@ -178,6 +178,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     CFunctionDescription,
     binary_ops,
+    function_ops,
     method_call_ops,
     unary_ops,
 )
@@ -185,6 +186,7 @@ from mypyc.primitives.set_ops import new_set_op
 from mypyc.primitives.str_ops import (
     str_check_if_true,
     str_eq,
+    str_eq_literal,
     str_ssize_t_size_op,
     unicode_compare,
 )
@@ -199,7 +201,7 @@ from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
 
-DictEntry = tuple[Optional[Value], Value]
+DictEntry = tuple[Value | None, Value]
 
 # If the number of items is less than the threshold when initializing
 # a list, we would inline the generate IR using SetMem and expanded
@@ -1551,9 +1553,33 @@ class LowLevelIRBuilder:
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
         if op == "==":
+            # We can specialize this case if one or both values are string literals
+            literal_fastpath = False
+
+            def is_string_literal(value: Value) -> TypeGuard[LoadLiteral]:
+                return isinstance(value, LoadLiteral) and is_str_rprimitive(value.type)
+
+            if is_string_literal(lhs):
+                if is_string_literal(rhs):
+                    # we can optimize out the check entirely in some constant-folded cases
+                    return self.true() if lhs.value == rhs.value else self.false()
+
+                # if lhs argument is string literal, switch sides to match specializer C api
+                lhs, rhs = rhs, lhs
+                literal_fastpath = True
+            elif is_string_literal(rhs):
+                literal_fastpath = True
+
+            if literal_fastpath:
+                literal_string = cast(str, cast(LoadLiteral, rhs).value)
+                literal_length = Integer(len(literal_string), c_pyssize_t_rprimitive, line)
+                return self.primitive_op(str_eq_literal, [lhs, rhs, literal_length], line)
+
             return self.primitive_op(str_eq, [lhs, rhs], line)
+
         elif op == "!=":
-            eq = self.primitive_op(str_eq, [lhs, rhs], line)
+            # perform a standard equality check, then negate
+            eq = self.compare_strings(lhs, rhs, "==", line)
             return self.add(ComparisonOp(eq, self.false(), ComparisonOp.EQ, line))
 
         # TODO: modify 'str' to use same interface as 'compare_bytes' as it would avoid
@@ -2049,6 +2075,7 @@ class LowLevelIRBuilder:
                 var_arg_idx,
                 is_pure=desc.is_pure,
                 returns_null=desc.returns_null,
+                capsule=desc.capsule,
             )
         )
         if desc.is_borrowed:
@@ -2133,6 +2160,7 @@ class LowLevelIRBuilder:
                 desc.priority,
                 is_pure=desc.is_pure,
                 returns_null=False,
+                capsule=desc.capsule,
             )
             return self.call_c(c_desc, args, line, result_type=result_type)
 
@@ -2180,15 +2208,23 @@ class LowLevelIRBuilder:
         args: list[Value],
         line: int,
         result_type: RType | None = None,
+        *,
         can_borrow: bool = False,
+        strict: bool = True,
     ) -> Value | None:
+        """Find primitive operation that is compatible with types of args.
+
+        Return None if none of them match.
+        """
         matching: PrimitiveDescription | None = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
+            if desc.experimental and not self.options.experimental_features:
+                continue
             if all(
                 # formal is not None and # TODO
-                is_subtype(actual.type, formal)
+                is_subtype(actual.type, formal, relaxed=not strict)
                 for actual, formal in zip(args, desc.arg_types)
             ) and (not desc.is_borrowed or can_borrow):
                 if matching:
@@ -2201,6 +2237,12 @@ class LowLevelIRBuilder:
                     matching = desc
         if matching:
             return self.primitive_op(matching, args, line=line, result_type=result_type)
+        if strict and any(prim.is_ambiguous for prim in candidates):
+            # Also try a non-exact match if any primitives have ambiguous types.
+            return self.matching_primitive_op(
+                candidates, args, line, result_type, can_borrow=can_borrow, strict=False
+            )
+
         return None
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:
@@ -2459,7 +2501,11 @@ class LowLevelIRBuilder:
             self.activate_block(ok)
             return length
 
-        # generic case
+        op = self.matching_primitive_op(function_ops["builtins.len"], [val], line)
+        if op is not None:
+            return op
+
+        # Fallback generic case
         if use_pyssize_t:
             return self.call_c(generic_ssize_t_len_op, [val], line)
         else:
