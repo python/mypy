@@ -959,6 +959,16 @@ def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
 @dec2
 def f(x, y): pass
 
+[case testDecoratorFactoryApplicationErrorMessage]
+from typing import Callable
+
+def decorator(f: object) -> Callable[[Callable[[int], object]], None]: ...
+def f(a: int) -> None: ...
+
+@decorator(f)  # E: Decorated function "something" has incompatible type "Callable[[], None]"; expected "Callable[[int], object]"
+def something() -> None:
+    pass
+
 [case testNoTypeCheckDecoratorOnMethod1]
 from typing import no_type_check
 
