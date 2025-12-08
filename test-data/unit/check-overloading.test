@@ -263,6 +263,19 @@ def foo(*args: int | str, **kw: int | Foo) -> None:
     pass
 [builtins fixtures/tuple.pyi]
 
+
+[case testTypeCheckOverloadImplOverlapVarArgsAndKwargsNever]
+from __future__ import annotations
+from typing import overload
+
+@overload  # E: Single overload definition, multiple required
+def foo(x: int) -> None: ...
+
+def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+    pass
+[builtins fixtures/tuple.pyi]
+
+
 [case testTypeCheckOverloadWithImplTooSpecificRetType]
 from typing import overload, Any
 

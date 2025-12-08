@@ -251,9 +251,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             if (tvar_id := repl.id) in self.recursive_tvar_guard:
                 return self.recursive_tvar_guard[tvar_id] or repl
             self.recursive_tvar_guard[tvar_id] = None
-            repl = repl.accept(self)
-            if isinstance(repl, TypeVarType):
-                repl.default = repl.default.accept(self)
+            repl.default = repl.default.accept(self)
+            expanded = repl.accept(self)  # Note: `expanded is repl` may be true.
+            repl = repl if isinstance(expanded, TypeVarType) else expanded
             self.recursive_tvar_guard[tvar_id] = repl
         return repl
 
@@ -521,7 +521,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # union of instances or Any).  Sadly we can't report errors
         # here yet.
         item = t.item.accept(self)
-        return TypeType.make_normalized(item)
+        return TypeType.make_normalized(item, is_type_form=t.is_type_form)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Target of the type alias cannot contain type variables (not bound by the type

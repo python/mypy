@@ -362,6 +362,40 @@ def test_str_min_max() -> None:
     assert max(x, y) == 'bbb'
     assert max(x, z) == 'aaa'
 
+def test_multiply() -> None:
+    # Use str() and int() to avoid constant folding
+    s = 'ab' + str()
+    zero = int()
+    one = 1 + zero
+    three = 3 + zero
+    neg_one = -1 + zero
+
+    assert s * zero == ''
+    assert s * one == 'ab'
+    assert s * three == 'ababab'
+    assert s * neg_one == ''
+    assert zero * s == ''
+    assert one * s == 'ab'
+    assert three * s == 'ababab'
+    assert neg_one * s == ''
+
+    # Test with empty string
+    empty = str()
+    five = 5 + zero
+    assert empty * five == ''
+    assert five * empty == ''
+
+    # Test with single character
+    single = 'x' + str()
+    four = 4 + zero
+    assert single * four == 'xxxx'
+    assert four * single == 'xxxx'
+
+    # Test type preservation
+    two = 2 + zero
+    result = s * two
+    assert type(result) == str
+
 [case testStringFormattingCStyle]
 from typing import Tuple
 
