@@ -447,6 +447,33 @@ Platform configuration
     invocation of mypy cannot type-check different parts of a monorepo using
     different Python versions.
 
+    If your project contains directories or packages that target different
+    Python versions, you can use one of the following workarounds:
+
+    * **Run mypy multiple times**, selecting a different version for each
+    directory. 
+    
+    Example::
+
+        mypy --python-version=3.9 src/py39_package
+        mypy --python-version=3.11 backend/py311
+
+    * **Use separate configuration files**, each specifying its own
+    ``python_version``. 
+    
+    Example::
+
+        mypy --config-file=mypy_py39.ini src/py39_package
+        mypy --config-file=mypy_py311.ini backend/
+
+    * **Use an external build/monorepo tool** (such as Pants, Bazel, or a CI
+    pipeline) to orchestrate multiple mypy invocations automatically.
+
+    This documentation update clarifies the current limitation and addresses
+    :issue:`16944`.
+
+
+
 .. confval:: platform
 
     :type: string
