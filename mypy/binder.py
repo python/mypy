@@ -3,8 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import NamedTuple, Optional, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import NamedTuple, TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash, subkeys
@@ -39,7 +38,7 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars_with_any
 
-BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, NameExpr]
+BindableExpression: _TypeAlias = IndexExpr | MemberExpr | NameExpr
 
 
 class CurrentType(NamedTuple):
@@ -81,7 +80,7 @@ class Frame:
         return f"Frame({self.id}, {self.types}, {self.unreachable}, {self.conditional_frame})"
 
 
-Assigns = defaultdict[Expression, list[tuple[Type, Optional[Type]]]]
+Assigns = defaultdict[Expression, list[tuple[Type, Type | None]]]
 
 
 class ConditionalTypeBinder:

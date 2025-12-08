@@ -324,3 +324,18 @@ class Bla:
 def call() -> str: pass
 
 [builtins fixtures/module.pyi]
+
+[case testInvalidEscapeSequenceWarningsSuppressed]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+# Test that SyntaxWarnings for invalid escape sequences are suppressed
+# when parsing potential type expressions containing regex patterns or
+# similar strings. Callable arguments are always potential type expressions.
+from typing import TypeForm
+
+def identity(typx: TypeForm) -> TypeForm:
+    return typx
+
+# This should not generate SyntaxWarning despite invalid escape sequence
+identity(r"re\.match")  # E: Argument 1 to "identity" has incompatible type "str"; expected "TypeForm[Any]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

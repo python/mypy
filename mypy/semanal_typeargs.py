@@ -7,7 +7,7 @@ operations, including subtype checks.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
@@ -151,7 +151,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
         is_error = False
         is_invalid = False
-        for (i, arg), tvar in zip(enumerate(args), type_vars):
+        for arg, tvar in zip(args, type_vars):
             context = ctx if arg.line < 0 else arg
             if isinstance(tvar, TypeVarType):
                 if isinstance(arg, ParamSpecType):
@@ -176,12 +176,12 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         code=codes.VALID_TYPE,
                     )
                     continue
+                if self.in_type_alias_expr and isinstance(arg, TypeVarType):
+                    # Type aliases are allowed to use unconstrained type variables
+                    # error will be checked at substitution point.
+                    continue
                 if tvar.values:
                     if isinstance(arg, TypeVarType):
-                        if self.in_type_alias_expr:
-                            # Type aliases are allowed to use unconstrained type variables
-                            # error will be checked at substitution point.
-                            continue
                         arg_values = arg.values
                         if not arg_values:
                             is_error = True
@@ -205,10 +205,6 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     and upper_bound.type.fullname == "builtins.object"
                 )
                 if not object_upper_bound and not is_subtype(arg, upper_bound):
-                    if self.in_type_alias_expr and isinstance(arg, TypeVarType):
-                        # Type aliases are allowed to use unconstrained type variables
-                        # error will be checked at substitution point.
-                        continue
                     is_error = True
                     self.fail(
                         message_registry.INVALID_TYPEVAR_ARG_BOUND.format(

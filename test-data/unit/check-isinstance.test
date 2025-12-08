@@ -1483,11 +1483,12 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithEmtpy2ndArg]
+# flags: --warn-unreachable
 from typing import Union
 
 def f(x: Union[int, str]) -> None:
     if isinstance(x, ()):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x)  # E: Statement is unreachable
     else:
         reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/isinstancelist.pyi]

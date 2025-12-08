@@ -6,14 +6,14 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.1.0
+    rev: 25.9.0
     hooks:
       - id: black
         exclude: '^(test-data/)'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.4
+    rev: v0.14.3
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--exit-non-zero-on-fix]
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.32.1
