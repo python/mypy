@@ -109,7 +109,7 @@ from mypy.nodes import (
     YieldFromExpr,
     get_member_expr_fullname,
 )
-from mypy.options import PRECISE_TUPLE_TYPES
+from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.plugin import (
     FunctionContext,
     FunctionSigContext,
@@ -299,6 +299,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     plugin: Plugin
 
     _arg_infer_context_cache: ArgumentInferContext | None
+    # Used to prevent generating redundant or invalid `@deprecated()` reports
+    _valid_pep702_type_context: bool
 
     def __init__(
         self,
@@ -335,6 +337,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         type_state.infer_polymorphic = not self.chk.options.old_type_inference
 
         self._arg_infer_context_cache = None
+        self._valid_pep702_type_context = True
         self.expr_cache: dict[
             tuple[Expression, Type | None],
             tuple[int, Type, list[ErrorInfo], dict[Expression, Type]],
@@ -388,7 +391,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType(TypeOfAny.from_error)
-        if isinstance(node, TypeInfo):
+        if self._valid_pep702_type_context and isinstance(node, TypeInfo):
+            if self.type_context[-1] is not None:
+                proper_result = get_proper_type(result)
+                if isinstance(proper_result, (CallableType, Overloaded)):
+                    ctor_type = constructor_type_in_callable_context(
+                        proper_result, get_proper_type(self.type_context[-1]), self.chk.options
+                    )
+                    if ctor_type is not None:
+                        self.chk.check_deprecated(ctor_type.definition, e)
             if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
                 result.ret_type, Instance
             ):
@@ -1683,9 +1694,24 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ret_type = get_proper_type(callee.ret_type)
         if callee.is_type_obj() and isinstance(ret_type, Instance):
             callable_name = ret_type.type.fullname
-        if isinstance(callable_node, RefExpr) and callable_node.fullname in ENUM_BASES:
-            # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
-            return callee.ret_type, callee
+        if isinstance(callable_node, RefExpr):
+            # Check implicit calls to deprecated class constructors.
+            # Only the non-overload case is handled here. Overloaded constructors are handled
+            # separately during overload resolution. `callable_node` is `None` for an overload
+            # item so deprecation checks are not duplicated.
+            callable_info: TypeInfo | None = None
+            if isinstance(callable_node.node, TypeInfo):
+                callable_info = callable_node.node
+            elif isinstance(callable_node.node, TypeAlias):
+                alias_target = get_proper_type(callable_node.node.target)
+                if isinstance(alias_target, Instance) and isinstance(alias_target.type, TypeInfo):
+                    callable_info = alias_target.type
+            if callable_info is not None:
+                self.chk.check_deprecated(callee.definition, context)
+
+            if callable_node.fullname in ENUM_BASES:
+                # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
+                return callee.ret_type, callee
 
         if (
             callee.is_type_obj()
@@ -5960,6 +5986,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 e.else_expr,
                 context=if_type_fallback,
                 allow_none_return=allow_none_return,
+                # `@deprecated()` is already properly reported in the else branch when obtaining
+                # `full_context_else_type`. Reporting it again is redundant, and also invalid when
+                # analysing reference expressions here because the full type context is not used.
+                valid_pep702_type_context=False,
             )
 
         # In most cases using if_type as a context for right branch gives better inferred types.
@@ -5985,17 +6015,26 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         context: Type | None,
         allow_none_return: bool = False,
         suppress_unreachable_errors: bool = True,
+        valid_pep702_type_context: bool = True,
     ) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+            _valid_pep702_context = self._valid_pep702_type_context
+            self._valid_pep702_type_context = valid_pep702_type_context
+            result: Type
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later. Since the branch was
                 # determined to be unreachable, any errors should be suppressed.
                 with self.msg.filter_errors(filter_errors=suppress_unreachable_errors):
                     self.accept(node, type_context=context, allow_none_return=allow_none_return)
-                return UninhabitedType()
-            self.chk.push_type_map(map)
-            return self.accept(node, type_context=context, allow_none_return=allow_none_return)
+                result = UninhabitedType()
+            else:
+                self.chk.push_type_map(map)
+                result = self.accept(
+                    node, type_context=context, allow_none_return=allow_none_return
+                )
+            self._valid_pep702_type_context = _valid_pep702_context
+            return result
 
     def _combined_context(self, ty: Type | None) -> Type | None:
         ctx_items = []
@@ -6892,3 +6931,53 @@ def is_type_type_context(context: Type | None) -> bool:
     if isinstance(context, UnionType):
         return any(is_type_type_context(item) for item in context.items)
     return False
+
+
+def constructor_type_in_callable_context(
+    constructor_type: CallableType | Overloaded,
+    context: ProperType,
+    options: Options,
+    /,
+    *,
+    _check_subtyping: bool = False,
+) -> CallableType | None:
+    """
+    Gets a class constructor type if it's used in a valid callable type context.
+    Considers the following cases as valid contexts:
+
+    * A plain `Callable` context is always treated as a valid context.
+    * A union type context requires at least one of the union items to be a supertype of
+      the class type, in addition to being a `Callable` or callable `Protocol`.
+    * A callable `Protocol` context is only treated as a valid context if the
+      constructor type is a subtype of the protocol or overloaded type.
+
+    If the class type is overloaded, use the first overload which is in a valid context.
+    """
+
+    item: Type
+    if isinstance(constructor_type, Overloaded):
+        for item in constructor_type.items:
+            result = constructor_type_in_callable_context(
+                item, context, options, _check_subtyping=True
+            )
+            if result is not None:
+                return result
+    elif isinstance(context, CallableType):
+        if (not _check_subtyping) or is_subtype(constructor_type, context, options=options):
+            return constructor_type
+    elif isinstance(context, UnionType):
+        for item in context.items:
+            result = constructor_type_in_callable_context(
+                constructor_type, get_proper_type(item), options, _check_subtyping=True
+            )
+            if result is not None:
+                return result
+    elif isinstance(context, Instance):
+        if (
+            context.type.is_protocol
+            and ("__call__" in context.type.protocol_members)
+            and is_subtype(constructor_type, context, options=options)
+        ):
+            return constructor_type
+
+    return None
