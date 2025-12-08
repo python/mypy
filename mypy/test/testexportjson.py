@@ -9,7 +9,7 @@ import sys
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.exportjson import convert_binary_cache_to_json
+from mypy.exportjson import convert_binary_cache_meta_to_json, convert_binary_cache_to_json
 from mypy.modulefinder import BuildSource
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
@@ -53,12 +53,28 @@ class TypeExportSuite(DataSuite):
                 ):
                     continue
                 fnam = os.path.join(cache_dir, f"{module}.data.ff")
-                with open(fnam, "rb") as f:
-                    json_data = convert_binary_cache_to_json(f.read(), implicit_names=False)
+                is_meta = testcase.name.endswith("_meta")
+                if not is_meta:
+                    with open(fnam, "rb") as f:
+                        json_data = convert_binary_cache_to_json(f.read(), implicit_names=False)
+                else:
+                    meta_fnam = os.path.join(cache_dir, f"{module}.meta.ff")
+                    with open(meta_fnam, "rb") as f:
+                        json_data = convert_binary_cache_meta_to_json(f.read(), fnam)
                 for line in json.dumps(json_data, indent=4).splitlines():
                     if '"path": ' in line:
-                        # We source file path is unpredictable, so filter it out
+                        # The source file path is unpredictable, so filter it out
                         line = re.sub(r'"[^"]+\.pyi?"', "...", line)
+                    if is_meta:
+                        if '"version_id"' in line:
+                            line = re.sub(r'"[0-9][^"]+"', "...", line)
+                        if '"mtime"' in line or '"data_mtime"' in line:
+                            line = re.sub(r": [0-9]+", ": ...", line)
+                        if '"platform"' in line:
+                            line = re.sub(': "[^"]+"', ": ...", line)
+                        if '"hash"' not in line:
+                            # Some hashes are unpredictable so filter them out
+                            line = re.sub(r'"[a-f0-9]{40}"', '"<hash>"', line)
                     assert "ERROR" not in line, line
                     a.append(line)
         except CompileError as e:
