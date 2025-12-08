@@ -1,6 +1,6 @@
 from typing import Final
 
-from mypyc.ir.deps import LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS
+from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
