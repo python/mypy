@@ -18,6 +18,7 @@ char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
     if (!CPyBytesWriter_EnsureSize(self, size))
         return CPY_NONE_ERROR;
     if (size < 8) {
+        // Loop tends to be faster for small sizes
         char *p = self->buf + self->len;
         for (Py_ssize_t i = 0; i < size; i++) {
             p[i] = data[i];
