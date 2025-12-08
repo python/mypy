@@ -18,6 +18,8 @@
        ((BytesWriterObject *)data)->len += sizeof(type); \
     } while (0)
 
+#ifdef MYPYC_EXPERIMENTAL
+
 static PyTypeObject BytesWriterType;
 
 static bool
@@ -376,6 +378,8 @@ BytesWriter_len_internal(PyObject *self) {
     BytesWriterObject *writer = (BytesWriterObject *)self;
     return writer->len << 1;
 }
+
+#endif
 
 static PyMethodDef librt_strings_module_methods[] = {
     {NULL, NULL, 0, NULL}
