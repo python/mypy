@@ -725,7 +725,6 @@ def mypycify(
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
                 write_file(rt_file, f.read())
-            # Only add .c files to shared_cfilenames
             if name.endswith(".c"):
                 shared_cfilenames.append(rt_file)
 
