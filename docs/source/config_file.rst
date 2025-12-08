@@ -451,16 +451,16 @@ Platform configuration
     Python versions, you can use one of the following workarounds:
 
     * **Run mypy multiple times**, selecting a different version for each
-    directory. 
-    
+    directory.
+
     Example::
 
         mypy --python-version=3.9 src/py39_package
         mypy --python-version=3.11 backend/py311
 
     * **Use separate configuration files**, each specifying its own
-    ``python_version``. 
-    
+    ``python_version``.
+
     Example::
 
         mypy --config-file=mypy_py39.ini src/py39_package
