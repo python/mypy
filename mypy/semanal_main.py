@@ -26,11 +26,10 @@ will be incomplete.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import nullcontext
 from itertools import groupby
-from typing import TYPE_CHECKING, Callable, Final, Optional, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.state
@@ -358,12 +357,12 @@ def process_top_level_function(
 
 
 TargetInfo: _TypeAlias = tuple[
-    str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+    str, MypyFile | FuncDef | OverloadedFuncDef | Decorator, TypeInfo | None
 ]
 
 # Same as above but includes module as first item.
 FullTargetInfo: _TypeAlias = tuple[
-    str, str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+    str, str, MypyFile | FuncDef | OverloadedFuncDef | Decorator, TypeInfo | None
 ]
 
 

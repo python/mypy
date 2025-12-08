@@ -41,7 +41,7 @@ T3 = TypeVar("T3", bound=List[Any], default=List[int])
 T4 = TypeVar("T4", int, str, default=int)
 T5 = TypeVar("T5", default=S0)
 T6 = TypeVar("T6", bound=float, default=S1)
-# T7 = TypeVar("T7", bound=List[Any], default=List[S0])  # TODO
+T7 = TypeVar("T7", bound=List[Any], default=List[S0])
 
 P1 = ParamSpec("P1", default=[])
 P2 = ParamSpec("P2", default=...)
@@ -50,7 +50,7 @@ P4 = ParamSpec("P4", default=P0)
 
 Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int]])
 Ts2 = TypeVarTuple("Ts2", default=Unpack[Tuple[int, ...]])
-# Ts3 = TypeVarTuple("Ts3", default=Unpack[Ts0])  # TODO
+Ts3 = TypeVarTuple("Ts3", default=Unpack[Ts0])
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsInvalid]
@@ -180,7 +180,7 @@ reveal_type(func_b1(callback1))  # N: Revealed type is "def (x: builtins.str)"
 reveal_type(func_b1(2))  # N: Revealed type is "def (builtins.int, builtins.str)"
 
 def func_c1(x: Union[int, Callable[[Unpack[Ts1]], None]]) -> Tuple[Unpack[Ts1]]: ...
-# reveal_type(func_c1(callback1))  # Revealed type is "Tuple[str]"  # TODO
+reveal_type(func_c1(callback1))  # N: Revealed type is "tuple[builtins.str]"
 reveal_type(func_c1(2))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
@@ -879,4 +879,60 @@ class A3(Generic[T3]):
 reveal_type(A1().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.int})"
 reveal_type(A2().x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.NT[builtins.int]]"
 reveal_type(A3().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.int})"
+[builtins fixtures/tuple.pyi]
+
+[case testDefaultsApplicationInAliasNoCrash]
+# https://github.com/python/mypy/issues/19186
+from typing import Generic, TypeVar
+from typing_extensions import TypeAlias
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=T1)
+
+Alias: TypeAlias = "MyClass[T1, T2]"
+
+class MyClass(Generic["T1", "T2"]): ...
+[builtins fixtures/tuple.pyi]
+
+[case testDefaultsApplicationInAliasNoCrashNested]
+from typing import Generic, TypeVar
+from typing_extensions import TypeAlias
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=list[T1])
+
+Alias: TypeAlias = "MyClass[T1, T2]"
+
+class MyClass(Generic["T1", "T2"]): ...
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is "__main__.MyClass[builtins.int, builtins.list[builtins.int]]"
+[builtins fixtures/tuple.pyi]
+
+[case testDefaultsMustBeInScope]
+from typing import Generic, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=T1)
+T3 = TypeVar("T3", default=T2)
+
+class A(Generic[T1, T2, T3]): ...
+reveal_type(A)  # N: Revealed type is "def [T1, T2 = T1`1, T3 = T2`2 = T1`1] () -> __main__.A[T1`1, T2`2 = T1`1, T3`3 = T2`2 = T1`1]"
+a: A[int]
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int, builtins.int, T1`1]"
+
+class B(Generic[T1, T3]): ...  # E: Type variable T2 referenced in the default of T3 is unbound
+reveal_type(B)  # N: Revealed type is "def [T1, T3 = Any] () -> __main__.B[T1`1, T3`2 = Any]"
+b: B[int]
+reveal_type(b)  # N: Revealed type is "__main__.B[builtins.int, Any]"
+
+class C(Generic[T2]): ...  # E: Type variable T1 referenced in the default of T2 is unbound
+reveal_type(C)  # N: Revealed type is "def [T2 = Any] () -> __main__.C[T2`1 = Any]"
+c: C
+reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
+
+class D(Generic[T2, T1]): ...  # E: Type variable T1 referenced in the default of T2 is unbound \
+                               # E: "T1" cannot appear after "T2" in type parameter list because it has no default type
+reveal_type(D)  # N: Revealed type is "def [T2 = Any, T1 = Any] () -> __main__.D[T2`1 = Any, T1`2 = Any]"
+d: D
+reveal_type(d)  # N: Revealed type is "__main__.D[Any, Any]"
 [builtins fixtures/tuple.pyi]

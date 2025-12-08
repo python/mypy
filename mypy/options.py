@@ -5,8 +5,9 @@ import re
 import sys
 import sysconfig
 import warnings
+from collections.abc import Callable
 from re import Pattern
-from typing import Any, Callable, Final
+from typing import Any, Final
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -358,6 +359,7 @@ class Options:
         self.test_env = False
 
         # -- experimental options --
+        self.num_workers: int = 0
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False

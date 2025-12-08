@@ -26,12 +26,12 @@ import typing
 import typing_extensions
 import warnings
 from collections import defaultdict
-from collections.abc import Iterator, Set as AbstractSet
+from collections.abc import Iterator
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Final, Generic, TypeVar, Union
-from typing_extensions import get_origin, is_typeddict
+from typing import Any, Final, Generic, TypeVar, Union, get_origin
+from typing_extensions import is_typeddict
 
 import mypy.build
 import mypy.checkexpr
@@ -45,6 +45,7 @@ import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.evalexpr import UNKNOWN, evaluate_expression
+from mypy.maptype import map_instance_to_supertype
 from mypy.options import Options
 from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
@@ -59,7 +60,7 @@ class Missing:
 MISSING: Final = Missing()
 
 T = TypeVar("T")
-MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
+MaybeMissing: typing_extensions.TypeAlias = T | Missing
 
 
 class Unrepresentable:
@@ -1852,10 +1853,39 @@ def describe_runtime_callable(signature: inspect.Signature, *, is_async: bool) -
     return f'{"async " if is_async else ""}def {signature}'
 
 
+class _TypeCheckOnlyBaseMapper(mypy.types.TypeTranslator):
+    """Rewrites @type_check_only instances to the nearest runtime-visible base class."""
+
+    def visit_instance(self, t: mypy.types.Instance, /) -> mypy.types.Type:
+        instance = mypy.types.get_proper_type(super().visit_instance(t))
+        assert isinstance(instance, mypy.types.Instance)
+
+        if instance.type.is_type_check_only:
+            # find the nearest non-@type_check_only base class
+            for base_info in instance.type.mro[1:]:
+                if not base_info.is_type_check_only:
+                    return map_instance_to_supertype(instance, base_info)
+
+            msg = f"all base classes of {instance.type.fullname!r} are @type_check_only"
+            assert False, msg
+
+        return instance
+
+    def visit_type_alias_type(self, t: mypy.types.TypeAliasType, /) -> mypy.types.Type:
+        return t
+
+
+_TYPE_CHECK_ONLY_BASE_MAPPER = _TypeCheckOnlyBaseMapper()
+
+
+def _relax_type_check_only_type(typ: mypy.types.ProperType) -> mypy.types.ProperType:
+    return mypy.types.get_proper_type(typ.accept(_TYPE_CHECK_ONLY_BASE_MAPPER))
+
+
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     """Checks whether ``left`` is a subtype of ``right``."""
-    left = mypy.types.get_proper_type(left)
-    right = mypy.types.get_proper_type(right)
+    left = _relax_type_check_only_type(mypy.types.get_proper_type(left))
+    right = _relax_type_check_only_type(mypy.types.get_proper_type(right))
     if (
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
@@ -2123,30 +2153,8 @@ def get_typeshed_stdlib_modules(
 
 def get_importable_stdlib_modules() -> set[str]:
     """Return all importable stdlib modules at runtime."""
-    all_stdlib_modules: AbstractSet[str]
-    if sys.version_info >= (3, 10):
-        all_stdlib_modules = sys.stdlib_module_names
-    else:
-        all_stdlib_modules = set(sys.builtin_module_names)
-        modules_by_finder: defaultdict[importlib.machinery.FileFinder, set[str]] = defaultdict(set)
-        for m in pkgutil.iter_modules():
-            if isinstance(m.module_finder, importlib.machinery.FileFinder):
-                modules_by_finder[m.module_finder].add(m.name)
-        for finder, module_group in modules_by_finder.items():
-            if (
-                "site-packages" not in Path(finder.path).parts
-                # if "_queue" is present, it's most likely the module finder
-                # for stdlib extension modules;
-                # if "queue" is present, it's most likely the module finder
-                # for pure-Python stdlib modules.
-                # In either case, we'll want to add all the modules that the finder has to offer us.
-                # This is a bit hacky, but seems to work well in a cross-platform way.
-                and {"_queue", "queue"} & module_group
-            ):
-                all_stdlib_modules.update(module_group)
-
     importable_stdlib_modules: set[str] = set()
-    for module_name in all_stdlib_modules:
+    for module_name in sys.stdlib_module_names:
         if module_name in ANNOYING_STDLIB_MODULES:
             continue
 

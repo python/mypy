@@ -12,9 +12,9 @@ import importlib
 import inspect
 import keyword
 import os.path
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from types import FunctionType, ModuleType
-from typing import Any, Callable
+from typing import Any
 
 from mypy.fastparse import parse_type_comment
 from mypy.moduleinspect import is_c_module

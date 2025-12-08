@@ -7,7 +7,8 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar
+from collections.abc import Callable
+from typing import ClassVar
 
 from mypy.nodes import (
     ARG_POS,
