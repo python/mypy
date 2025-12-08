@@ -15,12 +15,12 @@ import_librt_strings(void)
 // ABI version -- only an exact match is compatible. This will only be changed in
 // very exceptional cases (likely never) due to strict backward compatibility
 // requirements.
-#define LIBRT_STRINGS_ABI_VERSION 0
+#define LIBRT_STRINGS_ABI_VERSION 1
 
 // API version -- more recent versions must maintain backward compatibility, i.e.
 // we can add new features but not remove or change existing features (unless
 // ABI version is changed, but see the comment above).
- #define LIBRT_STRINGS_API_VERSION 1
+ #define LIBRT_STRINGS_API_VERSION 2
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
