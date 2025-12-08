@@ -5,7 +5,16 @@ from typing import Final, TypeGuard
 # Supported Python literal types. All tuple / frozenset / dict items must have supported
 # literal types as well, but we can't represent the type precisely.
 LiteralValue = (
-    str | bytes | int | bool | float | complex | tuple[object, ...] | frozenset[object] | dict[object, object] | None
+    str
+    | bytes
+    | int
+    | bool
+    | float
+    | complex
+    | tuple[object, ...]
+    | frozenset[object]
+    | dict[object, object]
+    | None
 )
 
 
