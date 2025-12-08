@@ -5,9 +5,9 @@ import re
 import sys
 import sysconfig
 import warnings
-from collections.abc import Mapping
+from collections.abc import Callable
 from re import Pattern
-from typing import Any, Callable, Final
+from typing import Any, Final
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -84,7 +84,8 @@ UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
 NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
 INLINE_TYPEDDICT: Final = "InlineTypedDict"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT))
+TYPE_FORM: Final = "TypeForm"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT, TYPE_FORM))
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
@@ -358,6 +359,7 @@ class Options:
         self.test_env = False
 
         # -- experimental options --
+        self.num_workers: int = 0
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
@@ -621,7 +623,7 @@ class Options:
             expr += re.escape("." + part) if part != "*" else r"(\..*)?"
         return re.compile(expr + "\\Z")
 
-    def select_options_affecting_cache(self) -> Mapping[str, object]:
+    def select_options_affecting_cache(self) -> dict[str, object]:
         result: dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)

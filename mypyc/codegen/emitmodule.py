@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from collections.abc import Iterable
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from mypy.build import (
     BuildResult,
@@ -27,14 +27,17 @@ from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
+from mypyc.analysis.capsule_deps import find_implicit_capsule_dependencies
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
-from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
-from mypyc.codegen.emitfunc import (
-    generate_native_function,
+from mypyc.codegen.emit import (
+    Emitter,
+    EmitterContext,
+    HeaderDeclaration,
+    c_array_initializer,
     native_function_doc_initializer,
-    native_function_header,
 )
+from mypyc.codegen.emitclass import generate_class, generate_class_reuse, generate_class_type_decl
+from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_legacy_wrapper_function,
     generate_wrapper_function,
@@ -91,7 +94,7 @@ from mypyc.transform.uninit import insert_uninit_checks
 # its modules along with the name of the group. (Which can be None
 # only if we are compiling only a single group with a single file in it
 # and not using shared libraries).
-Group = tuple[list[BuildSource], Optional[str]]
+Group = tuple[list[BuildSource], str | None]
 Groups = list[Group]
 
 # A list of (file name, file contents) pairs.
@@ -259,6 +262,10 @@ def compile_scc_to_ir(
 
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
+            # Calculate implicit module dependencies (needed for librt)
+            capsules = find_implicit_capsule_dependencies(fn)
+            if capsules is not None:
+                module.capsules.update(capsules)
             # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
@@ -280,13 +287,13 @@ def compile_modules_to_ir(
 
     # Process the graph by SCC in topological order, like we do in mypy.build
     for scc in sorted_components(result.graph):
-        scc_states = [result.graph[id] for id in scc]
+        scc_states = [result.graph[id] for id in scc.mod_ids]
         trees = [st.tree for st in scc_states if st.id in mapper.group_map and st.tree]
 
         if not trees:
             continue
 
-        fresh = all(id not in result.manager.rechecked_modules for id in scc)
+        fresh = all(id not in result.manager.rechecked_modules for id in scc.mod_ids)
         if fresh:
             load_scc_from_cache(trees, result, mapper, deser_ctx)
         else:
@@ -341,7 +348,8 @@ def compile_ir_to_c(
 
 def get_ir_cache_name(id: str, path: str, options: Options) -> str:
     meta_path, _, _ = get_cache_names(id, path, options)
-    return meta_path.replace(".meta.json", ".ir.json")
+    # Mypy uses JSON cache even with --fixed-format-cache (for now).
+    return meta_path.replace(".meta.json", ".ir.json").replace(".meta.ff", ".ir.json")
 
 
 def get_state_ir_cache_name(state: State) -> str:
@@ -560,7 +568,7 @@ class GroupGenerator:
 
         for module_name, module in self.modules.items():
             if multi_file:
-                emitter = Emitter(self.context)
+                emitter = Emitter(self.context, filepath=self.source_paths[module_name])
                 emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
                 emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
 
@@ -603,6 +611,10 @@ class GroupGenerator:
         ext_declarations.emit_line("#include <CPy.h>")
         if self.compiler_options.depends_on_librt_internal:
             ext_declarations.emit_line("#include <librt_internal.h>")
+        if any("librt.base64" in mod.capsules for mod in self.modules.values()):
+            ext_declarations.emit_line("#include <librt_base64.h>")
+        if any("librt.strings" in mod.capsules for mod in self.modules.values()):
+            ext_declarations.emit_line("#include <librt_strings.h>")
 
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
@@ -976,6 +988,9 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
+            # Coroutines are added to the module dict when the module is initialized.
+            if fn.decl.is_coroutine:
+                continue
             name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
             if is_fastcall_supported(fn, emitter.capi_version):
                 flag = "METH_FASTCALL"
@@ -1014,6 +1029,30 @@ class GroupGenerator:
         emitter.emit_line("};")
         emitter.emit_line()
 
+    def emit_coroutine_wrappers(self, emitter: Emitter, module: ModuleIR, globals: str) -> None:
+        """Emit insertion of coroutines into the module dict when the module is initialized.
+        Coroutines are wrapped in CPyFunction objects to enable introspection by functions like
+        inspect.iscoroutinefunction(fn).
+        """
+        for fn in module.functions:
+            if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
+                continue
+            if not fn.decl.is_coroutine:
+                continue
+
+            filepath = self.source_paths[module.fullname]
+            error_stmt = "    goto fail;"
+            name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
+            wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
+            name_obj = f"{wrapper_name}_name"
+            emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
+            emitter.emit_line(f"if (unlikely(!{name_obj}))")
+            emitter.emit_line(error_stmt)
+            emitter.emit_line(
+                f"if (PyDict_SetItem({globals}, {name_obj}, (PyObject *){wrapper_name}) < 0)"
+            )
+            emitter.emit_line(error_stmt)
+
     def emit_module_exec_func(
         self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
     ) -> None:
@@ -1031,6 +1070,14 @@ class GroupGenerator:
         emitter.emit_lines(declaration, "{")
         if self.compiler_options.depends_on_librt_internal:
             emitter.emit_line("if (import_librt_internal() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if "librt.base64" in module.capsules:
+            emitter.emit_line("if (import_librt_base64() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if "librt.strings" in module.capsules:
+            emitter.emit_line("if (import_librt_strings() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
         emitter.emit_line("PyObject* modname = NULL;")
@@ -1053,17 +1100,32 @@ class GroupGenerator:
                 "    goto fail;",
             )
 
+        self.emit_coroutine_wrappers(emitter, module, module_globals)
+
         # HACK: Manually instantiate generated classes here
         type_structs: list[str] = []
         for cl in module.classes:
             type_struct = emitter.type_struct_name(cl)
             type_structs.append(type_struct)
             if cl.is_generated:
+                error_stmt = "    goto fail;"
                 emitter.emit_lines(
                     "{t} = (PyTypeObject *)CPyType_FromTemplate("
                     "(PyObject *){t}_template, NULL, modname);".format(t=type_struct)
                 )
-                emitter.emit_lines(f"if (unlikely(!{type_struct}))", "    goto fail;")
+                emitter.emit_lines(f"if (unlikely(!{type_struct}))", error_stmt)
+                name_prefix = cl.name_prefix(emitter.names)
+                emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
+
+                if cl.coroutine_name:
+                    fn = cl.methods["__call__"]
+                    filepath = self.source_paths[module.fullname]
+                    name = cl.coroutine_name
+                    wrapper_name = emitter.emit_cpyfunction_instance(
+                        fn, name, filepath, error_stmt
+                    )
+                    static_name = emitter.static_name(cl.name + "_cpyfunction", module.fullname)
+                    emitter.emit_line(f"{static_name} = {wrapper_name};")
 
         emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
 
