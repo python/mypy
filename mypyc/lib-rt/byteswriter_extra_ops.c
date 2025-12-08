@@ -1,3 +1,6 @@
+// Primitives related to librt.strings.BytesWriter that get linked statically
+// with compiled modules, instead of being called via a capsule.
+
 #include "byteswriter_extra_ops.h"
 
 char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
