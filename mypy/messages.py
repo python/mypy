@@ -44,8 +44,8 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     Context,
-    Expression,
     Decorator,
+    Expression,
     FuncDef,
     IndexExpr,
     MypyFile,
@@ -788,8 +788,8 @@ class MessageBuilder:
                 func_name = outer_context.func.name
                 msg = (
                     f'Decorated function "{func_name}" has incompatible type '
-                    f'{quote_type_string(arg_type_str)}; expected '
-                    f'{quote_type_string(expected_type_str)}'
+                    f"{quote_type_string(arg_type_str)}; expected "
+                    f"{quote_type_string(expected_type_str)}"
                 )
             elif simple_message:
                 msg = "Argument has incompatible type"

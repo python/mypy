@@ -10,12 +10,10 @@ import shutil
 import sys
 import tempfile
 from abc import abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern
-from typing import Any, Callable, Final, NamedTuple, NoReturn, Union
-from typing_extensions import TypeAlias as _TypeAlias
 from typing import Any, Final, NamedTuple, NoReturn, TypeAlias as _TypeAlias
 
 import pytest
