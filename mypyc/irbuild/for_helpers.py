@@ -17,6 +17,7 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
+    IntExpr,
     ListExpr,
     Lvalue,
     MemberExpr,
@@ -240,38 +241,58 @@ def sequence_from_generator_preallocate_helper(
         line = gen.line
         sequence_expr = gen.sequences[0]
         rtype = builder.node_type(sequence_expr)
-        if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
-            return None
-        sequence = builder.accept(sequence_expr)
-        length = get_expr_length_value(builder, sequence_expr, sequence, line, use_pyssize_t=True)
-        if isinstance(rtype, RTuple):
-            # If input is RTuple, box it to tuple_rprimitive for generic iteration
-            # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
-            proper_type = get_proper_type(builder.types[sequence_expr])
-            assert isinstance(proper_type, TupleType), proper_type
+        if is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple):
+            sequence = builder.accept(sequence_expr)
+            length = get_expr_length_value(
+                builder, sequence_expr, sequence, line, use_pyssize_t=True
+            )
+            if isinstance(rtype, RTuple):
+                # If input is RTuple, box it to tuple_rprimitive for generic iteration
+                # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
+                proper_type = get_proper_type(builder.types[sequence_expr])
+                assert isinstance(proper_type, TupleType), proper_type
 
-            get_item_ops = [
-                (
-                    LoadLiteral(typ.value, object_rprimitive)
-                    if isinstance(typ, LiteralType)
-                    else TupleGet(sequence, i, line)
+                get_item_ops = [
+                    (
+                        LoadLiteral(typ.value, object_rprimitive)
+                        if isinstance(typ, LiteralType)
+                        else TupleGet(sequence, i, line)
+                    )
+                    for i, typ in enumerate(get_proper_types(proper_type.items))
+                ]
+                items = list(map(builder.add, get_item_ops))
+                sequence = builder.new_tuple(items, line)
+
+            target_op = empty_op_llbuilder(length, line)
+
+            def set_item(item_index: Value) -> None:
+                e = builder.accept(gen.left_expr)
+                builder.call_c(set_item_op, [target_op, item_index, e], line)
+
+            for_loop_helper_with_index(
+                builder, gen.indices[0], sequence_expr, sequence, set_item, line, length
+            )
+
+            return target_op
+
+        elif (expr_length := get_expr_length(builder, sequence_expr)) is not None:
+            item_index = Register(int_rprimitive)
+            builder.assign(item_index, Integer(0), line)
+
+            def set_item_noindex() -> None:
+                e = builder.accept(gen.left_expr)
+                builder.call_c(set_item_op, [target_op, item_index, e], line)
+                builder.assign(
+                    item_index, builder.binary_op(item_index, Integer(1), "+", line), line
                 )
-                for i, typ in enumerate(get_proper_types(proper_type.items))
-            ]
-            items = list(map(builder.add, get_item_ops))
-            sequence = builder.new_tuple(items, line)
 
-        target_op = empty_op_llbuilder(length, line)
+            length = Integer(expr_length, c_pyssize_t_rprimitive, line)
+            target_op = empty_op_llbuilder(length, line)
+            for_loop_helper(
+                builder, gen.indices[0], sequence_expr, set_item_noindex, None, False, line
+            )
+            return target_op
 
-        def set_item(item_index: Value) -> None:
-            e = builder.accept(gen.left_expr)
-            builder.call_c(set_item_op, [target_op, item_index, e], line)
-
-        for_loop_helper_with_index(
-            builder, gen.indices[0], sequence_expr, sequence, set_item, line, length
-        )
-
-        return target_op
     return None
 
 
@@ -1224,10 +1245,37 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
         and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, NameExpr)
+        and all(kind == ARG_POS for kind in expr.arg_kinds)
+    ):
+        fullname = callee.fullname
+        if (
+            fullname
+            in (
+                "builtins.list",
+                "builtins.tuple",
+                "builtins.enumerate",
+                "builtins.sorted",
+                "builtins.reversed",
+            )
+            and len(expr.args) == 1
+        ):
+            return get_expr_length(builder, expr.args[0])
+        elif fullname == "builtins.map" and len(expr.args) == 2:
+            return get_expr_length(builder, expr.args[1])
+        elif fullname == "builtins.zip" and expr.args:
+            arg_lengths = [get_expr_length(builder, arg) for arg in expr.args]
+            if all(arg is not None for arg in arg_lengths):
+                return min(arg_lengths)  # type: ignore [type-var]
+        elif fullname == "builtins.range" and all(isinstance(arg, IntExpr) for arg in expr.args):
+            return len(range(*(arg.value for arg in expr.args)))  # type: ignore [attr-defined]
+
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
-    # of key conflicts. Range, enumerate, zip are all simple logic.
+    # of key conflicts.
 
     # we might still be able to get the length directly from the type
     rtype = builder.node_type(expr)
