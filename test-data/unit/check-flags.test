@@ -2477,7 +2477,7 @@ cb(lambda x: a)  # OK
 fn = lambda x: a
 cb(fn)
 
-[case testShowErrorCodeLinks]
+[case testShowErrorCodeLinks_no_parallel]
 # flags: --show-error-codes --show-error-code-links
 
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
