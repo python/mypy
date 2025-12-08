@@ -2737,3 +2737,59 @@ class ClassB(ClassA):
     def value(self) -> int:
         return 0
 [builtins fixtures/dict.pyi]
+
+[case testErrorFinalFieldNoInitNoArgumentPassed]
+from typing import Final
+from dataclasses import dataclass, field
+@dataclass
+class Foo:
+    a: Final[int] = field(init=False) # E: Final field with init=False must have a default value
+Foo().a
+[builtins fixtures/dataclasses.pyi]
+
+[case testErrorFinalFieldInitNoArgumentPassed]
+from typing import Final
+from dataclasses import dataclass, field
+
+@dataclass
+class Foo:
+    a: Final[int] = field() 
+
+Foo().a # E: Missing positional argument "a" in call to "Foo"
+[builtins fixtures/dataclasses.pyi]
+
+[case testFinalFieldGeneratedInitArgumentPassed]
+from typing import Final
+from dataclasses import dataclass, field
+
+@dataclass
+class Foo:
+    a: Final[int] = field() 
+
+Foo(1).a 
+[builtins fixtures/dataclasses.pyi]
+
+[case testFinalFieldPostInit]
+from typing import Final
+from dataclasses import dataclass, field
+
+@dataclass
+class Foo:
+    a: Final[int] = field(init=False)
+
+    def __post_init__(self):
+        self.a = 1
+
+Foo().a 
+[builtins fixtures/dataclasses.pyi]
+
+[case testFinalFieldInitFalseWithDefault]
+from typing import Final
+from dataclasses import dataclass, field
+
+@dataclass
+class Foo:
+    a: Final[int] = field(init=False, default=1)
+
+Foo().a
+[builtins fixtures/dataclasses.pyi]

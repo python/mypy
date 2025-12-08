@@ -651,6 +651,14 @@ class DataclassTransformer:
             elif not isinstance(stmt.rvalue, TempNode):
                 has_default = True
 
+            if node.is_final and not is_in_init and not has_default:
+                has_post_init = cls.info.get("__post_init__") is not None
+                if not has_post_init:
+                    self._api.fail(
+                        f'Final field with init=False must have a default value',
+                        stmt.rvalue
+                    )
+
             if not has_default and self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
                 # Make all non-default dataclass attributes implicit because they are de-facto
                 # set on self in the generated __init__(), not in the class body. On the other
