@@ -1,6 +1,6 @@
 from typing import Final
 
-from mypyc.ir.deps import LIBRT_STRINGS
+from mypyc.ir.deps import LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
@@ -41,7 +41,7 @@ method_op(
     c_function_name="CPyBytesWriter_Write",
     error_kind=ERR_MAGIC,
     experimental=True,
-    dependencies=[LIBRT_STRINGS],
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
 method_op(
@@ -51,7 +51,7 @@ method_op(
     c_function_name="CPyBytesWriter_Append",
     error_kind=ERR_MAGIC,
     experimental=True,
-    dependencies=[LIBRT_STRINGS],
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
 method_op(
@@ -60,6 +60,8 @@ method_op(
     return_type=none_rprimitive,
     c_function_name="LibRTStrings_BytesWriter_truncate_internal",
     error_kind=ERR_MAGIC,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS],
 )
 
 function_op(
@@ -69,5 +71,5 @@ function_op(
     c_function_name="CPyBytesWriter_Len",
     error_kind=ERR_NEVER,
     experimental=True,
-    dependencies=[LIBRT_STRINGS],
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
