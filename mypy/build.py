@@ -40,7 +40,15 @@ from typing import (
     TypedDict,
 )
 
-from librt.internal import cache_version
+try:
+    from librt.internal import cache_version
+except ImportError:
+    print(
+        "Running mypy on PyPy is not supported yet."
+        "To type-check a PyPy library please run mypy on an equivalent CPython version,"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds."
+    )
+    sys.exit(2)
 
 import mypy.semanal_main
 from mypy.cache import CACHE_VERSION, CacheMeta, ReadBuffer, WriteBuffer, write_json
