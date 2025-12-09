@@ -261,4 +261,3 @@ L0:
     r0 = CPyBytes_Startswith(a, b)
     r1 = truncate r0: i32 to builtins.bool
     return r1
-
