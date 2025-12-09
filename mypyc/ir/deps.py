@@ -50,3 +50,4 @@ LIBRT_STRINGS: Final = Capsule("librt.strings")
 LIBRT_BASE64: Final = Capsule("librt.base64")
 
 BYTES_EXTRA_OPS: Final = SourceDep("bytes_extra_ops.c")
+BYTES_WRITER_EXTRA_OPS: Final = SourceDep("byteswriter_extra_ops.c")
