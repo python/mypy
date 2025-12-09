@@ -1,4 +1,3 @@
-
 from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
@@ -9,6 +8,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive,
     short_int_rprimitive,
     uint8_rprimitive,
+    void_rtype,
 )
 from mypyc.primitives.registry import custom_primitive_op, function_op, method_op
 
@@ -100,6 +100,17 @@ bytes_writer_get_item_op = custom_primitive_op(
     arg_types=[bytes_writer_rprimitive, int64_rprimitive],
     return_type=uint8_rprimitive,
     c_function_name="CPyBytesWriter_GetItem",
+    error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+# BytesWriter.__setitem__() - set byte at index (no bounds checking)
+bytes_writer_set_item_op = custom_primitive_op(
+    name="bytes_writer_set_item",
+    arg_types=[bytes_writer_rprimitive, int64_rprimitive, uint8_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPyBytesWriter_SetItem",
     error_kind=ERR_NEVER,
     experimental=True,
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],

@@ -52,6 +52,10 @@ static inline uint8_t CPyBytesWriter_GetItem(PyObject *obj, int64_t index) {
     return (((BytesWriterObject *)obj)->buf)[index];
 }
 
+static inline void CPyBytesWriter_SetItem(PyObject *obj, int64_t index, uint8_t x) {
+    (((BytesWriterObject *)obj)->buf)[index] = x;
+}
+
 #endif // MYPYC_EXPERIMENTAL
 
 #endif
