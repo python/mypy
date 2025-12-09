@@ -60,3 +60,18 @@ L0:
     r0 = CPyBytesWriter_Len(b)
     r1 = r0 >> 1
     return r1
+def bytes_writer_get_item(b, i):
+    b :: librt.strings.BytesWriter
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: u8
+L0:
+    r0 = CPyBytesWriter_AdjustIndex(b, i)
+    r1 = CPyBytesWriter_RangeCheck(b, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyBytesWriter_GetItem(b, r0)
+    return r3
