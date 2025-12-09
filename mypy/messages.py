@@ -782,10 +782,11 @@ class MessageBuilder:
             simple_message = self.prefer_simple_messages() and not decorator_context
 
             if decorator_context:
+                decorator = cast(Decorator, outer_context)
                 arg_type_str, expected_type_str = format_type_distinctly(
                     arg_type, expected_type, bare=True, options=self.options
                 )
-                func_name = outer_context.func.name
+                func_name = decorator.func.name
                 msg = (
                     f'Decorated function "{func_name}" has incompatible type '
                     f"{quote_type_string(arg_type_str)}; expected "

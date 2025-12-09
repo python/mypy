@@ -3534,7 +3534,7 @@ def decorator2(f: Callable[P, None]) -> Callable[
 def key2(x: int) -> None:
     ...
 
-@decorator2(key2)  # E: Argument 1 has incompatible type "def foo2(y: int) -> Coroutine[Any, Any, None]"; expected "def (x: int) -> Awaitable[None]"
+@decorator2(key2)  # E: Decorated function "foo2" has incompatible type "def foo2(y: int) -> Coroutine[Any, Any, None]"; expected "def (x: int) -> Awaitable[None]"
 async def foo2(y: int) -> None:
     ...
 
