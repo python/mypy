@@ -81,6 +81,8 @@ bytes_writer_adjust_index_op = custom_primitive_op(
     return_type=int64_rprimitive,
     c_function_name="CPyBytesWriter_AdjustIndex",
     error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
 # BytesWriter range check - check if index is in valid range
@@ -90,6 +92,8 @@ bytes_writer_range_check_op = custom_primitive_op(
     return_type=bool_rprimitive,
     c_function_name="CPyBytesWriter_RangeCheck",
     error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
 # BytesWriter.__getitem__() - get byte at index (no bounds checking)
@@ -99,4 +103,6 @@ bytes_writer_get_item_op = custom_primitive_op(
     return_type=uint8_rprimitive,
     c_function_name="CPyBytesWriter_GetItem",
     error_kind=ERR_NEVER,
+    experimental=True,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
