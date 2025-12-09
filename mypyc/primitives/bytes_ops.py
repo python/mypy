@@ -7,6 +7,7 @@ from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RUnion,
     bit_rprimitive,
+    bool_rprimitive,
     bytes_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -137,6 +138,16 @@ method_op(
     c_function_name="CPyBytes_Translate",
     error_kind=ERR_MAGIC,
     dependencies=[BYTES_EXTRA_OPS],
+)
+
+# bytes.startswith(bytes)
+method_op(
+    name="startswith",
+    arg_types=[bytes_rprimitive, bytes_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyBytes_Startswith",
+    truncated_type=bool_rprimitive,
+    error_kind=ERR_MAGIC,
 )
 
 # Join bytes objects and return a new bytes.
