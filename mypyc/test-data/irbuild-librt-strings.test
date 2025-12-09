@@ -11,6 +11,8 @@ def bytes_writer_basics() -> bytes:
     return b.getvalue()
 def bytes_writer_len(b: BytesWriter) -> i64:
     return len(b)
+def bytes_writer_get_item(b: BytesWriter, i: i64) -> u8:
+    return b[i]
 [out]
 def bytes_writer_basics():
     r0, b :: librt.strings.BytesWriter
