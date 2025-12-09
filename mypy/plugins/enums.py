@@ -196,22 +196,11 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
             if _implements_new(info):
                 return ctx.default_attr_type
 
-            stnodes = (info.get(name) for name in info.names)
-
             # Enums _can_ have methods, instance attributes, and `nonmember`s.
             # Omit methods and attributes created by assigning to self.*
             # for our value inference.
-            node_types = (
-                get_proper_type(n.type) if n else None
-                for n in stnodes
-                if n is None or not n.implicit
-            )
-            proper_types = [
-                _infer_value_type_with_auto_fallback(ctx, t)
-                for t in node_types
-                if t is None
-                or (not isinstance(t, CallableType) and not is_named_instance(t, "enum.nonmember"))
-            ]
+            node_types = (get_proper_type(info[name].type) for name in info.enum_members)
+            proper_types = [_infer_value_type_with_auto_fallback(ctx, t) for t in node_types]
             underlying_type = _first(proper_types)
             if underlying_type is None:
                 return ctx.default_attr_type
