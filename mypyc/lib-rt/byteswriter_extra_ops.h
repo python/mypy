@@ -45,7 +45,7 @@ static inline int64_t CPyBytesWriter_AdjustIndex(PyObject *obj, int64_t index) {
 }
 
 static inline bool CPyBytesWriter_RangeCheck(PyObject *obj, int64_t index) {
-    return index >= 0 && index < ((PyBytesWriterObject *)obj)-> len;
+    return index >= 0 && index < ((BytesWriterObject *)obj)-> len;
 }
 
 static inline uint8_t CPyBytesWriter_GetItem(PyObject *obj, int64_t index) {
