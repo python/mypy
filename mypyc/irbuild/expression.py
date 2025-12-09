@@ -590,9 +590,7 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
 
     # Check for dunder specialization for non-slice indexing
     if not isinstance(index, SliceExpr):
-        specialized = apply_dunder_specialization(
-            builder, expr.base, [index], "__getitem__", expr
-        )
+        specialized = apply_dunder_specialization(builder, expr.base, [index], "__getitem__", expr)
         if specialized is not None:
             return specialized
 

@@ -55,6 +55,7 @@ from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
     bytes_rprimitive,
+    bytes_writer_rprimitive,
     c_int_rprimitive,
     dict_rprimitive,
     int16_rprimitive,
@@ -77,7 +78,6 @@ from mypyc.ir.rtypes import (
     set_rprimitive,
     str_rprimitive,
     uint8_rprimitive,
-    bytes_writer_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
@@ -102,14 +102,14 @@ from mypyc.primitives.dict_ops import (
     dict_values_op,
     isinstance_dict,
 )
+from mypyc.primitives.float_ops import isinstance_float
+from mypyc.primitives.generic_ops import generic_setattr, setup_object
+from mypyc.primitives.int_ops import isinstance_int
 from mypyc.primitives.librt_strings_ops import (
     bytes_writer_adjust_index_op,
     bytes_writer_get_item_op,
     bytes_writer_range_check_op,
 )
-from mypyc.primitives.float_ops import isinstance_float
-from mypyc.primitives.generic_ops import generic_setattr, setup_object
-from mypyc.primitives.int_ops import isinstance_int
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
@@ -201,9 +201,7 @@ def specialize_function(
     return wrapper
 
 
-def specialize_dunder(
-    name: str, typ: RType
-) -> Callable[[DunderSpecializer], DunderSpecializer]:
+def specialize_dunder(name: str, typ: RType) -> Callable[[DunderSpecializer], DunderSpecializer]:
     """Decorator to register a function as being a dunder specializer.
 
     Dunder specializers handle special method calls like __getitem__ that
@@ -221,7 +219,11 @@ def specialize_dunder(
 
 
 def apply_dunder_specialization(
-    builder: IRBuilder, base_expr: Expression, args: list[Expression], name: str, ctx_expr: Expression
+    builder: IRBuilder,
+    base_expr: Expression,
+    args: list[Expression],
+    name: str,
+    ctx_expr: Expression,
 ) -> Value | None:
     """Invoke the DunderSpecializer callback if one has been registered.
 
@@ -1219,10 +1221,14 @@ def translate_bytes_writer_get_item(
     index = builder.accept(args[0])
 
     # Adjust the index (handle negative indices)
-    adjusted_index = builder.primitive_op(bytes_writer_adjust_index_op, [obj, index], ctx_expr.line)
+    adjusted_index = builder.primitive_op(
+        bytes_writer_adjust_index_op, [obj, index], ctx_expr.line
+    )
 
     # Check if the adjusted index is in valid range
-    range_check = builder.primitive_op(bytes_writer_range_check_op, [obj, adjusted_index], ctx_expr.line)
+    range_check = builder.primitive_op(
+        bytes_writer_range_check_op, [obj, adjusted_index], ctx_expr.line
+    )
 
     # Create blocks for branching
     valid_block = BasicBlock()
@@ -1232,7 +1238,9 @@ def translate_bytes_writer_get_item(
 
     # Handle invalid index - raise IndexError
     builder.activate_block(invalid_block)
-    builder.add(RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line))
+    builder.add(
+        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
+    )
     builder.add(Unreachable())
 
     # Handle valid index - get the item

@@ -1,16 +1,14 @@
-from typing import Final
 
 from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
-    KNOWN_NATIVE_TYPES,
     bool_rprimitive,
     bytes_rprimitive,
+    bytes_writer_rprimitive,
     int64_rprimitive,
     none_rprimitive,
     short_int_rprimitive,
     uint8_rprimitive,
-    bytes_writer_rprimitive,
 )
 from mypyc.primitives.registry import custom_primitive_op, function_op, method_op
 
