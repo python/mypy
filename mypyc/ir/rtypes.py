@@ -38,8 +38,7 @@ NOTE: As a convention, we don't create subclasses of concrete RType
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar, final
-from typing_extensions import TypeGuard
+from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.namegen import NameGenerator
@@ -514,7 +513,11 @@ range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refc
 
 KNOWN_NATIVE_TYPES: Final = {
     name: RPrimitive(name, is_unboxed=False, is_refcounted=True)
-    for name in ["librt.internal.Buffer"]
+    for name in [
+        "librt.internal.WriteBuffer",
+        "librt.internal.ReadBuffer",
+        "librt.strings.BytesWriter",
+    ]
 }
 
 

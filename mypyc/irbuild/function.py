@@ -762,6 +762,7 @@ def gen_glue_method(
             builder.module_name,
             FuncSignature(rt_args, ret_type),
             target.decl.kind,
+            is_coroutine=target.decl.is_coroutine,
         ),
         arg_regs,
         blocks,

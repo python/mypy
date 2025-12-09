@@ -842,6 +842,10 @@ def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
                     if subcls is None:
                         # Override could be of a different type, so we can't make assumptions.
                         precise_ret_type = False
+                    elif class_ir.is_trait:
+                        # Give up on traits. We could possibly have an abstract base class
+                        # for generator return types to make this use precise types.
+                        precise_ret_type = False
                     else:
                         for s in subcls:
                             if name in s.method_decls:
