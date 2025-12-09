@@ -14,12 +14,12 @@ if sys.version_info < (3, 10, 0):  # noqa: UP036, RUF100
     exit(1)
 
 if platform.python_implementation() == "PyPy":
-    print(
-        "ERROR: Running mypy on PyPy is not supported yet."
-        "To type-check a PyPy library please use an equivalent CPython version,"
-        "see https://github.com/mypyc/librt/issues/16 for possible workarounds."
+    sys.stderr.write(
+        "ERROR: Running mypy on PyPy is not supported yet.\n"
+        "To type-check a PyPy library please use an equivalent CPython version,\n"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
     )
-    sys.exit(1)
+    exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
