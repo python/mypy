@@ -25,6 +25,7 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     The argument contains the description of the test case.
     """
     options = Options()
+    options.pretty = False
     options.show_traceback = True
     options.hide_error_codes = True
 

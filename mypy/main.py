@@ -1011,18 +1011,17 @@ def define_options(
         group=error_group,
     )
     add_invertible_flag(
-        "--pretty",
-        default=False,
-        help="Use visually nicer output in error messages:"
-        " Use soft word wrap, show source code snippets,"
-        " and show error location markers",
-        group=error_group,
-    )
-    add_invertible_flag(
         "--no-color-output",
         dest="color_output",
         default=True,
         help="Do not colorize error messages",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--no-pretty",
+        default=True,
+        dest="pretty",
+        help="Disable pretty error message",
         group=error_group,
     )
     add_invertible_flag(
