@@ -5,12 +5,21 @@ from __future__ import annotations
 import glob
 import os
 import os.path
+import platform
 import sys
 from typing import TYPE_CHECKING, Any
 
 if sys.version_info < (3, 10, 0):  # noqa: UP036, RUF100
     sys.stderr.write("ERROR: You need Python 3.10 or later to use mypy.\n")
     exit(1)
+
+if platform.python_implementation() == "PyPy":
+    print(
+        "ERROR: Running mypy on PyPy is not supported yet."
+        "To type-check a PyPy library please use an equivalent CPython version,"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds."
+    )
+    sys.exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
