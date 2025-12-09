@@ -36,6 +36,22 @@ CPyBytesWriter_Append(PyObject *obj, uint8_t value) {
 
 char CPyBytesWriter_Write(PyObject *obj, PyObject *value);
 
+// If index is negative, convert to non-negative index (no range checking)
+static inline int64_t CPyBytesWriter_AdjustIndex(PyObject *obj, int64_t index) {
+    if (index < 0) {
+        return index + ((BytesWriterObject *)obj)->len;
+    } else
+        return index;
+}
+
+static inline bool CPyBytesWriter_RangeCheck(PyObject *obj, int64_t index) {
+    return index >= 0 && index < ((PyBytesWriterObject *)obj)-> len;
+}
+
+static inline uint8_t CPyBytesWriter_GetItem(PyObject *obj, int64_t index) {
+    return (((BytesWriterObject *)obj)->buf)[index];
+}
+
 #endif // MYPYC_EXPERIMENTAL
 
 #endif
