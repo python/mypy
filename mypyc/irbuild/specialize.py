@@ -77,6 +77,7 @@ from mypyc.ir.rtypes import (
     set_rprimitive,
     str_rprimitive,
     uint8_rprimitive,
+    bytes_writer_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
@@ -100,6 +101,11 @@ from mypyc.primitives.dict_ops import (
     dict_setdefault_spec_init_op,
     dict_values_op,
     isinstance_dict,
+)
+from mypyc.primitives.librt_strings_ops import (
+    bytes_writer_adjust_index_op,
+    bytes_writer_get_item_op,
+    bytes_writer_range_check_op,
 )
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr, setup_object
@@ -1137,3 +1143,44 @@ def translate_object_setattr(builder: IRBuilder, expr: CallExpr, callee: RefExpr
 
     name_reg = builder.accept(attr_name)
     return builder.call_c(generic_setattr, [self_reg, name_reg, value], expr.line)
+
+
+@specialize_function("__getitem__", bytes_writer_rprimitive)
+def translate_bytes_writer_get_item(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Optimized BytesWriter.__getitem__ implementation with bounds checking."""
+    print('here')
+    # Check that we have exactly one positional argument
+    if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
+        return None
+
+    if not isinstance(callee, MemberExpr):
+        return None
+
+    # Get the BytesWriter object
+    obj = builder.accept(callee.expr)
+
+    # Get the index argument
+    index = builder.accept(expr.args[0])
+
+    # Adjust the index (handle negative indices)
+    adjusted_index = builder.primitive_op(bytes_writer_adjust_index_op, [obj, index], expr.line)
+
+    # Check if the adjusted index is in valid range
+    range_check = builder.primitive_op(bytes_writer_range_check_op, [obj, adjusted_index], expr.line)
+
+    # Create blocks for branching
+    valid_block = BasicBlock()
+    invalid_block = BasicBlock()
+
+    builder.add_bool_branch(range_check, valid_block, invalid_block)
+
+    # Handle invalid index - raise IndexError
+    builder.activate_block(invalid_block)
+    builder.add(RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", expr.line))
+    builder.add(Unreachable())
+
+    # Handle valid index - get the item
+    builder.activate_block(valid_block)
+    result = builder.primitive_op(bytes_writer_get_item_op, [obj, adjusted_index], expr.line)
+
+    return result
