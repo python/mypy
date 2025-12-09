@@ -520,6 +520,8 @@ KNOWN_NATIVE_TYPES: Final = {
     ]
 }
 
+bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
+
 
 def is_native_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name in KNOWN_NATIVE_TYPES

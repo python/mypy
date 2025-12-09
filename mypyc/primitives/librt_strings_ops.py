@@ -10,10 +10,9 @@ from mypyc.ir.rtypes import (
     none_rprimitive,
     short_int_rprimitive,
     uint8_rprimitive,
+    bytes_writer_rprimitive,
 )
 from mypyc.primitives.registry import custom_primitive_op, function_op, method_op
-
-bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
 
 function_op(
     name="librt.strings.BytesWriter",
