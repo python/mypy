@@ -68,9 +68,10 @@ faster-cache = ["orjson"]
 
 [dependency-groups]
 dev = [
-  # Not strictly needed for building per se, but pip-compile from this package is needed if you want to update the requirement files. (Word on the street is you can also use uv pip compile instead.):
-  "pip-tools>=7.5.1",
-  "pip<25.3", # workaround for this problem until its fix gets released: https://github.com/jazzband/pip-tools/pull/2253
+  # This is not strictly needed for building the mypy per se, but pip-compile from this package is needed if you want to update the requirement files:
+  # (Word on the street is you can also use uv pip compile instead of pip-compile, for this task, if you want.)
+  "pip-tools>=7.5.2", # TODO: once https://github.com/jazzband/pip-tools/pull/2257 lands, change to pip-tools[stable] instead of specifying a version
+  "pip<=25.3", # TODO: once https://github.com/jazzband/pip-tools/pull/2257 lands, remove this dependency line altogether
 ]
 
 [project.urls]
