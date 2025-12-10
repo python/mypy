@@ -142,6 +142,10 @@ typedef PyObject CPyModule;
 // Error value for floats
 #define CPY_FLOAT_ERROR -113.0
 
+// Value for 'None' primitive type
+#define CPY_NONE_ERROR 2
+#define CPY_NONE 1
+
 typedef void (*CPyVTableItem)(void);
 
 static inline CPyTagged CPyTagged_ShortFromInt(int x) {

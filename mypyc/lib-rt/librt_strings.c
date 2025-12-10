@@ -7,29 +7,18 @@
 #include "librt_strings.h"
 
 #define CPY_BOOL_ERROR 2
-#define CPY_NONE_ERROR 2
-#define CPY_NONE 1
 
 //
 // BytesWriter
 //
-
-// Length of the default buffer embedded directly in a BytesWriter object
-#define WRITER_EMBEDDED_BUF_LEN 512
-
-typedef struct {
-    PyObject_HEAD
-    char *buf;  // Beginning of the buffer
-    Py_ssize_t len;  // Current length (number of bytes written)
-    Py_ssize_t capacity;  // Total capacity of the buffer
-    char data[WRITER_EMBEDDED_BUF_LEN];  // Default buffer
-} BytesWriterObject;
 
 #define _WRITE(data, type, v) \
     do { \
        *(type *)(((BytesWriterObject *)data)->buf + ((BytesWriterObject *)data)->len) = v; \
        ((BytesWriterObject *)data)->len += sizeof(type); \
     } while (0)
+
+#ifdef MYPYC_EXPERIMENTAL
 
 static PyTypeObject BytesWriterType;
 
@@ -390,6 +379,8 @@ BytesWriter_len_internal(PyObject *self) {
     return writer->len << 1;
 }
 
+#endif
+
 static PyMethodDef librt_strings_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
@@ -426,9 +417,8 @@ librt_strings_module_exec(PyObject *m)
         (void *)BytesWriter_internal,
         (void *)BytesWriter_getvalue_internal,
         (void *)BytesWriter_append_internal,
-        (void *)BytesWriter_write_internal,
+        (void *)_grow_buffer,
         (void *)BytesWriter_type_internal,
-        (void *)BytesWriter_len_internal,
         (void *)BytesWriter_truncate_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);

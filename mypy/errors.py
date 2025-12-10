@@ -951,7 +951,7 @@ class Errors:
             self.new_messages(), use_stdout=use_stdout, module_with_blocker=self.blocker_module()
         )
 
-    def format_messages(
+    def format_messages_default(
         self, error_tuples: list[ErrorTuple], source_lines: list[str] | None
     ) -> list[str]:
         """Return a string list that represents the error messages.
@@ -1009,24 +1009,28 @@ class Errors:
                     a.append(" " * (DEFAULT_SOURCE_OFFSET + column) + marker)
         return a
 
-    def file_messages(self, path: str, formatter: ErrorFormatter | None = None) -> list[str]:
-        """Return a string list of new error messages from a given file.
-
-        Use a form suitable for displaying to the user.
-        """
+    def file_messages(self, path: str) -> list[ErrorTuple]:
+        """Return an error tuple list of new error messages from a given file."""
         if path not in self.error_info_map:
             return []
 
         error_info = self.error_info_map[path]
         error_info = [info for info in error_info if not info.hidden]
         error_info = self.remove_duplicates(self.sort_messages(error_info))
-        error_tuples = self.render_messages(error_info)
+        return self.render_messages(error_info)
 
+    def format_messages(
+        self, path: str, error_tuples: list[ErrorTuple], formatter: ErrorFormatter | None = None
+    ) -> list[str]:
+        """Return a string list of new error messages from a given file.
+
+        Use a form suitable for displaying to the user.
+        """
+        self.flushed_files.add(path)
         if formatter is not None:
             errors = create_errors(error_tuples)
             return [formatter.report_error(err) for err in errors]
 
-        self.flushed_files.add(path)
         source_lines = None
         if self.options.pretty and self.read_source:
             # Find shadow file mapping and read source lines if a shadow file exists for the given path.
@@ -1036,7 +1040,7 @@ class Errors:
                 source_lines = self.read_source(mapped_path)
             else:
                 source_lines = self.read_source(path)
-        return self.format_messages(error_tuples, source_lines)
+        return self.format_messages_default(error_tuples, source_lines)
 
     def find_shadow_file_mapping(self, path: str) -> str | None:
         """Return the shadow file path for a given source file path or None."""
@@ -1058,7 +1062,8 @@ class Errors:
         msgs = []
         for path in self.error_info_map.keys():
             if path not in self.flushed_files:
-                msgs.extend(self.file_messages(path))
+                error_tuples = self.file_messages(path)
+                msgs.extend(self.format_messages(path, error_tuples))
         return msgs
 
     def targets(self) -> set[str]:
