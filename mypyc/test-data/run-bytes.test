@@ -213,6 +213,14 @@ def test_startswith() -> None:
     assert b''.startswith(b'')
     assert not b''.startswith(test)
 
+    # Test bytearray to verify slow paths
+    assert test.startswith(bytearray(b'some'))
+    assert not test.startswith(bytearray(b'other'))
+
+    test = bytearray(b'some string')
+    assert test.startswith(b'some')
+    assert not test.startswith(b'other')
+
 [case testBytesSlicing]
 def test_bytes_slicing() -> None:
     b = b'abcdefg'

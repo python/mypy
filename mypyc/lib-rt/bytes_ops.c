@@ -178,19 +178,18 @@ int CPyBytes_Startswith(PyObject *self, PyObject *subobj) {
             return 1;
         }
 
-        Py_ssize_t self_len = PyBytes_GET_SIZE(self);
         Py_ssize_t subobj_len = PyBytes_GET_SIZE(subobj);
+        if (subobj_len == 0) {
+            return 1;
+        }
 
+        Py_ssize_t self_len = PyBytes_GET_SIZE(self);
         if (subobj_len > self_len) {
             return 0;
         }
 
         const char *self_buf = PyBytes_AS_STRING(self);
         const char *subobj_buf = PyBytes_AS_STRING(subobj);
-
-        if (subobj_len == 0) {
-            return 1;
-        }
 
         return memcmp(self_buf, subobj_buf, (size_t)subobj_len) == 0 ? 1 : 0;
     }
