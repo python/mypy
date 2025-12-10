@@ -7626,3 +7626,13 @@ y = 1
 class C: ...
 [out2]
 tmp/m.py:2: note: Revealed type is "def () -> other.C"
+
+[case testOutputFormatterIncremental]
+# flags2: --output json
+def wrong() -> int:
+    if wrong():
+        return 0
+[out]
+main:2: error: Missing return statement
+[out2]
+{"file": "main", "line": 2, "column": 0, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}
