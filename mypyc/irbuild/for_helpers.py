@@ -12,7 +12,6 @@ from typing import ClassVar, cast
 
 from mypy.nodes import (
     ARG_POS,
-    BytesExpr,
     CallExpr,
     DictionaryComprehension,
     Expression,
@@ -24,10 +23,8 @@ from mypy.nodes import (
     RefExpr,
     SetExpr,
     StarExpr,
-    StrExpr,
     TupleExpr,
     TypeAlias,
-    Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
 from mypyc.ir.ops import (
@@ -68,6 +65,7 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.primitives.dict_ops import (
@@ -1225,8 +1223,9 @@ class ForZip(ForGenerator):
 
 
 def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
-    if isinstance(expr, (StrExpr, BytesExpr)):
-        return len(expr.value)
+    folded = constant_fold_expr(builder, expr)
+    if isinstance(folded, (str, bytes)):
+        return len(folded)
     elif isinstance(expr, (ListExpr, TupleExpr)):
         # if there are no star expressions, or we know the length of them,
         # we know the length of the expression
@@ -1236,14 +1235,6 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
             return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
         return get_expr_length(builder, expr.expr)
-    elif (
-        isinstance(expr, RefExpr)
-        and isinstance(expr.node, Var)
-        and expr.node.is_final
-        and isinstance(expr.node.final_value, str)
-        and expr.node.has_explicit_value
-    ):
-        return len(expr.node.final_value)
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
