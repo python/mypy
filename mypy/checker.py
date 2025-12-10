@@ -4,21 +4,19 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
 from typing import (
-    Callable,
     Final,
     Generic,
     Literal,
     NamedTuple,
-    Optional,
+    TypeAlias as _TypeAlias,
+    TypeGuard,
     TypeVar,
-    Union,
     cast,
     overload,
 )
-from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
@@ -249,8 +247,8 @@ DEFAULT_LAST_PASS: Final = 2  # Pass numbers start at 0
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
 MAX_PRECISE_TUPLE_SIZE: Final = 8
 
-DeferredNodeType: _TypeAlias = Union[FuncDef, OverloadedFuncDef, Decorator]
-FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
+DeferredNodeType: _TypeAlias = FuncDef | OverloadedFuncDef | Decorator
+FineGrainedDeferredNodeType: _TypeAlias = FuncDef | MypyFile | OverloadedFuncDef
 
 
 # A node which is postponed to be processed during the next pass.
@@ -283,7 +281,7 @@ class FineGrainedDeferredNode(NamedTuple):
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
-TypeMap: _TypeAlias = Optional[dict[Expression, Type]]
+TypeMap: _TypeAlias = dict[Expression, Type] | None
 
 
 # Keeps track of partial types in a single scope. In fine-grained incremental
@@ -2578,7 +2576,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         continue
                     if not is_subtype(original_arg_type, erase_override(override_arg_type)):
                         context: Context = node
-                        if isinstance(node, FuncDef) and not node.is_property:
+                        if (
+                            isinstance(node, FuncDef)
+                            and not node.is_property
+                            and (
+                                not node.is_decorated  # fast path
+                                # allow trivial decorators like @classmethod and @override
+                                or not (sym := node.info.get(node.name))
+                                or not isinstance(sym.node, Decorator)
+                                or not sym.node.decorators
+                            )
+                        ):
+                            # If there's any decorator, we can no longer map arguments 1:1 reliably.
                             arg_node = node.arguments[i + override.bound()]
                             if arg_node.line != -1:
                                 context = arg_node
@@ -3413,7 +3422,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             and lvalue_type is not None
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
-                elif self.options.allow_redefinition_new and lvalue_type is not None:
+                elif (
+                    self.options.allow_redefinition_new
+                    and lvalue_type is not None
+                    and not isinstance(lvalue_type, PartialType)
+                ):
                     # TODO: Can we use put() here?
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
 
@@ -4102,9 +4115,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.check_multi_assignment_from_union(
                 lvalues, rvalue, rvalue_type, context, infer_lvalue_type
             )
-        elif isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
-            self.msg.unpacking_strings_disallowed(context)
         else:
+            rvalue_literal = rvalue_type
+            if isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
+                if rvalue_type.last_known_value is None:
+                    self.msg.unpacking_strings_disallowed(context)
+                else:
+                    rvalue_literal = rvalue_type.last_known_value
+            if (
+                isinstance(rvalue_literal, LiteralType)
+                and isinstance(rvalue_literal.value, str)
+                and len(lvalues) != len(rvalue_literal.value)
+            ):
+                self.msg.unpacking_strings_disallowed(context)
+
             self.check_multi_assignment_from_iterable(
                 lvalues, rvalue_type, context, infer_lvalue_type
             )
@@ -4350,9 +4374,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         infer_lvalue_type: bool = True,
     ) -> None:
         rvalue_type = get_proper_type(rvalue_type)
-        if self.type_is_iterable(rvalue_type) and isinstance(
-            rvalue_type, (Instance, CallableType, TypeType, Overloaded)
-        ):
+        if self.type_is_iterable(rvalue_type):
             item_type = self.iterable_item_type(rvalue_type, context)
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
@@ -5294,16 +5316,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Helper for check_except_handler_test to retrieve handler types."""
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
-            return typ.items
+            merged_type = make_simplified_union(typ.items)
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
+        elif is_named_instance(typ, "builtins.tuple"):
+            # variadic tuple
+            merged_type = make_simplified_union((typ.args[0],))
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
         elif isinstance(typ, UnionType):
             return [
                 union_typ
                 for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
-        elif is_named_instance(typ, "builtins.tuple"):
-            # variadic tuple
-            return [typ.args[0]]
         else:
             return [typ]
 
@@ -7784,9 +7812,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return
         self.msg.note(msg, context, offset=offset, code=code)
 
-    def iterable_item_type(
-        self, it: Instance | CallableType | TypeType | Overloaded, context: Context
-    ) -> Type:
+    def iterable_item_type(self, it: ProperType, context: Context) -> Type:
         if isinstance(it, Instance):
             iterable = map_instance_to_supertype(it, self.lookup_typeinfo("typing.Iterable"))
             item_type = iterable.args[0]
@@ -8725,8 +8751,9 @@ def is_unsafe_overlapping_overload_signatures(
     # Note: We repeat this check twice in both directions compensate for slight
     # asymmetries in 'is_callable_compatible'.
 
+    other_expanded = expand_callable_variants(other)
     for sig_variant in expand_callable_variants(signature):
-        for other_variant in expand_callable_variants(other):
+        for other_variant in other_expanded:
             # Using only expanded callables may cause false negatives, we can add
             # more variants (e.g. using inference between callables) in the future.
             if is_subset_no_promote(sig_variant.ret_type, other_variant.ret_type):

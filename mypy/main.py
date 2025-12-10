@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import subprocess
 import sys
 import time
@@ -20,6 +21,7 @@ from mypy.config_parser import (
     parse_version,
     validate_package_allow_list,
 )
+from mypy.defaults import RECURSION_LIMIT
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -39,10 +41,16 @@ from mypy.version import __version__
 if TYPE_CHECKING:
     from _typeshed import SupportsWrite
 
+if platform.python_implementation() == "PyPy":
+    sys.stderr.write(
+        "ERROR: Running mypy on PyPy is not supported yet.\n"
+        "To type-check a PyPy library please use an equivalent CPython version,\n"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
+    )
+    sys.exit(2)
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
-RECURSION_LIMIT: Final = 2**14
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -815,6 +823,10 @@ def define_options(
     add_invertible_flag(
         "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
     )
+    # For internal use only! Will be removed once Mypy drops support for Python 3.9.
+    add_invertible_flag(
+        "--overwrite-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
+    )
 
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
@@ -1151,6 +1163,11 @@ def define_options(
     )
     # This undocumented feature exports limited line-level dependency information.
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
+
+    # Experimental parallel type-checking support.
+    internals_group.add_argument(
+        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
+    )
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."

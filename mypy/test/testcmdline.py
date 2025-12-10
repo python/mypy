@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -20,7 +21,11 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore[import-untyped]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        lxml = None
+    else:
+        import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
@@ -55,14 +60,13 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     args = parse_args(testcase.input[0])
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append("--show-traceback")
+    args.append("--overwrite-union-syntax")
     if "--error-summary" not in args:
         args.append("--no-error-summary")
     if "--show-error-codes" not in args:
         args.append("--hide-error-codes")
     if "--disallow-empty-bodies" not in args:
         args.append("--allow-empty-bodies")
-    if "--no-force-union-syntax" not in args:
-        args.append("--force-union-syntax")
     # Type check the program.
     fixed = [python3_path, "-m", "mypy"]
     env = os.environ.copy()

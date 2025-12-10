@@ -50,13 +50,15 @@ class ParseTestDataSuite(Suite):
             """
             [case abc]
             s: str
-            [out version>=3.9]
+            [out version>=3.10]
             abc
             """
         )
 
         # Assert
-        assert "version>=3.9 always true since minimum runtime version is (3, 9)" in actual.stdout
+        assert (
+            "version>=3.10 always true since minimum runtime version is (3, 10)" in actual.stdout
+        )
 
     def test_bad_eq_version_check(self) -> None:
         # Act
@@ -70,4 +72,6 @@ class ParseTestDataSuite(Suite):
         )
 
         # Assert
-        assert "version==3.7 always false since minimum runtime version is (3, 9)" in actual.stdout
+        assert (
+            "version==3.7 always false since minimum runtime version is (3, 10)" in actual.stdout
+        )

@@ -27,16 +27,18 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, Union, final
+from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, final
 
 from mypy_extensions import trait
 
+from mypyc.ir.deps import Dependency
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
     RStruct,
     RTuple,
     RType,
+    RUnion,
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
@@ -44,6 +46,7 @@ from mypyc.ir.rtypes import (
     float_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
+    is_fixed_width_rtype,
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
@@ -688,7 +691,7 @@ class PrimitiveDescription:
     Primitives get lowered into lower-level ops before code generation.
 
     If c_function_name is provided, a primitive will be lowered into a CallC op.
-    Otherwise custom logic will need to be implemented to transform the
+    Otherwise, custom logic will need to be implemented to transform the
     primitive into lower-level ops.
     """
 
@@ -707,6 +710,8 @@ class PrimitiveDescription:
         extra_int_constants: list[tuple[int, RType]],
         priority: int,
         is_pure: bool,
+        experimental: bool,
+        dependencies: list[Dependency] | None,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -729,9 +734,28 @@ class PrimitiveDescription:
         self.is_pure: Final = is_pure
         if is_pure:
             assert error_kind == ERR_NEVER
+        # Experimental primitives are not used unless mypyc experimental features are
+        # explicitly enabled
+        self.experimental = experimental
+        # Dependencies for the primitive, such as a capsule that needs to imported
+        # and configured to call the primitive.
+        self.dependencies = dependencies
+        # Native integer types such as u8 can cause ambiguity in primitive
+        # matching, since these are assignable to plain int *and* vice versa.
+        # If this flag is set, the primitive has native integer types and must
+        # be matched using more complex rules.
+        self.is_ambiguous = any(has_fixed_width_int(t) for t in arg_types)
 
     def __repr__(self) -> str:
         return f"<PrimitiveDescription {self.name!r}: {self.arg_types}>"
+
+
+def has_fixed_width_int(t: RType) -> bool:
+    if isinstance(t, RTuple):
+        return any(has_fixed_width_int(t) for t in t.types)
+    elif isinstance(t, RUnion):
+        return any(has_fixed_width_int(t) for t in t.items)
+    return is_fixed_width_rtype(t)
 
 
 @final
@@ -1204,7 +1228,7 @@ class RaiseStandardError(RegisterOp):
 
 
 # True steals all arguments, False steals none, a list steals those in matching positions
-StealsDescription = Union[bool, list[bool]]
+StealsDescription = bool | list[bool]
 
 
 @final
@@ -1229,6 +1253,7 @@ class CallC(RegisterOp):
         *,
         is_pure: bool = False,
         returns_null: bool = False,
+        dependencies: list[Dependency] | None = None,
     ) -> None:
         self.error_kind = error_kind
         super().__init__(line)
@@ -1246,6 +1271,9 @@ class CallC(RegisterOp):
         # The function might return a null value that does not indicate
         # an error.
         self.returns_null = returns_null
+        # Dependencies (such as capsules) that must be imported and initialized before
+        # calling this function (used for C functions exported from librt).
+        self.dependencies = dependencies
         if is_pure or returns_null:
             assert error_kind == ERR_NEVER
 
