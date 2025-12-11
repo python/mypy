@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 // String primitive operations
 //
 // These are registered in mypyc.primitives.str_ops.
@@ -321,7 +323,7 @@ static PyObject *_PyStr_XStrip(PyObject *self, int striptype, PyObject *sepobj) 
 
 // Copied from do_strip function in cpython.git/Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
 PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep) {
-    if (sep == NULL || sep == Py_None) {
+    if (sep == NULL || Py_IsNone(sep)) {
         Py_ssize_t len, i, j;
 
         // This check is needed from Python 3.9 and earlier.
@@ -618,4 +620,13 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
     PyErr_Format(
         PyExc_TypeError, "ord() expected a character, but a string of length %zd found", s);
     return CPY_INT_TAG;
+}
+
+PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
+    Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
+    if (temp_count == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+    return PySequence_Repeat(str, temp_count);
 }

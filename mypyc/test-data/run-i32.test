@@ -15,10 +15,10 @@ def test_box_and_unbox() -> None:
         o2: Any = x
         assert o == o2
         assert x == i
-    with assertRaises(OverflowError, "int too large to convert to i32"):
+    with assertRaises(ValueError, "int too large to convert to i32"):
         o = 2**31
         x2: i32 = o
-    with assertRaises(OverflowError, "int too large to convert to i32"):
+    with assertRaises(ValueError, "int too large to convert to i32"):
         o = -2**32 - 1
         x3: i32 = o
 
@@ -209,13 +209,13 @@ def test_mixed_comparisons() -> None:
 
     int_too_big = int() + (1 << 31)
     int_too_small = int() - (1 << 31) - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i32_3 < int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_big < i32_3
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i32_3 > int_too_small
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small < i32_3
 
 def test_mixed_arithmetic_and_bitwise_ops() -> None:
@@ -235,9 +235,9 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
 
     int_too_big = int() + (1 << 31)
     int_too_small = int() - (1 << 31) - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i32_3 & int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small & i32_3
 
 def test_coerce_to_and_from_int() -> None:
@@ -281,11 +281,11 @@ def test_explicit_conversion_overflow() -> None:
     assert int(y) == min_i32
 
     too_big = int() + 2**31
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = i32(too_big)
 
     too_small = int() - 2**31 - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = i32(too_small)
 
 def test_i32_from_large_small_literal() -> None:
@@ -318,9 +318,9 @@ def test_explicit_conversion_from_float() -> None:
     assert from_float(2**31 - 1) == 2**31 - 1
     assert from_float(-2**31) == -2**31
     # The error message could be better, but this is acceptable
-    with assertRaises(OverflowError, "int too large to convert to i32"):
+    with assertRaises(ValueError, "int too large to convert to i32"):
         assert from_float(float(2**31))
-    with assertRaises(OverflowError, "int too large to convert to i32"):
+    with assertRaises(ValueError, "int too large to convert to i32"):
         # One ulp below the lowest valid i64 value
         from_float(float(-2**31 - 2048))
 

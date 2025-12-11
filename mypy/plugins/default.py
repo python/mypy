@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import partial
-from typing import Callable, Final
+from typing import Final
 
 import mypy.errorcodes as codes
 from mypy import message_registry

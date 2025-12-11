@@ -13,16 +13,16 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, Union
-from typing_extensions import Never, TypeAlias
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from typing import Any, Final, TextIO, TypeAlias
+from typing_extensions import Never
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
 
-_CONFIG_VALUE_TYPES: TypeAlias = Union[
-    str, bool, int, float, dict[str, str], list[str], tuple[int, int]
-]
+_CONFIG_VALUE_TYPES: TypeAlias = (
+    str | bool | int | float | dict[str, str] | list[str] | tuple[int, int]
+)
 _INI_PARSER_CALLABLE: TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 

@@ -9,7 +9,7 @@ It finds missing ``get_proper_type()`` call, which can lead to multiple errors.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from mypy.checker import TypeChecker
 from mypy.nodes import TypeInfo
@@ -108,6 +108,7 @@ def is_special_target(right: ProperType) -> bool:
             "mypy.types.RequiredType",
             "mypy.types.ReadOnlyType",
             "mypy.types.TypeGuardedType",
+            "mypy.types.PlaceholderType",
         ):
             # Special case: these are not valid targets for a type alias and thus safe.
             # TODO: introduce a SyntheticType base to simplify this?
