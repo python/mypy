@@ -2336,7 +2336,6 @@ tmp/c.py:1: error: Module "d" has no attribute "x"
 [out]
 [out2]
 mypy: can't read file 'tmp/nonexistent.py': No such file or directory
--- '
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod

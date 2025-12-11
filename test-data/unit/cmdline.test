@@ -117,7 +117,6 @@ sub.pkg is not a valid Python package name
 mypy: can't decode file 'a.py': unknown encoding: uft-8
 == Return code: 2
 
--- '
 [case testCannotIgnoreDuplicateModule]
 # cmd: mypy one/mod/__init__.py two/mod/__init__.py
 [file one/mod/__init__.py]
@@ -546,7 +545,6 @@ a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; 
 [out]
 mypy: can't read file 'nope.py': No such file or directory
 == Return code: 2
---'
 
 [case testModulesAndPackages]
 # cmd: mypy --package p.a --package p.b --module c
