@@ -34,8 +34,17 @@ class ErrorCode:
             sub_code_map[sub_code_of.code].add(code)
         error_codes[code] = self
 
-    def is_import_related_code(self) -> bool:
-        return IMPORT in (self.code, self.sub_code_of)
+    @staticmethod
+    def is_code_or_sub_code_of(
+        possible_child_code: ErrorCode | None, possible_parent_code: ErrorCode
+    ) -> bool:
+        """Check if the first code ⊆ the second code, so to speak.
+        If None is supplied as the first argument, this is always false.
+        Again, to quote the assert in ErrorCode above, "Nested subcategories are not supported"."""
+        if possible_child_code is None:
+            return False
+        else:
+            return possible_parent_code in (possible_child_code, possible_child_code.sub_code_of)
 
     def __str__(self) -> str:
         return f"<ErrorCode {self.code}>"

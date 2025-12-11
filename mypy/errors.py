@@ -11,7 +11,7 @@ from typing_extensions import Self
 
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
-from mypy.errorcodes import ErrorCode, mypy_error_codes
+from mypy.errorcodes import IMPORT, ErrorCode, mypy_error_codes
 from mypy.nodes import Context
 from mypy.options import Options
 from mypy.scope import Scope
@@ -583,7 +583,7 @@ class Errors:
         self.error_info_map[file].append(info)
         if info.blocker:
             self.has_blockers.add(file)
-        if info.code is not None and info.code.is_import_related_code():
+        if ErrorCode.is_code_or_sub_code_of(info.code, IMPORT):
             self.seen_import_error = True
 
     def get_watchers(self) -> Iterator[ErrorWatcher]:
@@ -630,7 +630,7 @@ class Errors:
             self.only_once_messages.add(info.message)
         if (
             self.seen_import_error
-            and (info.code is None or (not info.code.is_import_related_code()))
+            and ErrorCode.is_code_or_sub_code_of(info.code, IMPORT)
             and self.has_many_errors()
         ):
             # Missing stubs can easily cause thousands of errors about
