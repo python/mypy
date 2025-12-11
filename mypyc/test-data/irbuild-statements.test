@@ -1052,3 +1052,123 @@ def _(arg): pass
 def _(arg): pass
 [out]
 main:2: error: Duplicate definition of "_" not supported by mypyc
+
+[case testAnyAllForHelper]
+from typing import Iterable
+def call_any_helper(l: list[Iterable[int]]) -> bool:
+    return any([str(i) for i in l])
+def call_all_helper(l: list[Iterable[int]]) -> bool:
+    return all([str(i) for i in l])
+[out]
+def call_any_helper(l):
+    l :: list
+    r0 :: bool
+    r1 :: native_int
+    r2 :: list
+    r3, r4 :: native_int
+    r5 :: bit
+    r6, i :: object
+    r7 :: str
+    r8, r9, r10 :: native_int
+    r11 :: bit
+    r12 :: object
+    r13, __mypyc_any_item___0 :: str
+    r14 :: bit
+    r15 :: native_int
+L0:
+    r0 = 0
+    r1 = var_object_size l
+    r2 = PyList_New(r1)
+    r3 = 0
+L1:
+    r4 = var_object_size l
+    r5 = r3 < r4 :: signed
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    r6 = list_get_item_unsafe l, r3
+    i = r6
+    r7 = PyObject_Str(i)
+    CPyList_SetItemUnsafe(r2, r3, r7)
+L3:
+    r8 = r3 + 1
+    r3 = r8
+    goto L1
+L4:
+    r9 = 0
+L5:
+    r10 = var_object_size r2
+    r11 = r9 < r10 :: signed
+    if r11 goto L6 else goto L10 :: bool
+L6:
+    r12 = list_get_item_unsafe r2, r9
+    r13 = cast(str, r12)
+    __mypyc_any_item___0 = r13
+    r14 = CPyStr_IsTrue(__mypyc_any_item___0)
+    if r14 goto L7 else goto L8 :: bool
+L7:
+    r0 = 1
+    goto L11
+L8:
+L9:
+    r15 = r9 + 1
+    r9 = r15
+    goto L5
+L10:
+L11:
+    return r0
+def call_all_helper(l):
+    l :: list
+    r0 :: bool
+    r1 :: native_int
+    r2 :: list
+    r3, r4 :: native_int
+    r5 :: bit
+    r6, i :: object
+    r7 :: str
+    r8, r9, r10 :: native_int
+    r11 :: bit
+    r12 :: object
+    r13, __mypyc_all_item___1 :: str
+    r14 :: bit
+    r15 :: native_int
+L0:
+    r0 = 1
+    r1 = var_object_size l
+    r2 = PyList_New(r1)
+    r3 = 0
+L1:
+    r4 = var_object_size l
+    r5 = r3 < r4 :: signed
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    r6 = list_get_item_unsafe l, r3
+    i = r6
+    r7 = PyObject_Str(i)
+    CPyList_SetItemUnsafe(r2, r3, r7)
+L3:
+    r8 = r3 + 1
+    r3 = r8
+    goto L1
+L4:
+    r9 = 0
+L5:
+    r10 = var_object_size r2
+    r11 = r9 < r10 :: signed
+    if r11 goto L6 else goto L10 :: bool
+L6:
+    r12 = list_get_item_unsafe r2, r9
+    r13 = cast(str, r12)
+    __mypyc_all_item___1 = r13
+    r14 = CPyStr_IsTrue(__mypyc_all_item___1)
+    if r14 goto L8 else goto L7 :: bool
+L7:
+    r0 = 0
+    goto L11
+L8:
+L9:
+    r15 = r9 + 1
+    r9 = r15
+    goto L5
+L10:
+L11:
+    return r0
