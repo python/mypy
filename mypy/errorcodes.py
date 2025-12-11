@@ -42,6 +42,7 @@ class ErrorCode:
         If None is supplied as the first argument, this is always false.
         Again, to quote the assert in ErrorCode above, "Nested subcategories are not supported"."""
         if possible_child_code is None:
+            # This check is pretty much entirely just so we can do type-safe property access later.
             return False
         else:
             return possible_parent_code in (possible_child_code, possible_child_code.sub_code_of)
