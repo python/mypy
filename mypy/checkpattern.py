@@ -46,6 +46,7 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeType,
     TypeVarTupleType,
     TypeVarType,
     UninhabitedType,
@@ -556,6 +557,8 @@ class PatternChecker(PatternVisitor[PatternType]):
             fallback = self.chk.named_type("builtins.function")
             any_type = AnyType(TypeOfAny.unannotated)
             typ = callable_with_ellipsis(any_type, ret_type=any_type, fallback=fallback)
+        elif isinstance(p_typ, TypeType) and isinstance(p_typ.item, NoneType):
+            typ = p_typ.item
         elif not isinstance(p_typ, AnyType):
             self.msg.fail(
                 message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(

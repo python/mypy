@@ -228,6 +228,7 @@ async def sleep(t: float) -> None: ...
 
 [case testAsyncWith]
 from testutil import async_val
+from typing import Any
 
 class async_ctx:
     async def __aenter__(self) -> str:
@@ -242,15 +243,22 @@ async def async_with() -> str:
     async with async_ctx() as x:
         return await async_val("body")
 
+async def async_with_vectorcall() -> str:
+    ctx: Any = async_ctx()
+    async with ctx:
+        return await async_val("vc")
 
 [file driver.py]
-from native import async_with
+from native import async_with, async_with_vectorcall
 from testutil import run_generator
 
 yields, val = run_generator(async_with(), [None, 'x', None])
 assert yields == ('enter', 'body', 'exit'), yields
 assert val == 'x', val
 
+yields, val = run_generator(async_with_vectorcall(), [None, 'x', None])
+assert yields == ('enter', 'vc', 'exit'), yields
+assert val == 'x', val
 
 [case testAsyncReturn]
 from testutil import async_val
@@ -1516,7 +1524,9 @@ def test_method() -> None:
     assert str(T.returns_one_async).startswith("<function T.returns_one_async"), str(T.returns_one_async)
 
     t = T()
-    assert asyncio.run(t.returns_one_async()) == 1
+    # Call through variable to make sure the call is through vectorcall and not optimized to a native call.
+    f: Any = t.returns_one_async
+    assert asyncio.run(f()) == 1
 
     assert not is_coroutine(T.returns_two)
     assert is_coroutine(T.returns_two_async)
