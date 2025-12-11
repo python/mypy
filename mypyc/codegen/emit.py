@@ -23,7 +23,7 @@ from mypyc.common import (
     TYPE_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.ir.func_ir import FuncDecl, FuncIR, get_text_signature
+from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, get_text_signature
 from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import (
     RInstance,
@@ -1222,10 +1222,11 @@ class Emitter:
         cfunc = f"(PyCFunction){cname}"
         func_flags = "METH_FASTCALL | METH_KEYWORDS"
         doc = f"PyDoc_STR({native_function_doc_initializer(fn)})"
+        has_self_arg = "true" if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD else "false"
 
         code_flags = "CO_COROUTINE"
         self.emit_line(
-            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {func_flags}, {doc}, {fn.line}, {code_flags});'
+            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {func_flags}, {doc}, {fn.line}, {code_flags}, {has_self_arg});'
         )
         self.emit_line(f"if (unlikely(!{wrapper_name}))")
         self.emit_line(error_stmt)

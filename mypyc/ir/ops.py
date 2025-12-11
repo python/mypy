@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, final
 
 from mypy_extensions import trait
 
+from mypyc.ir.deps import Dependency
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
@@ -710,7 +711,7 @@ class PrimitiveDescription:
         priority: int,
         is_pure: bool,
         experimental: bool,
-        capsule: str | None,
+        dependencies: list[Dependency] | None,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -736,9 +737,9 @@ class PrimitiveDescription:
         # Experimental primitives are not used unless mypyc experimental features are
         # explicitly enabled
         self.experimental = experimental
-        # Capsule that needs to imported and configured to call the primitive
-        # (name of the target module, e.g. "librt.base64").
-        self.capsule = capsule
+        # Dependencies for the primitive, such as a capsule that needs to imported
+        # and configured to call the primitive.
+        self.dependencies = dependencies
         # Native integer types such as u8 can cause ambiguity in primitive
         # matching, since these are assignable to plain int *and* vice versa.
         # If this flag is set, the primitive has native integer types and must
@@ -1252,7 +1253,7 @@ class CallC(RegisterOp):
         *,
         is_pure: bool = False,
         returns_null: bool = False,
-        capsule: str | None = None,
+        dependencies: list[Dependency] | None = None,
     ) -> None:
         self.error_kind = error_kind
         super().__init__(line)
@@ -1270,9 +1271,9 @@ class CallC(RegisterOp):
         # The function might return a null value that does not indicate
         # an error.
         self.returns_null = returns_null
-        # A capsule from this module must be imported and initialized before calling this
-        # function (used for C functions exported from librt). Example value: "librt.base64"
-        self.capsule = capsule
+        # Dependencies (such as capsules) that must be imported and initialized before
+        # calling this function (used for C functions exported from librt).
+        self.dependencies = dependencies
         if is_pure or returns_null:
             assert error_kind == ERR_NEVER
 

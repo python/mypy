@@ -29,9 +29,9 @@ def bytes_writer_basics():
 L0:
     r0 = LibRTStrings_BytesWriter_internal()
     b = r0
-    r1 = LibRTStrings_BytesWriter_append_internal(b, 1)
+    r1 = CPyBytesWriter_Append(b, 1)
     r2 = b'foo'
-    r3 = LibRTStrings_BytesWriter_write_internal(b, r2)
+    r3 = CPyBytesWriter_Write(b, r2)
     n = 4
     r4 = n & 1
     r5 = r4 == 0
@@ -55,6 +55,6 @@ def bytes_writer_len(b):
     r0 :: short_int
     r1 :: i64
 L0:
-    r0 = LibRTStrings_BytesWriter_len_internal(b)
+    r0 = CPyBytesWriter_Len(b)
     r1 = r0 >> 1
     return r1

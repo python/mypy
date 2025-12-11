@@ -3178,3 +3178,19 @@ match 5:
         reveal_type(b)  # N: Revealed type is "Any"
     case BlahBlah(c=c):  # E: Name "BlahBlah" is not defined
         reveal_type(c)  # N: Revealed type is "Any"
+
+[case testMatchAllowsNoneTypeAsClass]
+import types
+
+class V:
+    X = types.NoneType
+
+def fun(val: str | None):
+    match val:
+        case V.X():
+            reveal_type(val)  # N: Revealed type is "None"
+
+    match val:
+        case types.NoneType():
+            reveal_type(val)  # N: Revealed type is "None"
+[builtins fixtures/tuple.pyi]
