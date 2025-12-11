@@ -971,7 +971,7 @@ typedef struct {
 
 PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
                           PyCFunction func, int func_flags, const char *func_doc,
-                          int first_line, int code_flags);
+                          int first_line, int code_flags, bool has_self_arg);
 PyObject* CPyFunction_get_name(PyObject *op, void *context);
 int CPyFunction_set_name(PyObject *op, PyObject *value, void *context);
 PyObject* CPyFunction_get_code(PyObject *op, void *context);
