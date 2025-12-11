@@ -25,6 +25,7 @@ from mypy.nodes import (
     StarExpr,
     TupleExpr,
     TypeAlias,
+    Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
 from mypyc.ir.ops import (
