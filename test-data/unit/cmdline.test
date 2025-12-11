@@ -117,7 +117,6 @@ sub.pkg is not a valid Python package name
 mypy: can't decode file 'a.py': unknown encoding: uft-8
 == Return code: 2
 
--- '
 [case testCannotIgnoreDuplicateModule]
 # cmd: mypy one/mod/__init__.py two/mod/__init__.py
 [file one/mod/__init__.py]
@@ -546,7 +545,6 @@ a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; 
 [out]
 mypy: can't read file 'nope.py': No such file or directory
 == Return code: 2
---'
 
 [case testModulesAndPackages]
 # cmd: mypy --package p.a --package p.b --module c
@@ -900,7 +898,7 @@ some_file.py:11: error: Incompatible types in assignment (expression has type
     ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
                                                         ^~~~~~~~~~~~~~~~~~~~~...
 some_file.py:11: error: Argument 1 to "some_interesting_method" of
-"OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
+"OneCustomClassName" has incompatible type "int | str | float"; expected
 "AnotherCustomClassDefinedBelow"
     ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
                                                                          ^~~
