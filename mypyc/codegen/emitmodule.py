@@ -27,7 +27,7 @@ from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
-from mypyc.analysis.capsule_deps import find_implicit_capsule_dependencies
+from mypyc.analysis.capsule_deps import find_implicit_op_dependencies
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import (
     Emitter,
@@ -56,6 +56,7 @@ from mypyc.common import (
     short_id_from_name,
 )
 from mypyc.errors import Errors
+from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, SourceDep
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -263,9 +264,9 @@ def compile_scc_to_ir(
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
             # Calculate implicit module dependencies (needed for librt)
-            capsules = find_implicit_capsule_dependencies(fn)
-            if capsules is not None:
-                module.capsules.update(capsules)
+            deps = find_implicit_op_dependencies(fn)
+            if deps is not None:
+                module.dependencies.update(deps)
             # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
@@ -427,6 +428,16 @@ def load_scc_from_cache(
     return modules
 
 
+def collect_source_dependencies(modules: dict[str, ModuleIR]) -> set[SourceDep]:
+    """Collect all SourceDep dependencies from all modules."""
+    source_deps: set[SourceDep] = set()
+    for module in modules.values():
+        for dep in module.dependencies:
+            if isinstance(dep, SourceDep):
+                source_deps.add(dep)
+    return source_deps
+
+
 def compile_modules_to_c(
     result: BuildResult, compiler_options: CompilerOptions, errors: Errors, groups: Groups
 ) -> tuple[ModuleIRs, list[FileContents], Mapper]:
@@ -560,6 +571,10 @@ class GroupGenerator:
         if self.compiler_options.include_runtime_files:
             for name in RUNTIME_C_FILES:
                 base_emitter.emit_line(f'#include "{name}"')
+            # Include conditional source files
+            source_deps = collect_source_dependencies(self.modules)
+            for source_dep in sorted(source_deps, key=lambda d: d.path):
+                base_emitter.emit_line(f'#include "{source_dep.path}"')
         base_emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
         emitter = base_emitter
@@ -611,10 +626,14 @@ class GroupGenerator:
         ext_declarations.emit_line("#include <CPy.h>")
         if self.compiler_options.depends_on_librt_internal:
             ext_declarations.emit_line("#include <librt_internal.h>")
-        if any("librt.base64" in mod.capsules for mod in self.modules.values()):
+        if any(LIBRT_BASE64 in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <librt_base64.h>")
-        if any("librt.strings" in mod.capsules for mod in self.modules.values()):
+        if any(LIBRT_STRINGS in mod.dependencies for mod in self.modules.values()):
             ext_declarations.emit_line("#include <librt_strings.h>")
+        # Include headers for conditional source files
+        source_deps = collect_source_dependencies(self.modules)
+        for source_dep in sorted(source_deps, key=lambda d: d.path):
+            ext_declarations.emit_line(f'#include "{source_dep.get_header()}"')
 
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
@@ -1072,11 +1091,11 @@ class GroupGenerator:
             emitter.emit_line("if (import_librt_internal() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
-        if "librt.base64" in module.capsules:
+        if LIBRT_BASE64 in module.dependencies:
             emitter.emit_line("if (import_librt_base64() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
-        if "librt.strings" in module.capsules:
+        if LIBRT_STRINGS in module.dependencies:
             emitter.emit_line("if (import_librt_strings() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")

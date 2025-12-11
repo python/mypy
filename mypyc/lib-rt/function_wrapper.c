@@ -177,16 +177,21 @@ static PyObject* CPyFunction_Vectorcall(PyObject *func, PyObject *const *args, s
     PyCFunction meth = ((PyCFunctionObject *)f)->m_ml->ml_meth;
 
     self = ((PyCFunctionObject *)f)->m_self;
+    if (!self) {
+        self = args[0];
+        args += 1;
+        nargs -= 1;
+    }
     return ((_PyCFunctionFastWithKeywords)(void(*)(void))meth)(self, args, nargs, kwnames);
 }
 
 
 static CPyFunction* CPyFunction_Init(CPyFunction *op, PyMethodDef *ml, PyObject* name,
-                                     PyObject *module, PyObject* code) {
+                                     PyObject *module, PyObject* code, bool set_self) {
     PyCFunctionObject *cf = (PyCFunctionObject *)op;
     CPyFunction_weakreflist(op) = NULL;
     cf->m_ml = ml;
-    cf->m_self = (PyObject *) op;
+    cf->m_self = set_self ? (PyObject *) op : NULL;
 
     Py_XINCREF(module);
     cf->m_module = module;
@@ -226,9 +231,10 @@ static PyMethodDef* CPyMethodDef_New(const char *name, PyCFunction func, int fla
 
 PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
                           PyCFunction func, int func_flags, const char *func_doc,
-                          int first_line, int code_flags) {
+                          int first_line, int code_flags, bool has_self_arg) {
     PyMethodDef *method = NULL;
     PyObject *code = NULL, *op = NULL;
+    bool set_self = false;
 
     if (!CPyFunctionType) {
         CPyFunctionType = (PyTypeObject *)PyType_FromSpec(&CPyFunction_spec);
@@ -245,8 +251,15 @@ PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *fu
     if (unlikely(!code)) {
         goto err;
     }
+
+    // Set m_self inside the function wrapper only if the wrapped function has no self arg
+    // to pass m_self as the self arg when the function is called.
+    // When the function has a self arg, it will come in the args vector passed to the
+    // vectorcall handler.
+    set_self = !has_self_arg;
     op = (PyObject *)CPyFunction_Init(PyObject_GC_New(CPyFunction, CPyFunctionType),
-                                      method, PyUnicode_FromString(funcname), module, code);
+                                      method, PyUnicode_FromString(funcname), module,
+                                      code, set_self);
     if (unlikely(!op)) {
         goto err;
     }

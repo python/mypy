@@ -65,7 +65,8 @@ MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 BITMAP_TYPE: Final = "uint32_t"
 BITMAP_BITS: Final = 32
 
-# Runtime C library files
+# Runtime C library files that are always included (some ops may bring
+# extra dependencies via mypyc.ir.SourceDep)
 RUNTIME_C_FILES: Final = [
     "init.c",
     "getargs.c",

@@ -400,7 +400,7 @@ int64_t CPyLong_AsInt64_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i64");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -453,7 +453,7 @@ int32_t CPyLong_AsInt32_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -495,7 +495,7 @@ int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
 }
 
 void CPyInt32_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
 }
 
 // i16 unboxing slow path
@@ -510,7 +510,7 @@ int16_t CPyLong_AsInt16_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_INT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
             return CPY_LL_INT_ERROR;
         }
     }
@@ -552,7 +552,7 @@ int16_t CPyInt16_Remainder(int16_t x, int16_t y) {
 }
 
 void CPyInt16_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
 }
 
 // u8 unboxing slow path
@@ -567,7 +567,7 @@ uint8_t CPyLong_AsUInt8_(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_UINT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u8");
             return CPY_LL_UINT_ERROR;
         }
     }
@@ -575,7 +575,7 @@ uint8_t CPyLong_AsUInt8_(PyObject *o) {
 }
 
 void CPyUInt8_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u8");
 }
 
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
