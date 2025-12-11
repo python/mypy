@@ -4,6 +4,25 @@ def f(x): pass
 [out]
 main:2: error: Function is missing a type annotation
 
+[case testDisableIgnores]
+# flags: --disable-ignores
+# type: ignore # a type ignore before everything usually ignores the entire file. But not now!
+a  # E: Name "a" is not defined
+a  #type: ignore  # E: Name "a" is not defined
+a  #type: ignore[golly]  # E: Name "a" is not defined
+a  #type: ignore[name-defined]  # E: Name "a" is not defined
+
+[case testDisableIgnoresConfig]
+# flags: --config-file tmp/mypy.ini
+# type: ignore # a type ignore before everything usually ignores the entire file. But not now!
+a  # E: Name "a" is not defined
+a  #type: ignore  # E: Name "a" is not defined
+a  #type: ignore[golly]  # E: Name "a" is not defined
+a  #type: ignore[name-defined]  # E: Name "a" is not defined
+[file mypy.ini]
+\[mypy]
+disable_ignores=True
+
 [case testUnannotatedArgument]
 # flags: --disallow-untyped-defs
 def f(x) -> int: pass
