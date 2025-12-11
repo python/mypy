@@ -31,6 +31,7 @@ try:
         LXML_INSTALLED = False
     else:
         from lxml import etree
+
         LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
