@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mypyc.ir.deps import BYTES_EXTRA_OPS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RUnion,
@@ -82,6 +83,25 @@ binary_op(
     steals=[True, False],
 )
 
+# bytes * int
+binary_op(
+    name="*",
+    arg_types=[bytes_rprimitive, int_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyBytes_Multiply",
+    error_kind=ERR_MAGIC,
+)
+
+# int * bytes
+binary_op(
+    name="*",
+    arg_types=[int_rprimitive, bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyBytes_Multiply",
+    error_kind=ERR_MAGIC,
+    ordering=[1, 0],
+)
+
 # bytes[begin:end]
 bytes_slice_op = custom_op(
     arg_types=[bytes_rprimitive, int_rprimitive, int_rprimitive],
@@ -107,6 +127,16 @@ method_op(
     return_type=bytes_rprimitive,
     c_function_name="CPyBytes_Join",
     error_kind=ERR_MAGIC,
+)
+
+# bytes.translate(table)
+method_op(
+    name="translate",
+    arg_types=[bytes_rprimitive, object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="CPyBytes_Translate",
+    error_kind=ERR_MAGIC,
+    dependencies=[BYTES_EXTRA_OPS],
 )
 
 # Join bytes objects and return a new bytes.

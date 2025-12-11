@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+import sysconfig
 import textwrap
 from types import ModuleType
 
@@ -10,7 +12,11 @@ from mypy.test.helpers import Suite, assert_equal
 
 lxml: ModuleType | None  # lxml is an optional dependency
 try:
-    import lxml
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        lxml = None
+    else:
+        import lxml
 except ImportError:
     lxml = None
 

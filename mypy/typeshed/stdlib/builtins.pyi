@@ -42,6 +42,7 @@ from typing import (  # noqa: Y022,UP035
     Any,
     BinaryIO,
     ClassVar,
+    Final,
     Generic,
     Mapping,
     MutableMapping,
@@ -188,8 +189,9 @@ class type:
     __bases__: tuple[type, ...]
     @property
     def __basicsize__(self) -> int: ...
-    @property
-    def __dict__(self) -> types.MappingProxyType[str, Any]: ...  # type: ignore[override]
+    # type.__dict__ is read-only at runtime, but that can't be expressed currently.
+    # See https://github.com/python/typeshed/issues/11033 for a discussion.
+    __dict__: Final[types.MappingProxyType[str, Any]]  # type: ignore[assignment]
     @property
     def __dictoffset__(self) -> int: ...
     @property
@@ -1267,13 +1269,6 @@ class property:
     def __set__(self, instance: Any, value: Any, /) -> None: ...
     def __delete__(self, instance: Any, /) -> None: ...
 
-@final
-@type_check_only
-class _NotImplementedType(Any):
-    __call__: None
-
-NotImplemented: _NotImplementedType
-
 def abs(x: SupportsAbs[_T], /) -> _T: ...
 def all(iterable: Iterable[object], /) -> bool: ...
 def any(iterable: Iterable[object], /) -> bool: ...
@@ -1932,14 +1927,14 @@ def __import__(
 def __build_class__(func: Callable[[], CellType | Any], name: str, /, *bases: Any, metaclass: Any = ..., **kwds: Any) -> Any: ...
 
 if sys.version_info >= (3, 10):
-    from types import EllipsisType
+    from types import EllipsisType, NotImplementedType
 
     # Backwards compatibility hack for folks who relied on the ellipsis type
     # existing in typeshed in Python 3.9 and earlier.
     ellipsis = EllipsisType
 
     Ellipsis: EllipsisType
-
+    NotImplemented: NotImplementedType
 else:
     # Actually the type of Ellipsis is <type 'ellipsis'>, but since it's
     # not exposed anywhere under that name, we make it private here.
@@ -1948,6 +1943,12 @@ else:
     class ellipsis: ...
 
     Ellipsis: ellipsis
+
+    @final
+    @type_check_only
+    class _NotImplementedType(Any): ...
+
+    NotImplemented: _NotImplementedType
 
 @disjoint_base
 class BaseException:

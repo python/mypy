@@ -63,6 +63,9 @@ CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
 VALID_TYPE: Final = ErrorCode("valid-type", "Check that type (annotation) is valid", "General")
+NONETYPE_TYPE: Final = ErrorCode(
+    "nonetype-type", "Check that type (annotation) is not NoneType", "General"
+)
 VAR_ANNOTATED: Final = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
 )
@@ -220,6 +223,9 @@ TRUTHY_ITERABLE: Final = ErrorCode(
     "Warn about Iterable expressions that could always evaluate to true in boolean contexts",
     "General",
     default_enabled=False,
+)
+STR_UNPACK: Final[ErrorCode] = ErrorCode(
+    "str-unpack", "Warn about expressions that unpack str", "General"
 )
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"

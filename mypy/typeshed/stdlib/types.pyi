@@ -717,9 +717,9 @@ if sys.version_info >= (3, 10):
     @final
     class EllipsisType: ...
 
-    from builtins import _NotImplementedType
+    @final
+    class NotImplementedType(Any): ...
 
-    NotImplementedType = _NotImplementedType
     @final
     class UnionType:
         @property

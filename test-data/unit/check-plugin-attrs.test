@@ -1861,10 +1861,10 @@ from typing import Callable
 
 @attr.s
 class C:
-    a = attr.ib(type=Lst[int])
+    a = attr.ib(type=Lst[int])  # E: Name "Lst" is not defined
     # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
     # and a consequence of Callable etc. being set to an int in the test stub.
-    b = attr.ib(type=Callable[[], C])
+    b = attr.ib(type=Callable[[], C])  # E: Value of type "int" is not indexable
 [file b.py]
 import attr
 import a
@@ -1873,12 +1873,8 @@ from typing import List as Lst, Optional
 @attr.s
 class D:
     a = attr.ib(type=Lst[int])
-    b = attr.ib(type=Optional[int])
+    b = attr.ib(type=Optional[int])  # E: Value of type "int" is not indexable
 [builtins fixtures/list.pyi]
-[out]
-tmp/b.py:8: error: Value of type "int" is not indexable
-tmp/a.py:7: error: Name "Lst" is not defined
-tmp/a.py:10: error: Value of type "int" is not indexable
 
 [case testAttrsGenericInheritanceSpecialCase1]
 import attr

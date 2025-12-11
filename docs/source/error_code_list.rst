@@ -215,6 +215,28 @@ You can use :py:class:`~collections.abc.Callable` as the type for callable objec
         for x in objs:
             f(x)
 
+.. _code-nonetype-type:
+
+Check that NoneType is not used as a type (annotation) [nonetype-type]
+----------------------------------------------------------------------
+
+The preferred way to annotate the type of `None` is `None`.
+`NoneType` is equivalent, but mypy won't allow it by default.
+
+.. code-block:: python
+
+    from types import NoneType
+    def f(x: None) -> None:
+        reveal_type(x) # note: Revealed type is "None"
+
+    # error: NoneType should not be used as a type, please use None instead  [nonetype-type]
+    def g(x: NoneType) -> None:
+        reveal_type(x) # note: Revealed type is "None"
+
+    # error: NoneType should not be used as a type, please use None instead  [nonetype-type]
+    x1: NoneType = None
+    x2: None = None # OK
+
 .. _code-metaclass:
 
 Check the validity of a class's metaclass [metaclass]
@@ -1150,6 +1172,25 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
     # Okay
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
     print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
+
+.. _code-str-unpack:
+
+Check that ``str`` is not unpacked [str-unpack]
+---------------------------------------------------------
+
+It can sometimes be surprising that ``str`` is iterable, especially when unpacking
+in an assignment.
+
+Example:
+
+.. code-block:: python
+
+    def print_dict(d: dict[str, str]) -> int:
+        # We meant to do d.items(), but instead we're unpacking the str keys of d
+
+        # Error: Unpacking a string is disallowed
+        for k, v in d:
+            print(k, v)
 
 .. _code-overload-overlap:
 

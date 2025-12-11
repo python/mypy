@@ -1090,7 +1090,7 @@ import foo # type: ignore
 [builtins fixtures/module.pyi]
 [stale]
 
-[case testIncrementalWithSilentImportsAndIgnore]
+[case testIncrementalWithSilentImportsAndIgnore_no_parallel]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
 # flags: --follow-imports=skip
@@ -2336,7 +2336,6 @@ tmp/c.py:1: error: Module "d" has no attribute "x"
 [out]
 [out2]
 mypy: can't read file 'tmp/nonexistent.py': No such file or directory
--- '
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -6902,7 +6901,7 @@ class TheClass:
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
 
 
-[case testIncrementalFunctoolsPartial]
+[case testIncrementalFunctoolsPartial_no_parallel]
 import a
 
 [file a.py]
@@ -7596,3 +7595,43 @@ X = 0
 tmp/a.py:6: error: "object" has no attribute "dtypes"
 [out2]
 tmp/a.py:2: error: "object" has no attribute "dtypes"
+
+[case testStarImportCycleRedefinition]
+import m
+
+[file m.py]
+import a
+
+[file m.py.2]
+import a
+reveal_type(a.C)
+
+[file a/__init__.py]
+from a.b import *
+from a.c import *
+x = 1
+
+[file a/b.py]
+from other import C
+from a.c import y
+class C: ...  # type: ignore
+
+[file a/c.py]
+from other import C
+from a import x
+y = 1
+
+[file other.py]
+class C: ...
+[out2]
+tmp/m.py:2: note: Revealed type is "def () -> other.C"
+
+[case testOutputFormatterIncremental]
+# flags2: --output json
+def wrong() -> int:
+    if wrong():
+        return 0
+[out]
+main:2: error: Missing return statement
+[out2]
+{"file": "main", "line": 2, "column": 0, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}

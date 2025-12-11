@@ -48,11 +48,11 @@ bump CACHE_VERSION below.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 
 from librt.internal import (
-    Buffer as Buffer,
+    ReadBuffer as ReadBuffer,
+    WriteBuffer as WriteBuffer,
     read_bool as read_bool,
     read_bytes as read_bytes_bare,
     read_float as read_float_bare,
@@ -69,7 +69,9 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 0
+CACHE_VERSION: Final = 1
+
+SerializedError: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | None]
 
 
 class CacheMeta:
@@ -92,7 +94,7 @@ class CacheMeta:
         dep_lines: list[int],
         dep_hashes: list[bytes],
         interface_hash: bytes,
-        error_lines: list[str],
+        error_lines: list[SerializedError],
         version_id: str,
         ignore_all: bool,
         plugin_data: Any,
@@ -157,7 +159,7 @@ class CacheMeta:
                 dep_lines=meta["dep_lines"],
                 dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
                 interface_hash=bytes.fromhex(meta["interface_hash"]),
-                error_lines=meta["error_lines"],
+                error_lines=[tuple(err) for err in meta["error_lines"]],
                 version_id=meta["version_id"],
                 ignore_all=meta["ignore_all"],
                 plugin_data=meta["plugin_data"],
@@ -165,7 +167,7 @@ class CacheMeta:
         except (KeyError, ValueError):
             return None
 
-    def write(self, data: Buffer) -> None:
+    def write(self, data: WriteBuffer) -> None:
         write_str(data, self.id)
         write_str(data, self.path)
         write_int(data, self.mtime)
@@ -179,7 +181,7 @@ class CacheMeta:
         write_int_list(data, self.dep_lines)
         write_bytes_list(data, self.dep_hashes)
         write_bytes(data, self.interface_hash)
-        write_str_list(data, self.error_lines)
+        write_errors(data, self.error_lines)
         write_str(data, self.version_id)
         write_bool(data, self.ignore_all)
         # Plugin data may be not a dictionary, so we use
@@ -187,7 +189,7 @@ class CacheMeta:
         write_json_value(data, self.plugin_data)
 
     @classmethod
-    def read(cls, data: Buffer, data_file: str) -> CacheMeta | None:
+    def read(cls, data: ReadBuffer, data_file: str) -> CacheMeta | None:
         try:
             return CacheMeta(
                 id=read_str(data),
@@ -204,7 +206,7 @@ class CacheMeta:
                 dep_lines=read_int_list(data),
                 dep_hashes=read_bytes_list(data),
                 interface_hash=read_bytes(data),
-                error_lines=read_str_list(data),
+                error_lines=read_errors(data),
                 version_id=read_str(data),
                 ignore_all=read_bool(data),
                 plugin_data=read_json_value(data),
@@ -231,6 +233,7 @@ LIST_GEN: Final[Tag] = 20
 LIST_INT: Final[Tag] = 21
 LIST_STR: Final[Tag] = 22
 LIST_BYTES: Final[Tag] = 23
+TUPLE_GEN: Final[Tag] = 24
 DICT_STR_GEN: Final[Tag] = 30
 
 # Misc classes.
@@ -240,7 +243,7 @@ DT_SPEC: Final[Tag] = 151
 END_TAG: Final[Tag] = 255
 
 
-def read_literal(data: Buffer, tag: Tag) -> int | str | bool | float:
+def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float:
     if tag == LITERAL_INT:
         return read_int_bare(data)
     elif tag == LITERAL_STR:
@@ -256,7 +259,7 @@ def read_literal(data: Buffer, tag: Tag) -> int | str | bool | float:
 
 # There is an intentional asymmetry between read and write for literals because
 # None and/or complex values are only allowed in some contexts but not in others.
-def write_literal(data: Buffer, value: int | str | bool | float | complex | None) -> None:
+def write_literal(data: WriteBuffer, value: int | str | bool | float | complex | None) -> None:
     if isinstance(value, bool):
         write_bool(data, value)
     elif isinstance(value, int):
@@ -276,37 +279,37 @@ def write_literal(data: Buffer, value: int | str | bool | float | complex | None
         write_tag(data, LITERAL_NONE)
 
 
-def read_int(data: Buffer) -> int:
+def read_int(data: ReadBuffer) -> int:
     assert read_tag(data) == LITERAL_INT
     return read_int_bare(data)
 
 
-def write_int(data: Buffer, value: int) -> None:
+def write_int(data: WriteBuffer, value: int) -> None:
     write_tag(data, LITERAL_INT)
     write_int_bare(data, value)
 
 
-def read_str(data: Buffer) -> str:
+def read_str(data: ReadBuffer) -> str:
     assert read_tag(data) == LITERAL_STR
     return read_str_bare(data)
 
 
-def write_str(data: Buffer, value: str) -> None:
+def write_str(data: WriteBuffer, value: str) -> None:
     write_tag(data, LITERAL_STR)
     write_str_bare(data, value)
 
 
-def read_bytes(data: Buffer) -> bytes:
+def read_bytes(data: ReadBuffer) -> bytes:
     assert read_tag(data) == LITERAL_BYTES
     return read_bytes_bare(data)
 
 
-def write_bytes(data: Buffer, value: bytes) -> None:
+def write_bytes(data: WriteBuffer, value: bytes) -> None:
     write_tag(data, LITERAL_BYTES)
     write_bytes_bare(data, value)
 
 
-def read_int_opt(data: Buffer) -> int | None:
+def read_int_opt(data: ReadBuffer) -> int | None:
     tag = read_tag(data)
     if tag == LITERAL_NONE:
         return None
@@ -314,7 +317,7 @@ def read_int_opt(data: Buffer) -> int | None:
     return read_int_bare(data)
 
 
-def write_int_opt(data: Buffer, value: int | None) -> None:
+def write_int_opt(data: WriteBuffer, value: int | None) -> None:
     if value is not None:
         write_tag(data, LITERAL_INT)
         write_int_bare(data, value)
@@ -322,7 +325,7 @@ def write_int_opt(data: Buffer, value: int | None) -> None:
         write_tag(data, LITERAL_NONE)
 
 
-def read_str_opt(data: Buffer) -> str | None:
+def read_str_opt(data: ReadBuffer) -> str | None:
     tag = read_tag(data)
     if tag == LITERAL_NONE:
         return None
@@ -330,7 +333,7 @@ def read_str_opt(data: Buffer) -> str | None:
     return read_str_bare(data)
 
 
-def write_str_opt(data: Buffer, value: str | None) -> None:
+def write_str_opt(data: WriteBuffer, value: str | None) -> None:
     if value is not None:
         write_tag(data, LITERAL_STR)
         write_str_bare(data, value)
@@ -338,62 +341,68 @@ def write_str_opt(data: Buffer, value: str | None) -> None:
         write_tag(data, LITERAL_NONE)
 
 
-def read_int_list(data: Buffer) -> list[int]:
+def read_int_list(data: ReadBuffer) -> list[int]:
     assert read_tag(data) == LIST_INT
     size = read_int_bare(data)
     return [read_int_bare(data) for _ in range(size)]
 
 
-def write_int_list(data: Buffer, value: list[int]) -> None:
+def write_int_list(data: WriteBuffer, value: list[int]) -> None:
     write_tag(data, LIST_INT)
     write_int_bare(data, len(value))
     for item in value:
         write_int_bare(data, item)
 
 
-def read_str_list(data: Buffer) -> list[str]:
+def read_str_list(data: ReadBuffer) -> list[str]:
     assert read_tag(data) == LIST_STR
     size = read_int_bare(data)
     return [read_str_bare(data) for _ in range(size)]
 
 
-def write_str_list(data: Buffer, value: Sequence[str]) -> None:
+def write_str_list(data: WriteBuffer, value: Sequence[str]) -> None:
     write_tag(data, LIST_STR)
     write_int_bare(data, len(value))
     for item in value:
         write_str_bare(data, item)
 
 
-def read_bytes_list(data: Buffer) -> list[bytes]:
+def read_bytes_list(data: ReadBuffer) -> list[bytes]:
     assert read_tag(data) == LIST_BYTES
     size = read_int_bare(data)
     return [read_bytes_bare(data) for _ in range(size)]
 
 
-def write_bytes_list(data: Buffer, value: Sequence[bytes]) -> None:
+def write_bytes_list(data: WriteBuffer, value: Sequence[bytes]) -> None:
     write_tag(data, LIST_BYTES)
     write_int_bare(data, len(value))
     for item in value:
         write_bytes_bare(data, item)
 
 
-def read_str_opt_list(data: Buffer) -> list[str | None]:
+def read_str_opt_list(data: ReadBuffer) -> list[str | None]:
     assert read_tag(data) == LIST_GEN
     size = read_int_bare(data)
     return [read_str_opt(data) for _ in range(size)]
 
 
-def write_str_opt_list(data: Buffer, value: list[str | None]) -> None:
+def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
     write_tag(data, LIST_GEN)
     write_int_bare(data, len(value))
     for item in value:
         write_str_opt(data, item)
 
 
-JsonValue: _TypeAlias = Union[None, int, str, bool, list["JsonValue"], dict[str, "JsonValue"]]
+Value: _TypeAlias = None | int | str | bool
+
+# Our JSON format is somewhat non-standard as we distinguish lists and tuples.
+# This is convenient for some internal things, like mypyc plugin and error serialization.
+JsonValue: _TypeAlias = (
+    Value | list["JsonValue"] | dict[str, "JsonValue"] | tuple["JsonValue", ...]
+)
 
 
-def read_json_value(data: Buffer) -> JsonValue:
+def read_json_value(data: ReadBuffer) -> JsonValue:
     tag = read_tag(data)
     if tag == LITERAL_NONE:
         return None
@@ -408,15 +417,16 @@ def read_json_value(data: Buffer) -> JsonValue:
     if tag == LIST_GEN:
         size = read_int_bare(data)
         return [read_json_value(data) for _ in range(size)]
+    if tag == TUPLE_GEN:
+        size = read_int_bare(data)
+        return tuple(read_json_value(data) for _ in range(size))
     if tag == DICT_STR_GEN:
         size = read_int_bare(data)
         return {read_str_bare(data): read_json_value(data) for _ in range(size)}
     assert False, f"Invalid JSON tag: {tag}"
 
 
-# Currently tuples are used by mypyc plugin. They will be normalized to
-# JSON lists after a roundtrip.
-def write_json_value(data: Buffer, value: JsonValue | tuple[JsonValue, ...]) -> None:
+def write_json_value(data: WriteBuffer, value: JsonValue) -> None:
     if value is None:
         write_tag(data, LITERAL_NONE)
     elif isinstance(value, bool):
@@ -427,8 +437,13 @@ def write_json_value(data: Buffer, value: JsonValue | tuple[JsonValue, ...]) -> 
     elif isinstance(value, str):
         write_tag(data, LITERAL_STR)
         write_str_bare(data, value)
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(value, list):
         write_tag(data, LIST_GEN)
+        write_int_bare(data, len(value))
+        for val in value:
+            write_json_value(data, val)
+    elif isinstance(value, tuple):
+        write_tag(data, TUPLE_GEN)
         write_int_bare(data, len(value))
         for val in value:
             write_json_value(data, val)
@@ -444,15 +459,50 @@ def write_json_value(data: Buffer, value: JsonValue | tuple[JsonValue, ...]) -> 
 
 # These are functions for JSON *dictionaries* specifically. Unfortunately, we
 # must use imprecise types here, because the callers use imprecise types.
-def read_json(data: Buffer) -> dict[str, Any]:
+def read_json(data: ReadBuffer) -> dict[str, Any]:
     assert read_tag(data) == DICT_STR_GEN
     size = read_int_bare(data)
     return {read_str_bare(data): read_json_value(data) for _ in range(size)}
 
 
-def write_json(data: Buffer, value: dict[str, Any]) -> None:
+def write_json(data: WriteBuffer, value: dict[str, Any]) -> None:
     write_tag(data, DICT_STR_GEN)
     write_int_bare(data, len(value))
     for key in sorted(value):
         write_str_bare(data, key)
         write_json_value(data, value[key])
+
+
+def write_errors(data: WriteBuffer, errs: list[SerializedError]) -> None:
+    write_tag(data, LIST_GEN)
+    write_int_bare(data, len(errs))
+    for path, line, column, end_line, end_column, severity, message, code in errs:
+        write_tag(data, TUPLE_GEN)
+        write_str_opt(data, path)
+        write_int(data, line)
+        write_int(data, column)
+        write_int(data, end_line)
+        write_int(data, end_column)
+        write_str(data, severity)
+        write_str(data, message)
+        write_str_opt(data, code)
+
+
+def read_errors(data: ReadBuffer) -> list[SerializedError]:
+    assert read_tag(data) == LIST_GEN
+    result = []
+    for _ in range(read_int_bare(data)):
+        assert read_tag(data) == TUPLE_GEN
+        result.append(
+            (
+                read_str_opt(data),
+                read_int(data),
+                read_int(data),
+                read_int(data),
+                read_int(data),
+                read_str(data),
+                read_str(data),
+                read_str_opt(data),
+            )
+        )
+    return result

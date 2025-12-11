@@ -369,6 +369,16 @@ class C4:
         reveal_type(self.x) # N: Revealed type is "builtins.list[builtins.str]"
 
 reveal_type(C4().x) # N: Revealed type is "builtins.list[builtins.str]"
+
+class C5:
+    def __init__(self) -> None:
+        if int():
+            self.x = None
+            return
+        self.x = [""]
+        reveal_type(self.x) # N: Revealed type is "builtins.list[builtins.str]"
+
+reveal_type(C5().x) # N: Revealed type is "Union[builtins.list[builtins.str], None]"
 [builtins fixtures/list.pyi]
 
 [case testNewRedefinePartialGenericTypes]

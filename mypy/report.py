@@ -8,13 +8,13 @@ import json
 import os
 import shutil
 import sys
+import sysconfig
 import time
 import tokenize
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from operator import attrgetter
-from typing import Any, Callable, Final
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 from urllib.request import pathname2url
 
 from mypy import stats
@@ -26,9 +26,12 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree
-
-    LXML_INSTALLED = True
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        LXML_INSTALLED = False
+    else:
+        from lxml import etree
+        LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
 

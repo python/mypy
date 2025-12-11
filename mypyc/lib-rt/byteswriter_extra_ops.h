@@ -1,0 +1,34 @@
+#ifndef BYTESWRITER_EXTRA_OPS_H
+#define BYTESWRITER_EXTRA_OPS_H
+
+#include "librt_strings.h"
+
+static inline CPyTagged
+CPyBytesWriter_Len(PyObject *obj) {
+    return (CPyTagged)((BytesWriterObject *)obj)->len << 1;
+}
+
+static inline bool
+CPyBytesWriter_EnsureSize(BytesWriterObject *data, Py_ssize_t n) {
+    if (likely(data->capacity - data->len >= n)) {
+        return true;
+    } else {
+        return LibRTStrings_ByteWriter_grow_buffer_internal(data, n);
+    }
+}
+
+static inline char
+CPyBytesWriter_Append(PyObject *obj, uint8_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    // Store length in a local variable to enable additional optimizations
+    Py_ssize_t len = self->len;
+    if (!CPyBytesWriter_EnsureSize(self, 1))
+        return CPY_NONE_ERROR;
+    self->buf[len] = value;
+    self->len = len + 1;
+    return CPY_NONE;
+}
+
+char CPyBytesWriter_Write(PyObject *obj, PyObject *value);
+
+#endif

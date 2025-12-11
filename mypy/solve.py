@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type

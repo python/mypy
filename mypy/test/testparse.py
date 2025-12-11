@@ -21,8 +21,6 @@ class ParserSuite(DataSuite):
     base_path = "."
     files = find_test_files(pattern="parse*.test", exclude=["parse-errors.test"])
 
-    if sys.version_info < (3, 10):
-        files.remove("parse-python310.test")
     if sys.version_info < (3, 12):
         files.remove("parse-python312.test")
     if sys.version_info < (3, 13):
