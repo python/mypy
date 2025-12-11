@@ -1388,6 +1388,41 @@ Warning: TypeVarTuple is already enabled by default
 Warning: Unpack is already enabled by default
 == Return code: 0
 
+[case testDisabledErrorCodesIsNotARealFlagCmdContrast]
+# cmd: mypy --disable-error-code=name-defined a.py
+-- This is the real flag, that contrasts with the fake one in the other test.
+[file a.py]
+A
+
+[case testDisabledErrorCodesIsNotARealFlagCmd]
+# cmd: mypy --disabled-error-codes=name-defined a.py
+-- disabled-error-codes is not a real flag, just an implementation field, and this test serves to ensure it doesn't affect program behavior.
+-- see also: check-flags.test for the ones that can be check without the full cmdline.test treatment.
+[file a.py]
+A
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: unrecognized arguments: --disabled-error-codes=name-defined
+== Return code: 2
+
+[case testEnabledErrorCodesIsNotARealFlagCmdContrast]
+# cmd: mypy --enable-error-code=unused-ignore a.py
+-- This is the real flag, that contrasts with the fake one in the other test.
+[file a.py]
+#type: ignore # E: Unused "type: ignore" comment
+
+[case testEnabledErrorCodesIsNotARealFlagCmd]
+# cmd: mypy --enabled-error-codes=unused-ignore a.py
+-- enabled-error-codes is not a real flag, just an implementation field, and this test serves to ensure it doesn't affect program behavior.
+-- see also: check-flags.test for the ones that can be check without the full cmdline.test treatment.
+[file a.py]
+#type: ignore
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: unrecognized arguments: --enabled-error-codes=unused-ignore
+== Return code: 2
 [case testImportlibImportCannotBeResolved]
 # cmd: mypy a.py
 # This test is here because it needs use_builtins_fixtures off.

@@ -1,3 +1,43 @@
+[case testDisabledErrorCodesIsNotARealFlagContrast]
+-- This is the real flag, that contrasts with the fake one in the other test.
+-- see also: cmdline.test for the one that does a usage error and prints to stderr
+# flags: --disable-error-code=name-defined
+A
+
+[case testDisabledErrorCodesIsNotARealFlagConfig]
+-- disabled-error-codes is not a real flag, just an implementation field, and this test serves to ensure it doesn't affect program behavior.
+# flags: --config tmp/n.ini
+A  # E: Name "A" is not defined
+[file n.ini]
+\[mypy]
+disabled_error_codes=name-defined
+
+[case testDisabledErrorCodesIsNotARealFlagInline]
+-- disabled-error-codes is not a real flag, just an implementation field, and this test serves to ensure it doesn't affect program behavior.
+#mypy: disabled_error_codes=name-defined
+A # E: Name "A" is not defined
+
+
+[case testEnabledErrorCodesIsNotARealFlagContrast]
+-- This is the real flag, that contrasts with the fake one in the other test.
+-- see also: cmdline.test for the one that does a usage error and prints to stderr
+# flags: --enable-error-code=unused-ignore
+#type: ignore # E: Unused "type: ignore" comment
+
+[case testEnabledErrorCodesIsNotARealFlagConfig]
+-- enabled-error-codes is not a real flag, just an implementation field, and this test serves to ensure it doesn't affect program behavior.
+# flags: --config tmp/n.ini
+#type: ignore
+[file n.ini]
+\[mypy]
+disabled_error_codes=unused-ignore
+
+[case testEnabledErrorCodesIsNotARealFlagInline]
+-- enabled-error-codes is not a real flag, just an implementation field, and this test serves to ensure it doesn't affect program behavior.
+#mypy: enabled_error_codes=unused-ignore
+#type: ignore
+
+
 [case testUnannotatedFunction]
 # flags: --disallow-untyped-defs
 def f(x): pass
