@@ -1936,6 +1936,22 @@ def union(x: str | bool) -> None:
     reveal_type(x)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchNarrowDownUnionUsingClassPattern]
+
+class Foo: ...
+class Bar(Foo): ...
+
+def test_1(bar: Bar) -> None:
+    match bar:
+        case Foo() as foo:
+            reveal_type(foo)  # N: Revealed type is "__main__.Bar"
+
+def test_2(bar: Bar | str) -> None:
+    match bar:
+        case Foo() as foo:
+            reveal_type(foo)  # N: Revealed type is "__main__.Bar"
+
+
 [case testMatchAssertFalseToSilenceFalsePositives]
 class C:
     a: int | str
@@ -3162,3 +3178,19 @@ match 5:
         reveal_type(b)  # N: Revealed type is "Any"
     case BlahBlah(c=c):  # E: Name "BlahBlah" is not defined
         reveal_type(c)  # N: Revealed type is "Any"
+
+[case testMatchAllowsNoneTypeAsClass]
+import types
+
+class V:
+    X = types.NoneType
+
+def fun(val: str | None):
+    match val:
+        case V.X():
+            reveal_type(val)  # N: Revealed type is "None"
+
+    match val:
+        case types.NoneType():
+            reveal_type(val)  # N: Revealed type is "None"
+[builtins fixtures/tuple.pyi]

@@ -5,8 +5,9 @@ import re
 import sys
 import sysconfig
 import warnings
+from collections.abc import Callable
 from re import Pattern
-from typing import Any, Callable, Final
+from typing import Any, Final
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -83,7 +84,8 @@ UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
 NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
 INLINE_TYPEDDICT: Final = "InlineTypedDict"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT))
+TYPE_FORM: Final = "TypeForm"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT, TYPE_FORM))
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
@@ -357,6 +359,7 @@ class Options:
         self.test_env = False
 
         # -- experimental options --
+        self.num_workers: int = 0
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
@@ -410,6 +413,8 @@ class Options:
         # Deprecated, Mypy only supports Python 3.9+
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
+        # Mypy internal use only! Set during test run.
+        self.overwrite_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
@@ -431,7 +436,7 @@ class Options:
     def use_or_syntax(self) -> bool:
         if self.python_version >= (3, 10):
             return not self.force_union_syntax
-        return False
+        return self.overwrite_union_syntax
 
     def use_star_unpack(self) -> bool:
         return self.python_version >= (3, 11)
