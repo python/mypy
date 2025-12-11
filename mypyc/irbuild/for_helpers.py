@@ -13,7 +13,6 @@ from typing import ClassVar, cast
 from mypy.nodes import (
     ARG_POS,
     LDEF,
-    BytesExpr,
     CallExpr,
     DictionaryComprehension,
     Expression,
