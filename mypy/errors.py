@@ -630,7 +630,7 @@ class Errors:
             self.only_once_messages.add(info.message)
         if (
             self.seen_import_error
-            and ErrorCode.is_code_or_sub_code_of(info.code, IMPORT)
+            and not ErrorCode.is_code_or_sub_code_of(info.code, IMPORT)
             and self.has_many_errors()
         ):
             # Missing stubs can easily cause thousands of errors about
