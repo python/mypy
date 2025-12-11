@@ -843,7 +843,7 @@ L2:
     r8 = 0
     goto L4
 L3:
-    r19 = r8 < 3 :: signed
+    r9 = r8 < 3 :: signed
     if r9 goto L4 else goto L6 :: bool
 L4:
     r10 = CPySequenceTuple_GetItemUnsafe(r6, r8)
@@ -880,34 +880,32 @@ L0:
     r1 = 'source_var'
     r2 = CPyDict_GetItem(r0, r1)
     r3 = unbox(tuple[int, int, int], r2)
-    r4 = box(tuple[int, int, int], r3)
-    r5 = PyObject_Size(r4)
-    r6 = r5 >= 0 :: signed
-    r7 = r3[0]
-    r8 = r3[1]
-    r9 = r3[2]
-    r10 = box(int, r7)
-    r11 = box(int, r8)
-    r12 = box(int, r9)
-    r13 = PyTuple_Pack(3, r10, r11, r12)
-    r14 = PyTuple_New(r5)
-    r15 = 0
+    r4 = r3[0]
+    r5 = r3[1]
+    r6 = r3[2]
+    r7 = box(int, r4)
+    r8 = box(int, r5)
+    r9 = box(int, r6)
+    r10 = PyTuple_Pack(3, r7, r8, r9)
+    r11 = PyTuple_New(3)
+    r12 = 0
+    goto L2
 L1:
-    r16 = r15 < r5 :: signed
-    if r16 goto L2 else goto L4 :: bool
+    r13 = r12 < 3 :: signed
+    if r13 goto L2 else goto L4 :: bool
 L2:
-    r17 = CPySequenceTuple_GetItemUnsafe(r13, r15)
-    r18 = unbox(int, r17)
-    x = r18
-    r19 = f(x)
-    r20 = box(bool, r19)
-    CPySequenceTuple_SetItemUnsafe(r14, r15, r20)
+    r14 = CPySequenceTuple_GetItemUnsafe(r10, r12)
+    r15 = unbox(int, r14)
+    x = r15
+    r16 = f(x)
+    r17 = box(bool, r16)
+    CPySequenceTuple_SetItemUnsafe(r11, r12, r17)
 L3:
-    r21 = r15 + 1
-    r15 = r21
+    r18 = r12 + 1
+    r12 = r18
     goto L1
 L4:
-    a = r14
+    a = r11
     return 1
 
 [case testTupleBuiltFromVariableLengthTuple]
