@@ -437,6 +437,7 @@ static void
 skipitem(const char **p_format, va_list *p_va)
 {
     const char *format = *p_format;
+    format++;
 
     if (p_va != NULL) {
         (void) va_arg(*p_va, PyObject **);
