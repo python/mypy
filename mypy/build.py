@@ -43,7 +43,14 @@ from typing import (
 from librt.internal import cache_version
 
 import mypy.semanal_main
-from mypy.cache import CACHE_VERSION, CacheMeta, ReadBuffer, WriteBuffer, write_json
+from mypy.cache import (
+    CACHE_VERSION,
+    CacheMeta,
+    ReadBuffer,
+    SerializedError,
+    WriteBuffer,
+    write_json,
+)
 from mypy.checker import TypeChecker
 from mypy.defaults import (
     WORKER_CONNECTION_TIMEOUT,
@@ -52,7 +59,7 @@ from mypy.defaults import (
     WORKER_START_TIMEOUT,
 )
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
-from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
+from mypy.errors import CompileError, ErrorInfo, Errors, ErrorTuple, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.ipc import BadStatus, IPCClient, read_status, ready_to_read, receive, send
@@ -2046,7 +2053,7 @@ class State:
     dep_hashes: dict[str, bytes] = {}
 
     # List of errors reported for this file last time.
-    error_lines: list[str] = []
+    error_lines: list[SerializedError] = []
 
     # Parent package, its parent, etc.
     ancestors: list[str] | None = None
@@ -3511,9 +3518,13 @@ def find_stale_sccs(
                 scc = order_ascc_ex(graph, ascc)
             for id in scc:
                 if graph[id].error_lines:
-                    manager.flush_errors(
-                        manager.errors.simplify_path(graph[id].xpath), graph[id].error_lines, False
+                    path = manager.errors.simplify_path(graph[id].xpath)
+                    formatted = manager.errors.format_messages(
+                        path,
+                        deserialize_codes(graph[id].error_lines),
+                        formatter=manager.error_formatter,
                     )
+                    manager.flush_errors(path, formatted, False)
             fresh_sccs.append(ascc)
         else:
             size = len(ascc.mod_ids)
@@ -3759,13 +3770,16 @@ def process_stale_scc(
     # Flush errors, and write cache in two phases: first data files, then meta files.
     meta_tuples = {}
     errors_by_id = {}
+    formatted_by_id = {}
     for id in stale:
         if graph[id].xpath not in manager.errors.ignored_files:
-            errors = manager.errors.file_messages(
-                graph[id].xpath, formatter=manager.error_formatter
+            errors = manager.errors.file_messages(graph[id].xpath)
+            formatted = manager.errors.format_messages(
+                graph[id].xpath, errors, formatter=manager.error_formatter
             )
-            manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
+            manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), formatted, False)
             errors_by_id[id] = errors
+            formatted_by_id[id] = formatted
         meta_tuples[id] = graph[id].write_cache()
     for id in stale:
         meta_tuple = meta_tuples[id]
@@ -3773,7 +3787,7 @@ def process_stale_scc(
             continue
         meta, meta_file = meta_tuple
         meta.dep_hashes = [graph[dep].interface_hash for dep in graph[id].dependencies]
-        meta.error_lines = errors_by_id.get(id, [])
+        meta.error_lines = serialize_codes(errors_by_id.get(id, []))
         write_cache_meta(meta, manager, meta_file)
     manager.done_sccs.add(ascc.id)
     manager.add_stats(
@@ -3785,7 +3799,7 @@ def process_stale_scc(
     )
     scc_result = {}
     for id in scc:
-        scc_result[id] = graph[id].interface_hash.hex(), errors_by_id.get(id, [])
+        scc_result[id] = graph[id].interface_hash.hex(), formatted_by_id.get(id, [])
     return scc_result
 
 
@@ -3932,3 +3946,26 @@ def sccs_to_bytes(sccs: list[SCC]) -> bytes:
     buf = WriteBuffer()
     write_json(buf, {"sccs": scc_tuples})
     return buf.getvalue()
+
+
+def serialize_codes(errs: list[ErrorTuple]) -> list[SerializedError]:
+    return [
+        (path, line, column, end_line, end_column, severity, message, code.code if code else None)
+        for path, line, column, end_line, end_column, severity, message, code in errs
+    ]
+
+
+def deserialize_codes(errs: list[SerializedError]) -> list[ErrorTuple]:
+    return [
+        (
+            path,
+            line,
+            column,
+            end_line,
+            end_column,
+            severity,
+            message,
+            codes.error_codes.get(code) if code else None,
+        )
+        for path, line, column, end_line, end_column, severity, message, code in errs
+    ]

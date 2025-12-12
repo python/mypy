@@ -27,8 +27,6 @@
 #define LONG_INT_TRAILER 15
 
 #define CPY_BOOL_ERROR 2
-#define CPY_NONE_ERROR 2
-#define CPY_NONE 1
 
 #define _CHECK_READ_BUFFER(data, err)  if (unlikely(_check_read_buffer(data) == CPY_NONE_ERROR)) \
                                            return err;
