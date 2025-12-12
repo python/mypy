@@ -6654,6 +6654,28 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         narrowable_operand_index_to_hash: dict[int, tuple[Key, ...]],
     ) -> tuple[TypeMap, TypeMap]:
         """Calculate type maps for '==', '!=', 'is' or 'is not' expression."""
+        # If we haven't been able to narrow types yet, we might be dealing with a
+        # explicit type(x) == some_type check
+        if_map, else_map = self.narrow_type_by_equality(
+            operator,
+            operands,
+            operand_types,
+            expr_indices,
+            narrowable_operand_index_to_hash.keys(),
+        )
+        if if_map == {} and else_map == {} and node is not None:
+            if_map, else_map = self.find_type_equals_check(node, expr_indices)
+        return if_map, else_map
+
+    def narrow_type_by_equality(
+        self,
+        operator: str,
+        operands: list[Expression],
+        operand_types: list[Type],
+        expr_indices: list[int],
+        narrowable_indices: AbstractSet[int],
+    ) -> tuple[TypeMap, TypeMap]:
+        """Calculate type maps for '==', '!=', 'is' or 'is not' expression, ignoring `type(x)` checks."""
         # is_valid_target:
         #   Controls which types we're allowed to narrow exprs to. Note that
         #   we cannot use 'is_literal_type_like' in both cases since doing
@@ -6699,20 +6721,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 operands,
                 operand_types,
                 expr_indices,
-                narrowable_operand_index_to_hash.keys(),
+                narrowable_indices,
                 is_valid_target,
                 coerce_only_in_literal_context,
             )
 
         if if_map == {} and else_map == {}:
             if_map, else_map = self.refine_away_none_in_comparison(
-                operands, operand_types, expr_indices, narrowable_operand_index_to_hash.keys()
+                operands, operand_types, expr_indices, narrowable_indices
             )
-
-        # If we haven't been able to narrow types yet, we might be dealing with a
-        # explicit type(x) == some_type check
-        if if_map == {} and else_map == {}:
-            if_map, else_map = self.find_type_equals_check(node, expr_indices)
         return if_map, else_map
 
     def propagate_up_typemap_info(self, new_types: TypeMap) -> TypeMap:
@@ -6947,6 +6964,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         for i in chain_indices:
             expr_type = operand_types[i]
             if should_coerce:
+                # TODO: doing this prevents narrowing a single-member Enum to literal
+                # of its member, because we expand it here and then refuse to add equal
+                # types to typemaps. As a result, `x: Foo; x == Foo.A` does not narrow
+                # `x` to `Literal[Foo.A]` iff `Foo` has exactly one member.
+                # See testMatchEnumSingleChoice
                 expr_type = coerce_to_literal(expr_type)
             if not is_valid_target(get_proper_type(expr_type)):
                 continue
