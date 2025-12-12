@@ -316,13 +316,13 @@ if int():
 if int():
     b = b or b
 if int():
-    b = b and a # E: Incompatible types in assignment (expression has type "Union[Literal[False], A]", variable has type "bool")
+    b = b and a # E: Incompatible types in assignment (expression has type "Literal[False] | A", variable has type "bool")
 if int():
-    b = a and b # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
+    b = a and b # E: Incompatible types in assignment (expression has type "A | bool", variable has type "bool")
 if int():
-    b = b or a  # E: Incompatible types in assignment (expression has type "Union[Literal[True], A]", variable has type "bool")
+    b = b or a  # E: Incompatible types in assignment (expression has type "Literal[True] | A", variable has type "bool")
 if int():
-    b = a or b  # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
+    b = a or b  # E: Incompatible types in assignment (expression has type "A | bool", variable has type "bool")
 class A: pass
 
 [builtins fixtures/bool.pyi]
@@ -1478,9 +1478,9 @@ if int():
 
 [case testConditionalExpressionUnion]
 from typing import Union
-reveal_type(1 if bool() else 2) # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
-reveal_type(1 if bool() else '') # N: Revealed type is "Union[Literal[1]?, Literal['']?]"
-x: Union[int, str] = reveal_type(1 if bool() else '') # N: Revealed type is "Union[Literal[1]?, Literal['']?]"
+reveal_type(1 if bool() else 2) # N: Revealed type is "Literal[1]? | Literal[2]?"
+reveal_type(1 if bool() else '') # N: Revealed type is "Literal[1]? | Literal['']?"
+x: Union[int, str] = reveal_type(1 if bool() else '') # N: Revealed type is "Literal[1]? | Literal['']?"
 class A:
     pass
 class B(A):
@@ -1494,17 +1494,17 @@ b = B()
 c = C()
 d = D()
 reveal_type(a if bool() else b) # N: Revealed type is "__main__.A"
-reveal_type(b if bool() else c) # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(c if bool() else b) # N: Revealed type is "Union[__main__.C, __main__.B]"
-reveal_type(c if bool() else a) # N: Revealed type is "Union[__main__.C, __main__.A]"
-reveal_type(d if bool() else b) # N: Revealed type is "Union[__main__.D, __main__.B]"
+reveal_type(b if bool() else c) # N: Revealed type is "__main__.B | __main__.C"
+reveal_type(c if bool() else b) # N: Revealed type is "__main__.C | __main__.B"
+reveal_type(c if bool() else a) # N: Revealed type is "__main__.C | __main__.A"
+reveal_type(d if bool() else b) # N: Revealed type is "__main__.D | __main__.B"
 [builtins fixtures/bool.pyi]
 
 [case testConditionalExpressionUnionWithAny]
 from typing import Union, Any
 a: Any
-x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is "Union[Any, Literal[1]?]"
-reveal_type(a if int() else 1)  # N: Revealed type is "Union[Any, Literal[1]?]"
+x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is "Any | Literal[1]?"
+reveal_type(a if int() else 1)  # N: Revealed type is "Any | Literal[1]?"
 
 [case testConditionalExpressionStatementNoReturn]
 from typing import List, Union
@@ -1654,7 +1654,7 @@ from typing import Generator
 def g() -> Generator[int, None, None]:
     x = yield from ()  # E: Function does not return a value (it only ever returns None)
     x = yield from (0, 1, 2)  # E: Function does not return a value (it only ever returns None)
-    x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "Union[int, str]", expected type "int") \
+    x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "int | str", expected type "int") \
                                  # E: Function does not return a value (it only ever returns None)
     x = yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int") \
                                # E: Function does not return a value (it only ever returns None)
@@ -2008,16 +2008,16 @@ a: Union[int, str]
 b: Union[A, B]
 
 a == int()
-b == int()  # E: Non-overlapping equality check (left operand type: "Union[A, B]", right operand type: "int")
+b == int()  # E: Non-overlapping equality check (left operand type: "A | B", right operand type: "int")
 
 a is int()
-b is int()  # E: Non-overlapping identity check (left operand type: "Union[A, B]", right operand type: "int")
+b is int()  # E: Non-overlapping identity check (left operand type: "A | B", right operand type: "int")
 
 ca: Union[Container[int], Container[str]]
 cb: Union[Container[A], Container[B]]
 
 42 in ca
-42 in cb  # E: Non-overlapping container check (element type: "int", container item type: "Union[A, B]")
+42 in cb  # E: Non-overlapping container check (element type: "int", container item type: "A | B")
 [builtins fixtures/bool.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2099,7 +2099,7 @@ from typing import Optional
 
 x: Optional[str]
 y: Optional[int]
-if x == y:  # E: Non-overlapping equality check (left operand type: "Optional[str]", right operand type: "Optional[int]")
+if x == y:  # E: Non-overlapping equality check (left operand type: "str | None", right operand type: "int | None")
     ...
 [builtins fixtures/bool.pyi]
 

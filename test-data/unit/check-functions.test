@@ -501,7 +501,7 @@ a, b = None, None # type: (A, B)
 if int():
     a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
-    b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "Optional[A]"
+    b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "A | None"
 if int():
     b = f(a, a) # E: Too many arguments for "f"
 
@@ -1453,7 +1453,7 @@ else:
                              # N: Original: \
                              # N:     def [T1] f(x: T1) -> T1 \
                              # N: Redefinition: \
-                             # N:     def [T2: Union[int, str]] f(x: T2) -> T2
+                             # N:     def [T2: int | str] f(x: T2) -> T2
 
 [case testConditionalFunctionDefinitionUsingDecorator1]
 from typing import Callable
@@ -2293,7 +2293,7 @@ def f() -> None:
 def g(x: int) -> None:
     pass
 h = f if bool() else g
-reveal_type(h) # N: Revealed type is "Union[def (), def (x: builtins.int)]"
+reveal_type(h) # N: Revealed type is "def () | def (x: builtins.int)"
 h(7) # E: Too many arguments for "f"
 
 T = TypeVar("T")
@@ -2476,26 +2476,26 @@ def fn(
 from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
-    return x # E: Incompatible return value type (got "list[str]", expected "list[Union[str, int]]") \
+    return x # E: Incompatible return value type (got "list[str]", expected "list[str | int]") \
       # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant \
-      # N: Perhaps you need a type annotation for "x"? Suggestion: "list[Union[str, int]]"
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "list[str | int]"
 
 def g() -> Dict[str, Union[str, int]]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got "dict[str, str]", expected "dict[str, Union[str, int]]") \
+    return x # E: Incompatible return value type (got "dict[str, str]", expected "dict[str, str | int]") \
       # N: "dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Mapping" instead, which is covariant in the value type \
-      # N: Perhaps you need a type annotation for "x"? Suggestion: "dict[str, Union[str, int]]"
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "dict[str, str | int]"
 
 def h() -> Dict[Union[str, int], str]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got "dict[str, str]", expected "dict[Union[str, int], str]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "dict[Union[str, int], str]"
+    return x # E: Incompatible return value type (got "dict[str, str]", expected "dict[str | int, str]") \
+# N: Perhaps you need a type annotation for "x"? Suggestion: "dict[str | int, str]"
 
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
-    return x # E: Incompatible return value type (got "list[int]", expected "list[Union[int, float]]") \
+    return x # E: Incompatible return value type (got "list[int]", expected "list[int | float]") \
       # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 
@@ -2505,11 +2505,11 @@ def i() -> List[Union[int, float]]:
 from typing import Union, List
 def f() -> List[Union[int, float]]:
     x = ['a']
-    return x # E: Incompatible return value type (got "list[str]", expected "list[Union[int, float]]")
+    return x # E: Incompatible return value type (got "list[str]", expected "list[int | float]")
 
 def g() -> List[Union[str, int]]:
     x = ('a', 2)
-    return x # E: Incompatible return value type (got "tuple[str, int]", expected "list[Union[str, int]]")
+    return x # E: Incompatible return value type (got "tuple[str, int]", expected "list[str | int]")
 
 [builtins fixtures/list.pyi]
 
@@ -2517,7 +2517,7 @@ def g() -> List[Union[str, int]]:
 from typing import Union, Dict, List
 def f() -> Dict[str, Union[str, int]]:
     x = {'a': 'a', 'b': 2}
-    return x # E: Incompatible return value type (got "dict[str, object]", expected "dict[str, Union[str, int]]")
+    return x # E: Incompatible return value type (got "dict[str, object]", expected "dict[str, str | int]")
 
 def g() -> Dict[str, Union[str, int]]:
     x: Dict[str, Union[str, int]] = {'a': 'a', 'b': 2}
@@ -2525,7 +2525,7 @@ def g() -> Dict[str, Union[str, int]]:
 
 def h() -> List[Union[str, int]]:
     x = ['a', 2]
-    return x # E: Incompatible return value type (got "list[object]", expected "list[Union[str, int]]")
+    return x # E: Incompatible return value type (got "list[object]", expected "list[str | int]")
 
 def i() -> List[Union[str, int]]:
     x: List[Union[str, int]] = ['a', 2]
@@ -3366,7 +3366,7 @@ def f(x: T, y: S) -> Union[T, S]: ...
 def g(x: T, y: S) -> Union[T, S]: ...
 
 x = [f, g]
-reveal_type(x)  # N: Revealed type is "builtins.list[def [T, S] (x: T`4, y: S`5) -> Union[T`4, S`5]]"
+reveal_type(x)  # N: Revealed type is "builtins.list[def [T, S] (x: T`4, y: S`5) -> T`4 | S`5]"
 [builtins fixtures/list.pyi]
 
 [case testTypeVariableClashErrorMessage]
@@ -3397,7 +3397,7 @@ class Foo:
 
 class Bar(Foo):
     @property
-    def method(self) -> Callable[[int, A], None]:  # E: Argument 2 of "method" is incompatible with supertype "Foo"; supertype defines the argument type as "Union[Callable[[C], None], Callable[[D], None]]" \
+    def method(self) -> Callable[[int, A], None]:  # E: Argument 2 of "method" is incompatible with supertype "Foo"; supertype defines the argument type as "Callable[[C], None] | Callable[[D], None]" \
                                                    # N: This violates the Liskov substitution principle \
                                                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         ...
@@ -3458,7 +3458,7 @@ for factory in (
     lambda: var,
     func,
 ):
-    reveal_type(factory)  # N: Revealed type is "def () -> Union[builtins.str, None]"
+    reveal_type(factory)  # N: Revealed type is "def () -> builtins.str | None"
     var = factory()
 [builtins fixtures/tuple.pyi]
 
@@ -3544,7 +3544,7 @@ from mypy_extensions import Arg
 def f(x: Callable[[Arg(int, 'x')], None]) -> None: pass
 
 y: Callable[[Union[int, str]], None]
-f(y)  # E: Argument 1 to "f" has incompatible type "Callable[[Union[int, str]], None]"; expected "def (x: int) -> None"
+f(y)  # E: Argument 1 to "f" has incompatible type "Callable[[int | str], None]"; expected "def (x: int) -> None"
 [builtins fixtures/tuple.pyi]
 
 [case testAbstractOverloadsWithoutImplementationAllowed]

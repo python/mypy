@@ -471,7 +471,7 @@ def main() -> None:
     def g(x: str) -> str: ...
     def g(x: Union[int, str]) -> Union[int, str]:
         reveal_type(f(int()))  # N: Revealed type is "builtins.int"
-        return float()  # E: Incompatible return value type (got "float", expected "Union[int, str]")
+        return float()  # E: Incompatible return value type (got "float", expected "int | str")
 
 [case testNewAnalyzerNestedClassInMethod]
 class C:
@@ -588,7 +588,7 @@ G = D[T, C]
 c: C2
 reveal_type(c) # N: Revealed type is "__main__.C"
 u: U
-reveal_type(u) # N: Revealed type is "Union[__main__.C, builtins.int]"
+reveal_type(u) # N: Revealed type is "__main__.C | builtins.int"
 g: G[int]
 reveal_type(g) # N: Revealed type is "__main__.D[builtins.int, __main__.C]"
 [case testNewAnalyzerTypeAlias2]
@@ -598,7 +598,7 @@ class C(D): pass
 
 A = Union[C, int]
 x: A
-reveal_type(x) # N: Revealed type is "Union[__main__.C, builtins.int]"
+reveal_type(x) # N: Revealed type is "__main__.C | builtins.int"
 
 class D: pass
 
@@ -646,7 +646,7 @@ def f(x: int) -> int: ...
 @overload
 def f(x: str) -> str: ...
 def f(x: Union[int, str]) -> Union[int, str]:
-    return 1.0 # E: Incompatible return value type (got "float", expected "Union[int, str]")
+    return 1.0 # E: Incompatible return value type (got "float", expected "int | str")
 
 f(1)
 f('')
@@ -664,7 +664,7 @@ class A:
     @overload
     def f(self, x: str) -> str: ...
     def f(self, x: Union[int, str]) -> Union[int, str]:
-        return 1.0 # E: Incompatible return value type (got "float", expected "Union[int, str]")
+        return 1.0 # E: Incompatible return value type (got "float", expected "int | str")
 
 a = A()
 a.f(1)
@@ -1460,8 +1460,8 @@ B = A[List[T]]
 class C(List[B[int]]): pass
 
 y: C
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.list[builtins.int]]"
-reveal_type(y[0])  # N: Revealed type is "Union[builtins.int, builtins.list[builtins.int]]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
+reveal_type(y[0])  # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerForwardAliasFromUnion]
@@ -1558,8 +1558,8 @@ class C(List[A]): pass
 
 A = Union[B, C]
 
-reveal_type(x)  # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(x[0])  # N: Revealed type is "Union[__main__.B, __main__.C]"
+reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
+reveal_type(x[0])  # N: Revealed type is "__main__.B | __main__.C"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerTrickyAliasInFuncDef]
@@ -1827,7 +1827,7 @@ from typing import List, Optional
 x: Optional[List] = None
 y: List[str]
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.list[Any], None]"
+reveal_type(x)  # N: Revealed type is "builtins.list[Any] | None"
 x = ['a', 'b']
 reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
 x.extend(y)
@@ -1946,18 +1946,18 @@ class NTStr(NamedTuple):
     y: str
 
 t1: T
-reveal_type(t1.__iter__) # N: Revealed type is "def () -> typing.Iterator[Union[__main__.B, __main__.C]]"
+reveal_type(t1.__iter__) # N: Revealed type is "def () -> typing.Iterator[__main__.B | __main__.C]"
 
 t2: NTInt
 reveal_type(t2.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int]"
 nt: Union[NTInt, NTStr]
-reveal_type(nt.__iter__) # N: Revealed type is "Union[def () -> typing.Iterator[builtins.int], def () -> typing.Iterator[builtins.str]]"
+reveal_type(nt.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int] | def () -> typing.Iterator[builtins.str]"
 for nx in nt:
-    reveal_type(nx) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(nx) # N: Revealed type is "builtins.int | builtins.str"
 
 t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/for.pyi]
 
 [case testNewAnalyzerFallbackUpperBoundCheckAndFallbacks]
@@ -3252,7 +3252,7 @@ from typing import Optional, Callable, TypeVar
 
 class C(B):
     def a(self) -> None:
-        reveal_type(self._foo)  # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(self._foo)  # N: Revealed type is "builtins.int | None"
         self._foo = defer()
 
 class B:

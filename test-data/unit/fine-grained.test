@@ -3528,9 +3528,9 @@ reveal_type(a.n)
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "tuple[Union[tuple[Union[tuple[Union[..., None], builtins.int, fallback=a.N], None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
-c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
-c.py:7: note: Revealed type is "tuple[Union[tuple[Union[tuple[Union[..., None], builtins.int, fallback=a.N], None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:4: note: Revealed type is "tuple[tuple[tuple[... | None, builtins.int, fallback=a.N] | None, builtins.int, fallback=b.M] | None, builtins.int, fallback=a.N]"
+c.py:5: error: Incompatible types in assignment (expression has type "N | None", variable has type "int")
+c.py:7: note: Revealed type is "tuple[tuple[tuple[... | None, builtins.int, fallback=a.N] | None, builtins.int, fallback=b.M] | None, builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveFine]
 import c
@@ -3561,8 +3561,8 @@ def f(x: a.N) -> None:
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
-c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+c.py:4: note: Revealed type is "tuple[tuple[... | None, builtins.int, fallback=b.M] | None, builtins.int, fallback=a.N]"
+c.py:5: error: Incompatible types in assignment (expression has type "N | None", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveFine]
 import c
@@ -3593,8 +3593,8 @@ def f(x: a.N) -> None:
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int], None], builtins.int]"
-c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+c.py:4: note: Revealed type is "tuple[tuple[... | None, builtins.int] | None, builtins.int]"
+c.py:5: error: Incompatible types in assignment (expression has type "N | None", variable has type "int")
 
 [case testTypedDictRefresh]
 import a
@@ -4323,9 +4323,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
+main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
 ==
-main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
+main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
 [case testNonePartialType2]
 import a
@@ -4341,9 +4341,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
+main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
 ==
-main:4: error: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
+main:4: error: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
 [case testNonePartialType3]
 import a
@@ -4355,7 +4355,7 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
+a.py:1: error: Need type annotation for "y" (hint: "y: <type> | None = ...")
 
 [case testNonePartialType4]
 import a
@@ -4371,7 +4371,7 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for "y" (hint: "y: Optional[<type>] = ...")
+a.py:1: error: Need type annotation for "y" (hint: "y: <type> | None = ...")
 ==
 
 [case testSkippedClass1]
@@ -4672,7 +4672,7 @@ y: int
 [out]
 ==
 ==
-main:3: error: Incompatible types in assignment (expression has type "Optional[str]", variable has type "int")
+main:3: error: Incompatible types in assignment (expression has type "str | None", variable has type "int")
 
 [case testNoStrictOptionalFunction]
 # flags: --no-strict-optional
@@ -4696,7 +4696,7 @@ def g(x: str) -> None:
 [out]
 ==
 ==
-main:6: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "str"
+main:6: error: Argument 1 to "g" has incompatible type "int | None"; expected "str"
 
 [case testNoStrictOptionalMethod]
 # flags: --no-strict-optional
@@ -4724,7 +4724,7 @@ class B:
 [out]
 ==
 ==
-main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "str"
+main:7: error: Argument 1 to "g" of "B" has incompatible type "int | None"; expected "str"
 
 [case testStrictOptionalModule]
 import a
@@ -4739,7 +4739,7 @@ x: Optional[int]
 y: int
 [out]
 ==
-main:2: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+main:2: error: Incompatible types in assignment (expression has type "int | None", variable has type "int")
 
 [case testStrictOptionalFunction]
 import a
@@ -4757,7 +4757,7 @@ def g(x: int) -> None:
     pass
 [out]
 ==
-main:5: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "int"
+main:5: error: Argument 1 to "g" has incompatible type "int | None"; expected "int"
 
 [case testStrictOptionalMethod]
 import a
@@ -4778,7 +4778,7 @@ class B:
         pass
 [out]
 ==
-main:6: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "int"
+main:6: error: Argument 1 to "g" of "B" has incompatible type "int | None"; expected "int"
 
 [case testPerFileStrictOptionalModule]
 import a
@@ -4808,7 +4808,7 @@ y: int = x
 [out]
 ==
 ==
-a.py:4: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+a.py:4: error: Incompatible types in assignment (expression has type "int | None", variable has type "int")
 
 [case testPerFileStrictOptionalModuleOnly]
 import a
@@ -4853,7 +4853,7 @@ class Dummy:
 [out]
 ==
 ==
-a.py:3: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+a.py:3: error: Incompatible types in assignment (expression has type "int | None", variable has type "int")
 ==
 
 [case testPerFileStrictOptionalFunction]
@@ -4889,7 +4889,7 @@ def g(x: int) -> Optional[int]:
     return c.h(x)
 [out]
 ==
-b.py:4: error: Argument 1 to "h" has incompatible type "Optional[int]"; expected "int"
+b.py:4: error: Argument 1 to "h" has incompatible type "int | None"; expected "int"
 ==
 
 [case testPerFileStrictOptionalMethod]
@@ -4930,7 +4930,7 @@ class B:
         return c.C().h(x)
 [out]
 ==
-b.py:5: error: Argument 1 to "h" of "C" has incompatible type "Optional[int]"; expected "int"
+b.py:5: error: Argument 1 to "h" of "C" has incompatible type "int | None"; expected "int"
 ==
 
 [case testTypeVarValuesFunction]
@@ -9810,7 +9810,7 @@ x = 0  # Arbitrary change to trigger reprocessing
 [builtins fixtures/dict.pyi]
 [out]
 ==
-a.py:5: note: Revealed type is "def (x: builtins.int) -> Union[builtins.str, None]"
+a.py:5: note: Revealed type is "def (x: builtins.int) -> builtins.str | None"
 
 [case testTypeVarTupleCached]
 import a
@@ -10383,7 +10383,7 @@ reveal_type(x)
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"
+a.py:3: note: Revealed type is "def (x: builtins.int) -> builtins.int | def (*x: builtins.int) -> builtins.int"
 
 [case testErrorInReAddedModule]
 # flags: --disallow-untyped-defs --follow-imports=error

@@ -534,7 +534,7 @@ Both = Union[int, str]
 def foo(x: int, y: int = ...) -> int: ...
 @overload
 def foo(x: str, y: str = ...) -> str: ...
-def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for argument "y" (default has type "ellipsis", argument has type "Union[int, str]")
+def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for argument "y" (default has type "ellipsis", argument has type "int | str")
     return x
 
 @overload
@@ -2581,7 +2581,7 @@ reveal_type(x)
 class Two:
     pass
 [out]
-tmp/m/two.py:3: note: Revealed type is "Union[builtins.int, builtins.str]"
+tmp/m/two.py:3: note: Revealed type is "builtins.int | builtins.str"
 
 [case testImportCycleSpecialCase]
 import p

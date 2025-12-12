@@ -1509,9 +1509,9 @@ def foo(x: int) -> str: ...
 def foo2(__x: int) -> Callable[[int], str]: ...
 
 x: C[[int, str]]
-reveal_type(x)  # N: Revealed type is "def (builtins.int, builtins.str) -> Union[builtins.int, ...]"
+reveal_type(x)  # N: Revealed type is "def (builtins.int, builtins.str) -> builtins.int | ..."
 y: C[int, str]
-reveal_type(y)  # N: Revealed type is "def (builtins.int, builtins.str) -> Union[builtins.int, ...]"
+reveal_type(y)  # N: Revealed type is "def (builtins.int, builtins.str) -> builtins.int | ..."
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecAliasInRuntimeContext]
@@ -2171,15 +2171,15 @@ def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
 @dec
 def func(arg: T) -> Union[T, str]:
     ...
-reveal_type(func)  # N: Revealed type is "def [T] (arg: T`-1) -> builtins.list[Union[T`-1, builtins.str]]"
-reveal_type(func(42))  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
+reveal_type(func)  # N: Revealed type is "def [T] (arg: T`-1) -> builtins.list[T`-1 | builtins.str]"
+reveal_type(func(42))  # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
 
 def dec2(f: Callable[P, List[T]]) -> Callable[P, T]: ...
 @dec2
 def func2(arg: T) -> List[Union[T, str]]:
     ...
-reveal_type(func2)  # N: Revealed type is "def [T] (arg: T`-1) -> Union[T`-1, builtins.str]"
-reveal_type(func2(42))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(func2)  # N: Revealed type is "def [T] (arg: T`-1) -> T`-1 | builtins.str"
+reveal_type(func2(42))  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecPreciseKindsUsedIfPossible]
@@ -2311,7 +2311,7 @@ def capture(
 def fn() -> str: return ''
 def err() -> NoReturn: ...
 
-reveal_type(capture(fn))  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(capture(fn))  # N: Revealed type is "builtins.str | builtins.int"
 reveal_type(capture(err))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/paramspec.pyi]
@@ -2554,7 +2554,7 @@ class ServerErrorMiddleware(App):
 
 def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
 
-reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: Union[builtins.str, None] =, debug: builtins.bool =]]"
+reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: builtins.str | None =, debug: builtins.bool =]]"
 [builtins fixtures/paramspec.pyi]
 
 [case testRunParamSpecDuplicateArgsKwargs]
@@ -2595,7 +2595,7 @@ def run3(predicate: Callable[Concatenate[int, str, _P], None], *args: _P.args, *
     base_ok: tuple[int, str]
     predicate(*base_ok, *args, **kwargs)
     base_bad: tuple[Union[int, str], ...]
-    predicate(*base_bad, *args, **kwargs)  # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "int" \
-                                           # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "str" \
-                                           # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "_P.args"
+    predicate(*base_bad, *args, **kwargs)  # E: Argument 1 has incompatible type "*tuple[int | str, ...]"; expected "int" \
+                                           # E: Argument 1 has incompatible type "*tuple[int | str, ...]"; expected "str" \
+                                           # E: Argument 1 has incompatible type "*tuple[int | str, ...]"; expected "_P.args"
 [builtins fixtures/paramspec.pyi]

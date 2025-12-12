@@ -769,7 +769,7 @@ class A:
 
 class B(A):
     def __replace__(self, x: str) -> Self: pass # E: \
-        # E: Argument 1 of "__replace__" is incompatible with supertype "A"; supertype defines the argument type as "Optional[str]"  [override] \
+        # E: Argument 1 of "__replace__" is incompatible with supertype "A"; supertype defines the argument type as "str | None"  [override] \
         # N: This violates the Liskov substitution principle \
         # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [builtins fixtures/tuple.pyi]
@@ -899,18 +899,18 @@ class A:
     f4: Union[Callable[[str], str], str]
 
 class B(A):
-    def f1(self, x: str) -> str:     # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f1(self, x: str) -> str:     # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], str] | str", override has type "Callable[[str], str]")
         pass
 
-    def f2(self, x: object) -> str:  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[object], str]")
+    def f2(self, x: object) -> str:  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], str] | str", override has type "Callable[[object], str]")
         pass
 
     @classmethod
-    def f3(cls, x: str) -> str:      # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f3(cls, x: str) -> str:      # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], str] | str", override has type "Callable[[str], str]")
         pass
 
     @staticmethod
-    def f4(x: str) -> str:           # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f4(x: str) -> str:           # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], str] | str", override has type "Callable[[str], str]")
         pass
 [builtins fixtures/classmethod.pyi]
 
@@ -1149,10 +1149,10 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: pass
 
 f1 = join(func, WithMetaclass)
-reveal_type(f1())  # N: Revealed type is "Union[__main__.WithMetaclass, None]"
+reveal_type(f1())  # N: Revealed type is "__main__.WithMetaclass | None"
 
 f2 = join(WithMetaclass, func)
-reveal_type(f2())  # N: Revealed type is "Union[__main__.WithMetaclass, None]"
+reveal_type(f2())  # N: Revealed type is "__main__.WithMetaclass | None"
 
 -- Attribute access in class body
 -- ------------------------------
@@ -2829,9 +2829,9 @@ a: Union[int, float]
 b: int
 c: float
 
-reveal_type(a + a)  # N: Revealed type is "Union[builtins.int, builtins.float]"
-reveal_type(a + b)  # N: Revealed type is "Union[builtins.int, builtins.float]"
-reveal_type(b + a)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+reveal_type(a + a)  # N: Revealed type is "builtins.int | builtins.float"
+reveal_type(a + b)  # N: Revealed type is "builtins.int | builtins.float"
+reveal_type(b + a)  # N: Revealed type is "builtins.int | builtins.float"
 reveal_type(a + c)  # N: Revealed type is "builtins.float"
 reveal_type(c + a)  # N: Revealed type is "builtins.float"
 [builtins fixtures/ops.pyi]
@@ -2877,16 +2877,16 @@ a + a  # E: Unsupported operand types for + ("Foo" and "Bar") \
        # N: Both left and right operands are unions
 
 a + b  # E: Unsupported operand types for + ("Bar" and "Foo") \
-       # N: Left operand is of type "Union[Foo, Bar]"
+       # N: Left operand is of type "Foo | Bar"
 
 b + a  # E: Unsupported operand types for + ("Foo" and "Bar") \
-       # N: Right operand is of type "Union[Foo, Bar]"
+       # N: Right operand is of type "Foo | Bar"
 
 a + c  # E: Unsupported operand types for + ("Foo" and "Bar") \
-       # N: Left operand is of type "Union[Foo, Bar]"
+       # N: Left operand is of type "Foo | Bar"
 
 c + a  # E: Unsupported operand types for + ("Bar" and "Foo") \
-       # N: Right operand is of type "Union[Foo, Bar]"
+       # N: Right operand is of type "Foo | Bar"
 
 [case testOperatorDoubleUnionNoRelationship2]
 from typing import Union
@@ -2903,9 +2903,9 @@ a: Union[Foo, Bar]
 b: Foo
 c: Bar
 
-reveal_type(a + a)  # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
-reveal_type(a + b)  # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
-reveal_type(b + a)  # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
+reveal_type(a + a)  # N: Revealed type is "__main__.Foo | __main__.Bar"
+reveal_type(a + b)  # N: Revealed type is "__main__.Foo | __main__.Bar"
+reveal_type(b + a)  # N: Revealed type is "__main__.Foo | __main__.Bar"
 reveal_type(a + c)  # N: Revealed type is "__main__.Bar"
 reveal_type(c + a)  # N: Revealed type is "__main__.Bar"
 
@@ -2946,11 +2946,11 @@ class D:
 x: Union[A, B]
 y: Union[C, D]
 
-reveal_type(x + y)    # N: Revealed type is "Union[__main__.Out3, __main__.Out1, __main__.Out2, __main__.Out4]"
-reveal_type(A() + y)  # N: Revealed type is "Union[__main__.Out3, __main__.Out1]"
-reveal_type(B() + y)  # N: Revealed type is "Union[__main__.Out2, __main__.Out4]"
-reveal_type(x + C())  # N: Revealed type is "Union[__main__.Out3, __main__.Out2]"
-reveal_type(x + D())  # N: Revealed type is "Union[__main__.Out1, __main__.Out4]"
+reveal_type(x + y)    # N: Revealed type is "__main__.Out3 | __main__.Out1 | __main__.Out2 | __main__.Out4"
+reveal_type(A() + y)  # N: Revealed type is "__main__.Out3 | __main__.Out1"
+reveal_type(B() + y)  # N: Revealed type is "__main__.Out2 | __main__.Out4"
+reveal_type(x + C())  # N: Revealed type is "__main__.Out3 | __main__.Out2"
+reveal_type(x + D())  # N: Revealed type is "__main__.Out1 | __main__.Out4"
 
 [case testOperatorDoubleUnionDivision]
 from typing import Union
@@ -2970,8 +2970,8 @@ def sum(x: Iterable[T]) -> Union[T, int]: ...
 def len(x: Iterable[T]) -> int: ...
 
 x = [1.1, 2.2, 3.3]
-reveal_type(sum(x))  # N: Revealed type is "Union[builtins.float, builtins.int]"
-reveal_type(sum(x) / len(x))  # N: Revealed type is "Union[builtins.float, builtins.int]"
+reveal_type(sum(x))  # N: Revealed type is "builtins.float | builtins.int"
+reveal_type(sum(x) / len(x))  # N: Revealed type is "builtins.float | builtins.int"
 [builtins fixtures/floatdict.pyi]
 
 [case testOperatorWithEmptyListAndSum]
@@ -3423,7 +3423,7 @@ class C:
 
 x = C(foo=12)
 x.a # E: "C" has no attribute "a"
-C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "Optional[int]"
+C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "int | None"
 [builtins fixtures/__new__.pyi]
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
@@ -3850,7 +3850,7 @@ def process(cls: Type[Union[BasicUser, ProUser]]):
     obj = cls()
     cls.bar(obj)
     cls.mro()  # Defined in class type
-    cls.error  # E: Item "type" of "Union[type[BasicUser], type[ProUser]]" has no attribute "error"
+    cls.error  # E: Item "type" of "type[BasicUser] | type[ProUser]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -5608,7 +5608,7 @@ class Bar(NamedTuple):
 
 def foo(node: Node) -> int:
     x = node
-    reveal_type(node) # N: Revealed type is "Union[tuple[builtins.int, fallback=__main__.Foo], tuple[builtins.int, fallback=__main__.Bar]]"
+    reveal_type(node) # N: Revealed type is "tuple[builtins.int, fallback=__main__.Foo] | tuple[builtins.int, fallback=__main__.Bar]"
     return x.x
 [builtins fixtures/tuple.pyi]
 [out]
@@ -5686,7 +5686,7 @@ ForwardUnion = Union['TP', int]
 class TP(NamedTuple('TP', [('x', int)])): pass
 
 def f(x: ForwardUnion) -> None:
-  reveal_type(x)  # N: Revealed type is "Union[tuple[builtins.int, fallback=__main__.TP], builtins.int]"
+  reveal_type(x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.TP] | builtins.int"
   if isinstance(x, TP):
     reveal_type(x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.TP]"
 [builtins fixtures/isinstance.pyi]
@@ -7147,7 +7147,7 @@ def test() -> None:
         x = Other
     else:
         return
-    reveal_type(x)  # N: Revealed type is "Union[def () -> __main__.One, def () -> __main__.Other]"
+    reveal_type(x)  # N: Revealed type is "def () -> __main__.One | def () -> __main__.Other"
     reveal_type(x.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 
@@ -7362,10 +7362,10 @@ from typing import Tuple, Optional
 # Check for some cases that aren't allowed
 
 class X:
-    def __new__(cls) -> Optional[Y]:  # E: "__new__" must return a class instance (got "Optional[Y]")
+    def __new__(cls) -> Optional[Y]:  # E: "__new__" must return a class instance (got "Y | None")
         pass
 class Y:
-    def __new__(cls) -> Optional[int]:  # E: "__new__" must return a class instance (got "Optional[int]")
+    def __new__(cls) -> Optional[int]:  # E: "__new__" must return a class instance (got "int | None")
         pass
 
 
@@ -7807,7 +7807,7 @@ class Foo:
         self.x = None
         self.y = []
 
-reveal_type(Foo().x)  # N: Revealed type is "Union[Any, None]"
+reveal_type(Foo().x)  # N: Revealed type is "Any | None"
 reveal_type(Foo().y)  # N: Revealed type is "builtins.list[Any]"
 [builtins fixtures/list.pyi]
 
