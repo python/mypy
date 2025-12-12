@@ -165,8 +165,8 @@ A.x = 'a'
 A.x = B()
 reveal_type(A().x)
 [out]
-main:8: error: Incompatible types in assignment (expression has type "B", variable has type "Union[int, str]")
-main:9: note: Revealed type is "Union[builtins.int, builtins.str]"
+main:8: error: Incompatible types in assignment (expression has type "B", variable has type "int | str")
+main:9: note: Revealed type is "builtins.int | builtins.str"
 
 [case testOverrideWithNarrowedUnion]
 from typing import ClassVar, Union
@@ -188,7 +188,7 @@ class D:
 class E(D):
     x = None  # type: ClassVar[Union[A, B, C]]
 [out]
-main:8: error: Incompatible types in assignment (expression has type "Union[A, B, C]", base class "D" defined the type as "Union[A, B]")
+main:8: error: Incompatible types in assignment (expression has type "A | B | C", base class "D" defined the type as "A | B")
 
 [case testAssignmentToCallableRet]
 from typing import ClassVar
@@ -320,8 +320,8 @@ A[int, str].x  # E: Access to generic class variables is ambiguous
 class Bad(A[int, str]):
     pass
 reveal_type(Bad.x)  # E: Access to generic class variables is ambiguous \
-                    # N: Revealed type is "Union[builtins.int, tuple[builtins.str, type[builtins.str]]]"
-reveal_type(Bad().x)  # N: Revealed type is "Union[builtins.int, tuple[builtins.str, type[builtins.str]]]"
+                    # N: Revealed type is "builtins.int | tuple[builtins.str, type[builtins.str]]"
+reveal_type(Bad().x)  # N: Revealed type is "builtins.int | tuple[builtins.str, type[builtins.str]]"
 
 class Good(A[int, str]):
     x = 42
@@ -344,7 +344,7 @@ class C:
     def f(self) -> int: ...
     g: ClassVar[Union[Callable[[C], int], int]] = f
 
-reveal_type(C().g)  # N: Revealed type is "Union[def () -> builtins.int, builtins.int]"
+reveal_type(C().g)  # N: Revealed type is "def () -> builtins.int | builtins.int"
 
 [case testGenericSubclassAccessNoLeak]
 from typing import ClassVar, Generic, TypeVar

@@ -34,10 +34,10 @@ f(a=A())
 f(b=B())
 f(c=C())
 f(b=B(), c=C())
-f(a=B()) # E: Argument "a" to "f" has incompatible type "B"; expected "Optional[A]"
-f(b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
-f(c=B()) # E: Argument "c" to "f" has incompatible type "B"; expected "Optional[C]"
-f(b=B(), c=A()) # E: Argument "c" to "f" has incompatible type "A"; expected "Optional[C]"
+f(a=B()) # E: Argument "a" to "f" has incompatible type "B"; expected "A | None"
+f(b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "B | None"
+f(c=B()) # E: Argument "c" to "f" has incompatible type "B"; expected "C | None"
+f(b=B(), c=A()) # E: Argument "c" to "f" has incompatible type "A"; expected "C | None"
 [case testBothPositionalAndKeywordArguments]
 import typing
 class A: pass
@@ -230,7 +230,7 @@ f(A(), b=B())
 f(A(), A(), b=B())
 f(B())      # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(b=A())    # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
+f(b=A())    # E: Argument "b" to "f" has incompatible type "A"; expected "B | None"
 [builtins fixtures/list.pyi]
 
 [case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
@@ -246,8 +246,8 @@ f(b=B())
 f(*a, b=B())
 f(A(), *a, b=B())
 f(A(), B())   # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(A(), b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
-f(*a, b=A())  # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
+f(A(), b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "B | None"
+f(*a, b=A())  # E: Argument "b" to "f" has incompatible type "A"; expected "B | None"
 [builtins fixtures/list.pyi]
 
 [case testCallingDynamicallyTypedFunctionWithKeywordArgs]
@@ -357,7 +357,7 @@ d = {} # type: Dict[A, A]
 f(**d)         # E: Keywords must be strings
 f(**A())       # E: Argument after ** must be a mapping, not "A"
 kwargs: Optional[Any]
-f(**kwargs)    # E: Argument after ** must be a mapping, not "Optional[Any]"
+f(**kwargs)    # E: Argument after ** must be a mapping, not "Any | None"
 
 def g(a: int) -> None: pass
 g(a=1, **4)  # E: Argument after ** must be a mapping, not "int"

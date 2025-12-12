@@ -35,6 +35,7 @@ class TypeExportSuite(DataSuite):
             options.export_types = True
             options.preserve_asts = True
             options.allow_empty_bodies = True
+            options.overwrite_union_syntax = True
             result = build.build(
                 sources=[BuildSource("main", None, src)],
                 options=options,

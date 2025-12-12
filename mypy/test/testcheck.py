@@ -136,6 +136,7 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.overwrite_union_syntax = True
 
         if options.num_workers:
             options.fixed_format_cache = True
@@ -151,8 +152,6 @@ class TypeCheckSuite(DataSuite):
             options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
-        if "union-error" not in testcase.file and "Pep604" not in testcase.name:
-            options.force_union_syntax = True
 
         if incremental_step and options.incremental or options.num_workers > 0:
             # Don't overwrite # flags: --no-incremental in incremental test cases

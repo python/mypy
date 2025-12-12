@@ -340,10 +340,10 @@ for var in [a, b, c, d, e, f, s, t, u, v, w, x, y, z, aa]:
     reveal_type(var)  # N: Revealed type is "builtins.int"
 
 for var2 in [g, h, i, j, k, l]:
-    reveal_type(var2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(var2)  # N: Revealed type is "builtins.int | builtins.str"
 
 for var3 in [m, n, o, p, q, r]:
-    reveal_type(var3)  # N: Revealed type is "Union[builtins.int, Any]"
+    reveal_type(var3)  # N: Revealed type is "builtins.int | Any"
 
 T = TypeVar("T", bound=Type[Foo])
 
@@ -358,7 +358,7 @@ T2 = TypeVar("T2", bound=Type[Union[Foo, Bar]])
 def check2(x: T2) -> T2:
     a, b, c = x
     for var in [a, b, c]:
-        reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(var)  # N: Revealed type is "builtins.int | builtins.str"
     return x
 
 T3 = TypeVar("T3", bound=Union[Type[Foo], Type[Bar]])
@@ -366,7 +366,7 @@ T3 = TypeVar("T3", bound=Union[Type[Foo], Type[Bar]])
 def check3(x: T3) -> T3:
     a, b, c = x
     for var in [a, b, c]:
-        reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(var)  # N: Revealed type is "builtins.int | builtins.str"
     return x
 [out]
 
@@ -972,7 +972,7 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 def f() -> List[T]: pass
 d1 = f() # type: Union[List[int], str]
-d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type "list[Never]", variable has type "Union[int, str]")
+d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type "list[Never]", variable has type "int | str")
 def g(x: T) -> List[T]: pass
 d3 = g(1) # type: Union[List[int], List[str]]
 [builtins fixtures/list.pyi]
@@ -988,7 +988,7 @@ a = k2
 if int():
     a = k2
 if int():
-    a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, list[T@k1]], list[Union[T@k1, int]]]", variable has type "Callable[[S, list[T@k2]], list[Union[T@k2, int]]]")
+    a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, list[T@k1]], list[T@k1 | int]]", variable has type "Callable[[S, list[T@k2]], list[T@k2 | int]]")
 b = k1
 if int():
     b = k1
@@ -1248,7 +1248,7 @@ class X(TypedDict):
 
 x: X
 for a in ("hourly", "daily"):
-    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    reveal_type(a)  # N: Revealed type is "Literal['hourly']? | Literal['daily']?"
     reveal_type(x[a])  # N: Revealed type is "builtins.int"
     reveal_type(a.upper())  # N: Revealed type is "builtins.str"
     c = a
@@ -1467,17 +1467,17 @@ class Wrapper:
 
 def f(cond: bool) -> Any:
     f = Wrapper if cond else lambda x: x
-    reveal_type(f)  # N: Revealed type is "Union[def (x: Any) -> __main__.Wrapper, def (x: Any) -> Any]"
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> __main__.Wrapper | def (x: Any) -> Any"
     return f(3)
 
 def g(cond: bool) -> Any:
     f = lambda x: x if cond else Wrapper
-    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Union[Any, def (x: Any) -> __main__.Wrapper]"
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any | def (x: Any) -> __main__.Wrapper"
     return f(3)
 
 def h(cond: bool) -> Any:
     f = (lambda x: x) if cond else Wrapper
-    reveal_type(f)  # N: Revealed type is "Union[def (x: Any) -> Any, def (x: Any) -> __main__.Wrapper]"
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any | def (x: Any) -> __main__.Wrapper"
     return f(3)
 
 -- Boolean operators
@@ -1850,7 +1850,7 @@ class C:
         self.a = None
         if bool():
             self.a = 1
-reveal_type(C().a)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(C().a)  # N: Revealed type is "builtins.int | None"
 
 [case testInferAttributeInitializedToEmptyNonSelf]
 class C:
@@ -1928,7 +1928,7 @@ class C:
     a = None
     def __init__(self) -> None:
         self.a = 1
-reveal_type(C().a)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(C().a)  # N: Revealed type is "builtins.int | None"
 
 [case testInferListTypeFromEmptyListAndAny]
 def f():
@@ -2415,7 +2415,7 @@ b: Union[str, tuple]
 def f(): pass
 def g(x: Union[int, str]): pass
 c = a if f() else b
-g(c) # E: Argument 1 to "g" has incompatible type "Union[int, str, tuple[Any, ...]]"; expected "Union[int, str]"
+g(c) # E: Argument 1 to "g" has incompatible type "int | str | tuple[Any, ...]"; expected "int | str"
 [builtins fixtures/tuple.pyi]
 
 [case testUnificationMultipleInheritance]
@@ -2570,7 +2570,7 @@ def check() -> None:
     if int():
         x = Foo()
         reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
-    reveal_type(x)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+    reveal_type(x)  # N: Revealed type is "__main__.Foo[Any] | None"
 
 [case testRejectsPartialWithUninhabited2]
 from typing import Generic, TypeVar
@@ -2585,7 +2585,7 @@ def check() -> None:
     x = Foo()
     reveal_type(x)  # N: Revealed type is "__main__.Foo[Any]"
 
-reveal_type(x)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+reveal_type(x)  # N: Revealed type is "__main__.Foo[Any] | None"
 
 [case testRejectsPartialWithUninhabited3]
 # Without force-rejecting Partial<None>, this crashes:
@@ -2601,10 +2601,10 @@ def check() -> None:
     if client := Foo():
         reveal_type(client)  # N: Revealed type is "__main__.Foo[Any]"
 
-    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any] | None"
 
-    client = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Foo[Any]]")
-    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+    client = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Foo[Any] | None")
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any] | None"
 
 [case testRejectsPartialWithUninhabitedIndependently]
 from typing import Generic, TypeVar
@@ -2621,8 +2621,8 @@ def bad() -> None:
 
 def good() -> None:
     global client
-    client = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Foo[Any]]")
-    reveal_type(client)  # N: Revealed type is "Union[__main__.Foo[Any], None]"
+    client = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Foo[Any] | None")
+    reveal_type(client)  # N: Revealed type is "__main__.Foo[Any] | None"
 
 def bad2() -> None:
     global client
@@ -2698,7 +2698,7 @@ if bool():
 
 [case testLocalPartialTypesWithGlobalInitializedToNone]
 # flags: --local-partial-types
-x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
+x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
 def f() -> None:
     global x
@@ -2709,7 +2709,7 @@ reveal_type(x) # N: Revealed type is "None"
 
 [case testLocalPartialTypesWithGlobalInitializedToNone2]
 # flags: --local-partial-types
-x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
+x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
 def f():
     global x
@@ -2735,11 +2735,11 @@ x = None
 
 def f() -> None:
     global x
-    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[str]")
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str | None")
 
 x = ''
 def g() -> None:
-    reveal_type(x) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(x) # N: Revealed type is "builtins.str | None"
 
 [case testLocalPartialTypesWithGlobalInitializedToNone4]
 # flags: --local-partial-types --no-strict-optional
@@ -2758,7 +2758,7 @@ reveal_type(a)  # N: Revealed type is "builtins.str"
 [case testLocalPartialTypesWithClassAttributeInitializedToNone]
 # flags: --local-partial-types
 class A:
-    x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
+    x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
     def f(self) -> None:
         self.x = 1
@@ -2932,7 +2932,7 @@ class B(A):
     x = None
     x = Y()
 
-reveal_type(B.x) # N: Revealed type is "Union[__main__.Y, None]"
+reveal_type(B.x) # N: Revealed type is "__main__.Y | None"
 
 [case testLocalPartialTypesBinderSpecialCase]
 # flags: --local-partial-types
@@ -2941,7 +2941,7 @@ from typing import List
 def f(x): pass
 
 class A:
-    x = None  # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
+    x = None  # E: Need type annotation for "x" (hint: "x: <type> | None = ...")
 
     def f(self, p: List[str]) -> None:
         self.x = f(p)
@@ -2951,18 +2951,18 @@ class A:
 [case testLocalPartialTypesAccessPartialNoneAttribute]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for "a" (hint: "a: Optional[<type>] = ...")
+    a = None  # E: Need type annotation for "a" (hint: "a: <type> | None = ...")
 
     def f(self, x) -> None:
-        C.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
+        C.a.y  # E: Item "None" of "Any | None" has no attribute "y"
 
 [case testLocalPartialTypesAccessPartialNoneAttribute2]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for "a" (hint: "a: Optional[<type>] = ...")
+    a = None  # E: Need type annotation for "a" (hint: "a: <type> | None = ...")
 
     def f(self, x) -> None:
-        self.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
+        self.a.y  # E: Item "None" of "Any | None" has no attribute "y"
 
 -- Special case for assignment to '_'
 -- ----------------------------------
@@ -3100,7 +3100,7 @@ class B(A):
 class C(A):
     x = '12'
 
-reveal_type(A.x) # N: Revealed type is "Union[Any, None]"
+reveal_type(A.x) # N: Revealed type is "Any | None"
 reveal_type(B.x) # N: Revealed type is "builtins.int"
 reveal_type(C.x) # N: Revealed type is "builtins.str"
 
@@ -3529,7 +3529,7 @@ class C(NamedTuple):
 t: Optional[C]
 d: Dict[C, bytes]
 x = t and d[t]
-reveal_type(x)  # N: Revealed type is "Union[None, builtins.bytes]"
+reveal_type(x)  # N: Revealed type is "None | builtins.bytes"
 if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/dict.pyi]
@@ -3578,7 +3578,7 @@ class B:
 class C(B):
     x = [1]
 
-reveal_type(C().x)  # N: Revealed type is "builtins.list[Union[builtins.int, None]]"
+reveal_type(C().x)  # N: Revealed type is "builtins.list[builtins.int | None]"
 [builtins fixtures/list.pyi]
 
 [case testUseSupertypeAsInferenceContextInvalidType]
@@ -3881,7 +3881,7 @@ def foo() -> Dict[str, Any]:
     return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "dict[str, Any]")
 
 def bar() -> Union[Dict[str, Any], Dict[int, Any]]:
-    return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "Union[dict[str, Any], dict[int, Any]]")
+    return empty  # E: Incompatible return value type (got "dict[Never, Never]", expected "dict[str, Any] | dict[int, Any]")
 [builtins fixtures/dict.pyi]
 
 [case testUpperBoundInferenceFallbackNotOverused]
@@ -3913,15 +3913,15 @@ def dec(f: Callable[[S], T]) -> Callable[[S], List[T]]: ...
 @dec
 def func(arg: T) -> Union[T, str]:
     ...
-reveal_type(func)  # N: Revealed type is "def [S] (S`1) -> builtins.list[Union[S`1, builtins.str]]"
-reveal_type(func(42))  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
+reveal_type(func)  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1 | builtins.str]"
+reveal_type(func(42))  # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
 
 def dec2(f: Callable[[S], List[T]]) -> Callable[[S], T]: ...
 @dec2
 def func2(arg: T) -> List[Union[T, str]]:
     ...
-reveal_type(func2)  # N: Revealed type is "def [S] (S`4) -> Union[S`4, builtins.str]"
-reveal_type(func2(42))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(func2)  # N: Revealed type is "def [S] (S`4) -> S`4 | builtins.str"
+reveal_type(func2(42))  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallbackProtoMultiple]
@@ -4045,7 +4045,7 @@ x: Union[int, str]
 x = "abc"
 for x in list[int]():
     reveal_type(x)  # N: Revealed type is "builtins.int"
-reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testForLoopIndexVaribaleNarrowing2]
 # flags: --enable-error-code=redundant-expr
@@ -4054,7 +4054,7 @@ x: Union[int, str]
 x = "abc"
 for x in list[int]():
     reveal_type(x)  # N: Revealed type is "builtins.int"
-reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNarrowInFunctionDefer]
 from typing import Optional, Callable, TypeVar
@@ -4118,7 +4118,7 @@ class Mapping(Generic[_K, _V]):
 
 def check(mapping: Mapping[str, _T]) -> None:
     ok1 = mapping.get("", "")
-    reveal_type(ok1)  # N: Revealed type is "Union[_T`-1, builtins.str]"
+    reveal_type(ok1)  # N: Revealed type is "_T`-1 | builtins.str"
     ok2: Union[_T, str] = mapping.get("", "")
 [builtins fixtures/tuple.pyi]
 
@@ -4132,7 +4132,7 @@ def check_and(maybe: bool) -> None:
     if maybe and (foo := Foo(True)).value:
         reveal_type(foo)  # N: Revealed type is "__main__.Foo"
     else:
-        reveal_type(foo)  # N: Revealed type is "Union[__main__.Foo, None]"
+        reveal_type(foo)  # N: Revealed type is "__main__.Foo | None"
 
 def check_and_nested(maybe: bool) -> None:
     foo = None
@@ -4143,14 +4143,14 @@ def check_and_nested(maybe: bool) -> None:
         reveal_type(bar)  # N: Revealed type is "__main__.Foo"
         reveal_type(baz)  # N: Revealed type is "__main__.Foo"
     else:
-        reveal_type(foo)  # N: Revealed type is "Union[__main__.Foo, None]"
-        reveal_type(bar)  # N: Revealed type is "Union[__main__.Foo, None]"
-        reveal_type(baz)  # N: Revealed type is "Union[__main__.Foo, None]"
+        reveal_type(foo)  # N: Revealed type is "__main__.Foo | None"
+        reveal_type(bar)  # N: Revealed type is "__main__.Foo | None"
+        reveal_type(baz)  # N: Revealed type is "__main__.Foo | None"
 
 def check_or(maybe: bool) -> None:
     foo = None
     if maybe or (foo := Foo(True)).value:
-        reveal_type(foo)  # N: Revealed type is "Union[__main__.Foo, None]"
+        reveal_type(foo)  # N: Revealed type is "__main__.Foo | None"
     else:
         reveal_type(foo)  # N: Revealed type is "__main__.Foo"
 
@@ -4163,9 +4163,9 @@ def check_or_nested(maybe: bool) -> None:
         reveal_type(bar)  # N: Revealed type is "__main__.Foo"
         reveal_type(baz)  # N: Revealed type is "__main__.Foo"
     else:
-        reveal_type(foo)  # N: Revealed type is "Union[__main__.Foo, None]"
-        reveal_type(bar)  # N: Revealed type is "Union[__main__.Foo, None]"
-        reveal_type(baz)  # N: Revealed type is "Union[__main__.Foo, None]"
+        reveal_type(foo)  # N: Revealed type is "__main__.Foo | None"
+        reveal_type(bar)  # N: Revealed type is "__main__.Foo | None"
+        reveal_type(baz)  # N: Revealed type is "__main__.Foo | None"
 
 [case testInferWalrusAssignmentIndexInCondition]
 def check_and(maybe: bool) -> None:
@@ -4175,8 +4175,8 @@ def check_and(maybe: bool) -> None:
         reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(bar)  # N: Revealed type is "builtins.int"
     else:
-        reveal_type(foo)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
-        reveal_type(bar)  # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int] | None"
+        reveal_type(bar)  # N: Revealed type is "builtins.int | None"
 
 def check_and_nested(maybe: bool) -> None:
     foo = None
@@ -4187,16 +4187,16 @@ def check_and_nested(maybe: bool) -> None:
         reveal_type(bar)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(baz)  # N: Revealed type is "builtins.list[builtins.int]"
     else:
-        reveal_type(foo)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
-        reveal_type(bar)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
-        reveal_type(baz)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+        reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int] | None"
+        reveal_type(bar)  # N: Revealed type is "builtins.list[builtins.int] | None"
+        reveal_type(baz)  # N: Revealed type is "builtins.list[builtins.int] | None"
 
 def check_or(maybe: bool) -> None:
     foo = None
     bar = None
     if maybe or (foo := [1])[(bar := 0)]:
-        reveal_type(foo)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
-        reveal_type(bar)  # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int] | None"
+        reveal_type(bar)  # N: Revealed type is "builtins.int | None"
     else:
         reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(bar)  # N: Revealed type is "builtins.int"
@@ -4206,9 +4206,9 @@ def check_or_nested(maybe: bool) -> None:
     bar = None
     baz = None
     if maybe or (foo := (bar := (baz := [1])))[0]:
-        reveal_type(foo)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
-        reveal_type(bar)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
-        reveal_type(baz)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+        reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int] | None"
+        reveal_type(bar)  # N: Revealed type is "builtins.list[builtins.int] | None"
+        reveal_type(baz)  # N: Revealed type is "builtins.list[builtins.int] | None"
     else:
         reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(bar)  # N: Revealed type is "builtins.list[builtins.int]"

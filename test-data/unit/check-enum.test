@@ -101,7 +101,7 @@ class Truth(Enum):
     false = False
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is "Union[Literal[True]?, Literal[False]?]"
+    reveal_type(truth.value) # N: Revealed type is "Literal[True]? | Literal[False]?"
 [builtins fixtures/bool.pyi]
 
 [case testEnumValueAllAuto]
@@ -134,7 +134,7 @@ class Truth(Enum):
         return 'bar'
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is "Union[Literal[True]?, Literal[False]?]"
+    reveal_type(truth.value) # N: Revealed type is "Literal[True]? | Literal[False]?"
 [builtins fixtures/bool.pyi]
 
 [case testEnumValueCustomAuto]
@@ -882,7 +882,7 @@ elif x is Foo.C:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
     reveal_type(x)  # No output here: this branch is unreachable
-reveal_type(x) # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+reveal_type(x) # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
 
 if Foo.A is x:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
@@ -892,7 +892,7 @@ elif Foo.C is x:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
     reveal_type(x)  # No output here: this branch is unreachable
-reveal_type(x) # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+reveal_type(x) # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
 
 y: Foo
 if y is Foo.A:
@@ -986,14 +986,14 @@ if x is y:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 reveal_type(x) # N: Revealed type is "__main__.Foo"
 if y is x:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 reveal_type(x) # N: Revealed type is "__main__.Foo"
 
@@ -1002,7 +1002,7 @@ if x is z:
     reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
     reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 reveal_type(x) # N: Revealed type is "__main__.Foo"
@@ -1011,7 +1011,7 @@ if z is x:
     reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
     reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 reveal_type(x) # N: Revealed type is "__main__.Foo"
@@ -1048,17 +1048,17 @@ z: Literal[Foo.B, Foo.C]
 # For the sake of simplicity, no narrowing is done when the narrower type is a Union.
 if x is y:
     reveal_type(x)  # N: Revealed type is "__main__.Foo"
-    reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.Foo"
-    reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
 
 if y is z:
-    reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]"
-    reveal_type(z)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
 else:
-    reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]"
-    reveal_type(z)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityWithNone]
@@ -1084,8 +1084,8 @@ else:
 if x is Foo.A:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C], None]"
-reveal_type(x) # N: Revealed type is "Union[__main__.Foo, None]"
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C] | None"
+reveal_type(x) # N: Revealed type is "__main__.Foo | None"
 [builtins fixtures/enum.pyi]
 
 [case testEnumReachabilityWithMultipleEnums]
@@ -1103,22 +1103,22 @@ x1: Union[Foo, Bar]
 if x1 is Foo.A:
     reveal_type(x1)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x1)  # N: Revealed type is "Union[Literal[__main__.Foo.B], __main__.Bar]"
-reveal_type(x1) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
+    reveal_type(x1)  # N: Revealed type is "Literal[__main__.Foo.B] | __main__.Bar"
+reveal_type(x1) # N: Revealed type is "__main__.Foo | __main__.Bar"
 
 x2: Union[Foo, Bar]
 if x2 is Bar.A:
     reveal_type(x2)  # N: Revealed type is "Literal[__main__.Bar.A]"
 else:
-    reveal_type(x2)  # N: Revealed type is "Union[__main__.Foo, Literal[__main__.Bar.B]]"
-reveal_type(x2) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
+    reveal_type(x2)  # N: Revealed type is "__main__.Foo | Literal[__main__.Bar.B]"
+reveal_type(x2) # N: Revealed type is "__main__.Foo | __main__.Bar"
 
 x3: Union[Foo, Bar]
 if x3 is Foo.A or x3 is Bar.A:
-    reveal_type(x3)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Bar.A]]"
+    reveal_type(x3)  # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Bar.A]"
 else:
-    reveal_type(x3)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Bar.B]]"
-reveal_type(x3) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
+    reveal_type(x3)  # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Bar.B]"
+reveal_type(x3) # N: Revealed type is "__main__.Foo | __main__.Bar"
 
 [builtins fixtures/bool.pyi]
 
@@ -1133,7 +1133,7 @@ _empty: Final = Empty.token
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, Empty, None]"
+                        # N: Left operand is of type "int | Empty | None"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
@@ -1178,7 +1178,7 @@ _empty = Empty.token
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, Empty, None]"
+                        # N: Left operand is of type "int | Empty | None"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
@@ -1209,7 +1209,7 @@ reveal_type(Empty.f) # N: Revealed type is "def (self: __main__.Empty) -> builti
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, Empty, None]"
+                        # N: Left operand is of type "int | Empty | None"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
@@ -1431,8 +1431,8 @@ class Foo(Enum):
     B = 2
 
 a = Foo.A
-reveal_type(a.value)    # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
-reveal_type(a._value_)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+reveal_type(a.value)    # N: Revealed type is "Literal[1]? | Literal[2]?"
+reveal_type(a._value_)  # N: Revealed type is "Literal[1]? | Literal[2]?"
 [builtins fixtures/enum.pyi]
 
 [case testNewSetsUnexpectedValueType]
@@ -1494,7 +1494,7 @@ def f(x: Foo):
         return x
     if x is Foo.B:
         pass
-    reveal_type(x) # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(x) # N: Revealed type is "Literal[__main__.Foo.B] | Literal[__main__.Foo.C]"
 
 [builtins fixtures/bool.pyi]
 
@@ -2369,7 +2369,7 @@ reveal_type(My.b)  # N: Revealed type is "Literal[__main__.My.b]?"
 reveal_type(My.c)  # N: Revealed type is "builtins.int"
 
 def accepts_my(my: My):
-    reveal_type(my.value)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+    reveal_type(my.value)  # N: Revealed type is "Literal[1]? | Literal[2]?"
 
 class Other(Enum):
     a = 1
@@ -2397,7 +2397,7 @@ reveal_type(A.y)  # N: Revealed type is "Literal[__main__.A.y]?"
 reveal_type(A.y.value)  # N: Revealed type is "Literal[2]?"
 
 def some_a(a: A):
-    reveal_type(a.value)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+    reveal_type(a.value)  # N: Revealed type is "Literal[1]? | Literal[2]?"
 [builtins fixtures/dict.pyi]
 
 

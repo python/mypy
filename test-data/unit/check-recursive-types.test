@@ -7,12 +7,12 @@ JSON = Union[str, List[JSON], Dict[str, JSON]]
 
 x: JSON = ["foo", {"bar": "baz"}]
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.list[...], builtins.dict[builtins.str, ...]]"
+reveal_type(x)  # N: Revealed type is "builtins.str | builtins.list[...] | builtins.dict[builtins.str, ...]"
 if isinstance(x, list):
     x = x[0]
 
 class Bad: ...
-x = ["foo", {"bar": [Bad()]}]  # E: List item 0 has incompatible type "Bad"; expected "Union[str, list[JSON], dict[str, JSON]]"
+x = ["foo", {"bar": [Bad()]}]  # E: List item 0 has incompatible type "Bad"; expected "str | list[JSON] | dict[str, JSON]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasBasicGenericSubtype]
@@ -54,7 +54,7 @@ reveal_type(flatten([1, [2, [3]]]))  # N: Revealed type is "builtins.list[builti
 
 class Bad: ...
 x: Nested[int] = [1, [2, [3]]]
-x = [1, [Bad()]]  # E: List item 0 has incompatible type "Bad"; expected "Union[int, Nested[int]]"
+x = [1, [Bad()]]  # E: List item 0 has incompatible type "Bad"; expected "int | Nested[int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasGenericInferenceNested]
@@ -77,7 +77,7 @@ from test import A
 
 x: A
 if isinstance(x, list):
-    reveal_type(x[0])  # N: Revealed type is "Union[builtins.int, builtins.list[Union[builtins.int, builtins.list[...]]]]"
+    reveal_type(x[0])  # N: Revealed type is "builtins.int | builtins.list[builtins.int | builtins.list[...]]"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
@@ -95,7 +95,7 @@ A = Union[B, int]
 B = Callable[[C], int]
 C = Type[A]
 x: A
-reveal_type(x)  # N: Revealed type is "Union[def (Union[type[def (...) -> builtins.int], type[builtins.int]]) -> builtins.int, builtins.int]"
+reveal_type(x)  # N: Revealed type is "def (type[def (...) -> builtins.int] | type[builtins.int]) -> builtins.int | builtins.int"
 
 [case testRecursiveAliasesProhibited-skip]
 from typing import Type, Callable, Union
@@ -189,7 +189,7 @@ class A(NamedTuple('A', [('attr', List[Exp])])): pass
 class B(NamedTuple('B', [('val', object)])): pass
 
 def my_eval(exp: Exp) -> int:
-    reveal_type(exp) # N: Revealed type is "Union[tuple[builtins.list[...], fallback=__main__.A], tuple[builtins.object, fallback=__main__.B]]"
+    reveal_type(exp) # N: Revealed type is "tuple[builtins.list[...], fallback=__main__.A] | tuple[builtins.object, fallback=__main__.B]"
     if isinstance(exp, A):
         my_eval(exp[0][0])
         return my_eval(exp.attr[0])
@@ -217,7 +217,7 @@ def union(a: T, b: S) -> Union[T, S]: ...
 
 x: int
 y = union(a, b)
-x = y  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
+x = y  # E: Incompatible types in assignment (expression has type "Sequence[A | NestedA]", variable has type "int")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasesJoins]
@@ -238,11 +238,11 @@ def join(a: T, b: T) -> T: ...
 x: int
 
 y1 = join(a, b)
-x = y1  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
+x = y1  # E: Incompatible types in assignment (expression has type "Sequence[A | NestedA]", variable has type "int")
 y2 = join(a, lb)
-x = y2  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
+x = y2  # E: Incompatible types in assignment (expression has type "Sequence[A | NestedA]", variable has type "int")
 y3 = join(la, b)
-x = y3  # E: Incompatible types in assignment (expression has type "Sequence[Union[Sequence[A], B, NestedB]]", variable has type "int")
+x = y3  # E: Incompatible types in assignment (expression has type "Sequence[Sequence[A] | B | NestedB]", variable has type "int")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasesRestrictions]
@@ -254,9 +254,9 @@ B = Mapping[int, Union[int, B]]
 x: int
 y: Union[A, B]
 if isinstance(y, Sequence):
-    x = y  # E: Incompatible types in assignment (expression has type "Sequence[Union[int, A]]", variable has type "int")
+    x = y  # E: Incompatible types in assignment (expression has type "Sequence[int | A]", variable has type "int")
 else:
-    x = y  # E: Incompatible types in assignment (expression has type "Mapping[int, Union[int, B]]", variable has type "int")
+    x = y  # E: Incompatible types in assignment (expression has type "Mapping[int, int | B]", variable has type "int")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasesRestrictions2]
@@ -275,11 +275,11 @@ aa: NestedA
 x: int
 x = a  # E: Incompatible types in assignment (expression has type "NestedA", variable has type "int")
 a = b
-x = a  # E: Incompatible types in assignment (expression has type "Sequence[Union[B, NestedB]]", variable has type "int")
+x = a  # E: Incompatible types in assignment (expression has type "Sequence[B | NestedB]", variable has type "int")
 b = aa  # E: Incompatible types in assignment (expression has type "NestedA", variable has type "NestedB")
 if isinstance(b[0], Sequence):
     a = b[0]
-    x = a  # E: Incompatible types in assignment (expression has type "Sequence[Union[B, NestedB]]", variable has type "int")
+    x = a  # E: Incompatible types in assignment (expression has type "Sequence[B | NestedB]", variable has type "int")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasWithRecursiveInstance]
@@ -298,8 +298,8 @@ a = [[b]]  # OK
 b = aa  # E: Incompatible types in assignment (expression has type "Nested[A]", variable has type "B")
 
 def join(a: T, b: T) -> T: ...
-reveal_type(join(a, b))  # N: Revealed type is "typing.Sequence[Union[__main__.A, typing.Sequence[Union[__main__.A, ...]]]]"
-reveal_type(join(b, a))  # N: Revealed type is "typing.Sequence[Union[__main__.A, typing.Sequence[Union[__main__.A, ...]]]]"
+reveal_type(join(a, b))  # N: Revealed type is "typing.Sequence[__main__.A | typing.Sequence[__main__.A | ...]]"
+reveal_type(join(b, a))  # N: Revealed type is "typing.Sequence[__main__.A | typing.Sequence[__main__.A | ...]]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasWithRecursiveInstanceInference]
@@ -377,7 +377,7 @@ from typing import Optional, Sequence
 
 A = Sequence[Optional[A]]
 x: A
-y: str = x[0]  # E: Incompatible types in assignment (expression has type "Optional[A]", variable has type "str")
+y: str = x[0]  # E: Incompatible types in assignment (expression has type "A | None", variable has type "str")
 
 [case testRecursiveAliasesProhibitBadAliases]
 # flags: --disable-error-code used-before-def
@@ -407,7 +407,7 @@ def local() -> None:
     L = List[Union[int, L]]  # E: Cannot resolve name "L" (possible cyclic definition) \
                              # N: Recursive types are not allowed at function scope
     x: L
-    reveal_type(x)  # N: Revealed type is "builtins.list[Union[builtins.int, Any]]"
+    reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int | Any]"
 
 S = Type[S]  # E: Type[...] can't contain "Type[...]"
 U = Type[Union[int, U]]  # E: Type[...] can't contain "Union[Type[...], Type[...]]" \
@@ -427,12 +427,12 @@ from typing import NamedTuple, Optional
 
 NT = NamedTuple("NT", [("x", Optional[NT]), ("y", int)])
 nt: NT
-reveal_type(nt)  # N: Revealed type is "tuple[Union[..., None], builtins.int, fallback=__main__.NT]"
-reveal_type(nt.x)  # N: Revealed type is "Union[tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
-reveal_type(nt[0])  # N: Revealed type is "Union[tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+reveal_type(nt)  # N: Revealed type is "tuple[... | None, builtins.int, fallback=__main__.NT]"
+reveal_type(nt.x)  # N: Revealed type is "tuple[... | None, builtins.int, fallback=__main__.NT] | None"
+reveal_type(nt[0])  # N: Revealed type is "tuple[... | None, builtins.int, fallback=__main__.NT] | None"
 y: str
 if nt.x is not None:
-    y = nt.x[0]  # E: Incompatible types in assignment (expression has type "Optional[NT]", variable has type "str")
+    y = nt.x[0]  # E: Incompatible types in assignment (expression has type "NT | None", variable has type "str")
 [builtins fixtures/tuple.pyi]
 
 [case testBasicRecursiveNamedTupleSpecial]
@@ -464,12 +464,12 @@ class NT(NamedTuple):
     y: int
 
 nt: NT
-reveal_type(nt)  # N: Revealed type is "tuple[Union[..., None], builtins.int, fallback=__main__.NT]"
-reveal_type(nt.x)  # N: Revealed type is "Union[tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
-reveal_type(nt[0])  # N: Revealed type is "Union[tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+reveal_type(nt)  # N: Revealed type is "tuple[... | None, builtins.int, fallback=__main__.NT]"
+reveal_type(nt.x)  # N: Revealed type is "tuple[... | None, builtins.int, fallback=__main__.NT] | None"
+reveal_type(nt[0])  # N: Revealed type is "tuple[... | None, builtins.int, fallback=__main__.NT] | None"
 y: str
 if nt.x is not None:
-    y = nt.x[0]  # E: Incompatible types in assignment (expression has type "Optional[NT]", variable has type "str")
+    y = nt.x[0]  # E: Incompatible types in assignment (expression has type "NT | None", variable has type "str")
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveRegularTupleClass]
@@ -522,7 +522,7 @@ T = TypeVar("T")
 S = TypeVar("S")
 def foo(arg: Tuple[T, S]) -> Union[T, S]: ...
 x = foo(n)
-y: str = x  # E: Incompatible types in assignment (expression has type "Union[str, tuple[B, ...]]", variable has type "str")
+y: str = x  # E: Incompatible types in assignment (expression has type "str | tuple[B, ...]", variable has type "str")
 [builtins fixtures/tuple.pyi]
 
 [case testMutuallyRecursiveNamedTuplesJoin]
@@ -605,8 +605,8 @@ class NT(NamedTuple, Generic[T]):
 class A: ...
 class B(A): ...
 
-nti: NT[int] = NT(key=0, value=NT(key=1, value=A()))  # E: Argument "value" to "NT" has incompatible type "A"; expected "Union[int, NT[int]]"
-reveal_type(nti)  # N: Revealed type is "tuple[builtins.int, Union[builtins.int, ...], fallback=__main__.NT[builtins.int]]"
+nti: NT[int] = NT(key=0, value=NT(key=1, value=A()))  # E: Argument "value" to "NT" has incompatible type "A"; expected "int | NT[int]"
+reveal_type(nti)  # N: Revealed type is "tuple[builtins.int, builtins.int | ..., fallback=__main__.NT[builtins.int]]"
 
 nta: NT[A]
 ntb: NT[B]
@@ -690,12 +690,12 @@ class TD(TypedDict, total=False):
     y: TD
 
 td: TD
-reveal_type(td.get("y"))  # N: Revealed type is "Union[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: ...}), None]"
+reveal_type(td.get("y"))  # N: Revealed type is "TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: ...}) | None"
 td["y"] = {"x": 0, "y": {}}
 td["y"] = {"x": 0, "y": {"x": 0, "y": 42}}  # E: Incompatible types (expression has type "int", TypedDict item "y" has type "TD")
 
-reveal_type(td.get("y"))  # N: Revealed type is "Union[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: ...}), None]"
-s: str = td.get("y")  # E: Incompatible types in assignment (expression has type "Optional[TD]", variable has type "str")
+reveal_type(td.get("y"))  # N: Revealed type is "TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: ...}) | None"
+s: str = td.get("y")  # E: Incompatible types in assignment (expression has type "TD | None", variable has type "str")
 
 td.update({"x": 0, "y": {"x": 1, "y": {}}})
 td.update({"x": 0, "y": {"x": 1, "y": {"x": 2, "y": 42}}})  # E: Incompatible types (expression has type "int", TypedDict item "y" has type "TD")
@@ -791,7 +791,7 @@ from typing import Union, Sequence
 class A:
     Children = Union[Sequence['Children'], 'A', None]
 x: A.Children
-reveal_type(x)  # N: Revealed type is "Union[typing.Sequence[...], __main__.A, None]"
+reveal_type(x)  # N: Revealed type is "typing.Sequence[...] | __main__.A | None"
 
 class B:
     Foo = Sequence[Bar]
@@ -808,11 +808,11 @@ Tree2 = Union[str, Tuple[Tree2, Tree2]]
 Tree3 = Union[str, Tuple[Tree3, Tree3, Tree3]]
 
 def test1() -> Tree1:
-    return 42  # E: Incompatible return value type (got "int", expected "Union[str, tuple[Tree1]]")
+    return 42  # E: Incompatible return value type (got "int", expected "str | tuple[Tree1]")
 def test2() -> Tree2:
-    return 42  # E: Incompatible return value type (got "int", expected "Union[str, tuple[Tree2, Tree2]]")
+    return 42  # E: Incompatible return value type (got "int", expected "str | tuple[Tree2, Tree2]")
 def test3() -> Tree3:
-    return 42  # E: Incompatible return value type (got "int", expected "Union[str, tuple[Tree3, Tree3, Tree3]]")
+    return 42  # E: Incompatible return value type (got "int", expected "str | tuple[Tree3, Tree3, Tree3]")
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveDoubleUnionNoCrash]
@@ -864,7 +864,7 @@ class Sub(Base[Union[ValueT, Recursive[ValueT]]]):
     pass
 
 x: Iterable[str]
-reveal_type(Sub)  # N: Revealed type is "def [ValueT] (element: Union[ValueT`1, __main__.Recursive[ValueT`1]]) -> __main__.Sub[ValueT`1]"
+reveal_type(Sub)  # N: Revealed type is "def [ValueT] (element: ValueT`1 | __main__.Recursive[ValueT`1]) -> __main__.Sub[ValueT`1]"
 reveal_type(Sub(x))  # N: Revealed type is "__main__.Sub[typing.Iterable[builtins.str]]"
 
 [case testNoRecursiveExpandInstanceUnionCrashInference]
@@ -906,7 +906,7 @@ def dummy() -> None:
 
     def bar(x: T) -> T:
         pass
-    reveal_type(bar)  # N: Revealed type is "def [T <: Union[builtins.str, builtins.dict[builtins.str, Any]]] (x: T`-1) -> T`-1"
+    reveal_type(bar)  # N: Revealed type is "def [T <: builtins.str | builtins.dict[builtins.str, Any]] (x: T`-1) -> T`-1"
 [builtins fixtures/dict.pyi]
 
 [case testForwardBoundFunctionScopeWorks]
@@ -933,7 +933,7 @@ x: A[int, str]
 
 *_, last = x
 if last is not None:
-    reveal_type(last)  # N: Revealed type is "tuple[builtins.int, builtins.str, Union[tuple[builtins.int, builtins.str, Union[..., None]], None]]"
+    reveal_type(last)  # N: Revealed type is "tuple[builtins.int, builtins.str, tuple[builtins.int, builtins.str, ... | None] | None]"
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveAliasLiteral]
@@ -957,8 +957,8 @@ X = Union[A[Optional[X]], B[Optional[X]]]
 
 z: Z
 x: X
-reveal_type(z)  # N: Revealed type is "Union[__main__.A[...], __main__.B[Union[..., None]]]"
-reveal_type(x)  # N: Revealed type is "Union[__main__.A[Union[..., None]], __main__.B[Union[..., None]]]"
+reveal_type(z)  # N: Revealed type is "__main__.A[...] | __main__.B[... | None]"
+reveal_type(x)  # N: Revealed type is "__main__.A[... | None] | __main__.B[... | None]"
 
 [case testRecursiveTupleFallback1]
 from typing import NewType, Tuple, Union

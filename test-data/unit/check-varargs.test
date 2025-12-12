@@ -94,7 +94,7 @@ a: A
 b: B
 c: C
 
-f(a)           # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[C]"
+f(a)           # E: Argument 1 to "f" has incompatible type "A"; expected "C | None"
 f(c, c)        # E: Argument 2 to "f" has incompatible type "C"; expected "A"
 f(c, a, b, c)  # E: Argument 4 to "f" has incompatible type "C"; expected "A"
 f()
@@ -403,10 +403,10 @@ class B: pass
 
 a, b = None, None # type: (A, B)
 f(*())        # E: Too few arguments for "f"
-f(a, *[a])    # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "Optional[B]" \
+f(a, *[a])    # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "B | None" \
               # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "B"
 f(a, b, *[a]) # E: Argument 3 to "f" has incompatible type "*list[A]"; expected "B"
-f(*(a, a, b)) # E: Argument 1 to "f" has incompatible type "*tuple[A, A, B]"; expected "Optional[B]"
+f(*(a, a, b)) # E: Argument 1 to "f" has incompatible type "*tuple[A, A, B]"; expected "B | None"
 f(*(a,))
 f(*(a, b))
 f(*(a, b, b, b))
@@ -631,9 +631,9 @@ from typing import TypeVar
 T = TypeVar('T')
 
 def f(*args: T) -> T: ...
-reveal_type(f(*(1, None)))  # N: Revealed type is "Union[Literal[1]?, None]"
-reveal_type(f(1, *(None, 1)))  # N: Revealed type is "Union[Literal[1]?, None]"
-reveal_type(f(1, *(1, None)))  # N: Revealed type is "Union[Literal[1]?, None]"
+reveal_type(f(*(1, None)))  # N: Revealed type is "Literal[1]? | None"
+reveal_type(f(1, *(None, 1)))  # N: Revealed type is "Literal[1]? | None"
+reveal_type(f(1, *(1, None)))  # N: Revealed type is "Literal[1]? | None"
 [builtins fixtures/tuple.pyi]
 
 
@@ -705,7 +705,7 @@ h(d)
 from typing import List, Union
 def f(numbers: List[Union[int, float]]) -> None: pass
 a = [1, 2]
-f(a) # E: Argument 1 to "f" has incompatible type "list[int]"; expected "list[Union[int, float]]" \
+f(a) # E: Argument 1 to "f" has incompatible type "list[int]"; expected "list[int | float]" \
      # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 x = [1]

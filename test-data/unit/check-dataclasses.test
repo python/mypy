@@ -296,9 +296,9 @@ class Person:
     name: str
     age: int = field(init=None)  # E: No overload variant of "field" matches argument type "None" \
                                  # N: Possible overload variants: \
-                                 # N:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
-                                 # N:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
-                                 # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
+                                 # N:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> _T \
+                                 # N:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> _T \
+                                 # N:     def field(*, init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> Any
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -329,7 +329,7 @@ class Person:
     enemy_names: List[str]
     nickname: Optional[str] = None
 
-reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, friend_names: builtins.list[builtins.str], enemy_names: builtins.list[builtins.str], nickname: Union[builtins.str, None] =) -> __main__.Person"
+reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, friend_names: builtins.list[builtins.str], enemy_names: builtins.list[builtins.str], nickname: builtins.str | None =) -> __main__.Person"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -679,7 +679,7 @@ class Application:
 class SpecializedApplication(Application):
   rating: int = 0
 
-reveal_type(SpecializedApplication)  # N: Revealed type is "def (id: Union[builtins.int, None], name: builtins.str, rating: builtins.int =) -> __main__.SpecializedApplication"
+reveal_type(SpecializedApplication)  # N: Revealed type is "def (id: builtins.int | None, name: builtins.str, rating: builtins.int =) -> __main__.SpecializedApplication"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -1390,9 +1390,9 @@ class Foo:
 main:6: error: Unpacking **kwargs in "field()" is not supported
 main:6: error: No overload variant of "field" matches argument type "dict[str, bool]"
 main:6: note: Possible overload variants:
-main:6: note:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
-main:6: note:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
-main:6: note:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
+main:6: note:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> _T
+main:6: note:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> _T
+main:6: note:     def field(*, init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> Any
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassFieldWithPositionalArguments]
@@ -1403,9 +1403,9 @@ class C:
     x: int = field(0)  # E: "field()" does not accept positional arguments \
                        # E: No overload variant of "field" matches argument type "int" \
                        # N: Possible overload variants: \
-                       # N:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
-                       # N:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
-                       # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
+                       # N:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> _T \
+                       # N:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> _T \
+                       # N:     def field(*, init: bool = ..., repr: bool = ..., hash: bool | None = ..., compare: bool = ..., metadata: Mapping[str, Any] | None = ..., kw_only: bool = ...) -> Any
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassFieldWithTypedDictUnpacking]
@@ -1712,8 +1712,8 @@ class Parent(Generic[T]):
 @dataclass
 class Child(Parent):
     y: Optional[int]
-Child(x=1, y=1)  # E: Argument "x" to "Child" has incompatible type "int"; expected "Optional[str]"
-Child(x='', y='')  # E: Argument "y" to "Child" has incompatible type "str"; expected "Optional[int]"
+Child(x=1, y=1)  # E: Argument "x" to "Child" has incompatible type "int"; expected "str | None"
+Child(x='', y='')  # E: Argument "y" to "Child" has incompatible type "str"; expected "int | None"
 Child(x='', y=1)
 Child(x=None, y=None)
 [builtins fixtures/dataclasses.pyi]
@@ -1959,16 +1959,16 @@ class LinkedList(Generic[T]):
     next: Optional[Self] = None
 
     def meth(self) -> None:
-        reveal_type(self.next)  # N: Revealed type is "Union[Self`0, None]"
+        reveal_type(self.next)  # N: Revealed type is "Self`0 | None"
 
 l_int: LinkedList[int] = LinkedList(1, LinkedList("no", None))  # E: Argument 1 to "LinkedList" has incompatible type "str"; expected "int"
 
 @dataclass
 class SubLinkedList(LinkedList[int]): ...
 
-lst = SubLinkedList(1, LinkedList(2))  # E: Argument 2 to "SubLinkedList" has incompatible type "LinkedList[int]"; expected "Optional[SubLinkedList]"
-reveal_type(lst.next)  # N: Revealed type is "Union[__main__.SubLinkedList, None]"
-reveal_type(SubLinkedList)  # N: Revealed type is "def (value: builtins.int, next: Union[__main__.SubLinkedList, None] =) -> __main__.SubLinkedList"
+lst = SubLinkedList(1, LinkedList(2))  # E: Argument 2 to "SubLinkedList" has incompatible type "LinkedList[int]"; expected "SubLinkedList | None"
+reveal_type(lst.next)  # N: Revealed type is "__main__.SubLinkedList | None"
+reveal_type(SubLinkedList)  # N: Revealed type is "def (value: builtins.int, next: __main__.SubLinkedList | None =) -> __main__.SubLinkedList"
 [builtins fixtures/dataclasses.pyi]
 
 [case testNoCrashOnNestedGenericCallable]
@@ -2097,10 +2097,10 @@ class B:
 
 a_or_b: Union[A[int], B]
 _ = replace(a_or_b, x=42, y=True, init_var=42)
-_ = replace(a_or_b, x=42, y=True)  # E: Missing named argument "init_var" for "replace" of "Union[A[int], B]"
-_ = replace(a_or_b, x=42, y=True, z='42', init_var=42)  # E: Argument "z" to "replace" of "Union[A[int], B]" has incompatible type "str"; expected "Never"
-_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "Union[A[int], B]" has incompatible type "dict[Never, Never]"; expected "Never"
-_ = replace(a_or_b, y=42, init_var=42)  # E: Argument "y" to "replace" of "Union[A[int], B]" has incompatible type "int"; expected "bool"
+_ = replace(a_or_b, x=42, y=True)  # E: Missing named argument "init_var" for "replace" of "A[int] | B"
+_ = replace(a_or_b, x=42, y=True, z='42', init_var=42)  # E: Argument "z" to "replace" of "A[int] | B" has incompatible type "str"; expected "Never"
+_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "A[int] | B" has incompatible type "dict[Never, Never]"; expected "Never"
+_ = replace(a_or_b, y=42, init_var=42)  # E: Argument "y" to "replace" of "A[int] | B" has incompatible type "int"; expected "bool"
 
 [builtins fixtures/tuple.pyi]
 
@@ -2122,7 +2122,7 @@ TA = TypeVar('TA', bound=A)
 TB = TypeVar('TB', bound=B)
 
 def f(b_or_t: Union[TA, TB, int]) -> None:
-    a2 = replace(b_or_t)   # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[TA, TB, int]"
+    a2 = replace(b_or_t)   # E: Value of type variable "_DataclassT" of "replace" cannot be "TA | TB | int"
 
 [builtins fixtures/tuple.pyi]
 
@@ -2204,7 +2204,7 @@ from dataclasses import is_dataclass, replace
 def f(x: object) -> None:
   _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
   if is_dataclass(x):
-    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[DataclassInstance, type[DataclassInstance]]"
+    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "DataclassInstance | type[DataclassInstance]"
     if not isinstance(x, type):
       _ = replace(x)
 
@@ -2611,11 +2611,11 @@ class Base:
 
 @dataclass
 class Child(Base):
-    a: int  # E: Covariant override of a mutable attribute (base class "Base" defined the type as "Optional[int]", expression has type "int")
+    a: int  # E: Covariant override of a mutable attribute (base class "Base" defined the type as "int | None", expression has type "int")
 
 @dataclass
 class Other(Base):
-    a: str  # E: Incompatible types in assignment (expression has type "str", base class "Base" defined the type as "Optional[int]")
+    a: str  # E: Incompatible types in assignment (expression has type "str", base class "Base" defined the type as "int | None")
 
 @dataclass_transform(kw_only_default=True)
 class DCMeta(type): ...
@@ -2624,7 +2624,7 @@ class X(metaclass=DCMeta):
     a: Optional[int]
 
 class Y(X):
-    a: int  # E: Covariant override of a mutable attribute (base class "X" defined the type as "Optional[int]", expression has type "int")
+    a: int  # E: Covariant override of a mutable attribute (base class "X" defined the type as "int | None", expression has type "int")
 [builtins fixtures/tuple.pyi]
 
 

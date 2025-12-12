@@ -1135,7 +1135,7 @@ class C:
     def same(self: T) -> T: ...
 
 x: Union[A, C]
-reveal_type(x.same)  # N: Revealed type is "Union[builtins.int, def () -> __main__.C]"
+reveal_type(x.same)  # N: Revealed type is "builtins.int | def () -> __main__.C"
 
 [case testSelfTypeOnUnionClassMethod]
 from typing import TypeVar, Union, Type
@@ -1150,7 +1150,7 @@ class C:
     def same(cls: Type[T]) -> T: ...
 
 x: Union[A, C]
-reveal_type(x.same)  # N: Revealed type is "Union[builtins.int, def () -> __main__.C]"
+reveal_type(x.same)  # N: Revealed type is "builtins.int | def () -> __main__.C"
 [builtins fixtures/classmethod.pyi]
 
 [case SelfTypeOverloadedClassMethod]
@@ -1201,9 +1201,9 @@ class B(A): ...
 class C(A): ...
 
 t: Type[Union[B, C]]
-reveal_type(t.meth)  # N: Revealed type is "Union[def () -> __main__.B, def () -> __main__.C]"
+reveal_type(t.meth)  # N: Revealed type is "def () -> __main__.B | def () -> __main__.C"
 x = t.meth()
-reveal_type(x)  # N: Revealed type is "Union[__main__.B, __main__.C]"
+reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeClassMethodOnUnionGeneric]
@@ -1218,7 +1218,7 @@ class A(Generic[T]):
 
 t: Type[Union[A[int], A[str]]]
 x = t.meth()
-reveal_type(x)  # N: Revealed type is "Union[__main__.A[builtins.int], __main__.A[builtins.str]]"
+reveal_type(x)  # N: Revealed type is "__main__.A[builtins.int] | __main__.A[builtins.str]"
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeClassMethodOnUnionList]
@@ -1234,7 +1234,7 @@ class C(A): ...
 
 t: Type[Union[B, C]]
 x = t.meth()[0]
-reveal_type(x)  # N: Revealed type is "Union[__main__.B, __main__.C]"
+reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testSelfTypeClassMethodOverloadedOnInstance]
@@ -1258,14 +1258,14 @@ class AClass:
         ...
 
 def foo(x: Type[AClass]) -> None:
-    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int | None, def (id: __main__.AClass, id2: None =) -> builtins.int | None)"
     y = x()
-    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int | None, def (id: __main__.AClass, id2: None =) -> builtins.int | None)"
     y.delete(10, 20)
     y.delete(y)
 
 def bar(x: AClass) -> None:
-    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int | None, def (id: __main__.AClass, id2: None =) -> builtins.int | None)"
     x.delete(10, 20)
 [builtins fixtures/classmethod.pyi]
 
@@ -2117,7 +2117,7 @@ class C:
 class D:
     x: int
 x: Union[C, D]
-reveal_type(x.x)  # N: Revealed type is "Union[__main__.C, builtins.int]"
+reveal_type(x.x)  # N: Revealed type is "__main__.C | builtins.int"
 
 [case testCallableProtocolTypingSelf]
 from typing import Protocol, Self
@@ -2227,19 +2227,19 @@ class X:
     _inst: Optional[Self] = None
     @classmethod
     def default(cls) -> Self:
-        reveal_type(cls._inst)  # N: Revealed type is "Union[Self`0, None]"
+        reveal_type(cls._inst)  # N: Revealed type is "Self`0 | None"
         if cls._inst is None:
             cls._inst = cls()
         return cls._inst
 
 reveal_type(X._inst)  # E: Access to generic instance variables via class is ambiguous \
-                      # N: Revealed type is "Union[__main__.X, None]"
-reveal_type(X()._inst)  # N: Revealed type is "Union[__main__.X, None]"
+                      # N: Revealed type is "__main__.X | None"
+reveal_type(X()._inst)  # N: Revealed type is "__main__.X | None"
 
 class Y(X): ...
 reveal_type(Y._inst)  # E: Access to generic instance variables via class is ambiguous \
-                      # N: Revealed type is "Union[__main__.Y, None]"
-reveal_type(Y()._inst)  # N: Revealed type is "Union[__main__.Y, None]"
+                      # N: Revealed type is "__main__.Y | None"
+reveal_type(Y()._inst)  # N: Revealed type is "__main__.Y | None"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfInFuncDecoratedClassmethod]

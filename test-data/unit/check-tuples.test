@@ -324,8 +324,8 @@ if int():
 t1[2]     # E: Tuple index out of range
 t1[3]     # E: Tuple index out of range
 t2[1]     # E: Tuple index out of range
-reveal_type(t1[n])     # N: Revealed type is "Union[__main__.A, __main__.B]"
-reveal_type(t3[n:])    # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], ...]"
+reveal_type(t1[n])     # N: Revealed type is "__main__.A | __main__.B"
+reveal_type(t3[n:])    # N: Revealed type is "builtins.tuple[__main__.A | __main__.B | __main__.C | __main__.D | __main__.E, ...]"
 if int():
     b = t1[(0)] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
@@ -1187,7 +1187,7 @@ from typing import Tuple, Union
 Pair = Tuple[int, int]
 Variant = Union[int, Pair]
 def tuplify(v: Variant) -> None:
-    reveal_type(v) # N: Revealed type is "Union[builtins.int, tuple[builtins.int, builtins.int]]"
+    reveal_type(v) # N: Revealed type is "builtins.int | tuple[builtins.int, builtins.int]"
     if not isinstance(v, tuple):
         reveal_type(v) # N: Revealed type is "builtins.int"
         v = (v, v)
@@ -1209,10 +1209,10 @@ def tuplify2(v: Variant2) -> None:
 from typing import Tuple, Union
 
 def good(blah: Union[Tuple[int, int], int]) -> None:
-    reveal_type(blah) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], builtins.int]"
+    reveal_type(blah) # N: Revealed type is "tuple[builtins.int, builtins.int] | builtins.int"
     if isinstance(blah, tuple):
         reveal_type(blah) # N: Revealed type is "tuple[builtins.int, builtins.int]"
-    reveal_type(blah) # N: Revealed type is "Union[tuple[builtins.int, builtins.int], builtins.int]"
+    reveal_type(blah) # N: Revealed type is "tuple[builtins.int, builtins.int] | builtins.int"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1431,11 +1431,11 @@ f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "tuple[()]"
 t = (0, "")
 x = 0
 y = ""
-reveal_type(t[x])  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(t[x])  # N: Revealed type is "builtins.int | builtins.str"
 t[y]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
       # N: Possible overload variants: \
-      # N:     def __getitem__(self, int, /) -> Union[int, str] \
-      # N:     def __getitem__(self, slice, /) -> tuple[Union[int, str], ...]
+      # N:     def __getitem__(self, int, /) -> int | str \
+      # N:     def __getitem__(self, slice, /) -> tuple[int | str, ...]
 
 [builtins fixtures/tuple.pyi]
 
@@ -1443,7 +1443,7 @@ t[y]  # E: No overload variant of "__getitem__" of "tuple" matches argument type
 t = (0, "")
 x = 0
 y = ""
-reveal_type(t[x:])  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
+reveal_type(t[x:])  # N: Revealed type is "builtins.tuple[builtins.int | builtins.str, ...]"
 t[y:]  # E: Slice index must be an integer, SupportsIndex or None
 [builtins fixtures/tuple.pyi]
 
@@ -1543,7 +1543,7 @@ x: Optional[Tuple[B]]
 if x in possibles:
     reveal_type(x) # N: Revealed type is "tuple[__main__.B]"
 else:
-    reveal_type(x) # N: Revealed type is "Union[tuple[__main__.B], None]"
+    reveal_type(x) # N: Revealed type is "tuple[__main__.B] | None"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1552,10 +1552,10 @@ from typing import Union, Tuple
 
 tup: Union[Tuple[int, str], Tuple[int, int, str]]
 reveal_type(tup[0])  # N: Revealed type is "builtins.int"
-reveal_type(tup[1])  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(tup[1])  # N: Revealed type is "builtins.str | builtins.int"
 reveal_type(tup[2])  # E: Tuple index out of range \
-                     # N: Revealed type is "Union[Any, builtins.str]"
-reveal_type(tup[:])  # N: Revealed type is "Union[tuple[builtins.int, builtins.str], tuple[builtins.int, builtins.int, builtins.str]]"
+                     # N: Revealed type is "Any | builtins.str"
+reveal_type(tup[:])  # N: Revealed type is "tuple[builtins.int, builtins.str] | tuple[builtins.int, builtins.int, builtins.str]"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1564,10 +1564,10 @@ from typing import Union, Tuple, List
 
 tup: Union[Tuple[int, str], List[int]]
 reveal_type(tup[0])  # N: Revealed type is "builtins.int"
-reveal_type(tup[1])  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(tup[1])  # N: Revealed type is "builtins.str | builtins.int"
 reveal_type(tup[2])  # E: Tuple index out of range \
-                     # N: Revealed type is "Union[Any, builtins.int]"
-reveal_type(tup[:])  # N: Revealed type is "Union[tuple[builtins.int, builtins.str], builtins.list[builtins.int]]"
+                     # N: Revealed type is "Any | builtins.int"
+reveal_type(tup[:])  # N: Revealed type is "tuple[builtins.int, builtins.str] | builtins.list[builtins.int]"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1650,9 +1650,9 @@ class A:
         )
 [out]
 main:18: error: Incompatible return value type (6 tuple items are incompatible; 3 items are omitted)
-main:18: note: Expression tuple item 6 has type "Union[str, int]"; "str" expected;
-main:18: note: Expression tuple item 7 has type "Union[str, float]"; "str" expected;
-main:18: note: Expression tuple item 8 has type "Optional[str]"; "str" expected;
+main:18: note: Expression tuple item 6 has type "str | int"; "str" expected;
+main:18: note: Expression tuple item 7 has type "str | float"; "str" expected;
+main:18: note: Expression tuple item 8 has type "str | None"; "str" expected;
 [builtins fixtures/property.pyi]
 
 [case testPropertyLongTupleReturnTypeMismatchUnionWiderExpected]
@@ -1690,7 +1690,7 @@ class A:
 [out]
 main:18: error: Incompatible return value type (2 tuple items are incompatible)
 main:18: note: Expression tuple item 2 has type "str"; "int" expected;
-main:18: note: Expression tuple item 11 has type "Union[float, int]"; "str" expected;
+main:18: note: Expression tuple item 11 has type "float | int"; "str" expected;
 [builtins fixtures/property.pyi]
 
 [case testTupleWithStarExpr]
