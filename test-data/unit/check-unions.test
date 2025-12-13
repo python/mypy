@@ -386,8 +386,8 @@ reveal_type(u(type, type)) # N: Revealed type is "def (x: builtins.object) -> bu
 # One type, other non-type
 reveal_type(u(t_s, 1)) # N: Revealed type is "builtins.int | type[builtins.str]"
 reveal_type(u(1, t_s)) # N: Revealed type is "type[builtins.str] | builtins.int"
-reveal_type(u(type, 1)) # N: Revealed type is "builtins.int | def (x: builtins.object) -> builtins.type"
-reveal_type(u(1, type)) # N: Revealed type is "def (x: builtins.object) -> builtins.type | builtins.int"
+reveal_type(u(type, 1)) # N: Revealed type is "builtins.int | (def (x: builtins.object) -> builtins.type)"
+reveal_type(u(1, type)) # N: Revealed type is "(def (x: builtins.object) -> builtins.type) | builtins.int"
 reveal_type(u(t_a, 1)) # N: Revealed type is "builtins.int | type[Any]"
 reveal_type(u(1, t_a)) # N: Revealed type is "type[Any] | builtins.int"
 reveal_type(u(t_o, 1)) # N: Revealed type is "builtins.int | type[builtins.object]"
@@ -468,11 +468,11 @@ i_C: Callable[[int], C]
 
 reveal_type(u(D_C, D_C)) # N: Revealed type is "def (__main__.D) -> __main__.C"
 
-reveal_type(u(A_C, D_C)) # N: Revealed type is "def (__main__.D) -> __main__.C | def (Any) -> __main__.C"
-reveal_type(u(D_C, A_C)) # N: Revealed type is "def (Any) -> __main__.C | def (__main__.D) -> __main__.C"
+reveal_type(u(A_C, D_C)) # N: Revealed type is "(def (__main__.D) -> __main__.C) | (def (Any) -> __main__.C)"
+reveal_type(u(D_C, A_C)) # N: Revealed type is "(def (Any) -> __main__.C) | (def (__main__.D) -> __main__.C)"
 
-reveal_type(u(D_A, D_C)) # N: Revealed type is "def (__main__.D) -> __main__.C | def (__main__.D) -> Any"
-reveal_type(u(D_C, D_A)) # N: Revealed type is "def (__main__.D) -> Any | def (__main__.D) -> __main__.C"
+reveal_type(u(D_A, D_C)) # N: Revealed type is "(def (__main__.D) -> __main__.C) | (def (__main__.D) -> Any)"
+reveal_type(u(D_C, D_A)) # N: Revealed type is "(def (__main__.D) -> Any) | (def (__main__.D) -> __main__.C)"
 
 reveal_type(u(D_C, C_C)) # N: Revealed type is "def (__main__.D) -> __main__.C"
 reveal_type(u(C_C, D_C)) # N: Revealed type is "def (__main__.D) -> __main__.C"
@@ -480,7 +480,7 @@ reveal_type(u(C_C, D_C)) # N: Revealed type is "def (__main__.D) -> __main__.C"
 reveal_type(u(D_C, D_D)) # N: Revealed type is "def (__main__.D) -> __main__.C"
 reveal_type(u(D_D, D_C)) # N: Revealed type is "def (__main__.D) -> __main__.C"
 
-reveal_type(u(D_C, i_C)) # N: Revealed type is "def (builtins.int) -> __main__.C | def (__main__.D) -> __main__.C"
+reveal_type(u(D_C, i_C)) # N: Revealed type is "(def (builtins.int) -> __main__.C) | (def (__main__.D) -> __main__.C)"
 
 [case testUnionOperatorMethodSpecialCase]
 from typing import Union
@@ -821,7 +821,7 @@ class NTStr(NamedTuple):
 t1: NTInt
 reveal_type(t1.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int]"
 nt: Union[NTInt, NTStr]
-reveal_type(nt.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int] | def () -> typing.Iterator[builtins.str]"
+reveal_type(nt.__iter__) # N: Revealed type is "(def () -> typing.Iterator[builtins.int]) | (def () -> typing.Iterator[builtins.str])"
 for nx in nt:
     reveal_type(nx) # N: Revealed type is "builtins.int | builtins.str"
 

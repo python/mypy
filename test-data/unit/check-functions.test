@@ -2293,7 +2293,7 @@ def f() -> None:
 def g(x: int) -> None:
     pass
 h = f if bool() else g
-reveal_type(h) # N: Revealed type is "def () | def (x: builtins.int)"
+reveal_type(h) # N: Revealed type is "(def ()) | (def (x: builtins.int))"
 h(7) # E: Too many arguments for "f"
 
 T = TypeVar("T")

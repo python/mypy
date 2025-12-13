@@ -1951,7 +1951,7 @@ reveal_type(t1.__iter__) # N: Revealed type is "def () -> typing.Iterator[__main
 t2: NTInt
 reveal_type(t2.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int]"
 nt: Union[NTInt, NTStr]
-reveal_type(nt.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int] | def () -> typing.Iterator[builtins.str]"
+reveal_type(nt.__iter__) # N: Revealed type is "(def () -> typing.Iterator[builtins.int]) | (def () -> typing.Iterator[builtins.str])"
 for nx in nt:
     reveal_type(nx) # N: Revealed type is "builtins.int | builtins.str"
 

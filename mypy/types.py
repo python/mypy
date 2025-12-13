@@ -4013,7 +4013,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         """
         res = []
         for t in a:
-            res.append(t.accept(self))
+            s = t.accept(self)
+            if use_or_syntax and isinstance(get_proper_type(t), CallableType):
+                res.append(f"({s})")
+            else:
+                res.append(s)
         sep = ", " if not use_or_syntax else " | "
         return sep.join(res)
 
