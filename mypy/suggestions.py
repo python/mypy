@@ -891,7 +891,7 @@ class TypeFormatter(TypeStrVisitor):
     def visit_union_type(self, t: UnionType) -> str:
         if len(t.items) == 2 and is_overlapping_none(t):
             s = remove_optional(t).accept(self)
-            return f"{s} | None" if self.options.use_or_syntax() else f"Optional[{s}]"
+            return f"{s} | None"
         else:
             return super().visit_union_type(t)
 

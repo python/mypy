@@ -357,7 +357,6 @@ def parse_options(
         options = Options()
         options.error_summary = False
         options.hide_error_codes = True
-        options.overwrite_union_syntax = True
 
     # Allow custom python version to override testfile_pyversion.
     if all(flag.split("=")[0] != "--python-version" for flag in flag_list):

@@ -456,7 +456,7 @@ $ dmypy inspect foo.py:3:10:3:17 -vv
 $ dmypy inspect foo.py:9:9:9:11
 "int"
 $ dmypy inspect foo.py:11:1:11:3
-"Callable[[Optional[int]], None]"
+"Callable[[int | None], None]"
 $ dmypy inspect foo.py:11:1:13:1
 "None"
 $ dmypy inspect foo.py:1:2:3:4

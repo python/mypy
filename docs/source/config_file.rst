@@ -930,15 +930,6 @@ These options may only be set in the global section (``[mypy]``).
 
     Show absolute paths to files.
 
-.. confval:: force_union_syntax
-
-    :type: boolean
-    :default: False
-
-    Always use ``Union[]`` and ``Optional[]`` for union types
-    in error messages (instead of the ``|`` operator),
-    even on Python 3.10+.
-
 Incremental mode
 ****************
 

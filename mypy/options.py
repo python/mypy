@@ -413,8 +413,6 @@ class Options:
         # Deprecated, Mypy only supports Python 3.9+
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
-        # Mypy internal use only! Set during test run.
-        self.overwrite_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
@@ -434,9 +432,12 @@ class Options:
         return True
 
     def use_or_syntax(self) -> bool:
-        if self.python_version >= (3, 10):
-            return not self.force_union_syntax
-        return self.overwrite_union_syntax
+        warnings.warn(
+            "options.use_or_syntax() is deprecated and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return True
 
     def use_star_unpack(self) -> bool:
         return self.python_version >= (3, 11)

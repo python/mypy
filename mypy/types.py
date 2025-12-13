@@ -3967,9 +3967,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"Literal[{t.value_repr()}]"
 
     def visit_union_type(self, t: UnionType, /) -> str:
-        use_or_syntax = self.options.use_or_syntax()
-        s = self.list_str(t.items, use_or_syntax=use_or_syntax)
-        return s if use_or_syntax else f"Union[{s}]"
+        return self.list_str(t.items, use_or_syntax=True)
 
     def visit_partial_type(self, t: PartialType, /) -> str:
         if t.type is None:

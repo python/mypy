@@ -52,7 +52,6 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         "--no-error-summary",
         "--hide-error-codes",
         "--allow-empty-bodies",
-        "--overwrite-union-syntax",
         "--test-env",  # Speeds up some checks
     ]
     interpreter = python3_path
