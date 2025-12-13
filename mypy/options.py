@@ -413,8 +413,6 @@ class Options:
         # Deprecated, Mypy only supports Python 3.9+
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
-        # Mypy internal use only! Set during test run.
-        self.overwrite_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
