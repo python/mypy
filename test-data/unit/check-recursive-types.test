@@ -95,7 +95,7 @@ A = Union[B, int]
 B = Callable[[C], int]
 C = Type[A]
 x: A
-reveal_type(x)  # N: Revealed type is "def (type[def (...) -> builtins.int] | type[builtins.int]) -> builtins.int | builtins.int"
+reveal_type(x)  # N: Revealed type is "(def (type[def (...) -> builtins.int] | type[builtins.int]) -> builtins.int) | builtins.int"
 
 [case testRecursiveAliasesProhibited-skip]
 from typing import Type, Callable, Union

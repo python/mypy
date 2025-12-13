@@ -344,7 +344,7 @@ class C:
     def f(self) -> int: ...
     g: ClassVar[Union[Callable[[C], int], int]] = f
 
-reveal_type(C().g)  # N: Revealed type is "def () -> builtins.int | builtins.int"
+reveal_type(C().g)  # N: Revealed type is "(def () -> builtins.int) | builtins.int"
 
 [case testGenericSubclassAccessNoLeak]
 from typing import ClassVar, Generic, TypeVar

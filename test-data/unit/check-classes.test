@@ -7147,7 +7147,7 @@ def test() -> None:
         x = Other
     else:
         return
-    reveal_type(x)  # N: Revealed type is "def () -> __main__.One | def () -> __main__.Other"
+    reveal_type(x)  # N: Revealed type is "(def () -> __main__.One) | (def () -> __main__.Other)"
     reveal_type(x.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 

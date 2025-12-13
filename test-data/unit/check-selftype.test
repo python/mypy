@@ -1135,7 +1135,7 @@ class C:
     def same(self: T) -> T: ...
 
 x: Union[A, C]
-reveal_type(x.same)  # N: Revealed type is "builtins.int | def () -> __main__.C"
+reveal_type(x.same)  # N: Revealed type is "builtins.int | (def () -> __main__.C)"
 
 [case testSelfTypeOnUnionClassMethod]
 from typing import TypeVar, Union, Type
@@ -1150,7 +1150,7 @@ class C:
     def same(cls: Type[T]) -> T: ...
 
 x: Union[A, C]
-reveal_type(x.same)  # N: Revealed type is "builtins.int | def () -> __main__.C"
+reveal_type(x.same)  # N: Revealed type is "builtins.int | (def () -> __main__.C)"
 [builtins fixtures/classmethod.pyi]
 
 [case SelfTypeOverloadedClassMethod]
@@ -1201,7 +1201,7 @@ class B(A): ...
 class C(A): ...
 
 t: Type[Union[B, C]]
-reveal_type(t.meth)  # N: Revealed type is "def () -> __main__.B | def () -> __main__.C"
+reveal_type(t.meth)  # N: Revealed type is "(def () -> __main__.B) | (def () -> __main__.C)"
 x = t.meth()
 reveal_type(x)  # N: Revealed type is "__main__.B | __main__.C"
 [builtins fixtures/classmethod.pyi]
