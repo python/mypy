@@ -819,7 +819,7 @@ def define_options(
     add_invertible_flag(
         "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
     )
-
+    # This flag is deprecated, Mypy only supports Python 3.10+
     add_invertible_flag(
         "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
     )

@@ -434,9 +434,12 @@ class Options:
         return True
 
     def use_or_syntax(self) -> bool:
-        if self.python_version >= (3, 10):
-            return not self.force_union_syntax
-        return self.overwrite_union_syntax
+        warnings.warn(
+            "options.use_or_syntax() is deprecated and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return True
 
     def use_star_unpack(self) -> bool:
         return self.python_version >= (3, 11)

@@ -11,6 +11,13 @@ Support for this will be dropped in the first half of 2026!
 
 Contributed by Marc Mueller (PR [20156](https://github.com/python/mypy/pull/20156)).
 
+### Deprecated Flag: `--force-union-syntax`
+
+Mypy only supports Python 3.10+. The `--force-union-syntax` flag is now
+deprecated, and a no-op. It will be removed in a future version.
+
+Contributed by Marc Mueller (PR [20405](https://github.com/python/mypy/pull/20405))
+
 ## Mypy 1.19
 
 We’ve just uploaded mypy 1.19.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
