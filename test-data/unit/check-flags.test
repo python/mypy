@@ -2518,48 +2518,34 @@ def f():
 
 [case testSpotCheckEnableAllErrorCodes]
 # flags: --enable-all-error-codes
-# It would be annoying to check every error here, so let's just check a couple.
-from typing_extensions import override
-
+-- It would be annoying to check every error here, so let's just check a couple.
 class Parent:
-    def f(self, x: int) -> None:
-        pass
-
-    def g(self, y: int) -> None:
-        pass
-
+    def f(self, x: int) -> None: pass
 class Child(Parent):
-    def f(self, x: int) -> None: # E: Method "f" is not using @override but is overriding a method in class "__main__.Parent"
-        pass
+    def f(self, x: int) -> None: pass # E: Method "f" is not using @override but is overriding a method in class "__main__.Parent"
+#type: ignore # E: Unused "type: ignore" comment # E: "type: ignore" comment without error code
 
-    @override
-    def g(self, y: int) -> None: #type: ignore # E: Unused "type: ignore" comment # E: "type: ignore" comment without error code
-        pass
-[builtins fixtures/tuple-simple.pyi]
+[case testSpotCheckEnableAllErrorCodesSomeCodes-xfail]
+# flags: --enable-all-error-codes --show-error-codes
+-- See https://github.com/python/mypy/issues/19604 for why this doesn't work, probably.
+def inc(x):  # E: Function is missing a type annotation  [no-untyped-def]
+    return x + 1
+class Parent:
+    def f(self, x): pass # E: Function is missing a type annotation  [no-untyped-def]
+from typing import cast
+cast(int, 1) # E: Redundant cast to "int"  [redundant-cast]
 
 [case testSpotCheckEnableAllErrorCodesNot]
-# This test case exists purely to ensure that the testSpotCheckErrorCodeAll test does not become obsolete.
-# (For example, if all the errors expected by testSpotCheckErrorCodeAll get turned on by default, then
-#  the testSpotCheckErrorCodeAll test would fail to guarantee the enablement of any additional errors!
-#  (hint: if that does happen, breaking this test, then consider changing these two tests to pick *different*,
-#   not-enabled-by-default, error codes. Also, testSpotCheckEnableAllErrorCodesConfig.))
-from typing_extensions import override
-
+-- This test case exists purely to ensure that the testSpotCheckErrorCodeAll test does not become obsolete.
+-- If all the errors expected by testSpotCheckErrorCodeAll get turned on by default, then the
+-- testSpotCheckErrorCodeAll test would fail to guarantee the enablement of any additional errors!
+-- If that does happen, breaking this test, then consider changing this pair of tests to pick *different*,
+-- not-enabled-by-default, error codes. Also, testSpotCheckEnableAllErrorCodesConfig.
 class Parent:
-    def f(self, x: int) -> None:
-        pass
-
-    def g(self, y: int) -> None:
-        pass
-
+    def f(self, x: int) -> None: pass
 class Child(Parent):
-    def f(self, x: int) -> None:
-        pass
-
-    @override
-    def g(self, y: int) -> None: #type: ignore
-        pass
-[builtins fixtures/tuple-simple.pyi]
+    def f(self, x: int) -> None: pass
+#type: ignore
 
 [case testSpotCheckEnableAllErrorCodesConfig]
 # flags: --config-file tmp/mypy.ini
@@ -2610,8 +2596,8 @@ enable_all_error_codes = True
 
 [case testSpotCheckEnableAllErrorCodesCountermand]
 # flags: --enable-all-error-codes --disable-error-code unused-ignore
-x = 2 # type: ignore # E: "type: ignore" comment without error code
+# type: ignore # E: "type: ignore" comment without error code
 
 [case testSpotCheckEnableAllErrorCodesCountermandCountermand]
 # flags: --enable-all-error-codes --disable-error-code ignore-without-code --disable-error-code unused-ignore --enable-error-code ignore-without-code
-x = 2 # type: ignore # E: "type: ignore" comment without error code
+# type: ignore # E: "type: ignore" comment without error code
