@@ -819,6 +819,7 @@ def define_options(
     add_invertible_flag(
         "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
     )
+
     # This flag is deprecated, Mypy only supports Python 3.10+
     add_invertible_flag(
         "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
@@ -1543,6 +1544,9 @@ def process_options(
 
     if options.force_uppercase_builtins:
         print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
+
+    if options.force_union_syntax:
+        print("Warning: --force-union-syntax is deprecated; mypy only supports Python 3.10+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:
