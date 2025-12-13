@@ -297,10 +297,15 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return self.s
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
-        if isinstance(self.s, TypeVarType) and self.s.id == t.id:
-            if self.s.upper_bound == t.upper_bound:
-                return self.s
-            return self.s.copy_modified(upper_bound=join_types(self.s.upper_bound, t.upper_bound))
+        if isinstance(self.s, TypeVarType):
+            if self.s.id == t.id:
+                if self.s.upper_bound == t.upper_bound:
+                    return self.s
+                return self.s.copy_modified(
+                    upper_bound=join_types(self.s.upper_bound, t.upper_bound)
+                )
+            # Fix non-commutative joins
+            return get_proper_type(join_types(self.s.upper_bound, t.upper_bound))
         else:
             return self.default(self.s)
 
