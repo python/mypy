@@ -3196,6 +3196,7 @@ def fun(val: str | None):
 [builtins fixtures/tuple.pyi]
 
 [case testMatchMappingRestErrorLocation]
+rest: list[int]
 data: list[int]
 match data:
     case [1, *rest]:
