@@ -1799,7 +1799,7 @@ class ASTConverter:
         if n.rest is None:
             rest = None
         else:
-            rest = NameExpr(n.rest)
+            rest = self.set_line(NameExpr(n.rest), n)
 
         node = MappingPattern(keys, values, rest)
         return self.set_line(node, n)

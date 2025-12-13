@@ -3194,3 +3194,14 @@ def fun(val: str | None):
         case types.NoneType():
             reveal_type(val)  # N: Revealed type is "None"
 [builtins fixtures/tuple.pyi]
+
+[case testMatchMappingRestErrorLocation]
+data: list[int]
+match data:
+    case [1, *rest]:
+        ...
+config: dict[str, object]
+match config:
+    case {"a": 1, **rest}:  # E: Incompatible types in capture pattern (pattern captures type "dict[str, object]", variable has type "list[int]")
+        ...
+[builtins fixtures/dict.pyi]
