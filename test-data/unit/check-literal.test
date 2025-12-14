@@ -2949,6 +2949,115 @@ reveal_type(C().collection)  # N: Revealed type is "builtins.list[Literal['word'
 reveal_type(C().word)  # N: Revealed type is "Literal['word']"
 [builtins fixtures/tuple.pyi]
 
+[case testStringIntUnionTernary]
+# https://github.com/python/mypy/issues/19534
+def test(b: bool) -> None:
+    l = 1 if b else "a"
+    reveal_type(l)  # N: Revealed type is "builtins.int | builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testListComprehensionTernary]
+# https://github.com/python/mypy/issues/19534
+def test(b: bool) -> None:
+    l = [1] if b else ["a"]
+    reveal_type(l)  # N: Revealed type is "builtins.list[builtins.int] | builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testLambdaTernary]
+from typing import TypeVar, Union, Callable, reveal_type
+
+NOOP = lambda: None
+class A: pass
+class B:
+    attr: Union[A, None]
+
+def test_static(x: Union[A, None]) -> None:
+    def foo(t: A) -> None: ...
+
+    l1: Callable[[], object] = (lambda: foo(x)) if x is not None else NOOP
+    r1: Callable[[], object] = NOOP if x is None else (lambda: foo(x))
+    l2 = (lambda: foo(x)) if x is not None else NOOP
+    r2 = NOOP if x is None else (lambda: foo(x))
+    reveal_type(l2)  # N: Revealed type is "def ()"
+    reveal_type(r2)  # N: Revealed type is "def ()"
+
+def test_generic(x: Union[A, None]) -> None:
+    T = TypeVar("T")
+    def bar(t: T) -> T: return t
+
+    l1: Callable[[], None] = (lambda: bar(x)) if x is None else NOOP
+    r1: Callable[[], None] = NOOP if x is not None else (lambda: bar(x))
+    l2 = (lambda: bar(x)) if x is None else NOOP
+    r2 = NOOP if x is not None else (lambda: bar(x))
+    reveal_type(l2)  # N: Revealed type is "def ()"
+    reveal_type(r2)  # N: Revealed type is "def ()"
+
+
+[case testLambdaTernaryIndirectAttribute]
+# fails due to binder issue inside `check_func_def`
+# https://github.com/python/mypy/issues/19561
+from typing import TypeVar, Union, Callable, reveal_type
+
+NOOP = lambda: None
+class A: pass
+class B:
+    attr: Union[A, None]
+
+def test_static_with_attr(x: B) -> None:
+    def foo(t: A) -> None: ...
+
+    l1: Callable[[], None] = (lambda: foo(x.attr)) if x.attr is not None else NOOP  # E: Argument 1 to "foo" has incompatible type "A | None"; expected "A"
+    r1: Callable[[], None] = NOOP if x.attr is None else (lambda: foo(x.attr))  # E: Argument 1 to "foo" has incompatible type "A | None"; expected "A"
+    l2 = (lambda: foo(x.attr)) if x.attr is not None else NOOP  # E: Argument 1 to "foo" has incompatible type "A | None"; expected "A"
+    r2 = NOOP if x.attr is None else (lambda: foo(x.attr))  # E: Argument 1 to "foo" has incompatible type "A | None"; expected "A"
+    reveal_type(l2)  # N: Revealed type is "def ()"
+    reveal_type(r2)  # N: Revealed type is "def ()"
+
+def test_generic_with_attr(x: B) -> None:
+    T = TypeVar("T")
+    def bar(t: T) -> T: return t
+
+    l1: Callable[[], None] = (lambda: bar(x.attr)) if x.attr is None else NOOP  # E: Incompatible types in assignment (expression has type "Callable[[], A | None]", variable has type "Callable[[], None]")
+    r1: Callable[[], None] = NOOP if x.attr is not None else (lambda: bar(x.attr))  # E: Incompatible types in assignment (expression has type "Callable[[], A | None]", variable has type "Callable[[], None]")
+    l2 = (lambda: bar(x.attr)) if x.attr is None else NOOP
+    r2 = NOOP if x.attr is not None else (lambda: bar(x.attr))
+    reveal_type(l2)  # N: Revealed type is "def () -> __main__.A | None"
+    reveal_type(r2)  # N: Revealed type is "def () -> __main__.A | None"
+
+[case testLambdaTernaryDoubleIndirectAttribute]
+# fails due to binder issue inside `check_func_def`
+# https://github.com/python/mypy/issues/19561
+from typing import TypeVar, Union, Callable, reveal_type
+
+NOOP = lambda: None
+class A: pass
+class B:
+    attr: Union[A, None]
+class C:
+    attr: B
+
+def test_static_with_attr(x: C) -> None:
+    def foo(t: A) -> None: ...
+
+    l1: Callable[[], None] = (lambda: foo(x.attr.attr)) if x.attr.attr is not None else NOOP  # E: Argument 1 to "foo" has incompatible type "A | None"; expected "A"
+    r1: Callable[[], None] = NOOP if x.attr.attr is None else (lambda: foo(x.attr.attr))  # E: Argument 1 to "foo" has incompatible type "A | None"; expected "A"
+    l2 = (lambda: foo(x.attr.attr)) if x.attr.attr is not None else NOOP  # E: Argument 1 to "foo" has incompatible type "A | None"; expected "A"
+    r2 = NOOP if x.attr.attr is None else (lambda: foo(x.attr.attr))  # E: Argument 1 to "foo" has incompatible type "A | None"; expected "A"
+    reveal_type(l2)  # N: Revealed type is "def ()"
+    reveal_type(r2)  # N: Revealed type is "def ()"
+
+def test_generic_with_attr(x: C) -> None:
+    T = TypeVar("T")
+    def bar(t: T) -> T: return t
+
+    l1: Callable[[], None] = (lambda: bar(x.attr.attr)) if x.attr.attr is None else NOOP  # E: Incompatible types in assignment (expression has type "Callable[[], A | None]", variable has type "Callable[[], None]")
+    r1: Callable[[], None] = NOOP if x.attr.attr is not None else (lambda: bar(x.attr.attr))  # E: Incompatible types in assignment (expression has type "Callable[[], A | None]", variable has type "Callable[[], None]")
+    l2 = (lambda: bar(x.attr.attr)) if x.attr.attr is None else NOOP
+    r2 = NOOP if x.attr.attr is not None else (lambda: bar(x.attr.attr))
+    reveal_type(l2)  # N: Revealed type is "def () -> __main__.A | None"
+    reveal_type(r2)  # N: Revealed type is "def () -> __main__.A | None"
+
+
 [case testLiteralTernaryUnionNarrowing]
 from typing import Literal, Optional
 

@@ -428,7 +428,9 @@ reveal_type(l)  # N: Revealed type is "builtins.list[typing.Generator[builtins.s
 [builtins fixtures/list.pyi]
 
 [case testNoneListTernary]
-x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"; expected "None"
+# https://github.com/python/mypy/issues/19534
+x = [None] if "" else [1]
+reveal_type(x)  # N: Revealed type is "builtins.list[None] | builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testListIncompatibleErrorMessage]

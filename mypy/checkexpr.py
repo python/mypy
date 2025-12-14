@@ -120,6 +120,7 @@ from mypy.plugin import (
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
 from mypy.subtypes import (
+    covers_at_runtime,
     find_member,
     is_equivalent,
     is_same_type,
@@ -154,7 +155,6 @@ from mypy.typeops import (
     get_type_vars,
     is_literal_type_like,
     make_simplified_union,
-    simple_literal_type,
     true_only,
     try_expanding_sum_type_to_union,
     try_getting_str_literals,
@@ -4049,14 +4049,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
             variants_raw = [(op_name, left_op, left_type, right_expr)]
         elif (
-            is_subtype(right_type, left_type)
-            and isinstance(left_type, Instance)
-            and isinstance(right_type, Instance)
-            and not (
-                left_type.type.alt_promote is not None
-                and left_type.type.alt_promote.type is right_type.type
+            (
+                # Checking (A implies B) using the logically equivalent (not A or B), where
+                #    A: left and right are both `Instance` objects
+                #    B: right's __rop__ method is different from left's __op__ method
+                not (isinstance(left_type, Instance) and isinstance(right_type, Instance))
+                or (
+                    lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)
+                    and (
+                        left_type.type.alt_promote is None
+                        or left_type.type.alt_promote.type is not right_type.type
+                    )
+                )
             )
-            and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)
+            # Note: use `covers_at_runtime` instead of `is_subtype` (#19006)
+            and covers_at_runtime(right_type, left_type)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
             # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
@@ -5899,7 +5906,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
         self.accept(e.cond)
-        ctx = self.type_context[-1]
+        ctx: Type | None = self.type_context[-1]
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
@@ -5910,62 +5917,25 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             elif else_map is None:
                 self.msg.redundant_condition_in_if(True, e.cond)
 
+        if ctx is None:
+            # When no context is provided, compute each branch individually, and
+            # use the union of the results as artificial context. Important for:
+            # - testUnificationDict
+            # - testConditionalExpressionWithEmpty
+            ctx_if_type = self.analyze_cond_branch(
+                if_map, e.if_expr, context=ctx, allow_none_return=allow_none_return
+            )
+            ctx_else_type = self.analyze_cond_branch(
+                else_map, e.else_expr, context=ctx, allow_none_return=allow_none_return
+            )
+            ctx = make_simplified_union([ctx_if_type, ctx_else_type])
+
         if_type = self.analyze_cond_branch(
             if_map, e.if_expr, context=ctx, allow_none_return=allow_none_return
         )
-
-        # we want to keep the narrowest value of if_type for union'ing the branches
-        # however, it would be silly to pass a literal as a type context. Pass the
-        # underlying fallback type instead.
-        if_type_fallback = simple_literal_type(get_proper_type(if_type)) or if_type
-
-        # Analyze the right branch using full type context and store the type
-        full_context_else_type = self.analyze_cond_branch(
+        else_type = self.analyze_cond_branch(
             else_map, e.else_expr, context=ctx, allow_none_return=allow_none_return
         )
-
-        if not mypy.checker.is_valid_inferred_type(if_type, self.chk.options):
-            # Analyze the right branch disregarding the left branch.
-            else_type = full_context_else_type
-            # we want to keep the narrowest value of else_type for union'ing the branches
-            # however, it would be silly to pass a literal as a type context. Pass the
-            # underlying fallback type instead.
-            else_type_fallback = simple_literal_type(get_proper_type(else_type)) or else_type
-
-            # If it would make a difference, re-analyze the left
-            # branch using the right branch's type as context.
-            if ctx is None or not is_equivalent(else_type_fallback, ctx):
-                # TODO: If it's possible that the previous analysis of
-                # the left branch produced errors that are avoided
-                # using this context, suppress those errors.
-                if_type = self.analyze_cond_branch(
-                    if_map,
-                    e.if_expr,
-                    context=else_type_fallback,
-                    allow_none_return=allow_none_return,
-                )
-
-        elif if_type_fallback == ctx:
-            # There is no point re-running the analysis if if_type is equal to ctx.
-            # That would  be an exact duplicate of the work we just did.
-            # This optimization is particularly important to avoid exponential blowup with nested
-            # if/else expressions: https://github.com/python/mypy/issues/9591
-            # TODO: would checking for is_proper_subtype also work and cover more cases?
-            else_type = full_context_else_type
-        else:
-            # Analyze the right branch in the context of the left
-            # branch's type.
-            else_type = self.analyze_cond_branch(
-                else_map,
-                e.else_expr,
-                context=if_type_fallback,
-                allow_none_return=allow_none_return,
-            )
-
-        # In most cases using if_type as a context for right branch gives better inferred types.
-        # This is however not the case for literal types, so use the full context instead.
-        if is_literal_type_like(full_context_else_type) and not is_literal_type_like(else_type):
-            else_type = full_context_else_type
 
         res: Type = make_simplified_union([if_type, else_type])
         if has_uninhabited_component(res) and not isinstance(
