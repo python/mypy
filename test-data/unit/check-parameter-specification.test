@@ -2668,7 +2668,7 @@ reveal_type(SneakyPrefix(f6, 1, 2).args)  # N: Revealed type is "tuple[()] | tup
 reveal_type(Sneaky(f7, 1, 2).args)  # N: Revealed type is "tuple[Literal[1]?, Literal[2]?]"
 reveal_type(SneakyPrefix(f7, 1, 2).args)  # N: Revealed type is "tuple[Literal[2]?]"
 
-reveal_type(Sneaky(f8, 1, '').args)  # N: Revealed type is "tuple[()] | tuple[builtins.int], tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]"
+reveal_type(Sneaky(f8, 1, '').args)  # N: Revealed type is "tuple[()] | tuple[builtins.int] | tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]"
 reveal_type(SneakyPrefix(f8, 1, '').args)  # N: Revealed type is "tuple[()] | tuple[Unpack[builtins.tuple[builtins.str, ...]]]"
 
 reveal_type(Sneaky(f9, 1, '', 0).args)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.int]"
