@@ -136,7 +136,6 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
-        options.overwrite_union_syntax = True
 
         if options.num_workers:
             options.fixed_format_cache = True
