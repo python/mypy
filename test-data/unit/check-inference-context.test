@@ -389,7 +389,7 @@ a: A
 b: B
 def f(): aa, ab, ao # Prevent redefinition
 
-aa = [b] # E: List item 0 has incompatible type "B"; expected "Optional[A]"
+aa = [b] # E: List item 0 has incompatible type "B"; expected "A | None"
 ab = [a] # E: List item 0 has incompatible type "A"; expected "B"
 
 aa = [a]
@@ -700,7 +700,7 @@ class A: pass
 class B(A): pass
 class C(A): pass
 def f(func: Callable[[T], S], *z: T, r: Optional[S] = None) -> S: pass
-reveal_type(f(lambda x: 0 if isinstance(x, B) else 1))  # N: Revealed type is "Union[Literal[0]?, Literal[1]?]"
+reveal_type(f(lambda x: 0 if isinstance(x, B) else 1))  # N: Revealed type is "Literal[0]? | Literal[1]?"
 f(lambda x: 0 if isinstance(x, B) else 1, A())() # E: "int" not callable
 f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
 f(
@@ -769,9 +769,9 @@ if int():
 if int():
     b = b or [C()]
 if int():
-    a = a or b # E: Incompatible types in assignment (expression has type "Union[list[A], list[B]]", variable has type "list[A]")
+    a = a or b # E: Incompatible types in assignment (expression has type "list[A] | list[B]", variable has type "list[A]")
 if int():
-    b = b or c # E: Incompatible types in assignment (expression has type "Union[list[B], list[C]]", variable has type "list[B]")
+    b = b or c # E: Incompatible types in assignment (expression has type "list[B] | list[C]", variable has type "list[B]")
 [builtins fixtures/list.pyi]
 
 
@@ -855,7 +855,7 @@ T = TypeVar('T')
 def f(x: Union[List[T], str]) -> None: pass
 f([1])
 f('')
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[list[Never], str]"
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "list[Never] | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIgnoringInferenceContext]
@@ -933,9 +933,9 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
-reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, builtins.list[builtins.int]]"
+reveal_type(f(1)) # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
 reveal_type(f([])) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(f(None)) # N: Revealed type is "Union[None, builtins.list[builtins.int]]"
+reveal_type(f(None)) # N: Revealed type is "None | builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testUnionWithGenericTypeItemContextAndStrictOptional]
@@ -944,9 +944,9 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
-reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, builtins.list[builtins.int]]"
+reveal_type(f(1)) # N: Revealed type is "builtins.int | builtins.list[builtins.int]"
 reveal_type(f([])) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(f(None)) # N: Revealed type is "Union[None, builtins.list[builtins.int]]"
+reveal_type(f(None)) # N: Revealed type is "None | builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testUnionWithGenericTypeItemContextInMethod]
@@ -959,10 +959,10 @@ class C(Generic[T]):
     def f(self, x: Union[T, S]) -> Union[T, S]: pass
 
 c = C[List[int]]()
-reveal_type(c.f('')) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str]"
+reveal_type(c.f('')) # N: Revealed type is "builtins.list[builtins.int] | builtins.str"
 reveal_type(c.f([1])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(c.f([])) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(c.f(None)) # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+reveal_type(c.f(None)) # N: Revealed type is "builtins.list[builtins.int] | None"
 [builtins fixtures/list.pyi]
 
 [case testGenericMethodCalledInGenericContext]
@@ -1404,7 +1404,7 @@ from typing import Union, List, Any
 
 def f(x: Union[List[str], Any]) -> None:
     a = x if x else []
-    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.str], Any, builtins.list[Union[builtins.str, Any]]]"
+    reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str] | Any | builtins.list[builtins.str | Any]"
 [builtins fixtures/list.pyi]
 
 [case testConditionalExpressionWithEmptyIteableAndUnionWithAny]
@@ -1412,7 +1412,7 @@ from typing import Union, Iterable, Any
 
 def f(x: Union[Iterable[str], Any]) -> None:
     a = x if x else []
-    reveal_type(a)  # N: Revealed type is "Union[typing.Iterable[builtins.str], Any, builtins.list[Union[builtins.str, Any]]]"
+    reveal_type(a)  # N: Revealed type is "typing.Iterable[builtins.str] | Any | builtins.list[builtins.str | Any]"
 [builtins fixtures/list.pyi]
 
 [case testInferMultipleAnyUnionCovariant]
@@ -1493,7 +1493,7 @@ from typing import Any, Tuple, Union
 i: Union[Tuple[Any, ...], int]
 b: Any
 i = i if isinstance(i, int) else b
-reveal_type(i)  # N: Revealed type is "Union[Any, builtins.int]"
+reveal_type(i)  # N: Revealed type is "Any | builtins.int"
 [builtins fixtures/isinstance.pyi]
 
 [case testLambdaInferenceUsesNarrowedTypes]

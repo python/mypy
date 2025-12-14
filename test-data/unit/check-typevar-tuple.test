@@ -24,7 +24,7 @@ def g(a: Tuple[Unpack[Ts]], b: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
 
 reveal_type(g(args, args))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(g(args, args2))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
-reveal_type(g(args, args3))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
+reveal_type(g(args, args3))  # N: Revealed type is "builtins.tuple[builtins.int | builtins.str, ...]"
 reveal_type(g(any, any))  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
 
@@ -471,13 +471,13 @@ def foo2(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]) -> None
 
 def foo3(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], str, float]]) -> None:
     reveal_type(args[0])  # N: Revealed type is "builtins.str"
-    reveal_type(args[1])  # N: Revealed type is "Union[builtins.int, builtins.str]"
-    reveal_type(args[2])  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.float]"
+    reveal_type(args[1])  # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(args[2])  # N: Revealed type is "builtins.int | builtins.str | builtins.float"
     args[3]  # E: Tuple index out of range \
              # N: Variadic tuple can have length 3
     reveal_type(args[-1])  # N: Revealed type is "builtins.float"
     reveal_type(args[-2])  # N: Revealed type is "builtins.str"
-    reveal_type(args[-3])  # N: Revealed type is "Union[builtins.str, builtins.int]"
+    reveal_type(args[-3])  # N: Revealed type is "builtins.str | builtins.int"
     args[-4]  # E: Tuple index out of range \
               # N: Variadic tuple can have length 3
     reveal_type(args[::-1])  # N: Revealed type is "tuple[builtins.float, builtins.str, Unpack[builtins.tuple[builtins.int, ...]], builtins.str]"
@@ -789,11 +789,11 @@ Ts = TypeVarTuple("Ts")
 
 A = Tuple[Unpack[Ts], Optional[A[Unpack[Ts]]]]
 x: A[int, str]
-reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.str, Union[..., None]]"
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.str, ... | None]"
 
 *_, last = x
 if last is not None:
-    reveal_type(last)  # N: Revealed type is "tuple[builtins.int, builtins.str, Union[tuple[builtins.int, builtins.str, Union[..., None]], None]]"
+    reveal_type(last)  # N: Revealed type is "tuple[builtins.int, builtins.str, tuple[builtins.int, builtins.str, ... | None] | None]"
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicAliasUpperBoundCheck]
@@ -909,7 +909,7 @@ def convert(obj: Any, *to_classes: Unpack[Tuple[Type[T], ...]]) -> Optional[T]:
     ...
 
 x = convert(1, int, float)
-reveal_type(x)  # N: Revealed type is "Union[builtins.float, None]"
+reveal_type(x)  # N: Revealed type is "builtins.float | None"
 [builtins fixtures/tuple.pyi]
 
 [case testHomogeneousGenericTupleUnpackInferenceNoCrash2]
@@ -988,7 +988,7 @@ from typing_extensions import Unpack
 
 def pipeline(*xs: Unpack[Tuple[int, Unpack[Tuple[float, ...]], bool]]) -> None:
     for x in xs:
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float"
 [builtins fixtures/tuple.pyi]
 
 [case testFixedUnpackItemInInstanceArguments]
@@ -1198,7 +1198,7 @@ Ts = TypeVarTuple("Ts")
 Alias = Tuple[int, Unpack[Ts], str]
 
 A = Union[int, str]
-x: List[Alias[int, Unpack[A], str]]  # E: "Union[int, str]" cannot be unpacked (must be tuple or TypeVarTuple)
+x: List[Alias[int, Unpack[A], str]]  # E: "int | str" cannot be unpacked (must be tuple or TypeVarTuple)
 reveal_type(x)  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.int, Unpack[builtins.tuple[Any, ...]], builtins.str, builtins.str]]"
 y: List[Alias[int, Unpack[Undefined], str]]  # E: Name "Undefined" is not defined
 reveal_type(y)  # N: Revealed type is "builtins.list[tuple[builtins.int, Unpack[builtins.tuple[Any, ...]], builtins.str]]"
@@ -1715,7 +1715,7 @@ vt: Tuple[int, Unpack[Tuple[float, ...]], int]
 
 reveal_type(vt + (1, 2))  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.int, Literal[1]?, Literal[2]?]"
 reveal_type((1, 2) + vt)  # N: Revealed type is "tuple[Literal[1]?, Literal[2]?, builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.int]"
-reveal_type(vt + vt)  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.float], ...]"
+reveal_type(vt + vt)  # N: Revealed type is "builtins.tuple[builtins.int | builtins.float, ...]"
 reveal_type(vtf + (1, 2))  # N: Revealed type is "tuple[Unpack[builtins.tuple[builtins.float, ...]], Literal[1]?, Literal[2]?]"
 reveal_type((1, 2) + vtf)  # N: Revealed type is "tuple[Literal[1]?, Literal[2]?, Unpack[builtins.tuple[builtins.float, ...]]]"
 
@@ -2710,7 +2710,7 @@ from typing import TypeVarTuple, Generic, Unpack, Union
 
 Ts = TypeVarTuple("Ts")
 
-class MyTuple(tuple[Unpack[Union[int, str]]], Generic[Unpack[Ts]]):  # E: "Union[int, str]" cannot be unpacked (must be tuple or TypeVarTuple)
+class MyTuple(tuple[Unpack[Union[int, str]]], Generic[Unpack[Ts]]):  # E: "int | str" cannot be unpacked (must be tuple or TypeVarTuple)
     ...
 
 x: MyTuple[int, str]

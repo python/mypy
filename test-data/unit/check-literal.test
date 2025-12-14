@@ -16,7 +16,7 @@ def h2(x: 'A|int') -> None: pass  # E: Name "A" is not defined
 def i2(x: Literal['A|B']) -> None: pass
 reveal_type(f2)  # N: Revealed type is "def (x: Any)"
 reveal_type(g2)  # N: Revealed type is "def (x: Literal['A B'])"
-reveal_type(h2)  # N: Revealed type is "def (x: Union[Any, builtins.int])"
+reveal_type(h2)  # N: Revealed type is "def (x: Any | builtins.int)"
 reveal_type(i2)  # N: Revealed type is "def (x: Literal['A|B'])"
 [builtins fixtures/tuple.pyi]
 [out]
@@ -88,8 +88,8 @@ y = None  # type: Optional[Tuple[Literal[2]]]
 def bar(x):
     # type: (Tuple[Literal[2]]) -> None
     pass
-reveal_type(x)                      # N: Revealed type is "Union[tuple[Any], None]"
-reveal_type(y)                      # N: Revealed type is "Union[tuple[Literal[2]], None]"
+reveal_type(x)                      # N: Revealed type is "tuple[Any] | None"
+reveal_type(y)                      # N: Revealed type is "tuple[Literal[2]] | None"
 reveal_type(bar)                    # N: Revealed type is "def (x: tuple[Literal[2]])"
 [builtins fixtures/tuple.pyi]
 [out]
@@ -677,14 +677,14 @@ b: Literal["a", "b", "c"]
 c: Literal[1, "b", True, None]
 d: Literal[1, 1, 1]
 e: Literal[None, None, None]
-reveal_type(a)   # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]"
-reveal_type(b)   # N: Revealed type is "Union[Literal['a'], Literal['b'], Literal['c']]"
-reveal_type(c)   # N: Revealed type is "Union[Literal[1], Literal['b'], Literal[True], None]"
+reveal_type(a)   # N: Revealed type is "Literal[1] | Literal[2] | Literal[3]"
+reveal_type(b)   # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+reveal_type(c)   # N: Revealed type is "Literal[1] | Literal['b'] | Literal[True] | None"
 
 # Note: I was thinking these should be simplified, but it seems like
 # mypy doesn't simplify unions with duplicate values with other types.
-reveal_type(d)   # N: Revealed type is "Union[Literal[1], Literal[1], Literal[1]]"
-reveal_type(e)   # N: Revealed type is "Union[None, None, None]"
+reveal_type(d)   # N: Revealed type is "Literal[1] | Literal[1] | Literal[1]"
+reveal_type(e)   # N: Revealed type is "None | None | None"
 [builtins fixtures/bool.pyi]
 [out]
 
@@ -694,8 +694,8 @@ from typing import Literal
 # Literal[1, 2, 3]. So we treat the two as being equivalent for now.
 a: Literal[1, 2, 3]
 b: Literal[(1, 2, 3)]
-reveal_type(a)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]"
-reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]"
+reveal_type(a)  # N: Revealed type is "Literal[1] | Literal[2] | Literal[3]"
+reveal_type(b)  # N: Revealed type is "Literal[1] | Literal[2] | Literal[3]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -703,7 +703,7 @@ reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]
 
 from typing import Literal
 a: Literal[Literal[3], 4, Literal["foo"]]
-reveal_type(a)  # N: Revealed type is "Union[Literal[3], Literal[4], Literal['foo']]"
+reveal_type(a)  # N: Revealed type is "Literal[3] | Literal[4] | Literal['foo']"
 
 alias_for_literal = Literal[5]
 b: Literal[alias_for_literal]
@@ -711,12 +711,12 @@ reveal_type(b)  # N: Revealed type is "Literal[5]"
 
 another_alias = Literal[1, None]
 c: Literal[alias_for_literal, another_alias, "r"]
-reveal_type(c)  # N: Revealed type is "Union[Literal[5], Literal[1], None, Literal['r']]"
+reveal_type(c)  # N: Revealed type is "Literal[5] | Literal[1] | None | Literal['r']"
 
 basic_mode = Literal["r", "w", "a"]
 basic_with_plus = Literal["r+", "w+", "a+"]
 combined: Literal[basic_mode, basic_with_plus]
-reveal_type(combined)  # N: Revealed type is "Union[Literal['r'], Literal['w'], Literal['a'], Literal['r+'], Literal['w+'], Literal['a+']]"
+reveal_type(combined)  # N: Revealed type is "Literal['r'] | Literal['w'] | Literal['a'] | Literal['r+'] | Literal['w+'] | Literal['a+']"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -754,7 +754,7 @@ d: "Literal['Foo']"
 reveal_type(d)      # N: Revealed type is "Literal['Foo']"
 
 e: Literal[Foo, 'Foo']
-reveal_type(e)      # N: Revealed type is "Union[Literal[5], Literal['Foo']]"
+reveal_type(e)      # N: Revealed type is "Literal[5] | Literal['Foo']"
 
 Foo = Literal[5]
 [builtins fixtures/tuple.pyi]
@@ -1034,9 +1034,9 @@ x = b  # E: Incompatible types in assignment (expression has type "str", variabl
 y = c  # E: Incompatible types in assignment (expression has type "bool", variable has type "Literal[True]")
 z = d  # This is ok: Literal[None] and None are equivalent.
 
-combined = a  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Literal[1, 'foo', True]]")
-combined = b  # E: Incompatible types in assignment (expression has type "str", variable has type "Optional[Literal[1, 'foo', True]]")
-combined = c  # E: Incompatible types in assignment (expression has type "bool", variable has type "Optional[Literal[1, 'foo', True]]")
+combined = a  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[1, 'foo', True] | None")
+combined = b  # E: Incompatible types in assignment (expression has type "str", variable has type "Literal[1, 'foo', True] | None")
+combined = c  # E: Incompatible types in assignment (expression has type "bool", variable has type "Literal[1, 'foo', True] | None")
 combined = d  # Also ok, for similar reasons.
 
 e: Literal[1] = 1
@@ -1151,11 +1151,11 @@ h: List[Literal[1]] = []
 
 reveal_type(a)  # N: Revealed type is "builtins.list[Literal[1]]"
 reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(c)  # N: Revealed type is "builtins.list[Union[Literal[1], Literal[2], Literal[3]]]"
+reveal_type(c)  # N: Revealed type is "builtins.list[Literal[1] | Literal[2] | Literal[3]]"
 reveal_type(d)  # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(e)  # N: Revealed type is "builtins.list[Union[Literal[1], Literal['x']]]"
+reveal_type(e)  # N: Revealed type is "builtins.list[Literal[1] | Literal['x']]"
 reveal_type(f)  # N: Revealed type is "builtins.list[builtins.object]"
-reveal_type(g)  # N: Revealed type is "builtins.list[builtins.list[builtins.list[Union[Literal[1], Literal[2], Literal[3]]]]]"
+reveal_type(g)  # N: Revealed type is "builtins.list[builtins.list[builtins.list[Literal[1] | Literal[2] | Literal[3]]]]"
 reveal_type(h)  # N: Revealed type is "builtins.list[Literal[1]]"
 
 lit1: Literal[1]
@@ -1280,9 +1280,9 @@ d: Literal[6, 7]
 e: int
 f: Literal[7, "bar"]
 
-reveal_type(func(a))  # N: Revealed type is "Union[__main__.A, __main__.C]"
+reveal_type(func(a))  # N: Revealed type is "__main__.A | __main__.C"
 reveal_type(func(b))  # N: Revealed type is "__main__.B"
-reveal_type(func(c))  # N: Revealed type is "Union[__main__.B, __main__.A]"
+reveal_type(func(c))  # N: Revealed type is "__main__.B | __main__.A"
 reveal_type(func(d))  # N: Revealed type is "__main__.B" \
                       # E: Argument 1 to "func" has incompatible type "Literal[6, 7]"; expected "Literal[3, 4, 5, 6]"
 
@@ -1477,13 +1477,13 @@ Alias = Literal[3]
 
 isinstance(3, Literal[3])           # E: Cannot use isinstance() with Literal type
 isinstance(3, Alias)                # E: Cannot use isinstance() with Literal type \
-                                    # E: Argument 2 to "isinstance" has incompatible type "<typing special form>"; expected "Union[type, tuple[Any, ...]]"
+                                    # E: Argument 2 to "isinstance" has incompatible type "<typing special form>"; expected "type | tuple[Any, ...]"
 isinstance(3, Renamed[3])           # E: Cannot use isinstance() with Literal type
 isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with Literal type
 
 issubclass(int, Literal[3])           # E: Cannot use issubclass() with Literal type
 issubclass(int, Alias)                # E: Cannot use issubclass() with Literal type \
-                                      # E: Argument 2 to "issubclass" has incompatible type "<typing special form>"; expected "Union[type, tuple[Any, ...]]"
+                                      # E: Argument 2 to "issubclass" has incompatible type "<typing special form>"; expected "type | tuple[Any, ...]"
 issubclass(int, Renamed[3])           # E: Cannot use issubclass() with Literal type
 issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with Literal type
 [builtins fixtures/isinstancelist.pyi]
@@ -1568,7 +1568,7 @@ T = TypeVar('T')
 def identity(x: T) -> T: return x
 
 a: Union[int, Literal['foo']] = identity('foo')
-b: Union[int, Literal['foo']] = identity('bar')  # E: Argument 1 to "identity" has incompatible type "Literal['bar']"; expected "Union[int, Literal['foo']]"
+b: Union[int, Literal['foo']] = identity('bar')  # E: Argument 1 to "identity" has incompatible type "Literal['bar']"; expected "int | Literal['foo']"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1836,16 +1836,16 @@ idx_final: Final = 2
 tup1: Tuple[A, B, Optional[C], D, E]
 reveal_type(tup1[idx0])       # N: Revealed type is "__main__.A"
 reveal_type(tup1[idx1])       # N: Revealed type is "__main__.B"
-reveal_type(tup1[idx2])       # N: Revealed type is "Union[__main__.C, None]"
-reveal_type(tup1[idx_final])  # N: Revealed type is "Union[__main__.C, None]"
+reveal_type(tup1[idx2])       # N: Revealed type is "__main__.C | None"
+reveal_type(tup1[idx_final])  # N: Revealed type is "__main__.C | None"
 reveal_type(tup1[idx3])       # N: Revealed type is "__main__.D"
 reveal_type(tup1[idx4])       # N: Revealed type is "__main__.E"
 reveal_type(tup1[idx_neg1])   # N: Revealed type is "__main__.E"
 tup1[idx5]                    # E: Tuple index out of range
-reveal_type(tup1[idx2:idx4])  # N: Revealed type is "tuple[Union[__main__.C, None], __main__.D]"
-reveal_type(tup1[::idx2])     # N: Revealed type is "tuple[__main__.A, Union[__main__.C, None], __main__.E]"
+reveal_type(tup1[idx2:idx4])  # N: Revealed type is "tuple[__main__.C | None, __main__.D]"
+reveal_type(tup1[::idx2])     # N: Revealed type is "tuple[__main__.A, __main__.C | None, __main__.E]"
 if tup1[idx2] is not None:
-    reveal_type(tup1[idx2])   # N: Revealed type is "Union[__main__.C, None]"
+    reveal_type(tup1[idx2])   # N: Revealed type is "__main__.C | None"
 if tup1[idx_final] is not None:
     reveal_type(tup1[idx_final]) # N: Revealed type is "__main__.C"
 
@@ -1885,7 +1885,7 @@ reveal_type(d[b_key])         # N: Revealed type is "builtins.str"
 d[c_key]                      # E: TypedDict "Outer" has no key "c"
 
 reveal_type(d.get(a_key, u))  # N: Revealed type is "builtins.int"
-reveal_type(d.get(b_key, u))  # N: Revealed type is "Union[builtins.str, __main__.Unrelated]"
+reveal_type(d.get(b_key, u))  # N: Revealed type is "builtins.str | __main__.Unrelated"
 reveal_type(d.get(c_key, u))  # N: Revealed type is "builtins.object"
 
 reveal_type(d.pop(a_key))     # N: Revealed type is "builtins.int" \
@@ -1955,14 +1955,14 @@ tup1: Tuple[A, B, C, D, E]
 Tup2Class = NamedTuple('Tup2Class', [('a', A), ('b', B), ('c', C), ('d', D), ('e', E)])
 tup2: Tup2Class
 
-reveal_type(tup1[idx1])         # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(tup1[idx1:idx2])    # N: Revealed type is "Union[tuple[__main__.B, __main__.C], tuple[__main__.B, __main__.C, __main__.D], tuple[__main__.C], tuple[__main__.C, __main__.D]]"
-reveal_type(tup1[0::idx1])      # N: Revealed type is "Union[tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], tuple[__main__.A, __main__.C, __main__.E]]"
+reveal_type(tup1[idx1])         # N: Revealed type is "__main__.B | __main__.C"
+reveal_type(tup1[idx1:idx2])    # N: Revealed type is "tuple[__main__.B, __main__.C] | tuple[__main__.B, __main__.C, __main__.D] | tuple[__main__.C] | tuple[__main__.C, __main__.D]"
+reveal_type(tup1[0::idx1])      # N: Revealed type is "tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E] | tuple[__main__.A, __main__.C, __main__.E]"
 tup1[idx_bad]                   # E: Tuple index out of range
 
-reveal_type(tup2[idx1])         # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[tuple[__main__.B, __main__.C], tuple[__main__.B, __main__.C, __main__.D], tuple[__main__.C], tuple[__main__.C, __main__.D]]"
-reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], tuple[__main__.A, __main__.C, __main__.E]]"
+reveal_type(tup2[idx1])         # N: Revealed type is "__main__.B | __main__.C"
+reveal_type(tup2[idx1:idx2])    # N: Revealed type is "tuple[__main__.B, __main__.C] | tuple[__main__.B, __main__.C, __main__.D] | tuple[__main__.C] | tuple[__main__.C, __main__.D]"
+reveal_type(tup2[0::idx1])      # N: Revealed type is "tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E] | tuple[__main__.A, __main__.C, __main__.E]"
 tup2[idx_bad]                   # E: Tuple index out of range
 [builtins fixtures/slice.pyi]
 [out]
@@ -1992,12 +1992,12 @@ good_keys: Literal["a", "b"]
 optional_keys: Literal["d", "e"]
 bad_keys: Literal["a", "bad"]
 
-reveal_type(test[good_keys])                      # N: Revealed type is "Union[__main__.A, __main__.B]"
-reveal_type(test.get(good_keys))                  # N: Revealed type is "Union[__main__.A, __main__.B]"
-reveal_type(test.get(good_keys, 3))               # N: Revealed type is "Union[__main__.A, __main__.B]"
-reveal_type(test.pop(optional_keys))              # N: Revealed type is "Union[__main__.D, __main__.E]"
-reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is "Union[__main__.D, __main__.E, Literal[3]?]"
-reveal_type(test.setdefault(good_keys, AAndB()))  # N: Revealed type is "Union[__main__.A, __main__.B]"
+reveal_type(test[good_keys])                      # N: Revealed type is "__main__.A | __main__.B"
+reveal_type(test.get(good_keys))                  # N: Revealed type is "__main__.A | __main__.B"
+reveal_type(test.get(good_keys, 3))               # N: Revealed type is "__main__.A | __main__.B"
+reveal_type(test.pop(optional_keys))              # N: Revealed type is "__main__.D | __main__.E"
+reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is "__main__.D | __main__.E | Literal[3]?"
+reveal_type(test.setdefault(good_keys, AAndB()))  # N: Revealed type is "__main__.A | __main__.B"
 reveal_type(test.get(bad_keys))                   # N: Revealed type is "builtins.object"
 reveal_type(test.get(bad_keys, 3))                # N: Revealed type is "builtins.object"
 del test[optional_keys]
@@ -2044,9 +2044,9 @@ bad_keys: Literal['e', 'f']
 x[mixed_keys]         # E: TypedDict "D1" has no key "d" \
                     # E: TypedDict "D2" has no key "a"
 
-reveal_type(x[good_keys])           # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(x.get(good_keys))       # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(x.get(good_keys, 3))    # N: Revealed type is "Union[__main__.B, __main__.C]"
+reveal_type(x[good_keys])           # N: Revealed type is "__main__.B | __main__.C"
+reveal_type(x.get(good_keys))       # N: Revealed type is "__main__.B | __main__.C"
+reveal_type(x.get(good_keys, 3))    # N: Revealed type is "__main__.B | __main__.C"
 reveal_type(x.get(mixed_keys))      # N: Revealed type is "builtins.object"
 reveal_type(x.get(mixed_keys, 3))   # N: Revealed type is "builtins.object"
 reveal_type(x.get(bad_keys))        # N: Revealed type is "builtins.object"
@@ -2230,7 +2230,7 @@ from typing import Final
 var1: Final = [0, None]
 var2: Final = (0, None)
 
-reveal_type(var1)  # N: Revealed type is "builtins.list[Union[builtins.int, None]]"
+reveal_type(var1)  # N: Revealed type is "builtins.list[builtins.int | None]"
 reveal_type(var2)  # N: Revealed type is "tuple[Literal[0]?, None]"
 [builtins fixtures/tuple.pyi]
 
@@ -2839,28 +2839,28 @@ else:
 y: Union[Truth, AlsoTruth, Lie]
 
 if y:
-    reveal_type(y)  # N: Revealed type is "Union[__main__.Truth, __main__.AlsoTruth]"
+    reveal_type(y)  # N: Revealed type is "__main__.Truth | __main__.AlsoTruth"
 else:
     reveal_type(y)  # N: Revealed type is "__main__.Lie"
 
 z: Union[Truth, AnyAnswer]
 
 if z:
-    reveal_type(z)  # N: Revealed type is "Union[__main__.Truth, __main__.AnyAnswer]"
+    reveal_type(z)  # N: Revealed type is "__main__.Truth | __main__.AnyAnswer"
 else:
     reveal_type(z)  # N: Revealed type is "__main__.AnyAnswer"
 
 q: Union[Truth, NoAnswerSpecified]
 
 if q:
-    reveal_type(q)  # N: Revealed type is "Union[__main__.Truth, __main__.NoAnswerSpecified]"
+    reveal_type(q)  # N: Revealed type is "__main__.Truth | __main__.NoAnswerSpecified"
 else:
     reveal_type(q)  # N: Revealed type is "__main__.NoAnswerSpecified"
 
 w: Union[Truth, AlsoTruth]
 
 if w:
-    reveal_type(w)  # N: Revealed type is "Union[__main__.Truth, __main__.AlsoTruth]"
+    reveal_type(w)  # N: Revealed type is "__main__.Truth | __main__.AlsoTruth"
 else:
     reveal_type(w)  # E: Statement is unreachable
 
@@ -2879,7 +2879,7 @@ def f() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     else:
         return (False, 'oops')
 
-reveal_type(f())  # N: Revealed type is "Union[tuple[Literal[True], builtins.int], tuple[Literal[False], builtins.str]]"
+reveal_type(f())  # N: Revealed type is "tuple[Literal[True], builtins.int] | tuple[Literal[False], builtins.str]"
 
 def does_work() -> Tuple[Literal[1]]:
     x: Final = (1,)
@@ -2899,15 +2899,15 @@ def invalid_literal_type() -> Tuple[Literal[1]]:
 
 def incorrect_return1() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:
-        return (False, 5)  # E: Incompatible return value type (got "tuple[bool, int]", expected "Union[tuple[Literal[True], int], tuple[Literal[False], str]]")
+        return (False, 5)  # E: Incompatible return value type (got "tuple[bool, int]", expected "tuple[Literal[True], int] | tuple[Literal[False], str]")
     else:
-        return (True, 'oops')  # E: Incompatible return value type (got "tuple[bool, str]", expected "Union[tuple[Literal[True], int], tuple[Literal[False], str]]")
+        return (True, 'oops')  # E: Incompatible return value type (got "tuple[bool, str]", expected "tuple[Literal[True], int] | tuple[Literal[False], str]")
 
 def incorrect_return2() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:
-        return (bool(), 5)  # E: Incompatible return value type (got "tuple[bool, int]", expected "Union[tuple[Literal[True], int], tuple[Literal[False], str]]")
+        return (bool(), 5)  # E: Incompatible return value type (got "tuple[bool, int]", expected "tuple[Literal[True], int] | tuple[Literal[False], str]")
     else:
-        return (bool(), 'oops')  # E: Incompatible return value type (got "tuple[bool, str]", expected "Union[tuple[Literal[True], int], tuple[Literal[False], str]]")
+        return (bool(), 'oops')  # E: Incompatible return value type (got "tuple[bool, str]", expected "tuple[Literal[True], int] | tuple[Literal[False], str]")
 [builtins fixtures/bool.pyi]
 
 [case testLiteralSubtypeContext]
@@ -2929,7 +2929,7 @@ class A:
 class B(A):
     foo = ['spam']
 
-reveal_type(B().foo)  # N: Revealed type is "builtins.list[Union[Literal['bar'], Literal['spam']]]"
+reveal_type(B().foo)  # N: Revealed type is "builtins.list[Literal['bar'] | Literal['spam']]"
 [builtins fixtures/tuple.pyi]
 
 [case testLiteralSubtypeContextGeneric]
@@ -2968,7 +2968,7 @@ class C(Base):
     ) -> int:
         if sep is None:
             sep = "a" if int() else "b"
-            reveal_type(sep)  # N: Revealed type is "Union[Literal['a'], Literal['b']]"
+            reveal_type(sep)  # N: Revealed type is "Literal['a'] | Literal['b']"
         return super().feed_data(sep)
 [builtins fixtures/primitives.pyi]
 

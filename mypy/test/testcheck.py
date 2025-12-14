@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 
@@ -27,7 +28,11 @@ from mypy.test.helpers import (
 from mypy.test.update_data import update_testcase_output
 
 try:
-    import lxml  # type: ignore[import-untyped]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        lxml = None
+    else:
+        import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
@@ -146,8 +151,6 @@ class TypeCheckSuite(DataSuite):
             options.hide_error_codes = False
         if "abstract" not in testcase.file:
             options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
-        if "union-error" not in testcase.file and "Pep604" not in testcase.name:
-            options.force_union_syntax = True
 
         if incremental_step and options.incremental or options.num_workers > 0:
             # Don't overwrite # flags: --no-incremental in incremental test cases
