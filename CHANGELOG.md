@@ -11,6 +11,12 @@ Support for this will be dropped in the first half of 2026!
 
 Contributed by Marc Mueller (PR [20156](https://github.com/python/mypy/pull/20156)).
 
+### Removed Flag: `--force-uppercase-builtins`
+
+Removed the deprecated `--force-uppercase-builtins` flag. It has been a no-op since mypy 1.17.0.
+
+Contributed by Marc Mueller (PR [20410](https://github.com/python/mypy/pull/20410))
+
 ### Removed Flag: `--force-union-syntax`
 
 Mypy only supports Python 3.10+. Removed the `--force-union-syntax` flag as it's no longer necessary.
