@@ -14,10 +14,10 @@ from __future__ import annotations
 import difflib
 import itertools
 import re
-from collections.abc import Collection, Iterable, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Final, cast
+from typing import Any, Final, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -1144,7 +1144,7 @@ class MessageBuilder:
             )
 
     def unpacking_strings_disallowed(self, context: Context) -> None:
-        self.fail("Unpacking a string is disallowed", context)
+        self.fail("Unpacking a string is disallowed", context, code=codes.STR_UNPACK)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail(f"{format_type(type, self.options)} object is not iterable", context)
@@ -1813,10 +1813,7 @@ class MessageBuilder:
             type_dec = "<type>"
             if not node.type.type:
                 # partial None
-                if options.use_or_syntax():
-                    recommended_type = f"{type_dec} | None"
-                else:
-                    recommended_type = f"Optional[{type_dec}]"
+                recommended_type = f"{type_dec} | None"
             elif node.type.type.fullname in reverse_builtin_aliases:
                 # partial types other than partial None
                 name = node.type.type.fullname.partition(".")[2]
@@ -2713,17 +2710,9 @@ def format_type_inner(
             )
 
             if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
-                return (
-                    f"{literal_str} | None"
-                    if options.use_or_syntax()
-                    else f"Optional[{literal_str}]"
-                )
+                return f"{literal_str} | None"
             elif union_items:
-                return (
-                    f"{literal_str} | {format_union(union_items)}"
-                    if options.use_or_syntax()
-                    else f"Union[{', '.join(format_union_items(union_items))}, {literal_str}]"
-                )
+                return f"{literal_str} | {format_union(union_items)}"
             else:
                 return literal_str
         else:
@@ -2734,17 +2723,9 @@ def format_type_inner(
             )
             if print_as_optional:
                 rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-                return (
-                    f"{format(rest[0])} | None"
-                    if options.use_or_syntax()
-                    else f"Optional[{format(rest[0])}]"
-                )
+                return f"{format(rest[0])} | None"
             else:
-                s = (
-                    format_union(typ.items)
-                    if options.use_or_syntax()
-                    else f"Union[{', '.join(format_union_items(typ.items))}]"
-                )
+                s = format_union(typ.items)
             return s
     elif isinstance(typ, NoneType):
         return "None"

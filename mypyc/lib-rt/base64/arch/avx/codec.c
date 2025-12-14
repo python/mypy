@@ -24,7 +24,7 @@
 #include "../ssse3/dec_loop.c"
 
 #if BASE64_AVX_USE_ASM
-# include "enc_loop_asm.c"
+# include "./enc_loop_asm.c"
 #else
 # include "../ssse3/enc_translate.c"
 # include "../ssse3/enc_reshuffle.c"

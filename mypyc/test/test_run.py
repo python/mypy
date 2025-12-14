@@ -22,6 +22,7 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
 from mypyc.build import construct_groups
 from mypyc.codegen import emitmodule
+from mypyc.codegen.emitmodule import collect_source_dependencies
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
 from mypyc.test.config import test_data_prefix
@@ -75,10 +76,9 @@ files = [
     "run-python38.test",
     "run-librt-strings.test",
     "run-base64.test",
+    "run-match.test",
 ]
 
-if sys.version_info >= (3, 10):
-    files.append("run-match.test")
 if sys.version_info >= (3, 12):
     files.append("run-python312.test")
 
@@ -267,6 +267,7 @@ class TestRun(MypycDataSuite):
             ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
+            deps = sorted(dep.path for dep in collect_source_dependencies(ir))
             if errors.num_errors:
                 errors.flush_errors()
                 assert False, "Compile error"
@@ -289,7 +290,7 @@ class TestRun(MypycDataSuite):
                 setup_format.format(
                     module_paths,
                     separate,
-                    cfiles,
+                    (cfiles, deps),
                     self.multi_file,
                     opt_level,
                     librt,

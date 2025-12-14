@@ -1051,6 +1051,35 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.type_a, self.fx.t, self.fx.o)
         self.assert_join(self.fx.t, self.fx.type_a, self.fx.o)
 
+    def test_join_type_var_bounds(self) -> None:
+        tvar1 = TypeVarType(
+            "tvar1",
+            "tvar1",
+            TypeVarId(-100),
+            [],
+            self.fx.o,
+            AnyType(TypeOfAny.from_omitted_generics),
+            INVARIANT,
+        )
+        any_type = AnyType(TypeOfAny.special_form)
+        tvar2 = TypeVarType(
+            "tvar2",
+            "tvar2",
+            TypeVarId(-101),
+            [],
+            upper_bound=UnionType(
+                [
+                    TupleType([any_type], self.fx.std_tuple),
+                    TupleType([any_type, any_type], self.fx.std_tuple),
+                ]
+            ),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+            variance=INVARIANT,
+        )
+
+        self.assert_join(tvar1, tvar2, self.fx.o)
+        self.assert_join(tvar2, tvar1, self.fx.o)
+
     # There are additional test cases in check-inference.test.
 
     # TODO: Function types + varargs and default args.

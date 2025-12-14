@@ -4,21 +4,19 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
 from typing import (
-    Callable,
     Final,
     Generic,
     Literal,
     NamedTuple,
-    Optional,
+    TypeAlias as _TypeAlias,
+    TypeGuard,
     TypeVar,
-    Union,
     cast,
     overload,
 )
-from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
@@ -249,8 +247,8 @@ DEFAULT_LAST_PASS: Final = 2  # Pass numbers start at 0
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
 MAX_PRECISE_TUPLE_SIZE: Final = 8
 
-DeferredNodeType: _TypeAlias = Union[FuncDef, OverloadedFuncDef, Decorator]
-FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
+DeferredNodeType: _TypeAlias = FuncDef | OverloadedFuncDef | Decorator
+FineGrainedDeferredNodeType: _TypeAlias = FuncDef | MypyFile | OverloadedFuncDef
 
 
 # A node which is postponed to be processed during the next pass.
@@ -283,7 +281,7 @@ class FineGrainedDeferredNode(NamedTuple):
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
-TypeMap: _TypeAlias = Optional[dict[Expression, Type]]
+TypeMap: _TypeAlias = dict[Expression, Type] | None
 
 
 # Keeps track of partial types in a single scope. In fine-grained incremental
@@ -4117,9 +4115,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.check_multi_assignment_from_union(
                 lvalues, rvalue, rvalue_type, context, infer_lvalue_type
             )
-        elif isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
-            self.msg.unpacking_strings_disallowed(context)
         else:
+            rvalue_literal = rvalue_type
+            if isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
+                if rvalue_type.last_known_value is None:
+                    self.msg.unpacking_strings_disallowed(context)
+                else:
+                    rvalue_literal = rvalue_type.last_known_value
+            if (
+                isinstance(rvalue_literal, LiteralType)
+                and isinstance(rvalue_literal.value, str)
+                and len(lvalues) != len(rvalue_literal.value)
+            ):
+                self.msg.unpacking_strings_disallowed(context)
+
             self.check_multi_assignment_from_iterable(
                 lvalues, rvalue_type, context, infer_lvalue_type
             )
@@ -4365,9 +4374,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         infer_lvalue_type: bool = True,
     ) -> None:
         rvalue_type = get_proper_type(rvalue_type)
-        if self.type_is_iterable(rvalue_type) and isinstance(
-            rvalue_type, (Instance, CallableType, TypeType, Overloaded)
-        ):
+        if self.type_is_iterable(rvalue_type):
             item_type = self.iterable_item_type(rvalue_type, context)
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
@@ -5309,16 +5316,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Helper for check_except_handler_test to retrieve handler types."""
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
-            return typ.items
+            merged_type = make_simplified_union(typ.items)
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
+        elif is_named_instance(typ, "builtins.tuple"):
+            # variadic tuple
+            merged_type = make_simplified_union((typ.args[0],))
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
         elif isinstance(typ, UnionType):
             return [
                 union_typ
                 for item in typ.relevant_items()
                 for union_typ in self.get_types_from_except_handler(item, n)
             ]
-        elif is_named_instance(typ, "builtins.tuple"):
-            # variadic tuple
-            return [typ.args[0]]
         else:
             return [typ]
 
@@ -6641,6 +6654,28 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         narrowable_operand_index_to_hash: dict[int, tuple[Key, ...]],
     ) -> tuple[TypeMap, TypeMap]:
         """Calculate type maps for '==', '!=', 'is' or 'is not' expression."""
+        # If we haven't been able to narrow types yet, we might be dealing with a
+        # explicit type(x) == some_type check
+        if_map, else_map = self.narrow_type_by_equality(
+            operator,
+            operands,
+            operand_types,
+            expr_indices,
+            narrowable_operand_index_to_hash.keys(),
+        )
+        if if_map == {} and else_map == {} and node is not None:
+            if_map, else_map = self.find_type_equals_check(node, expr_indices)
+        return if_map, else_map
+
+    def narrow_type_by_equality(
+        self,
+        operator: str,
+        operands: list[Expression],
+        operand_types: list[Type],
+        expr_indices: list[int],
+        narrowable_indices: AbstractSet[int],
+    ) -> tuple[TypeMap, TypeMap]:
+        """Calculate type maps for '==', '!=', 'is' or 'is not' expression, ignoring `type(x)` checks."""
         # is_valid_target:
         #   Controls which types we're allowed to narrow exprs to. Note that
         #   we cannot use 'is_literal_type_like' in both cases since doing
@@ -6686,20 +6721,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 operands,
                 operand_types,
                 expr_indices,
-                narrowable_operand_index_to_hash.keys(),
+                narrowable_indices,
                 is_valid_target,
                 coerce_only_in_literal_context,
             )
 
         if if_map == {} and else_map == {}:
             if_map, else_map = self.refine_away_none_in_comparison(
-                operands, operand_types, expr_indices, narrowable_operand_index_to_hash.keys()
+                operands, operand_types, expr_indices, narrowable_indices
             )
-
-        # If we haven't been able to narrow types yet, we might be dealing with a
-        # explicit type(x) == some_type check
-        if if_map == {} and else_map == {}:
-            if_map, else_map = self.find_type_equals_check(node, expr_indices)
         return if_map, else_map
 
     def propagate_up_typemap_info(self, new_types: TypeMap) -> TypeMap:
@@ -6934,6 +6964,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         for i in chain_indices:
             expr_type = operand_types[i]
             if should_coerce:
+                # TODO: doing this prevents narrowing a single-member Enum to literal
+                # of its member, because we expand it here and then refuse to add equal
+                # types to typemaps. As a result, `x: Foo; x == Foo.A` does not narrow
+                # `x` to `Literal[Foo.A]` iff `Foo` has exactly one member.
+                # See testMatchEnumSingleChoice
                 expr_type = coerce_to_literal(expr_type)
             if not is_valid_target(get_proper_type(expr_type)):
                 continue
@@ -7799,9 +7834,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return
         self.msg.note(msg, context, offset=offset, code=code)
 
-    def iterable_item_type(
-        self, it: Instance | CallableType | TypeType | Overloaded, context: Context
-    ) -> Type:
+    def iterable_item_type(self, it: ProperType, context: Context) -> Type:
         if isinstance(it, Instance):
             iterable = map_instance_to_supertype(it, self.lookup_typeinfo("typing.Iterable"))
             item_type = iterable.args[0]
@@ -8740,8 +8773,9 @@ def is_unsafe_overlapping_overload_signatures(
     # Note: We repeat this check twice in both directions compensate for slight
     # asymmetries in 'is_callable_compatible'.
 
+    other_expanded = expand_callable_variants(other)
     for sig_variant in expand_callable_variants(signature):
-        for other_variant in expand_callable_variants(other):
+        for other_variant in other_expanded:
             # Using only expanded callables may cause false negatives, we can add
             # more variants (e.g. using inference between callables) in the future.
             if is_subset_no_promote(sig_variant.ret_type, other_variant.ret_type):

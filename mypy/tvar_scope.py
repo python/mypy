@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     Context,
