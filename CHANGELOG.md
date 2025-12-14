@@ -11,17 +11,14 @@ Support for this will be dropped in the first half of 2026!
 
 Contributed by Marc Mueller (PR [20156](https://github.com/python/mypy/pull/20156)).
 
-### Removed Flag: `--force-uppercase-builtins`
+### Removed flags `--force-uppercase-builtins` and `--force-union-syntax`
 
-Removed the deprecated `--force-uppercase-builtins` flag. It has been a no-op since mypy 1.17.0.
+The `--force-uppercase-builtins` flag was deprecated and has been a no-op since mypy 1.17.0.
+Since mypy has dropped support for Python 3.9, the `--force-union-syntax` flag is no longer
+necessary.
 
 Contributed by Marc Mueller (PR [20410](https://github.com/python/mypy/pull/20410))
-
-### Removed Flag: `--force-union-syntax`
-
-Mypy only supports Python 3.10+. Removed the `--force-union-syntax` flag as it's no longer necessary.
-
-Contributed by Marc Mueller (PR [20405](https://github.com/python/mypy/pull/20405))
+and (PR [20405](https://github.com/python/mypy/pull/20405)).
 
 ## Mypy 1.19
 
@@ -228,6 +225,17 @@ Related PRs:
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=ebce8d766b41fbf4d83cf47c1297563a9508ff60+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+### Mypy 1.19.1
+
+- Fix noncommutative joins with bounded TypeVars (Shantanu, PR [20345](https://github.com/python/mypy/pull/20345))
+- Respect output format for cached runs by serializing raw errors in cache metas (Ivan Levkivskyi, PR [20372](https://github.com/python/mypy/pull/20372))
+- Allow `types.NoneType` in match cases (A5rocks, PR [20383](https://github.com/python/mypy/pull/20383))
+- Fix mypyc generator regression with empty tuple (BobTheBuidler, PR [20371](https://github.com/python/mypy/pull/20371))
+- Fix crash involving Unpack-ed TypeVarTuple (Shantanu, PR [20323](https://github.com/python/mypy/pull/20323))
+- Fix crash on star import of redefinition (Ivan Levkivskyi, PR [20333](https://github.com/python/mypy/pull/20333))
+- Fix crash on typevar with forward ref used in other module (Ivan Levkivskyi, PR [20334](https://github.com/python/mypy/pull/20334))
+- Fail with an explicit error on PyPy (Ivan Levkivskyi, PR [20389](https://github.com/python/mypy/pull/20389))
+
 ### Acknowledgements
 
 Thanks to all mypy contributors who contributed to this release:
@@ -263,7 +271,7 @@ Thanks to all mypy contributors who contributed to this release:
 
 I’d also like to thank my employer, Dropbox, for supporting mypy development.
 
-## Mypy 1.18.1
+## Mypy 1.18
 
 We’ve just uploaded mypy 1.18.1 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
 Mypy is a static type checker for Python. This release includes new features, performance
