@@ -412,7 +412,6 @@ class Options:
         self.disable_memoryview_promotion = False
         # Deprecated, Mypy only supports Python 3.9+
         self.force_uppercase_builtins = False
-        self.force_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
@@ -426,14 +425,6 @@ class Options:
     def use_lowercase_names(self) -> bool:
         warnings.warn(
             "options.use_lowercase_names() is deprecated and will be removed in a future version",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return True
-
-    def use_or_syntax(self) -> bool:
-        warnings.warn(
-            "options.use_or_syntax() is deprecated and will be removed in a future version",
             DeprecationWarning,
             stacklevel=2,
         )

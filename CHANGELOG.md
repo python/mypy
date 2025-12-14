@@ -11,10 +11,9 @@ Support for this will be dropped in the first half of 2026!
 
 Contributed by Marc Mueller (PR [20156](https://github.com/python/mypy/pull/20156)).
 
-### Deprecated Flag: `--force-union-syntax`
+### Removed Flag: `--force-union-syntax`
 
-Mypy only supports Python 3.10+. The `--force-union-syntax` flag is now
-deprecated, and a no-op. It will be removed in a future version.
+Mypy only supports Python 3.10+. Removed the `--force-union-syntax` flag as it's no longer necessary.
 
 Contributed by Marc Mueller (PR [20405](https://github.com/python/mypy/pull/20405))
 
