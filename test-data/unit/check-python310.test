@@ -1795,7 +1795,7 @@ def test1(x: Literal[1,2,3]) -> None:
         case 1:
             reveal_type(x)  # N: Revealed type is "Literal[1]"
         case other:
-            reveal_type(x)  # N: Revealed type is "Union[Literal[2], Literal[3]]"
+            reveal_type(x)  # N: Revealed type is "Literal[2] | Literal[3]"
 
 def test2(x: Literal[1,2,3]) -> None:
     match x:
@@ -1811,7 +1811,7 @@ def test2(x: Literal[1,2,3]) -> None:
 def test3(x: Literal[1,2,3]) -> None:
     match x:
         case 1 | 3:
-            reveal_type(x)  # N: Revealed type is "Union[Literal[1], Literal[3]]"
+            reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[3]"
         case other:
             reveal_type(x)  # N: Revealed type is "Literal[2]"
 
