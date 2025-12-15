@@ -2467,7 +2467,7 @@ class C: ...
 
 x = A()
 while True:
-    if x == C():  # E: Non-overlapping equality check (left operand type: "Union[A, B]", right operand type: "C")
+    if x == C():  # E: Non-overlapping equality check (left operand type: "A | B", right operand type: "C")
         break
     x = B()
 [builtins fixtures/primitives.pyi]
