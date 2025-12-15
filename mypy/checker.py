@@ -892,10 +892,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # useful for stubs!
             return
 
-        if len(defn.items) >= 100:
-            # Skip this check for large numbers of overloads, since the following is quadratic.
-            # This constant matches the threshold at which pyright similarly skips this check.
-            return
+        max_overload_count = 50
+        if len(defn.items) >= max_overload_count:
+            # Since the following is quadratic, we limit the size of the inner loop
+            self.fail(message_registry.TOO_MANY_OVERLOADS, defn)
 
         # Compute some info about the implementation (if it exists) for use below
         impl_type: CallableType | None = None
@@ -919,6 +919,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 continue
 
             for j, item2 in enumerate(defn.items[i + 1 :]):
+                if j >= max_overload_count:
+                    # Avoid quadratic blowup for large numbers of overloads.
+                    break
+
                 assert isinstance(item2, Decorator)
                 sig2 = self.extract_callable_type(item2.var.type, item2)
                 if sig2 is None:
