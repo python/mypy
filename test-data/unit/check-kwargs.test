@@ -361,6 +361,9 @@ f(**kwargs)    # E: Argument after ** must be a mapping, not "Any | None"
 
 def g(a: int) -> None: pass
 g(a=1, **4)  # E: Argument after ** must be a mapping, not "int"
+
+def main(f: Any) -> None:
+    f(**3)  # E: Argument after ** must be a mapping, not "int"
 [builtins fixtures/dict.pyi]
 
 [case testPassingKeywordVarArgsToNonVarArgsFunction]

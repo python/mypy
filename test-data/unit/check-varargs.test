@@ -278,6 +278,8 @@ f(a, *(b, cc))
 [builtins fixtures/tuple.pyi]
 
 [case testInvalidVarArg]
+from typing import Any
+
 def f(a: 'A') -> None:
     pass
 
@@ -291,6 +293,10 @@ f(*(a,))
 
 f(*4)  # E: Expected iterable as variadic argument
 f(a, *4)  # E: Expected iterable as variadic argument
+
+def main(f: Any) -> None:
+    f(*3)  # E: Expected iterable as variadic argument
+
 [builtins fixtures/tuple.pyi]
 
 

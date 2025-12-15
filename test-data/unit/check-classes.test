@@ -7688,7 +7688,7 @@ class A(thing=5):
     pass
 [out]
 main:1: error: Unexpected keyword argument "thing" for "__init_subclass__" of "object"
-tmp/builtins.pyi:5: note: "__init_subclass__" of "object" defined here
+tmp/builtins.pyi:6: note: "__init_subclass__" of "object" defined here
 [builtins fixtures/object_with_init_subclass.pyi]
 
 [case testInitSubclassWithImports]
