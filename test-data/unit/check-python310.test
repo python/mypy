@@ -2917,7 +2917,7 @@ match m[k]:
 
 match 0:
     case 0 as i:
-        reveal_type(i)  # N: Revealed type is "Literal[0]"
+        reveal_type(i)  # N: Revealed type is "Literal[0]?"
     case int(i):
         i  # E: Statement is unreachable
     case other:
