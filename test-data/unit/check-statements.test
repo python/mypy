@@ -85,7 +85,7 @@ def f() -> Generator[int, None, None]:
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
-    return "foo"
+    return "foo" # E: No return value expected
 [out]
 
 
@@ -176,7 +176,7 @@ for z in x:  # type: int
     pass
 
 for w in x:  # type: Union[int, str]
-    reveal_type(w)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(w)  # N: Revealed type is "builtins.int | builtins.str"
 
 for v in x:  # type: int, int  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
@@ -519,6 +519,13 @@ if object():
     raise BaseException from f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.pyi]
 
+[case testRaiseNotImplementedFails]
+if object():
+    raise NotImplemented    # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
+if object():
+    raise NotImplemented()  # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
+[builtins fixtures/notimplemented.pyi]
+
 [case testTryFinallyStatement]
 import typing
 try:
@@ -739,8 +746,8 @@ except (E1, E1_1, E1_2) as e1:
     z = e1 # type: E1_2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_2")
 except (E1_1, E1_2) as e2:
     a = e2 # type: E1
-    b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_1")
-    c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
+    b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "E1_1 | E1_2", variable has type "E1_1")
+    c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "E1_1 | E1_2", variable has type "E1_2")
 [builtins fixtures/exception.pyi]
 
 [case testExceptWithMultipleTypes4]
@@ -760,25 +767,25 @@ def union(exc: Union[Type[E1], Type[E2]]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2]"
+        reveal_type(e)  # N: Revealed type is "__main__.E1 | __main__.E2"
 
 def tuple_in_union(exc: Union[Type[E1], Tuple[Type[E2], Type[E3]]]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2, __main__.E3]"
+        reveal_type(e)  # N: Revealed type is "__main__.E1 | __main__.E2 | __main__.E3"
 
 def variadic_in_union(exc: Union[Type[E1], Tuple[Type[E2], ...]]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2]"
+        reveal_type(e)  # N: Revealed type is "__main__.E1 | __main__.E2"
 
 def nested_union(exc: Union[Type[E1], Union[Type[E2], Type[E3]]]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2, __main__.E3]"
+        reveal_type(e)  # N: Revealed type is "__main__.E1 | __main__.E2 | __main__.E3"
 
 def error_in_union(exc: Union[Type[E1], int]) -> None:
     try:
@@ -787,6 +794,57 @@ def error_in_union(exc: Union[Type[E1], int]) -> None:
         pass
 
 def error_in_variadic(exc: Tuple[int, ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        pass
+
+[builtins fixtures/tuple.pyi]
+
+[case testExceptWithMultipleTypes5]
+from typing import Tuple, Type, Union
+
+class E1(BaseException): pass
+class E2(BaseException): pass
+class E3(BaseException): pass
+
+def union_in_variadic(exc: Tuple[Union[Type[E1], Type[E2]], ...]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # N: Revealed type is "__main__.E1 | __main__.E2"
+
+def nested_union_in_variadic(exc: Tuple[Union[Type[E1], Union[Type[E2], Type[E3]]], ...]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # N: Revealed type is "__main__.E1 | __main__.E2 | __main__.E3"
+
+def union_in_tuple(exc: Tuple[Union[Type[E1], Type[E2]], Type[E3]]) -> None:
+    try:
+        pass
+    except exc as e:
+        reveal_type(e)  # N: Revealed type is "__main__.E1 | __main__.E2 | __main__.E3"
+
+def error_in_variadic_union(exc: Tuple[Union[Type[E1], int], ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        pass
+
+def error_in_variadic_nested_union(exc: Tuple[Union[Type[E1], Union[Type[E2], int]], ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        pass
+
+def error_in_tuple_inside_variadic_nested_union(exc: Tuple[Union[Type[E1], Union[Type[E2], Tuple[Type[E3]]]], ...]) -> None:
+    try:
+        pass
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+        pass
+
+def error_in_tuple_union(exc: Tuple[Union[Type[E1], Type[E2]], Union[Type[E3], int]]) -> None:
     try:
         pass
     except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
@@ -806,11 +864,11 @@ try:
 except BaseException as e1:
     reveal_type(e1)  # N: Revealed type is "builtins.BaseException"
 except (E1, BaseException) as e2:
-    reveal_type(e2)  # N: Revealed type is "Union[Any, builtins.BaseException]"
+    reveal_type(e2)  # N: Revealed type is "Any | builtins.BaseException"
 except (E1, E2) as e3:
-    reveal_type(e3)  # N: Revealed type is "Union[Any, __main__.E2]"
+    reveal_type(e3)  # N: Revealed type is "Any | __main__.E2"
 except (E1, E2, BaseException) as e4:
-    reveal_type(e4)  # N: Revealed type is "Union[Any, builtins.BaseException]"
+    reveal_type(e4)  # N: Revealed type is "Any | builtins.BaseException"
 
 try: pass
 except E1 as e1:
@@ -1008,8 +1066,8 @@ exs2 = (E1_1, E1_2)
 try: pass
 except exs2 as e2:
     a = e2 # type: E1
-    b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_1")
-    c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
+    b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "E1_1 | E1_2", variable has type "E1_1")
+    c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "E1_1 | E1_2", variable has type "E1_2")
 
 exs3 = (E1, (E1_1, (E1_2,)))
 try: pass
@@ -1298,13 +1356,13 @@ def g() -> Iterator[List[int]]:
     yield [2, 3, 4]
 def f() -> Iterator[List[int]]:
     yield from g()
-    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "List[int]")
+    yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "list[int]")
 [builtins fixtures/for.pyi]
 [out]
 
 [case testYieldFromNotAppliedToNothing]
 def h():
-    yield from  # E: invalid syntax
+    yield from  # E: Invalid syntax
 [out]
 
 [case testYieldFromAndYieldTogether]
@@ -1339,7 +1397,7 @@ from typing import Generator
 def g() -> Generator[int, None, None]:
     yield from ()
     yield from (0, 1, 2)
-    yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int")
+    yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "int | str", expected type "int")
     yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int")
 [builtins fixtures/tuple.pyi]
 
@@ -1454,7 +1512,7 @@ with A() as c:  # type: int, int  # E: Syntax error in type annotation # N: Sugg
     pass
 
 with A() as d:  # type: Union[int, str]
-    reveal_type(d)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(d)  # N: Revealed type is "builtins.int | builtins.str"
 
 [case testWithStmtTupleTypeComment]
 
@@ -1469,7 +1527,7 @@ with A():
 with A() as a:  # type: Tuple[int, int]
     pass
 
-with A() as b:  # type: Tuple[int, str]  # E: Incompatible types in assignment (expression has type "Tuple[int, int]", variable has type "Tuple[int, str]")
+with A() as b:  # type: Tuple[int, str]  # E: Incompatible types in assignment (expression has type "tuple[int, int]", variable has type "tuple[int, str]")
     pass
 
 with A() as (c, d):  # type: int, int
@@ -1520,13 +1578,13 @@ from typing import Optional
 
 class InvalidReturn1:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 
 class InvalidReturn2:
     def __exit__(self, x, y, z) -> Optional[bool]:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         if int():
             return False
@@ -1535,7 +1593,7 @@ class InvalidReturn2:
 
 class InvalidReturn3:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         def nested() -> bool:
             return True
@@ -1543,7 +1601,7 @@ class InvalidReturn3:
 [builtins fixtures/bool.pyi]
 
 [case testWithStmtBoolExitReturnOkay]
-from typing_extensions import Literal
+from typing import Literal
 
 class GoodReturn1:
     def __exit__(self, x, y, z) -> bool:
@@ -2022,7 +2080,7 @@ cs: List[B]
 if int():
     *bs, b = bs
 if int():
-    *bs, c = cs  # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
+    *bs, c = cs  # E: Incompatible types in assignment (expression has type "list[B]", variable has type "list[A]")
     if int():
         *ns, c = cs
 if int():
@@ -2175,8 +2233,7 @@ class M(N): pass
 [out]
 
 [case testForwardRefsInWithStatementImplicit]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[N]
 
 with cm as g:
@@ -2184,12 +2241,11 @@ with cm as g:
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testForwardRefsInWithStatement]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[Any]
 
 with cm as g:  # type: N
@@ -2197,7 +2253,7 @@ with cm as g:  # type: N
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testGlobalWithoutInitialization]
@@ -2229,10 +2285,69 @@ class A: pass
 class B: pass
 
 def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
-    yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")
+    yield x  # E: Incompatible types in "yield" (actual type "int", expected type "A | B")
+
+[case testYieldFromUnionOfGenerators]
+from typing import Generator, Union
+
+class T: pass
+
+def foo(arg: Union[Generator[int, None, T], Generator[str, None, T]]) -> Generator[Union[int, str], None, T]:
+    return (yield from arg)
+
+[case testYieldFromInvalidUnionReturn]
+from typing import Generator, Union
+
+class A: pass
+class B: pass
+
+def foo(arg: Union[A, B]) -> Generator[Union[int, str], None, A]:
+    return (yield from arg) # E: "yield from" can't be applied to "A | B"
+
+[case testYieldFromUnionOfGeneratorWithIterableStr]
+from typing import Generator, Union, Iterable, Optional
+
+def foo(arg: Union[Generator[int, None, bytes], Iterable[str]]) -> Generator[Union[int, str], None, Optional[bytes]]:
+    return (yield from arg)
+
+def bar(arg: Generator[str, None, str]) -> Generator[str, None, str]:
+    return foo(arg)  # E: Incompatible return value type (got "Generator[int | str, None, bytes | None]", expected "Generator[str, None, str]")
+
+def launder(arg: Iterable[str]) -> Generator[Union[int, str], None, Optional[bytes]]:
+    return foo(arg)
+
+def baz(arg: Generator[str, None, str]) -> Generator[Union[int, str], None, Optional[bytes]]:
+    # this is unsound, the Generator return type will actually be str
+    return launder(arg)
+[builtins fixtures/tuple.pyi]
+
+[case testYieldIteratorReturn]
+from typing import Iterator
+
+def get_strings(foo: bool) -> Iterator[str]:
+    if foo:
+        return ["foo1", "foo2"]  # E: No return value expected
+    else:
+        yield "bar1"
+        yield "bar2"
+[builtins fixtures/tuple.pyi]
+
+[case testYieldFromInvalidType]
+from collections.abc import Iterator
+
+class A:
+    def list(self) -> None: ...
+
+    def foo(self) -> list[int]:  # E: Function "__main__.A.list" is not valid as a type \
+                                 # N: Perhaps you need "Callable[...]" or a callback protocol?
+        return []
+
+def fn() -> Iterator[int]:
+    yield from A().foo()  # E: "list?[builtins.int]" has no attribute "__iter__" (not iterable)
+[builtins fixtures/tuple.pyi]
 
 [case testNoCrashOnStarRightHandSide]
-x = *(1, 2, 3)  # E: Can use starred expression only as assignment target
+x = *(1, 2, 3)  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
 
 
@@ -2262,3 +2377,38 @@ class Outer:
         class Inner:
             break  # E: "break" outside loop
 [builtins fixtures/list.pyi]
+
+[case testCallableInstanceOverlapAllowed]
+# flags: --warn-unreachable
+from typing import Any, Callable, List
+
+class CAny:
+    def __call__(self) -> Any: ...
+class CNone:
+    def __call__(self) -> None: ...
+class CWrong:
+    def __call__(self, x: int) -> None: ...
+
+def describe(func: Callable[[], None]) -> str:
+    if isinstance(func, CAny):
+        return "CAny"
+    elif isinstance(func, CNone):
+        return "CNone"
+    elif isinstance(func, CWrong):
+        return "CWrong"  # E: Statement is unreachable
+    else:
+        return "other"
+
+class C(CAny):
+    def __call__(self) -> None: ...
+
+def f():
+    pass
+
+describe(CAny())
+describe(C())
+describe(CNone())
+describe(CWrong())  # E: Argument 1 to "describe" has incompatible type "CWrong"; expected "Callable[[], None]" \
+                    # N: "CWrong.__call__" has type "def __call__(self, x: int) -> None"
+describe(f)
+[builtins fixtures/isinstancelist.pyi]

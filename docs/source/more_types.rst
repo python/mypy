@@ -2,7 +2,7 @@ More types
 ==========
 
 This section introduces a few additional kinds of types, including :py:data:`~typing.NoReturn`,
-:py:func:`NewType <typing.NewType>`, and types for async code. It also discusses
+:py:class:`~typing.NewType`, and types for async code. It also discusses
 how to give functions more precise types using overloads. All of these are only
 situationally useful, so feel free to skip this section and come back when you
 have a need for some of them.
@@ -11,7 +11,7 @@ Here's a quick summary of what's covered here:
 
 * :py:data:`~typing.NoReturn` lets you tell mypy that a function never returns normally.
 
-* :py:func:`NewType <typing.NewType>` lets you define a variant of a type that is treated as a
+* :py:class:`~typing.NewType` lets you define a variant of a type that is treated as a
   separate type by mypy but is identical to the original type at runtime.
   For example, you can have ``UserId`` as a variant of ``int`` that is
   just an ``int`` at runtime.
@@ -75,7 +75,7 @@ certain values from base class instances. Example:
         ...
 
 However, this approach introduces some runtime overhead. To avoid this, the typing
-module provides a helper object :py:func:`NewType <typing.NewType>` that creates simple unique types with
+module provides a helper object :py:class:`~typing.NewType` that creates simple unique types with
 almost zero runtime overhead. Mypy will treat the statement
 ``Derived = NewType('Derived', Base)`` as being roughly equivalent to the following
 definition:
@@ -113,12 +113,12 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
 
     num: int = UserId(5) + 1
 
-:py:func:`NewType <typing.NewType>` accepts exactly two arguments. The first argument must be a string literal
+:py:class:`~typing.NewType` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
 type is assigned. The second argument must be a properly subclassable class, i.e.,
-not a type construct like :py:data:`~typing.Union`, etc.
+not a type construct like a :ref:`union type <union-types>`, etc.
 
-The callable returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
+The callable returned by :py:class:`~typing.NewType` accepts only one argument; this is equivalent to
 supporting only one constructor accepting an instance of the base class (see above).
 Example:
 
@@ -139,12 +139,12 @@ Example:
     tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
 
 You cannot use :py:func:`isinstance` or :py:func:`issubclass` on the object returned by
-:py:func:`~typing.NewType`, nor can you subclass an object returned by :py:func:`~typing.NewType`.
+:py:class:`~typing.NewType`, nor can you subclass an object returned by :py:class:`~typing.NewType`.
 
 .. note::
 
-    Unlike type aliases, :py:func:`NewType <typing.NewType>` will create an entirely new and
-    unique type when used. The intended purpose of :py:func:`NewType <typing.NewType>` is to help you
+    Unlike type aliases, :py:class:`~typing.NewType` will create an entirely new and
+    unique type when used. The intended purpose of :py:class:`~typing.NewType` is to help you
     detect cases where you accidentally mixed together the old base type and the
     new derived type.
 
@@ -160,7 +160,7 @@ You cannot use :py:func:`isinstance` or :py:func:`issubclass` on the object retu
 
         name_by_id(3)  # ints and UserId are synonymous
 
-    But a similar example using :py:func:`NewType <typing.NewType>` will not typecheck:
+    But a similar example using :py:class:`~typing.NewType` will not typecheck:
 
     .. code-block:: python
 
@@ -179,7 +179,7 @@ Function overloading
 ********************
 
 Sometimes the arguments and types in a function depend on each other
-in ways that can't be captured with a :py:data:`~typing.Union`. For example, suppose
+in ways that can't be captured with a :ref:`union types <union-types>`. For example, suppose
 we want to write a function that can accept x-y coordinates. If we pass
 in just a single x-y coordinate, we return a ``ClickEvent`` object. However,
 if we pass in two x-y coordinates, we return a ``DragEvent`` object.
@@ -188,12 +188,10 @@ Our first attempt at writing this function might look like this:
 
 .. code-block:: python
 
-    from typing import Union, Optional
-
     def mouse_event(x1: int,
                     y1: int,
-                    x2: Optional[int] = None,
-                    y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
+                    x2: int | None = None,
+                    y2: int | None = None) -> ClickEvent | DragEvent:
         if x2 is None and y2 is None:
             return ClickEvent(x1, y1)
         elif x2 is not None and y2 is not None:
@@ -213,7 +211,7 @@ to more accurately describe the function's behavior:
 
 .. code-block:: python
 
-    from typing import Union, overload
+    from typing import overload
 
     # Overload *variants* for 'mouse_event'.
     # These variants give extra information to the type checker.
@@ -236,8 +234,8 @@ to more accurately describe the function's behavior:
 
     def mouse_event(x1: int,
                     y1: int,
-                    x2: Optional[int] = None,
-                    y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
+                    x2: int | None = None,
+                    y2: int | None = None) -> ClickEvent | DragEvent:
         if x2 is None and y2 is None:
             return ClickEvent(x1, y1)
         elif x2 is not None and y2 is not None:
@@ -253,14 +251,37 @@ calls like ``mouse_event(5, 25, 2)``.
 As another example, suppose we want to write a custom container class that
 implements the :py:meth:`__getitem__ <object.__getitem__>` method (``[]`` bracket indexing). If this
 method receives an integer we return a single item. If it receives a
-``slice``, we return a :py:class:`~typing.Sequence` of items.
+``slice``, we return a :py:class:`~collections.abc.Sequence` of items.
 
 We can precisely encode this relationship between the argument and the
-return type by using overloads like so:
+return type by using overloads like so (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import Sequence, TypeVar, Union, overload
+    from collections.abc import Sequence
+    from typing import overload
+
+    class MyList[T](Sequence[T]):
+        @overload
+        def __getitem__(self, index: int) -> T: ...
+
+        @overload
+        def __getitem__(self, index: slice) -> Sequence[T]: ...
+
+        def __getitem__(self, index: int | slice) -> T | Sequence[T]:
+            if isinstance(index, int):
+                # Return a T here
+            elif isinstance(index, slice):
+                # Return a sequence of Ts here
+            else:
+                raise TypeError(...)
+
+Here is the same example using the legacy syntax (Python 3.11 and earlier):
+
+.. code-block:: python
+
+    from collections.abc import Sequence
+    from typing import TypeVar, overload
 
     T = TypeVar('T')
 
@@ -271,7 +292,7 @@ return type by using overloads like so:
         @overload
         def __getitem__(self, index: slice) -> Sequence[T]: ...
 
-        def __getitem__(self, index: Union[int, slice]) -> Union[T, Sequence[T]]:
+        def __getitem__(self, index: int | slice) -> T | Sequence[T]:
             if isinstance(index, int):
                 # Return a T here
             elif isinstance(index, slice):
@@ -369,7 +390,7 @@ program:
 The ``summarize([])`` call matches both variants: an empty list could
 be either a ``list[int]`` or a ``list[str]``. In this case, mypy
 will break the tie by picking the first matching variant: ``output``
-will have an inferred type of ``float``. The implementor is responsible
+will have an inferred type of ``float``. The implementer is responsible
 for making sure ``summarize`` breaks ties in the same way at runtime.
 
 However, there are two exceptions to the "pick the first match" rule.
@@ -389,9 +410,9 @@ matching variant returns:
 
 .. code-block:: python
 
-    some_list: Union[list[int], list[str]]
+    some_list: list[int] | list[str]
 
-    # output3 is of type 'Union[float, str]'
+    # output3 is of type 'float | str'
     output3 = summarize(some_list)
 
 .. note::
@@ -418,7 +439,7 @@ types:
 
 .. code-block:: python
 
-    from typing import overload, Union
+    from typing import overload
 
     class Expression:
         # ...snip...
@@ -469,7 +490,7 @@ the following unsafe overload definition:
 
 .. code-block:: python
 
-    from typing import overload, Union
+    from typing import overload
 
     @overload
     def unsafe_func(x: int) -> int: ...
@@ -477,7 +498,7 @@ the following unsafe overload definition:
     @overload
     def unsafe_func(x: object) -> str: ...
 
-    def unsafe_func(x: object) -> Union[int, str]:
+    def unsafe_func(x: object) -> int | str:
         if isinstance(x, int):
             return 42
         else:
@@ -501,7 +522,7 @@ To prevent these kinds of issues, mypy will detect and prohibit inherently unsaf
 overlapping overloads on a best-effort basis. Two variants are considered unsafely
 overlapping when both of the following are true:
 
-1. All of the arguments of the first variant are compatible with the second.
+1. All of the arguments of the first variant are potentially compatible with the second.
 2. The return type of the first variant is *not* compatible with (e.g. is not a
    subtype of) the second.
 
@@ -509,6 +530,9 @@ So in this example, the ``int`` argument in the first variant is a subtype of
 the ``object`` argument in the second, yet the ``int`` return type is not a subtype of
 ``str``. Both conditions are true, so mypy will correctly flag ``unsafe_func`` as
 being unsafe.
+
+Note that in cases where you ignore the overlapping overload error, mypy will usually
+still infer the types you expect at callsites.
 
 However, mypy will not detect *all* unsafe uses of overloads. For example,
 suppose we modify the above snippet so it calls ``summarize`` instead of
@@ -543,8 +567,8 @@ Type checking the implementation
 The body of an implementation is type-checked against the
 type hints provided on the implementation. For example, in the
 ``MyList`` example up above, the code in the body is checked with
-argument list ``index: Union[int, slice]`` and a return type of
-``Union[T, Sequence[T]]``. If there are no annotations on the
+argument list ``index: int | slice`` and a return type of
+``T | Sequence[T]``. If there are no annotations on the
 implementation, then the body is not type checked. If you want to
 force mypy to check the body anyways, use the :option:`--check-untyped-defs <mypy --check-untyped-defs>`
 flag (:ref:`more details here <untyped-definitions-and-calls>`).
@@ -552,10 +576,10 @@ flag (:ref:`more details here <untyped-definitions-and-calls>`).
 The variants must also also be compatible with the implementation
 type hints. In the ``MyList`` example, mypy will check that the
 parameter type ``int`` and the return type ``T`` are compatible with
-``Union[int, slice]`` and ``Union[T, Sequence]`` for the
+``int | slice`` and ``T | Sequence`` for the
 first variant. For the second variant it verifies the parameter
 type ``slice`` and the return type ``Sequence[T]`` are compatible
-with ``Union[int, slice]`` and ``Union[T, Sequence]``.
+with ``int | slice`` and ``T | Sequence``.
 
 .. note::
 
@@ -694,14 +718,13 @@ Restricted methods in generic classes
 -------------------------------------
 
 In generic classes some methods may be allowed to be called only
-for certain values of type arguments:
+for certain values of type arguments (Python 3.12 syntax):
 
 .. code-block:: python
 
-   T = TypeVar('T')
-
-   class Tag(Generic[T]):
+   class Tag[T]:
        item: T
+
        def uppercase_item(self: Tag[str]) -> str:
            return self.item.upper()
 
@@ -711,18 +734,18 @@ for certain values of type arguments:
        ts.uppercase_item()  # This is OK
 
 This pattern also allows matching on nested types in situations where the type
-argument is itself generic:
+argument is itself generic (Python 3.12 syntax):
 
 .. code-block:: python
 
-  T = TypeVar('T', covariant=True)
-  S = TypeVar('S')
+   from collections.abc import Sequence
 
-   class Storage(Generic[T]):
+   class Storage[T]:
        def __init__(self, content: T) -> None:
-           self.content = content
-       def first_chunk(self: Storage[Sequence[S]]) -> S:
-           return self.content[0]
+           self._content = content
+
+       def first_chunk[S](self: Storage[Sequence[S]]) -> S:
+           return self._content[0]
 
    page: Storage[list[str]]
    page.first_chunk()  # OK, type is "str"
@@ -731,13 +754,14 @@ argument is itself generic:
                              # "first_chunk" with type "Callable[[Storage[Sequence[S]]], S]"
 
 Finally, one can use overloads on self-type to express precise types of
-some tricky methods:
+some tricky methods (Python 3.12 syntax):
 
 .. code-block:: python
 
-   T = TypeVar('T')
+   from collections.abc import Callable
+   from typing import overload
 
-   class Tag(Generic[T]):
+   class Tag[T]:
        @overload
        def export(self: Tag[str]) -> str: ...
        @overload
@@ -796,23 +820,22 @@ Precise typing of alternative constructors
 ------------------------------------------
 
 Some classes may define alternative constructors. If these
-classes are generic, self-type allows giving them precise signatures:
+classes are generic, self-type allows giving them precise
+signatures (Python 3.12 syntax):
 
 .. code-block:: python
 
-   T = TypeVar('T')
+   from typing import Self
 
-   class Base(Generic[T]):
-       Q = TypeVar('Q', bound='Base[T]')
-
+   class Base[T]:
        def __init__(self, item: T) -> None:
            self.item = item
 
        @classmethod
-       def make_pair(cls: Type[Q], item: T) -> tuple[Q, Q]:
+       def make_pair(cls, item: T) -> tuple[Self, Self]:
            return cls(item), cls(item)
 
-   class Sub(Base[T]):
+   class Sub[T](Base[T]):
        ...
 
    pair = Sub.make_pair('yes')  # Type is "tuple[Sub[str], Sub[str]]"
@@ -826,7 +849,7 @@ Typing async/await
 
 Mypy lets you type coroutines that use the ``async/await`` syntax.
 For more information regarding coroutines, see :pep:`492` and the
-`asyncio documentation <https://docs.python.org/3/library/asyncio.html>`_.
+`asyncio documentation <python:library/asyncio>`_.
 
 Functions defined using ``async def`` are typed similar to normal functions.
 The return type annotation should be the same as the type of the value you
@@ -851,8 +874,8 @@ expect to get back when ``await``-ing the coroutine.
 
 The result of calling an ``async def`` function *without awaiting* will
 automatically be inferred to be a value of type
-:py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a subtype of
-:py:class:`Awaitable[T] <typing.Awaitable>`:
+:py:class:`Coroutine[Any, Any, T] <collections.abc.Coroutine>`, which is a subtype of
+:py:class:`Awaitable[T] <collections.abc.Awaitable>`:
 
 .. code-block:: python
 
@@ -865,11 +888,12 @@ Asynchronous iterators
 ----------------------
 
 If you have an asynchronous iterator, you can use the
-:py:class:`~typing.AsyncIterator` type in your annotations:
+:py:class:`~collections.abc.AsyncIterator` type in your annotations:
 
 .. code-block:: python
 
-   from typing import Optional, AsyncIterator
+   from collections.abc import AsyncIterator
+   from typing import Optional
    import asyncio
 
    class arange:
@@ -902,7 +926,8 @@ async iterators:
 
 .. code-block:: python
 
-   from typing import AsyncGenerator, Optional
+   from collections.abc import AsyncGenerator
+   from typing import Optional
    import asyncio
 
    # Could also type this as returning AsyncIterator[int]
@@ -919,7 +944,7 @@ One common confusion is that the presence of a ``yield`` statement in an
 
 .. code-block:: python
 
-   from typing import AsyncIterator
+   from collections.abc import AsyncIterator
 
    async def arange(stop: int) -> AsyncIterator[int]:
        # When called, arange gives you an async iterator
@@ -945,7 +970,8 @@ This can sometimes come up when trying to define base classes, Protocols or over
 
 .. code-block:: python
 
-    from typing import AsyncIterator, Protocol, overload
+    from collections.abc import AsyncIterator
+    from typing import Protocol, overload
 
     class LauncherIncorrect(Protocol):
         # Because launch does not have yield, this has type

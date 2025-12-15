@@ -163,7 +163,7 @@ MypyFile:1(
     TupleExpr:4(
       NameExpr(None [builtins.None])
       NameExpr(None [builtins.None]))
-    Tuple[__main__.A, __main__.B])
+    tuple[__main__.A, __main__.B])
   AssignmentStmt:5(
     NameExpr(x* [__main__.x])
     TupleExpr:5(
@@ -366,7 +366,7 @@ MypyFile:1(
   ExpressionStmt:2(
     CastExpr:2(
       NameExpr(None [builtins.None])
-      Tuple[builtins.int, builtins.str])))
+      tuple[builtins.int, builtins.str])))
 
 [case testCastToFunctionType]
 from typing import Callable, cast
@@ -493,7 +493,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def [t] (x: Tuple[builtins.int, t`-1])
+    def [t] (x: tuple[builtins.int, t`-1])
     Block:4(
       PassStmt:4())))
 
@@ -694,11 +694,11 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(t1 [__main__.t1])
     NameExpr(None [builtins.None])
-    Tuple[builtins.object])
+    tuple[builtins.object])
   AssignmentStmt:4(
     NameExpr(t2 [__main__.t2])
     NameExpr(None [builtins.None])
-    Tuple[builtins.int, builtins.object]))
+    tuple[builtins.int, builtins.object]))
 
 [case testVariableLengthTuple]
 from typing import Tuple
@@ -1043,7 +1043,7 @@ MypyFile:1(
       default(
         Var(y)
         StrExpr()))
-    def (*x: builtins.int, *, y: builtins.str =) -> Any
+    def (*x: builtins.int, y: builtins.str =) -> Any
     VarArg(
       Var(x))
     Block:1(
@@ -1438,7 +1438,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: Union[builtins.int, builtins.str])
+    def (x: builtins.int | builtins.str)
     Block:2(
       PassStmt:2())))
 
@@ -1452,7 +1452,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: Union[builtins.int, None])
+    def (x: builtins.int | None)
     Block:2(
       PassStmt:2())))
 
@@ -1466,7 +1466,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: Union[builtins.int, None, builtins.str])
+    def (x: builtins.int | None | builtins.str)
     Block:2(
       PassStmt:2())))
 
@@ -1493,7 +1493,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     IntExpr(1)
-    Union[builtins.int, None]))
+    builtins.int | None))
 
 [case testInvalidOptionalType]
 from typing import Optional
@@ -1559,8 +1559,8 @@ MypyFile:1(
   ImportFrom:1(typing_extensions, [TypeVarTuple])
   AssignmentStmt:2(
     NameExpr(TV* [__main__.TV])
-    TypeVarTupleExpr:2()))
-
+    TypeVarTupleExpr:2(
+      UpperBound(builtins.tuple[builtins.object, ...]))))
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleCallable]
@@ -1576,7 +1576,8 @@ MypyFile:1(
   ImportFrom:2(typing, [Callable])
   AssignmentStmt:3(
     NameExpr(Ts* [__main__.Ts])
-    TypeVarTupleExpr:3())
+    TypeVarTupleExpr:3(
+      UpperBound(builtins.tuple[builtins.object, ...])))
   FuncDef:5(
     foo
     Args(

@@ -53,7 +53,7 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(t, NoneType())
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> ProperType:
-        dup = UninhabitedType(t.is_noreturn)
+        dup = UninhabitedType()
         dup.ambiguous = t.ambiguous
         return self.copy_common(t, dup)
 
@@ -107,7 +107,9 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(t, TupleType(t.items, t.partial_fallback, implicit=t.implicit))
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
-        return self.copy_common(t, TypedDictType(t.items, t.required_keys, t.fallback))
+        return self.copy_common(
+            t, TypedDictType(t.items, t.required_keys, t.readonly_keys, t.fallback)
+        )
 
     def visit_literal_type(self, t: LiteralType) -> ProperType:
         return self.copy_common(t, LiteralType(value=t.value, fallback=t.fallback))
@@ -120,7 +122,7 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         # Use cast since the type annotations in TypeType are imprecise.
-        return self.copy_common(t, TypeType(cast(Any, t.item)))
+        return self.copy_common(t, TypeType(cast(Any, t.item), is_type_form=t.is_type_form))
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         assert False, "only ProperTypes supported"

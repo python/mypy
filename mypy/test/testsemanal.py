@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import sys
-from typing import Dict
-
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource
 from mypy.nodes import TypeInfo
-from mypy.options import TYPE_VAR_TUPLE, UNPACK, Options
+from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
@@ -27,16 +24,12 @@ from mypy.test.helpers import (
 semanal_files = find_test_files(
     pattern="semanal-*.test",
     exclude=[
-        "semanal-errors-python310.test",
         "semanal-errors.test",
+        "semanal-errors-python310.test",
         "semanal-typeinfo.test",
         "semanal-symtable.test",
     ],
 )
-
-
-if sys.version_info < (3, 10):
-    semanal_files.remove("semanal-python310.test")
 
 
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
@@ -45,8 +38,6 @@ def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Opti
     options.semantic_analysis_only = True
     options.show_traceback = True
     options.python_version = PYTHON3_VERSION
-    options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
-    options.force_uppercase_builtins = True
     return options
 
 
@@ -95,9 +86,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 
 
 class SemAnalErrorSuite(DataSuite):
-    files = ["semanal-errors.test"]
-    if sys.version_info >= (3, 10):
-        semanal_files.append("semanal-errors-python310.test")
+    files = ["semanal-errors.test", "semanal-errors-python310.test"]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)
@@ -200,7 +189,7 @@ class SemAnalTypeInfoSuite(DataSuite):
         )
 
 
-class TypeInfoMap(Dict[str, TypeInfo]):
+class TypeInfoMap(dict[str, TypeInfo]):
     def __str__(self) -> str:
         a: list[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):

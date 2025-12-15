@@ -1,30 +1,37 @@
 import http.server
 import pydoc
 import socketserver
+from _typeshed import ReadableBuffer
 from collections.abc import Callable, Iterable, Mapping
 from re import Pattern
-from typing import Any, ClassVar, Protocol
+from typing import Any, ClassVar, Protocol, type_check_only
 from typing_extensions import TypeAlias
 from xmlrpc.client import Fault, _Marshallable
 
 # The dispatch accepts anywhere from 0 to N arguments, no easy way to allow this in mypy
+@type_check_only
 class _DispatchArity0(Protocol):
     def __call__(self) -> _Marshallable: ...
 
+@type_check_only
 class _DispatchArity1(Protocol):
-    def __call__(self, __arg1: _Marshallable) -> _Marshallable: ...
+    def __call__(self, arg1: _Marshallable, /) -> _Marshallable: ...
 
+@type_check_only
 class _DispatchArity2(Protocol):
-    def __call__(self, __arg1: _Marshallable, __arg2: _Marshallable) -> _Marshallable: ...
+    def __call__(self, arg1: _Marshallable, arg2: _Marshallable, /) -> _Marshallable: ...
 
+@type_check_only
 class _DispatchArity3(Protocol):
-    def __call__(self, __arg1: _Marshallable, __arg2: _Marshallable, __arg3: _Marshallable) -> _Marshallable: ...
+    def __call__(self, arg1: _Marshallable, arg2: _Marshallable, arg3: _Marshallable, /) -> _Marshallable: ...
 
+@type_check_only
 class _DispatchArity4(Protocol):
     def __call__(
-        self, __arg1: _Marshallable, __arg2: _Marshallable, __arg3: _Marshallable, __arg4: _Marshallable
+        self, arg1: _Marshallable, arg2: _Marshallable, arg3: _Marshallable, arg4: _Marshallable, /
     ) -> _Marshallable: ...
 
+@type_check_only
 class _DispatchArityN(Protocol):
     def __call__(self, *args: _Marshallable) -> _Marshallable: ...
 
@@ -48,8 +55,8 @@ class SimpleXMLRPCDispatcher:  # undocumented
     def register_multicall_functions(self) -> None: ...
     def _marshaled_dispatch(
         self,
-        data: str,
-        dispatch_method: Callable[[str | None, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = None,
+        data: str | ReadableBuffer,
+        dispatch_method: Callable[[str, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = None,
         path: Any | None = None,
     ) -> str: ...  # undocumented
     def system_listMethods(self) -> list[str]: ...  # undocumented

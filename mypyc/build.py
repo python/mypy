@@ -25,46 +25,108 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, cast
 
+import mypyc.build_setup  # noqa: F401
 from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.main import process_options
 from mypy.options import Options
 from mypy.util import write_junit_xml
+from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import RUNTIME_C_FILES, shared_lib_name
+from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
+from mypyc.ir.deps import SourceDep
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-if sys.version_info < (3, 12):
-    if TYPE_CHECKING:
+
+class ModDesc(NamedTuple):
+    module: str
+    c_files: list[str]
+    other_files: list[str]
+    include_dirs: list[str]
+
+
+LIBRT_MODULES = [
+    ModDesc("librt.internal", ["librt_internal.c"], [], []),
+    ModDesc("librt.strings", ["librt_strings.c"], [], []),
+    ModDesc(
+        "librt.base64",
+        [
+            "librt_base64.c",
+            "base64/lib.c",
+            "base64/codec_choose.c",
+            "base64/tables/tables.c",
+            "base64/arch/generic/codec.c",
+            "base64/arch/ssse3/codec.c",
+            "base64/arch/sse41/codec.c",
+            "base64/arch/sse42/codec.c",
+            "base64/arch/avx/codec.c",
+            "base64/arch/avx2/codec.c",
+            "base64/arch/avx512/codec.c",
+            "base64/arch/neon32/codec.c",
+            "base64/arch/neon64/codec.c",
+        ],
+        [
+            "base64/arch/avx/enc_loop_asm.c",
+            "base64/arch/avx2/enc_loop.c",
+            "base64/arch/avx2/enc_loop_asm.c",
+            "base64/arch/avx2/enc_reshuffle.c",
+            "base64/arch/avx2/enc_translate.c",
+            "base64/arch/avx2/dec_loop.c",
+            "base64/arch/avx2/dec_reshuffle.c",
+            "base64/arch/generic/32/enc_loop.c",
+            "base64/arch/generic/64/enc_loop.c",
+            "base64/arch/generic/32/dec_loop.c",
+            "base64/arch/generic/enc_head.c",
+            "base64/arch/generic/enc_tail.c",
+            "base64/arch/generic/dec_head.c",
+            "base64/arch/generic/dec_tail.c",
+            "base64/arch/ssse3/dec_reshuffle.c",
+            "base64/arch/ssse3/dec_loop.c",
+            "base64/arch/ssse3/enc_loop_asm.c",
+            "base64/arch/ssse3/enc_translate.c",
+            "base64/arch/ssse3/enc_reshuffle.c",
+            "base64/arch/ssse3/enc_loop.c",
+            "base64/arch/neon64/dec_loop.c",
+            "base64/arch/neon64/enc_loop_asm.c",
+            "base64/codecs.h",
+            "base64/env.h",
+            "base64/tables/tables.h",
+            "base64/tables/table_dec_32bit.h",
+            "base64/tables/table_enc_12bit.h",
+        ],
+        ["base64"],
+    ),
+]
+
+try:
+    # Import setuptools so that it monkey-patch overrides distutils
+    import setuptools
+except ImportError:
+    pass
+
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 12):
+        from setuptools import Extension
+    else:
         from distutils.core import Extension as _distutils_Extension
-        from typing_extensions import TypeAlias
+        from typing import TypeAlias
 
         from setuptools import Extension as _setuptools_Extension
 
-        Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+        Extension: TypeAlias = _setuptools_Extension | _distutils_Extension
 
-    try:
-        # Import setuptools so that it monkey-patch overrides distutils
-        import setuptools
-    except ImportError:
-        pass
-    from distutils import ccompiler, sysconfig
+if sys.version_info >= (3, 12):
+    # From setuptools' monkeypatch
+    from distutils import ccompiler, sysconfig  # type: ignore[import-not-found]
 else:
-    import setuptools
-    from setuptools import Extension
-    from setuptools._distutils import (
-        ccompiler as _ccompiler,  # type: ignore[attr-defined]
-        sysconfig as _sysconfig,  # type: ignore[attr-defined]
-    )
-
-    ccompiler = _ccompiler
-    sysconfig = _sysconfig
+    from distutils import ccompiler, sysconfig
 
 
 def get_extension() -> type[Extension]:
@@ -90,7 +152,7 @@ def setup_mypycify_vars() -> None:
     # There has to be a better approach to this.
 
     # The vars can contain ints but we only work with str ones
-    vars = cast(Dict[str, str], sysconfig.get_config_vars())
+    vars = cast(dict[str, str], sysconfig.get_config_vars())
     if sys.platform == "darwin":
         # Disable building 32-bit binaries, since we generate too much code
         # for a 32-bit Mach-O object. There has to be a better way to do this.
@@ -108,7 +170,14 @@ def emit_messages(options: Options, messages: list[str], dt: float, serious: boo
     # ... you know, just in case.
     if options.junit_xml:
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
-        write_junit_xml(dt, serious, messages, options.junit_xml, py_version, options.platform)
+        write_junit_xml(
+            dt,
+            serious,
+            {None: messages} if messages else {},
+            options.junit_xml,
+            py_version,
+            options.platform,
+        )
     if messages:
         print("\n".join(messages))
 
@@ -170,9 +239,15 @@ def generate_c_extension_shim(
     cname = "%s.c" % full_module_name.replace(".", os.sep)
     cpath = os.path.join(dir_name, cname)
 
+    if IS_FREE_THREADED:
+        # We use multi-phase init in free-threaded builds to enable free threading.
+        shim_name = "module_shim_no_gil_multiphase.tmpl"
+    else:
+        shim_name = "module_shim.tmpl"
+
     # We load the C extension shim template from a file.
     # (So that the file could be reused as a bazel template also.)
-    with open(os.path.join(include_dir(), "module_shim.tmpl")) as f:
+    with open(os.path.join(include_dir(), shim_name)) as f:
         shim_template = f.read()
 
     write_file(
@@ -208,14 +283,14 @@ def generate_c(
     groups: emitmodule.Groups,
     fscache: FileSystemCache,
     compiler_options: CompilerOptions,
-) -> tuple[list[list[tuple[str, str]]], str]:
+) -> tuple[list[list[tuple[str, str]]], str, list[SourceDep]]:
     """Drive the actual core compilation step.
 
     The groups argument describes how modules are assigned to C
     extension modules. See the comments on the Groups type in
     mypyc.emitmodule for details.
 
-    Returns the C source code and (for debugging) the pretty printed IR.
+    Returns the C source code, (for debugging) the pretty printed IR, and list of SourceDeps.
     """
     t0 = time.time()
 
@@ -236,7 +311,7 @@ def generate_c(
         print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
     errors = Errors(options)
-    modules, ctext = emitmodule.compile_modules_to_c(
+    modules, ctext, mapper = emitmodule.compile_modules_to_c(
         result, compiler_options=compiler_options, errors=errors, groups=groups
     )
     t2 = time.time()
@@ -248,7 +323,13 @@ def generate_c(
     if compiler_options.verbose:
         print(f"Compiled to C in {t2 - t1:.3f}s")
 
-    return ctext, "\n".join(format_modules(modules))
+    if options.mypyc_annotation_file:
+        generate_annotated_html(options.mypyc_annotation_file, result, modules, mapper)
+
+    # Collect SourceDep dependencies
+    source_deps = sorted(emitmodule.collect_source_dependencies(modules), key=lambda d: d.path)
+
+    return ctext, "\n".join(format_modules(modules)), source_deps
 
 
 def build_using_shared_lib(
@@ -261,12 +342,12 @@ def build_using_shared_lib(
 ) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
-    This creates one shared library extension module that all of the
-    others import and then one shim extension module for each
-    module in the build, that simply calls an initialization function
+    This creates one shared library extension module that all the
+    others import, and one shim extension module for each
+    module in the build. Each shim simply calls an initialization function
     in the shared library.
 
-    The shared library (which lib_name is the name of) is a python
+    The shared library (which lib_name is the name of) is a Python
     extension module that exports the real initialization functions in
     Capsules stored in module attributes.
     """
@@ -348,6 +429,7 @@ def construct_groups(
     sources: list[BuildSource],
     separate: bool | list[tuple[list[str], str | None]],
     use_shared_lib: bool,
+    group_name_override: str | None,
 ) -> emitmodule.Groups:
     """Compute Groups given the input source list and separate configs.
 
@@ -377,7 +459,10 @@ def construct_groups(
     # Generate missing names
     for i, (group, name) in enumerate(groups):
         if use_shared_lib and not name:
-            name = group_name([source.module for source in group])
+            if group_name_override is not None:
+                name = group_name_override
+            else:
+                name = group_name([source.module for source in group])
         groups[i] = (group, name)
 
     return groups
@@ -405,9 +490,9 @@ def mypyc_build(
     *,
     separate: bool | list[tuple[list[str], str | None]] = False,
     only_compile_paths: Iterable[str] | None = None,
-    skip_cgen_input: Any | None = None,
+    skip_cgen_input: tuple[list[list[tuple[str, str]]], list[str]] | None = None,
     always_use_shared_lib: bool = False,
-) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]]]:
+) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]], list[SourceDep]]:
     """Do the front and middle end of mypyc building, producing and writing out C source."""
     fscache = FileSystemCache()
     mypyc_sources, all_sources, options = get_mypy_config(
@@ -423,18 +508,23 @@ def mypyc_build(
         or always_use_shared_lib
     )
 
-    groups = construct_groups(mypyc_sources, separate, use_shared_lib)
+    groups = construct_groups(mypyc_sources, separate, use_shared_lib, compiler_options.group_name)
+
+    if compiler_options.group_name is not None:
+        assert len(groups) == 1, "If using custom group_name, only one group is expected"
 
     # We let the test harness just pass in the c file contents instead
     # so that it can do a corner-cutting version without full stubs.
+    source_deps: list[SourceDep] = []
     if not skip_cgen_input:
-        group_cfiles, ops_text = generate_c(
+        group_cfiles, ops_text, source_deps = generate_c(
             all_sources, options, groups, fscache, compiler_options=compiler_options
         )
         # TODO: unique names?
         write_file(os.path.join(compiler_options.target_dir, "ops.txt"), ops_text)
     else:
-        group_cfiles = skip_cgen_input
+        group_cfiles = skip_cgen_input[0]
+        source_deps = [SourceDep(d) for d in skip_cgen_input[1]]
 
     # Write out the generated C and collect the files for each group
     # Should this be here??
@@ -443,14 +533,15 @@ def mypyc_build(
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(compiler_options.target_dir, cfile)
-            write_file(cfile, ctext)
+            if not options.mypyc_skip_c_generation:
+                write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == ".c":
                 cfilenames.append(cfile)
 
         deps = [os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)]
         group_cfilenames.append((cfilenames, deps))
 
-    return groups, group_cfilenames
+    return groups, group_cfilenames, source_deps
 
 
 def mypycify(
@@ -463,9 +554,15 @@ def mypycify(
     strip_asserts: bool = False,
     multi_file: bool = False,
     separate: bool | list[tuple[list[str], str | None]] = False,
-    skip_cgen_input: Any | None = None,
+    skip_cgen_input: tuple[list[list[tuple[str, str]]], list[str]] | None = None,
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
+    strict_dunder_typing: bool = False,
+    group_name: str | None = None,
+    log_trace: bool = False,
+    depends_on_librt_internal: bool = False,
+    install_librt: bool = False,
+    experimental_features: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -491,7 +588,7 @@ def mypycify(
         separate: Should compiled modules be placed in separate extension modules.
                   If False, all modules are placed in a single shared library.
                   If True, every module is placed in its own library.
-                  Otherwise separate should be a list of
+                  Otherwise, separate should be a list of
                   (file name list, optional shared library name) pairs specifying
                   groups of files that should be placed in the same shared library
                   (while all other modules will be placed in its own library).
@@ -505,6 +602,25 @@ def mypycify(
                                should be directly #include'd instead of linked
                                separately in order to reduce compiler invocations.
                                Defaults to False in multi_file mode, True otherwise.
+        strict_dunder_typing: If True, force dunder methods to have the return type
+                              of the method strictly, which can lead to more
+                              optimization opportunities. Defaults to False.
+        group_name: If set, override the default group name derived from
+                    the hash of module names. This is used for the names of the
+                    output C files and the shared library. This is only supported
+                    if there is a single group. [Experimental]
+        log_trace: If True, compiled code writes a trace log of events in
+                   mypyc_trace.txt (derived from executed operations). This is
+                   useful for performance analysis, such as analyzing which
+                   primitive ops are used the most and on which lines.
+        depends_on_librt_internal: This is True only for mypy itself.
+        install_librt: If True, also build the librt extension modules. Normally,
+                       those are build and published on PyPI separately, but during
+                       tests, we want to use their development versions (i.e. from
+                       current commit).
+        experimental_features: Enable experimental features (install_librt=True is
+                               also needed if using experimental librt features). These
+                               have no backward compatibility guarantees!
     """
 
     # Figure out our configuration
@@ -515,10 +631,15 @@ def mypycify(
         separate=separate is not False,
         target_dir=target_dir,
         include_runtime_files=include_runtime_files,
+        strict_dunder_typing=strict_dunder_typing,
+        group_name=group_name,
+        log_trace=log_trace,
+        depends_on_librt_internal=depends_on_librt_internal,
+        experimental_features=experimental_features,
     )
 
     # Generate all the actual important C code
-    groups, group_cfilenames = mypyc_build(
+    groups, group_cfilenames, source_deps = mypyc_build(
         paths,
         only_compile_paths=only_compile_paths,
         compiler_options=compiler_options,
@@ -555,6 +676,10 @@ def mypycify(
             # See https://github.com/mypyc/mypyc/issues/956
             "-Wno-cpp",
         ]
+        if log_trace:
+            cflags.append("-DMYPYC_LOG_TRACE")
+        if experimental_features:
+            cflags.append("-DMYPYC_EXPERIMENTAL")
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
@@ -579,17 +704,29 @@ def mypycify(
             # that we actually get the compilation speed and memory
             # use wins that multi-file mode is intended for.
             cflags += ["/GL-", "/wd9025"]  # warning about overriding /GL
+        if log_trace:
+            cflags.append("/DMYPYC_LOG_TRACE")
+        if experimental_features:
+            cflags.append("/DMYPYC_EXPERIMENTAL")
 
     # If configured to (defaults to yes in multi-file mode), copy the
     # runtime library in. Otherwise it just gets #included to save on
     # compiler invocations.
     shared_cfilenames = []
     if not compiler_options.include_runtime_files:
-        for name in RUNTIME_C_FILES:
+        # Collect all files to copy: runtime files + conditional source files
+        files_to_copy = list(RUNTIME_C_FILES)
+        for source_dep in source_deps:
+            files_to_copy.append(source_dep.path)
+            files_to_copy.append(source_dep.get_header())
+
+        # Copy all files
+        for name in files_to_copy:
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
                 write_file(rt_file, f.read())
-            shared_cfilenames.append(rt_file)
+            if name.endswith(".c"):
+                shared_cfilenames.append(rt_file)
 
     extensions = []
     for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):
@@ -607,6 +744,28 @@ def mypycify(
         else:
             extensions.extend(
                 build_single_module(group_sources, cfilenames + shared_cfilenames, cflags)
+            )
+
+    if install_librt:
+        for name in RUNTIME_C_FILES:
+            rt_file = os.path.join(build_dir, name)
+            with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
+                write_file(rt_file, f.read())
+        for mod, file_names, addit_files, includes in LIBRT_MODULES:
+            for file_name in file_names + addit_files:
+                rt_file = os.path.join(build_dir, file_name)
+                with open(os.path.join(include_dir(), file_name), encoding="utf-8") as f:
+                    write_file(rt_file, f.read())
+            extensions.append(
+                get_extension()(
+                    mod,
+                    sources=[
+                        os.path.join(build_dir, file) for file in file_names + RUNTIME_C_FILES
+                    ],
+                    include_dirs=[include_dir()]
+                    + [os.path.join(include_dir(), d) for d in includes],
+                    extra_compile_args=cflags,
+                )
             )
 
     return extensions

@@ -78,7 +78,11 @@ PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value) {
         return ret;
     }
     _Py_IDENTIFIER(setdefault);
-    return _PyObject_CallMethodIdObjArgs(dict, &PyId_setdefault, key, value, NULL);
+    PyObject *name = _PyUnicode_FromId(&PyId_setdefault); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodObjArgs(dict, name, key, value, NULL);
 }
 
 PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
@@ -133,7 +137,11 @@ static inline int CPy_ObjectToStatus(PyObject *obj) {
 
 static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
     _Py_IDENTIFIER(update);
-    PyObject *res = _PyObject_CallMethodIdOneArg(dict, &PyId_update, stuff);
+    PyObject *name = _PyUnicode_FromId(&PyId_update); /* borrowed */
+    if (name == NULL) {
+        return -1;
+    }
+    PyObject *res = PyObject_CallMethodOneArg(dict, name, stuff);
     return CPy_ObjectToStatus(res);
 }
 
@@ -200,7 +208,11 @@ PyObject *CPyDict_KeysView(PyObject *dict) {
         return _CPyDictView_New(dict, &PyDictKeys_Type);
     }
     _Py_IDENTIFIER(keys);
-    return _PyObject_CallMethodIdNoArgs(dict, &PyId_keys);
+    PyObject *name = _PyUnicode_FromId(&PyId_keys); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodNoArgs(dict, name);
 }
 
 PyObject *CPyDict_ValuesView(PyObject *dict) {
@@ -208,7 +220,11 @@ PyObject *CPyDict_ValuesView(PyObject *dict) {
         return _CPyDictView_New(dict, &PyDictValues_Type);
     }
     _Py_IDENTIFIER(values);
-    return _PyObject_CallMethodIdNoArgs(dict, &PyId_values);
+    PyObject *name = _PyUnicode_FromId(&PyId_values); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodNoArgs(dict, name);
 }
 
 PyObject *CPyDict_ItemsView(PyObject *dict) {
@@ -216,7 +232,11 @@ PyObject *CPyDict_ItemsView(PyObject *dict) {
         return _CPyDictView_New(dict, &PyDictItems_Type);
     }
     _Py_IDENTIFIER(items);
-    return _PyObject_CallMethodIdNoArgs(dict, &PyId_items);
+    PyObject *name = _PyUnicode_FromId(&PyId_items); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodNoArgs(dict, name);
 }
 
 PyObject *CPyDict_Keys(PyObject *dict) {
@@ -226,16 +246,19 @@ PyObject *CPyDict_Keys(PyObject *dict) {
     // Inline generic fallback logic to also return a list.
     PyObject *list = PyList_New(0);
     _Py_IDENTIFIER(keys);
-    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_keys);
+    PyObject *name = _PyUnicode_FromId(&PyId_keys); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    PyObject *view = PyObject_CallMethodNoArgs(dict, name);
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -246,16 +269,19 @@ PyObject *CPyDict_Values(PyObject *dict) {
     // Inline generic fallback logic to also return a list.
     PyObject *list = PyList_New(0);
     _Py_IDENTIFIER(values);
-    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_values);
+    PyObject *name = _PyUnicode_FromId(&PyId_values); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    PyObject *view = PyObject_CallMethodNoArgs(dict, name);
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -266,16 +292,19 @@ PyObject *CPyDict_Items(PyObject *dict) {
     // Inline generic fallback logic to also return a list.
     PyObject *list = PyList_New(0);
     _Py_IDENTIFIER(items);
-    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_items);
+    PyObject *name = _PyUnicode_FromId(&PyId_items); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    PyObject *view = PyObject_CallMethodNoArgs(dict, name);
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -284,7 +313,11 @@ char CPyDict_Clear(PyObject *dict) {
         PyDict_Clear(dict);
     } else {
         _Py_IDENTIFIER(clear);
-        PyObject *res = _PyObject_CallMethodIdNoArgs(dict, &PyId_clear);
+        PyObject *name = _PyUnicode_FromId(&PyId_clear); /* borrowed */
+        if (name == NULL) {
+            return 0;
+        }
+        PyObject *res = PyObject_CallMethodNoArgs(dict, name);
         if (res == NULL) {
             return 0;
         }
@@ -297,7 +330,11 @@ PyObject *CPyDict_Copy(PyObject *dict) {
         return PyDict_Copy(dict);
     }
     _Py_IDENTIFIER(copy);
-    return _PyObject_CallMethodIdNoArgs(dict, &PyId_copy);
+    PyObject *name = _PyUnicode_FromId(&PyId_copy); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodNoArgs(dict, name);
 }
 
 PyObject *CPyDict_GetKeysIter(PyObject *dict) {
@@ -316,7 +353,11 @@ PyObject *CPyDict_GetItemsIter(PyObject *dict) {
         return dict;
     }
     _Py_IDENTIFIER(items);
-    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_items);
+    PyObject *name = _PyUnicode_FromId(&PyId_items); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    PyObject *view = PyObject_CallMethodNoArgs(dict, name);
     if (view == NULL) {
         return NULL;
     }
@@ -332,7 +373,11 @@ PyObject *CPyDict_GetValuesIter(PyObject *dict) {
         return dict;
     }
     _Py_IDENTIFIER(values);
-    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_values);
+    PyObject *name = _PyUnicode_FromId(&PyId_values); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    PyObject *view = PyObject_CallMethodNoArgs(dict, name);
     if (view == NULL) {
         return NULL;
     }

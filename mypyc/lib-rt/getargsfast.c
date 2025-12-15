@@ -119,7 +119,7 @@ static int
 parser_init(CPyArg_Parser *parser)
 {
     const char * const *keywords;
-    const char *format, *msg;
+    const char *format;
     int i, len, min, max, nkw;
     PyObject *kwtuple;
 
@@ -271,7 +271,7 @@ find_keyword(PyObject *kwnames, PyObject *const *kwstack, PyObject *key)
     for (i = 0; i < nkwargs; i++) {
         PyObject *kwname = PyTuple_GET_ITEM(kwnames, i);
         assert(PyUnicode_Check(kwname));
-        if (_PyUnicode_EQ(kwname, key)) {
+        if (PyUnicode_Equal(kwname, key)) {
             return kwstack[i];
         }
     }

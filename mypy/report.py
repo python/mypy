@@ -8,12 +8,13 @@ import json
 import os
 import shutil
 import sys
+import sysconfig
 import time
 import tokenize
 from abc import ABCMeta, abstractmethod
+from collections.abc import Callable, Iterator
 from operator import attrgetter
-from typing import Any, Callable, Dict, Final, Iterator, Tuple
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 from urllib.request import pathname2url
 
 from mypy import stats
@@ -25,9 +26,13 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree  # type: ignore[import]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        LXML_INSTALLED = False
+    else:
+        from lxml import etree  # type: ignore[import-untyped]
 
-    LXML_INSTALLED = True
+        LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
 
@@ -43,8 +48,8 @@ type_of_any_name_map: Final[collections.OrderedDict[int, str]] = collections.Ord
     ]
 )
 
-ReporterClasses: _TypeAlias = Dict[
-    str, Tuple[Callable[["Reports", str], "AbstractReporter"], bool]
+ReporterClasses: _TypeAlias = dict[
+    str, tuple[Callable[["Reports", str], "AbstractReporter"], bool]
 ]
 
 reporter_classes: Final[ReporterClasses] = {}
@@ -99,7 +104,7 @@ class AbstractReporter(metaclass=ABCMeta):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         self.output_dir = output_dir
         if output_dir != "<memory>":
-            stats.ensure_dir_exists(output_dir)
+            os.makedirs(output_dir, exist_ok=True)
 
     @abstractmethod
     def on_file(
@@ -140,12 +145,9 @@ def should_skip_path(path: str) -> bool:
 
 def iterate_python_lines(path: str) -> Iterator[tuple[int, str]]:
     """Return an iterator over (line number, line text) from a Python file."""
-    try:
+    if not os.path.isdir(path):  # can happen with namespace packages
         with tokenize.open(path) as input_file:
             yield from enumerate(input_file, 1)
-    except IsADirectoryError:
-        # can happen with namespace packages
-        pass
 
 
 class FuncCounterVisitor(TraverserVisitor):
@@ -171,8 +173,11 @@ class LineCountReporter(AbstractReporter):
     ) -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
-        with open(tree.path, "rb") as f:
-            physical_lines = len(f.readlines())
+        if not os.path.isdir(tree.path):  # can happen with namespace packages
+            with open(tree.path, "rb") as f:
+                physical_lines = len(f.readlines())
+        else:
+            physical_lines = 0
 
         func_counter = FuncCounterVisitor()
         tree.accept(func_counter)
@@ -419,6 +424,9 @@ class LineCoverageReporter(AbstractReporter):
         type_map: dict[Expression, Type],
         options: Options,
     ) -> None:
+        if os.path.isdir(tree.path):  # can happen with namespace packages
+            return
+
         with open(tree.path) as f:
             tree_source = f.readlines()
 
@@ -685,6 +693,8 @@ class CoberturaXmlReporter(AbstractReporter):
             self.root_package.covered_lines, self.root_package.total_lines
         )
         self.root.attrib["branch-rate"] = "0"
+        self.root.attrib["lines-covered"] = str(self.root_package.covered_lines)
+        self.root.attrib["lines-valid"] = str(self.root_package.total_lines)
         sources = etree.SubElement(self.root, "sources")
         source_element = etree.SubElement(sources, "source")
         source_element.text = os.getcwd()
@@ -733,7 +743,7 @@ class XmlReporter(AbstractXmlReporter):
         if path.startswith(".."):
             return
         out_path = os.path.join(self.output_dir, "xml", path + ".xml")
-        stats.ensure_dir_exists(os.path.dirname(out_path))
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         last_xml.write(out_path, encoding="utf-8")
 
     def on_finish(self) -> None:
@@ -778,7 +788,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
         if path.startswith(".."):
             return
         out_path = os.path.join(self.output_dir, "html", path + ".html")
-        stats.ensure_dir_exists(os.path.dirname(out_path))
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         transformed_html = bytes(self.xslt_html(last_xml, ext=self.param_html))
         with open(out_path, "wb") as out_file:
             out_file.write(transformed_html)

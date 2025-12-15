@@ -29,6 +29,7 @@ from mypy.types import (
     Overloaded,
     Parameters,
     ParamSpecType,
+    ProperType,
     TupleType,
     TypeAliasType,
     TypedDictType,
@@ -81,15 +82,23 @@ class NodeFixer(NodeVisitor[None]):
                 info.update_tuple_type(info.tuple_type)
                 if info.special_alias:
                     info.special_alias.alias_tvars = list(info.defn.type_vars)
+                    for i, t in enumerate(info.defn.type_vars):
+                        if isinstance(t, TypeVarTupleType):
+                            info.special_alias.tvar_tuple_index = i
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
                 info.update_typeddict_type(info.typeddict_type)
                 if info.special_alias:
                     info.special_alias.alias_tvars = list(info.defn.type_vars)
+                    for i, t in enumerate(info.defn.type_vars):
+                        if isinstance(t, TypeVarTupleType):
+                            info.special_alias.tvar_tuple_index = i
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
+            if info.self_type:
+                info.self_type.accept(self.type_fixer)
             if info.alt_promote:
                 info.alt_promote.accept(self.type_fixer)
                 instance = Instance(info, [])
@@ -111,7 +120,8 @@ class NodeFixer(NodeVisitor[None]):
     # NOTE: This method *definitely* isn't part of the NodeVisitor API.
     def visit_symbol_table(self, symtab: SymbolTable, table_fullname: str) -> None:
         # Copy the items because we may mutate symtab.
-        for key, value in list(symtab.items()):
+        for key in list(symtab):
+            value = symtab[key]
             cross_ref = value.cross_ref
             if cross_ref is not None:  # Fix up cross-reference.
                 value.cross_ref = None
@@ -122,8 +132,23 @@ class NodeFixer(NodeVisitor[None]):
                         cross_ref, self.modules, raise_on_missing=not self.allow_missing
                     )
                     if stnode is not None:
-                        assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
-                        value.node = stnode.node
+                        if stnode is value:
+                            # The node seems to refer to itself, which can mean that
+                            # the target is a deleted submodule of the current module,
+                            # and thus lookup falls back to the symbol table of the parent
+                            # package. Here's how this may happen:
+                            #
+                            #   pkg/__init__.py:
+                            #     from pkg import sub
+                            #
+                            # Now if pkg.sub is deleted, the pkg.sub symbol table entry
+                            # appears to refer to itself. Replace the entry with a
+                            # placeholder to avoid a crash. We can't delete the entry,
+                            # as it would stop dependency propagation.
+                            value.node = Var(key + "@deleted")
+                        else:
+                            assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
+                            value.node = stnode.node
                     elif not self.allow_missing:
                         assert False, f"Could not find cross-ref {cross_ref}"
                     else:
@@ -143,6 +168,8 @@ class NodeFixer(NodeVisitor[None]):
             func.info = self.current_info
         if func.type is not None:
             func.type.accept(self.type_fixer)
+            if isinstance(func.type, CallableType):
+                func.type.definition = func
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         if self.current_info is not None:
@@ -153,6 +180,10 @@ class NodeFixer(NodeVisitor[None]):
             item.accept(self)
         if o.impl:
             o.impl.accept(self)
+        if isinstance(o.type, Overloaded):
+            # For error messages we link the original definition for each item.
+            for typ, item in zip(o.type.items, o.items):
+                typ.definition = item
 
     def visit_decorator(self, d: Decorator) -> None:
         if self.current_info is not None:
@@ -163,14 +194,13 @@ class NodeFixer(NodeVisitor[None]):
             d.var.accept(self)
         for node in d.decorators:
             node.accept(self)
+        typ = d.var.type
+        if isinstance(typ, ProperType) and isinstance(typ, CallableType):
+            typ.definition = d.func
 
     def visit_class_def(self, c: ClassDef) -> None:
         for v in c.type_vars:
-            if isinstance(v, TypeVarType):
-                for value in v.values:
-                    value.accept(self.type_fixer)
-            v.upper_bound.accept(self.type_fixer)
-            v.default.accept(self.type_fixer)
+            v.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
@@ -184,6 +214,7 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_type_var_tuple_expr(self, tv: TypeVarTupleExpr) -> None:
         tv.upper_bound.accept(self.type_fixer)
+        tv.tuple_fallback.accept(self.type_fixer)
         tv.default.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:
@@ -191,6 +222,8 @@ class NodeFixer(NodeVisitor[None]):
             v.info = self.current_info
         if v.type is not None:
             v.type.accept(self.type_fixer)
+        if v.setter_type is not None:
+            v.setter_type.accept(self.type_fixer)
 
     def visit_type_alias(self, a: TypeAlias) -> None:
         a.target.accept(self.type_fixer)
@@ -221,6 +254,9 @@ class TypeFixer(TypeVisitor[None]):
             a.accept(self)
         if inst.last_known_value is not None:
             inst.last_known_value.accept(self)
+        if inst.extra_attrs:
+            for v in inst.extra_attrs.attrs.values():
+                v.accept(self)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         type_ref = t.type_ref
@@ -247,11 +283,10 @@ class TypeFixer(TypeVisitor[None]):
             ct.ret_type.accept(self)
         for v in ct.variables:
             v.accept(self)
-        for arg in ct.bound_args:
-            if arg:
-                arg.accept(self)
         if ct.type_guard is not None:
             ct.type_guard.accept(self)
+        if ct.type_is is not None:
+            ct.type_is.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items:
@@ -312,8 +347,10 @@ class TypeFixer(TypeVisitor[None]):
     def visit_param_spec(self, p: ParamSpecType) -> None:
         p.upper_bound.accept(self)
         p.default.accept(self)
+        p.prefix.accept(self)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        t.tuple_fallback.accept(self)
         t.upper_bound.accept(self)
         t.default.accept(self)
 
@@ -335,9 +372,6 @@ class TypeFixer(TypeVisitor[None]):
         if ut.items:
             for it in ut.items:
                 it.accept(self)
-
-    def visit_void(self, o: Any) -> None:
-        pass  # Nothing to descend into.
 
     def visit_type_type(self, t: TypeType) -> None:
         t.item.accept(self)
@@ -407,4 +441,4 @@ def missing_info(modules: dict[str, MypyFile]) -> TypeInfo:
 
 def missing_alias() -> TypeAlias:
     suggestion = _SUGGESTION.format("alias")
-    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, line=-1, column=-1)
+    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion, "<missing>", line=-1, column=-1)

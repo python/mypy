@@ -7,18 +7,25 @@ On Windows, this uses NamedPipes.
 from __future__ import annotations
 
 import base64
+import codecs
+import json
 import os
 import shutil
 import sys
 import tempfile
+from collections.abc import Callable
+from select import select
 from types import TracebackType
-from typing import Callable, Final
+from typing import Any, Final
+
+from librt.internal import ReadBuffer, WriteBuffer
+
+from mypy.cache import read_json, write_json
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
-    import ctypes
-
     import _winapi
+    import ctypes
 
     _IPCHandle = int
 
@@ -40,6 +47,10 @@ class IPCBase:
 
     This contains logic shared between the client and server, such as reading
     and writing.
+    We want to be able to send multiple "messages" over a single connection and
+    to be able to separate the messages. We do this by encoding the messages
+    in an alphabet that does not contain spaces, then adding a space for
+    separation. The last framed message is also followed by a space.
     """
 
     connection: _IPCHandle
@@ -47,12 +58,33 @@ class IPCBase:
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
+        self.buffer = bytearray()
 
-    def read(self, size: int = 100000) -> bytes:
-        """Read bytes from an IPC connection until its empty."""
-        bdata = bytearray()
+    def frame_from_buffer(self) -> bytearray | None:
+        """Return a full frame from the bytes we have in the buffer."""
+        space_pos = self.buffer.find(b" ")
+        if space_pos == -1:
+            return None
+        # We have a full frame
+        bdata = self.buffer[:space_pos]
+        self.buffer = self.buffer[space_pos + 1 :]
+        return bdata
+
+    def read(self, size: int = 100000) -> str:
+        return self.read_bytes(size).decode("utf-8")
+
+    def read_bytes(self, size: int = 100000) -> bytes:
+        """Read bytes from an IPC connection until we have a full frame."""
+        bdata: bytearray | None = bytearray()
         if sys.platform == "win32":
             while True:
+                # Check if we already have a message in the buffer before
+                # receiving any more data from the socket.
+                bdata = self.frame_from_buffer()
+                if bdata is not None:
+                    break
+
+                # Receive more data into the buffer.
                 ov, err = _winapi.ReadFile(self.connection, size, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
@@ -66,7 +98,10 @@ class IPCBase:
                 _, err = ov.GetOverlappedResult(True)
                 more = ov.getbuffer()
                 if more:
-                    bdata.extend(more)
+                    self.buffer.extend(more)
+                    bdata = self.frame_from_buffer()
+                    if bdata is not None:
+                        break
                 if err == 0:
                     # we are done!
                     break
@@ -77,17 +112,37 @@ class IPCBase:
                     raise IPCException("ReadFile operation aborted.")
         else:
             while True:
+                # Check if we already have a message in the buffer before
+                # receiving any more data from the socket.
+                bdata = self.frame_from_buffer()
+                if bdata is not None:
+                    break
+
+                # Receive more data into the buffer.
                 more = self.connection.recv(size)
                 if not more:
+                    # Connection closed
                     break
-                bdata.extend(more)
-        return bytes(bdata)
+                self.buffer.extend(more)
 
-    def write(self, data: bytes) -> None:
-        """Write bytes to an IPC connection."""
+        if not bdata:
+            # Socket was empty and we didn't get any frame.
+            # This should only happen if the socket was closed.
+            return b""
+        return codecs.decode(bdata, "base64")
+
+    def write(self, data: str) -> None:
+        self.write_bytes(data.encode("utf-8"))
+
+    def write_bytes(self, data: bytes) -> None:
+        """Write to an IPC connection."""
+
+        # Frame the data by urlencoding it and separating by space.
+        encoded_data = codecs.encode(data, "base64") + b" "
+
         if sys.platform == "win32":
             try:
-                ov, err = _winapi.WriteFile(self.connection, data, overlapped=True)
+                ov, err = _winapi.WriteFile(self.connection, encoded_data, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
@@ -101,12 +156,11 @@ class IPCBase:
                     raise
                 bytes_written, err = ov.GetOverlappedResult(True)
                 assert err == 0, err
-                assert bytes_written == len(data)
+                assert bytes_written == len(encoded_data)
             except OSError as e:
                 raise IPCException(f"Failed to write with error: {e.winerror}") from e
         else:
-            self.connection.sendall(data)
-            self.connection.shutdown(socket.SHUT_WR)
+            self.connection.sendall(encoded_data)
 
     def close(self) -> None:
         if sys.platform == "win32":
@@ -230,7 +284,7 @@ class IPCServer(IPCBase):
         else:
             try:
                 self.connection, _ = self.sock.accept()
-            except socket.timeout as e:
+            except TimeoutError as e:
                 raise IPCException("The socket timed out") from e
         return self
 
@@ -262,7 +316,79 @@ class IPCServer(IPCBase):
     def connection_name(self) -> str:
         if sys.platform == "win32":
             return self.name
+        elif sys.platform == "gnu0":
+            # GNU/Hurd returns empty string from getsockname()
+            # for AF_UNIX sockets
+            return os.path.join(self.sock_directory, self.name)
         else:
             name = self.sock.getsockname()
             assert isinstance(name, str)
             return name
+
+
+class BadStatus(Exception):
+    """Exception raised when there is something wrong with the status file.
+
+    For example:
+    - No status file found
+    - Status file malformed
+    - Process whose pid is in the status file does not exist
+    """
+
+
+def read_status(status_file: str) -> dict[str, object]:
+    """Read status file.
+
+    Raise BadStatus if the status file doesn't exist or contains
+    invalid JSON or the JSON is not a dict.
+    """
+    if not os.path.isfile(status_file):
+        raise BadStatus("No status file found")
+    with open(status_file) as f:
+        try:
+            data = json.load(f)
+        except Exception as e:
+            raise BadStatus("Malformed status file (not JSON)") from e
+    if not isinstance(data, dict):
+        raise BadStatus("Invalid status file (not a dict)")
+    return data
+
+
+def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[int]:
+    """Wait until some connections are readable.
+
+    Return index of each readable connection in the original list.
+    """
+    # TODO: add Windows support for this.
+    assert sys.platform != "win32"
+    connections = [conn.connection for conn in conns]
+    ready, _, _ = select(connections, [], [], timeout)
+    return [connections.index(r) for r in ready]
+
+
+# TODO: switch send() and receive() to proper fixed binary format.
+def send(connection: IPCBase, data: dict[str, Any]) -> None:
+    """Send data to a connection encoded and framed.
+
+    The data must be a JSON object. We assume that a single send call is a
+    single frame to be sent.
+    """
+    buf = WriteBuffer()
+    write_json(buf, data)
+    connection.write_bytes(buf.getvalue())
+
+
+def receive(connection: IPCBase) -> dict[str, Any]:
+    """Receive single JSON data frame from a connection.
+
+    Raise OSError if the data received is not valid.
+    """
+    bdata = connection.read_bytes()
+    if not bdata:
+        raise OSError("No data received")
+    try:
+        buf = ReadBuffer(bdata)
+        data = read_json(buf)
+    except Exception as e:
+        raise OSError("Data received is not valid JSON dict") from e
+    return data

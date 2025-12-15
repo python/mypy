@@ -1,8 +1,7 @@
 from _typeshed import Incomplete, StrPath
 from abc import ABCMeta, abstractmethod
 from collections.abc import MutableMapping
-from typing import ClassVar, TypeVar
-from typing_extensions import Literal
+from typing import ClassVar, Literal, TypeVar
 
 from .pytree import Base, Leaf, Node
 
@@ -39,5 +38,5 @@ class BaseFix:
 
 class ConditionalFix(BaseFix, metaclass=ABCMeta):
     skip_on: ClassVar[str | None]
-    def start_tree(self, __tree: Node, __filename: StrPath) -> None: ...
+    def start_tree(self, tree: Node, filename: StrPath, /) -> None: ...
     def should_skip(self, node: Base) -> bool: ...

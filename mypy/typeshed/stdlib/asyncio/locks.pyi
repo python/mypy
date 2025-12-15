@@ -2,17 +2,20 @@ import enum
 import sys
 from _typeshed import Unused
 from collections import deque
-from collections.abc import Callable, Generator
+from collections.abc import Callable
 from types import TracebackType
-from typing import Any, TypeVar
-from typing_extensions import Literal, Self
+from typing import Any, Literal, TypeVar
+from typing_extensions import Self
 
 from .events import AbstractEventLoop
 from .futures import Future
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 10):
     from .mixins import _LoopBoundMixin
+else:
+    _LoopBoundMixin = object
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 11):
     __all__ = ("Lock", "Event", "Condition", "Semaphore", "BoundedSemaphore", "Barrier")
 else:
@@ -20,31 +23,14 @@ else:
 
 _T = TypeVar("_T")
 
-if sys.version_info >= (3, 9):
-    class _ContextManagerMixin:
-        async def __aenter__(self) -> None: ...
-        async def __aexit__(
-            self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
-        ) -> None: ...
+class _ContextManagerMixin:
+    async def __aenter__(self) -> None: ...
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
+    ) -> None: ...
 
-else:
-    class _ContextManager:
-        def __init__(self, lock: Lock | Semaphore) -> None: ...
-        def __enter__(self) -> None: ...
-        def __exit__(self, *args: Unused) -> None: ...
-
-    class _ContextManagerMixin:
-        # Apparently this exists to *prohibit* use as a context manager.
-        # def __enter__(self) -> NoReturn: ... see: https://github.com/python/typing/issues/1043
-        # def __exit__(self, *args: Any) -> None: ...
-        def __iter__(self) -> Generator[Any, None, _ContextManager]: ...
-        def __await__(self) -> Generator[Any, None, _ContextManager]: ...
-        async def __aenter__(self) -> None: ...
-        async def __aexit__(
-            self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
-        ) -> None: ...
-
-class Lock(_ContextManagerMixin):
+class Lock(_ContextManagerMixin, _LoopBoundMixin):
+    _waiters: deque[Future[Any]] | None
     if sys.version_info >= (3, 10):
         def __init__(self) -> None: ...
     else:
@@ -54,7 +40,8 @@ class Lock(_ContextManagerMixin):
     async def acquire(self) -> Literal[True]: ...
     def release(self) -> None: ...
 
-class Event:
+class Event(_LoopBoundMixin):
+    _waiters: deque[Future[Any]]
     if sys.version_info >= (3, 10):
         def __init__(self) -> None: ...
     else:
@@ -65,7 +52,8 @@ class Event:
     def clear(self) -> None: ...
     async def wait(self) -> Literal[True]: ...
 
-class Condition(_ContextManagerMixin):
+class Condition(_ContextManagerMixin, _LoopBoundMixin):
+    _waiters: deque[Future[Any]]
     if sys.version_info >= (3, 10):
         def __init__(self, lock: Lock | None = None) -> None: ...
     else:
@@ -79,9 +67,9 @@ class Condition(_ContextManagerMixin):
     def notify(self, n: int = 1) -> None: ...
     def notify_all(self) -> None: ...
 
-class Semaphore(_ContextManagerMixin):
+class Semaphore(_ContextManagerMixin, _LoopBoundMixin):
     _value: int
-    _waiters: deque[Future[Any]]
+    _waiters: deque[Future[Any]] | None
     if sys.version_info >= (3, 10):
         def __init__(self, value: int = 1) -> None: ...
     else:
@@ -96,10 +84,10 @@ class BoundedSemaphore(Semaphore): ...
 
 if sys.version_info >= (3, 11):
     class _BarrierState(enum.Enum):  # undocumented
-        FILLING: str
-        DRAINING: str
-        RESETTING: str
-        BROKEN: str
+        FILLING = "filling"
+        DRAINING = "draining"
+        RESETTING = "resetting"
+        BROKEN = "broken"
 
     class Barrier(_LoopBoundMixin):
         def __init__(self, parties: int) -> None: ...

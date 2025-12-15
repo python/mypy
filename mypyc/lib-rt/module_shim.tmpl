@@ -5,8 +5,11 @@ PyInit_{modname}(void)
 {{
     PyObject *tmp;
     if (!(tmp = PyImport_ImportModule("{libname}"))) return NULL;
+    PyObject *capsule = PyObject_GetAttrString(tmp, "init_{full_modname}");
     Py_DECREF(tmp);
-    void *init_func = PyCapsule_Import("{libname}.init_{full_modname}", 0);
+    if (capsule == NULL) return NULL;
+    void *init_func = PyCapsule_GetPointer(capsule, "{libname}.init_{full_modname}");
+    Py_DECREF(capsule);
     if (!init_func) {{
         return NULL;
     }}

@@ -1,39 +1,42 @@
-import _compression
 import sys
 import zlib
-from _typeshed import ReadableBuffer, SizedBuffer, StrOrBytesPath
-from io import FileIO
-from typing import Protocol, TextIO, overload
-from typing_extensions import Literal, TypeAlias
+from _typeshed import ReadableBuffer, SizedBuffer, StrOrBytesPath, WriteableBuffer
+from io import FileIO, TextIOWrapper
+from typing import Final, Literal, Protocol, overload, type_check_only
+from typing_extensions import TypeAlias, deprecated
 
-if sys.version_info >= (3, 8):
-    __all__ = ["BadGzipFile", "GzipFile", "open", "compress", "decompress"]
+if sys.version_info >= (3, 14):
+    from compression._common._streams import BaseStream, DecompressReader
 else:
-    __all__ = ["GzipFile", "open", "compress", "decompress"]
+    from _compression import BaseStream, DecompressReader
+
+__all__ = ["BadGzipFile", "GzipFile", "open", "compress", "decompress"]
 
 _ReadBinaryMode: TypeAlias = Literal["r", "rb"]
 _WriteBinaryMode: TypeAlias = Literal["a", "ab", "w", "wb", "x", "xb"]
 _OpenTextMode: TypeAlias = Literal["rt", "at", "wt", "xt"]
 
-READ: Literal[1]  # undocumented
-WRITE: Literal[2]  # undocumented
+READ: Final[object]  # undocumented
+WRITE: Final[object]  # undocumented
 
-FTEXT: int  # actually Literal[1] # undocumented
-FHCRC: int  # actually Literal[2] # undocumented
-FEXTRA: int  # actually Literal[4] # undocumented
-FNAME: int  # actually Literal[8] # undocumented
-FCOMMENT: int  # actually Literal[16] # undocumented
+FTEXT: Final[int]  # actually Literal[1] # undocumented
+FHCRC: Final[int]  # actually Literal[2] # undocumented
+FEXTRA: Final[int]  # actually Literal[4] # undocumented
+FNAME: Final[int]  # actually Literal[8] # undocumented
+FCOMMENT: Final[int]  # actually Literal[16] # undocumented
 
+@type_check_only
 class _ReadableFileobj(Protocol):
-    def read(self, __n: int) -> bytes: ...
-    def seek(self, __n: int) -> object: ...
+    def read(self, n: int, /) -> bytes: ...
+    def seek(self, n: int, /) -> object: ...
     # The following attributes and methods are optional:
     # name: str
     # mode: str
     # def fileno() -> int: ...
 
+@type_check_only
 class _WritableFileobj(Protocol):
-    def write(self, __b: bytes) -> object: ...
+    def write(self, b: bytes, /) -> object: ...
     def flush(self) -> object: ...
     # The following attributes and methods are optional:
     # name: str
@@ -60,13 +63,13 @@ def open(
 ) -> GzipFile: ...
 @overload
 def open(
-    filename: StrOrBytesPath,
+    filename: StrOrBytesPath | _ReadableFileobj | _WritableFileobj,
     mode: _OpenTextMode,
     compresslevel: int = 9,
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> TextIO: ...
+) -> TextIOWrapper: ...
 @overload
 def open(
     filename: StrOrBytesPath | _ReadableFileobj | _WritableFileobj,
@@ -75,7 +78,7 @@ def open(
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
-) -> GzipFile | TextIO: ...
+) -> GzipFile | TextIOWrapper: ...
 
 class _PaddedFile:
     file: _ReadableFileobj
@@ -85,12 +88,11 @@ class _PaddedFile:
     def seek(self, off: int) -> int: ...
     def seekable(self) -> bool: ...
 
-if sys.version_info >= (3, 8):
-    class BadGzipFile(OSError): ...
+class BadGzipFile(OSError): ...
 
-class GzipFile(_compression.BaseStream):
+class GzipFile(BaseStream):
     myfileobj: FileIO | None
-    mode: Literal[1, 2]
+    mode: object
     name: str
     compress: zlib._Compress
     fileobj: _ReadableFileobj | _WritableFileobj
@@ -139,8 +141,11 @@ class GzipFile(_compression.BaseStream):
         fileobj: _ReadableFileobj | _WritableFileobj | None = None,
         mtime: float | None = None,
     ) -> None: ...
-    @property
-    def filename(self) -> str: ...
+    if sys.version_info < (3, 12):
+        @property
+        @deprecated("Deprecated since Python 2.6; removed in Python 3.12. Use `name` attribute instead.")
+        def filename(self) -> str: ...
+
     @property
     def mtime(self) -> int | None: ...
     crc: int
@@ -155,13 +160,17 @@ class GzipFile(_compression.BaseStream):
     def seek(self, offset: int, whence: int = 0) -> int: ...
     def readline(self, size: int | None = -1) -> bytes: ...
 
-class _GzipReader(_compression.DecompressReader):
+    if sys.version_info >= (3, 14):
+        def readinto(self, b: WriteableBuffer) -> int: ...
+        def readinto1(self, b: WriteableBuffer) -> int: ...
+
+class _GzipReader(DecompressReader):
     def __init__(self, fp: _ReadableFileobj) -> None: ...
 
-if sys.version_info >= (3, 8):
-    def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float | None = None) -> bytes: ...
+if sys.version_info >= (3, 14):
+    def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float = 0) -> bytes: ...
 
 else:
-    def compress(data: SizedBuffer, compresslevel: int = 9) -> bytes: ...
+    def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float | None = None) -> bytes: ...
 
 def decompress(data: ReadableBuffer) -> bytes: ...

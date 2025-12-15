@@ -11,12 +11,15 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
+    pointer_rprimitive,
     short_int_rprimitive,
+    void_rtype,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -24,6 +27,15 @@ from mypyc.primitives.registry import (
 
 # Get the 'builtins.list' type object.
 load_address_op(name="builtins.list", type=object_rprimitive, src="PyList_Type")
+
+# sorted(obj)
+function_op(
+    name="builtins.sorted",
+    arg_types=[object_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPySequence_Sort",
+    error_kind=ERR_MAGIC,
+)
 
 # list(obj)
 to_list = function_op(
@@ -44,6 +56,15 @@ function_op(
     extra_int_constants=[(0, int_rprimitive)],
 )
 
+# translate isinstance(obj, list)
+isinstance_list = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyList_Check",
+    error_kind=ERR_NEVER,
+)
+
 new_list_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=list_rprimitive,
@@ -58,6 +79,14 @@ list_build_op = custom_op(
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
     steals=True,
+)
+
+# Get pointer to list items (ob_item PyListObject field)
+list_items = custom_primitive_op(
+    name="list_items",
+    arg_types=[list_rprimitive],
+    return_type=pointer_rprimitive,
+    error_kind=ERR_NEVER,
 )
 
 # list[index] (for an integer index)
@@ -124,10 +153,10 @@ method_op(
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
-list_get_item_unsafe_op = custom_op(
-    arg_types=[list_rprimitive, short_int_rprimitive],
+list_get_item_unsafe_op = custom_primitive_op(
+    name="list_get_item_unsafe",
+    arg_types=[list_rprimitive, c_pyssize_t_rprimitive],
     return_type=object_rprimitive,
-    c_function_name="CPyList_GetItemUnsafe",
     error_kind=ERR_NEVER,
 )
 
@@ -155,10 +184,10 @@ method_op(
 # PyList_SET_ITEM does no error checking,
 # and should only be used to fill in brand new lists.
 new_list_set_item_op = custom_op(
-    arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
-    return_type=bit_rprimitive,
+    arg_types=[list_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
+    return_type=void_rtype,
     c_function_name="CPyList_SetItemUnsafe",
-    error_kind=ERR_FALSE,
+    error_kind=ERR_NEVER,
     steals=[False, False, True],
 )
 
@@ -190,7 +219,7 @@ list_pop_last = method_op(
 )
 
 # list.pop(index)
-list_pop = method_op(
+method_op(
     name="pop",
     arg_types=[list_rprimitive, int_rprimitive],
     return_type=object_rprimitive,
@@ -252,6 +281,42 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# list.clear()
+method_op(
+    name="clear",
+    arg_types=[list_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyList_Clear",
+    error_kind=ERR_FALSE,
+)
+
+# list.copy()
+method_op(
+    name="copy",
+    arg_types=[list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPyList_Copy",
+    error_kind=ERR_MAGIC,
+)
+
+# list + list
+binary_op(
+    name="+",
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="PySequence_Concat",
+    error_kind=ERR_MAGIC,
+)
+
+# list += list
+binary_op(
+    name="+=",
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="PySequence_InPlaceConcat",
+    error_kind=ERR_MAGIC,
+)
+
 # list * int
 binary_op(
     name="*",
@@ -267,6 +332,15 @@ binary_op(
     arg_types=[int_rprimitive, list_rprimitive],
     return_type=list_rprimitive,
     c_function_name="CPySequence_RMultiply",
+    error_kind=ERR_MAGIC,
+)
+
+# list *= int
+binary_op(
+    name="*=",
+    arg_types=[list_rprimitive, int_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPySequence_InPlaceMultiply",
     error_kind=ERR_MAGIC,
 )
 

@@ -1,12 +1,13 @@
 import sys
 from _typeshed import Unused
-from collections.abc import Callable, Coroutine
+from collections.abc import Awaitable, Callable, Coroutine
 from contextvars import Context
-from typing import Any, TypeVar
-from typing_extensions import Self, final
+from typing import Any, TypeVar, final
+from typing_extensions import Self
 
 from .events import AbstractEventLoop
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 11):
     __all__ = ("Runner", "run")
 else:
@@ -21,15 +22,15 @@ if sys.version_info >= (3, 11):
         def __exit__(self, exc_type: Unused, exc_val: Unused, exc_tb: Unused) -> None: ...
         def close(self) -> None: ...
         def get_loop(self) -> AbstractEventLoop: ...
-        def run(self, coro: Coroutine[Any, Any, _T], *, context: Context | None = None) -> _T: ...
+        if sys.version_info >= (3, 14):
+            def run(self, coro: Awaitable[_T], *, context: Context | None = None) -> _T: ...
+        else:
+            def run(self, coro: Coroutine[Any, Any, _T], *, context: Context | None = None) -> _T: ...
 
 if sys.version_info >= (3, 12):
     def run(
-        main: Coroutine[Any, Any, _T], *, debug: bool | None = ..., loop_factory: Callable[[], AbstractEventLoop] | None = ...
+        main: Coroutine[Any, Any, _T], *, debug: bool | None = None, loop_factory: Callable[[], AbstractEventLoop] | None = None
     ) -> _T: ...
 
-elif sys.version_info >= (3, 8):
-    def run(main: Coroutine[Any, Any, _T], *, debug: bool | None = None) -> _T: ...
-
 else:
-    def run(main: Coroutine[Any, Any, _T], *, debug: bool = False) -> _T: ...
+    def run(main: Coroutine[Any, Any, _T], *, debug: bool | None = None) -> _T: ...

@@ -1,2 +1,2 @@
-def plugin(version):
+def plugin(version: str) -> None:
     pass

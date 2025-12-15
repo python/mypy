@@ -1,13 +1,36 @@
+import sys
 from typing import Any, overload
 
 _defaultaction: str
 _onceregistry: dict[Any, Any]
 filters: list[tuple[str, str | None, type[Warning], str | None, int]]
 
-@overload
-def warn(message: str, category: type[Warning] | None = None, stacklevel: int = 1, source: Any | None = None) -> None: ...
-@overload
-def warn(message: Warning, category: Any = None, stacklevel: int = 1, source: Any | None = None) -> None: ...
+if sys.version_info >= (3, 12):
+    @overload
+    def warn(
+        message: str,
+        category: type[Warning] | None = None,
+        stacklevel: int = 1,
+        source: Any | None = None,
+        *,
+        skip_file_prefixes: tuple[str, ...] = (),
+    ) -> None: ...
+    @overload
+    def warn(
+        message: Warning,
+        category: Any = None,
+        stacklevel: int = 1,
+        source: Any | None = None,
+        *,
+        skip_file_prefixes: tuple[str, ...] = (),
+    ) -> None: ...
+
+else:
+    @overload
+    def warn(message: str, category: type[Warning] | None = None, stacklevel: int = 1, source: Any | None = None) -> None: ...
+    @overload
+    def warn(message: Warning, category: Any = None, stacklevel: int = 1, source: Any | None = None) -> None: ...
+
 @overload
 def warn_explicit(
     message: str,
@@ -15,9 +38,9 @@ def warn_explicit(
     filename: str,
     lineno: int,
     module: str | None = ...,
-    registry: dict[str | tuple[str, type[Warning], int], int] | None = ...,
-    module_globals: dict[str, Any] | None = ...,
-    source: Any | None = ...,
+    registry: dict[str | tuple[str, type[Warning], int], int] | None = None,
+    module_globals: dict[str, Any] | None = None,
+    source: Any | None = None,
 ) -> None: ...
 @overload
 def warn_explicit(
@@ -25,8 +48,8 @@ def warn_explicit(
     category: Any,
     filename: str,
     lineno: int,
-    module: str | None = ...,
-    registry: dict[str | tuple[str, type[Warning], int], int] | None = ...,
-    module_globals: dict[str, Any] | None = ...,
-    source: Any | None = ...,
+    module: str | None = None,
+    registry: dict[str | tuple[str, type[Warning], int], int] | None = None,
+    module_globals: dict[str, Any] | None = None,
+    source: Any | None = None,
 ) -> None: ...

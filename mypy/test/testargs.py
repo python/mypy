@@ -4,6 +4,7 @@ In particular, verify that the argparse defaults are the same as the Options
 defaults, and that argparse doesn't assign any new members to the Options
 object it creates.
 """
+
 from __future__ import annotations
 
 import argparse

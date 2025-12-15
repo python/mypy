@@ -37,6 +37,10 @@ class ErrorCode:
     def __str__(self) -> str:
         return f"<ErrorCode {self.code}>"
 
+    def __repr__(self) -> str:
+        """This doesn't fulfill the goals of repr but it's better than the default view."""
+        return f"<ErrorCode {self.category}: {self.code}>"
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ErrorCode):
             return False
@@ -48,15 +52,16 @@ class ErrorCode:
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
 NAME_DEFINED: Final = ErrorCode("name-defined", "Check that name is defined", "General")
-CALL_ARG: Final[ErrorCode] = ErrorCode(
+CALL_ARG: Final = ErrorCode(
     "call-arg", "Check number, names and kinds of arguments in calls", "General"
 )
 ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "General")
 CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
-VALID_TYPE: Final[ErrorCode] = ErrorCode(
-    "valid-type", "Check that type (annotation) is valid", "General"
+VALID_TYPE: Final = ErrorCode("valid-type", "Check that type (annotation) is valid", "General")
+NONETYPE_TYPE: Final = ErrorCode(
+    "nonetype-type", "Check that type (annotation) is not NoneType", "General"
 )
 VAR_ANNOTATED: Final = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
@@ -64,16 +69,14 @@ VAR_ANNOTATED: Final = ErrorCode(
 OVERRIDE: Final = ErrorCode(
     "override", "Check that method override is compatible with base class", "General"
 )
-RETURN: Final[ErrorCode] = ErrorCode(
-    "return", "Check that function always returns a value", "General"
-)
-RETURN_VALUE: Final[ErrorCode] = ErrorCode(
+RETURN: Final = ErrorCode("return", "Check that function always returns a value", "General")
+RETURN_VALUE: Final = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
-ASSIGNMENT: Final[ErrorCode] = ErrorCode(
+ASSIGNMENT: Final = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
 )
-METHOD_ASSIGN: Final[ErrorCode] = ErrorCode(
+METHOD_ASSIGN: Final = ErrorCode(
     "method-assign",
     "Check that assignment target is not a method",
     "General",
@@ -139,9 +142,7 @@ LITERAL_REQ: Final = ErrorCode("literal-required", "Check that value is a litera
 UNUSED_COROUTINE: Final = ErrorCode(
     "unused-coroutine", "Ensure that all coroutines are used", "General"
 )
-# TODO: why do we need the explicit type here? Without it mypyc CI builds fail with
-# mypy/message_registry.py:37: error: Cannot determine type of "EMPTY_BODY"  [has-type]
-EMPTY_BODY: Final[ErrorCode] = ErrorCode(
+EMPTY_BODY: Final = ErrorCode(
     "empty-body",
     "A dedicated error code to opt out return errors for empty/trivial bodies",
     "General",
@@ -156,7 +157,7 @@ AWAIT_NOT_ASYNC: Final = ErrorCode(
     "await-not-async", 'Warn about "await" outside coroutine ("async def")', "General"
 )
 # These error codes aren't enabled by default.
-NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
+NO_UNTYPED_DEF: Final = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
 )
 NO_UNTYPED_CALL: Final = ErrorCode(
@@ -182,10 +183,13 @@ NO_ANY_RETURN: Final = ErrorCode(
 UNREACHABLE: Final = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
 )
-ANNOTATION_UNCHECKED = ErrorCode(
+ANNOTATION_UNCHECKED: Final = ErrorCode(
     "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
 )
-POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
+TYPEDDICT_READONLY_MUTATED: Final = ErrorCode(
+    "typeddict-readonly-mutated", "TypedDict's ReadOnly key is mutated", "General"
+)
+POSSIBLY_UNDEFINED: Final = ErrorCode(
     "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",
     "General",
@@ -194,22 +198,25 @@ POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
 REDUNDANT_EXPR: Final = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False
 )
-TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
+TRUTHY_BOOL: Final = ErrorCode(
     "truthy-bool",
     "Warn about expressions that could always evaluate to true in boolean contexts",
     "General",
     default_enabled=False,
 )
-TRUTHY_FUNCTION: Final[ErrorCode] = ErrorCode(
+TRUTHY_FUNCTION: Final = ErrorCode(
     "truthy-function",
     "Warn about function that always evaluate to true in boolean contexts",
     "General",
 )
-TRUTHY_ITERABLE: Final[ErrorCode] = ErrorCode(
+TRUTHY_ITERABLE: Final = ErrorCode(
     "truthy-iterable",
     "Warn about Iterable expressions that could always evaluate to true in boolean contexts",
     "General",
     default_enabled=False,
+)
+STR_UNPACK: Final[ErrorCode] = ErrorCode(
+    "str-unpack", "Warn about expressions that unpack str", "General"
 )
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
@@ -231,13 +238,13 @@ UNUSED_AWAITABLE: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
-REDUNDANT_SELF_TYPE = ErrorCode(
+REDUNDANT_SELF_TYPE: Final = ErrorCode(
     "redundant-self",
     "Warn about redundant Self type annotations on method first argument",
     "General",
     default_enabled=False,
 )
-USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
+USED_BEFORE_DEF: Final = ErrorCode(
     "used-before-def", "Warn about variables that are used before they are defined", "General"
 )
 UNUSED_IGNORE: Final = ErrorCode(
@@ -249,10 +256,33 @@ EXPLICIT_OVERRIDE_REQUIRED: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
-
+UNIMPORTED_REVEAL: Final = ErrorCode(
+    "unimported-reveal",
+    "Require explicit import from typing or typing_extensions for reveal_type",
+    "General",
+    default_enabled=False,
+)
+MUTABLE_OVERRIDE: Final = ErrorCode(
+    "mutable-override",
+    "Reject covariant overrides for mutable attributes",
+    "General",
+    default_enabled=False,
+)
+EXHAUSTIVE_MATCH: Final = ErrorCode(
+    "exhaustive-match",
+    "Reject match statements that are not exhaustive",
+    "General",
+    default_enabled=False,
+)
+METACLASS: Final = ErrorCode("metaclass", "Ensure that metaclass is valid", "General")
+MAYBE_UNRECOGNIZED_STR_TYPEFORM: Final = ErrorCode(
+    "maybe-unrecognized-str-typeform",
+    "Error when a string is used where a TypeForm is expected but a string annotation cannot be recognized",
+    "General",
+)
 
 # Syntax errors are often blocking.
-SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
+SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
 
 # This is an internal marker code for a whole-file ignore. It is not intended to
 # be user-visible.
@@ -261,3 +291,48 @@ del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+OVERLOAD_CANNOT_MATCH: Final = ErrorCode(
+    "overload-cannot-match",
+    "Warn if an @overload signature can never be matched",
+    "General",
+    sub_code_of=MISC,
+)
+
+OVERLOAD_OVERLAP: Final = ErrorCode(
+    "overload-overlap",
+    "Warn if multiple @overload variants overlap in unsafe ways",
+    "General",
+    sub_code_of=MISC,
+)
+
+PROPERTY_DECORATOR: Final = ErrorCode(
+    "prop-decorator",
+    "Decorators on top of @property are not supported",
+    "General",
+    sub_code_of=MISC,
+)
+
+UNTYPED_DECORATOR: Final = ErrorCode(
+    "untyped-decorator", "Error if an untyped decorator makes a typed function untyped", "General"
+)
+
+NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorCode(
+    "narrowed-type-not-subtype",
+    "Warn if a TypeIs function's narrowed type is not a subtype of the original type",
+    "General",
+)
+
+EXPLICIT_ANY: Final = ErrorCode(
+    "explicit-any", "Warn about explicit Any type annotations", "General"
+)
+
+DEPRECATED: Final = ErrorCode(
+    "deprecated",
+    "Warn when importing or using deprecated (overloaded) functions, methods or classes",
+    "General",
+    default_enabled=False,
+)
+
+# This copy will not include any error codes defined later in the plugins.
+mypy_error_codes = error_codes.copy()

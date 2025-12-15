@@ -46,6 +46,8 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     abstract attribute.  Also compute a list of abstract attributes.
     Report error is required ABCMeta metaclass is missing.
     """
+    typ.is_abstract = False
+    typ.abstract_attributes = []
     if typ.typeddict_type:
         return  # TypedDict can't be abstract
     concrete: set[str] = set()
@@ -56,7 +58,6 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
         # Special case: NewTypes are considered as always non-abstract, so they can be used as:
         #     Config = NewType('Config', Mapping[str, str])
         #     default = Config({'cannot': 'modify'})  # OK
-        typ.abstract_attributes = []
         return
     for base in typ.mro:
         for name, symnode in base.names.items():
@@ -121,11 +122,12 @@ def check_protocol_status(info: TypeInfo, errors: Errors) -> None:
     if info.is_protocol:
         for type in info.bases:
             if not type.type.is_protocol and type.type.fullname != "builtins.object":
-
-                def report(message: str, severity: str) -> None:
-                    errors.report(info.line, info.column, message, severity=severity)
-
-                report("All bases of a protocol must be protocols", "error")
+                errors.report(
+                    info.line,
+                    info.column,
+                    "All bases of a protocol must be protocols",
+                    severity="error",
+                )
 
 
 def calculate_class_vars(info: TypeInfo) -> None:

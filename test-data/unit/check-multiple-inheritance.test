@@ -706,3 +706,29 @@ class C34(B3, B4): ...
 class C41(B4, B1): ...
 class C42(B4, B2): ...
 class C43(B4, B3): ...
+
+[case testMultipleInheritanceExplicitDiamondResolution]
+# Adapted from #14279
+class A:
+    class M:
+        pass
+
+class B0(A):
+    class M(A.M):
+        pass
+
+class B1(A):
+    class M(A.M):
+        pass
+
+class C(B0,B1):
+    class M(B0.M, B1.M):
+        pass
+
+class D0(B0):
+    pass
+class D1(B1):
+    pass
+
+class D(D0,D1,C):
+    pass

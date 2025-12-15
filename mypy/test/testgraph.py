@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import AbstractSet
+from collections.abc import Set as AbstractSet
 
 from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
 from mypy.errors import Errors
@@ -50,7 +50,7 @@ class GraphSuite(Suite):
             plugin=Plugin(options),
             plugins_snapshot={},
             errors=errors,
-            flush_errors=lambda msgs, serious: None,
+            flush_errors=lambda filename, msgs, serious: None,
             fscache=fscache,
             stdout=sys.stdout,
             stderr=sys.stderr,
@@ -65,8 +65,8 @@ class GraphSuite(Suite):
             "b": State("b", None, "import c", manager),
             "c": State("c", None, "import b, d", manager),
         }
-        res = sorted_components(graph)
-        assert_equal(res, [frozenset({"d"}), frozenset({"c", "b"}), frozenset({"a"})])
+        res = [scc.mod_ids for scc in sorted_components(graph)]
+        assert_equal(res, [{"d"}, {"c", "b"}, {"a"}])
 
     def test_order_ascc(self) -> None:
         manager = self._make_manager()
@@ -76,7 +76,7 @@ class GraphSuite(Suite):
             "b": State("b", None, "import c", manager),
             "c": State("c", None, "import b, d", manager),
         }
-        res = sorted_components(graph)
+        res = [scc.mod_ids for scc in sorted_components(graph)]
         assert_equal(res, [frozenset({"a", "d", "c", "b"})])
         ascc = res[0]
         scc = order_ascc(graph, ascc)

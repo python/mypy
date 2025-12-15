@@ -3,6 +3,7 @@ from typing import (
     Generic, Iterator, Iterable, Mapping, Optional, Sequence, Tuple,
     TypeVar, Union, overload,
 )
+from typing_extensions import override
 
 _T = TypeVar('_T')
 _U = TypeVar('_U')
@@ -29,8 +30,10 @@ class dict(Mapping[KT, VT]):
     def __init__(self, **kwargs: VT) -> None: pass
     @overload
     def __init__(self, arg: Iterable[Tuple[KT, VT]], **kwargs: VT) -> None: pass
+    @override
     def __getitem__(self, key: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
+    @override
     def __iter__(self) -> Iterator[KT]: pass
     def __contains__(self, item: object) -> int: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
@@ -42,7 +45,9 @@ class dict(Mapping[KT, VT]):
 
 class list(Generic[_T], Sequence[_T]):
     def __contains__(self, item: object) -> int: pass
+    @override
     def __getitem__(self, key: int) -> _T: pass
+    @override
     def __iter__(self) -> Iterator[_T]: pass
 
 class function: pass
