@@ -2773,8 +2773,8 @@ class StubtestMiscUnit(unittest.TestCase):
             )
 
         assert filtered_output.count('stub does not have parameter "x"') == 1
-        assert "test_module/__init__.pyi" not in filtered_output
-        assert "test_module/mod.py:1" in filtered_output
+        assert "__init__.pyi" not in filtered_output
+        assert "mod.py:1" in filtered_output
 
     def test_ignore_flags(self) -> None:
         output = run_stubtest(
