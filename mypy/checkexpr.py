@@ -6133,8 +6133,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
+        typ = get_proper_type(typ)
         return (
-            is_subtype(
+            (
+                # This is a little ad hoc, ideally we would have a map_instance_to_supertype
+                # that worked for protocols
+                isinstance(typ, Instance)
+                and typ.type.fullname == "builtins.dict"
+                and is_subtype(typ.args[0], self.named_type("builtins.str"))
+            )
+            or isinstance(typ, ParamSpecType)
+            or is_subtype(
                 typ,
                 self.chk.named_generic_type(
                     "_typeshed.SupportsKeysAndGetItem",
@@ -6147,7 +6156,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     "_typeshed.SupportsKeysAndGetItem", [UninhabitedType(), UninhabitedType()]
                 ),
             )
-            or isinstance(typ, ParamSpecType)
         )
 
     def not_ready_callback(self, name: str, context: Context) -> None:

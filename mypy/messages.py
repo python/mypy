@@ -1401,7 +1401,7 @@ class MessageBuilder:
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         typ = get_proper_type(typ)
         if isinstance(typ, Instance) and is_mapping:
-            self.fail("Keywords must be strings", context)
+            self.fail("Argument after ** must have string keys", context, code=codes.ARG_TYPE)
         else:
             self.fail(
                 f"Argument after ** must be a mapping, not {format_type(typ, self.options)}",
