@@ -19,7 +19,7 @@ from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.constant_fold import constant_fold_expr
-from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
+from mypy.constraints import SUBTYPE_OF
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorInfo, ErrorWatcher, report_internal_error
 from mypy.expandtype import (
@@ -31,7 +31,7 @@ from mypy.expandtype import (
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infer_type_arguments
 from mypy.literals import literal
-from mypy.maptype import map_instance_to_supertype, map_type_to_instance
+from mypy.maptype import as_type, map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
 from mypy.message_registry import ErrorMessage
 from mypy.messages import MessageBuilder, format_type
@@ -119,7 +119,6 @@ from mypy.plugin import (
     Plugin,
 )
 from mypy.semanal_enum import ENUM_BASES
-from mypy.solve import solve_constraints
 from mypy.state import state
 from mypy.subtypes import (
     covers_at_runtime,
@@ -6165,24 +6164,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             "_typeshed.SupportsKeysAndGetItem", [T, AnyType(TypeOfAny.special_form)]
         )
 
-        return map_type_to_instance(typ, template) is not None
-
-        # infer constraints and solve
-        constraints: list[Constraint] = [
-            # solve_constraints seems to completely ignore upper bounds.
-            # So we need to include it manually.
-            Constraint(T, SUBTYPE_OF, T.upper_bound),
-            *infer_constraints(template, typ, SUPERTYPE_OF),
-        ]
-        solution, _ = solve_constraints([T], constraints)
-        assert len(solution) == 1
-
-        return solution[0] is not None and is_subtype(
-            typ,
-            self.chk.named_generic_type(
-                "_typeshed.SupportsKeysAndGetItem", [solution[0], AnyType(TypeOfAny.special_form)]
-            ),
-        )
+        return as_type(typ, SUBTYPE_OF, template) is not None
 
     def not_ready_callback(self, name: str, context: Context) -> None:
         """Called when we can't infer the type of a variable because it's not ready yet.

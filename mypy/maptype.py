@@ -1,26 +1,30 @@
 from __future__ import annotations
 
+from typing import cast
+
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.nodes import TypeInfo
 from mypy.types import AnyType, Instance, TupleType, Type, TypeOfAny, has_type_vars
 
 
-def map_type_to_instance(typ: Type, target: Instance) -> Instance | None:
-    """Attempt to map `typ` to an Instance of the same class as `target`
+def as_type(typ: Type, direction: int, target: Type) -> Type | None:
+    """Attempts to solve type variables in `target` so that `typ` is a subtype/supertype of
+    the resulting type.
+
+    Args:
+        typ: The type to map from.
+        direction: One of SUBTYPE_OF or SUPERTYPE_OF
+        target: The target instance type to map to.
+
+    Returns:
+        None: if the mapping is not possible.
+        Type: the mapped type if the mapping is possible.
 
     Examples:
         (list[int], Iterable[T]) -> Iterable[int]
         (list[list[int]], Iterable[list[T]]) -> Iterable[list[int]]
         (dict[str, int], Mapping[K, int]) -> Mapping[str, int]
         (list[int], Mapping[K, V]) -> None
-
-    Args:
-        typ: The type to map from.
-        target: The target instance type to map to.
-
-    Returns:
-        None: if the mapping is not possible.
-        Instance: the mapped instance type if the mapping is possible.
     """
     from mypy.subtypes import is_subtype
     from mypy.typeops import get_all_type_vars
@@ -28,16 +32,18 @@ def map_type_to_instance(typ: Type, target: Instance) -> Instance | None:
     # 1. get type vars of target
     tvars = get_all_type_vars(target)
 
-    # fast path: if no type vars,
+    # fast path: if no type vars, just check subtype
     if not tvars:
         return target if is_subtype(typ, target) else None
 
-    from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
+    from mypy.constraints import SUBTYPE_OF, Constraint, infer_constraints
     from mypy.solve import solve_constraints
 
     # 2. determine constraints
-    constraints: list[Constraint] = infer_constraints(target, typ, SUPERTYPE_OF)
+    constraints: list[Constraint] = infer_constraints(target, typ, not direction)
     for tvar in tvars:
+        # need to manually include these because solve_constraints ignores them
+        # apparently
         constraints.append(Constraint(tvar, SUBTYPE_OF, tvar.upper_bound))
 
     # 3. solve constraints
@@ -46,8 +52,8 @@ def map_type_to_instance(typ: Type, target: Instance) -> Instance | None:
     if None in solution:
         return None
 
-    # 4. build resulting Instance by substituting typevars with solution
-    env = {tvar.id: sol for tvar, sol in zip(tvars, solution)}
+    # 4. build resulting Type by substituting type vars with solution
+    env = {tvar.id: s for tvar, s in zip(tvars, cast("list[Type]", solution))}
     target = expand_type(target, env)
     return target if is_subtype(typ, target) else None
 
