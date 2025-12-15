@@ -172,51 +172,40 @@ PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count) {
     return PySequence_Repeat(bytes, temp_count);
 }
 
-PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table) {
-    // Fast path: exact bytes object with exact bytes table
-    if (PyBytes_CheckExact(bytes) && PyBytes_CheckExact(table)) {
-        Py_ssize_t table_len = PyBytes_GET_SIZE(table);
-        if (table_len != 256) {
-            PyErr_SetString(PyExc_ValueError,
-                           "translation table must be 256 characters long");
-            return NULL;
+int CPyBytes_Startswith(PyObject *self, PyObject *subobj) {
+    if (PyBytes_CheckExact(self) && PyBytes_CheckExact(subobj)) {
+        if (self == subobj) {
+            return 1;
         }
 
-        Py_ssize_t len = PyBytes_GET_SIZE(bytes);
-        const char *input = PyBytes_AS_STRING(bytes);
-        const char *trans_table = PyBytes_AS_STRING(table);
-
-        PyObject *result = PyBytes_FromStringAndSize(NULL, len);
-        if (result == NULL) {
-            return NULL;
+        Py_ssize_t subobj_len = PyBytes_GET_SIZE(subobj);
+        if (subobj_len == 0) {
+            return 1;
         }
 
-        char *output = PyBytes_AS_STRING(result);
-        bool changed = false;
-
-        // Without a loop unrolling hint performance can be worse than CPython
-        CPY_UNROLL_LOOP(4)
-        for (Py_ssize_t i = len; --i >= 0;) {
-            char c = *input++;
-            if ((*output++ = trans_table[(unsigned char)c]) != c)
-                changed = true;
+        Py_ssize_t self_len = PyBytes_GET_SIZE(self);
+        if (subobj_len > self_len) {
+            return 0;
         }
 
-        // If nothing changed, discard result and return the original object
-        if (!changed) {
-            Py_DECREF(result);
-            Py_INCREF(bytes);
-            return bytes;
-        }
+        const char *self_buf = PyBytes_AS_STRING(self);
+        const char *subobj_buf = PyBytes_AS_STRING(subobj);
 
-        return result;
+        return memcmp(self_buf, subobj_buf, (size_t)subobj_len) == 0 ? 1 : 0;
     }
-
-    // Fallback to Python method call for non-exact types or non-standard tables
-    _Py_IDENTIFIER(translate);
-    PyObject *name = _PyUnicode_FromId(&PyId_translate);
+    _Py_IDENTIFIER(startswith);
+    PyObject *name = _PyUnicode_FromId(&PyId_startswith);
     if (name == NULL) {
-        return NULL;
+        return 2;
     }
-    return PyObject_CallMethodOneArg(bytes, name, table);
+    PyObject *result = PyObject_CallMethodOneArg(self, name, subobj);
+    if (result == NULL) {
+        return 2;
+    }
+    int ret = PyObject_IsTrue(result);
+    Py_DECREF(result);
+    if (ret < 0) {
+        return 2;
+    }
+    return ret;
 }

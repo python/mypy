@@ -936,3 +936,11 @@ def test_generator_override() -> None:
      assert base1_foo(Base1()) == [1]
      assert base1_foo(Derived1()) == [2, 3]
      assert derived1_foo(Derived1()) == [2, 3]
+
+[case testGeneratorEmptyTuple]
+from collections.abc import Generator
+from typing import Optional, Union
+
+def test_compiledGeneratorEmptyTuple() -> None:
+    jobs: Generator[Optional[str], None, None] = (_ for _ in ())
+    assert list(jobs) == []

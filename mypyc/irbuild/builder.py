@@ -5,9 +5,9 @@ See the docstring of class IRBuilder for more information.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any, Callable, Final, overload
+from typing import Any, Final, overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
@@ -990,8 +990,10 @@ class IRBuilder:
         elif isinstance(target_type, TypeVarLikeType):
             return self.get_sequence_type_from_type(target_type.upper_bound)
         elif isinstance(target_type, TupleType):
+            items = target_type.items
+            assert items, "This function does not support empty tuples"
             # Tuple might have elements of different types.
-            rtypes = {self.mapper.type_to_rtype(item) for item in target_type.items}
+            rtypes = set(map(self.mapper.type_to_rtype, items))
             if len(rtypes) == 1:
                 return rtypes.pop()
             else:

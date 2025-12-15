@@ -16,8 +16,7 @@ down mypy development).
 import argparse
 import json
 import sys
-from typing import Any
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, TypeAlias as _TypeAlias
 
 from librt.internal import ReadBuffer
 

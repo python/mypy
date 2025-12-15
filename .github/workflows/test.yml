@@ -59,6 +59,12 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
+        - name: Test suite with py314t-ubuntu, mypyc-compiled
+          python: '3.14t'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
         - name: Test suite with py314-windows-64
           python: '3.14'
           os: windows-latest
@@ -94,6 +100,18 @@ jobs:
         #   toxenv: py
         #   tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
         #   debug_build: true
+
+        - name: Parallel tests with py314-ubuntu, interpreted
+          python: '3.14'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
+        - name: Parallel tests with py314-ubuntu, mypyc-compiled
+          python: '3.14'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4 --mypy-num-workers=4 mypy/test/testcheck.py"
+          test_mypyc: true
 
         - name: Type check our own code (py310-ubuntu)
           python: '3.10'

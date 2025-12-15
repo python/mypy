@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 import sys
 import warnings
-from collections.abc import Sequence
-from typing import Any, Callable, Final, Literal, TypeVar, cast, overload
+from collections.abc import Callable, Sequence
+from typing import Any, Final, Literal, TypeVar, cast, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
@@ -1799,7 +1799,7 @@ class ASTConverter:
         if n.rest is None:
             rest = None
         else:
-            rest = NameExpr(n.rest)
+            rest = self.set_line(NameExpr(n.rest), n)
 
         node = MappingPattern(keys, values, rest)
         return self.set_line(node, n)

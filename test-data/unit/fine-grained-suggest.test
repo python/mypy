@@ -57,7 +57,7 @@ foo(1, 2)
 foo('3', '4')
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[int, str], object) -> None
+(int | str, object) -> None
 (object, object) -> None
 ==
 
@@ -80,7 +80,7 @@ def untyped(x) -> None:
     foo(x)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Optional[int]) -> None
+(str | int | None, int | None) -> None
 ==
 
 [case testSuggestInferFunc2]
@@ -115,7 +115,7 @@ from foo import bar
 bar(None)
 [out]
 (Any) -> Any
-(Optional[Any]) -> None
+(Any | None) -> None
 ==
 
 [case testSuggestInferFuncAny2]
@@ -272,7 +272,7 @@ def bar() -> None:
     x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Optional[int]) -> object
+(str | int | None, int | None) -> object
 ==
 
 [case testSuggestInferMethod2]
@@ -298,7 +298,7 @@ def bar() -> None:
     a: Union[str, int] = x.foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Optional[int]) -> Union[int, str]
+(str | int | None, int | None) -> int | str
 ==
 
 [case testSuggestInferMethod3]
@@ -318,7 +318,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-(Optional[str]) -> None
+(str | None) -> None
 
 [case testSuggestBackflow]
 # suggest: foo.foo
@@ -438,7 +438,7 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 ==
-(Union[str, int, None], Optional[int]) -> Union[int, str]
+(str | int | None, int | None) -> int | str
 
 [case testSuggestInferNestedMethod]
 # suggest: foo.Foo.Bar.baz
@@ -537,8 +537,8 @@ def baz() -> None:
     foo(None)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Union[str, int, None], Optional[int]) -> object
-(Union[str, int, None], Optional[int]) -> None
+(str | int | None, int | None) -> object
+(str | int | None, int | None) -> None
 ==
 
 [case testSuggestInferFuncDecorator1]
@@ -1240,15 +1240,15 @@ tuple1(t)
 (int, int) -> int
 (int) -> list[int]
 (list[int]) -> int
-(Union[int, str]) -> None
+(int | str) -> None
 (Callable[[int], int]) -> int
 (Callable[[float], int]) -> int
-(Optional[int]) -> None
-(Union[None, int, str]) -> None
-(Optional[list[int]]) -> int
-(Union[set[int], list[int]]) -> None
-(Optional[int]) -> None
-(Optional[Any]) -> None
+(int | None) -> None
+(None | int | str) -> None
+(list[int] | None) -> int
+(set[int] | list[int]) -> None
+(int | None) -> None
+(Any | None) -> None
 (dict[int, int]) -> None
 (Tuple[int, int]) -> None
 ==
@@ -1266,5 +1266,5 @@ optional5(None)
 
 [builtins fixtures/isinstancelist.pyi]
 [out]
-(Optional[int]) -> None
+(int | None) -> None
 ==

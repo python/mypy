@@ -7,9 +7,8 @@ See the docstring of class LowLevelIRBuilder for more information.
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
-from typing import Callable, Final, cast
-from typing_extensions import TypeGuard
+from collections.abc import Callable, Sequence
+from typing import Final, TypeGuard, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
@@ -2076,7 +2075,7 @@ class LowLevelIRBuilder:
                 var_arg_idx,
                 is_pure=desc.is_pure,
                 returns_null=desc.returns_null,
-                capsule=desc.capsule,
+                dependencies=desc.dependencies,
             )
         )
         if desc.is_borrowed:
@@ -2161,7 +2160,7 @@ class LowLevelIRBuilder:
                 desc.priority,
                 is_pure=desc.is_pure,
                 returns_null=False,
-                capsule=desc.capsule,
+                dependencies=desc.dependencies,
             )
             return self.call_c(c_desc, args, line, result_type=result_type)
 

@@ -22,7 +22,8 @@ below, mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable
+from typing import Any, TypeVar, cast
 
 from mypy.build import Graph
 from mypy.nodes import ClassDef, Expression, FuncDef, MypyFile

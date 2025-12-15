@@ -59,7 +59,7 @@ Ts = TypeVarTuple("Ts")
 TestType = TypeAliasType("TestType", int | str)
 x: TestType = 42
 y: TestType = 'a'
-z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "int | str")
 
 BadAlias1 = TypeAliasType("BadAlias1", tuple[*Ts])  # E: TypeVarTuple "Ts" is not included in type_params
 ba1: BadAlias1[int]  # E: Bad number of arguments for type alias, expected 0, given 1
@@ -122,7 +122,7 @@ class C[T]:
 a: C[int] = C[object]()  # E: Incompatible types in assignment (expression has type "C[object]", variable has type "C[int]")
 b: C[object] = C[int]()
 
-reveal_type(C[str]().m(1))  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(C[str]().m(1))  # N: Revealed type is "builtins.str | builtins.int"
 
 [case testPEP695InferVarianceSimpleFromMethod]
 class Invariant[T]:
@@ -602,7 +602,7 @@ reveal_type(a3)  # N: Revealed type is "__main__.D[builtins.str, __main__.C[buil
 
 type A4 = int | str
 a4: A4
-reveal_type(a4)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(a4)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/type.pyi]
 
 [case testPEP695TypeAliasNotValidAsBaseClass]
@@ -703,7 +703,7 @@ reveal_type(a)  # N: Revealed type is "Any"
 type A = int | 1  # E: Invalid type: try using Literal[1] instead?
 
 a: A
-reveal_type(a)  # N: Revealed type is "Union[builtins.int, Any]"
+reveal_type(a)  # N: Revealed type is "builtins.int | Any"
 type B = int + str  # E: Invalid type alias: expression is not a valid type
 b: B
 reveal_type(b)  # N: Revealed type is "Any"
@@ -905,7 +905,7 @@ from typing import Callable
 type C[**P] = Callable[P, int]
 
 f: C[[str, int | None]]
-reveal_type(f)  # N: Revealed type is "def (builtins.str, Union[builtins.int, None]) -> builtins.int"
+reveal_type(f)  # N: Revealed type is "def (builtins.str, builtins.int | None) -> builtins.int"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -959,7 +959,7 @@ def g[T: int, S: (str, None)](x: T, y: S) -> T | S:
 
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.int"
-tmp/a.py:3: note: Revealed type is "Union[builtins.int, builtins.str]"
+tmp/a.py:3: note: Revealed type is "builtins.int | builtins.str"
 tmp/a.py:4: error: Value of type variable "T" of "g" cannot be "str"
 tmp/a.py:5: error: Value of type variable "S" of "g" cannot be "int"
 
@@ -1279,13 +1279,13 @@ class C[T]:
 [case testPEP695RecursiceTypeAlias]
 type A = str | list[A]
 a: A
-reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.list[...]]"
+reveal_type(a)  # N: Revealed type is "builtins.str | builtins.list[...]"
 
 class C[T]: pass
 
 type B[T] = C[T] | list[B[T]]
 b: B[int]
-reveal_type(b)  # N: Revealed type is "Union[__main__.C[builtins.int], builtins.list[...]]"
+reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int] | builtins.list[...]"
 [builtins fixtures/type.pyi]
 
 [case testPEP695BadRecursiveTypeAlias]
@@ -1303,7 +1303,7 @@ def f(a: A) -> None:
     if isinstance(a, str):
         reveal_type(a)  # N: Revealed type is "builtins.str"
     else:
-        reveal_type(a)  # N: Revealed type is "__main__.C[Union[builtins.str, __main__.C[...]]]"
+        reveal_type(a)  # N: Revealed type is "__main__.C[builtins.str | __main__.C[...]]"
 
 type A = str | C[A]
 
@@ -1523,14 +1523,14 @@ class C:
         reveal_type(v)  # N: Revealed type is "builtins.int"
 
 reveal_type(C.a)  # N: Revealed type is "builtins.int"
-reveal_type(C.b)  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+reveal_type(C.b)  # N: Revealed type is "builtins.list[builtins.str] | None"
 
 C.A = str  # E: Incompatible types in assignment (expression has type "type[str]", variable has type "TypeAliasType")
 
 x: C.A
 y: C.B[int]
 reveal_type(x)  # N: Revealed type is "builtins.int"
-reveal_type(y)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int] | None"
 
 def f() -> None:
     type A = int
@@ -1540,7 +1540,7 @@ def f() -> None:
 
     def g() -> None:
         b: B[int]
-        reveal_type(b)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int] | None"
 
 class D:
     def __init__(self) -> None:
@@ -1763,7 +1763,7 @@ type I3 = None | C[TD]
 # flags: --enable-incomplete-feature=InlineTypedDict
 type X[T] = {"item": T, "other": X[T] | None}
 x: X[str]
-reveal_type(x)  # N: Revealed type is "TypedDict({'item': builtins.str, 'other': Union[..., None]})"
+reveal_type(x)  # N: Revealed type is "TypedDict({'item': builtins.str, 'other': ... | None})"
 if x["other"] is not None:
     reveal_type(x["other"]["item"])  # N: Revealed type is "builtins.str"
 
@@ -1829,7 +1829,7 @@ y: B
 z: C
 zz: D
 reveal_type(x)  # N: Revealed type is "builtins.int"
-reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(y)  # N: Revealed type is "builtins.int | builtins.str"
 reveal_type(z)  # N: Revealed type is "builtins.int"
 reveal_type(zz)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
@@ -2217,10 +2217,10 @@ from collections.abc import Hashable
 
 type HashableArg = int | tuple[Hashable | HashableArg]
 x: HashableArg
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, tuple[Union[typing.Hashable, ...]]]"
+reveal_type(x)  # N: Revealed type is "builtins.int | tuple[typing.Hashable | ...]"
 if isinstance(x, tuple):
     y, = x
-    reveal_type(y)  # N: Revealed type is "Union[typing.Hashable, Union[builtins.int, tuple[Union[typing.Hashable, ...]]]]"
+    reveal_type(y)  # N: Revealed type is "typing.Hashable | builtins.int | tuple[typing.Hashable | ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 

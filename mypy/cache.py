@@ -48,8 +48,7 @@ bump CACHE_VERSION below.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 
 from librt.internal import (
     ReadBuffer as ReadBuffer,
@@ -70,7 +69,9 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 0
+CACHE_VERSION: Final = 1
+
+SerializedError: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | None]
 
 
 class CacheMeta:
@@ -93,7 +94,7 @@ class CacheMeta:
         dep_lines: list[int],
         dep_hashes: list[bytes],
         interface_hash: bytes,
-        error_lines: list[str],
+        error_lines: list[SerializedError],
         version_id: str,
         ignore_all: bool,
         plugin_data: Any,
@@ -158,7 +159,7 @@ class CacheMeta:
                 dep_lines=meta["dep_lines"],
                 dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
                 interface_hash=bytes.fromhex(meta["interface_hash"]),
-                error_lines=meta["error_lines"],
+                error_lines=[tuple(err) for err in meta["error_lines"]],
                 version_id=meta["version_id"],
                 ignore_all=meta["ignore_all"],
                 plugin_data=meta["plugin_data"],
@@ -180,7 +181,7 @@ class CacheMeta:
         write_int_list(data, self.dep_lines)
         write_bytes_list(data, self.dep_hashes)
         write_bytes(data, self.interface_hash)
-        write_str_list(data, self.error_lines)
+        write_errors(data, self.error_lines)
         write_str(data, self.version_id)
         write_bool(data, self.ignore_all)
         # Plugin data may be not a dictionary, so we use
@@ -205,7 +206,7 @@ class CacheMeta:
                 dep_lines=read_int_list(data),
                 dep_hashes=read_bytes_list(data),
                 interface_hash=read_bytes(data),
-                error_lines=read_str_list(data),
+                error_lines=read_errors(data),
                 version_id=read_str(data),
                 ignore_all=read_bool(data),
                 plugin_data=read_json_value(data),
@@ -232,6 +233,7 @@ LIST_GEN: Final[Tag] = 20
 LIST_INT: Final[Tag] = 21
 LIST_STR: Final[Tag] = 22
 LIST_BYTES: Final[Tag] = 23
+TUPLE_GEN: Final[Tag] = 24
 DICT_STR_GEN: Final[Tag] = 30
 
 # Misc classes.
@@ -391,7 +393,13 @@ def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
         write_str_opt(data, item)
 
 
-JsonValue: _TypeAlias = None | int | str | bool | list["JsonValue"] | dict[str, "JsonValue"]
+Value: _TypeAlias = None | int | str | bool
+
+# Our JSON format is somewhat non-standard as we distinguish lists and tuples.
+# This is convenient for some internal things, like mypyc plugin and error serialization.
+JsonValue: _TypeAlias = (
+    Value | list["JsonValue"] | dict[str, "JsonValue"] | tuple["JsonValue", ...]
+)
 
 
 def read_json_value(data: ReadBuffer) -> JsonValue:
@@ -409,15 +417,16 @@ def read_json_value(data: ReadBuffer) -> JsonValue:
     if tag == LIST_GEN:
         size = read_int_bare(data)
         return [read_json_value(data) for _ in range(size)]
+    if tag == TUPLE_GEN:
+        size = read_int_bare(data)
+        return tuple(read_json_value(data) for _ in range(size))
     if tag == DICT_STR_GEN:
         size = read_int_bare(data)
         return {read_str_bare(data): read_json_value(data) for _ in range(size)}
     assert False, f"Invalid JSON tag: {tag}"
 
 
-# Currently tuples are used by mypyc plugin. They will be normalized to
-# JSON lists after a roundtrip.
-def write_json_value(data: WriteBuffer, value: JsonValue | tuple[JsonValue, ...]) -> None:
+def write_json_value(data: WriteBuffer, value: JsonValue) -> None:
     if value is None:
         write_tag(data, LITERAL_NONE)
     elif isinstance(value, bool):
@@ -428,8 +437,13 @@ def write_json_value(data: WriteBuffer, value: JsonValue | tuple[JsonValue, ...]
     elif isinstance(value, str):
         write_tag(data, LITERAL_STR)
         write_str_bare(data, value)
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(value, list):
         write_tag(data, LIST_GEN)
+        write_int_bare(data, len(value))
+        for val in value:
+            write_json_value(data, val)
+    elif isinstance(value, tuple):
+        write_tag(data, TUPLE_GEN)
         write_int_bare(data, len(value))
         for val in value:
             write_json_value(data, val)
@@ -457,3 +471,38 @@ def write_json(data: WriteBuffer, value: dict[str, Any]) -> None:
     for key in sorted(value):
         write_str_bare(data, key)
         write_json_value(data, value[key])
+
+
+def write_errors(data: WriteBuffer, errs: list[SerializedError]) -> None:
+    write_tag(data, LIST_GEN)
+    write_int_bare(data, len(errs))
+    for path, line, column, end_line, end_column, severity, message, code in errs:
+        write_tag(data, TUPLE_GEN)
+        write_str_opt(data, path)
+        write_int(data, line)
+        write_int(data, column)
+        write_int(data, end_line)
+        write_int(data, end_column)
+        write_str(data, severity)
+        write_str(data, message)
+        write_str_opt(data, code)
+
+
+def read_errors(data: ReadBuffer) -> list[SerializedError]:
+    assert read_tag(data) == LIST_GEN
+    result = []
+    for _ in range(read_int_bare(data)):
+        assert read_tag(data) == TUPLE_GEN
+        result.append(
+            (
+                read_str_opt(data),
+                read_int(data),
+                read_int(data),
+                read_int(data),
+                read_int(data),
+                read_str(data),
+                read_str(data),
+                read_str_opt(data),
+            )
+        )
+    return result

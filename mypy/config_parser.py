@@ -13,9 +13,9 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO
-from typing_extensions import Never, TypeAlias
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from typing import Any, Final, TextIO, TypeAlias
+from typing_extensions import Never
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options

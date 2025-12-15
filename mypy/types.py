@@ -5,8 +5,19 @@ from __future__ import annotations
 import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Final, NewType, TypeVar, cast, overload
-from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Final,
+    NewType,
+    TypeAlias as _TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    overload,
+)
+from typing_extensions import Self
 
 from librt.internal import (
     read_int as read_int_bare,
@@ -3725,6 +3736,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     Notes:
      - Represent unbound types as Foo? or Foo?[...].
      - Represent the NoneType type as None.
+     - Represent Union[x, y] as x | y
     """
 
     def __init__(self, id_mapper: IdMapper | None = None, *, options: Options) -> None:
@@ -3955,9 +3967,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"Literal[{t.value_repr()}]"
 
     def visit_union_type(self, t: UnionType, /) -> str:
-        use_or_syntax = self.options.use_or_syntax()
-        s = self.list_str(t.items, use_or_syntax=use_or_syntax)
-        return s if use_or_syntax else f"Union[{s}]"
+        return self.list_str(t.items, use_or_syntax=True)
 
     def visit_partial_type(self, t: PartialType, /) -> str:
         if t.type is None:
@@ -4001,7 +4011,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         """
         res = []
         for t in a:
-            res.append(t.accept(self))
+            s = t.accept(self)
+            if use_or_syntax and isinstance(get_proper_type(t), CallableType):
+                res.append(f"({s})")
+            else:
+                res.append(s)
         sep = ", " if not use_or_syntax else " | "
         return sep.join(res)
 

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Final
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     LITERAL_NO,

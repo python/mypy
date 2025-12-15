@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Container
-from typing import Callable, cast
+from collections.abc import Callable, Container
+from typing import cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (
