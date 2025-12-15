@@ -1,8 +1,55 @@
 from __future__ import annotations
 
-from mypy.expandtype import expand_type_by_instance
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.nodes import TypeInfo
-from mypy.types import AnyType, Instance, TupleType, TypeOfAny, has_type_vars
+from mypy.types import AnyType, Instance, TupleType, Type, TypeOfAny, has_type_vars
+
+
+def map_type_to_instance(typ: Type, target: Instance) -> Instance | None:
+    """Attempt to map `typ` to an Instance of the same class as `target`
+
+    Examples:
+        (list[int], Iterable[T]) -> Iterable[int]
+        (list[list[int]], Iterable[list[T]]) -> Iterable[list[int]]
+        (dict[str, int], Mapping[K, int]) -> Mapping[str, int]
+        (list[int], Mapping[K, V]) -> None
+
+    Args:
+        typ: The type to map from.
+        target: The target instance type to map to.
+
+    Returns:
+        None: if the mapping is not possible.
+        Instance: the mapped instance type if the mapping is possible.
+    """
+    from mypy.subtypes import is_subtype
+    from mypy.typeops import get_all_type_vars
+
+    # 1. get type vars of target
+    tvars = get_all_type_vars(target)
+
+    # fast path: if no type vars,
+    if not tvars:
+        return target if is_subtype(typ, target) else None
+
+    from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
+    from mypy.solve import solve_constraints
+
+    # 2. determine constraints
+    constraints: list[Constraint] = infer_constraints(target, typ, SUPERTYPE_OF)
+    for tvar in tvars:
+        constraints.append(Constraint(tvar, SUBTYPE_OF, tvar.upper_bound))
+
+    # 3. solve constraints
+    solution, _ = solve_constraints(tvars, constraints)
+
+    if None in solution:
+        return None
+
+    # 4. build resulting Instance by substituting typevars with solution
+    env = {tvar.id: sol for tvar, sol in zip(tvars, solution)}
+    target = expand_type(target, env)
+    return target if is_subtype(typ, target) else None
 
 
 def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Instance:
