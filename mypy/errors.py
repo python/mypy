@@ -237,13 +237,7 @@ class NonOverlapErrorInfo:
     kind: str
 
     def __init__(
-        self,
-        *,
-        line: int,
-        column: int,
-        end_line: int | None,
-        end_column: int | None,
-        kind: str,
+        self, *, line: int, column: int, end_line: int | None, end_column: int | None, kind: str
     ) -> None:
         self.line = line
         self.column = column
