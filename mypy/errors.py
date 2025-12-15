@@ -229,12 +229,41 @@ class ErrorWatcher:
         return self._filtered
 
 
-class NonOverlapErrorInfo(NamedTuple):
+class NonOverlapErrorInfo:
     line: int
     column: int
     end_line: int | None
     end_column: int | None
     kind: str
+
+    def __init__(
+        self,
+        *,
+        line: int,
+        column: int,
+        end_line: int | None,
+        end_column: int | None,
+        kind: str,
+    ) -> None:
+        self.line = line
+        self.column = column
+        self.end_line = end_line
+        self.end_column = end_column
+        self.kind = kind
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, NonOverlapErrorInfo):
+            return (
+                self.line == other.line
+                and self.column == other.column
+                and self.end_line == other.end_line
+                and self.end_column == other.end_column
+                and self.kind == other.kind
+            )
+        return False
+
+    def __hash__(self) -> int:
+        return hash((self.line, self.column, self.end_line, self.end_column, self.kind))
 
 
 class IterationDependentErrors:
