@@ -2531,11 +2531,15 @@ class MessageBuilder:
     def iteration_dependent_errors(self, iter_errors: IterationDependentErrors) -> None:
         for error_info in iter_errors.yield_uselessness_error_infos():
             self.fail(*error_info[:2], code=error_info[2])
-        msu = mypy.typeops.make_simplified_union
         for nonoverlaps, kind, context in iter_errors.yield_nonoverlapping_types():
-            self.dangerous_comparison(msu(nonoverlaps[0]), msu(nonoverlaps[1]), kind, context)
+            self.dangerous_comparison(
+                mypy.typeops.make_simplified_union(nonoverlaps[0]),
+                mypy.typeops.make_simplified_union(nonoverlaps[1]),
+                kind,
+                context
+            )
         for types, context in iter_errors.yield_revealed_type_infos():
-            self.reveal_type(msu(types), context)
+            self.reveal_type(mypy.typeops.make_simplified_union(types), context)
 
 
 def quote_type_string(type_string: str) -> str:
