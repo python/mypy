@@ -2446,6 +2446,41 @@ while x is not None and b():
     x = f()
 [builtins fixtures/primitives.pyi]
 
+[case testAvoidFalseNonOverlappingEqualityCheckInLoop1]
+# flags: --allow-redefinition-new --local-partial-types --strict-equality
+
+x = 1
+while True:
+    if x == str():
+        break
+    x = str()
+    if x == int():  # E: Non-overlapping equality check (left operand type: "str", right operand type: "int")
+        break
+[builtins fixtures/primitives.pyi]
+
+[case testAvoidFalseNonOverlappingEqualityCheckInLoop2]
+# flags: --allow-redefinition-new --local-partial-types --strict-equality
+
+class A: ...
+class B: ...
+class C: ...
+
+x = A()
+while True:
+    if x == C():  # E: Non-overlapping equality check (left operand type: "A | B", right operand type: "C")
+        break
+    x = B()
+[builtins fixtures/primitives.pyi]
+
+[case testAvoidFalseNonOverlappingEqualityCheckInLoop3]
+# flags: --strict-equality
+
+for y in [1.0]:
+    if y is not None or y != "None":
+        ...
+
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowPromotionsInsideUnions1]
 
 from typing import Union

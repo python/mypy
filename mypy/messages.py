@@ -29,6 +29,7 @@ from mypy.errors import (
     ErrorWatcher,
     IterationDependentErrors,
     IterationErrorWatcher,
+    NonOverlapErrorInfo,
 )
 from mypy.nodes import (
     ARG_NAMED,
@@ -1624,6 +1625,26 @@ class MessageBuilder:
         )
 
     def dangerous_comparison(self, left: Type, right: Type, kind: str, ctx: Context) -> None:
+        # In loops (and similar cases), the same expression might be analysed multiple
+        # times and thereby confronted with different types.  We only want to raise a
+        # `comparison-overlap` error if it occurs in all cases and therefore collect the
+        # respective types of the current iteration here so that we can report the error
+        # later if it is persistent over all iteration steps:
+        for watcher in self.errors.get_watchers():
+            if watcher._filter:
+                break
+            if isinstance(watcher, IterationErrorWatcher):
+                watcher.iteration_dependent_errors.nonoverlapping_types[-1][
+                    NonOverlapErrorInfo(
+                        line=ctx.line,
+                        column=ctx.column,
+                        end_line=ctx.end_line,
+                        end_column=ctx.end_column,
+                        kind=kind,
+                    )
+                ] = (left, right)
+                return
+
         left_str = "element" if kind == "container" else "left operand"
         right_str = "container item" if kind == "container" else "right operand"
         message = "Non-overlapping {} check ({} type: {}, {} type: {})"
@@ -2510,6 +2531,13 @@ class MessageBuilder:
     def iteration_dependent_errors(self, iter_errors: IterationDependentErrors) -> None:
         for error_info in iter_errors.yield_uselessness_error_infos():
             self.fail(*error_info[:2], code=error_info[2])
+        for nonoverlaps, kind, context in iter_errors.yield_nonoverlapping_types():
+            self.dangerous_comparison(
+                mypy.typeops.make_simplified_union(nonoverlaps[0]),
+                mypy.typeops.make_simplified_union(nonoverlaps[1]),
+                kind,
+                context,
+            )
         for types, context in iter_errors.yield_revealed_type_infos():
             self.reveal_type(mypy.typeops.make_simplified_union(types), context)
 
