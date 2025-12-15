@@ -5,7 +5,7 @@ from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from ctypes import CDLL, ArgumentError as ArgumentError, c_void_p
 from types import GenericAlias
-from typing import Any, ClassVar, Final, Generic, TypeVar, final, overload, type_check_only
+from typing import Any, ClassVar, Final, Generic, Literal, TypeVar, final, overload, type_check_only
 from typing_extensions import Self, TypeAlias
 
 _T = TypeVar("_T")
@@ -266,6 +266,10 @@ class Structure(_CData, metaclass=_PyCStructType):
     if sys.version_info >= (3, 13):
         _align_: ClassVar[int]
 
+    if sys.version_info >= (3, 14):
+        # _layout_ can be defined by the user, but is not always present.
+        _layout_: ClassVar[Literal["ms", "gcc-sysv"]]
+
     def __init__(self, *args: Any, **kw: Any) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
     def __setattr__(self, name: str, value: Any) -> None: ...
@@ -294,7 +298,11 @@ class Array(_CData, Generic[_CT], metaclass=_PyCArrayType):
     def _type_(self) -> type[_CT]: ...
     @_type_.setter
     def _type_(self, value: type[_CT]) -> None: ...
-    raw: bytes  # Note: only available if _CT == c_char
+    # Note: only available if _CT == c_char
+    @property
+    def raw(self) -> bytes: ...
+    @raw.setter
+    def raw(self, value: ReadableBuffer) -> None: ...
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO: These methods cannot be annotated correctly at the moment.
     # All of these "Any"s stand for the array's element type, but it's not possible to use _CT

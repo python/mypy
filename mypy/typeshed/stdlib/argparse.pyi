@@ -2,7 +2,7 @@ import sys
 from _typeshed import SupportsWrite, sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
-from typing import IO, Any, ClassVar, Final, Generic, NewType, NoReturn, Protocol, TypeVar, overload, type_check_only
+from typing import IO, Any, ClassVar, Final, Generic, NoReturn, Protocol, TypeVar, overload, type_check_only
 from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
@@ -36,9 +36,7 @@ ONE_OR_MORE: Final = "+"
 OPTIONAL: Final = "?"
 PARSER: Final = "A..."
 REMAINDER: Final = "..."
-_SUPPRESS_T = NewType("_SUPPRESS_T", str)
-SUPPRESS: _SUPPRESS_T | str  # not using Literal because argparse sometimes compares SUPPRESS with is
-# the | str is there so that foo = argparse.SUPPRESS; foo = "test" checks out in mypy
+SUPPRESS: Final = "==SUPPRESS=="
 ZERO_OR_MORE: Final = "*"
 _UNRECOGNIZED_ARGS_ATTR: Final = "_unrecognized_args"  # undocumented
 
@@ -81,7 +79,7 @@ class _ActionsContainer:
         # more precisely, Literal["?", "*", "+", "...", "A...", "==SUPPRESS=="],
         # but using this would make it hard to annotate callers that don't use a
         # literal argument and for subclasses to override this method.
-        nargs: int | str | _SUPPRESS_T | None = None,
+        nargs: int | str | None = None,
         const: Any = ...,
         default: Any = ...,
         type: _ActionType = ...,
@@ -251,7 +249,11 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     def _read_args_from_files(self, arg_strings: list[str]) -> list[str]: ...
     def _match_argument(self, action: Action, arg_strings_pattern: str) -> int: ...
     def _match_arguments_partial(self, actions: Sequence[Action], arg_strings_pattern: str) -> list[int]: ...
-    def _parse_optional(self, arg_string: str) -> tuple[Action | None, str, str | None] | None: ...
+    if sys.version_info >= (3, 12):
+        def _parse_optional(self, arg_string: str) -> list[tuple[Action | None, str, str | None, str | None]] | None: ...
+    else:
+        def _parse_optional(self, arg_string: str) -> tuple[Action | None, str, str | None] | None: ...
+
     def _get_option_tuples(self, option_string: str) -> list[tuple[Action, str, str | None]]: ...
     def _get_nargs_pattern(self, action: Action) -> str: ...
     def _get_values(self, action: Action, arg_strings: list[str]) -> Any: ...
