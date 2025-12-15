@@ -1,3 +1,6 @@
+# Do not delete this import. Dependency structure of core modules for fixtures should match
+# the real dependency structure, otherwise things like add_typing_extension_aliases() will break.
+import collections
 import typing
 from typing import Any, Callable, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type, Union
 from typing import TYPE_CHECKING as TYPE_CHECKING
@@ -32,6 +35,8 @@ ParamSpec: _SpecialForm
 Concatenate: _SpecialForm
 
 TypeAlias: _SpecialForm
+
+TypeForm: _SpecialForm
 
 TypeGuard: _SpecialForm
 TypeIs: _SpecialForm
@@ -93,5 +98,6 @@ def dataclass_transform(
 
 def override(__arg: _T) -> _T: ...
 def deprecated(__msg: str) -> Callable[[_T], _T]: ...
+def disjoint_base(__arg: _T) -> _T: ...
 
 _FutureFeatureFixture = 0

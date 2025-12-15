@@ -2244,3 +2244,19 @@ undefined
 a.py:1: error: Cannot find implementation or library stub for module named "foobar"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
+
+[case testDaemonImportMapRefresh]
+# cmd: mypy main.py
+[file main.py]
+[file main.py.2]
+import a.b
+reveal_type(a.b.foo())
+[file a/__init__.pyi]
+[file a/b.pyi]
+import a.c
+def foo() -> a.c.C: ...
+[file a/c.pyi]
+class C: ...
+[out]
+==
+main.py:2: note: Revealed type is "a.c.C"

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from mypy.nodes import TypeInfo
 from mypy.types import Instance

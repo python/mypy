@@ -145,16 +145,21 @@ CREATE INDEX IF NOT EXISTS path_idx on files2(path);
 """
 
 
-def connect_db(db_file: str) -> sqlite3.Connection:
+def connect_db(db_file: str, sync_off: bool = False) -> sqlite3.Connection:
     import sqlite3.dbapi2
 
     db = sqlite3.dbapi2.connect(db_file)
+    if sync_off:
+        # This is a bit unfortunate (as we may get corrupt cache after e.g. Ctrl + C),
+        # but without this flag, commits are *very* slow, especially when using HDDs,
+        # see https://www.sqlite.org/faq.html#q19 for details.
+        db.execute("PRAGMA synchronous=OFF")
     db.executescript(SCHEMA)
     return db
 
 
 class SqliteMetadataStore(MetadataStore):
-    def __init__(self, cache_dir_prefix: str) -> None:
+    def __init__(self, cache_dir_prefix: str, sync_off: bool = False) -> None:
         # We check startswith instead of equality because the version
         # will have already been appended by the time the cache dir is
         # passed here.
@@ -163,7 +168,7 @@ class SqliteMetadataStore(MetadataStore):
             return
 
         os.makedirs(cache_dir_prefix, exist_ok=True)
-        self.db = connect_db(os.path.join(cache_dir_prefix, "cache.db"))
+        self.db = connect_db(os.path.join(cache_dir_prefix, "cache.db"), sync_off=sync_off)
 
     def _query(self, name: str, field: str) -> Any:
         # Raises FileNotFound for consistency with the file system version

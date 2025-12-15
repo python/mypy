@@ -57,10 +57,10 @@ T = TypeVar('T')
 
 def f(x: int) -> None:
     x = g(x)
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
     y = 1
     y = g(y)
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | builtins.str"
 
 def g(x: T) -> Union[T, str]: pass
 
@@ -383,7 +383,7 @@ def f() -> None:
     x = 1
     if int():
         x = ''
-    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.str | builtins.int"
     x = ''
     reveal_type(x) # N: Revealed type is "builtins.str"
     if int():
@@ -477,7 +477,7 @@ x = 0
 reveal_type(x)  # N: Revealed type is "builtins.int"
 for x in f(x):
     pass
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 [case testNoRedefinitionIfOnlyInitialized]
 # flags: --allow-redefinition --no-strict-optional

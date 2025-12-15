@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, Final
+from collections.abc import Callable
+from typing import Final
 
 from mypy.nodes import (
     EXCLUDED_ENUM_ATTRIBUTES,
@@ -30,7 +31,7 @@ from mypy.nodes import (
 from mypy.types import Instance, UnboundType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.ir.func_ir import FuncDecl, FuncSignature
+from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
     NAMESPACE_TYPE,
     BasicBlock,
@@ -472,6 +473,20 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
                 -1,
             )
         )
+
+        builder.add(
+            Call(
+                FuncDecl(
+                    cdef.name + "_coroutine_setup",
+                    None,
+                    builder.module_name,
+                    FuncSignature([RuntimeArg("type", object_rprimitive)], bool_rprimitive),
+                ),
+                [tp],
+                -1,
+            )
+        )
+
     # Populate a '__mypyc_attrs__' field containing the list of attrs
     builder.primitive_op(
         py_setattr_op,
@@ -845,7 +860,9 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
             )
             builder.activate_block(regular_block)
             rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
-            retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
+            retval = builder.coerce(
+                builder.builder.unary_not(eqval, line, likely_bool=True), rettype, line
+            )
             builder.add(Return(retval))
             builder.activate_block(not_implemented_block)
             builder.add(Return(not_implemented))

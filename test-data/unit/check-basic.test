@@ -220,7 +220,7 @@ reveal_type(__file__)         # N: Revealed type is "builtins.str"
 reveal_type(__package__)      # N: Revealed type is "builtins.str"
 reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 # This will actually reveal Union[importlib.machinery.ModuleSpec, None]
-reveal_type(__spec__)         # N: Revealed type is "Union[builtins.object, None]"
+reveal_type(__spec__)         # N: Revealed type is "builtins.object | None"
 
 import module
 reveal_type(module.__name__)  # N: Revealed type is "builtins.str"
@@ -416,7 +416,7 @@ D = TypedDict('D', {'y': int})
 
 def foo() -> Optional[A]:
     b = True
-    return a.A() if b else None  # E: Incompatible return value type (got "Optional[a.A]", expected "Optional[b.A]")
+    return a.A() if b else None  # E: Incompatible return value type (got "a.A | None", expected "b.A | None")
 
 def bar() -> List[A]:
     l = [a.A()]
@@ -424,10 +424,10 @@ def bar() -> List[A]:
 
 def baz() -> Union[A, int]:
     b = True
-    return a.A() if b else 10  # E: Incompatible return value type (got "Union[a.A, int]", expected "Union[b.A, int]")
+    return a.A() if b else 10  # E: Incompatible return value type (got "a.A | int", expected "b.A | int")
 
 def spam() -> Optional[A]:
-    return a.A()  # E: Incompatible return value type (got "a.A", expected "Optional[b.A]")
+    return a.A()  # E: Incompatible return value type (got "a.A", expected "b.A | None")
 
 def eggs() -> Sequence[A]:
     x = [a.A()]
@@ -516,11 +516,11 @@ x: """
    str
 
 """
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 y: """(
     int |
     str
 )
 """
-reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(y)  # N: Revealed type is "builtins.int | builtins.str"

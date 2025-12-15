@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, Final, Union
+from typing import Any, Final
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -63,7 +63,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType, is_bool_rprimitive, is_int_rprimitive
 
-ErrorSource = Union[BasicBlock, Op]
+ErrorSource = BasicBlock | Op
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
@@ -196,7 +196,13 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return s
 
     def visit_cast(self, op: Cast) -> str:
-        return self.format("%r = %scast(%s, %r)", op, self.borrow_prefix(op), op.type, op.src)
+        if op.is_unchecked:
+            prefix = "unchecked "
+        else:
+            prefix = ""
+        return self.format(
+            "%r = %s%scast(%s, %r)", op, prefix, self.borrow_prefix(op), op.type, op.src
+        )
 
     def visit_box(self, op: Box) -> str:
         return self.format("%r = box(%s, %r)", op, op.src.type, op.src)

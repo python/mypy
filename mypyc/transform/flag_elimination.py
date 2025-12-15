@@ -78,10 +78,9 @@ class FlagEliminationTransform(IRTransform):
         self.branches = set(branch_map.values())
 
     def visit_assign(self, op: Assign) -> None:
-        old_branch = self.branch_map.get(op.dest)
-        if old_branch:
+        if old_branch := self.branch_map.get(op.dest):
             # Replace assignment with a copy of the old branch, which is in a
-            # separate basic block. The old branch will be deletecd in visit_branch.
+            # separate basic block. The old branch will be deleted in visit_branch.
             new_branch = Branch(
                 op.src,
                 old_branch.true,

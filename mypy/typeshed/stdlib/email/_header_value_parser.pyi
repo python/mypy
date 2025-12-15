@@ -25,7 +25,7 @@ SPECIALSNL: Final[set[str]]
 def make_quoted_pairs(value: Any) -> str: ...
 def quote_string(value: Any) -> str: ...
 
-rfc2047_matcher: Pattern[str]
+rfc2047_matcher: Final[Pattern[str]]
 
 class TokenList(list[TokenList | Terminal]):
     token_type: str | None

@@ -6,14 +6,33 @@ non-local variables defined in outer scopes.
 
 from __future__ import annotations
 
-from mypyc.common import ENV_ATTR_NAME, SELF_NAME
+from mypyc.common import ENV_ATTR_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
-from mypyc.ir.ops import BasicBlock, Call, Register, Return, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, object_rprimitive
+from mypyc.ir.ops import (
+    NAMESPACE_STATIC,
+    BasicBlock,
+    Call,
+    Integer,
+    LoadStatic,
+    Register,
+    Return,
+    SetAttr,
+    Value,
+)
+from mypyc.ir.rtypes import RInstance, c_pointer_rprimitive, int_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
-from mypyc.primitives.misc_ops import method_new_op
+from mypyc.primitives.misc_ops import (
+    cpyfunction_get_annotations,
+    cpyfunction_get_code,
+    cpyfunction_get_defaults,
+    cpyfunction_get_kwdefaults,
+    cpyfunction_get_name,
+    cpyfunction_set_annotations,
+    cpyfunction_set_name,
+    method_new_op,
+)
 
 
 def setup_callable_class(builder: IRBuilder) -> None:
@@ -77,6 +96,64 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # and store that variable in a register to be accessed later.
     self_target = builder.add_self_to_env(callable_class_ir)
     builder.fn_info.callable_class.self_reg = builder.read(self_target, builder.fn_info.fitem.line)
+
+    if not builder.fn_info.in_non_ext and builder.fn_info.is_coroutine:
+        add_coroutine_properties(builder, callable_class_ir, builder.fn_info.name)
+
+
+def add_coroutine_properties(
+    builder: IRBuilder, callable_class_ir: ClassIR, coroutine_name: str
+) -> None:
+    """Adds properties to the class to make it look like a regular python function.
+    Needed to make introspection functions like inspect.iscoroutinefunction work.
+    """
+    callable_class_ir.coroutine_name = coroutine_name
+
+    properties = {
+        "__name__": cpyfunction_get_name,
+        "__code__": cpyfunction_get_code,
+        "__annotations__": cpyfunction_get_annotations,
+        "__defaults__": cpyfunction_get_defaults,
+        "__kwdefaults__": cpyfunction_get_kwdefaults,
+    }
+
+    writable_props = {
+        "__name__": cpyfunction_set_name,
+        "__annotations__": cpyfunction_set_annotations,
+    }
+
+    def get_func_wrapper() -> Value:
+        return builder.add(
+            LoadStatic(
+                object_rprimitive,
+                callable_class_ir.name + "_cpyfunction",
+                builder.module_name,
+                NAMESPACE_STATIC,
+            )
+        )
+
+    for name, primitive in properties.items():
+        with builder.enter_method(callable_class_ir, name, object_rprimitive, internal=True):
+            func = get_func_wrapper()
+            val = builder.primitive_op(primitive, [func, Integer(0, c_pointer_rprimitive)], -1)
+            builder.add(Return(val))
+
+    for name, primitive in writable_props.items():
+        with builder.enter_method(
+            callable_class_ir, f"{PROPSET_PREFIX}{name}", int_rprimitive, internal=True
+        ):
+            value = builder.add_argument("value", object_rprimitive)
+            func = get_func_wrapper()
+            rv = builder.primitive_op(
+                primitive, [func, value, Integer(0, c_pointer_rprimitive)], -1
+            )
+            builder.add(Return(rv))
+
+    for name in properties:
+        getter = callable_class_ir.get_method(name)
+        assert getter
+        setter = callable_class_ir.get_method(f"{PROPSET_PREFIX}{name}")
+        callable_class_ir.properties[name] = (getter, setter)
 
 
 def add_call_to_callable_class(

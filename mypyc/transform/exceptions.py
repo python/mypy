@@ -146,6 +146,7 @@ def primitive_call(desc: CFunctionDescription, args: list[Value], line: int) -> 
         desc.is_borrowed,
         desc.error_kind,
         line,
+        dependencies=desc.dependencies,
     )
 
 

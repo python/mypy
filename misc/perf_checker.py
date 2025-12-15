@@ -8,7 +8,7 @@ import statistics
 import subprocess
 import textwrap
 import time
-from typing import Callable
+from collections.abc import Callable
 
 
 class Command:

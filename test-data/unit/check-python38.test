@@ -316,13 +316,13 @@ def check_final() -> None:
 
 def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Optional[int],
                  b: Optional[int]) -> None:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | None"
 
     (x := 1)
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
     if x or (y := 1):
-        reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(y)  # N: Revealed type is "builtins.int | None"
 
     if x and (y := 1):
         reveal_type(y)  # N: Revealed type is "builtins.int"
@@ -341,7 +341,7 @@ def check_partial() -> None:
     if bool() and (x := 2):
         pass
 
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | None"
 
 def check_narrow(x: Optional[int], s: List[int]) -> None:
     if (y := x):
@@ -421,7 +421,7 @@ else:
     reveal_type(is_str)  # N: Revealed type is "Literal[False]"
     reveal_type(maybe_str)  # N: Revealed type is "None"
 
-reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(maybe_str)  # N: Revealed type is "builtins.str | None"
 [builtins fixtures/bool.pyi]
 
 [case testWalrusConditionalTypeCheck2]
@@ -431,12 +431,12 @@ maybe_str: Optional[str]
 
 if (x := maybe_str) is not None:
     reveal_type(x)  # N: Revealed type is "builtins.str"
-    reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(maybe_str)  # N: Revealed type is "builtins.str | None"
 else:
     reveal_type(x)  # N: Revealed type is "None"
-    reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(maybe_str)  # N: Revealed type is "builtins.str | None"
 
-reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(maybe_str)  # N: Revealed type is "builtins.str | None"
 [builtins fixtures/bool.pyi]
 
 [case testWalrusPartialTypes]
@@ -750,7 +750,7 @@ def walrus_with_nested_error(x: Optional[str]) -> None:
     if x is None:
         x = "a"
     def nested() -> str:
-        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+        return x  # E: Incompatible return value type (got "str | None", expected "str")
     if x := None:
         pass
     nested()

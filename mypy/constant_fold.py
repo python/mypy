@@ -5,7 +5,7 @@ For example, 3 + 5 can be constant folded into 8.
 
 from __future__ import annotations
 
-from typing import Final, Union
+from typing import Final
 
 from mypy.nodes import (
     ComplexExpr,
@@ -20,7 +20,7 @@ from mypy.nodes import (
 )
 
 # All possible result types of constant folding
-ConstantValue = Union[int, bool, float, complex, str]
+ConstantValue = int | bool | float | complex | str
 CONST_TYPES: Final = (int, bool, float, complex, str)
 
 

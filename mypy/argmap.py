@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
@@ -36,8 +36,8 @@ def map_actuals_to_formals(
     The result contains a list of caller argument indexes mapping to each
     callee argument index, indexed by callee index.
 
-    The caller_arg_type argument should evaluate to the type of the actual
-    argument type with the given index.
+    The actual_arg_type argument should evaluate to the type of the actual
+    argument with the given index.
     """
     nformals = len(formal_kinds)
     formal_to_actual: list[list[int]] = [[] for i in range(nformals)]
@@ -167,7 +167,7 @@ class ArgTypeExpander:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
-        self.kwargs_used: set[str] = set()
+        self.kwargs_used: set[str] | None = None
         # Type context for `*` and `**` arg kinds.
         self.context = context
 
@@ -241,6 +241,8 @@ class ArgTypeExpander:
             from mypy.subtypes import is_subtype
 
             if isinstance(actual_type, TypedDictType):
+                if self.kwargs_used is None:
+                    self.kwargs_used = set()
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
                     assert formal_name is not None

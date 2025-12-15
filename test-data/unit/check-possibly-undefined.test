@@ -628,7 +628,7 @@ def f7() -> int:
             x = 1
         assert False
     except:
-        pass
+        y = x  # E: Name "x" may be undefined
     return x  # E: Name "x" may be undefined
 [builtins fixtures/exception.pyi]
 
@@ -678,7 +678,7 @@ def f3() -> int:
         pass
     finally:
         y = x  # E: Name "x" may be undefined
-    return x
+    return x  # E: Name "x" may be undefined
 
 def f4() -> int:
     try:
@@ -708,6 +708,17 @@ def f6() -> int:
     finally:
         a = x  # E: Name "x" may be undefined
     return a
+
+def f7() -> int:
+    try:
+        if int():
+            x = 1
+        else:
+            raise BaseException
+        return x  # No error.
+    finally:
+        y = x  # E: Name "x" may be undefined
+    return 0
 [builtins fixtures/exception.pyi]
 
 [case testTryElse]

@@ -4,7 +4,7 @@ requires = [
     "wheel",
     # Officially supported pybind11 version. This is pinned to guarantee 100% reproducible CI.
     # As a result, the version needs to be bumped manually at will.
-    "pybind11==2.9.2",
+    "pybind11==3.0.1",
 ]
 
 build-backend = "setuptools.build_meta"

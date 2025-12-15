@@ -62,3 +62,23 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     Py_DECREF(slice);
     return result;
 }
+
+typedef PyObject *(*SetupFunction)(PyObject *);
+
+PyObject *CPy_SetupObject(PyObject *type) {
+    PyTypeObject *tp = (PyTypeObject *)type;
+    PyMethodDef *def = NULL;
+    for(; tp; tp = tp->tp_base) {
+        def = tp->tp_methods;
+        if (!def || !def->ml_name) {
+            continue;
+        }
+
+        if (!strcmp(def->ml_name, "__internal_mypyc_setup")) {
+            return ((SetupFunction)(void(*)(void))def->ml_meth)(type);
+        }
+    }
+
+    PyErr_SetString(PyExc_RuntimeError, "Internal mypyc error: Unable to find object setup function");
+    return NULL;
+}

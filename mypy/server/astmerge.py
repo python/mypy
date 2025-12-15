@@ -75,6 +75,7 @@ from mypy.nodes import (
     SymbolTable,
     TypeAlias,
     TypedDictExpr,
+    TypeFormExpr,
     TypeInfo,
     Var,
 )
@@ -291,6 +292,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_cast_expr(node)
         self.fixup_type(node.type)
 
+    def visit_type_form_expr(self, node: TypeFormExpr) -> None:
+        super().visit_type_form_expr(node)
+        self.fixup_type(node.type)
+
     def visit_assert_type_expr(self, node: AssertTypeExpr) -> None:
         super().visit_assert_type_expr(node)
         self.fixup_type(node.type)
@@ -489,6 +494,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_param_spec(self, typ: ParamSpecType) -> None:
         typ.upper_bound.accept(self)
         typ.default.accept(self)
+        typ.prefix.accept(self)
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
         typ.upper_bound.accept(self)

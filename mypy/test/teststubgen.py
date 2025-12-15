@@ -371,6 +371,8 @@ class StubgenUtilSuite(unittest.TestCase):
             [FunctionSig(name="func", args=[ArgSig(name="x", type=None)], ret_type="Any")],
         )
 
+        assert_equal(infer_sig_from_docstring("\nfunc(invalid::type)", "func"), [])
+
         assert_equal(
             infer_sig_from_docstring('\nfunc(x: str="")', "func"),
             [

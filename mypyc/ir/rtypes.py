@@ -38,8 +38,7 @@ NOTE: As a convention, we don't create subclasses of concrete RType
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar, final
-from typing_extensions import TypeGuard
+from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.namegen import NameGenerator
@@ -511,6 +510,19 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 
 # Python range object.
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
+
+KNOWN_NATIVE_TYPES: Final = {
+    name: RPrimitive(name, is_unboxed=False, is_refcounted=True)
+    for name in [
+        "librt.internal.WriteBuffer",
+        "librt.internal.ReadBuffer",
+        "librt.strings.BytesWriter",
+    ]
+}
+
+
+def is_native_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name in KNOWN_NATIVE_TYPES
 
 
 def is_tagged(rtype: RType) -> TypeGuard[RPrimitive]:
@@ -1018,7 +1030,7 @@ def flatten_nested_unions(types: list[RType]) -> list[RType]:
 def optional_value_type(rtype: RType) -> RType | None:
     """If rtype is the union of none_rprimitive and another type X, return X.
 
-    Otherwise return None.
+    Otherwise, return None.
     """
     if isinstance(rtype, RUnion) and len(rtype.items) == 2:
         if rtype.items[0] == none_rprimitive:

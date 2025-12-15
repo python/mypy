@@ -145,6 +145,29 @@ literal:
     def is_magic(x: bytes) -> bool:
         return x == b'magic'  # OK
 
+:option:`--strict-equality <mypy --strict-equality>` does not include comparisons with
+``None``:
+
+.. code-block:: python
+
+    # mypy: strict-equality
+
+    def is_none(x: str) -> bool:
+        return x is None  # OK
+
+If you want such checks, you must also activate
+:option:`--strict-equality-for-none <mypy --strict-equality-for-none>` (we might merge
+these two options later).
+
+.. code-block:: python
+
+    # mypy: strict-equality strict-equality-for-none
+
+    def is_none(x: str) -> bool:
+        # Error: Non-overlapping identity check
+        #        (left operand type: "str", right operand type: "None")
+        return x is None
+
 .. _code-no-untyped-call:
 
 Check that no untyped functions are called [no-untyped-call]
@@ -653,3 +676,26 @@ Example:
                 print("red")
             case _:
                 print("other")
+
+.. _code-untyped-decorator:
+
+Error if an untyped decorator makes a typed function effectively untyped [untyped-decorator]
+--------------------------------------------------------------------------------------------
+
+If enabled with :option:`--disallow-untyped-decorators <mypy --disallow-untyped-decorators>`
+mypy generates an error if a typed function is wrapped by an untyped decorator
+(as this would effectively remove the benefits of typing the function).
+
+Example:
+
+.. code-block:: python
+
+        def printing_decorator(func):
+            def wrapper(*args, **kwds):
+                print("Calling", func)
+                return func(*args, **kwds)
+            return wrapper
+        # A decorated function.
+        @printing_decorator  # E: Untyped decorator makes function "add_forty_two" untyped  [untyped-decorator]
+        def add_forty_two(value: int) -> int:
+            return value + 42

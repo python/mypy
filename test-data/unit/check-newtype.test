@@ -286,7 +286,7 @@ A = NewType('A', Any)  # E: Argument 2 to NewType(...) must be subclassable (got
 
 [case testNewTypeWithUnionsFails]
 from typing import NewType, Union
-Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got "Union[int, float]")
+Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got "int | float")
 [out]
 
 [case testNewTypeWithTypeTypeFails]

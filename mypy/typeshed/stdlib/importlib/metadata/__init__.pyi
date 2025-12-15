@@ -11,7 +11,7 @@ from os import PathLike
 from pathlib import Path
 from re import Pattern
 from typing import Any, ClassVar, Generic, NamedTuple, TypeVar, overload
-from typing_extensions import Self, TypeAlias, deprecated
+from typing_extensions import Self, TypeAlias, deprecated, disjoint_base
 
 _T = TypeVar("_T")
 _KT = TypeVar("_KT")
@@ -59,23 +59,21 @@ else:
         value: str
         group: str
 
-class EntryPoint(_EntryPointBase):
-    pattern: ClassVar[Pattern[str]]
-    if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 11):
+    class EntryPoint(_EntryPointBase):
+        pattern: ClassVar[Pattern[str]]
         name: str
         value: str
         group: str
 
         def __init__(self, name: str, value: str, group: str) -> None: ...
-
-    def load(self) -> Any: ...  # Callable[[], Any] or an importable module
-    @property
-    def extras(self) -> list[str]: ...
-    @property
-    def module(self) -> str: ...
-    @property
-    def attr(self) -> str: ...
-    if sys.version_info >= (3, 10):
+        def load(self) -> Any: ...  # Callable[[], Any] or an importable module
+        @property
+        def extras(self) -> list[str]: ...
+        @property
+        def module(self) -> str: ...
+        @property
+        def attr(self) -> str: ...
         dist: ClassVar[Distribution | None]
         def matches(
             self,
@@ -87,16 +85,43 @@ class EntryPoint(_EntryPointBase):
             attr: str = ...,
             extras: list[str] = ...,
         ) -> bool: ...  # undocumented
-
-    def __hash__(self) -> int: ...
-    if sys.version_info >= (3, 11):
+        def __hash__(self) -> int: ...
         def __eq__(self, other: object) -> bool: ...
         def __lt__(self, other: object) -> bool: ...
-    if sys.version_info < (3, 12):
+        if sys.version_info < (3, 12):
+            def __iter__(self) -> Iterator[Any]: ...  # result of iter((str, Self)), really
+
+else:
+    @disjoint_base
+    class EntryPoint(_EntryPointBase):
+        pattern: ClassVar[Pattern[str]]
+
+        def load(self) -> Any: ...  # Callable[[], Any] or an importable module
+        @property
+        def extras(self) -> list[str]: ...
+        @property
+        def module(self) -> str: ...
+        @property
+        def attr(self) -> str: ...
+        if sys.version_info >= (3, 10):
+            dist: ClassVar[Distribution | None]
+            def matches(
+                self,
+                *,
+                name: str = ...,
+                value: str = ...,
+                group: str = ...,
+                module: str = ...,
+                attr: str = ...,
+                extras: list[str] = ...,
+            ) -> bool: ...  # undocumented
+
+        def __hash__(self) -> int: ...
         def __iter__(self) -> Iterator[Any]: ...  # result of iter((str, Self)), really
 
 if sys.version_info >= (3, 12):
     class EntryPoints(tuple[EntryPoint, ...]):
+        __slots__ = ()
         def __getitem__(self, name: str) -> EntryPoint: ...  # type: ignore[override]
         def select(
             self,
@@ -114,10 +139,12 @@ if sys.version_info >= (3, 12):
         def groups(self) -> set[str]: ...
 
 elif sys.version_info >= (3, 10):
-    class DeprecatedList(list[_T]): ...
+    class DeprecatedList(list[_T]):
+        __slots__ = ()
 
     class EntryPoints(DeprecatedList[EntryPoint]):  # use as list is deprecated since 3.10
         # int argument is deprecated since 3.10
+        __slots__ = ()
         def __getitem__(self, name: int | str) -> EntryPoint: ...  # type: ignore[override]
         def select(
             self,
@@ -230,7 +257,7 @@ class Distribution(_distribution_parent):
         def name(self) -> str: ...
     if sys.version_info >= (3, 13):
         @property
-        def origin(self) -> types.SimpleNamespace: ...
+        def origin(self) -> types.SimpleNamespace | None: ...
 
 class DistributionFinder(MetaPathFinder):
     class Context:

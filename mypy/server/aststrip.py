@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     CLASSDEF_NO_INFO,
@@ -165,7 +165,7 @@ class NodeStripVisitor(TraverserVisitor):
             # in order to get the state exactly as it was before semantic analysis.
             # See also #4814.
             assert isinstance(node.type, CallableType)
-            node.type.variables = []
+            node.type.variables = ()
         with self.enter_method(node.info) if node.info else nullcontext():
             super().visit_func_def(node)
 

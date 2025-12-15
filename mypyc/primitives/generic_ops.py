@@ -26,6 +26,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     method_op,
     unary_op,
@@ -307,6 +308,15 @@ py_call_with_kwargs_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# Call callable object with positional args only: func(*args)
+# Arguments are (func, *args tuple).
+py_call_with_posargs_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyObject_CallObject",
+    error_kind=ERR_MAGIC,
+)
+
 # Call method with positional arguments: obj.method(arg1, ...)
 # Arguments are (object, attribute name, arg1, ...).
 py_method_call_op = custom_op(
@@ -380,5 +390,37 @@ anext_op = custom_op(
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPy_GetANext",
+    error_kind=ERR_MAGIC,
+)
+
+# x.__name__ (requires Python 3.11+)
+name_op = custom_primitive_op(
+    name="__name__",
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_GetName",
+    error_kind=ERR_MAGIC,
+)
+
+# look-up name in tp_dict but don't raise AttributeError on failure
+generic_getattr = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyObject_GenericGetAttr",
+    error_kind=ERR_NEVER,
+    returns_null=True,
+)
+
+generic_setattr = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyObject_GenericSetAttr",
+    error_kind=ERR_NEG_INT,
+)
+
+setup_object = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_SetupObject",
     error_kind=ERR_MAGIC,
 )

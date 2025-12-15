@@ -299,11 +299,11 @@ def test_explicit_conversion_overflow() -> None:
     assert int(y) == min_i64
 
     too_big = int() + 2**63
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = i64(too_big)
 
     too_small = int() - 2**63 - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = i64(too_small)
 
 def test_i64_from_large_small_literal() -> None:
@@ -323,9 +323,9 @@ def test_explicit_conversion_from_float() -> None:
     assert from_float(2**63 - 1024) == 2**63 - 1024
     assert from_float(-2**63) == -2**63
     # The error message could be better, but this is acceptable
-    with assertRaises(OverflowError, "int too large to convert to i64"):
+    with assertRaises(ValueError, "int too large to convert to i64"):
         assert from_float(float(2**63))
-    with assertRaises(OverflowError, "int too large to convert to i64"):
+    with assertRaises(ValueError, "int too large to convert to i64"):
         # One ulp below the lowest valid i64 value
         from_float(float(-2**63 - 2048))
 
@@ -430,13 +430,13 @@ def test_mixed_comparisons() -> None:
 
     int_too_big = int() + (1 << 63)
     int_too_small = int() - (1 << 63) - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i64_3 < int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_big < i64_3
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i64_3 > int_too_small
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small < i64_3
 
 def test_mixed_comparisons_32bit() -> None:
@@ -476,9 +476,9 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
 
     int_too_big = int() + (1 << 63)
     int_too_small = int() - (1 << 63) - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i64_3 & int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small & i64_3
 
 def test_for_loop() -> None:
@@ -591,10 +591,10 @@ def test_unbox_int_fails() -> None:
     with assertRaises(TypeError, msg):
         x: i64 = o
     o2: Any = 1 << 63
-    with assertRaises(OverflowError, "int too large to convert to i64"):
+    with assertRaises(ValueError, "int too large to convert to i64"):
         y: i64 = o2
     o3: Any = -(1 << 63 + 1)
-    with assertRaises(OverflowError, "int too large to convert to i64"):
+    with assertRaises(ValueError, "int too large to convert to i64"):
         z: i64 = o3
 
 class Uninit:

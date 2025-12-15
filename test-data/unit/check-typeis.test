@@ -122,7 +122,7 @@ def main(a: Union[str, int]) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.str"
     else:
         reveal_type(a)  # N: Revealed type is "builtins.int"
-    reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+    reveal_type(a)  # N: Revealed type is "builtins.str | builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsUnionOut]
@@ -131,7 +131,7 @@ from typing_extensions import TypeIs
 def is_foo(a: object) -> TypeIs[Union[int, str]]: pass
 def main(a: object) -> None:
     if is_foo(a):
-        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(a)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsUnionWithGeneric]
@@ -147,28 +147,28 @@ def f1(a: Union[List[int], List[str]]) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
     else:
         reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
-    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+    reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int] | builtins.list[builtins.str]"
 
 def f2(a: Union[List[int], int]) -> None:
     if is_int_list(a):
         reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
     else:
         reveal_type(a)  # N: Revealed type is "builtins.int"
-    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.int]"
+    reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int] | builtins.int"
 
 def f3(a: Union[List[bool], List[str]]) -> None:
     if is_int_seq(a):
         reveal_type(a)  # N: Revealed type is "builtins.list[builtins.bool]"
     else:
         reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
-    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.bool], builtins.list[builtins.str]]"
+    reveal_type(a)  # N: Revealed type is "builtins.list[builtins.bool] | builtins.list[builtins.str]"
 
 def f4(a: Union[List[int], int]) -> None:
     if is_seq(a):
         reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
     else:
         reveal_type(a)  # N: Revealed type is "builtins.int"
-    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.int]"
+    reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int] | builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsTupleGeneric]
@@ -197,26 +197,26 @@ def test3(t: tuple[A | B]) -> None:
     if is_tuple_of_B(t):
         reveal_type(t)  # N: Revealed type is "tuple[__main__.B]"
     else:
-        reveal_type(t)  # N: Revealed type is "tuple[Union[__main__.A, __main__.B]]"
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.A | __main__.B]"
 
 def test4(t: tuple[A | B, A | B]) -> None:
     if is_tuple_of_B(t):
         reveal_type(t)  # N: Revealed type is "tuple[__main__.B, __main__.B]"
     else:
-        reveal_type(t)  # N: Revealed type is "tuple[Union[__main__.A, __main__.B], Union[__main__.A, __main__.B]]"
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.A | __main__.B, __main__.A | __main__.B]"
 
 def test5(t: tuple[A | B, ...]) -> None:
     if is_tuple_of_B(t):
         reveal_type(t)  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
     else:
-        reveal_type(t)  # N: Revealed type is "builtins.tuple[Union[__main__.A, __main__.B], ...]"
+        reveal_type(t)  # N: Revealed type is "builtins.tuple[__main__.A | __main__.B, ...]"
 
 def test6(t: tuple[B, Unpack[tuple[A | B, ...]], B]) -> None:
     if is_tuple_of_B(t):
         # Should this be tuple[B, *tuple[B, ...], B]
         reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Never, __main__.B]"
     else:
-        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Unpack[builtins.tuple[Union[__main__.A, __main__.B], ...]], __main__.B]"
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Unpack[builtins.tuple[__main__.A | __main__.B, ...]], __main__.B]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsNonzeroFloat]
@@ -368,12 +368,12 @@ def is_int_bool(a: object) -> bool: pass
 
 def main(a: List[Optional[int]]) -> None:
     bb = filter(lambda x: x is not None, a)
-    reveal_type(bb)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
+    reveal_type(bb)  # N: Revealed type is "typing.Iterator[builtins.int | None]"
     # Also, if you replace 'bool' with 'Any' in the second overload, bb is Iterator[Any]
     cc = filter(is_int_typeis, a)
     reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int]"
     dd = filter(is_int_bool, a)
-    reveal_type(dd)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
+    reveal_type(dd)  # N: Revealed type is "typing.Iterator[builtins.int | None]"
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
@@ -426,7 +426,7 @@ def coverage2(obj: Any) -> bool:
     if not (isfloat(obj) or isstr(obj)):
         reveal_type(obj)  # N: Revealed type is "Any"
         return True
-    reveal_type(obj)  # N: Revealed type is "Union[builtins.float, builtins.str]"
+    reveal_type(obj)  # N: Revealed type is "builtins.float | builtins.str"
     return False
 [builtins fixtures/classmethod.pyi]
 
@@ -488,7 +488,7 @@ def g(x: object) -> None: ...
 def test(x: Any) -> None:
     if not(f(x) or x):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, Any]"
+    g(reveal_type(x))  # N: Revealed type is "__main__.A | Any"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsNestedRestrictionUnionOther]
@@ -504,7 +504,7 @@ def g(x: object) -> None: ...
 def test(x: object) -> None:
     if not(f(x) or f2(x)):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, __main__.B]"
+    g(reveal_type(x))  # N: Revealed type is "__main__.A | __main__.B"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsComprehensionSubtype]
@@ -539,7 +539,7 @@ def g(x: object) -> None: ...
 def test(x: List[Any]) -> None:
     if not(f(x) or isinstance(x, A)):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "builtins.list[Any]" and "__main__.A">]"
+    g(reveal_type(x))  # N: Revealed type is "builtins.list[builtins.str] | __main__.<subclass of "builtins.list[Any]" and "__main__.A">"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsMultipleCondition]
@@ -931,7 +931,7 @@ def main(f: Callable[[], int | Awaitable[int]]) -> None:
     if is_async_callable(f):
         reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> typing.Awaitable[Any]"
     else:
-        reveal_type(f)  # N: Revealed type is "def () -> Union[builtins.int, typing.Awaitable[builtins.int]]"
+        reveal_type(f)  # N: Revealed type is "def () -> builtins.int | typing.Awaitable[builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsWithDefer]

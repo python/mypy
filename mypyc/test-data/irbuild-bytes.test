@@ -185,3 +185,79 @@ L0:
     r10 = CPyBytes_Build(2, var, r9)
     b4 = r10
     return 1
+
+[case testOptionalBytesEquality]
+from typing import Optional
+
+def non_opt_opt(x: bytes, y: Optional[bytes]) -> bool:
+    return x != y
+[out]
+def non_opt_opt(x, y):
+    x :: bytes
+    y :: union[bytes, None]
+    r0 :: object
+    r1 :: bit
+    r2 :: bool
+    r3 :: bytes
+    r4 :: i32
+    r5, r6 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = y == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    goto L3
+L2:
+    r3 = unchecked borrow cast(bytes, y)
+    r4 = CPyBytes_Compare(r3, x)
+    r5 = r4 >= 0 :: signed
+    r6 = r4 != 1
+    r2 = r6
+L3:
+    keep_alive y
+    return r2
+
+[case testBytesMultiply]
+def b_times_i(s: bytes, n: int) -> bytes:
+    return s * n
+def i_times_b(s: bytes, n: int) -> bytes:
+    return n * s
+[out]
+def b_times_i(s, n):
+    s :: bytes
+    n :: int
+    r0 :: bytes
+L0:
+    r0 = CPyBytes_Multiply(s, n)
+    return r0
+def i_times_b(s, n):
+    s :: bytes
+    n :: int
+    r0 :: bytes
+L0:
+    r0 = CPyBytes_Multiply(s, n)
+    return r0
+
+[case testBytesTranslate]
+def f(b: bytes, table: bytes) -> bytes:
+    return b.translate(table)
+[out]
+def f(b, table):
+    b, table, r0 :: bytes
+L0:
+    r0 = CPyBytes_Translate(b, table)
+    return r0
+
+[case testBytesStartsWith]
+def f(a: bytes, b: bytes) -> bool:
+    return a.startswith(b)
+[out]
+def f(a, b):
+    a, b :: bytes
+    r0 :: i32
+    r1 :: bool
+L0:
+    r0 = CPyBytes_Startswith(a, b)
+    r1 = truncate r0: i32 to builtins.bool
+    return r1

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
@@ -26,16 +24,12 @@ from mypy.test.helpers import (
 semanal_files = find_test_files(
     pattern="semanal-*.test",
     exclude=[
-        "semanal-errors-python310.test",
         "semanal-errors.test",
+        "semanal-errors-python310.test",
         "semanal-typeinfo.test",
         "semanal-symtable.test",
     ],
 )
-
-
-if sys.version_info < (3, 10):
-    semanal_files.remove("semanal-python310.test")
 
 
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
@@ -92,9 +86,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 
 
 class SemAnalErrorSuite(DataSuite):
-    files = ["semanal-errors.test"]
-    if sys.version_info >= (3, 10):
-        semanal_files.append("semanal-errors-python310.test")
+    files = ["semanal-errors.test", "semanal-errors-python310.test"]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)

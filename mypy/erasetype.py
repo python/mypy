@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Container
-from typing import Callable, cast
+from collections.abc import Callable, Container
+from typing import cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -134,7 +134,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
-        return TypeType.make_normalized(t.item.accept(self), line=t.line)
+        return TypeType.make_normalized(
+            t.item.accept(self), line=t.line, is_type_form=t.is_type_form
+        )
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         raise RuntimeError("Type aliases should be expanded before accepting this visitor")
@@ -222,6 +224,7 @@ class TypeVarEraser(TypeTranslator):
         return t
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
+        # TODO: we should probably preserve prefix here.
         if self.erase_id is None or self.erase_id(t.id):
             return self.replacement
         return t

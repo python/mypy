@@ -151,7 +151,7 @@ def h(arg: C) -> None:
     pass
 
 x: Union[B, C, int]
-f(x)  # E: Argument 1 to "f" has incompatible type "Union[B, C, int]"; expected "Union[A, C]"
+f(x)  # E: Argument 1 to "f" has incompatible type "B | C | int"; expected "A | C"
 
 [builtins fixtures/args.pyi]
 

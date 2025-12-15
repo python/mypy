@@ -1026,11 +1026,11 @@ class C:
 
 c = C(x=b'x')
 c = C(x=None)
-C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "Optional[bytes]"
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "bytes | None"
 reveal_type(c.x)  # N: Revealed type is "builtins.str"
 reveal_type(C.x)  # N: Revealed type is "builtins.int"
 c.x = b'x'
-c.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[bytes]")
+c.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "bytes | None")
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]

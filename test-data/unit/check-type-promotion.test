@@ -73,7 +73,7 @@ if isinstance(y, float):
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int"
 
-reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+reveal_type(y)  # N: Revealed type is "builtins.int | builtins.float"
 
 if isinstance(y, int):
     reveal_type(y)  # N: Revealed type is "builtins.int"
@@ -86,7 +86,7 @@ else:
 x: complex = 1
 reveal_type(x)  # N: Revealed type is "builtins.complex"
 if isinstance(x, (int, float)):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.complex"
 
@@ -126,8 +126,8 @@ x: Union[float, complex]
 if isinstance(x, int):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
-reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.float | builtins.complex"
+reveal_type(x)  # N: Revealed type is "builtins.float | builtins.complex"
 [builtins fixtures/primitives.pyi]
 
 [case testIntersectionUsingPromotion6]
@@ -138,8 +138,8 @@ x: Union[str, complex]
 if isinstance(x, int):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.complex]"
-reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.str | builtins.complex"
+reveal_type(x)  # N: Revealed type is "builtins.str | builtins.complex"
 [builtins fixtures/primitives.pyi]
 
 [case testIntersectionUsingPromotion7]
@@ -150,23 +150,23 @@ x: Union[int, float, complex]
 if isinstance(x, int):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.float | builtins.complex"
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float | builtins.complex"
 
 if isinstance(x, float):
     reveal_type(x)  # N: Revealed type is "builtins.float"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.complex"
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float | builtins.complex"
 
 if isinstance(x, complex):
     reveal_type(x)  # N: Revealed type is "builtins.complex"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float"
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float | builtins.complex"
 [builtins fixtures/primitives.pyi]
 
 [case testIntersectionUsingPromotion8]
@@ -175,15 +175,15 @@ from typing import Union
 
 x: Union[int, float, complex]
 if isinstance(x, (int, float)):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.complex"
 if isinstance(x, (int, complex)):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.complex"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.float"
 if isinstance(x, (float, complex)):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.float | builtins.complex"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]

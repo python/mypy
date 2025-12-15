@@ -11,11 +11,12 @@ from __future__ import annotations
 from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes
+from mypy.errorcodes import ErrorCode
 
 
 class ErrorMessage(NamedTuple):
     value: str
-    code: codes.ErrorCode | None = None
+    code: ErrorCode | None = None
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
@@ -238,6 +239,9 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
     'Cannot access final instance attribute "{}" on class object'
 )
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
+
+# Disjoint bases
+INCOMPATIBLE_DISJOINT_BASES: Final = ErrorMessage('Class "{}" has incompatible disjoint bases')
 
 # Enum
 ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN: Final = ErrorMessage(

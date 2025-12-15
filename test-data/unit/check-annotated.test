@@ -8,7 +8,7 @@ reveal_type(x)  # N: Revealed type is "builtins.int"
 from typing import Union
 from typing_extensions import Annotated
 x: Annotated[Union[int, str], ...]
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotated2]
@@ -51,7 +51,7 @@ reveal_type(x)  # N: Revealed type is "builtins.int"
 from typing import Union
 from typing_extensions import Annotated
 x: Annotated[Annotated[Union[int, str], ...], ...]
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedNestedBadType]
@@ -114,7 +114,7 @@ from typing_extensions import Annotated
 T = TypeVar('T')
 Alias = Annotated[Union[T, str], ...]
 x: Alias[int]
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedSecondParamNonType]

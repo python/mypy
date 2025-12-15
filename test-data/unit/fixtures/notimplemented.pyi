@@ -10,9 +10,16 @@ class bool: pass
 class int: pass
 class str: pass
 class dict: pass
+class tuple: pass
+class ellipsis: pass
 
-class _NotImplementedType(Any):
-    __call__: NotImplemented  # type: ignore
-NotImplemented: _NotImplementedType
+import sys
+
+if sys.version_info >= (3, 10):  # type: ignore
+    from types import NotImplementedType
+    NotImplemented: NotImplementedType
+else:
+    class _NotImplementedType(Any): ...
+    NotImplemented: _NotImplementedType
 
 class BaseException: pass

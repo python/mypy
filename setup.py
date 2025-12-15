@@ -8,8 +8,8 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 9, 0):  # noqa: UP036, RUF100
-    sys.stderr.write("ERROR: You need Python 3.9 or later to use mypy.\n")
+if sys.version_info < (3, 10, 0):  # noqa: UP036, RUF100
+    sys.stderr.write("ERROR: You need Python 3.10 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -24,7 +24,7 @@ from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeGuard
+    from typing import TypeGuard
 
 
 def is_list_of_setuptools_extension(items: list[Any]) -> TypeGuard[list[Extension]]:
@@ -81,6 +81,8 @@ if USE_MYPYC:
             "__main__.py",
             "pyinfo.py",
             os.path.join("dmypy", "__main__.py"),
+            os.path.join("build_worker", "__main__.py"),
+            "exportjson.py",
             # Uses __getattr__/__setattr__
             "split_namespace.py",
             # Lies to mypy about code reachability
@@ -96,8 +98,10 @@ if USE_MYPYC:
     ) + (
         # Don't want to grab this accidentally
         os.path.join("mypyc", "lib-rt", "setup.py"),
+        os.path.join("mypyc", "lib-rt", "build_setup.py"),
         # Uses __file__ at top level https://github.com/mypyc/mypyc/issues/700
         os.path.join("mypyc", "__main__.py"),
+        os.path.join("mypyc", "build_setup.py"),  # for monkeypatching
     )
 
     everything = [os.path.join("mypy", x) for x in find_package_data("mypy", ["*.py"])] + [
@@ -154,6 +158,8 @@ if USE_MYPYC:
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == "win32" or force_multifile,
         log_trace=log_trace,
+        # Mypy itself is allowed to use native_internal extension.
+        depends_on_librt_internal=True,
     )
 
 else:

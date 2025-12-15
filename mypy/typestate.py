@@ -5,8 +5,7 @@ and potentially other mutable TypeInfo state. This module contains mutable globa
 
 from __future__ import annotations
 
-from typing import Final
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import VARIANCE_NOT_READY, TypeInfo
 from mypy.server.trigger import make_trigger

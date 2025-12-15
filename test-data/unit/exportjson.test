@@ -1,0 +1,280 @@
+-- Test cases for exporting mypy cache files to JSON (mypy.exportjson).
+--
+-- The tool is maintained on a best effort basis so we don't attempt to have
+-- full test coverage.
+--
+-- Some tests only ensure that *some* JSON is generated successfully. These
+-- have <not checked> as [out].
+
+[case testExportVar]
+x = 0
+[out]
+{
+    ".class": "MypyFile",
+    "_fullname": "main",
+    "names": {
+        ".class": "SymbolTable",
+        "x": {
+            ".class": "SymbolTableNode",
+            "kind": "Gdef",
+            "node": {
+                ".class": "Var",
+                "name": "x",
+                "fullname": "main.x",
+                "type": "builtins.int",
+                "setter_type": null,
+                "flags": [
+                    "is_ready",
+                    "is_inferred",
+                    "has_explicit_value"
+                ]
+            }
+        }
+    },
+    "is_stub": false,
+    "path": ...,
+    "is_partial_stub_package": false,
+    "future_import_flags": []
+}
+
+[case testExportClass]
+class C:
+    x: int
+[out]
+{
+    ".class": "MypyFile",
+    "_fullname": "main",
+    "names": {
+        ".class": "SymbolTable",
+        "C": {
+            ".class": "SymbolTableNode",
+            "kind": "Gdef",
+            "node": {
+                ".class": "TypeInfo",
+                "module_name": "main",
+                "fullname": "main.C",
+                "names": {
+                    ".class": "SymbolTable",
+                    "x": {
+                        ".class": "SymbolTableNode",
+                        "kind": "Mdef",
+                        "node": {
+                            ".class": "Var",
+                            "name": "x",
+                            "fullname": "main.C.x",
+                            "type": "builtins.int",
+                            "setter_type": null,
+                            "flags": [
+                                "is_initialized_in_class",
+                                "is_ready"
+                            ]
+                        }
+                    }
+                },
+                "defn": {
+                    ".class": "ClassDef",
+                    "name": "C",
+                    "fullname": "main.C",
+                    "type_vars": []
+                },
+                "abstract_attributes": [],
+                "type_vars": [],
+                "has_param_spec_type": false,
+                "bases": [
+                    "builtins.object"
+                ],
+                "mro": [
+                    "main.C",
+                    "builtins.object"
+                ],
+                "_promote": [],
+                "alt_promote": null,
+                "declared_metaclass": null,
+                "metaclass_type": null,
+                "tuple_type": null,
+                "typeddict_type": null,
+                "flags": [],
+                "metadata": {},
+                "slots": null,
+                "deletable_attributes": [],
+                "self_type": null,
+                "dataclass_transform_spec": null,
+                "deprecated": null
+            }
+        }
+    },
+    "is_stub": false,
+    "path": ...,
+    "is_partial_stub_package": false,
+    "future_import_flags": []
+}
+
+[case testExportCrossRef]
+from typing import Any
+[out]
+{
+    ".class": "MypyFile",
+    "_fullname": "main",
+    "names": {
+        ".class": "SymbolTable",
+        "Any": {
+            ".class": "SymbolTableNode",
+            "kind": "Gdef",
+            "cross_ref": "typing.Any"
+        }
+    },
+    "is_stub": false,
+    "path": ...,
+    "is_partial_stub_package": false,
+    "future_import_flags": []
+}
+
+[case testExportFuncDef]
+def foo(a: int) -> None: ...
+[out]
+{
+    ".class": "MypyFile",
+    "_fullname": "main",
+    "names": {
+        ".class": "SymbolTable",
+        "foo": {
+            ".class": "SymbolTableNode",
+            "kind": "Gdef",
+            "node": {
+                ".class": "FuncDef",
+                "name": "foo",
+                "fullname": "main.foo",
+                "arg_names": [
+                    "a"
+                ],
+                "arg_kinds": [
+                    0
+                ],
+                "type": {
+                    ".class": "CallableType",
+                    "arg_types": [
+                        "builtins.int"
+                    ],
+                    "arg_kinds": [
+                        0
+                    ],
+                    "arg_names": [
+                        "a"
+                    ],
+                    "ret_type": {
+                        ".class": "NoneType"
+                    },
+                    "fallback": "builtins.function",
+                    "name": "foo",
+                    "variables": [],
+                    "is_ellipsis_args": false,
+                    "implicit": false,
+                    "is_bound": false,
+                    "type_guard": null,
+                    "type_is": null,
+                    "from_concatenate": false,
+                    "imprecise_arg_kinds": false,
+                    "unpack_kwargs": false
+                },
+                "flags": [],
+                "abstract_status": 0,
+                "dataclass_transform_spec": null,
+                "deprecated": null,
+                "original_first_arg": "a"
+            }
+        }
+    },
+    "is_stub": false,
+    "path": ...,
+    "is_partial_stub_package": false,
+    "future_import_flags": []
+}
+
+[case testExportDifferentTypes]
+from __future__ import annotations
+
+from typing import Callable, Any, Literal, NoReturn, TypedDict, NamedTuple
+
+list_ann: list[int]
+any_ann: Any
+tuple_ann: tuple[int, str]
+union_ann: int | None
+callable_ann: Callable[[int], str]
+type_type_ann: type[int]
+literal_ann: Literal['x', 5, False]
+
+def f() -> NoReturn:
+    assert False
+
+BadType = 1
+x: BadType  # type: ignore
+
+class TD(TypedDict):
+    x: int
+
+td = TD(x=1)
+
+NT = NamedTuple("NT", [("x", int)])
+
+nt = NT(x=1)
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+[out]
+<not checked>
+
+[case testExportGenericTypes]
+from __future__ import annotations
+
+from typing import TypeVar, Callable
+from typing_extensions import TypeVarTuple, ParamSpec, Unpack, Concatenate
+
+T = TypeVar("T")
+
+def ident(x: T) -> T:
+    return x
+
+Ts = TypeVarTuple("Ts")
+
+def ts(t: tuple[Unpack[Ts]]) -> tuple[Unpack[Ts]]:
+    return t
+
+P = ParamSpec("P")
+
+def pspec(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
+    f(*args, **kwargs)
+
+def concat(f: Callable[Concatenate[int, P], None], *args: P.args, **kwargs: P.kwargs) -> None:
+    f(1, *args, **kwargs)
+
+[builtins fixtures/tuple.pyi]
+[out]
+<not checked>
+
+[case testExportDifferentNodes]
+from __future__ import annotations
+
+import typing
+
+from typing import overload, TypeVar
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: int | str) -> int | str: ...
+
+T = TypeVar("T")
+
+def deco(f: T) -> T:
+    return f
+
+@deco
+def foo(x: int) -> int: ...
+
+X = int
+x: X = 2
+
+[builtins fixtures/tuple.pyi]
+[out]
+<not checked>

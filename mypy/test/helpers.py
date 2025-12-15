@@ -8,9 +8,9 @@ import re
 import shutil
 import sys
 import time
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from re import Pattern
-from typing import IO, Any, Callable
+from typing import IO, Any
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -233,6 +233,9 @@ def clean_up(a: list[str]) -> list[str]:
         for p in prefix, prefix.replace(os.sep, "/"):
             if p != "/" and p != "//" and p != "\\" and p != "\\\\":
                 ss = ss.replace(p, "")
+        # Replace memory address with zeros
+        if "at 0x" in ss:
+            ss = re.sub(r"(at 0x)\w+>", r"\g<1>000000000000>", ss)
         # Ignore spaces at end of line.
         ss = re.sub(" +$", "", ss)
         # Remove pwd from driver.py's path
@@ -354,7 +357,6 @@ def parse_options(
         options = Options()
         options.error_summary = False
         options.hide_error_codes = True
-        options.force_union_syntax = True
 
     # Allow custom python version to override testfile_pyversion.
     if all(flag.split("=")[0] != "--python-version" for flag in flag_list):
@@ -362,6 +364,8 @@ def parse_options(
 
     if testcase.config.getoption("--mypy-verbose"):
         options.verbosity = testcase.config.getoption("--mypy-verbose")
+    if testcase.config.getoption("--mypy-num-workers"):
+        options.num_workers = testcase.config.getoption("--mypy-num-workers")
 
     return options
 
@@ -441,6 +445,8 @@ def check_test_output_files(
             if testcase.suite.native_sep and os.path.sep == "\\":
                 normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
             normalized_output = normalize_error_messages(normalized_output)
+        if os.path.basename(testcase.file) == "reports.test":
+            normalized_output = normalize_report_meta(normalized_output)
         assert_string_arrays_equal(
             expected_content.splitlines(),
             normalized_output,
@@ -464,9 +470,20 @@ def normalize_file_output(content: list[str], current_abs_path: str) -> list[str
     return result
 
 
+def normalize_report_meta(content: list[str]) -> list[str]:
+    # libxml 2.15 and newer emits the "modern" version of this <meta> element.
+    # Normalize the old style to look the same.
+    html_meta = '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
+    return ['<meta charset="UTF-8">' if x == html_meta else x for x in content]
+
+
 def find_test_files(pattern: str, exclude: list[str] | None = None) -> list[str]:
     return [
         path.name
         for path in (pathlib.Path(test_data_prefix).rglob(pattern))
         if path.name not in (exclude or [])
     ]
+
+
+def remove_typevar_ids(a: list[str]) -> list[str]:
+    return [re.sub(r"`-?\d+", "", line) for line in a]

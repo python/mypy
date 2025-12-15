@@ -20,6 +20,9 @@ class AssignmentTargetRegister(AssignmentTarget):
         self.register = register
         self.type = register.type
 
+    def __repr__(self) -> str:
+        return f"AssignmentTargetRegister({self.register.name})"
+
 
 class AssignmentTargetIndex(AssignmentTarget):
     """base[index] as assignment target"""
@@ -30,6 +33,9 @@ class AssignmentTargetIndex(AssignmentTarget):
         # TODO: object_rprimitive won't be right for user-defined classes. Store the
         #       lvalue type in mypy and use a better type to avoid unneeded boxing.
         self.type = object_rprimitive
+
+    def __repr__(self) -> str:
+        return f"AssignmentTargetIndex({self.base!r}, {self.index!r})"
 
 
 class AssignmentTargetAttr(AssignmentTarget):
@@ -48,6 +54,10 @@ class AssignmentTargetAttr(AssignmentTarget):
             self.obj_type = object_rprimitive
             self.type = object_rprimitive
 
+    def __repr__(self) -> str:
+        can_borrow_str = ", can_borrow=True" if self.can_borrow else ""
+        return f"AssignmentTargetAttr({self.obj!r}.{self.attr}{can_borrow_str})"
+
 
 class AssignmentTargetTuple(AssignmentTarget):
     """x, ..., y as assignment target"""
@@ -55,3 +65,6 @@ class AssignmentTargetTuple(AssignmentTarget):
     def __init__(self, items: list[AssignmentTarget], star_idx: int | None = None) -> None:
         self.items = items
         self.star_idx = star_idx
+
+    def __repr__(self) -> str:
+        return f"AssignmentTargetTuple({self.items}, {self.star_idx})"

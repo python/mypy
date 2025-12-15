@@ -658,7 +658,7 @@ reveal_type(f2('a')) # N: Revealed type is "__main__.Node[builtins.list[builtins
 
 def f3() -> Third:
     return Node([1], ['x'])
-reveal_type(f3()) # N: Revealed type is "Union[builtins.int, __main__.Node[builtins.list[builtins.int], builtins.list[builtins.str]]]"
+reveal_type(f3()) # N: Revealed type is "builtins.int | __main__.Node[builtins.list[builtins.int], builtins.list[builtins.str]]"
 
 [builtins fixtures/list.pyi]
 
@@ -793,7 +793,7 @@ UNode = Union[int, Node[T]]
 x = 1 # type: UNode[int]
 
 x + 1 # E: Unsupported left operand type for + ("Node[int]") \
-      # N: Left operand is of type "Union[int, Node[int]]"
+      # N: Left operand is of type "int | Node[int]"
 if not isinstance(x, Node):
     x + 1
 
@@ -807,17 +807,17 @@ def f(x: T) -> UNode[T]:
     else:
         return 1
 
-reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, __main__.Node[builtins.int]]"
+reveal_type(f(1)) # N: Revealed type is "builtins.int | __main__.Node[builtins.int]"
 
 TNode = Union[T, Node[int]]
-s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "int", variable has type "Union[str, Node[int]]")
+s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "int", variable has type "str | Node[int]")
 
 if not isinstance(s, str):
     s.x = 1
 
 z = None # type: TNode # Same as TNode[Any]
 z.x
-z.foo() # E: Item "Node[int]" of "Union[Any, Node[int]]" has no attribute "foo"
+z.foo() # E: Item "Node[int]" of "Any | Node[int]" has no attribute "foo"
 
 [builtins fixtures/isinstance.pyi]
 
@@ -999,7 +999,7 @@ U = Union[int]
 x: O
 y: U
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(x)  # N: Revealed type is "builtins.int | None"
 reveal_type(y)  # N: Revealed type is "builtins.int"
 
 U[int]  # E: Type application targets a non-generic function or class
@@ -1028,7 +1028,7 @@ class C:
     def h(self, x: c) -> None: pass  # E: Variable "__main__.C.c" is not valid as a type \
                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     x: b
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [out]
 
 [case testGenericTypeAliasesRuntimeExpressionsInstance]
@@ -2985,7 +2985,7 @@ def lift(f: F[T]) -> F[Optional[T]]: ...
 def g(x: T) -> T:
     return x
 
-reveal_type(lift(g))  # N: Revealed type is "def [T] (Union[T`1, None]) -> Union[T`1, None]"
+reveal_type(lift(g))  # N: Revealed type is "def [T] (T`1 | None) -> T`1 | None"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrder]
@@ -3576,9 +3576,9 @@ def draw(
     colors3: A[str] | B[str] | C[int] | D[int | str],
 ) -> None:
     for c1, c2, c3 in zip2(colors1, colors2, colors3):
-        reveal_type(c1)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        reveal_type(c3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(c1)  # N: Revealed type is "builtins.int | builtins.str"
+        reveal_type(c2)  # N: Revealed type is "builtins.int | builtins.str"
+        reveal_type(c3)  # N: Revealed type is "builtins.int | builtins.str"
 
 def takes_int_str_none(x: int | str | None) -> None: ...
 
