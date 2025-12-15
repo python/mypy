@@ -2497,7 +2497,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def check_var_args_kwargs(
         self, arg_types: list[Type], arg_kinds: list[ArgKind], context: Context
-    ):
+    ) -> None:
         for arg_type, arg_kind in zip(arg_types, arg_kinds):
             arg_type = get_proper_type(arg_type)
             if arg_kind == nodes.ARG_STAR and not self.is_valid_var_arg(arg_type):
