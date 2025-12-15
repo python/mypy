@@ -334,7 +334,7 @@ def f(**kwargs: 'A') -> None: pass
 b: Mapping
 d: Mapping[A, A]
 m: Mapping[str, A]
-f(**d)         # E: Keywords must be strings
+f(**d)         # E: Argument after ** must have string keys
 f(**m)
 f(**b)
 class A: pass
@@ -354,13 +354,16 @@ from typing import Dict, Any, Optional
 class A: pass
 def f(**kwargs: 'A') -> None: pass
 d = {} # type: Dict[A, A]
-f(**d)         # E: Keywords must be strings
+f(**d)         # E: Argument after ** must have string keys
 f(**A())       # E: Argument after ** must be a mapping, not "A"
 kwargs: Optional[Any]
 f(**kwargs)    # E: Argument after ** must be a mapping, not "Any | None"
 
 def g(a: int) -> None: pass
 g(a=1, **4)  # E: Argument after ** must be a mapping, not "int"
+
+def main(f: Any) -> None:
+    f(**3)  # E: Argument after ** must be a mapping, not "int"
 [builtins fixtures/dict.pyi]
 
 [case testPassingKeywordVarArgsToNonVarArgsFunction]
@@ -449,7 +452,7 @@ f(b) # E: Argument 1 to "f" has incompatible type "dict[str, str]"; expected "in
 f(**b) # E: Argument 1 to "f" has incompatible type "**dict[str, str]"; expected "int"
 
 c = {0: 0}
-f(**c) # E: Keywords must be strings
+f(**c) # E: Argument after ** must have string keys
 [builtins fixtures/dict.pyi]
 
 [case testCallStar2WithStar]
@@ -566,4 +569,14 @@ main:37: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expec
 main:38: error: Argument after ** must be a mapping, not "C[str, float]"
 main:39: error: Argument after ** must be a mapping, not "D"
 main:41: error: Argument 1 to "foo" has incompatible type "**dict[str, str]"; expected "float"
+[builtins fixtures/dict.pyi]
+
+[case testLiteralKwargs]
+from typing import Any, Literal
+kw: dict[Literal["a", "b"], Any]
+def func(a, b): ...
+func(**kw)
+
+badkw: dict[Literal["one", 1], Any]
+func(**badkw)  # E: Argument after ** must have string keys
 [builtins fixtures/dict.pyi]
