@@ -2540,6 +2540,10 @@ def last_known_value() -> None:
 [builtins fixtures/primitives.pyi]
 
 [case walrus_operator_in_comprehension_infers_type]
+# Ensure that assignment expressions (:=) inside comprehensions
+# correctly infer and propagate the assigned variable's type
+# outside the comprehension scope.
+
 from dataclasses import dataclass
 
 @dataclass
