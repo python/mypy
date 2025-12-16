@@ -41,9 +41,21 @@ from typing import (
     runtime_checkable,
     type_check_only,
 )
-from typing_extensions import Self, TypeAlias, Unpack, deprecated
+from typing_extensions import LiteralString, Self, TypeAlias, Unpack, deprecated
 
 from . import path as _path
+
+# Re-export common definitions from os.path to reduce duplication
+from .path import (
+    altsep as altsep,
+    curdir as curdir,
+    defpath as defpath,
+    devnull as devnull,
+    extsep as extsep,
+    pardir as pardir,
+    pathsep as pathsep,
+    sep as sep,
+)
 
 __all__ = [
     "F_OK",
@@ -162,7 +174,8 @@ __all__ = [
     "write",
 ]
 if sys.version_info >= (3, 14):
-    __all__ += ["readinto"]
+    # reload_environ was added to __all__ in Python 3.14.1
+    __all__ += ["readinto", "reload_environ"]
 if sys.platform == "darwin" and sys.version_info >= (3, 12):
     __all__ += ["PRIO_DARWIN_BG", "PRIO_DARWIN_NONUI", "PRIO_DARWIN_PROCESS", "PRIO_DARWIN_THREAD"]
 if sys.platform == "darwin" and sys.version_info >= (3, 10):
@@ -674,19 +687,8 @@ if sys.platform != "win32":
     ST_NOSUID: Final[int]
     ST_RDONLY: Final[int]
 
-curdir: str
-pardir: str
-sep: str
-if sys.platform == "win32":
-    altsep: str
-else:
-    altsep: str | None
-extsep: str
-pathsep: str
-defpath: str
 linesep: Literal["\n", "\r\n"]
-devnull: str
-name: str
+name: LiteralString
 
 F_OK: Final = 0
 R_OK: Final = 4
@@ -728,6 +730,9 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
 environ: _Environ[str]
 if sys.platform != "win32":
     environb: _Environ[bytes]
+
+if sys.version_info >= (3, 14):
+    def reload_environ() -> None: ...
 
 if sys.version_info >= (3, 11) or sys.platform != "win32":
     EX_OK: Final[int]
@@ -1472,34 +1477,66 @@ else:
     def WEXITSTATUS(status: int) -> int: ...
     def WSTOPSIG(status: int) -> int: ...
     def WTERMSIG(status: int) -> int: ...
-    def posix_spawn(
-        path: StrOrBytesPath,
-        argv: _ExecVArgs,
-        env: _ExecEnv,
-        /,
-        *,
-        file_actions: Sequence[tuple[Any, ...]] | None = ...,
-        setpgroup: int | None = ...,
-        resetids: bool = ...,
-        setsid: bool = ...,
-        setsigmask: Iterable[int] = ...,
-        setsigdef: Iterable[int] = ...,
-        scheduler: tuple[Any, sched_param] | None = ...,
-    ) -> int: ...
-    def posix_spawnp(
-        path: StrOrBytesPath,
-        argv: _ExecVArgs,
-        env: _ExecEnv,
-        /,
-        *,
-        file_actions: Sequence[tuple[Any, ...]] | None = ...,
-        setpgroup: int | None = ...,
-        resetids: bool = ...,
-        setsid: bool = ...,
-        setsigmask: Iterable[int] = ...,
-        setsigdef: Iterable[int] = ...,
-        scheduler: tuple[Any, sched_param] | None = ...,
-    ) -> int: ...
+
+    if sys.version_info >= (3, 13):
+        def posix_spawn(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv | None,  # None allowed starting in 3.13
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+        def posix_spawnp(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv | None,  # None allowed starting in 3.13
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+    else:
+        def posix_spawn(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv,
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+        def posix_spawnp(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv,
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+
     POSIX_SPAWN_OPEN: Final = 0
     POSIX_SPAWN_CLOSE: Final = 1
     POSIX_SPAWN_DUP2: Final = 2

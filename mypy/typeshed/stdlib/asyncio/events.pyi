@@ -602,18 +602,25 @@ class AbstractEventLoop:
     @abstractmethod
     async def shutdown_default_executor(self) -> None: ...
 
-# This class does not exist at runtime, but stubtest complains if it's marked as
-# @type_check_only because it has an alias that does exist at runtime. See mypy#19568.
-# @type_check_only
-class _AbstractEventLoopPolicy:
-    @abstractmethod
-    def get_event_loop(self) -> AbstractEventLoop: ...
-    @abstractmethod
-    def set_event_loop(self, loop: AbstractEventLoop | None) -> None: ...
-    @abstractmethod
-    def new_event_loop(self) -> AbstractEventLoop: ...
-    # Child processes handling (Unix only).
-    if sys.version_info < (3, 14):
+if sys.version_info >= (3, 14):
+    class _AbstractEventLoopPolicy:
+        @abstractmethod
+        def get_event_loop(self) -> AbstractEventLoop: ...
+        @abstractmethod
+        def set_event_loop(self, loop: AbstractEventLoop | None) -> None: ...
+        @abstractmethod
+        def new_event_loop(self) -> AbstractEventLoop: ...
+
+else:
+    @type_check_only
+    class _AbstractEventLoopPolicy:
+        @abstractmethod
+        def get_event_loop(self) -> AbstractEventLoop: ...
+        @abstractmethod
+        def set_event_loop(self, loop: AbstractEventLoop | None) -> None: ...
+        @abstractmethod
+        def new_event_loop(self) -> AbstractEventLoop: ...
+        # Child processes handling (Unix only).
         if sys.version_info >= (3, 12):
             @abstractmethod
             @deprecated("Deprecated since Python 3.12; removed in Python 3.14.")
@@ -627,7 +634,6 @@ class _AbstractEventLoopPolicy:
             @abstractmethod
             def set_child_watcher(self, watcher: AbstractChildWatcher) -> None: ...
 
-if sys.version_info < (3, 14):
     AbstractEventLoopPolicy = _AbstractEventLoopPolicy
 
 if sys.version_info >= (3, 14):

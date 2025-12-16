@@ -8,8 +8,8 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from collections.abc import Iterable, Sequence
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, TypeVar, cast
 
 from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
@@ -319,7 +319,7 @@ def class_callable(
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
+        isinstance(explicit_type, (Instance, TupleType, UninhabitedType, LiteralType))
         # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
@@ -501,14 +501,14 @@ def erase_to_bound(t: Type) -> Type:
         return t.upper_bound
     if isinstance(t, TypeType):
         if isinstance(t.item, TypeVarType):
-            return TypeType.make_normalized(t.item.upper_bound)
+            return TypeType.make_normalized(t.item.upper_bound, is_type_form=t.is_type_form)
     return t
 
 
 def callable_corresponding_argument(
     typ: NormalizedCallableType | Parameters, model: FormalArgument
 ) -> FormalArgument | None:
-    """Return the argument a function that corresponds to `model`"""
+    """Return the argument of a function that corresponds to `model`"""
 
     by_name = typ.argument_by_name(model.name)
     by_pos = typ.argument_by_position(model.pos)
@@ -522,17 +522,23 @@ def callable_corresponding_argument(
         # taking both *args and **args, or a pair of functions like so:
 
         # def right(a: int = ...) -> None: ...
-        # def left(__a: int = ..., *, a: int = ...) -> None: ...
+        # def left(x: int = ..., /, *, a: int = ...) -> None: ...
         from mypy.meet import meet_types
 
         if (
             not (by_name.required or by_pos.required)
             and by_pos.name is None
             and by_name.pos is None
+            # This is not principled, but prevents a crash. It's weird to have a FormalArgument
+            # that has an UnpackType.
+            and not isinstance(by_name.typ, UnpackType)
+            and not isinstance(by_pos.typ, UnpackType)
         ):
             return FormalArgument(
                 by_name.name, by_pos.pos, meet_types(by_name.typ, by_pos.typ), False
             )
+        return by_name
+
     return by_name if by_name is not None else by_pos
 
 
@@ -666,15 +672,15 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             else:
                 # If not, check if we've seen a supertype of this type
                 for j, tj in enumerate(new_items):
-                    tj = get_proper_type(tj)
+                    proper_tj = get_proper_type(tj)
                     # If tj is an Instance with a last_known_value, do not remove proper_ti
                     # (unless it's an instance with the same last_known_value)
                     if (
-                        isinstance(tj, Instance)
-                        and tj.last_known_value is not None
+                        isinstance(proper_tj, Instance)
+                        and proper_tj.last_known_value is not None
                         and not (
                             isinstance(proper_ti, Instance)
-                            and tj.last_known_value == proper_ti.last_known_value
+                            and proper_tj.last_known_value == proper_ti.last_known_value
                         )
                     ):
                         continue
@@ -789,9 +795,9 @@ def false_only(t: Type) -> ProperType:
             if not ret_type.can_be_false:
                 return UninhabitedType(line=t.line)
         elif isinstance(t, Instance):
-            if t.type.is_final or t.type.is_enum:
+            if (t.type.is_final or t.type.is_enum) and state.strict_optional:
                 return UninhabitedType(line=t.line)
-        elif isinstance(t, LiteralType) and t.is_enum_literal():
+        elif isinstance(t, LiteralType) and t.is_enum_literal() and state.strict_optional:
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)

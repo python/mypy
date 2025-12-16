@@ -205,7 +205,7 @@ async def f() -> None:
         pass
 
     async for z in C():  # type: Union[int, str]
-        reveal_type(z)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(z)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
@@ -952,7 +952,7 @@ async def foo(x: B) -> A: ...
 async def foo(x): ...
 
 async def bar(x: Union[A, B]) -> None:
-    reveal_type(await foo(x))  # N: Revealed type is "Union[__main__.B, __main__.A]"
+    reveal_type(await foo(x))  # N: Revealed type is "__main__.B | __main__.A"
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

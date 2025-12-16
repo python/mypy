@@ -930,15 +930,6 @@ These options may only be set in the global section (``[mypy]``).
 
     Show absolute paths to files.
 
-.. confval:: force_union_syntax
-
-    :type: boolean
-    :default: False
-
-    Always use ``Union[]`` and ``Optional[]`` for union types
-    in error messages (instead of the ``|`` operator),
-    even on Python 3.10+.
-
 Incremental mode
 ****************
 
@@ -1152,6 +1143,15 @@ These options may only be set in the global section (``[mypy]``).
     Causes mypy to generate a JUnit XML test result document with
     type checking results. This can make it easier to integrate mypy
     with continuous integration (CI) tools.
+
+.. confval:: junit_format
+
+    :type: string
+    :default: ``global``
+
+    If junit_xml is set, specifies format.
+    global (default): single test with all errors;
+    per_file: one test entry per file with failures.
 
 .. confval:: scripts_are_modules
 

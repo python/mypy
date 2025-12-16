@@ -79,11 +79,38 @@ binary_op(
     steals=[True, False],
 )
 
+# str * int
+binary_op(
+    name="*",
+    arg_types=[str_rprimitive, int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Multiply",
+    error_kind=ERR_MAGIC,
+)
+
+# int * str
+binary_op(
+    name="*",
+    arg_types=[int_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Multiply",
+    error_kind=ERR_MAGIC,
+    ordering=[1, 0],
+)
+
 # str1 == str2 (very common operation, so we provide our own)
 str_eq = custom_primitive_op(
     name="str_eq",
     c_function_name="CPyStr_Equal",
     arg_types=[str_rprimitive, str_rprimitive],
+    return_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
+str_eq_literal = custom_primitive_op(
+    name="str_eq_literal",
+    c_function_name="CPyStr_EqualLiteral",
+    arg_types=[str_rprimitive, str_rprimitive, c_pyssize_t_rprimitive],
     return_type=bool_rprimitive,
     error_kind=ERR_NEVER,
 )

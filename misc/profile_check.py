@@ -78,22 +78,22 @@ def check_requirements() -> None:
     if sys.platform != "linux":
         # TODO: How to make this work on other platforms?
         sys.exit("error: Only Linux is supported")
+    else:  # fun fact/todo: we have to use else here, because of https://github.com/python/mypy/issues/10773
+        try:
+            subprocess.run(["perf", "-h"], capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("error: The 'perf' profiler is not installed")
+            sys.exit(1)
 
-    try:
-        subprocess.run(["perf", "-h"], capture_output=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("error: The 'perf' profiler is not installed")
-        sys.exit(1)
+        try:
+            subprocess.run(["clang", "--version"], capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("error: The clang compiler is not installed")
+            sys.exit(1)
 
-    try:
-        subprocess.run(["clang", "--version"], capture_output=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("error: The clang compiler is not installed")
-        sys.exit(1)
-
-    if not os.path.isfile("mypy_self_check.ini"):
-        print("error: Run this in the mypy repository root")
-        sys.exit(1)
+        if not os.path.isfile("mypy_self_check.ini"):
+            print("error: Run this in the mypy repository root")
+            sys.exit(1)
 
 
 def main() -> None:
