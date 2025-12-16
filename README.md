@@ -188,3 +188,4 @@ version of mypy, directly install a binary from
 <https://github.com/mypyc/mypy_mypyc-wheels/releases/latest>.
 
 To contribute to the mypyc project, check out the issue tracker at <https://github.com/mypyc/mypyc>
+
