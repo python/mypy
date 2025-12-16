@@ -14,7 +14,8 @@ See comment below for more documentation.
 
 from __future__ import annotations
 
-from typing import Callable, Final, Optional, cast
+from collections.abc import Callable
+from typing import Final, cast
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -69,6 +70,7 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_sequence_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -80,6 +82,7 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    get_expr_length_value,
     sequence_from_generator_preallocate_helper,
     translate_list_comprehension,
     translate_set_comprehension,
@@ -99,7 +102,7 @@ from mypyc.primitives.dict_ops import (
     isinstance_dict,
 )
 from mypyc.primitives.float_ops import isinstance_float
-from mypyc.primitives.generic_ops import generic_setattr
+from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import isinstance_int
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
@@ -122,7 +125,7 @@ from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 #
 # Specializers take three arguments: the IRBuilder, the CallExpr being
 # compiled, and the RefExpr that is the left hand side of the call.
-Specializer = Callable[["IRBuilder", CallExpr, RefExpr], Optional[Value]]
+Specializer = Callable[["IRBuilder", CallExpr, RefExpr], Value | None]
 
 # Dictionary containing all configured specializers.
 #
@@ -221,17 +224,11 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
         arg = expr.args[0]
         expr_rtype = builder.node_type(arg)
-        if isinstance(expr_rtype, RTuple):
-            # len() of fixed-length tuple can be trivially determined
-            # statically, though we still need to evaluate it.
-            builder.accept(arg)
-            return Integer(len(expr_rtype.types))
+        # NOTE (?) I'm not sure if my handling of can_borrow is correct here
+        obj = builder.accept(arg, can_borrow=is_list_rprimitive(expr_rtype))
+        if is_sequence_rprimitive(expr_rtype) or isinstance(expr_rtype, RTuple):
+            return get_expr_length_value(builder, arg, obj, expr.line, use_pyssize_t=False)
         else:
-            if is_list_rprimitive(builder.node_type(arg)):
-                borrow = True
-            else:
-                borrow = False
-            obj = builder.accept(arg, can_borrow=borrow)
             return builder.builtin_len(obj, expr.line)
     return None
 
@@ -1103,7 +1100,14 @@ def translate_object_new(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     method_args = fn.fitem.arg_names
     if isinstance(typ_arg, NameExpr) and len(method_args) > 0 and method_args[0] == typ_arg.name:
         subtype = builder.accept(expr.args[0])
-        return builder.add(Call(ir.setup, [subtype], expr.line))
+        subs = ir.subclasses()
+        if subs is not None and len(subs) == 0:
+            return builder.add(Call(ir.setup, [subtype], expr.line))
+        # Call a function that dynamically resolves the setup function of extension classes from the type object.
+        # This is necessary because the setup involves default attribute initialization and setting up
+        # the vtable which are specific to a given type and will not work if a subtype is created using
+        # the setup function of its base.
+        return builder.call_c(setup_object, [subtype], expr.line)
 
     return None
 

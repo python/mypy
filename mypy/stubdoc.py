@@ -12,8 +12,7 @@ import keyword
 import re
 import tokenize
 from collections.abc import MutableMapping, MutableSequence, Sequence
-from typing import Any, Final, NamedTuple
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, NamedTuple, TypeAlias as _TypeAlias
 
 import mypy.util
 
@@ -232,6 +231,19 @@ class DocStringParser:
             self.arg_name = self.accumulator
             self.accumulator = ""
             self.state.append(STATE_ARGUMENT_TYPE)
+
+        elif (
+            token.type == tokenize.OP
+            and token.string == ":"
+            and self.state[-1] == STATE_ARGUMENT_TYPE
+            and self.accumulator == ""
+        ):
+            # We thought we were after the colon of an "arg_name: arg_type"
+            # stanza, so we were expecting an "arg_type" now. However, we ended
+            # up with "arg_name::" (with two colons). That's a C++ type name,
+            # not an argument name followed by a Python type. This function
+            # signature is malformed / invalid.
+            self.reset()
 
         elif (
             token.type == tokenize.OP
