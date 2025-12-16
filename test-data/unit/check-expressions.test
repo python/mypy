@@ -2538,3 +2538,35 @@ def last_known_value() -> None:
     x, y, z = xy  # E: Unpacking a string is disallowed
     reveal_type(z)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
+
+[case walrus_operator_in_comprehension_infers_type]
+from dataclasses import dataclass
+
+@dataclass
+class Notification:
+    request_reference: str
+
+@dataclass
+class Case:
+    title: str
+    notifications: list[Notification]
+    initial_reference: str = ""
+
+cases = [
+    *[
+        Case(
+            title="example",
+            initial_reference=(request_reference := "abc"),
+            notifications=[
+                Notification(
+                    request_reference=request_reference,
+                ),
+            ],
+        )
+        for _ in (1, 2)
+    ],
+]
+
+reveal_type(request_reference)
+[out]
+builtins.str
