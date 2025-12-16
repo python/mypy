@@ -1216,14 +1216,22 @@ reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testTypeAliasTypeNoUnpackInTypeParams311]
+[case testTypeAliasTypeNoUnpackInTypeParams1_311]
 # flags: --python-version 3.11
 from typing_extensions import TypeAliasType, TypeVar, TypeVarTuple, Unpack
 
-T = TypeVar("T")
 Ts = TypeVarTuple("Ts")
 
+# note that the following is a blocker, so the assignment after isn't checked
 Ta1 = TypeAliasType("Ta1", None, type_params=(*Ts,))  # E: can't use starred expression here
+[builtins fixtures/tuple.pyi]
+
+[case testTypeAliasTypeNoUnpackInTypeParams2_311]
+# flags: --python-version 3.11
+from typing_extensions import TypeAliasType, TypeVar, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
 Ta2 = TypeAliasType("Ta2", None, type_params=(Unpack[Ts],))  # E: Free type variable expected in type_params argument to TypeAliasType \
                                                              # N: Don't Unpack type variables in type_params
 

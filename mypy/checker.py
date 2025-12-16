@@ -409,6 +409,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         path: str,
         plugin: Plugin,
         per_line_checking_time_ns: dict[int, int],
+        semanal_delayed_errors: dict[tuple[str, int, int], list[ErrorInfo]],
     ) -> None:
         """Construct a type checker.
 
@@ -442,6 +443,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.inferred_attribute_types = None
         self.allow_constructor_cache = True
         self.local_type_map = LocalTypeMap(self)
+        self.semanal_delayed_errors = semanal_delayed_errors
 
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
@@ -637,6 +639,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def accept(self, stmt: Statement) -> None:
         """Type check a node in the given type context."""
+        curr_module = self.scope.stack[0]
+        if isinstance(curr_module, MypyFile):
+            key = (curr_module.fullname, stmt.line, stmt.column)
+            if key in self.semanal_delayed_errors:
+                self.msg.add_errors(self.semanal_delayed_errors[key])
+
         try:
             stmt.accept(self)
         except Exception as err:
@@ -1226,6 +1234,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         If type_override is provided, use it as the function type.
         """
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
+
+        # top-level function definitions are one of the main
+        # things errors can be associated with, and are sometimes masked
+        # e.g. by a decorator. it's better to make sure to flush any errors
+        # just in case.
+        curr_module = self.scope.stack[0]
+        if isinstance(curr_module, MypyFile):
+            key = (curr_module.fullname, defn.line, defn.column)
+            if key in self.semanal_delayed_errors:
+                self.msg.add_errors(self.semanal_delayed_errors[key])
 
         enclosing_node_deferred = self.current_node_deferred
         with self.enter_partial_types(is_function=True):

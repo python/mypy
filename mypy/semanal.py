@@ -59,7 +59,7 @@ from typing_extensions import assert_never
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
 from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode
-from mypy.errors import Errors, report_internal_error
+from mypy.errors import ErrorInfo, Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.message_registry import ErrorMessage
 from mypy.messages import (
@@ -545,6 +545,8 @@ class SemanticAnalyzer(
         #   [b.py]
         #     import foo.bar
         self.transitive_submodule_imports: dict[str, set[str]] = {}
+
+        self.delayed_errors: dict[tuple[str, int, int], list[ErrorInfo]] = {}
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -7093,6 +7095,7 @@ class SemanticAnalyzer(
     ) -> SymbolNode | None:
         if symbol_node is None:
             return None
+        # TODO: remove supposedly unnecessary `f`
         # I promise this type checks; I'm just making mypyc issues go away.
         # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
         # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
@@ -7577,10 +7580,25 @@ class SemanticAnalyzer(
         return True
 
     def accept(self, node: Node) -> None:
-        try:
-            node.accept(self)
-        except Exception as err:
-            report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
+        should_filter = isinstance(node, Statement) and not self.options.semantic_analysis_only
+        if should_filter:
+            filter_errors: bool | Callable[[str, ErrorInfo], bool] = lambda _, e: not e.blocker
+        else:
+            filter_errors = False
+        with self.msg.filter_errors(filter_errors=filter_errors, save_filtered_errors=True) as msg:
+            try:
+                node.accept(self)
+            except Exception as err:
+                report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
+
+        errors = msg.filtered_errors()
+        if errors:
+            # since nodes aren't hashable, carry things through values
+            assign_to = (self.cur_mod_id, node.line, node.column)
+            self.delayed_errors.setdefault(assign_to, [])
+            self.delayed_errors[assign_to].extend(errors)
+
+            # print(node, [e.message for e in self.delayed_errors[node]])
 
     def expr_to_analyzed_type(
         self,
