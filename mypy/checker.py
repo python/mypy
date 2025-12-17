@@ -529,7 +529,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 self.msg.unreachable_statement(d)
                                 break
                         else:
-                            self.accept(d)
+                            self.accept_with_delayed_errors(d)
 
                 assert not self.current_node_deferred
 
@@ -637,14 +637,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             self.msg.cannot_determine_type(name, context)
 
-    def accept(self, stmt: Statement) -> None:
-        """Type check a node in the given type context."""
+    def accept_with_delayed_errors(self, stmt: Statement) -> None:
         curr_module = self.scope.stack[0]
         if isinstance(curr_module, MypyFile):
             key = (curr_module.fullname, stmt.line, stmt.column)
             if key in self.semanal_delayed_errors:
                 self.msg.add_errors(self.semanal_delayed_errors[key])
 
+        self.accept(stmt)
+
+    def accept(self, stmt: Statement) -> None:
+        """Type check a node in the given type context."""
         try:
             stmt.accept(self)
         except Exception as err:
@@ -1234,16 +1237,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         If type_override is provided, use it as the function type.
         """
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
-
-        # top-level function definitions are one of the main
-        # things errors can be associated with, and are sometimes masked
-        # e.g. by a decorator. it's better to make sure to flush any errors
-        # just in case.
-        curr_module = self.scope.stack[0]
-        if isinstance(curr_module, MypyFile):
-            key = (curr_module.fullname, defn.line, defn.column)
-            if key in self.semanal_delayed_errors:
-                self.msg.add_errors(self.semanal_delayed_errors[key])
 
         enclosing_node_deferred = self.current_node_deferred
         with self.enter_partial_types(is_function=True):
@@ -3174,7 +3167,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.msg.unreachable_statement(s)
                     break
             else:
-                self.accept(s)
+                self.accept_with_delayed_errors(s)
                 # Clear expression cache after each statement to avoid unlimited growth.
                 self.expr_checker.expr_cache.clear()
 
