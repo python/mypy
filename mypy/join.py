@@ -108,10 +108,10 @@ class InstanceJoiner:
                         new_type = join_types(ta, sa, self)
                         if len(type_var.values) != 0 and new_type not in type_var.values:
                             self.seen_instances.pop()
-                            return object_from_instance(t, last_known_value=last_known_value)
+                            return object_from_instance(t)
                         if not is_subtype(new_type, type_var.upper_bound):
                             self.seen_instances.pop()
-                            return object_from_instance(t, last_known_value=last_known_value)
+                            return object_from_instance(t)
                     # TODO: contravariant case should use meet but pass seen instances as
                     # an argument to keep track of recursive checks.
                     elif type_var.variance in (INVARIANT, CONTRAVARIANT):
@@ -121,7 +121,7 @@ class InstanceJoiner:
                             new_type = ta
                         elif not is_equivalent(ta, sa):
                             self.seen_instances.pop()
-                            return object_from_instance(t, last_known_value=last_known_value)
+                            return object_from_instance(t)
                         else:
                             # If the types are different but equivalent, then an Any is involved
                             # so using a join in the contravariant case is also OK.
@@ -640,6 +640,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 return t
             if self.s.fallback.type.is_enum and t.fallback.type.is_enum:
                 return mypy.typeops.make_simplified_union([self.s, t])
+            # E.g. Literal["x"], Literal["y"] -> str
             return join_types(self.s.fallback, t.fallback)
         elif isinstance(self.s, Instance) and self.s.last_known_value == t:
             # E.g. Literal["x"], Literal["x"]? -> Literal["x"]?
@@ -870,12 +871,10 @@ def combine_arg_names(
     return new_names
 
 
-def object_from_instance(
-    instance: Instance, last_known_value: LiteralType | None = None
-) -> Instance:
+def object_from_instance(instance: Instance) -> Instance:
     """Construct the type 'builtins.object' from an instance type."""
     # Use the fact that 'object' is always the last class in the mro.
-    res = Instance(instance.type.mro[-1], [], last_known_value=last_known_value)
+    res = Instance(instance.type.mro[-1], [])
     return res
 
 

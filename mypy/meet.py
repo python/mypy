@@ -82,26 +82,7 @@ def meet_types(s: Type, t: Type) -> ProperType:
 
     if isinstance(s, Instance) and isinstance(t, Instance) and s.type == t.type:
         # special casing for dealing with last known values
-        lkv: LiteralType | None
-
-        if s.last_known_value is None:
-            lkv = t.last_known_value
-        elif t.last_known_value is None:
-            lkv = s.last_known_value
-        else:
-            lkv_meet = meet_types(s.last_known_value, t.last_known_value)
-            if isinstance(lkv_meet, UninhabitedType):
-                lkv = None
-            elif isinstance(lkv_meet, LiteralType):
-                lkv = lkv_meet
-            else:
-                msg = (
-                    f"Unexpected result: "
-                    f"meet of {s.last_known_value=!s} and {t.last_known_value=!s} "
-                    f"resulted in {lkv_meet!s}"
-                )
-                raise ValueError(msg)
-
+        lkv = meet_last_known_values(t.last_known_value, s.last_known_value)
         t = t.copy_modified(last_known_value=lkv)
         s = s.copy_modified(last_known_value=lkv)
 
@@ -135,6 +116,30 @@ def meet_types(s: Type, t: Type) -> ProperType:
     s, t = join.normalize_callables(s, t)
 
     return t.accept(TypeMeetVisitor(s))
+
+
+def meet_last_known_values(
+    left: LiteralType | None, right: LiteralType | None
+) -> LiteralType | None:
+    """Return the meet of two last_known_values."""
+    if left is None:
+        return right
+    if right is None:
+        return left
+
+    lkv_meet = meet_types(left, right)
+
+    if isinstance(lkv_meet, UninhabitedType):
+        return None
+    if isinstance(lkv_meet, LiteralType):
+        return lkv_meet
+
+    msg = (
+        f"Unexpected result: "
+        f"meet of last_known_values {left=!s} and {right=!s} "
+        f"resulted in {lkv_meet!s}"
+    )
+    raise ValueError(msg)
 
 
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
