@@ -718,7 +718,7 @@ class SemanticAnalyzer(
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
-            self.accept(d)
+            self.accept_delaying_errors(d)
         if file_node.fullname == "typing":
             self.add_builtin_aliases(file_node)
         if file_node.fullname == "typing_extensions":
@@ -5385,7 +5385,7 @@ class SemanticAnalyzer(
             return
         self.block_depth[-1] += 1
         for s in b.body:
-            self.accept(s)
+            self.accept_delaying_errors(s)
         self.block_depth[-1] -= 1
 
     def visit_block_maybe(self, b: Block | None) -> None:
@@ -7579,26 +7579,27 @@ class SemanticAnalyzer(
             return False
         return True
 
-    def accept(self, node: Node) -> None:
+    def accept_delaying_errors(self, node: Node) -> None:
         should_filter = isinstance(node, Statement) and not self.options.semantic_analysis_only
         if should_filter:
             filter_errors: bool | Callable[[str, ErrorInfo], bool] = lambda _, e: not e.blocker
         else:
             filter_errors = False
         with self.msg.filter_errors(filter_errors=filter_errors, save_filtered_errors=True) as msg:
-            try:
-                node.accept(self)
-            except Exception as err:
-                report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
+            self.accept(node)
 
         errors = msg.filtered_errors()
         if errors:
-            # since nodes aren't hashable, carry things through values
+            # since nodes don't implement hash(), carry things through values
             assign_to = (self.cur_mod_id, node.line, node.column)
             self.delayed_errors.setdefault(assign_to, [])
             self.delayed_errors[assign_to].extend(errors)
 
-            # print(node, [e.message for e in self.delayed_errors[node]])
+    def accept(self, node: Node) -> None:
+        try:
+            node.accept(self)
+        except Exception as err:
+            report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
     def expr_to_analyzed_type(
         self,
