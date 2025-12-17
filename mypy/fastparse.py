@@ -426,8 +426,8 @@ class ASTConverter:
     def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
-        node.end_line = getattr(n, "end_lineno", None)
-        node.end_column = getattr(n, "end_col_offset", None)
+        node.end_line = n.end_lineno
+        node.end_column = n.end_col_offset
 
         return node
 
@@ -586,8 +586,8 @@ class ASTConverter:
         first, last = stmts[0], stmts[-1]
         b.line = first.lineno
         b.column = first.col_offset
-        b.end_line = getattr(last, "end_lineno", None)
-        b.end_column = getattr(last, "end_col_offset", None)
+        b.end_line = last.end_lineno
+        b.end_column = last.end_col_offset
         if not b.body:
             return
         new_first = b.body[0]
@@ -1030,8 +1030,8 @@ class ASTConverter:
                 )
 
         # End position is always the same.
-        end_line = getattr(n, "end_lineno", None)
-        end_column = getattr(n, "end_col_offset", None)
+        end_line = n.end_lineno
+        end_column = n.end_col_offset
 
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
@@ -1079,7 +1079,7 @@ class ASTConverter:
     ) -> list[Argument]:
         new_args = []
         names: list[ast3.arg] = []
-        posonlyargs = getattr(args, "posonlyargs", cast(list[ast3.arg], []))
+        posonlyargs = args.posonlyargs
         args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
@@ -1149,12 +1149,7 @@ class ASTConverter:
         var = Var(arg.arg, arg_type)
         var.is_inferred = False
         argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
-        argument.set_line(
-            arg.lineno,
-            arg.col_offset,
-            getattr(arg, "end_lineno", None),
-            getattr(arg, "end_col_offset", None),
-        )
+        argument.set_line(arg.lineno, arg.col_offset, arg.end_lineno, arg.end_col_offset)
         return argument
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
@@ -1190,8 +1185,8 @@ class ASTConverter:
         if self.options.include_docstrings:
             cdef.docstring = ast3.get_docstring(n, clean=False)
         cdef.column = n.col_offset
-        cdef.end_line = getattr(n, "end_lineno", None)
-        cdef.end_column = getattr(n, "end_col_offset", None)
+        cdef.end_line = n.end_lineno
+        cdef.end_column = n.end_col_offset
         self.class_and_function_stack.pop()
         return cdef
 
@@ -2113,8 +2108,8 @@ class TypeConverter:
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
-            result.end_column = getattr(n, "end_col_offset", None)
-            result.end_line = getattr(n, "end_lineno", None)
+            result.end_column = n.end_col_offset
+            result.end_line = n.end_lineno
             return result
         else:
             return self.invalid_type(n)
