@@ -69,10 +69,6 @@ class InstanceJoiner:
             # Simplest case: join two types with the same base type (but
             # potentially different arguments).
 
-            last_known_value = (
-                None if t.last_known_value != s.last_known_value else t.last_known_value
-            )
-
             # Combine type arguments.
             args: list[Type] = []
             # N.B: We use zip instead of indexing because the lengths might have
@@ -145,7 +141,8 @@ class InstanceJoiner:
                     new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
-            result: ProperType = Instance(t.type, args, last_known_value=last_known_value)
+            lkv = t.last_known_value if t.last_known_value == s.last_known_value else None
+            result: ProperType = Instance(t.type, args, last_known_value=lkv)
         elif t.type.bases and is_proper_subtype(
             t, s, subtype_context=SubtypeContext(ignore_type_params=True)
         ):
