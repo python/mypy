@@ -1,0 +1,15 @@
+[case testClassScopeInFunction]
+from typing import Optional
+
+x: Optional[int] = None
+y: Optional[int] = None
+
+def f() -> None:
+    x = 1
+    y = 1
+    class C:
+        reveal_type(x)
+        reveal_type(y)
+[out]
+note: Revealed type is "builtins.int"
+note: Revealed type is "Union[builtins.int, None]"
