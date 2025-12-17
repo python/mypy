@@ -2539,10 +2539,9 @@ def last_known_value() -> None:
     reveal_type(z)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
 
-[case walrus_operator_in_comprehension_infers_type]
-# Ensure that assignment expressions (:=) inside comprehensions
-# correctly infer and propagate the assigned variable's type
-# outside the comprehension scope.
+[case testWalrusAssignmentInCallArguments]
+# Ensure that assignment expressions (:=) in earlier call arguments
+# propagate type information to later arguments in the same call.
 
 from dataclasses import dataclass
 
@@ -2571,6 +2570,4 @@ cases = [
     ],
 ]
 
-reveal_type(request_reference)
-[out]
-builtins.str
+reveal_type(request_reference)  # N: Revealed type is "builtins.str"
