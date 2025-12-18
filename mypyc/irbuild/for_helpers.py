@@ -16,6 +16,7 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     GeneratorExpr,
+    ListComprehension,
     ListExpr,
     Lvalue,
     MemberExpr,
@@ -25,6 +26,7 @@ from mypy.nodes import (
     StarExpr,
     TupleExpr,
     TypeAlias,
+    Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
 from mypyc.ir.ops import (
@@ -1235,10 +1237,27 @@ def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
             return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
         return get_expr_length(builder, expr.expr)
-    # TODO: extend this, passing length of listcomp and genexp should have worthwhile
-    # performance boost and can be (sometimes) figured out pretty easily. set and dict
-    # comps *can* be done as well but will need special logic to consider the possibility
-    # of key conflicts. Range, enumerate, zip are all simple logic.
+    elif (
+        isinstance(expr, RefExpr)
+        and isinstance(expr.node, Var)
+        and expr.node.is_final
+        and isinstance(expr.node.final_value, str)
+    ):
+        return len(expr.node.final_value)
+    elif isinstance(expr, ListComprehension):
+        return get_expr_length(builder, expr.generator)
+    elif isinstance(expr, GeneratorExpr) and not expr.condlists:
+        sequence_lengths = [get_expr_length(builder, seq) for seq in expr.sequences]
+        if None not in sequence_lengths:
+            if len(sequence_lengths) == 1:
+                return sequence_lengths[0]
+            product = sequence_lengths[0]
+            for l in sequence_lengths[1:]:
+                product *= l  # type: ignore [operator]
+            return product
+    # TODO: extend this, set and dict comps can be done as well but will
+    # need special logic to consider the possibility of key conflicts.
+    # Range, enumerate, zip are all simple logic.
 
     # we might still be able to get the length directly from the type
     rtype = builder.node_type(expr)
