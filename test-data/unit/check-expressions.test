@@ -2571,3 +2571,4 @@ cases = [
 ]
 
 reveal_type(request_reference)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
