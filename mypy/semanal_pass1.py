@@ -66,9 +66,6 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
         for i, defn in enumerate(file.defs):
             defn.accept(self)
             if isinstance(defn, AssertStmt) and assert_will_always_fail(defn, options):
-                # TODO: remove this by passing through unreachability info to semanal
-                # for top-level definitions. (testUnreachableAfterToplevelAssertImport)
-
                 # We've encountered an assert that's always false,
                 # e.g. assert sys.platform == 'lol'.  Truncate the
                 # list of statements.  This mutates file.defs too.
