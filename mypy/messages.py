@@ -1659,7 +1659,7 @@ class MessageBuilder:
         self, left: Type, right: Type, operator: str, ctx: Context
     ) -> None:
         """Report a comparison between types with an unsafe subtyping relationship.
-        
+
         This warns about comparisons where the types have a nominal subclass relationship
         but comparing them can cause runtime errors (e.g., datetime vs date).
         """

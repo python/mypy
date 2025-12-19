@@ -3883,28 +3883,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def has_unsafe_subtype_relationship(self, left: Type, right: Type) -> bool:
         """Check if left and right have an unsafe subtyping relationship.
-        
+
         Returns True if they are instances with a nominal subclass relationship
         that is known to be unsafe (e.g., datetime and date).
         """
         from mypy.subtypes import UNSAFE_SUBTYPING_PAIRS
-        
+
         left = get_proper_type(left)
         right = get_proper_type(right)
-        
+
         if not isinstance(left, Instance) or not isinstance(right, Instance):
             return False
-        
+
         left_name = left.type.fullname
         right_name = right.type.fullname
-        
+
         # Check if this pair is in our list of known unsafe subtyping relationships
         # Check both directions since we want to catch comparisons either way
         for subclass, superclass in UNSAFE_SUBTYPING_PAIRS:
-            if (left_name == subclass and right_name == superclass) or \
-               (left_name == superclass and right_name == subclass):
+            if ((left_name == subclass and right_name == superclass)
+                    or (left_name == superclass and right_name == subclass)):
                 return True
-        
+
         return False
 
     def check_method_call_by_name(
