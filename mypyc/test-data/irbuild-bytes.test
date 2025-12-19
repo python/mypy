@@ -266,6 +266,19 @@ L0:
     r1 = truncate r0: i32 to builtins.bool
     return r1
 
+[case testBytesEndsWith]
+def f(a: bytes, b: bytes) -> bool:
+    return a.endswith(b)
+[out]
+def f(a, b):
+    a, b :: bytes
+    r0 :: i32
+    r1 :: bool
+L0:
+    r0 = CPyBytes_Endswith(a, b)
+    r1 = truncate r0: i32 to builtins.bool
+    return r1
+
 [case testBytesVsBytearray]
 def bytes_func(b: bytes) -> None: pass
 def bytearray_func(ba: bytearray) -> None: pass
