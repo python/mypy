@@ -1650,3 +1650,16 @@ def x() -> None:
 main:4: error: Statement is unreachable
         if 5:
         ^~~~~
+
+[case testUnreachableSemanalErrors]
+# flags: --warn-unreachable
+def f() -> None:
+    if True:
+        return
+
+    x = xyz  # E: Statement is unreachable
+
+if True:
+    assert False
+
+x = xyz  # E: Statement is unreachable
