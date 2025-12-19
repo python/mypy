@@ -3886,6 +3886,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         Returns True if they are instances with a nominal subclass relationship
         that is known to be unsafe (e.g., datetime and date).
+        
+        This also flags comparisons between two values of the supertype (e.g., date vs date)
+        because at runtime, one could be an instance of the unsafe subclass (e.g., datetime).
+        While conservative, this is necessary to catch LSP violations where the subclass
+        has incompatible comparison operators.
         """
         from mypy.subtypes import UNSAFE_SUBTYPING_PAIRS
 
@@ -3906,7 +3911,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return True
             
             # Also flag when both types are the supertype, as one could be the subclass at runtime.
-            # This catches cases like comparing two 'date' values where one could be a 'datetime'.
+            # Example: comparing 'date' vs 'date' is unsafe because one could be a 'datetime'.
+            # This is conservative but necessary due to Python's subtyping allowing datetime
+            # instances to be used wherever date is expected, despite incompatible comparison.
             if left_name == superclass and right_name == superclass:
                 return True
 
