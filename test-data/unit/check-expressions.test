@@ -2575,5 +2575,3 @@ reveal_type(request_reference)  # N: Revealed type is "builtins.str"
 [out]
 main:23: error: Cannot determine type of "request_reference"
 main:31: note: Revealed type is "builtins.str"
-
-
