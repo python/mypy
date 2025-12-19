@@ -6144,8 +6144,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
         typ = get_proper_type(typ)
-        if isinstance(typ, ParamSpecType | AnyType):
+
+        # factorize over unions
+        if isinstance(typ, UnionType):
+            return all(self.is_valid_keyword_var_arg(item) for item in typ.items)
+
+        if isinstance(typ, AnyType):
             return True
+
+        if isinstance(typ, ParamSpecType):
+            return typ.flavor == ParamSpecFlavor.KWARGS
+
+        # fast path for builtins.dict
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins.dict":
+            return is_subtype(typ.args[0], self.named_type("builtins.str"))
+
+        # fast fail if not SupportsKeysAndGetItem[Any, Any]
+        any_type = AnyType(TypeOfAny.from_omitted_generics)
+        if not is_subtype(
+            typ,
+            self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [any_type, any_type]),
+        ):
+            return False
 
         # Check if 'typ' is a SupportsKeysAndGetItem[T, Any] for some T <: str
         # Note: is_subtype(typ, SupportsKeysAndGetItem[str, Any])` is too harsh
@@ -6158,11 +6178,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             id=TypeVarId(-1, namespace="<kwargs>"),
             values=[],
             upper_bound=self.named_type("builtins.str"),
-            default=AnyType(TypeOfAny.from_omitted_generics),
+            default=any_type,
         )
-        template = self.chk.named_generic_type(
-            "_typeshed.SupportsKeysAndGetItem", [T, AnyType(TypeOfAny.special_form)]
-        )
+        template = self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [T, any_type])
 
         return solve_as_subtype(typ, template) is not None
 
