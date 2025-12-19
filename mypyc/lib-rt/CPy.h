@@ -790,7 +790,7 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
 PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
 int CPyBytes_Startswith(PyObject *self, PyObject *subobj);
-
+int CPyBytes_Endswith(PyObject *self, PyObject *subobj);
 int CPyBytes_Compare(PyObject *left, PyObject *right);
 
 

@@ -133,6 +133,16 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# bytes.endswith(bytes)
+method_op(
+    name="endswith",
+    arg_types=[bytes_rprimitive, bytes_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyBytes_Endswith",
+    truncated_type=bool_rprimitive,
+    error_kind=ERR_MAGIC,
+)
+
 # Join bytes objects and return a new bytes.
 # The first argument is the total number of the following bytes.
 bytes_build_op = custom_op(
