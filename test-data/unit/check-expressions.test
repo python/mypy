@@ -2540,6 +2540,10 @@ def last_known_value() -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testWalrusAssignmentInCallArguments]
+[builtins fixtures/tuple.pyi]
+
+
+
 # Ensure that assignment expressions (:=) in earlier call arguments
 # propagate type information to later arguments in the same call.
 
@@ -2572,6 +2576,3 @@ cases = [
 
 reveal_type(request_reference)  # N: Revealed type is "builtins.str"
 
-[out]
-main:23: error: Cannot determine type of "request_reference"
-main:31: note: Revealed type is "builtins.str"
