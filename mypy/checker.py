@@ -150,6 +150,7 @@ from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
+from mypy.reachability import assert_will_always_fail
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
@@ -5136,7 +5137,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.expr_checker.analyze_cond_branch(
                 else_map, s.msg, None, suppress_unreachable_errors=False
             )
-        self.push_type_map(true_map)
+        if assert_will_always_fail(s, self.options):
+            # TODO: move this logic into `find_isinstance_check`
+            self.push_type_map(None)
+        else:
+            self.push_type_map(true_map)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         """Type check a raise statement."""

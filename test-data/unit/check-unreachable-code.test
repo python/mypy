@@ -795,11 +795,12 @@ main:3: error: Cannot find implementation or library stub for module named "bad"
 main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testUnreachableAfterToplevelAssertNotInsideIf]
+# flags: --warn-unreachable --platform unknown
 import sys
 if sys.version_info[0] >= 2:
     assert sys.platform == 'lol'
-    reveal_type('')  # N: Revealed type is "Literal['']?"
-reveal_type('')  # N: Revealed type is "Literal['']?"
+    reveal_type('')  # E: Statement is unreachable
+reveal_type('')  # E: Statement is unreachable
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableFlagWithBadControlFlow1]
