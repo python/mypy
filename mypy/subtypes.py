@@ -76,6 +76,7 @@ from mypy.types import (
 from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars, fill_typevars_with_any
+from mypy import errorcodes as codes
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -539,13 +540,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             lname = left.type.fullname
             
             # Check if this is an unsafe subtype relationship that should be blocked
-            if self.options:
-                from mypy import errorcodes as codes
-                if codes.UNSAFE_SUBTYPE in self.options.enabled_error_codes:
-                    # Block unsafe subtyping relationships when the error code is enabled
-                    for subclass, superclass in UNSAFE_SUBTYPING_PAIRS:
-                        if lname == subclass and rname == superclass:
-                            return False
+            if self.options and codes.UNSAFE_SUBTYPE in self.options.enabled_error_codes:
+                # Block unsafe subtyping relationships when the error code is enabled
+                for subclass, superclass in UNSAFE_SUBTYPING_PAIRS:
+                    if lname == subclass and rname == superclass:
+                        return False
             
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
