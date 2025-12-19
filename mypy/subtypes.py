@@ -536,6 +536,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
+            lname = left.type.fullname
+            
+            # Check if this is an unsafe subtype relationship that should be blocked
+            if self.options:
+                from mypy import errorcodes as codes
+                if codes.UNSAFE_SUBTYPE in self.options.enabled_error_codes:
+                    # Block unsafe subtyping relationships when the error code is enabled
+                    for subclass, superclass in UNSAFE_SUBTYPING_PAIRS:
+                        if lname == subclass and rname == superclass:
+                            return False
+            
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
             # NamedTuples are a special case, because `NamedTuple` is not listed

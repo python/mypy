@@ -5,10 +5,10 @@ from datetime import date, datetime
 dt: datetime
 d: date
 
-if dt < d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+if dt < d:  # E: Unsupported operand types for < ("datetime" and "date")
     pass
 
-if d > dt:  # E: Unsafe comparison between "date" and "datetime"; runtime comparison may raise TypeError
+if d > dt:  # E: Unsupported operand types for < ("datetime" and "date")
     pass
 
 if dt == d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
@@ -17,10 +17,10 @@ if dt == d:  # E: Unsafe comparison between "datetime" and "date"; runtime compa
 if dt != d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
     pass
 
-if dt <= d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+if dt <= d:  # E: Unsupported operand types for <= ("datetime" and "date")
     pass
 
-if dt >= d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+if dt >= d:  # E: Unsupported operand types for >= ("datetime" and "date")
     pass
 [builtins fixtures/classmethod.pyi]
 [file datetime.pyi]
@@ -83,7 +83,7 @@ class datetime(date):
 from datetime import date, datetime
 
 def compare_datetime_date(dt: datetime, d: date) -> bool:
-    return dt < d  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+    return dt < d  # E: Unsupported operand types for < ("datetime" and "date")
 [builtins fixtures/classmethod.pyi]
 [file datetime.pyi]
 class date:
@@ -148,7 +148,7 @@ class datetime(date):
 # flags: --enable-error-code unsafe-subtype
 from datetime import date, datetime
 
-if datetime.now() < date.today():  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+if datetime.now() < date.today():  # E: Unsupported operand types for < ("datetime" and "date")
     pass
 [builtins fixtures/classmethod.pyi]
 [file datetime.pyi]
@@ -179,7 +179,7 @@ from datetime import date, datetime
 dt: datetime
 d: date
 
-result = dt < d  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+result = dt < d  # E: Unsupported operand types for < ("datetime" and "date")
 [builtins fixtures/classmethod.pyi]
 [file datetime.pyi]
 class date:
@@ -213,8 +213,46 @@ def compare_dates(d1: date, d2: date) -> bool:
 # Example usage that would fail at runtime:
 dt = datetime.now()
 d = date.today()
-# This passes type checking since datetime is a subclass of date
-result = compare_dates(dt, d)  # But the comparison inside will fail at runtime
+# This now errors because datetime is not assignable to date
+result = compare_dates(dt, d)  # E: Argument 1 to "compare_dates" has incompatible type "datetime"; expected "date"
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class date:
+    def __init__(self, year: int, month: int, day: int) -> None: ...
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+
+class datetime(date):
+    def __init__(self, year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0) -> None: ...
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+
+[case testInheritanceBlocking]
+# flags: --enable-error-code unsafe-subtype
+from datetime import date, datetime
+
+# Assignment should be blocked
+d: date = datetime.now()  # E: Incompatible types in assignment (expression has type "datetime", variable has type "date")
+
+# Function parameters should be blocked
+def accept_date(d: date) -> None:
+    pass
+
+accept_date(datetime.now())  # E: Argument 1 to "accept_date" has incompatible type "datetime"; expected "date"
+
+# But date to date should still work
+d2: date = date.today()  # OK
+accept_date(date.today())  # OK
 [builtins fixtures/classmethod.pyi]
 [file datetime.pyi]
 class date:
