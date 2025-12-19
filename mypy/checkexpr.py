@@ -19,7 +19,6 @@ from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.constant_fold import constant_fold_expr
-from mypy.constraints import SUBTYPE_OF
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorInfo, ErrorWatcher, report_internal_error
 from mypy.expandtype import (
@@ -31,7 +30,7 @@ from mypy.expandtype import (
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infer_type_arguments
 from mypy.literals import literal
-from mypy.maptype import as_type, map_instance_to_supertype
+from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
 from mypy.message_registry import ErrorMessage
 from mypy.messages import MessageBuilder, format_type
@@ -127,6 +126,7 @@ from mypy.subtypes import (
     is_same_type,
     is_subtype,
     non_method_protocol_members,
+    solve_as_subtype,
 )
 from mypy.traverser import (
     all_name_and_member_expressions,
@@ -6164,7 +6164,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             "_typeshed.SupportsKeysAndGetItem", [T, AnyType(TypeOfAny.special_form)]
         )
 
-        return as_type(typ, SUBTYPE_OF, template) is not None
+        return solve_as_subtype(typ, template) is not None
 
     def not_ready_callback(self, name: str, context: Context) -> None:
         """Called when we can't infer the type of a variable because it's not ready yet.
