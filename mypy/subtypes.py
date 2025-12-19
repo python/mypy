@@ -84,6 +84,14 @@ IS_CLASS_OR_STATIC: Final = 3
 IS_VAR: Final = 4
 IS_EXPLICIT_SETTER: Final = 5
 
+# Known unsafe subtyping relationships that should trigger warnings.
+# Each tuple is (subclass_fullname, superclass_fullname).
+# These are cases where a class is a subclass at runtime but treating it
+# as a subtype can cause runtime errors.
+UNSAFE_SUBTYPING_PAIRS: Final = [
+    ("datetime.datetime", "datetime.date"),
+]
+
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
 

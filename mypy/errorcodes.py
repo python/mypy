@@ -172,6 +172,12 @@ ASSERT_TYPE: Final = ErrorCode("assert-type", "Check that assert_type() call suc
 COMPARISON_OVERLAP: Final = ErrorCode(
     "comparison-overlap", "Check that types in comparisons and 'in' expressions overlap", "General"
 )
+UNSAFE_SUBTYPE: Final = ErrorCode(
+    "unsafe-subtype",
+    "Warn about unsafe subtyping relationships that may cause runtime errors",
+    "General",
+    default_enabled=False,
+)
 NO_ANY_UNIMPORTED: Final = ErrorCode(
     "no-any-unimported", 'Reject "Any" types from unfollowed imports', "General"
 )

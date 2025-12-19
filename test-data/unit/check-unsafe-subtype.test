@@ -1,0 +1,202 @@
+[case testDatetimeVsDateComparison]
+# flags: --enable-error-code unsafe-subtype
+from datetime import date, datetime
+
+dt: datetime
+d: date
+
+if dt < d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+    pass
+
+if d > dt:  # E: Unsafe comparison between "date" and "datetime"; runtime comparison may raise TypeError
+    pass
+
+if dt == d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+    pass
+
+if dt != d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+    pass
+
+if dt <= d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+    pass
+
+if dt >= d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+    pass
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class date:
+    def __init__(self, year: int, month: int, day: int) -> None: ...
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+
+class datetime(date):
+    def __init__(self, year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0) -> None: ...
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+
+[case testDatetimeVsDateComparisonDisabled]
+# No flags, so the error should not appear
+from datetime import date, datetime
+
+dt: datetime
+d: date
+
+if dt < d:
+    pass
+
+if d > dt:
+    pass
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class date:
+    def __init__(self, year: int, month: int, day: int) -> None: ...
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+
+class datetime(date):
+    def __init__(self, year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0) -> None: ...
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+
+[case testDatetimeVsDateComparisonExplicitTypes]
+# flags: --enable-error-code unsafe-subtype
+from datetime import date, datetime
+
+def compare_datetime_date(dt: datetime, d: date) -> bool:
+    return dt < d  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class date:
+    def __init__(self, year: int, month: int, day: int) -> None: ...
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+
+class datetime(date):
+    def __init__(self, year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0) -> None: ...
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+
+[case testDatetimeComparisonOK]
+# flags: --enable-error-code unsafe-subtype
+from datetime import date, datetime
+
+dt1: datetime
+dt2: datetime
+d1: date
+d2: date
+
+# These are OK - comparing within the same type
+if dt1 < dt2:
+    pass
+
+if d1 < d2:
+    pass
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class date:
+    def __init__(self, year: int, month: int, day: int) -> None: ...
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+
+class datetime(date):
+    def __init__(self, year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0) -> None: ...
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+
+[case testDatetimeVsDateComparisonWithNow]
+# flags: --enable-error-code unsafe-subtype
+from datetime import date, datetime
+
+if datetime.now() < date.today():  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+    pass
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class date:
+    def __init__(self, year: int, month: int, day: int) -> None: ...
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+
+class datetime(date):
+    def __init__(self, year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0) -> None: ...
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+
+[case testDatetimeVsDateComparisonInExpression]
+# flags: --enable-error-code unsafe-subtype
+from datetime import date, datetime
+
+dt: datetime
+d: date
+
+result = dt < d  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class date:
+    def __init__(self, year: int, month: int, day: int) -> None: ...
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+
+class datetime(date):
+    def __init__(self, year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0) -> None: ...
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
