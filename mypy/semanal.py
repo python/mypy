@@ -7567,7 +7567,7 @@ class SemanticAnalyzer(
         if self.errors._filter_error(self.errors.file, err_info):
             return
 
-        if self.associated_node is None or self.options.semantic_analysis_only:
+        if blocker or self.associated_node is None or self.options.semantic_analysis_only:
             self.errors.add_error_info(err_info)
         else:
             node = self.associated_node
@@ -8155,6 +8155,8 @@ class SemanticAnalyzer(
         original_deferral_debug_context_len = len(self.deferral_debug_context)
 
         self.errors = Errors(Options())
+        previous_association = self.associated_node
+        self.associated_node = None
         try:
             yield
         finally:
@@ -8163,6 +8165,7 @@ class SemanticAnalyzer(
             self.num_incomplete_refs = original_num_incomplete_refs
             self.progress = original_progress
             self.deferred = original_deferred
+            self.associated_node = previous_association
             del self.deferral_debug_context[original_deferral_debug_context_len:]
 
 
