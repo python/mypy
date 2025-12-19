@@ -3904,6 +3904,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if ((left_name == subclass and right_name == superclass)
                     or (left_name == superclass and right_name == subclass)):
                 return True
+            
+            # Also flag when both types are the supertype, as one could be the subclass at runtime.
+            # This catches cases like comparing two 'date' values where one could be a 'datetime'.
+            if left_name == superclass and right_name == superclass:
+                return True
 
         return False
 

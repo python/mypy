@@ -115,11 +115,12 @@ dt2: datetime
 d1: date
 d2: date
 
-# These are OK - comparing within the same type
+# datetime vs datetime is safe
 if dt1 < dt2:
     pass
 
-if d1 < d2:
+# date vs date is unsafe because one could be a datetime at runtime
+if d1 < d2:  # E: Unsafe comparison between "date" and "date"; runtime comparison may raise TypeError
     pass
 [builtins fixtures/classmethod.pyi]
 [file datetime.pyi]
@@ -179,6 +180,41 @@ dt: datetime
 d: date
 
 result = dt < d  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class date:
+    def __init__(self, year: int, month: int, day: int) -> None: ...
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+
+class datetime(date):
+    def __init__(self, year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0) -> None: ...
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+
+[case testDateVsDateMixedWithDatetime]
+# flags: --enable-error-code unsafe-subtype
+from datetime import date, datetime
+
+def compare_dates(d1: date, d2: date) -> bool:
+    # This is flagged because one of the dates could be a datetime at runtime
+    return d1 < d2  # E: Unsafe comparison between "date" and "date"; runtime comparison may raise TypeError
+
+# Example usage that would fail at runtime:
+dt = datetime.now()
+d = date.today()
+# This passes type checking since datetime is a subclass of date
+result = compare_dates(dt, d)  # But the comparison inside will fail at runtime
 [builtins fixtures/classmethod.pyi]
 [file datetime.pyi]
 class date:
