@@ -699,3 +699,55 @@ Example:
         @printing_decorator  # E: Untyped decorator makes function "add_forty_two" untyped  [untyped-decorator]
         def add_forty_two(value: int) -> int:
             return value + 42
+
+.. _code-unsafe-subtype:
+
+Check for unsafe subtype relationships [unsafe-subtype]
+--------------------------------------------------------
+
+If enabled with :option:`--enable-error-code unsafe-subtype <mypy --enable-error-code>`,
+mypy will block certain subtype relationships that are unsafe at runtime despite
+being valid in Python's type system.
+
+The primary use case is blocking the ``datetime.datetime`` to ``datetime.date``
+inheritance relationship. While ``datetime`` is a subclass of ``date`` at runtime,
+comparing a ``datetime`` with a ``date`` raises a ``TypeError``. When this error
+code is enabled, mypy will prevent ``datetime`` objects from being used where
+``date`` is expected, catching these errors at type-check time.
+
+Example:
+
+.. code-block:: python
+
+    # mypy: enable-error-code="unsafe-subtype"
+    from datetime import date, datetime
+
+    # Error: Incompatible types in assignment (expression has type "datetime", variable has type "date")
+    d: date = datetime.now()
+
+    def accept_date(d: date) -> None:
+        pass
+
+    # Error: Argument 1 to "accept_date" has incompatible type "datetime"; expected "date"
+    accept_date(datetime.now())
+
+Without this error code enabled, the above code passes type checking (as ``datetime``
+is a valid subtype of ``date``), but comparisons between the two types will fail at
+runtime:
+
+.. code-block:: python
+
+    from datetime import date, datetime
+
+    dt = datetime.now()
+    d = date.today()
+
+    # This raises: TypeError: can't compare datetime.datetime to datetime.date
+    if dt < d:
+        print("never reached")
+
+When ``unsafe-subtype`` is enabled, assignment and parameter passing are blocked,
+preventing the runtime error.
+
+**Note:** Equality comparisons (``==`` and ``!=``) still work between these types,
+as ``__eq__`` accepts ``object`` as its parameter.
