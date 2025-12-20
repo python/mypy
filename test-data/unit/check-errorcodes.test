@@ -866,6 +866,20 @@ class Foo:
         return 2
 [builtins fixtures/list.pyi]
 
+[case testRedundantExpressionsUnionWithAny]
+# flags: --enable-error-code redundant-expr
+from typing import Any, Awaitable, Union
+ok_list: list[Union[Any, Awaitable]]
+for y in ok_list:
+    z = 1 if isinstance(y, Awaitable) else 2
+
+bad_list: list[Awaitable]
+for y in bad_list:
+    z = 1 if isinstance(y, Awaitable) else 2  # E: If condition is always true  [redundant-expr]
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
+
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple
 
