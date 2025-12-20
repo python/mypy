@@ -585,9 +585,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 e.callee.arg_names,
                 lambda i: self.accept(e.args[i]),
             )
-            checked_args = []
-            for arg in e.args:
-                checked_args.append(self.accept(arg))
+            checked_args = [self.accept(arg) for arg in e.args]
+
 
             arg_types = [
                 join.join_type_list([checked_args[j] for j in formal_to_actual[i]])
