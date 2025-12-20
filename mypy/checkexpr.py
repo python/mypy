@@ -3697,12 +3697,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                     e.method_types.append(method_type)
 
-                # Check for unsafe subtype relationships if enabled
-                if not w.has_new_errors() and codes.UNSAFE_SUBTYPE in self.chk.options.enabled_error_codes:
-                    right_type = self.accept(right)
-                    if self.has_unsafe_subtype_relationship(left_type, right_type):
-                        self.msg.unsafe_subtype_comparison(left_type, right_type, operator, e)
-
                 # Only show dangerous overlap if there are no other errors. See
                 # testCustomEqCheckStrictEquality for an example.
                 if not w.has_new_errors() and operator in ("==", "!="):
@@ -3880,32 +3874,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ):
                 return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
-
-    def has_unsafe_subtype_relationship(self, left: Type, right: Type) -> bool:
-        """Check if left and right have an unsafe subtyping relationship.
-
-        Returns True if they are instances with a nominal subclass relationship
-        that is known to be unsafe (e.g., datetime and date).
-        """
-        from mypy.subtypes import UNSAFE_SUBTYPING_PAIRS
-
-        left = get_proper_type(left)
-        right = get_proper_type(right)
-
-        if not isinstance(left, Instance) or not isinstance(right, Instance):
-            return False
-
-        left_name = left.type.fullname
-        right_name = right.type.fullname
-
-        # Check if this pair is in our list of known unsafe subtyping relationships
-        # Check both directions since we want to catch comparisons either way
-        for subclass, superclass in UNSAFE_SUBTYPING_PAIRS:
-            if ((left_name == subclass and right_name == superclass)
-                    or (left_name == superclass and right_name == subclass)):
-                return True
-
-        return False
 
     def check_method_call_by_name(
         self,

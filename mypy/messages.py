@@ -1655,18 +1655,6 @@ class MessageBuilder:
             code=codes.COMPARISON_OVERLAP,
         )
 
-    def unsafe_subtype_comparison(
-        self, left: Type, right: Type, operator: str, ctx: Context
-    ) -> None:
-        """Report a comparison between types with an unsafe subtyping relationship.
-
-        This warns about comparisons where the types have a nominal subclass relationship
-        but comparing them can cause runtime errors (e.g., datetime vs date).
-        """
-        left_typ, right_typ = format_type_distinctly(left, right, options=self.options)
-        message = f"Unsafe comparison between {left_typ} and {right_typ}; runtime comparison may raise TypeError"
-        self.fail(message, ctx, code=codes.UNSAFE_SUBTYPE)
-
     def overload_inconsistently_applies_decorator(self, decorator: str, context: Context) -> None:
         self.fail(
             f'Overload does not consistently use the "@{decorator}" '

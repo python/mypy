@@ -11,10 +11,10 @@ if dt < d:  # E: Unsupported operand types for < ("datetime" and "date")
 if d > dt:  # E: Unsupported operand types for < ("datetime" and "date")
     pass
 
-if dt == d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+if dt == d:
     pass
 
-if dt != d:  # E: Unsafe comparison between "datetime" and "date"; runtime comparison may raise TypeError
+if dt != d:
     pass
 
 if dt <= d:  # E: Unsupported operand types for <= ("datetime" and "date")
