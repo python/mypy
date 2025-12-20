@@ -119,8 +119,8 @@ d2: date
 if dt1 < dt2:
     pass
 
-# date vs date is unsafe because one could be a datetime at runtime
-if d1 < d2:  # E: Unsafe comparison between "date" and "date"; runtime comparison may raise TypeError
+# date vs date is now OK since inheritance blocking prevents datetime from being passed as date
+if d1 < d2:
     pass
 [builtins fixtures/classmethod.pyi]
 [file datetime.pyi]
@@ -207,8 +207,8 @@ class datetime(date):
 from datetime import date, datetime
 
 def compare_dates(d1: date, d2: date) -> bool:
-    # This is flagged because one of the dates could be a datetime at runtime
-    return d1 < d2  # E: Unsafe comparison between "date" and "date"; runtime comparison may raise TypeError
+    # With inheritance blocking, this is now safe - datetime cannot be passed here
+    return d1 < d2
 
 # Example usage that would fail at runtime:
 dt = datetime.now()
