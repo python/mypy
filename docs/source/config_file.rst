@@ -437,6 +437,40 @@ Platform configuration
 
     This option may only be set in the global section (``[mypy]``).
 
+    .. note::
+
+    **Using multiple Python versions in a monorepo**
+
+    Mypy currently supports only **one global target Python version** per run.
+    The configuration option :confval:`python_version` can be set **only in the
+    global section** of the configuration file. This means that a single
+    invocation of mypy cannot type-check different parts of a monorepo using
+    different Python versions.
+
+    If your project contains directories or packages that target different
+    Python versions, you can use one of the following workarounds:
+
+    * **Run mypy multiple times**, selecting a different version for each
+    directory.
+
+    Example::
+
+        mypy --python-version=3.9 src/py39_package
+        mypy --python-version=3.11 backend/py311
+
+    * **Use separate configuration files**, each specifying its own
+    ``python_version``.
+
+    Example::
+
+        mypy --config-file=mypy_py39.ini src/py39_package
+        mypy --config-file=mypy_py311.ini backend/
+
+    * **Use an external build/monorepo tool** (such as Pants, Bazel, or a CI
+    pipeline) to orchestrate multiple mypy invocations automatically.
+
+
+
 .. confval:: platform
 
     :type: string
