@@ -470,10 +470,6 @@ Platform configuration
     pipeline) to orchestrate multiple mypy invocations automatically.
 
 
-    This documentation update clarifies the current limitation and addresses
-    :issue:`16944`.
-
-
 
 .. confval:: platform
 
