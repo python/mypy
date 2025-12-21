@@ -469,6 +469,7 @@ Platform configuration
     * **Use an external build/monorepo tool** (such as Pants, Bazel, or a CI
     pipeline) to orchestrate multiple mypy invocations automatically.
 
+
     This documentation update clarifies the current limitation and addresses
     :issue:`16944`.
 
