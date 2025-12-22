@@ -159,8 +159,7 @@ int CPyDict_Update(PyObject *dict, PyObject *stuff) {
 int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff) {
     if (PyDict_CheckExact(dict)) {
         // Argh this sucks
-        _Py_IDENTIFIER(keys);
-        if (PyDict_Check(stuff) || _CPyObject_HasAttrId(stuff, &PyId_keys)) {
+        if (PyDict_Check(stuff) || _CPyObject_HasAttr(stuff, mypyc_interned_str.keys)) {
             return PyDict_Update(dict, stuff);
         } else {
             return PyDict_MergeFromSeq2(dict, stuff, 1);
@@ -179,8 +178,7 @@ PyObject *CPyDict_FromAny(PyObject *obj) {
         if (!dict) {
             return NULL;
         }
-        _Py_IDENTIFIER(keys);
-        if (_CPyObject_HasAttrId(obj, &PyId_keys)) {
+        if (_CPyObject_HasAttr(obj, mypyc_interned_str.keys)) {
             res = PyDict_Update(dict, obj);
         } else {
             res = PyDict_MergeFromSeq2(dict, obj, 1);
