@@ -593,6 +593,25 @@ x = 1
 [file m2.py]
 x = 1
 
+[case testStarImportDoesNotImportGeneratedIntersections]
+from m1 import *
+from m2 import *
+[file m1.py]
+from m3 import A, B
+
+a: A
+if isinstance(a, B): ...
+[file m2.py]
+from m3 import A, B
+
+a: A
+if isinstance(a, B): ...
+[file m3.py]
+class A: ...
+class B: ...
+class AB(A, B): ...
+[builtins fixtures/isinstance.pyi]
+
 [case testAssignToFuncDefViaImport]
 
 # Errors differ with the new analyzer. (Old analyzer gave error on the
