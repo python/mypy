@@ -11,6 +11,7 @@
 #include "pythoncapi_compat.h"
 #include <frameobject.h>
 #include <assert.h>
+#include "static_data.h"
 #include "mypyc_util.h"
 
 #if CPY_3_13_FEATURES
