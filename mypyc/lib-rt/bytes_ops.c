@@ -101,12 +101,7 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
     if (PyBytes_CheckExact(sep)) {
         return PyBytes_Join(sep, iter);
     } else {
-        _Py_IDENTIFIER(join);
-        PyObject *name = _PyUnicode_FromId(&PyId_join); /* borrowed */
-        if (name == NULL) {
-            return NULL;
-        }
-        return PyObject_CallMethodOneArg(sep, name, iter);
+        return PyObject_CallMethodOneArg(sep, mypyc_interned_str.join, iter);
     }
 }
 
@@ -193,12 +188,7 @@ int CPyBytes_Startswith(PyObject *self, PyObject *subobj) {
 
         return memcmp(self_buf, subobj_buf, (size_t)subobj_len) == 0 ? 1 : 0;
     }
-    _Py_IDENTIFIER(startswith);
-    PyObject *name = _PyUnicode_FromId(&PyId_startswith);
-    if (name == NULL) {
-        return 2;
-    }
-    PyObject *result = PyObject_CallMethodOneArg(self, name, subobj);
+    PyObject *result = PyObject_CallMethodOneArg(self, mypyc_interned_str.startswith, subobj);
     if (result == NULL) {
         return 2;
     }

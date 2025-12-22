@@ -29,12 +29,7 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
-        _Py_IDENTIFIER(send);
-        PyObject *name = _PyUnicode_FromId(&PyId_send); /* borrowed */
-        if (name == NULL) {
-            return NULL;
-        }
-        return PyObject_CallMethodOneArg(iter, name, val);
+        return PyObject_CallMethodOneArg(iter, mypyc_interned_str.send, val);
     }
 }
 
@@ -1065,9 +1060,7 @@ PyObject *CPy_GetName(PyObject *obj) {
     if (PyType_Check(obj)) {
         return PyType_GetName((PyTypeObject *)obj);
     }
-    _Py_IDENTIFIER(__name__);
-    PyObject *name = _PyUnicode_FromId(&PyId___name__); /* borrowed */
-    return PyObject_GetAttr(obj, name);
+    return PyObject_GetAttr(obj, mypyc_interned_str.__name__);
 }
 
 #endif
