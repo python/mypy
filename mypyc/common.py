@@ -68,6 +68,7 @@ BITMAP_BITS: Final = 32
 # Runtime C library files that are always included (some ops may bring
 # extra dependencies via mypyc.ir.SourceDep)
 RUNTIME_C_FILES: Final = [
+    "static_data.c",
     "init.c",
     "getargs.c",
     "getargsfast.c",
