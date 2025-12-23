@@ -42,6 +42,7 @@ T4 = TypeVar("T4", int, str, default=int)
 T5 = TypeVar("T5", default=S0)
 T6 = TypeVar("T6", bound=float, default=S1)
 T7 = TypeVar("T7", bound=List[Any], default=List[S0])
+T8 = TypeVar("T8", default=Tuple[int, Unpack[Tuple[int, str]]])
 
 P1 = ParamSpec("P1", default=[])
 P2 = ParamSpec("P2", default=...)
