@@ -11,6 +11,18 @@ Support for this will be dropped in the first half of 2026!
 
 Contributed by Marc Mueller (PR [20156](https://github.com/python/mypy/pull/20156)).
 
+### Mypyc Accelerated Mypy Wheels for ARM Windows and Free Threading
+
+For best performance, mypy can be compiled to C extension modules using mypyc. This makes
+mypy 3-5x faster than when interpreted with pure Python. We now build and upload mypyc
+accelerated mypy wheels for `win_arm64` and `cp314t-...` to PyPI, making it easy for Windows
+users on ARM and those using the free theading builds for Python 3.14 to realise this speedup
+-- just `pip install` the latest mypy.
+
+Contributed by Marc Mueller
+(PR [mypy_mypyc-wheels#106](https://github.com/mypyc/mypy_mypyc-wheels/pull/106),
+PR [mypy_mypyc-wheels#110](https://github.com/mypyc/mypy_mypyc-wheels/pull/110)).
+
 ### Removed flags `--force-uppercase-builtins` and `--force-union-syntax`
 
 The `--force-uppercase-builtins` flag was deprecated and has been a no-op since mypy 1.17.0.
