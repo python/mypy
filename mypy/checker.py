@@ -5968,7 +5968,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             errors.append((pretty_names_list, "would have incompatible method signatures"))
             return None
 
-        curr_module.names[full_name] = SymbolTableNode(GDEF, info)
+        curr_module.names[full_name] = SymbolTableNode(GDEF, info, False, module_hidden=True)
         return Instance(info, [], extra_attrs=instances[0].extra_attrs or instances[1].extra_attrs)
 
     def intersect_instance_callable(self, typ: Instance, callable_type: CallableType) -> Instance:
