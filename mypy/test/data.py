@@ -325,7 +325,7 @@ class DataDrivenTestCase(pytest.Item):
                 if os.path.basename(file[0]) not in ("typing.pyi", "_typeshed.pyi", "builtins.pyi")
             ]
         ):
-            raise AssertionError("Empty testcase.")
+            raise AssertionError(f"{self.name} is empty.")
 
         parent = self.getparent(DataSuiteCollector)
         assert parent is not None, "Should not happen"
