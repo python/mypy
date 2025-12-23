@@ -113,8 +113,6 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 and unpacked_type.type.fullname == "builtins.tuple"
             ):
                 items.append(unpacked_type.args[0])
-            elif isinstance(unpacked_type, TupleType):
-                items.extend(unpacked_type.items)
             else:
                 raise NotImplementedError
         else:
