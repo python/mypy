@@ -14,6 +14,14 @@ from gettext import gettext
 from io import TextIOWrapper
 from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
+if platform.python_implementation() == "PyPy":
+    sys.stderr.write(
+        "ERROR: Running mypy on PyPy is not supported yet.\n"
+        "To type-check a PyPy library please use an equivalent CPython version,\n"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
+    )
+    sys.exit(2)
+
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
     get_config_module_names,
@@ -40,14 +48,6 @@ from mypy.version import __version__
 
 if TYPE_CHECKING:
     from _typeshed import SupportsWrite
-
-if platform.python_implementation() == "PyPy":
-    sys.stderr.write(
-        "ERROR: Running mypy on PyPy is not supported yet.\n"
-        "To type-check a PyPy library please use an equivalent CPython version,\n"
-        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
-    )
-    sys.exit(2)
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
