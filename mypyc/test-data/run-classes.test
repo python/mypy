@@ -95,6 +95,36 @@ print(C.__annotations__["spam"] is JSONDecoder)
 True
 True
 
+[case testTypedDictWithFieldsAs]
+import json as _json
+from typing import TypedDict
+
+class C(TypedDict):
+    spam: _json.JSONDecoder
+[file driver.py]
+from native import C
+from json import JSONDecoder
+
+print(C.__annotations__["spam"] is JSONDecoder)
+[typing fixtures/typing-full.pyi]
+[out]
+True
+
+[case testTypedDictWithFieldsFrom]
+from json import decoder
+from typing import TypedDict
+
+class C(TypedDict):
+    spam: decoder.JSONDecoder
+[file driver.py]
+from native import C
+from json import JSONDecoder
+
+print(C.__annotations__["spam"] is JSONDecoder)
+[typing fixtures/typing-full.pyi]
+[out]
+True
+
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
 from testutil import assertRaises
