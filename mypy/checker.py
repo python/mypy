@@ -8394,43 +8394,42 @@ def conditional_types(
 
     if isinstance(proper_type, AnyType):
         return proposed_type, current_type
-    elif isinstance(proposed_type, AnyType):
+    if isinstance(proposed_type, AnyType):
         # We don't really know much about the proposed type, so we shouldn't
         # attempt to narrow anything. Instead, we broaden the expr to Any to
         # avoid false positives
         return proposed_type, default
-    elif not any(type_range.is_upper_bound for type_range in proposed_type_ranges) and (
-        # concrete subtypes
-        is_proper_subtype(current_type, proposed_type, ignore_promotions=True)
+    if not any(type_range.is_upper_bound for type_range in proposed_type_ranges):
+        # concrete subtype
+        if is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
+            return default, UninhabitedType()
+
         # structural subtypes
-        or (
-            (
-                isinstance(proposed_type, CallableType)
-                or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
+        if (
+            isinstance(proposed_type, CallableType)
+            or (isinstance(proposed_type, Instance) and proposed_type.type.is_protocol)
+        ) and is_subtype(current_type, proposed_type, ignore_promotions=True):
+            # Note: It's possible that current_type=`Any | Proto` while proposed_type=`Proto`
+            #  so we cannot return `Never` for the else branch
+            remainder = restrict_subtype_away(
+                current_type,
+                default if default is not None else proposed_type,
+                consider_runtime_isinstance=consider_runtime_isinstance,
             )
-            and is_subtype(current_type, proposed_type, ignore_promotions=True)
-        )
-    ):
-        # Expression is always of one of the types in proposed_type_ranges
-        return default, UninhabitedType()
-    elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
+            return default, remainder
+    if not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
         # Expression is never of any type in proposed_type_ranges
         return UninhabitedType(), default
-    else:
-        # we can only restrict when the type is precise, not bounded
-        proposed_precise_type = UnionType.make_union(
-            [
-                type_range.item
-                for type_range in proposed_type_ranges
-                if not type_range.is_upper_bound
-            ]
-        )
-        remaining_type = restrict_subtype_away(
-            current_type,
-            proposed_precise_type,
-            consider_runtime_isinstance=consider_runtime_isinstance,
-        )
-        return proposed_type, remaining_type
+    # we can only restrict when the type is precise, not bounded
+    proposed_precise_type = UnionType.make_union(
+        [type_range.item for type_range in proposed_type_ranges if not type_range.is_upper_bound]
+    )
+    remaining_type = restrict_subtype_away(
+        current_type,
+        proposed_precise_type,
+        consider_runtime_isinstance=consider_runtime_isinstance,
+    )
+    return proposed_type, remaining_type
 
 
 def conditional_types_to_typemaps(
