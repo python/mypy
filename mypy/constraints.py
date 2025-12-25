@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Final, NamedTuple, cast
-from typing_extensions import TypeGuard
+from typing import TYPE_CHECKING, Final, NamedTuple, TypeGuard, cast
 
 import mypy.subtypes
 import mypy.typeops

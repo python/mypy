@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from itertools import chain
-from typing import TYPE_CHECKING, Callable, NamedTuple, NewType, cast
-from typing_extensions import TypeGuard, TypeIs
+from typing import TYPE_CHECKING, NamedTuple, NewType, TypeGuard, cast
+from typing_extensions import TypeIs
 
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import TypeInfo
