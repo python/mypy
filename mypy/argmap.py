@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
+from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2
+from mypy.tuple_normal_form import TupleHelper, TupleNormalForm
 from mypy.types import (
     AnyType,
     Instance,
@@ -16,6 +18,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarTupleType,
+    UninhabitedType,
     UnpackType,
     get_proper_type,
 )
@@ -44,44 +47,35 @@ def map_actuals_to_formals(
     ambiguous_actual_kwargs: list[int] = []
     fi = 0
     for ai, actual_kind in enumerate(actual_kinds):
-        if actual_kind == nodes.ARG_POS:
+        if actual_kind == ARG_POS:
             if fi < nformals:
-                if not formal_kinds[fi].is_star():
+                if formal_kinds[fi] in (ARG_POS, ARG_OPT):
                     formal_to_actual[fi].append(ai)
                     fi += 1
-                elif formal_kinds[fi] == nodes.ARG_STAR:
+                elif formal_kinds[fi] == ARG_STAR:
                     formal_to_actual[fi].append(ai)
-        elif actual_kind == nodes.ARG_STAR:
-            # We need to know the actual type to map varargs.
-            actualt = get_proper_type(actual_arg_type(ai))
-            if isinstance(actualt, TupleType):
-                # A tuple actual maps to a fixed number of formals.
-                for _ in range(len(actualt.items)):
-                    if fi < nformals:
-                        if formal_kinds[fi] != nodes.ARG_STAR2:
-                            formal_to_actual[fi].append(ai)
-                        else:
-                            break
-                        if formal_kinds[fi] != nodes.ARG_STAR:
-                            fi += 1
-            else:
-                # Assume that it is an iterable (if it isn't, there will be
-                # an error later).
-                while fi < nformals:
-                    if formal_kinds[fi].is_named(star=True):
-                        break
-                    else:
-                        formal_to_actual[fi].append(ai)
-                    if formal_kinds[fi] == nodes.ARG_STAR:
-                        break
-                    fi += 1
+        elif actual_kind == ARG_STAR:
+            # convert the actual argument type to a tuple-like type
+            star_arg_type = TupleNormalForm.from_star_argument(actual_arg_type(ai))
+
+            # for a variadic argument use a negative value, so it remains truthy when decremented
+            # otherwise, use the length of the prefix.
+            num_actual_items = -1 if star_arg_type.is_variadic else len(star_arg_type.prefix)
+            # note: empty tuple star-args will not get mapped to anything
+            while fi < nformals and num_actual_items:
+                if formal_kinds[fi] in (ARG_POS, ARG_OPT, ARG_STAR):
+                    formal_to_actual[fi].append(ai)
+                    num_actual_items -= 1
+                if formal_kinds[fi] in (ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2):
+                    break
+                fi += 1
         elif actual_kind.is_named():
             assert actual_names is not None, "Internal error: named kinds without names given"
             name = actual_names[ai]
             if name in formal_names and formal_kinds[formal_names.index(name)] != nodes.ARG_STAR:
                 formal_to_actual[formal_names.index(name)].append(ai)
-            elif nodes.ARG_STAR2 in formal_kinds:
-                formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
+            elif ARG_STAR2 in formal_kinds:
+                formal_to_actual[formal_kinds.index(ARG_STAR2)].append(ai)
         else:
             assert actual_kind == nodes.ARG_STAR2
             actualt = get_proper_type(actual_arg_type(ai))
@@ -171,18 +165,86 @@ class ArgTypeExpander:
         # Type context for `*` and `**` arg kinds.
         self.context = context
 
+    def parse_star_argument(self, star_arg: Type, /) -> TupleType:
+        r"""Parse the type of ``*args`` argument into a tuple type.
+
+        Note: For star parameters, use `parse_star_parameter` instead.
+        """
+        tnf = TupleNormalForm.from_star_argument(star_arg)
+        return tnf.materialize(self.context)
+
+    def parse_star_parameter(self, star_param: Type, /) -> TupleType:
+        r"""Parse the type of a ``*args: T`` parameter into a tuple type.
+
+        This is different from `parse_star_argument` since mypy does some translation
+        for certain annotations. Below are some examples of how this works.
+
+        | annotation            | semanal result        | parsed result           |
+        |-----------------------|-----------------------|-------------------------|
+        | *args: int            | int                   | tuple[*tuple[int, ...]] |
+        | *args: *tuple[T, ...] | Unpack[tuple[T, ...]] | tuple[*tuple[T, ...]]   |
+        | *args: *tuple[A, B]   | Unpack[tuple[A, B]]   | tuple[A, B]             |
+        | *args: *Ts            | Unpack[Ts]            | tuple[*Ts]              |
+        | *args: P.args         | P.args                | tuple[*P.args]          |
+        """
+        p_t = get_proper_type(star_param)
+        if isinstance(p_t, UnpackType):
+            unpacked = get_proper_type(p_t.type)
+            if isinstance(unpacked, TupleType):
+                return unpacked
+            return TupleType([p_t], fallback=self.context.fallback_tuple)
+
+        elif isinstance(p_t, ParamSpecType):
+            # We put the ParamSpec inside an UnpackType.
+            parsed = UnpackType(p_t)
+            return TupleType([parsed], fallback=self.context.fallback_tuple)
+
+        else:  # e.g. *args: int  --> *args: *tuple[int, ...]
+            parsed = UnpackType(self.context.make_tuple_instance_type(p_t))
+            return TupleType([parsed], fallback=self.context.fallback_tuple)
+
+    @staticmethod
+    def unparse_star_parameter(t: Type, /) -> Type:
+        r"""Reverse normalizations done by parse_star_parameter.
+
+        tuple[*tuple[T, ...]]  -> T
+        tuple[A, B]            -> *tuple[A, B]
+        tuple[*Ts]             -> *Ts
+        tuple[*P.args]         -> P.args
+        """
+        p_t = get_proper_type(t)
+        assert isinstance(p_t, TupleType), f"Expected a parsed star argument, got {t}"
+        simplified_type = p_t.simplify()
+
+        # convert tuple[T, ...] to plain T.
+        if isinstance(simplified_type, Instance):
+            assert simplified_type.type.fullname == "builtins.tuple"
+            return simplified_type.args[0]
+        # wrap tuple and Ts in UnpackType
+        elif isinstance(simplified_type, (TupleType, TypeVarTupleType)):
+            return UnpackType(simplified_type)
+        # return ParamSpec as is.
+        elif isinstance(simplified_type, ParamSpecType):
+            return simplified_type
+        else:
+            assert False, f"Unexpected unpack content {simplified_type!r}"
+
     def expand_actual_type(
         self,
         actual_type: Type,
         actual_kind: nodes.ArgKind,
         formal_name: str | None,
         formal_kind: nodes.ArgKind,
-        allow_unpack: bool = False,
     ) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
-        If the actual argument is a tuple *args, return the next individual tuple item that
-        maps to the formal arg.
+        If the actual argument is a star argument *args, then:
+            1. If the formal argument is positional, return the next individual tuple item that
+               maps to the formal arg.
+               If the tuple is exhausted, returns UninhabitedType.
+            2. If the formal argument is a star parameter, returns a tuple type with the items
+               that map to the formal arg by slicing.
+               If the tuple is exhausted, returns an empty tuple type.
 
         If the actual argument is a TypedDict **kwargs, return the next matching typed dict
         value type based on formal argument name and kind.
@@ -192,51 +254,56 @@ class ArgTypeExpander:
         """
         original_actual = actual_type
         actual_type = get_proper_type(actual_type)
-        if actual_kind == nodes.ARG_STAR:
-            if isinstance(actual_type, TypeVarTupleType):
-                # This code path is hit when *Ts is passed to a callable and various
-                # special-handling didn't catch this. The best thing we can do is to use
-                # the upper bound.
-                actual_type = get_proper_type(actual_type.upper_bound)
-            if isinstance(actual_type, Instance) and actual_type.args:
-                from mypy.subtypes import is_subtype
 
-                if is_subtype(actual_type, self.context.iterable_type):
-                    return map_instance_to_supertype(
-                        actual_type, self.context.iterable_type.type
-                    ).args[0]
-                else:
-                    # We cannot properly unpack anything other
-                    # than `Iterable` type with `*`.
-                    # Just return `Any`, other parts of code would raise
-                    # a different error for improper use.
-                    return AnyType(TypeOfAny.from_error)
-            elif isinstance(actual_type, TupleType):
-                # Get the next tuple item of a tuple *arg.
-                if self.tuple_index >= len(actual_type.items):
-                    # Exhausted a tuple -- continue to the next *args.
-                    self.tuple_index = 1
-                else:
-                    self.tuple_index += 1
-                item = actual_type.items[self.tuple_index - 1]
-                if isinstance(item, UnpackType) and not allow_unpack:
-                    # An unpack item that doesn't have special handling, use upper bound as above.
-                    unpacked = get_proper_type(item.type)
-                    if isinstance(unpacked, TypeVarTupleType):
-                        fallback = get_proper_type(unpacked.upper_bound)
-                    else:
-                        fallback = unpacked
-                    assert (
-                        isinstance(fallback, Instance)
-                        and fallback.type.fullname == "builtins.tuple"
-                    )
-                    item = fallback.args[0]
-                return item
-            elif isinstance(actual_type, ParamSpecType):
-                # ParamSpec is valid in *args but it can't be unpacked.
-                return actual_type
+        if actual_kind == ARG_STAR:
+            assert formal_kind in (ARG_POS, ARG_OPT, ARG_STAR)
+            # parse *args into a TupleType.
+            tuple_helper = TupleHelper(self.context.tuple_typeinfo)
+            star_args_type = self.parse_star_argument(actual_type)
+
+            # # star_args_type failed to parse. treat as if it were tuple[Any, ...]
+            # if isinstance(star_args_type, AnyType):
+            #     any_tuple = self.context.make_tuple_instance_type(AnyType(TypeOfAny.from_error))
+            #     star_args_type = self.context.make_tuple_type([UnpackType(any_tuple)])
+
+            assert isinstance(star_args_type, TupleType)
+
+            # we are mapping an actual *args to positional arguments.
+            if formal_kind in (ARG_POS, ARG_OPT):
+                value = tuple_helper.get_item(star_args_type, self.tuple_index)
+                self.tuple_index += 1
+
+                # FIXME: In principle, None should indicate out-of-bounds access
+                #   caused by an error in formal_to_actual mapping.
+                # assert value is not None, "error in formal_to_actual mapping"
+                # However, in some cases due to lack of machinery it can happen:
+                # For example f(*[]). Then formal_to_actual is ignorant of the fact
+                # that the list is empty, but when materializing the tuple we actually get an empty tuple.
+                # Therefore, we currently just return UninhabitedType in this case.
+                value = UninhabitedType() if value is None else value
+
+                # if the argument is exhausted, reset the index
+                if (
+                    not star_args_type.is_variadic
+                    and self.tuple_index >= star_args_type.minimum_length
+                ):
+                    self.tuple_index = 0
+                return value
+
+            # we are mapping an actual *args input to a *args formal argument.
+            elif formal_kind == ARG_STAR:
+                # get the slice from the current index to the end of the tuple.
+                r = tuple_helper.get_slice(star_args_type, self.tuple_index, None)
+                # r = star_args_type.slice(
+                #     self.tuple_index, None, None, fallback=self.context.tuple_type
+                # )
+                self.tuple_index = 0
+                # assert r is not None, f"failed to slice {star_args_type} at {self.tuple_index}"
+                return r
+
             else:
-                return AnyType(TypeOfAny.from_error)
+                raise AssertionError(f"Unexpected formal kind {formal_kind} for *args")
+
         elif actual_kind == nodes.ARG_STAR2:
             from mypy.subtypes import is_subtype
 

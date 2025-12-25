@@ -50,3 +50,9 @@ def is_dataclass(obj: object) -> TypeGuard[DataclassInstance | type[DataclassIns
 
 
 def replace(__obj: _DataclassT, **changes: Any) -> _DataclassT: ...
+
+
+from typing import Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass

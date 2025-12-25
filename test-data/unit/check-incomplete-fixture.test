@@ -42,24 +42,30 @@ main:1: error: Name "isinstance" is not defined
 main:1: note: Maybe your test fixture does not define "builtins.isinstance"?
 main:1: note: Consider adding [builtins fixtures/isinstancelist.pyi] to your test description
 
-[case testTupleMissingFromStubs1]
-tuple()
+[case testSetMissingFromStubs1]
+set()
 [out]
-main:1: error: Name "tuple" is not defined
-main:1: note: Maybe your test fixture does not define "builtins.tuple"?
-main:1: note: Consider adding [builtins fixtures/tuple.pyi] to your test description
-main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Tuple")
+main:1: error: Name "set" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.set"?
+main:1: note: Consider adding [builtins fixtures/set.pyi] to your test description
+main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Set")
 
-[case testTupleMissingFromStubs2]
-tuple()
-from typing import Tuple
-x: Tuple[int, str]
+[case testSetMissingFromStubs2]
+set()
+from typing import Set
+x: set[int]
 [out]
-main:1: error: Name "tuple" is not defined
-main:1: note: Maybe your test fixture does not define "builtins.tuple"?
-main:1: note: Consider adding [builtins fixtures/tuple.pyi] to your test description
-main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Tuple")
-main:3: error: Name "tuple" is not defined
+main:1: error: Name "set" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.set"?
+main:1: note: Consider adding [builtins fixtures/set.pyi] to your test description
+main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Set")
+main:2: error: Module "typing" has no attribute "Set"
+main:2: note: Maybe your test fixture does not define "builtins.set"?
+main:2: note: Consider adding [builtins fixtures/set.pyi] to your test description
+main:3: error: Name "set" is not defined
+main:3: note: Maybe your test fixture does not define "builtins.set"?
+main:3: note: Consider adding [builtins fixtures/set.pyi] to your test description
+main:3: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Set")
 
 [case testClassmethodMissingFromStubs]
 class A:

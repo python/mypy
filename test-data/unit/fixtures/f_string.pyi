@@ -20,8 +20,6 @@ class list(Iterable[T], Generic[T]):
     def __init__(self, x: Iterable[T]) -> None: pass
     def append(self, x: T) -> None: pass
 
-class tuple(Generic[T]): pass
-
 class function: pass
 class int:
     def __add__(self, i: int) -> int: pass
@@ -36,3 +34,10 @@ class str:
 
 
 class dict: pass
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

@@ -396,7 +396,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         elif (
             isinstance(repl, Instance)
             and repl.type.fullname == "builtins.tuple"
-            or isinstance(repl, TypeVarTupleType)
+            or isinstance(repl, (TypeVarTupleType, ParamSpecType))
         ):
             return [UnpackType(typ=repl)]
         elif isinstance(repl, (AnyType, UninhabitedType)):

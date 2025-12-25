@@ -31,7 +31,6 @@ class bytes(Sequence[int]):
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
 class bytearray: pass
-class tuple(Generic[T]): pass
 class function: pass
 class ellipsis: pass
 
@@ -60,3 +59,10 @@ class dict(Mapping[KT, VT]):
     @overload
     def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

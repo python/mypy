@@ -539,7 +539,7 @@ main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mis
 main.py:3: error: Missing positional argument "x" in call to "f"
 ==
 main.py:3: error: Missing positional argument "x" in call to "f"
-main.py:4: error: Too many arguments for "f"
+main.py:4: error: Too many positional arguments for "f"
 
 [case testFollowImportsNormalPackageInitFile4-only_when_cache]
 # flags: --follow-imports=normal
@@ -717,7 +717,7 @@ def f() -> None: pass
 
 [out]
 ==
-main.py:2: error: Too many arguments for "f"
+main.py:2: error: Too many positional arguments for "f"
 
 [case testFollowImportsNormalMultipleImportedModulesSpecialCase]
 # flags: --follow-imports=normal

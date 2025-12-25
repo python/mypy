@@ -25,7 +25,12 @@ class bytes: pass
 class bool: pass
 class ellipsis: pass
 
-class tuple(typing.Generic[_T]): pass
-
 class list: pass
 class dict: pass
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

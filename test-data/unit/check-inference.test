@@ -151,7 +151,7 @@ class B: pass
 import typing
 def f() -> None:
     a = A
-    a(A()) # E: Too many arguments
+    a(A()) # E: Too many positional arguments
     a()
     t = a # type: type
 

@@ -98,13 +98,13 @@ def f() -> None
 [file a.py.3]
 def f() -> None: pass
 [out]
-main:3: error: Too many arguments for "f"
-main:5: error: Too many arguments for "f"
+main:3: error: Too many positional arguments for "f"
+main:5: error: Too many positional arguments for "f"
 ==
 a.py:1: error: Expected ':'
 ==
-main:3: error: Too many arguments for "f"
-main:5: error: Too many arguments for "f"
+main:3: error: Too many positional arguments for "f"
+main:5: error: Too many positional arguments for "f"
 
 [case testUpdateClassReferenceAcrossBlockingError]
 import a
@@ -144,14 +144,14 @@ main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 ==
 a.py:1: error: Invalid syntax
 ==
-main:2: error: Too many arguments for "f"
+main:2: error: Too many positional arguments for "f"
 [out version==3.10.0]
 main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
-main:2: error: Too many arguments for "f"
+main:2: error: Too many positional arguments for "f"
 
 [case testModifyTwoFilesOneWithBlockingError1]
 import a
@@ -276,8 +276,8 @@ a.py:1: error: Invalid syntax
 ==
 a.py:1: error: Invalid syntax
 ==
-a.py:3: error: Too many arguments for "g"
-b.py:3: error: Too many arguments for "f"
+a.py:3: error: Too many positional arguments for "g"
+b.py:3: error: Too many positional arguments for "f"
 
 [case testDeleteFileWithBlockingError-only_when_nocache]
 -- Different cache/no-cache tests because:

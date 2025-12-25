@@ -441,7 +441,7 @@ class Node(Generic[T]):
     def __init__(self, x: T) -> None:
         ...
 Node[int]()  # E: Missing positional argument "x" in call to "Node"
-Node[int](1, 1, 1)  # E: Too many arguments for "Node"
+Node[int](1, 1, 1)  # E: Too many positional arguments for "Node"
 [out]
 
 [case testTypeApplicationTvars]

@@ -166,8 +166,10 @@ f(A(), B()) # E: Too many positional arguments for "f"
 g(A(), b=B())
 g(b=B(), a=A())
 g(A()) # E: Missing named argument "b" for "g"
-g(A(), B()) # E: Too many positional arguments for "g"
-h(A()) # E: Missing named argument "b" for "h" # E: Missing named argument "aa" for "h"
+g(A(), B()) # E: Too many positional arguments for "g" \
+            # E: Missing named argument "b" for "g"
+h(A()) # E: Missing named argument "b" for "h" \
+       # E: Missing named argument "aa" for "h"
 h(A(), b=B()) # E: Missing named argument "aa" for "h"
 h(A(), aa=A()) # E: Missing named argument "b" for "h"
 h(A(), b=B(), aa=A())
@@ -196,8 +198,10 @@ f(A(), B()) # E: Too many positional arguments for "f"
 g(A(), b=B())
 g(b=B(), a=A())
 g(A()) # E: Missing named argument "b" for "g"
-g(A(), B()) # E: Too many positional arguments for "g"
-h(A()) # E: Missing named argument "b" for "h" # E: Missing named argument "aa" for "h"
+g(A(), B()) # E: Too many positional arguments for "g" \
+            # E: Missing named argument "b" for "g"
+h(A()) # E: Missing named argument "b" for "h" \
+       # E: Missing named argument "aa" for "h"
 h(A(), b=B()) # E: Missing named argument "aa" for "h"
 h(A(), aa=A()) # E: Missing named argument "b" for "h"
 h(A(), b=B(), aa=A())
@@ -288,7 +292,7 @@ f()
 f(x=A())
 f(y=A(), z=A())
 f(x=B()) # E: Argument "x" to "f" has incompatible type "B"; expected "A"
-f(A())   # E: Too many arguments for "f"
+f(A())   # E: Too many positional arguments for "f"
 # Perhaps a better message would be "Too many *positional* arguments..."
 [builtins fixtures/dict.pyi]
 
@@ -457,7 +461,7 @@ f(**c) # E: Argument after ** must have string keys
 
 [case testCallStar2WithStar]
 def f(**k): pass
-f(*(1, 2))  # E: Too many arguments for "f"
+f(*(1, 2))  # E: Too many positional arguments for "f"
 [builtins fixtures/dict.pyi]
 
 [case testUnexpectedMethodKwargInNestedClass]

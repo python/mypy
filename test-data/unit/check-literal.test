@@ -1174,7 +1174,9 @@ reveal_type(arr3)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(arr4)  # N: Revealed type is "builtins.list[builtins.object]"
 reveal_type(arr5)  # N: Revealed type is "builtins.list[builtins.object]"
 
-bad: List[Literal[1, 2]] = [1, 2, 3]  # E: List item 2 has incompatible type "Literal[3]"; expected "Literal[1, 2]"
+bad0: List[Literal[1, 2]] = [3, 1, 2]  # E: List item 0 has incompatible type "Literal[3]"; expected "Literal[1, 2]"
+bad1: List[Literal[1, 2]] = [1, 3, 2]  # E: List item 1 has incompatible type "Literal[3]"; expected "Literal[1, 2]"
+bad2: List[Literal[1, 2]] = [1, 2, 3]  # E: List item 2 has incompatible type "Literal[3]"; expected "Literal[1, 2]"
 
 [builtins fixtures/list.pyi]
 [out]

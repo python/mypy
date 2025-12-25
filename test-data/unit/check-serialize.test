@@ -415,7 +415,7 @@ class A:
     def f() -> None: pass
 [builtins fixtures/staticmethod.pyi]
 [out2]
-tmp/a.py:2: error: Too many arguments for "f" of "A"
+tmp/a.py:2: error: Too many positional arguments for "f" of "A"
 
 [case testSerializeClassMethod]
 import a
@@ -432,7 +432,7 @@ class A:
     def f(cls) -> None: pass
 [builtins fixtures/classmethod.pyi]
 [out2]
-tmp/a.py:2: error: Too many arguments for "f" of "A"
+tmp/a.py:2: error: Too many positional arguments for "f" of "A"
 
 [case testSerializeReadOnlyProperty]
 import a
@@ -510,8 +510,8 @@ class B:
 class C(A, B):
     def h(self) -> int: pass
 [out2]
-tmp/a.py:2: error: Too many arguments for "f" of "A"
-tmp/a.py:3: error: Too many arguments for "g" of "B"
+tmp/a.py:2: error: Too many positional arguments for "f" of "A"
+tmp/a.py:3: error: Too many positional arguments for "g" of "B"
 tmp/a.py:4: note: Revealed type is "builtins.int"
 tmp/a.py:7: error: Incompatible types in assignment (expression has type "C", variable has type "int")
 
@@ -548,7 +548,7 @@ class A(Tuple[int, str]):
     def f(self) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:3: error: Too many arguments for "f" of "A"
+tmp/a.py:3: error: Too many positional arguments for "f" of "A"
 tmp/a.py:4: note: Revealed type is "tuple[builtins.int, builtins.str]"
 
 [case testSerializeVariableLengthTupleBaseClass]
@@ -566,7 +566,7 @@ class A(Tuple[int, ...]):
     def f(self) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:3: error: Too many arguments for "f" of "A"
+tmp/a.py:3: error: Too many positional arguments for "f" of "A"
 tmp/a.py:4: note: Revealed type is "tuple[builtins.int, builtins.int]"
 
 [case testSerializePlainTupleBaseClass]
@@ -584,7 +584,7 @@ class A(tuple):
     def f(self) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:3: error: Too many arguments for "f" of "A"
+tmp/a.py:3: error: Too many positional arguments for "f" of "A"
 tmp/a.py:4: note: Revealed type is "tuple[Any, Any]"
 
 [case testSerializeNamedTupleBaseClass]
@@ -603,7 +603,7 @@ class A(NamedTuple('N', [('x', int), ('y', str)])):
     def f(self) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:3: error: Too many arguments for "f" of "A"
+tmp/a.py:3: error: Too many positional arguments for "f" of "A"
 tmp/a.py:4: note: Revealed type is "tuple[builtins.int, builtins.str]"
 tmp/a.py:5: note: Revealed type is "tuple[builtins.int, builtins.str]"
 
@@ -622,7 +622,7 @@ class B(A):
     def f(self) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:2: error: Too many arguments for "f" of "B"
+tmp/a.py:2: error: Too many positional arguments for "f" of "B"
 tmp/a.py:3: note: Revealed type is "Any"
 
 [case testSerializeIndirectAnyBaseClass]
@@ -643,8 +643,8 @@ class C(B):
     def g(self) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:2: error: Too many arguments for "f" of "B"
-tmp/a.py:3: error: Too many arguments for "g" of "C"
+tmp/a.py:2: error: Too many positional arguments for "f" of "B"
+tmp/a.py:3: error: Too many positional arguments for "g" of "C"
 tmp/a.py:4: note: Revealed type is "Any"
 
 [case testSerializeNestedClass]
@@ -667,10 +667,10 @@ b: A.B
 c: A.B.C
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:2: error: Too many arguments for "f" of "B"
-tmp/a.py:3: error: Too many arguments for "g" of "C"
-tmp/a.py:4: error: Too many arguments for "f" of "B"
-tmp/a.py:5: error: Too many arguments for "g" of "C"
+tmp/a.py:2: error: Too many positional arguments for "f" of "B"
+tmp/a.py:3: error: Too many positional arguments for "g" of "C"
+tmp/a.py:4: error: Too many positional arguments for "f" of "B"
+tmp/a.py:5: error: Too many positional arguments for "g" of "C"
 
 [case testSerializeCallableVsTypeObjectDistinction]
 import a
@@ -1129,10 +1129,10 @@ from c import A
 [file c.py]
 class A: pass
 [out1]
-main:2: error: Too many arguments for "A"
+main:2: error: Too many positional arguments for "A"
 main:3: note: Revealed type is "c.A"
 [out2]
-main:2: error: Too many arguments for "A"
+main:2: error: Too many positional arguments for "A"
 main:3: note: Revealed type is "c.A"
 
 [case testSerializeFromImportedClassAs]
@@ -1144,10 +1144,10 @@ from c import A as B
 [file c.py]
 class A: pass
 [out1]
-main:2: error: Too many arguments for "A"
+main:2: error: Too many positional arguments for "A"
 main:3: note: Revealed type is "c.A"
 [out2]
-main:2: error: Too many arguments for "A"
+main:2: error: Too many positional arguments for "A"
 main:3: note: Revealed type is "c.A"
 
 [case testSerializeFromImportedModule]
@@ -1261,7 +1261,7 @@ from c import *
 def f() -> None: pass
 class A: pass
 [out2]
-tmp/a.py:2: error: Too many arguments for "f"
+tmp/a.py:2: error: Too many positional arguments for "f"
 tmp/a.py:4: note: Revealed type is "c.A"
 
 [case testSerializeRelativeImport]
@@ -1273,9 +1273,9 @@ from .d import f
 [file b/d.py]
 def f() -> None: pass
 [out1]
-main:2: error: Too many arguments for "f"
+main:2: error: Too many positional arguments for "f"
 [out2]
-main:2: error: Too many arguments for "f"
+main:2: error: Too many positional arguments for "f"
 
 [case testSerializeDummyType]
 # flags: --no-strict-optional

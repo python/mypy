@@ -1112,9 +1112,11 @@ class C(B): ...
 class B: ...
 
 [case testNewAnalyzerIncompleteFixture]
-from typing import Tuple
+from typing import Set  # E: Module "typing" has no attribute "Set" \
+                        # N: Maybe your test fixture does not define "builtins.set"? \
+                        # N: Consider adding [builtins fixtures/set.pyi] to your test description
 
-x: Tuple[int]  # E: Name "tuple" is not defined
+x: Set[int]
 [builtins fixtures/complex.pyi]
 
 [case testNewAnalyzerMetaclass1]

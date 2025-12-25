@@ -20,7 +20,7 @@ if int():
 if int():
     b = f()     # E: Too few arguments
 if int():
-    b = f(a, a) # E: Too many arguments
+    b = f(a, a) # E: Too many positional arguments
 if int():
     b = f(a)
 
@@ -503,7 +503,7 @@ if int():
 if int():
     b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "A | None"
 if int():
-    b = f(a, a) # E: Too many arguments for "f"
+    b = f(a, a) # E: Too many positional arguments for "f"
 
 if int():
     b = f()
@@ -605,7 +605,7 @@ class A:
 a: A
 a.f()
 a.g(B())
-a.f(a) # E: Too many arguments
+a.f(a) # E: Too many positional arguments
 a.g()  # E: Too few arguments
 
 [case testMethodWithInvalidMethodAsDataAttribute]
@@ -627,7 +627,7 @@ class A:
     f = x # type: ClassVar[Callable[[Any], Any]]
 a: A
 a.f()
-a.f(a) # E: Too many arguments
+a.f(a) # E: Too many positional arguments
 
 [case testMethodWithInferredMethodAsDataAttribute]
 from typing import Any
@@ -667,7 +667,7 @@ class A:
     g = f
 a: A
 a.g(object())
-a.g(a, a) # E: Too many arguments
+a.g(a, a) # E: Too many positional arguments
 a.g()     # E: Too few arguments
 
 [case testMethodAsDataAttributeInGenericClass]
@@ -716,8 +716,8 @@ class A:
 a = A(lambda: None)
 a.f()
 a.g()
-a.f(a) # E: Too many arguments
-a.g(a) # E: Too many arguments
+a.f(a) # E: Too many positional arguments
+a.g(a) # E: Too many positional arguments
 
 
 -- Nested functions
@@ -813,7 +813,7 @@ def f() -> None:
         g(1) # E
 [out]
 main:4: error: Argument 1 to "h" has incompatible type "str"; expected "int"
-main:7: error: Too many arguments for "g"
+main:7: error: Too many positional arguments for "g"
 
 [case testMutuallyRecursiveDecoratedFunctions]
 from typing import Callable, Any
@@ -912,7 +912,7 @@ def dec(x) -> Callable[[], None]: pass
 @dec
 def f(y): pass
 f()
-f(None) # E: Too many arguments for "f"
+f(None) # E: Too many positional arguments for "f"
 
 [case testDecoratorThatSwitchesTypeWithMethod]
 from typing import Any, Callable
@@ -922,7 +922,7 @@ class A:
     def f(self, a, b, c): pass
 a: A
 a.f()
-a.f(None) # E: Too many arguments for "f" of "A"
+a.f(None) # E: Too many positional arguments for "f" of "A"
 
 [case testNestedDecorators]
 from typing import Any, Callable
@@ -932,7 +932,7 @@ def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
 @dec2
 def f(x, y): pass
 f()
-f(None) # E: Too many arguments for "f"
+f(None) # E: Too many positional arguments for "f"
 
 [case testInvalidDecorator1]
 from typing import Any, Callable
@@ -1045,7 +1045,7 @@ from typing import TypeVar
 
 def f(self) -> None:
     g()
-    g(1) # E: Too many arguments for "g"
+    g(1) # E: Too many positional arguments for "g"
     h(1).x # E: "str" has no attribute "x"
     h('') # E: Argument 1 to "h" has incompatible type "str"; expected "int"
 
@@ -1553,7 +1553,7 @@ f = g
 if g():
     def f(): pass
 f()
-f(1) # E: Too many arguments
+f(1) # E: Too many positional arguments
 
 [case testRedefineFunctionDefinedAsVariableInitializedToNone]
 def g(): pass
@@ -1561,7 +1561,7 @@ f = None
 if g():
     def f(): pass
 f()
-f(1) # E: Too many arguments for "f"
+f(1) # E: Too many positional arguments for "f"
 
 [case testRedefineNestedFunctionDefinedAsVariableInitializedToNone]
 def g() -> None:
@@ -1935,7 +1935,8 @@ from mypy_extensions import NamedArg
 
 def a(f: Callable[[NamedArg(int, 'x')], int]):
     f(x=4)
-    f(2) # E: Too many positional arguments
+    f(2) # E: Too many positional arguments \
+         # E: Missing named argument "x"
     f() # E: Missing named argument "x"
     f(y=3) # E: Unexpected keyword argument "y"
     f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
@@ -1959,7 +1960,7 @@ from mypy_extensions import KwArg
 
 def a(f: Callable[[KwArg(int)], int]):
     f(x=4)
-    f(2) # E: Too many arguments
+    f(2) # E: Too many positional arguments
     f()
     f(y=3)
     f(x=4, y=3, z=10)
@@ -2268,7 +2269,7 @@ a = 1  # type: Any
 with a:
     def f() -> None:
         pass
-    f(1) # E: Too many arguments for "f"
+    f(1) # E: Too many positional arguments for "f"
 
 
 [case testNameForDecoratorMethod]
@@ -2294,7 +2295,7 @@ def g(x: int) -> None:
     pass
 h = f if bool() else g
 reveal_type(h) # N: Revealed type is "(def ()) | (def (x: builtins.int))"
-h(7) # E: Too many arguments for "f"
+h(7) # E: Too many positional arguments for "f"
 
 T = TypeVar("T")
 def join(x: T, y: T) -> T: ...

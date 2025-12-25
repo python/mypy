@@ -11,7 +11,7 @@ class Person:
 
 reveal_type(Person)  # N: Revealed type is "def (name: builtins.str, age: builtins.int) -> __main__.Person"
 Person('John', 32)
-Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+Person('Jonh', 21, None)  # E: Too many positional arguments for "Person"
 
 [builtins fixtures/dataclasses.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -47,7 +47,7 @@ class Person(Mammal):
 reveal_type(Person)  # N: Revealed type is "def (age: builtins.int, name: builtins.str) -> __main__.Person"
 Mammal(10)
 Person(32, 'John')
-Person(21, 'Jonh', None)  # E: Too many arguments for "Person"
+Person(21, 'Jonh', None)  # E: Too many positional arguments for "Person"
 
 [builtins fixtures/dataclasses.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -154,7 +154,7 @@ reveal_type(Person)  # N: Revealed type is "def (age: builtins.int, name: builti
 reveal_type(SpecialPerson)  # N: Revealed type is "def (age: builtins.int, name: builtins.str, special_factor: builtins.float) -> __main__.SpecialPerson"
 reveal_type(ExtraSpecialPerson)  # N: Revealed type is "def (age: builtins.int, name: builtins.str, special_factor: builtins.float) -> __main__.ExtraSpecialPerson"
 Person(32, 'John')
-Person(21, 'John', None)  # E: Too many arguments for "Person"
+Person(21, 'John', None)  # E: Too many positional arguments for "Person"
 SpecialPerson(21, 'John', 0.5)
 ExtraSpecialPerson(21, 'John', 0.5)
 
@@ -389,11 +389,15 @@ class Application:
 Application(rating=5)
 Application(name='name', rating=5)
 Application()  # E: Missing named argument "rating" for "Application"
-Application('name')  # E: Too many positional arguments for "Application" # E: Missing named argument "rating" for "Application"
-Application('name', 123)  # E: Too many positional arguments for "Application"
+Application('name')  # E: Too many positional arguments for "Application" \
+                     # E: Missing named argument "rating" for "Application"
+Application('name', 123)  # E: Too many positional arguments for "Application" \
+                          # E: Missing named argument "rating" for "Application"
 Application('name', rating=123)  # E: Too many positional arguments for "Application"
-Application(name=123, rating='name') # E: Argument "name" to "Application" has incompatible type "int"; expected "str" # E: Argument "rating" to "Application" has incompatible type "str"; expected "int"
-Application(rating='name', name=123) # E: Argument "rating" to "Application" has incompatible type "str"; expected "int" # E: Argument "name" to "Application" has incompatible type "int"; expected "str"
+Application(name=123, rating='name') # E: Argument "name" to "Application" has incompatible type "int"; expected "str" \
+                                     # E: Argument "rating" to "Application" has incompatible type "str"; expected "int"
+Application(rating='name', name=123) # E: Argument "rating" to "Application" has incompatible type "str"; expected "int" \
+                                     # E: Argument "name" to "Application" has incompatible type "int"; expected "str"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -411,8 +415,10 @@ Application('name', rating=123)
 Application(name='name', rating=5)
 Application()  # E: Missing named argument "rating" for "Application"
 Application('name')  # E: Missing named argument "rating" for "Application"
-Application('name', 123)  # E: Too many positional arguments for "Application"
-Application(123, rating='name') # E: Argument 1 to "Application" has incompatible type "int"; expected "str" # E: Argument "rating" to "Application" has incompatible type "str"; expected "int"
+Application('name', 123)  # E: Too many positional arguments for "Application" \
+                          # E: Missing named argument "rating" for "Application"
+Application(123, rating='name') # E: Argument 1 to "Application" has incompatible type "int"; expected "str" \
+                                # E: Argument "rating" to "Application" has incompatible type "str"; expected "int"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -446,8 +452,10 @@ class Application:
 Application(rating=5)
 Application(name='name', rating=5)
 Application()  # E: Missing named argument "rating" for "Application"
-Application('name')  # E: Too many positional arguments for "Application" # E: Missing named argument "rating" for "Application"
-Application('name', 123)  # E: Too many positional arguments for "Application"
+Application('name')  # E: Too many positional arguments for "Application" \
+                     # E: Missing named argument "rating" for "Application"
+Application('name', 123)  # E: Too many positional arguments for "Application" \
+                          # E: Missing named argument "rating" for "Application"
 Application('name', rating=123)  # E: Too many positional arguments for "Application"
 
 [builtins fixtures/dataclasses.pyi]
@@ -467,8 +475,7 @@ Application()  # E: Missing positional argument "rating" in call to "Application
 Application(123)
 Application('name')  # E: Argument 1 to "Application" has incompatible type "str"; expected "int"
 Application('name', 123)  # E: Too many positional arguments for "Application" \
-                          # E: Argument 1 to "Application" has incompatible type "str"; expected "int" \
-                          # E: Argument 2 to "Application" has incompatible type "int"; expected "str"
+                          # E: Argument 1 to "Application" has incompatible type "str"; expected "int"
 Application(123, rating=123)  # E: "Application" gets multiple values for keyword argument "rating"
 [builtins fixtures/dataclasses.pyi]
 
@@ -1019,7 +1026,7 @@ class C(B):
 
 A(1)
 B(1)
-B(1, 2)  # E: Too many arguments for "B"
+B(1, 2)  # E: Too many positional arguments for "B"
 C(1, 2)
 C(1, 'a')  # E: Argument 2 to "C" has incompatible type "str"; expected "int"
 

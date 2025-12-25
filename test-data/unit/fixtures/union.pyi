@@ -10,9 +10,14 @@ class object:
 class type: pass
 class function: pass
 
-class tuple(Generic[T]): pass
-
 # We need int for indexing tuples.
 class int: pass
 class str: pass # For convenience
 class dict: pass
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

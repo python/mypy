@@ -542,8 +542,8 @@ class C(A, B): pass
 x: C
 x.f()
 x.g()
-x.f(x) # E: Too many arguments for "f" of "A"
-x.g(x) # E: Too many arguments for "g" of "B"
+x.f(x) # E: Too many positional arguments for "f" of "A"
+x.g(x) # E: Too many positional arguments for "g" of "B"
 
 [case testInstantiatingAbstractClassWithMultipleBaseClasses]
 

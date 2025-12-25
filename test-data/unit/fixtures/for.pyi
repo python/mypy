@@ -9,8 +9,6 @@ class object:
     def __init__(self) -> None: pass
 
 class type: pass
-class tuple(Generic[t]):
-    def __iter__(self) -> Iterator[t]: pass
 class function: pass
 class ellipsis: pass
 class bool: pass
@@ -22,3 +20,10 @@ class str:  # for convenience
 class list(Iterable[t], Generic[t]):
     def __iter__(self) -> Iterator[t]: pass
 class dict: pass
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

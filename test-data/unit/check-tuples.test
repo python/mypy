@@ -1117,7 +1117,7 @@ reveal_type(b)  # N: Revealed type is "tuple[builtins.int, builtins.int, builtin
 [case testTupleWithStarExpr2]
 a = [1]
 b = (0, *a)
-reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(b)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr2Precise]
@@ -1130,9 +1130,9 @@ reveal_type(b)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple
 [case testTupleWithStarExpr3]
 a = ['']
 b = (0, *a)
-reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(b)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]"
 c = (*a, '')
-reveal_type(c)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+reveal_type(c)  # N: Revealed type is "tuple[Unpack[builtins.tuple[builtins.str, ...]], builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr3Precise]
@@ -1823,4 +1823,167 @@ class A: ...
 class tuple_aa_subclass(Tuple[A, A]): ...
 
 inst_tuple_aa_subclass: tuple_aa_subclass = tuple_aa_subclass((A(), A()))[:]  # E: Incompatible types in assignment (expression has type "tuple[A, A]", variable has type "tuple_aa_subclass")
+[builtins fixtures/tuple.pyi]
+
+
+[case testLeftAndRightVariadicCoupled]
+# test solving cases with infinitely many solutions.
+from typing import TypeVar, Unpack
+
+class A: ...
+class A1: ...
+class A2: ...
+class A3: ...
+class A4: ...
+
+T = TypeVar("T")
+
+def left_variadic(
+    *args: Unpack[tuple[Unpack[tuple[T, ...]], T, T, T]],
+) -> T: ...
+
+def right_variadic(
+    *args: Unpack[tuple[T, T, T, Unpack[tuple[T, ...]]]],
+) -> T: ...
+
+def test_right_variadic_param_with_left_variadic_argument(
+    l0: tuple[Unpack[tuple[A, ...]]],
+    l1: tuple[Unpack[tuple[A, ...]], A1],
+    l2: tuple[Unpack[tuple[A, ...]], A1, A2],
+    l3: tuple[Unpack[tuple[A, ...]], A1, A2, A3],
+    l4: tuple[Unpack[tuple[A, ...]], A1, A2, A3, A4],
+) -> None:
+    # tuple[T, T, T, *tuple[T, ...]] -> T
+    reveal_type( right_variadic(*l0) )  # N: Revealed type is "__main__.A"
+    reveal_type( right_variadic(*l1) )  # N: Revealed type is "builtins.object"
+    reveal_type( right_variadic(*l2) )  # N: Revealed type is "builtins.object"
+    reveal_type( right_variadic(*l3) )  # N: Revealed type is "builtins.object"
+    reveal_type( right_variadic(*l4) )  # N: Revealed type is "builtins.object"
+    # NOTE: when using union instead of join this should be Union[A, A1, A2, A3, A4]
+
+def test_right_variadic_param_with_right_variadic_argument(
+    r0: tuple[Unpack[tuple[A, ...]]],
+    r1: tuple[A1, Unpack[tuple[A, ...]]],
+    r2: tuple[A1, A2, Unpack[tuple[A, ...]]],
+    r3: tuple[A1, A2, A3, Unpack[tuple[A, ...]]],
+    r4: tuple[A1, A2, A3, A4, Unpack[tuple[A, ...]]],
+) -> None:
+    # tuple[T, T, T, *tuple[T, ...]] -> T
+    reveal_type( right_variadic(*r0) )  # N: Revealed type is "__main__.A"
+    reveal_type( right_variadic(*r1) )  # N: Revealed type is "builtins.object"
+    reveal_type( right_variadic(*r2) )  # N: Revealed type is "builtins.object"
+    reveal_type( right_variadic(*r3) )  # N: Revealed type is "builtins.object"
+    reveal_type( right_variadic(*r4) )  # N: Revealed type is "builtins.object"
+    # NOTE: when using union instead of join this should be Union[A, A1, A2, A3, A4]
+
+def test_left_variadic_param_with_right_variadic_argument(
+    r0: tuple[Unpack[tuple[A, ...]]],
+    r1: tuple[A1, Unpack[tuple[A, ...]]],
+    r2: tuple[A1, A2, Unpack[tuple[A, ...]]],
+    r3: tuple[A1, A2, A3, Unpack[tuple[A, ...]]],
+    r4: tuple[A1, A2, A3, A4, Unpack[tuple[A, ...]]],
+)-> None:
+    # tuple[*tuple[T, ...], T, T, T] -> T
+    reveal_type( left_variadic(*r0) )  # N: Revealed type is "__main__.A"
+    reveal_type( left_variadic(*r1) )  # N: Revealed type is "builtins.object"
+    reveal_type( left_variadic(*r2) )  # N: Revealed type is "builtins.object"
+    reveal_type( left_variadic(*r3) )  # N: Revealed type is "builtins.object"
+    reveal_type( left_variadic(*r4) )  # N: Revealed type is "builtins.object"
+    # NOTE: when using union instead of join this should be Union[A, A1, A2, A3, A4]
+
+def test_left_variadic_param_with_left_variadic_argument(
+    l0: tuple[Unpack[tuple[A, ...]]],
+    l1: tuple[Unpack[tuple[A, ...]], A1],
+    l2: tuple[Unpack[tuple[A, ...]], A1, A2],
+    l3: tuple[Unpack[tuple[A, ...]], A1, A2, A3],
+    l4: tuple[Unpack[tuple[A, ...]], A1, A2, A3, A4],
+)-> None:
+    # tuple[*tuple[T, ...], T, T, T] -> T
+    reveal_type( left_variadic(*l0) )  # N: Revealed type is "__main__.A"
+    reveal_type( left_variadic(*l1) )  # N: Revealed type is "builtins.object"
+    reveal_type( left_variadic(*l2) )  # N: Revealed type is "builtins.object"
+    reveal_type( left_variadic(*l3) )  # N: Revealed type is "builtins.object"
+    reveal_type( left_variadic(*l4) )  # N: Revealed type is "builtins.object"
+    # NOTE: when using union instead of join this should be Union[A, A1, A2, A3, A4]
+[builtins fixtures/tuple.pyi]
+
+
+[case testLeftAndRightVariadicTypeVarTuple]
+# test solving cases with infinitely many solutions.
+from typing import TypeVar, TypeVarTuple, Unpack
+
+class A: ...
+class A1: ...
+class A2: ...
+class A3: ...
+class A4: ...
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+Ts = TypeVarTuple("Ts")
+
+def left_variadic(
+    *args: Unpack[tuple[Unpack[Ts], T1, T2, T3]],
+) -> tuple[Unpack[Ts], T1, T2, T3]: ...
+
+def right_variadic(
+    *args: Unpack[tuple[T1, T2, T3, Unpack[Ts]]],
+) -> tuple[T1, T2, T3, Unpack[Ts]]: ...
+
+def test_right_variadic_param_with_left_variadic_argument(
+    l0: tuple[Unpack[tuple[A, ...]]],
+    l1: tuple[Unpack[tuple[A, ...]], A1],
+    l2: tuple[Unpack[tuple[A, ...]], A1, A2],
+    l3: tuple[Unpack[tuple[A, ...]], A1, A2, A3],
+    l4: tuple[Unpack[tuple[A, ...]], A1, A2, A3, A4],
+) -> None:
+    # tuple[T1, T2, T3, *Ts] -> tuple[T1, T2, T3, *Ts]
+    reveal_type( right_variadic(*l0) )  # N: Revealed type is "tuple[__main__.A, __main__.A, __main__.A, Unpack[builtins.tuple[__main__.A, ...]]]"
+    reveal_type( right_variadic(*l1) )  # N: Revealed type is "tuple[__main__.A, __main__.A, __main__.A, Unpack[builtins.tuple[__main__.A, ...]], __main__.A1]"
+    reveal_type( right_variadic(*l2) )  # N: Revealed type is "tuple[__main__.A, __main__.A, __main__.A, Unpack[builtins.tuple[__main__.A, ...]], __main__.A1, __main__.A2]"
+    reveal_type( right_variadic(*l3) )  # N: Revealed type is "tuple[__main__.A, __main__.A, __main__.A, Unpack[builtins.tuple[__main__.A, ...]], __main__.A1, __main__.A2, __main__.A3]"
+    reveal_type( right_variadic(*l4) )  # N: Revealed type is "tuple[__main__.A, __main__.A, __main__.A, Unpack[builtins.tuple[__main__.A, ...]], __main__.A1, __main__.A2, __main__.A3, __main__.A4]"
+
+def test_right_variadic_param_with_right_variadic_argument(
+    r0: tuple[Unpack[tuple[A, ...]]],
+    r1: tuple[A1, Unpack[tuple[A, ...]]],
+    r2: tuple[A1, A2, Unpack[tuple[A, ...]]],
+    r3: tuple[A1, A2, A3, Unpack[tuple[A, ...]]],
+    r4: tuple[A1, A2, A3, A4, Unpack[tuple[A, ...]]],
+) -> None:
+    # tuple[T1, T2, T3, *Ts] -> tuple[T1, T2, T3, *Ts]
+    reveal_type( right_variadic(*r0) )  # N: Revealed type is "tuple[__main__.A, __main__.A, __main__.A, Unpack[builtins.tuple[__main__.A, ...]]]"
+    reveal_type( right_variadic(*r1) )  # N: Revealed type is "tuple[__main__.A1, __main__.A, __main__.A, Unpack[builtins.tuple[__main__.A, ...]]]"
+    reveal_type( right_variadic(*r2) )  # N: Revealed type is "tuple[__main__.A1, __main__.A2, __main__.A, Unpack[builtins.tuple[__main__.A, ...]]]"
+    reveal_type( right_variadic(*r3) )  # N: Revealed type is "tuple[__main__.A1, __main__.A2, __main__.A3, Unpack[builtins.tuple[__main__.A, ...]]]"
+    reveal_type( right_variadic(*r4) )  # N: Revealed type is "tuple[__main__.A1, __main__.A2, __main__.A3, __main__.A4, Unpack[builtins.tuple[__main__.A, ...]]]"
+
+def test_left_variadic_param_with_right_variadic_argument(
+    r0: tuple[Unpack[tuple[A, ...]]],
+    r1: tuple[A1, Unpack[tuple[A, ...]]],
+    r2: tuple[A1, A2, Unpack[tuple[A, ...]]],
+    r3: tuple[A1, A2, A3, Unpack[tuple[A, ...]]],
+    r4: tuple[A1, A2, A3, A4, Unpack[tuple[A, ...]]],
+)-> None:
+    # tuple[*Ts, T1, T2, T3] -> tuple[*Ts, T1, T2, T3]
+    reveal_type( left_variadic(*r0) )  # N: Revealed type is "tuple[Unpack[builtins.tuple[__main__.A, ...]], __main__.A, __main__.A, __main__.A]"
+    reveal_type( left_variadic(*r1) )  # N: Revealed type is "tuple[__main__.A1, Unpack[builtins.tuple[__main__.A, ...]], __main__.A, __main__.A, __main__.A]"
+    reveal_type( left_variadic(*r2) )  # N: Revealed type is "tuple[__main__.A1, __main__.A2, Unpack[builtins.tuple[__main__.A, ...]], __main__.A, __main__.A, __main__.A]"
+    reveal_type( left_variadic(*r3) )  # N: Revealed type is "tuple[__main__.A1, __main__.A2, __main__.A3, Unpack[builtins.tuple[__main__.A, ...]], __main__.A, __main__.A, __main__.A]"
+    reveal_type( left_variadic(*r4) )  # N: Revealed type is "tuple[__main__.A1, __main__.A2, __main__.A3, __main__.A4, Unpack[builtins.tuple[__main__.A, ...]], __main__.A, __main__.A, __main__.A]"
+
+def test_left_variadic_param_with_left_variadic_argument(
+    l0: tuple[Unpack[tuple[A, ...]]],
+    l1: tuple[Unpack[tuple[A, ...]], A1],
+    l2: tuple[Unpack[tuple[A, ...]], A1, A2],
+    l3: tuple[Unpack[tuple[A, ...]], A1, A2, A3],
+    l4: tuple[Unpack[tuple[A, ...]], A1, A2, A3, A4],
+)-> None:
+    # tuple[*Ts, T1, T2, T3] -> tuple[*Ts, T1, T2, T3]
+    reveal_type( left_variadic(*l0) )  # N: Revealed type is "tuple[Unpack[builtins.tuple[__main__.A, ...]], __main__.A, __main__.A, __main__.A]"
+    reveal_type( left_variadic(*l1) )  # N: Revealed type is "tuple[Unpack[builtins.tuple[__main__.A, ...]], __main__.A, __main__.A, __main__.A1]"
+    reveal_type( left_variadic(*l2) )  # N: Revealed type is "tuple[Unpack[builtins.tuple[__main__.A, ...]], __main__.A, __main__.A1, __main__.A2]"
+    reveal_type( left_variadic(*l3) )  # N: Revealed type is "tuple[Unpack[builtins.tuple[__main__.A, ...]], __main__.A1, __main__.A2, __main__.A3]"
+    reveal_type( left_variadic(*l4) )  # N: Revealed type is "tuple[Unpack[builtins.tuple[__main__.A, ...]], __main__.A1, __main__.A2, __main__.A3, __main__.A4]"
 [builtins fixtures/tuple.pyi]

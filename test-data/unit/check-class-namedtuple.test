@@ -46,7 +46,7 @@ x = X(1, '2')
 x.x
 x.z      # E: "X" has no attribute "z"
 x = X(1) # E: Missing positional argument "y" in call to "X"
-x = X(1, '2', 3)  # E: Too many arguments for "X"
+x = X(1, '2', 3)  # E: Too many positional arguments for "X"
 [builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleShouldBeSingleBase]
@@ -468,7 +468,7 @@ Y(y=1, x='1').method()
 
 class CallsBaseInit(X):
     def __init__(self, x: str) -> None:
-        super().__init__(x) # E: Too many arguments for "__init__" of "object"
+        super().__init__(x) # E: Too many positional arguments for "__init__" of "object"
 [builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWithMethods]

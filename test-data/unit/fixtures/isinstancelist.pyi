@@ -32,7 +32,9 @@ T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
-class tuple(Generic[T]):
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Iterable[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
     def __len__(self) -> int: pass
 
 class list(Sequence[T]):

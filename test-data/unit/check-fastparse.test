@@ -183,7 +183,7 @@ def f():  # E: Type signature has too many arguments
     pass
 
 f()
-f(1) # E: Too many arguments for "f"
+f(1) # E: Too many positional arguments for "f"
 
 [case testFasterParseTooFewArgumentsAnnotation]
 def f(x, y):  # E: Type signature has too few arguments

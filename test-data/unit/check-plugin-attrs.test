@@ -14,7 +14,7 @@ reveal_type(A)  # N: Revealed type is "def (a: Any, b: Any, c: Any =, d: Any =) 
 A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)
-A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+A(1, [2], '3', 4, 5)  # E: Too many positional arguments for "A"
 [builtins fixtures/list.pyi]
 
 [case testAttrsAnnotated]
@@ -32,7 +32,7 @@ reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[bu
 A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
-A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+A(1, [2], '3', 4, 5)  # E: Too many positional arguments for "A"
 [builtins fixtures/list.pyi]
 
 [case testAttrsTypeComments]
@@ -50,7 +50,7 @@ reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[bu
 A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
-A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+A(1, [2], '3', 4, 5)  # E: Too many positional arguments for "A"
 [builtins fixtures/list.pyi]
 
 [case testAttrsAutoAttribs]
@@ -68,7 +68,7 @@ reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[bu
 A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
-A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+A(1, [2], '3', 4, 5)  # E: Too many positional arguments for "A"
 [builtins fixtures/list.pyi]
 
 [case testAttrsUntypedNoUntypedDefs]
@@ -121,7 +121,7 @@ reveal_type(A)  # N: Revealed type is "def (a: Any, b: builtins.list[builtins.in
 A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]"
-A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+A(1, [2], '3', 4, 5)  # E: Too many positional arguments for "A"
 [builtins fixtures/list.pyi]
 
 [case testAttrsDefaultErrors]
@@ -166,8 +166,8 @@ class A:
     _d: int = attrib(validator=None, default=18)
 reveal_type(A)  # N: Revealed type is "def () -> __main__.A"
 A()
-A(1, [2])  # E: Too many arguments for "A"
-A(1, [2], '3', 4)  # E: Too many arguments for "A"
+A(1, [2])  # E: Too many positional arguments for "A"
+A(1, [2], '3', 4)  # E: Too many positional arguments for "A"
 [builtins fixtures/list.pyi]
 
 [case testAttrsInitAttribFalse]
@@ -1280,7 +1280,8 @@ import attr
 class A:
     a = attr.ib(kw_only=True)
 A()  # E: Missing named argument "a" for "A"
-A(15) # E: Too many positional arguments for "A"
+A(15) # E: Too many positional arguments for "A" \
+      # E: Missing named argument "a" for "A"
 A(a=15)
 [builtins fixtures/plugin_attrs.pyi]
 
@@ -1439,7 +1440,7 @@ def func() -> int: ...
 
 C()
 C(1)
-C(1, 2)  # E: Too many arguments for "C"
+C(1, 2)  # E: Too many positional arguments for "C"
 [builtins fixtures/bool.pyi]
 
 [case testTypeInAttrUndefinedFrozen]

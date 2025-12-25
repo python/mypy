@@ -25,7 +25,7 @@ class C:
 x: P
 def fun(x: P) -> None:
     x.meth()
-    x.meth(x) # E: Too many arguments for "meth" of "P"
+    x.meth(x) # E: Too many positional arguments for "meth" of "P"
     x.bad # E: "P" has no attribute "bad"
 
 x = C()
@@ -110,7 +110,7 @@ class D(B):
 x: P
 def fun(x: P) -> None:
     x.meth()
-    x.meth(x) # E: Too many arguments for "meth" of "P"
+    x.meth(x) # E: Too many positional arguments for "meth" of "P"
     x.bad # E: "P" has no attribute "bad"
 
 x = C()

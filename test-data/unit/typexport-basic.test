@@ -141,6 +141,9 @@ class type: pass
 class str: pass
 class list: pass
 class dict: pass
+from typing import Iterable, Generic, TypeVar
+_T_co = TypeVar('_T_co', covariant=True)
+class tuple(Generic[_T_co], Iterable[_T_co]): pass
 [out]
 OpExpr(3) : builtins.int
 OpExpr(4) : builtins.float
@@ -169,6 +172,9 @@ class function: pass
 class str: pass
 class list: pass
 class dict: pass
+from typing import Iterable, Generic, TypeVar
+_T_co = TypeVar('_T_co', covariant=True)
+class tuple(Generic[_T_co], Iterable[_T_co]): pass
 [out]
 ComparisonExpr(3) : builtins.bool
 ComparisonExpr(4) : builtins.bool

@@ -120,7 +120,7 @@ from m import B # type: ignore
 
 class C(B):
     def f(self) -> None:
-        self.f(1) # E: Too many arguments for "f" of "C"
+        self.f(1) # E: Too many positional arguments for "f" of "C"
         self.g(1)
 [out]
 
@@ -131,7 +131,7 @@ class C(m.B):
     def f(self) -> None: ...
 
 c = C()
-c.f(1) # E: Too many arguments for "f" of "C"
+c.f(1) # E: Too many positional arguments for "f" of "C"
 c.g(1)
 c.x = 1
 [out]
@@ -143,7 +143,7 @@ class C(m.B):
     @staticmethod
     def f() -> None: pass
 
-C.f(1) # E: Too many arguments for "f" of "C"
+C.f(1) # E: Too many positional arguments for "f" of "C"
 C.g(1)
 C.x = 1
 [builtins fixtures/staticmethod.pyi]
@@ -155,7 +155,7 @@ from m import B # type: ignore
 class C: pass
 class D(C, B):
     def f(self) -> None:
-        self.f(1) # E: Too many arguments for "f" of "D"
+        self.f(1) # E: Too many positional arguments for "f" of "D"
         self.g(1)
 [out]
 
@@ -165,7 +165,7 @@ from m import B # type: ignore
 class C(B): pass
 class D(C):
     def f(self) -> None:
-        self.f(1) # E: Too many arguments for "f" of "D"
+        self.f(1) # E: Too many positional arguments for "f" of "D"
         self.g(1)
 [out]
 
