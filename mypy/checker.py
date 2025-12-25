@@ -5673,7 +5673,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # capture variable may depend on multiple patterns (it
             # will be a union of all capture types). This pass ignores
             # guard expressions.
-            pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
+            pattern_types = [
+                self.pattern_checker.accept(p, subject_type, [unwrapped_subject])
+                for p in s.patterns
+            ]
             type_maps: list[TypeMap] = [t.captures for t in pattern_types]
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
@@ -5683,7 +5686,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
                     named_subject, subject_type
                 )
-                pattern_type = self.pattern_checker.accept(p, current_subject_type)
+                pattern_type = self.pattern_checker.accept(
+                    p, current_subject_type, [unwrapped_subject]
+                )
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     if b.is_unreachable or isinstance(
                         get_proper_type(pattern_type.type), UninhabitedType

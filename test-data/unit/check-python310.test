@@ -3235,3 +3235,140 @@ match config:
     case {"a": 1, **rest}:  # E: Incompatible types in capture pattern (pattern captures type "dict[str, object]", variable has type "list[int]")
         ...
 [builtins fixtures/dict.pyi]
+
+[case testMatchSubjectInferenceSequence]
+m: object
+
+match m:
+    case [1, True]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
+        reveal_type(m[0])  # N: Revealed type is "Literal[1]"
+        reveal_type(m[-2])  # N: Revealed type is "Literal[1]"
+        reveal_type(m[1])  # N: Revealed type is "Literal[True]"
+        reveal_type(m[-1])  # N: Revealed type is "Literal[True]"
+    case [1, *_, False]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.object]"
+        reveal_type(m[-1])  # N: Revealed type is "Literal[False]"
+    case [[1], [True]]:
+        reveal_type(m[0][0])  # N: Revealed type is "Literal[1]"
+        reveal_type(m[-2][0])  # N: Revealed type is "Literal[1]"
+        reveal_type(m[1][0])  # N: Revealed type is "Literal[True]"
+        reveal_type(m[-1][0])  # N: Revealed type is "Literal[True]"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSubjectInferenceMapping]
+m: dict[str, object]
+
+match m:
+    case {"key": 1}:
+        reveal_type(m["key"])  # N: Revealed type is "Literal[1]"
+[builtins fixtures/dict.pyi]
+
+[case testMatchSubjectInferenceClass]
+from typing import Final
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str | None
+    b: int | None
+
+m: A
+
+match m:
+    case A("Hello", 2):
+        reveal_type(m.a)  # N: Revealed type is "Literal['Hello']"
+        reveal_type(m.b)  # N: Revealed type is "Literal[2]"
+    case A(a="Hello", b=2):
+        reveal_type(m.a)  # N: Revealed type is "Literal['Hello']"
+        reveal_type(m.b)  # N: Revealed type is "Literal[2]"
+    case A(a=str()) | A(a=None):
+        reveal_type(m.a)  # N: Revealed type is "builtins.str | None"
+    case object(some_attr=str()):
+        reveal_type(m.some_attr)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSubjectInferenceOR]
+m: object
+
+match m:
+    case [1, 2, 3] | [8, 9]:
+        reveal_type(m[0])  # N: Revealed type is "Literal[1] | Literal[8]"
+        reveal_type(m[1])  # N: Revealed type is "Literal[2] | Literal[9]"
+        reveal_type(m[2])  # N: Revealed type is "Literal[3]"
+
+[case testMatchSubjectNested]
+from typing import Any
+class A:
+    a: str | None
+    b: int | None
+
+m: Any
+
+match m:
+    case {"key": [0, A(a="Hello")]}:
+        reveal_type(m)  # N: Revealed type is "Any"
+        reveal_type(m["key"])  # N: Revealed type is "Any"
+        reveal_type(m["key"][0])  # N: Revealed type is "Any"  # TODO "Literal[0]"
+        reveal_type(m["key"][1])  # N: Revealed type is "__main__.A"
+        reveal_type(m["key"][1].a)  # N: Revealed type is "Literal['Hello']"
+    case [0, {"key": 2}]:
+        reveal_type(m[1])  # N: Revealed type is "Any"
+        reveal_type(m[1]["key"])  # N: Revealed type is "Any"  # TODO "Literal[2]"
+    case object(a=[A(a="Hello") | A(a="World")]):
+        reveal_type(m.a)  # N: Revealed type is "Any"
+        reveal_type(m.a[0])  # N: Revealed type is "__main__.A"
+        reveal_type(m.a[0].a)  # N: Revealed type is "Literal['Hello'] | Literal['World']"
+
+[case testMatchSubjectExpression]
+# flags: --warn-unreachable
+m: object
+n: object
+o: object
+def func(): ...
+
+match (m, n, o):
+    case [1, 2, 3] | [2, 3, 4]:
+        reveal_type(m)  # N: Revealed type is "Literal[1] | Literal[2]"
+        reveal_type(n)  # N: Revealed type is "Literal[2] | Literal[3]"
+        reveal_type(o)  # N: Revealed type is "Literal[3] | Literal[4]"
+    case [1, 2, 3, 4] | [2, 3, 4, 5]:
+        # No match -> don't crash
+        reveal_type(m)  # E: Statement is unreachable
+    case [1, *_, 3] | [2, *_, 4]:
+        reveal_type(m)  # N: Revealed type is "Literal[1] | Literal[2]"
+        reveal_type(n)  # N: Revealed type is "builtins.object"
+        reveal_type(o)  # N: Revealed type is "Literal[3] | Literal[4]"
+    case [1, *_, 3, 4, 5] | [2, *_, 3, 4, 5]:
+        # No match -> don't crash
+        reveal_type(m)  # E: Statement is unreachable
+    case [m, *_]:
+        # This will always match and bind the variables to itself
+        # Although it doesn't make much sense, make sure it doesn't raise an error
+        reveal_type(m)  # N: Revealed type is "builtins.object"
+
+match [m, n, o]:
+    case [1, 2, 3] | [2, 3, 4]:
+        reveal_type(m)  # N: Revealed type is "Literal[1] | Literal[2]"
+        reveal_type(n)  # N: Revealed type is "Literal[2] | Literal[3]"
+        reveal_type(o)  # N: Revealed type is "Literal[3] | Literal[4]"
+    case [1, 2, 3, 4] | [2, 3, 4, 5]:
+        # No match, but mypy can't detect that yet -> don't crash
+        reveal_type(m)  # N: Revealed type is "Literal[1] | Literal[2]"
+    case [1, *_, 3] | [2, *_, 4]:
+        reveal_type(m)  # N: Revealed type is "Literal[1] | Literal[2]"
+        reveal_type(n)  # N: Revealed type is "builtins.object"
+        reveal_type(o)  # N: Revealed type is "Literal[3] | Literal[4]"
+    case [1, *_, 3, 4, 5] | [2, *_, 3, 4, 5]:
+        # No match, but mypy can't detect that yet -> don't crash
+        reveal_type(m)  # N: Revealed type is "Literal[1] | Literal[2]"
+
+match a := m:
+    case [1, 2] | [3, 4]:
+        reveal_type(a)  # N: Revealed type is "typing.Sequence[builtins.int]"
+        reveal_type(a[0])  # N: Revealed type is "Literal[1] | Literal[3]"
+
+match func():
+    # Don't crash for subject expressions which can't be narrowed
+    case [1, 2] | [3, 4]:
+        ...
+[builtins fixtures/tuple.pyi]
