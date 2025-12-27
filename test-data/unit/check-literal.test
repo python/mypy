@@ -3092,18 +3092,46 @@ z: Type[Literal[1, 2]]  # E: Type[...] can't contain "Union[Literal[...], Litera
 [case testJoinLiteralAndInstance]
 from typing import Generic, TypeVar, Literal
 
-T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
+T = TypeVar("T", covariant=False, contravariant=False)
+S = TypeVar("S", covariant=False, contravariant=False)
 
-class A(Generic[T]): ...
+class A_inv(Generic[T]): ...
+class A_co(Generic[T_co]): ...
 
-def f(a: A[T], t: T) -> T: ...
-def g(a: T, t: A[T]) -> T: ...
+def check_inv(obj: A_inv[Literal[1]]) -> None:
+    def f(a: A_inv[S], t: S) -> S: ...
+    def g(a: S, t: A_inv[S]) -> S: ...
 
-def check(obj: A[Literal[1]]) -> None:
     reveal_type(f(obj, 1))  # N: Revealed type is "Literal[1]"
-    reveal_type(f(obj, ''))  # E: Cannot infer value of type parameter "T" of "f" \
-                             # N: Revealed type is "Any"
+    reveal_type(f(obj, '')) # E: Cannot infer value of type parameter "S" of "f" \
+                            # N: Revealed type is "Any"
     reveal_type(g(1, obj))  # N: Revealed type is "Literal[1]"
-    reveal_type(g('', obj))  # E: Cannot infer value of type parameter "T" of "g" \
-                             # N: Revealed type is "Any"
+    reveal_type(g('', obj)) # E: Cannot infer value of type parameter "S" of "g" \
+                            # N: Revealed type is "Any"
+
+def check_co(obj: A_co[Literal[1]]) -> None:
+    def f(a: A_co[S], t: S) -> S: ...
+    def g(a: S, t: A_co[S]) -> S: ...
+
+    reveal_type(f(obj, 1))   # N: Revealed type is "builtins.int"
+    reveal_type(f(obj, ''))  # N: Revealed type is "builtins.object"
+    reveal_type(g(1, obj))   # N: Revealed type is "builtins.int"
+    reveal_type(g('', obj))  # N: Revealed type is "builtins.object"
+
+[case testJoinLiteralInstanceAndEnum]
+from typing import Final, TypeVar
+from enum import StrEnum
+
+T = TypeVar("T")
+def join(a: T, b: T) -> T: ...
+
+class Foo(StrEnum):
+    A = "a"
+
+CONST: Final = "const"
+
+reveal_type(CONST)  # N: Revealed type is "Literal['const']?"
+reveal_type(join(Foo.A, CONST))  # N: Revealed type is "builtins.str"
+reveal_type(join(CONST, Foo.A))  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]

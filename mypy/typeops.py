@@ -580,6 +580,8 @@ def make_simplified_union(
     * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
     * [Any, Any] -> Any
     * [int, Union[bytes, str]] -> Union[int, bytes, str]
+    * [Literal[1]?, Literal[1]] -> Literal[1]?
+    * Literal["max"]?, Literal["max", "sum"] -> Literal["max"]? | Literal["sum"]
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
@@ -608,13 +610,22 @@ def make_simplified_union(
     ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
+    # Step 5: Combine Literals and Instances with LKVs, e.g. Literal[1]?, Literal[1] -> Literal[1]?
+    proper_items: list[ProperType] = [get_proper_type(t) for t in simplified_set]
+    last_known_values: list[LiteralType | None] = [
+        p_t.last_known_value if isinstance(p_t, Instance) else None for p_t in proper_items
+    ]
+    simplified_set = [
+        item for item, p_t in zip(simplified_set, proper_items) if p_t not in last_known_values
+    ]
+
     result = get_proper_type(UnionType.make_union(simplified_set, line, column))
 
     nitems = len(items)
     if nitems > 1 and (
         nitems > 2 or not (type(items[0]) is NoneType or type(items[1]) is NoneType)
     ):
-        # Step 5: At last, we erase any (inconsistent) extra attributes on instances.
+        # Step 6: At last, we erase any (inconsistent) extra attributes on instances.
 
         # Initialize with None instead of an empty set as a micro-optimization. The set
         # is needed very rarely, so we try to avoid constructing it.
