@@ -1824,3 +1824,10 @@ class tuple_aa_subclass(Tuple[A, A]): ...
 
 inst_tuple_aa_subclass: tuple_aa_subclass = tuple_aa_subclass((A(), A()))[:]  # E: Incompatible types in assignment (expression has type "tuple[A, A]", variable has type "tuple_aa_subclass")
 [builtins fixtures/tuple.pyi]
+
+[case testTuplePassedParameters]
+from typing_extensions import Concatenate
+
+def c(t: tuple[Concatenate[int, ...]]) -> None:  # E: Cannot use "[int, VarArg(Any), KwArg(Any)]" for tuple, only for ParamSpec
+    reveal_type(t)  # N: Revealed type is "tuple[Any]"
+[builtins fixtures/tuple.pyi]
