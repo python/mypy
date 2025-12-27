@@ -6091,10 +6091,14 @@ class SemanticAnalyzer(
             elif isinstance(base.node, Var) and self.type and self.function_stack:
                 # check for self.bar or cls.bar in method/classmethod
                 func_def = self.function_stack[-1]
-                if not func_def.is_static and isinstance(func_def.type, CallableType):
-                    formal_arg = func_def.type.argument_by_name(base.node.name)
-                    if formal_arg and formal_arg.pos == 0:
-                        type_info = self.type
+                if (
+                    func_def.has_self_or_cls_argument
+                    and func_def.info is self.type
+                    and isinstance(func_def.type, CallableType)
+                    and func_def.arguments
+                    and base.node is func_def.arguments[0].variable
+                ):
+                    type_info = self.type
             elif isinstance(base.node, TypeAlias) and base.node.no_args:
                 assert isinstance(base.node.target, ProperType)
                 if isinstance(base.node.target, Instance):

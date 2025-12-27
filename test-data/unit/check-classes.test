@@ -8328,6 +8328,37 @@ reveal_type(Foo.baz)  # E: "type[Foo]" has no attribute "baz" \
 foo: int
 def bar(x: int) -> int: ...
 
+[case testClassScopeImportAccessibleInMethods]
+class A:
+    import mod
+    from mod import var
+
+    def __new__(cls) -> "A":
+        reveal_type(cls.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(cls.var)  # N: Revealed type is "builtins.int"
+        reveal_type(cls.mod.var)  # N: Revealed type is "builtins.int"
+        return cls()
+
+    def pos_or_named_self(self) -> None:
+        reveal_type(self.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(self.var)  # N: Revealed type is "builtins.int"
+        reveal_type(self.mod.var)  # N: Revealed type is "builtins.int"
+
+    def pos_only_self(self, /) -> None:
+        reveal_type(self.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(self.var)  # N: Revealed type is "builtins.int"
+        reveal_type(self.mod.var)  # N: Revealed type is "builtins.int"
+
+    @classmethod
+    def clsmethod(cls) -> None:
+        reveal_type(cls.mod)  # N: Revealed type is "types.ModuleType"
+        reveal_type(cls.var)  # N: Revealed type is "builtins.int"
+        reveal_type(cls.mod.var)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+var = 1
+[builtins fixtures/module.pyi]
+
 [case testClassScopeImportFunctionNested]
 class Foo:
     class Bar:

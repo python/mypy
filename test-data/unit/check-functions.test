@@ -782,6 +782,19 @@ class A:
             # type: () -> None
             pass
 
+[case testNestedFunctionInMethodCannotAccessEnclosingClassAttributes]
+class A:
+    var: int
+    import mod
+    class B: ...
+
+    def method(self) -> None:
+        def f1(arg: object) -> None:
+            arg.var  # E: "object" has no attribute "var"
+            arg.mod  # E: "object" has no attribute "mod"
+            arg.B  # E: "object" has no attribute "B"
+[file mod.py]
+
 [case testDeepNestedFunctionWithTooFewArgumentsInTypeComment]
 class A:
     def f(self):
