@@ -215,7 +215,7 @@ def func_a1(
     c: TA1[float, float],
     d: TA1[float, float, float],  # E: Bad number of arguments for type alias, expected between 0 and 2, given 3
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+    reveal_type(a)  # N: Revealed type is "builtins.dict[T2`1 = builtins.int, T3`2 = builtins.str]"
     reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.float, builtins.str]"
     reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.float, builtins.float]"
     reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
@@ -234,7 +234,7 @@ def func_b1(
     c: TB1[[float], [float]],
     d: TB1[[float], [float], [float]],  # E: Bad number of arguments for type alias, expected between 0 and 2, given 3
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "__main__.ClassB1[[builtins.int, builtins.str], [*Any, **Any]]"
+    reveal_type(a)  # N: Revealed type is "__main__.ClassB1[P2`1 = [builtins.int, builtins.str], P3`2 = ...]"
     reveal_type(b)  # N: Revealed type is "__main__.ClassB1[[builtins.float], [*Any, **Any]]"
     reveal_type(c)  # N: Revealed type is "__main__.ClassB1[[builtins.float], [builtins.float]]"
     reveal_type(d)  # N: Revealed type is "__main__.ClassB1[[builtins.int, builtins.str], [*Any, **Any]]"
