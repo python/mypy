@@ -622,6 +622,81 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
     return CPY_INT_TAG;
 }
 
+PyObject *CPyStr_Lower(PyObject *self) {
+    if (PyUnicode_READY(self) == -1)
+        return NULL;
+
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+
+    // Fast path: ASCII only
+    if (PyUnicode_IS_ASCII(self)) {
+        PyObject *res = PyUnicode_New(len, 127);
+        if (res == NULL)
+            return NULL;
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(self);
+        Py_UCS1 *res_data = PyUnicode_1BYTE_DATA(res);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            res_data[i] = Py_TOLOWER((unsigned char) data[i]);
+        }
+        return res;
+    }
+
+    // General Unicode path
+    int kind = PyUnicode_KIND(self);
+    void *data = PyUnicode_DATA(self);
+    Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(self);
+    PyObject *res = PyUnicode_New(len, maxchar);
+    if (res == NULL)
+        return NULL;
+    int res_kind = PyUnicode_KIND(res);
+    void *res_data = PyUnicode_DATA(res);
+
+    // Unified loop for all Unicode kinds
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        Py_UCS4 rch = Py_UNICODE_TOLOWER(ch);
+        PyUnicode_WRITE(res_kind, res_data, i, rch);
+    }
+    return res;
+}
+
+PyObject *CPyStr_Upper(PyObject *self) {
+    if (PyUnicode_READY(self) == -1)
+        return NULL;
+
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+
+    // Fast path: ASCII only
+    if (PyUnicode_IS_ASCII(self)) {
+        PyObject *res = PyUnicode_New(len, 127);
+        if (res == NULL)
+            return NULL;
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(self);
+        Py_UCS1 *res_data = PyUnicode_1BYTE_DATA(res);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            res_data[i] = Py_TOUPPER((unsigned char) data[i]);
+        }
+        return res;
+    }
+
+    // General Unicode path
+    int kind = PyUnicode_KIND(self);
+    void *data = PyUnicode_DATA(self);
+    Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(self);
+    PyObject *res = PyUnicode_New(len, maxchar);
+    if (res == NULL)
+        return NULL;
+    int res_kind = PyUnicode_KIND(res);
+    void *res_data = PyUnicode_DATA(res);
+
+    // Unified loop for all Unicode kinds
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        Py_UCS4 rch = Py_UNICODE_TOUPPER(ch);
+        PyUnicode_WRITE(res_kind, res_data, i, rch);
+    }
+    return res;
+
 PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
     Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
     if (temp_count == -1 && PyErr_Occurred()) {
