@@ -2206,7 +2206,7 @@ x.trim()
 def bad_return_type() -> str:
     return None
 
-bad_return_type('no args taken!')  # E: Too many arguments for "bad_return_type"  [call-arg]
+bad_return_type('no args taken!')  # E: Too many positional arguments for "bad_return_type"  [call-arg]
 
 [case testEnableErrorCode]
 # flags: --disable-error-code attr-defined --enable-error-code attr-defined --show-error-codes

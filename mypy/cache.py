@@ -159,7 +159,7 @@ class CacheMeta:
                 dep_lines=meta["dep_lines"],
                 dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
                 interface_hash=bytes.fromhex(meta["interface_hash"]),
-                error_lines=[tuple(err) for err in meta["error_lines"]],
+                error_lines=[(*err,) for err in meta["error_lines"]],
                 version_id=meta["version_id"],
                 ignore_all=meta["ignore_all"],
                 plugin_data=meta["plugin_data"],

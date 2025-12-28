@@ -44,7 +44,7 @@ if int():
 import typing
 object(object())
 [out]
-main:2: error: Too many arguments for "object"
+main:2: error: Too many positional arguments for "object"
 
 [case testVarDefWithInit]
 import typing
@@ -115,7 +115,7 @@ f(object())
 f(object(), object(), object())
 [out]
 main:3: error: Missing positional argument "y" in call to "f"
-main:4: error: Too many arguments for "f"
+main:4: error: Too many positional arguments for "f"
 
 [case testMissingPositionalArguments]
 class Foo:

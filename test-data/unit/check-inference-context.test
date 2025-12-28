@@ -628,7 +628,7 @@ reveal_type((lambda x, s, i: x)(1.0, i=0, s='x')) # N: Revealed type is "builtin
 if object():
     (lambda x, s, i: x)() # E: Too few arguments
 if object():
-    (lambda: 0)(1) # E: Too many arguments
+    (lambda: 0)(1) # E: Too many positional arguments
 -- varargs are not handled, but it should not crash
 reveal_type((lambda *k, s, i: i)(type, i=0, s='x')) # N: Revealed type is "Any"
 reveal_type((lambda s, *k, i: i)(i=0, s='x')) # N: Revealed type is "Any"

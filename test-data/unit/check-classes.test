@@ -51,7 +51,7 @@ a.foo()               # Fail
 a.foo(object(), A())  # Fail
 [out]
 main:5: error: Missing positional argument "x" in call to "foo" of "A"
-main:6: error: Too many arguments for "foo" of "A"
+main:6: error: Too many positional arguments for "foo" of "A"
 main:6: error: Argument 1 to "foo" of "A" has incompatible type "object"; expected "A"
 
 [case testMethodBody]
@@ -960,7 +960,7 @@ class B(A):
 class C: pass
 
 A()    # E: Missing positional argument "x" in call to "A"
-B(C()) # E: Too many arguments for "B"
+B(C()) # E: Too many positional arguments for "B"
 A(C())
 B()
 
@@ -1221,7 +1221,7 @@ class A:
 A.f(A())
 A.f(object())     # E: Argument 1 to "f" of "A" has incompatible type "object"; expected "A"
 A.f()             # E: Missing positional argument "self" in call to "f" of "A"
-A.f(None, None)   # E: Too many arguments for "f" of "A" \
+A.f(None, None)   # E: Too many positional arguments for "f" of "A" \
                   # E: Argument 1 to "f" of "A" has incompatible type "None"; expected "A"
 
 [case testAccessAttributeViaClass]
@@ -1348,7 +1348,7 @@ def f() -> None:
         def g(self) -> None: pass
     a: A
     a.g()
-    a.g(a) # E: Too many arguments for "g" of "A"
+    a.g(a) # E: Too many positional arguments for "g" of "A"
 [targets __main__, __main__.f]
 
 [case testGenericClassWithinFunction]
@@ -1388,7 +1388,7 @@ class A:
     if int():
         b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     if int():
-        b = B(b) # E: Too many arguments for "B"
+        b = B(b) # E: Too many positional arguments for "B"
 [out]
 
 [case testConstructNestedClassWithCustomInit]
@@ -1422,7 +1422,7 @@ if int():
 if int():
     b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
-    b = A.B(b) # E: Too many arguments for "B"
+    b = A.B(b) # E: Too many positional arguments for "B"
 
 [case testAliasNestedClass]
 class Outer:
@@ -1580,9 +1580,9 @@ class C:
   @classmethod
   def bar(cls) -> None:
     cls()
-    cls(1)      # E: Too many arguments for "C"
+    cls(1)      # E: Too many positional arguments for "C"
     cls.bar()
-    cls.bar(1)  # E: Too many arguments for "bar" of "C"
+    cls.bar(1)  # E: Too many positional arguments for "bar" of "C"
     cls.bozo()  # E: "type[C]" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 [out]
@@ -1593,7 +1593,7 @@ class C:
   @classmethod
   def foo(cls) -> None: pass
 C.foo()
-C.foo(1)  # E: Too many arguments for "foo" of "C"
+C.foo(1)  # E: Too many positional arguments for "foo" of "C"
 C.bozo()  # E: "type[C]" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 
@@ -1603,7 +1603,7 @@ class C:
   @classmethod
   def foo(cls) -> None: pass
 C().foo()
-C().foo(1)  # E: Too many arguments for "foo" of "C"
+C().foo(1)  # E: Too many positional arguments for "foo" of "C"
 C.bozo()    # E: "type[C]" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 
@@ -2148,7 +2148,7 @@ class D:
     def __set__(self, inst): pass
 class A:
     f = D()
-A().f = 'x'  # E: Too many arguments for "__set__"
+A().f = 'x'  # E: Too many positional arguments for "__set__"
 
 [case testDescriptorDunderSetTooManyArgs]
 class D:
@@ -2176,7 +2176,7 @@ class D:
     def __get__(self, inst): pass
 class A:
     f = D()
-A().f  # E: Too many arguments for "__get__"
+A().f  # E: Too many positional arguments for "__get__"
 
 [case testDescriptorDunderGetTooManyArgs]
 class D:
@@ -3401,7 +3401,7 @@ a = A()
 b = B()
 
 a()  # E: Missing positional argument "x" in call to "__call__" of "A"
-a(a, a)  # E: Too many arguments for "__call__" of "A"
+a(a, a)  # E: Too many positional arguments for "__call__" of "A"
 if int():
     a = a(a)
 if int():
@@ -3652,7 +3652,7 @@ from typing import Type
 class B:
     pass
 def f(A: Type[B]) -> None:
-    A(0)  # E: Too many arguments for "B"
+    A(0)  # E: Too many positional arguments for "B"
     A()
 [out]
 
@@ -3687,7 +3687,7 @@ class B:
 T = TypeVar('T', bound=B)
 def f(A: Type[T]) -> None:
     A()
-    A(0)  # E: Too many arguments for "B"
+    A(0)  # E: Too many positional arguments for "B"
 [out]
 
 [case testTypeUsingTypeCTypeVarWithInit]
@@ -3924,7 +3924,7 @@ tmp/foo.pyi:17: error: No overload variant of "User" matches argument type "str"
 tmp/foo.pyi:17: note: Possible overload variants:
 tmp/foo.pyi:17: note:     def __init__(self) -> U
 tmp/foo.pyi:17: note:     def __init__(self, arg: int) -> U
-tmp/foo.pyi:18: error: Too many arguments for "foo" of "User"
+tmp/foo.pyi:18: error: Too many positional arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
 from typing import TypeVar, Type
@@ -5245,14 +5245,14 @@ class A(metaclass=MM):
 def h(a: Type[A], b: Type[object]) -> None:
     h(a, a)
     h(b, a) # E: Argument 1 to "h" has incompatible type "type[object]"; expected "type[A]"
-    a.f(1) # E: Too many arguments for "f" of "A"
+    a.f(1) # E: Too many positional arguments for "f" of "A"
     reveal_type(a.y) # N: Revealed type is "builtins.int"
 
 x = A # type: MM
 reveal_type(A.y) # N: Revealed type is "builtins.int"
 reveal_type(A.x) # N: Revealed type is "Any"
-A.f(1) # E: Too many arguments for "f" of "A"
-A().g(1) # E: Too many arguments for "g" of "A"
+A.f(1) # E: Too many positional arguments for "f" of "A"
+A().g(1) # E: Too many positional arguments for "g" of "A"
 [builtins fixtures/classmethod.pyi]
 
 [case testMetaclassTypeCallable]
@@ -6123,7 +6123,7 @@ def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
     ...
 @decorate(y=17)    # E: Unexpected keyword argument "y" for "decorate"
 @decorate()        # E: Missing positional argument "x" in call to "decorate"
-@decorate(22, 25)  # E: Too many arguments for "decorate"
+@decorate(22, 25)  # E: Too many positional arguments for "decorate"
 @decorate_forward_ref()
 @decorate(11)
 class A: pass

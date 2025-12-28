@@ -1,5 +1,5 @@
 # Minimal set of builtins required to work with Enums
-from typing import TypeVar, Generic, Iterator, Sequence, overload, Iterable
+from typing import TypeVar, Iterator, Sequence, overload, Iterable
 
 T = TypeVar('T')
 
@@ -7,8 +7,10 @@ class object:
     def __init__(self): pass
 
 class type: pass
-class tuple(Generic[T]):
-    def __getitem__(self, x: int) -> T: pass
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Iterable[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+    def __getitem__(self, x: int) -> _Tuple_co: pass
 
 class int: pass
 class str:

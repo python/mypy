@@ -26,7 +26,6 @@ class list(Sequence[T]):
     def append(self, x: T) -> None: pass
     def extend(self, x: Iterable[T]) -> None: pass
 
-class tuple(Generic[T]): pass
 class function: pass
 class int:
     def __bool__(self) -> bool: pass
@@ -39,3 +38,10 @@ class bool(int): pass
 property = object() # Dummy definition.
 
 class dict: pass
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

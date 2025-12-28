@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Any
+from typing import TypeVar, Any
 T = TypeVar('T')
 
 class object:
@@ -12,8 +12,6 @@ class str:
     def __rmul__(self, n: int) -> str: ...
 
 class bytes: pass
-
-class tuple(Generic[T]): pass
 class function: pass
 
 class ellipsis: pass
@@ -34,3 +32,10 @@ class float:
     def __rmul__(self, x: float) -> float: ...
 
 class dict: pass
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext

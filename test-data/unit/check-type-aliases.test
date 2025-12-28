@@ -704,7 +704,7 @@ class MyClass: ...
 from typing_extensions import TypeAlias
 
 x: TypeAlias = list(int)  # E: Invalid type alias: expression is not a valid type \
-                          # E: Too many arguments for "list"
+                          # E: Too many positional arguments for "list"
 a: x
 [builtins fixtures/tuple.pyi]
 
@@ -1104,8 +1104,9 @@ t3: T3
 reveal_type(t3)  # N: Revealed type is "Any"
 
 T4 = TypeAliasType("T4")  # E: Missing positional argument "value" in call to "TypeAliasType"
-T5 = TypeAliasType("T5", int, str)  # E: Too many positional arguments for "TypeAliasType" \
-                                    # E: Argument 3 to "TypeAliasType" has incompatible type "type[str]"; expected "tuple[TypeVar? | ParamSpec? | TypeVarTuple?, ...]"
+T5 = TypeAliasType("T5", int, str)  # E: Too many positional arguments for "TypeAliasType"
+T6 = TypeAliasType("T6", int, type_params=str)  # E: Tuple literal expected as the type_params argument to TypeAliasType
+T7 = TypeAliasType("T7", int, type_params=(str,))  # E: Free type variable expected in type_params argument to TypeAliasType
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 

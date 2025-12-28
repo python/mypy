@@ -79,7 +79,7 @@ class C(A, B):
     def f(self) -> None:
         super().f()
         super().g(1)
-        super().f(1) # E: Too many arguments for "f" of "A"
+        super().f(1) # E: Too many positional arguments for "f" of "A"
         super().g() # E: Missing positional argument "x" in call to "g" of "B"
         super().not_there() # E: "not_there" undefined in superclass
 [out]
@@ -92,7 +92,7 @@ class A:
 class B(A):
     def __new__(cls, x: int, y: str = '') -> 'B':
         super().__new__(cls, 1)
-        super().__new__(cls, 1, '')  # E: Too many arguments for "__new__" of "A"
+        super().__new__(cls, 1, '')  # E: Too many positional arguments for "__new__" of "A"
         return cls(1)
 B('')  # E: Argument 1 to "B" has incompatible type "str"; expected "int"
 B(1)

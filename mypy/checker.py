@@ -4259,6 +4259,27 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # inferred return type for an overloaded function
                     # to be ambiguous.
                     return
+                if (
+                    isinstance(reinferred_rvalue_type, Instance)
+                    and reinferred_rvalue_type.type.fullname == "builtins.tuple"
+                ):
+                    # the type can change into variadic tuple if the added context picks a different overload
+                    # see testOverloadWithOverlappingItemsAndAnyArgument17 as an example
+                    rv_type = reinferred_rvalue_type.args[0]
+                    for lv in lvalues:
+                        if (
+                            isinstance(lv, NameExpr)
+                            and isinstance(lv.node, Var)
+                            and lv.node.type is None
+                        ):
+                            self.check_assignment(
+                                lv, self.temp_node(rv_type, context), infer_lvalue_type
+                            )
+                        elif isinstance(lv, StarExpr):
+                            list_expr = ListExpr([StarExpr(self.temp_node(rv_type, context))])
+                            list_expr.set_line(context)
+                            self.check_assignment(lv.expr, list_expr, infer_lvalue_type)
+                    return
                 assert isinstance(reinferred_rvalue_type, TupleType)
                 rvalue_type = reinferred_rvalue_type
 

@@ -929,9 +929,10 @@ def test():
     r19 :: list
     r20, r21 :: native_int
     r22 :: bit
-    r23, x :: object
-    r24 :: str
-    r25 :: native_int
+    r23 :: object
+    r24, x :: union[tuple[str, str], str, int]
+    r25 :: str
+    r26 :: native_int
     a :: list
 L0:
     r0 = 'abc'
@@ -962,12 +963,13 @@ L1:
     if r22 goto L2 else goto L4 :: bool
 L2:
     r23 = list_get_item_unsafe r10, r20
-    x = r23
-    r24 = PyObject_Str(x)
-    CPyList_SetItemUnsafe(r19, r20, r24)
+    r24 = cast(union[tuple[str, str], str, int], r23)
+    x = r24
+    r25 = PyObject_Str(x)
+    CPyList_SetItemUnsafe(r19, r20, r25)
 L3:
-    r25 = r20 + 1
-    r20 = r25
+    r26 = r20 + 1
+    r20 = r26
     goto L1
 L4:
     a = r19

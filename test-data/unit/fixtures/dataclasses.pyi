@@ -18,7 +18,6 @@ class object:
 
 class type: pass
 class ellipsis: pass
-class tuple(Generic[_T]): pass
 class int: pass
 class float: pass
 class bytes: pass
@@ -54,3 +53,10 @@ class function: pass
 class classmethod: pass
 class staticmethod: pass
 property = object()
+
+# region ArgumentInferContext
+from typing import Mapping, Generic, Iterator, TypeVar
+_Tuple_co = TypeVar('_Tuple_co', covariant=True)
+class tuple(Generic[_Tuple_co]):
+    def __iter__(self) -> Iterator[_Tuple_co]: pass
+# endregion ArgumentInferContext
