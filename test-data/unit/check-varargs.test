@@ -1858,3 +1858,15 @@ def test_takes_exactly_3(
     takes_exactly_3(*x3)
     takes_exactly_3(*x4)  # E: Too many positional arguments for "takes_exactly_3"
 [builtins fixtures/tuple.pyi]
+
+[case testAnyTupleAssignableToParamSpecVarArgs]
+from typing import Callable, Any, ParamSpec, TypeVar
+
+R = TypeVar('R')
+P = ParamSpec('P')
+
+def decorator(func: Callable[P, R]) -> Callable[P, R]:
+    def wrapper(*args: Any, **kwargs: Any) -> R:
+        return func(*args, **kwargs)
+    return wrapper
+[builtins fixtures/tuple.pyi]

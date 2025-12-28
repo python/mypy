@@ -3044,6 +3044,26 @@ class TupleType(ProperType):
         return self
 
 
+def is_any_tuple(t: Type) -> bool:
+    """Is this `tuple[Any, ...]`?"""
+    t = get_proper_type(t)
+
+    if isinstance(t, Instance):
+        assert len(t.args) == 1
+        return t.type.fullname == "builtins.tuple" and isinstance(
+            get_proper_type(t.args[0]), AnyType
+        )
+
+    if isinstance(t, TupleType):
+        return (
+            len(items := t.flattened_items) == 1
+            and isinstance(item := items[0], UnpackType)
+            and is_any_tuple(item.type)
+        )
+
+    return False
+
+
 class TypedDictType(ProperType):
     """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 

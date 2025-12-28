@@ -69,6 +69,7 @@ from mypy.types import (
     UnpackType,
     flatten_nested_unions,
     get_proper_type,
+    is_any_tuple,
     is_named_instance,
     split_with_prefix_and_suffix,
 )
@@ -797,6 +798,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         elif isinstance(right, TupleType):
+            # fast path: left or right is equivalent to tuple[Any, ...]
+            if is_any_tuple(left) or is_any_tuple(right):
+                return True
             # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
             # unpack, item count must coincide. If the left has variadic unpack but right
             # doesn't have one, we will fall through to False down the line.
@@ -844,11 +848,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
             tuple[X, ...] <: tuple[*tuple[X, ...], X]
             then result is False if proper_subtype is True, otherwise True.
 
-        X <: AnyOf[U1, U2, ...]  iff  X <: Ui for some i
-        AnyOf[T1, T2, ...] <: X  iff  X <: Ui for some i
-        X <: Union[U1, U2, ...]  iff  X <: Ui for some i
-        Union[T1, T2, ...] <: X  iff  X <: Ui for all i
-
         Note: the cases where right is fixed or has *Ts unpack should be handled
         by the caller.
         """
@@ -862,6 +861,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right_unpacked = get_proper_type(right_unpack.type)
         if not isinstance(right_unpacked, Instance):
             # This case should be handled by the caller.
+            # TODO: actually handle it here.
             return False
         assert right_unpacked.type.fullname == "builtins.tuple"
         right_item = right_unpacked.args[0]
