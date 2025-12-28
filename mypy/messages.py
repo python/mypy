@@ -3051,6 +3051,8 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
         # TODO: avoid different logic for incremental runs.
         first_arg = get_first_arg(tp)
 
+    if tp.is_type_obj():
+        skip_self = True
     if first_arg and not skip_self:
         if s:
             s = ", " + s

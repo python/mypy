@@ -3492,8 +3492,8 @@ c.a # E: "C" has no attribute "a"
 C('', '')
 C('') # E: No overload variant of "C" matches argument type "str" \
       # N: Possible overload variants: \
-      # N:     def C(cls, foo: int) -> C \
-      # N:     def C(cls, x: str, y: str) -> C
+      # N:     def C(foo: int) -> C \
+      # N:     def C(x: str, y: str) -> C
 [builtins fixtures/__new__.pyi]
 
 
@@ -3922,8 +3922,8 @@ u = new(User)
 [out]
 tmp/foo.pyi:17: error: No overload variant of "User" matches argument type "str"
 tmp/foo.pyi:17: note: Possible overload variants:
-tmp/foo.pyi:17: note:     def User(self) -> U
-tmp/foo.pyi:17: note:     def User(self, arg: int) -> U
+tmp/foo.pyi:17: note:     def User() -> U
+tmp/foo.pyi:17: note:     def User(arg: int) -> U
 tmp/foo.pyi:18: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
@@ -8517,7 +8517,7 @@ class Child(Parent):
         return val
     def bar(self, val: str) -> str:  # E: Signature of "bar" incompatible with supertype "Parent" \
                                      # N:      Superclass: \
-                                     # N:          def bar(self) -> bar \
+                                     # N:          def bar() -> bar \
                                      # N:      Subclass: \
                                      # N:          def bar(self, val: str) -> str
         return val

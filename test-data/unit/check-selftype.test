@@ -767,8 +767,8 @@ class SubP(P[T]):
 
 SubP('no')  # E: No overload variant of "SubP" matches argument type "str" \
             # N: Possible overload variants: \
-            # N:     def [T] SubP(self, use_str: Literal[True]) -> SubP[T] \
-            # N:     def [T] SubP(self, use_str: Literal[False]) -> SubP[T]
+            # N:     def [T] SubP(use_str: Literal[True]) -> SubP[T] \
+            # N:     def [T] SubP(use_str: Literal[False]) -> SubP[T]
 
 # This is a bit unfortunate: we don't have a way to map the overloaded __init__ to subtype.
 x = SubP(use_str=True)  # E: Need type annotation for "x"

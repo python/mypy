@@ -2483,13 +2483,13 @@ cb(fn)
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 list(1)  # E: No overload variant of "list" matches argument type "int"  [call-overload] \
          # N: Possible overload variants: \
-         # N:     def [T] list(self) -> list[T] \
-         # N:     def [T] list(self, x: Iterable[T]) -> list[T] \
+         # N:     def [T] list() -> list[T] \
+         # N:     def [T] list(x: Iterable[T]) -> list[T] \
          # N: See https://mypy.rtfd.io/en/stable/_refs.html#code-call-overload for more info
 list(2)  # E: No overload variant of "list" matches argument type "int"  [call-overload] \
          # N: Possible overload variants: \
-         # N:     def [T] list(self) -> list[T] \
-         # N:     def [T] list(self, x: Iterable[T]) -> list[T]
+         # N:     def [T] list() -> list[T] \
+         # N:     def [T] list(x: Iterable[T]) -> list[T]
 [builtins fixtures/list.pyi]
 
 [case testNestedGenericInAliasDisallow]

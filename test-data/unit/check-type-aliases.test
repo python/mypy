@@ -1347,8 +1347,8 @@ reveal_type(D())  # N: Revealed type is "builtins.dict[builtins.str, builtins.in
 reveal_type(D(x=1))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 reveal_type(D(x="asdf"))  # E: No overload variant of "dict" matches argument type "str" \
                           # N: Possible overload variants: \
-                          # N:     def dict(self, **kwargs: int) -> dict[str, int] \
-                          # N:     def dict(self, arg: Iterable[tuple[str, int]], **kwargs: int) -> dict[str, int] \
+                          # N:     def dict(**kwargs: int) -> dict[str, int] \
+                          # N:     def dict(arg: Iterable[tuple[str, int]], **kwargs: int) -> dict[str, int] \
                           # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
 
