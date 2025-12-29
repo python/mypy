@@ -16,3 +16,12 @@ MypyFile:1(
     MemberExpr:1(
       NameExpr(foo_bar)
       xyz2)))
+
+[case testTupleExpr]
+("a", "b")
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    TupleExpr:1(
+      StrExpr(a)
+      StrExpr(b))))

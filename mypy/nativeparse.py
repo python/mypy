@@ -43,6 +43,7 @@ from mypy.nodes import (
     Node,
     Statement,
     StrExpr,
+    TupleExpr,
 )
 
 
@@ -114,6 +115,12 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, se)
         expect_end_tag(data)
         return se
+    elif tag == nodes.TUPLE_EXPR:
+        items = read_expression_list(data)
+        t = TupleExpr(items)
+        read_loc(data, t)
+        expect_end_tag(data)
+        return t
     else:
         assert False
 

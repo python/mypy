@@ -5023,6 +5023,12 @@ NAME_EXPR: Final[Tag] = 162
 STR_EXPR: Final[Tag] = 163
 IMPORT: Final[Tag] = 164
 MEMBER_EXPR: Final[Tag] = 165
+OP_EXPR: Final[Tag] = 166
+INT_EXPR: Final[Tag] = 167
+IF_STMT: Final[Tag] = 168
+ASSIGNMENT_STMT: Final[Tag] = 169
+TUPLE_EXPR: Final[Tag] = 170
+BLOCK: Final[Tag] = 171
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
