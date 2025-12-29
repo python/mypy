@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+from typing import Final
 
 from mypy import nodes
 from mypy.cache import (
@@ -41,6 +42,7 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     Node,
+    OpExpr,
     Statement,
     StrExpr,
     TupleExpr,
@@ -87,6 +89,10 @@ def read_statement(data: ReadBuffer) -> Statement:
         assert False, tag
 
 
+bin_ops: Final = ["+", "-", "*", "@", "/", "%", "**", "<<", ">>", "|", "^", "&", "//"]
+
+
+
 def read_expression(data: ReadBuffer) -> Expression:
     tag = read_tag(data)
     if tag == nodes.CALL_EXPR:
@@ -121,8 +127,20 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, t)
         expect_end_tag(data)
         return t
+    elif tag == nodes.OP_EXPR:
+        op = bin_ops[read_int(data)]
+        left = read_expression(data)
+        right = read_expression(data)
+        o = OpExpr(op, left, right)
+        # TODO: Store these explicitly?
+        o.line = left.line
+        o.column = left.column
+        o.end_line = right.end_line
+        o.end_column = right.end_column
+        expect_end_tag(data)
+        return o
     else:
-        assert False
+        assert False, tag
 
 
 def read_expression_list(data: ReadBuffer) -> list[Expression]:

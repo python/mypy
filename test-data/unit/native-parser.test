@@ -25,3 +25,16 @@ MypyFile:1(
     TupleExpr:1(
       StrExpr(a)
       StrExpr(b))))
+
+[case testOpExpr]
+("x" + "y") * "z"
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      *
+      OpExpr:1(
+        +
+        StrExpr(x)
+        StrExpr(y))
+      StrExpr(z))))
