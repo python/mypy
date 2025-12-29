@@ -2434,6 +2434,20 @@ for x in xs:
             y = {}  # E: Need type annotation for "y" (hint: "y: dict[<type>, <type>] = ...")
 [builtins fixtures/list.pyi]
 
+[case testAvoidFalseUnreachableInLoopWithContrainedTypeVar]
+# flags: --warn-unreachable --python-version 3.11
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+def f(x: T) -> list[T]:
+    y = None
+    while y is None:
+        if y is None:
+            y = []
+        y.append(x)
+    return y
+[builtins fixtures/list.pyi]
+
 [case testAvoidFalseRedundantExprInLoop]
 # flags: --enable-error-code redundant-expr --python-version 3.11
 
