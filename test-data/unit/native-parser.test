@@ -52,3 +52,19 @@ MypyFile:1(
       IntExpr(5345)
       IntExpr(50123)
       IntExpr(1234567890))))
+
+[case testAssignment]
+x = 1
+a, b = c = 6
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(1))
+  AssignmentStmt:2(
+    Lvalues(
+      TupleExpr:2(
+        NameExpr(a)
+        NameExpr(b))
+      NameExpr(c))
+    IntExpr(6)))

@@ -35,6 +35,7 @@ from mypy.cache import (
 )
 from mypy.nodes import (
     ARG_POS,
+    AssignmentStmt,
     CallExpr,
     Expression,
     ExpressionStmt,
@@ -86,6 +87,13 @@ def read_statement(data: ReadBuffer) -> Statement:
         es.end_column = es.expr.end_column
         expect_end_tag(data)
         return es
+    elif tag == nodes.ASSIGNMENT_STMT:
+        lvalues = read_expression_list(data)
+        rvalue = read_expression(data)
+        a = AssignmentStmt(lvalues, rvalue)
+        read_loc(data, a)
+        expect_end_tag(data)
+        return a
     else:
         assert False, tag
 
