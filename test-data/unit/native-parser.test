@@ -38,3 +38,17 @@ MypyFile:1(
         StrExpr(x)
         StrExpr(y))
       StrExpr(z))))
+
+[case testIntExpr]
+(0, 1, 2, 203, 5345, 50123, 1234567890)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    TupleExpr:1(
+      IntExpr(0)
+      IntExpr(1)
+      IntExpr(2)
+      IntExpr(203)
+      IntExpr(5345)
+      IntExpr(50123)
+      IntExpr(1234567890))))

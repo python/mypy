@@ -38,6 +38,7 @@ from mypy.nodes import (
     CallExpr,
     Expression,
     ExpressionStmt,
+    IntExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
@@ -121,6 +122,11 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, se)
         expect_end_tag(data)
         return se
+    elif tag == nodes.INT_EXPR:
+        ie = IntExpr(read_int(data))
+        read_loc(data, ie)
+        expect_end_tag(data)
+        return ie
     elif tag == nodes.TUPLE_EXPR:
         items = read_expression_list(data)
         t = TupleExpr(items)
