@@ -53,7 +53,7 @@ MypyFile:1(
       IntExpr(50123)
       IntExpr(1234567890))))
 
-[case testAssignment]
+[case testAssignmentStmt]
 x = 1
 a, b = c = 6
 [out]
@@ -68,3 +68,52 @@ MypyFile:1(
         NameExpr(b))
       NameExpr(c))
     IntExpr(6)))
+
+[case testIfStmt]
+if x:
+    y
+if a:
+    b
+else:
+    c
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      NameExpr(x))
+    Then(
+      ExpressionStmt:2(
+        NameExpr(y))))
+  IfStmt:3(
+    If(
+      NameExpr(a))
+    Then(
+      ExpressionStmt:4(
+        NameExpr(b)))
+    Else(
+      ExpressionStmt:6(
+        NameExpr(c)))))
+
+[case testIfStmtElif]
+if a:
+    b
+elif c:
+    d
+else:
+    e
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      NameExpr(a))
+    Then(
+      ExpressionStmt:2(
+        NameExpr(b)))
+    If(
+      NameExpr(c))
+    Then(
+      ExpressionStmt:4(
+        NameExpr(d)))
+    Else(
+      ExpressionStmt:6(
+        NameExpr(e)))))

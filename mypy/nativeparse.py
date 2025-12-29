@@ -32,13 +32,16 @@ from mypy.cache import (
     read_int_bare,
     read_str,
     read_tag,
+    read_bool,
 )
 from mypy.nodes import (
     ARG_POS,
     AssignmentStmt,
+    Block,
     CallExpr,
     Expression,
     ExpressionStmt,
+    IfStmt,
     IntExpr,
     MemberExpr,
     MypyFile,
@@ -94,12 +97,41 @@ def read_statement(data: ReadBuffer) -> Statement:
         read_loc(data, a)
         expect_end_tag(data)
         return a
+    elif tag == nodes.IF_STMT:
+        expr = [read_expression(data)]
+        body = [read_block(data)]
+        num_elif = read_int(data)
+        for i in range(num_elif):
+            expr.append(read_expression(data))
+            body.append(read_block(data))
+        has_else = read_bool(data)
+        if has_else:
+            else_body = read_block(data)
+        else:
+            else_body = None
+        if_stmt = IfStmt(expr, body, else_body)
+        read_loc(data, if_stmt)
+        expect_end_tag(data)
+        return if_stmt
     else:
         assert False, tag
 
 
-bin_ops: Final = ["+", "-", "*", "@", "/", "%", "**", "<<", ">>", "|", "^", "&", "//"]
+def read_block(data: ReadBuffer) -> Block:
+    expect_tag(data, nodes.BLOCK)
+    expect_tag(data, LIST_GEN)
+    n = read_int_bare(data)
+    a = [read_statement(data) for i in range(n)]
+    expect_end_tag(data)
+    b = Block(a)
+    b.line = a[0].line
+    b.column = a[0].column
+    b.end_line = a[-1].end_line
+    b.end_column = a[-1].end_column
+    return b
 
+
+bin_ops: Final = ["+", "-", "*", "@", "/", "%", "**", "<<", ">>", "|", "^", "&", "//"]
 
 
 def read_expression(data: ReadBuffer) -> Expression:
