@@ -388,25 +388,23 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 ):
                     # We don't want to return unusable Callable, attempt fallback instead.
                     return join_types(t.fallback, self.s)
+                # We set the from_type_type flag to suppress error when a collection of
+                # concrete class objects gets inferred as their common abstract superclass.
+                if not (
+                    (t.is_type_obj() and t.type_object().is_abstract)
+                    or (self.s.is_type_obj() and self.s.type_object().is_abstract)
+                ):
+                    result.from_type_type = True
+                return result
             else:
-                s, t = self.s, t
-                if t.is_var_arg:
-                    s, t = t, s
-                if is_subtype(self.s, t):
-                    result = t.copy_modified()
-                elif is_subtype(t, self.s):
-                    result = self.s.copy_modified()
-                else:
-                    return join_types(t.fallback, self.s)
-
-            # We set the from_type_type flag to suppress error when a collection of
-            # concrete class objects gets inferred as their common abstract superclass.
-            if not (
-                (t.is_type_obj() and t.type_object().is_abstract)
-                or (self.s.is_type_obj() and self.s.type_object().is_abstract)
-            ):
-                result.from_type_type = True
-            return result
+                s2, t2 = self.s, t
+                if t2.is_var_arg:
+                    s2, t2 = t2, s2
+                if is_subtype(s2, t2):
+                    return t2.copy_modified()
+                elif is_subtype(t2, s2):
+                    return s2.copy_modified()
+                return join_types(t.fallback, self.s)
         elif isinstance(self.s, Overloaded):
             # Switch the order of arguments to that we'll get to visit_overloaded.
             return join_types(t, self.s)

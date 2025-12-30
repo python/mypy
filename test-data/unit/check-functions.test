@@ -3548,6 +3548,20 @@ reveal_type(join(f_1, f_any, f_3))  # N: Revealed type is "def (common: Any, a: 
 
 [builtins fixtures/tuple.pyi]
 
+[case testCallableJoinWithType]
+from __future__ import annotations
+class Exc: ...
+class AttributeErr(Exc):
+    def __init__(self, *args: object) -> None: ...
+class FnfErr(Exc): ...
+
+x = [
+    FnfErr,
+    AttributeErr,
+]
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.type]"
+[builtins fixtures/type.pyi]
+
 [case testDistinctFormatting]
 from typing import Awaitable, Callable, ParamSpec
 
