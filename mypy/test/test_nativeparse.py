@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import gc
 import os
+import subprocess
 import tempfile
 import unittest
 from collections.abc import Iterator
@@ -60,7 +61,11 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     try:
         with temp_source(source) as fnam:
-            node = native_parse(fnam)
+            try:
+                node = native_parse(fnam)
+            except subprocess.CalledProcessError as e:
+                print(f"Parse failed\nstdout: {e.stdout.decode()}\nstderr: {e.stderr.decode()}")
+                assert False
             node.path = "main"
             a = node.str_with_options(options).split("\n")
     except CompileError as e:
