@@ -494,6 +494,8 @@ class SemanticAnalyzer(
         self.incomplete_namespaces = incomplete_namespaces
         self.all_exports: list[str] = []
         # Map from module id to list of explicitly exported names (i.e. names in __all__).
+        # This is used by stubgen/stubtest, DO NOT use for any other purposes as it is
+        # not populated on incremental runs (nor in parallel mode).
         self.export_map: dict[str, list[str]] = {}
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
@@ -2967,8 +2969,13 @@ class SemanticAnalyzer(
                 # precedence, but doesn't seem to be important in most use cases.
                 node = SymbolTableNode(GDEF, self.modules[fullname])
             else:
-                if id == as_id == "__all__" and module_id in self.export_map:
-                    self.all_exports[:] = self.export_map[module_id]
+                if id == as_id == "__all__":
+                    # For modules with __all__ public status of symbols is determined uniquely
+                    # by contents of __all__, so we can recover the latter here, and avoid
+                    # serializing this (redundant) information in MypyFile.
+                    self.all_exports[:] = [
+                        name for name, sym in module.names.items() if sym.module_public
+                    ]
                 node = module.names.get(id)
 
             missing_submodule = False

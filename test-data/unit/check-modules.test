@@ -2960,7 +2960,7 @@ class Some:
     name = __name__
 reveal_type(Some.name)  # N: Revealed type is "builtins.str"
 
-[case testReExportAllInStub_no_parallel]
+[case testReExportAllInStub]
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
 C()
