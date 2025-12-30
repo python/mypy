@@ -377,3 +377,68 @@ MypyFile:1(
     Async
     Block:2(
       PassStmt:2())))
+
+[case testFunctionWithDefaultArg]
+def greet(name="World"):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    greet
+    Args(
+      default(
+        Var:nil(name)
+        StrExpr(World)))
+    Block:2(
+      PassStmt:2())))
+
+[case testFunctionWithMultipleDefaults]
+def add(x=1, y=2):
+    return x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    add
+    Args(
+      default(
+        Var:nil(x)
+        IntExpr(1))
+      default(
+        Var:nil(y)
+        IntExpr(2)))
+    Block:2(
+      ReturnStmt:2(
+        NameExpr(x)))))
+
+[case testFunctionMixedDefaultsAndRegular]
+def func(a, b=5, c=10):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    func
+    Args(
+      Var:nil(a)
+      default(
+        Var:nil(b)
+        IntExpr(5))
+      default(
+        Var:nil(c)
+        IntExpr(10)))
+    Block:2(
+      PassStmt:2())))
+
+[case testFunctionWithKwOnlyDefault]
+def func(*, x=42):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    func
+    MaxPos(0)
+    Args(
+      default(
+        Var:nil(x)
+        IntExpr(42)))
+    Block:2(
+      PassStmt:2())))

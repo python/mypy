@@ -116,13 +116,16 @@ def read_statement(data: ReadBuffer) -> Statement:
             # TODO: Read type annotation when implemented
             has_type = read_bool(data)
             assert not has_type, "Type annotations not yet supported"
-            # TODO: Read default value when implemented
+            # Read default value
             has_default = read_bool(data)
-            assert not has_default, "Default values not yet supported"
+            if has_default:
+                default = read_expression(data)
+            else:
+                default = None
             pos_only = read_bool(data)
 
             var = Var(arg_name)
-            arg = Argument(var, None, None, arg_kind, pos_only)
+            arg = Argument(var, None, default, arg_kind, pos_only)
             arguments.append(arg)
 
         # Body
