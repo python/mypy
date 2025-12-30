@@ -270,3 +270,13 @@ MypyFile:1(
       not in
       NameExpr(q)
       NameExpr(r))))
+
+[case testLiterals]
+(None, True, False)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    TupleExpr:1(
+      NameExpr(None)
+      NameExpr(True)
+      NameExpr(False))))
