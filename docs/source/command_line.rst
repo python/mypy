@@ -866,6 +866,12 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
+.. option:: --disable-ignores
+
+    This flag makes mypy act as though no ``# type: ignore`` comments are placed inline.
+    Effectively, it makes mypy "ignore ignores", therefore reporting all of the errors that would otherwise be ignored by those comments.
+    Beware: other configuration options and flags may still enable or disable various error codes.
+    The main use of this flag is to audit code that has ``# type: ignore`` comments in it (potentially masking problems in a subtle way).
 
 .. _configuring-error-messages:
 
