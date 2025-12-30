@@ -605,3 +605,15 @@ MypyFile:1(
     UnaryExpr:4(
       not
       NameExpr(w))))
+
+[case testDictionaryExpression]
+{}
+{1:x}
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    DictExpr:1())
+  ExpressionStmt:2(
+    DictExpr:2(
+      IntExpr(1)
+      NameExpr(x))))

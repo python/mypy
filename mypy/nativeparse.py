@@ -54,6 +54,7 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    DictExpr,
     Expression,
     ExpressionStmt,
     FloatExpr,
@@ -415,6 +416,25 @@ def read_expression(data: ReadBuffer) -> Expression:
         op = unary_ops[read_int(data)]
         operand = read_expression(data)
         expr = UnaryExpr(op, operand)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.DICT_EXPR:
+        # Read keys
+        expect_tag(data, LIST_GEN)
+        n_keys = read_int_bare(data)
+        keys = []
+        for _ in range(n_keys):
+            has_key = read_bool(data)
+            if has_key:
+                keys.append(read_expression(data))
+            else:
+                keys.append(None)
+        # Read values
+        values = read_expression_list(data)
+        # Zip keys and values into items
+        items = list(zip(keys, values))
+        expr = DictExpr(items)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
