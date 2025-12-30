@@ -1315,7 +1315,7 @@ reveal_type(x)      # N: Revealed type is "__main__.Foo"
 
 # ..and we get the same result if we have two disjoint groups within the same comp expr
 if x is Foo.A < x is Foo.B:
-    reveal_type(x)  # E: Statement is unreachable
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.Foo"
 reveal_type(x)      # N: Revealed type is "__main__.Foo"
@@ -1333,9 +1333,9 @@ class Foo(Enum):
 
 x: Foo
 if x is Foo.A is Foo.B:
-   reveal_type(x)   # E: Statement is unreachable
+   reveal_type(x)   # N: Revealed type is "Literal[__main__.Foo.A] | Literal[__main__.Foo.B]"
 else:
-   reveal_type(x)   # N: Revealed type is "__main__.Foo"
+   reveal_type(x)   # N: Revealed type is "Literal[__main__.Foo.C]"
 reveal_type(x)      # N: Revealed type is "__main__.Foo"
 
 literal_a: Literal[Foo.A]

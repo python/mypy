@@ -2296,7 +2296,7 @@ def f(x: str | int) -> None:
     if x in ["x"]:
         # TODO: we should fix this reveal https://github.com/python/mypy/issues/3229
         reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int"
-        y = x
+        y = x  # E: Incompatible types in assignment (expression has type "str | int", variable has type "str")
         z = x
     z = y
 [builtins fixtures/primitives.pyi]
