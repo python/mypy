@@ -27,6 +27,7 @@ from mypy.cache import (
     END_TAG,
     LIST_GEN,
     LIST_INT,
+    LITERAL_FLOAT,
     LITERAL_NONE,
     LITERAL_STR,
     LOCATION,
@@ -38,7 +39,7 @@ from mypy.cache import (
     read_tag,
     read_bool,
 )
-from librt.internal import read_str as read_str_bare
+from librt.internal import read_str as read_str_bare, read_float as read_float_bare
 from mypy.nodes import (
     ARG_POS,
     ARG_OPT,
@@ -55,6 +56,7 @@ from mypy.nodes import (
     ComparisonExpr,
     Expression,
     ExpressionStmt,
+    FloatExpr,
     FuncDef,
     IfStmt,
     IndexExpr,
@@ -334,6 +336,13 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, ie)
         expect_end_tag(data)
         return ie
+    elif tag == nodes.FLOAT_EXPR:
+        expect_tag(data, LITERAL_FLOAT)
+        value = read_float_bare(data)
+        fe = FloatExpr(value)
+        read_loc(data, fe)
+        expect_end_tag(data)
+        return fe
     elif tag == nodes.LIST_EXPR:
         items = read_expression_list(data)
         expr = ListExpr(items)

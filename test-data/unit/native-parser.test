@@ -573,3 +573,11 @@ MypyFile:1(
     AssignmentStmt:2(
       NameExpr(x)
       IntExpr(1))))
+
+[case testFloatLiteral]
+x = 3.14
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    FloatExpr(3.14)))

@@ -5038,6 +5038,7 @@ COMPARISON_EXPR: Final[Tag] = 177
 BOOL_OP_EXPR: Final[Tag] = 178
 FUNC_DEF_STMT: Final[Tag] = 179
 PASS_STMT: Final[Tag] = 180
+FLOAT_EXPR: Final[Tag] = 181
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
