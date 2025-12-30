@@ -1005,7 +1005,7 @@ def is_singleton_type(typ: Type) -> bool:
     return typ.is_singleton_type()
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> Type:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -1034,7 +1034,9 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> Type:
         ]
         return UnionType.make_union(items)
 
-    if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+    if isinstance(typ, Instance) and (
+        target_fullname is None or typ.type.fullname == target_fullname
+    ):
         if typ.type.fullname == "builtins.bool":
             return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
