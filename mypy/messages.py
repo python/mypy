@@ -251,19 +251,10 @@ class MessageBuilder:
 
         def span_from_context(ctx: Context) -> Iterable[int]:
             """This determines where a type: ignore for a given context has effect.
-
-            Current logic is a bit tricky, to keep as much backwards compatibility as
-            possible. We may reconsider this to always be a single line (or otherwise
-            simplify it) when we drop Python 3.7.
-
-            TODO: address this in follow up PR
             """
-            if isinstance(ctx, (ClassDef, FuncDef)):
+            if not isinstance(ctx, Expression):
                 return range(ctx.line, ctx.line + 1)
-            elif not isinstance(ctx, Expression):
-                return [ctx.line]
-            else:
-                return range(ctx.line, (ctx.end_line or ctx.line) + 1)
+            return range(ctx.line, (ctx.end_line or ctx.line) + 1)
 
         origin_span: Iterable[int] | None
         if origin is not None:
