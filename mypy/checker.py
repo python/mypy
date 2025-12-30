@@ -6545,6 +6545,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if (
                 literal(expr) == LITERAL_TYPE
                 and not is_literal_none(expr)
+                and not is_literal_not_implemented(expr)
+                and not is_false_literal(expr)
+                and not is_true_literal(expr)
                 and not self.is_literal_enum(expr)
             ):
                 h = literal_hash(expr)
@@ -6584,7 +6587,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     operands,
                     operand_types,
                     expr_indices,
-                    narrowable_operand_index_to_hash,
+                    narrowable_indices=narrowable_operand_index_to_hash.keys(),
                 )
             elif operator in {"in", "not in"}:
                 assert len(expr_indices) == 2
@@ -6649,7 +6652,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         operands: list[Expression],
         operand_types: list[Type],
         expr_indices: list[int],
-        narrowable_operand_index_to_hash: dict[int, tuple[Key, ...]],
+        narrowable_indices: AbstractSet[int],
     ) -> tuple[TypeMap, TypeMap]:
         """Calculate type maps for '==', '!=', 'is' or 'is not' expression."""
         # If we haven't been able to narrow types yet, we might be dealing with a
@@ -6659,7 +6662,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             operands,
             operand_types,
             expr_indices,
-            narrowable_operand_index_to_hash.keys(),
+            narrowable_indices=narrowable_indices,
         )
         if node is not None:
             type_if_map, type_else_map = self.find_type_equals_check(node, expr_indices)

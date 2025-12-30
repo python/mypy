@@ -2712,3 +2712,30 @@ reveal_type(t.foo)  # N: Revealed type is "__main__.D"
 t.foo = C1()
 reveal_type(t.foo)  # N: Revealed type is "__main__.C"
 [builtins fixtures/property.pyi]
+
+[case testNarrowingNotImplemented]
+from __future__ import annotations
+from typing_extensions import Self
+
+class X:
+    def __divmod__(self, other: Self | int) -> tuple[Self, Self]: ...
+
+    def __floordiv__(self, other: Self | int) -> Self:
+        qr = self.__divmod__(other)
+        if qr is NotImplemented:
+            return NotImplemented
+        return qr[0]
+[builtins fixtures/notimplemented.pyi]
+
+
+[case testNarrowingBooleans]
+# flags: --warn-return-any
+from typing import Any
+
+def foo(x: dict[str, Any]) -> bool:
+    if x.get("event") is False:
+        return False
+    if x.get("event") is True:
+        return True
+    raise
+[builtins fixtures/dict.pyi]
