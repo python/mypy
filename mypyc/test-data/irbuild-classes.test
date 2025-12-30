@@ -1051,7 +1051,7 @@ class B(A):
     y = LOL
     z: Optional[str] = None
     b = True
-    bogus = None  # type: int
+    bogus = None  # type: int  # type: ignore
 [out]
 def A.lol(self):
     self :: __main__.A

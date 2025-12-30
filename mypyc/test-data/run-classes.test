@@ -1126,7 +1126,7 @@ class B(A):
     y = LOL
     z = None  # type: Optional[str]
     b = True
-    bogus = None  # type: int
+    bogus = None  # type: int  # type: ignore
 
 def g() -> None:
     a = A()
