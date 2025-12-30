@@ -42,15 +42,19 @@ from mypy.nodes import (
     Expression,
     ExpressionStmt,
     IfStmt,
+    IndexExpr,
     IntExpr,
+    ListExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
     Node,
     OpExpr,
+    SetExpr,
     Statement,
     StrExpr,
     TupleExpr,
+    WhileStmt,
 )
 
 
@@ -82,6 +86,7 @@ def parse_to_binary_ast(filename: str) -> bytes:
 
 def read_statement(data: ReadBuffer) -> Statement:
     tag = read_tag(data)
+    stmt: Statement
     if tag == nodes.EXPR_STMT:
         es = ExpressionStmt(read_expression(data))
         es.line = es.expr.line
@@ -113,6 +118,16 @@ def read_statement(data: ReadBuffer) -> Statement:
         read_loc(data, if_stmt)
         expect_end_tag(data)
         return if_stmt
+    elif tag == nodes.RETURN_STMT:
+        assert NotImplementedError
+    elif tag == nodes.WHILE_STMT:
+        expr = read_expression(data)
+        body = read_block(data)
+        else_body = read_optional_block(data)
+        stmt = WhileStmt(expr, body, else_body)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
     else:
         assert False, tag
 
@@ -121,6 +136,7 @@ def read_block(data: ReadBuffer) -> Block:
     expect_tag(data, nodes.BLOCK)
     expect_tag(data, LIST_GEN)
     n = read_int_bare(data)
+    assert n > 0
     a = [read_statement(data) for i in range(n)]
     expect_end_tag(data)
     b = Block(a)
@@ -131,11 +147,29 @@ def read_block(data: ReadBuffer) -> Block:
     return b
 
 
+def read_optional_block(data: ReadBuffer) -> Block | None:
+    expect_tag(data, nodes.BLOCK)
+    expect_tag(data, LIST_GEN)
+    n = read_int_bare(data)
+    if n == 0:
+        b = None
+    else:
+        a = [read_statement(data) for i in range(n)]
+        b = Block(a)
+        b.line = a[0].line
+        b.column = a[0].column
+        b.end_line = a[-1].end_line
+        b.end_column = a[-1].end_column
+    expect_end_tag(data)
+    return b
+
+
 bin_ops: Final = ["+", "-", "*", "@", "/", "%", "**", "<<", ">>", "|", "^", "&", "//"]
 
 
 def read_expression(data: ReadBuffer) -> Expression:
     tag = read_tag(data)
+    expr: Expression
     if tag == nodes.CALL_EXPR:
         callee = read_expression(data)
         args = read_expression_list(data)
@@ -167,12 +201,24 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, ie)
         expect_end_tag(data)
         return ie
+    elif tag == nodes.LIST_EXPR:
+        items = read_expression_list(data)
+        expr = ListExpr(items)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
     elif tag == nodes.TUPLE_EXPR:
         items = read_expression_list(data)
         t = TupleExpr(items)
         read_loc(data, t)
         expect_end_tag(data)
         return t
+    elif tag == nodes.SET_EXPR:
+        items = read_expression_list(data)
+        expr = SetExpr(items)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
     elif tag == nodes.OP_EXPR:
         op = bin_ops[read_int(data)]
         left = read_expression(data)
@@ -185,6 +231,13 @@ def read_expression(data: ReadBuffer) -> Expression:
         o.end_column = right.end_column
         expect_end_tag(data)
         return o
+    elif tag == nodes.INDEX_EXPR:
+        base = read_expression(data)
+        index = read_expression(data)
+        expr = IndexExpr(base, index)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
     else:
         assert False, tag
 

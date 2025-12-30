@@ -117,3 +117,54 @@ MypyFile:1(
     Else(
       ExpressionStmt:6(
         NameExpr(e)))))
+
+[case testWhileStmt]
+while a:
+    b
+while c:
+    d
+else:
+    e
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    NameExpr(a)
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(b))))
+  WhileStmt:3(
+    NameExpr(c)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(d)))
+    Else(
+      ExpressionStmt:6(
+        NameExpr(e)))))
+
+[case testIndexExpr]
+a[b]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(a)
+      NameExpr(b))))
+
+[case testListAndSetExpr]
+a = []
+b = [1, 2]
+c = {3}
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    ListExpr:1())
+  AssignmentStmt:2(
+    NameExpr(b)
+    ListExpr:2(
+      IntExpr(1)
+      IntExpr(2)))
+  AssignmentStmt:3(
+    NameExpr(c)
+    SetExpr:3(
+      IntExpr(3))))

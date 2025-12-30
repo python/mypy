@@ -5029,6 +5029,11 @@ IF_STMT: Final[Tag] = 168
 ASSIGNMENT_STMT: Final[Tag] = 169
 TUPLE_EXPR: Final[Tag] = 170
 BLOCK: Final[Tag] = 171
+INDEX_EXPR: Final[Tag] = 172
+LIST_EXPR: Final[Tag] = 173
+SET_EXPR: Final[Tag] = 174
+RETURN_STMT: Final[Tag] = 175
+WHILE_STMT: Final[Tag] = 176
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
