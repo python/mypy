@@ -2767,6 +2767,6 @@ def get_type(setting_name: str) -> Callable[[Box1], Any] | type[Any]:
 def main(key: str):
     existing_value_type = get_type(key)
     if existing_value_type is TupleLike:
-        reveal_type(TupleLike)  # N: Revealed type is "(def (__main__.Box1[Any]) -> Any) | type[Any]"
-        TupleLike(Box2("str"))  # E: Argument 1 has incompatible type "Box2[str]"; expected "Box1[Any]"
+        reveal_type(TupleLike)  # N: Revealed type is "def [_T_co] (__main__.Boxxy[_T_co`1]) -> __main__.TupleLike[_T_co`1]"
+        TupleLike(Box2("str"))
 [builtins fixtures/tuple.pyi]

@@ -6549,6 +6549,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not is_false_literal(expr)
                 and not is_true_literal(expr)
                 and not self.is_literal_enum(expr)
+                and not (isinstance(expr_type, CallableType) and expr_type.is_type_obj())
             ):
                 h = literal_hash(expr)
                 if h is not None:
@@ -6658,11 +6659,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # If we haven't been able to narrow types yet, we might be dealing with a
         # explicit type(x) == some_type check
         if_map, else_map = self.narrow_type_by_equality(
-            operator,
-            operands,
-            operand_types,
-            expr_indices,
-            narrowable_indices=narrowable_indices,
+            operator, operands, operand_types, expr_indices, narrowable_indices=narrowable_indices
         )
         if node is not None:
             type_if_map, type_else_map = self.find_type_equals_check(node, expr_indices)
@@ -6962,12 +6959,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             else:
                 type_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
 
-        # print = lambda *a: None
-        # print()
-        # print("operands", operands)
-        # print("operand_types", operand_types)
-        # print("operator_specific_targets", operator_specific_targets)
-        # print("type_targets", type_targets)
+        if False:
+            print()
+            print("operands", operands)
+            print("operand_types", operand_types)
+            print("operator_specific_targets", operator_specific_targets)
+            print("type_targets", type_targets)
 
         partial_type_maps = []
 
@@ -7000,9 +6997,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             else_map = {}
                             partial_type_maps.append((if_map, else_map))
 
-        final_if_map, final_else_map = reduce_conditional_maps(partial_type_maps, use_meet=len(operands) > 2)
-        # print("final_if_map", {str(k): str(v) for k, v in final_if_map.items()})
-        # print("final_else_map", {str(k): str(v) for k, v in final_else_map.items()})
+        final_if_map, final_else_map = reduce_conditional_maps(
+            partial_type_maps, use_meet=len(operands) > 2
+        )
+        if False:
+            print(
+                "final_if_map",
+                {str(k): str(v) for k, v in final_if_map.items()} if final_if_map else None,
+            )
+            print(
+                "final_else_map",
+                {str(k): str(v) for k, v in final_else_map.items()} if final_else_map else None,
+            )
         return final_if_map, final_else_map
 
     def refine_away_none_in_comparison(
