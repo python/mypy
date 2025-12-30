@@ -277,7 +277,7 @@ TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type {} requires positional a
 MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'
 OR_PATTERN_ALTERNATIVE_NAMES: Final = "Alternative patterns bind different names"
 CLASS_PATTERN_GENERIC_TYPE_ALIAS: Final = (
-    "Class pattern class must not be a type alias with type parameters"
+    "Class pattern class must not be a type alias with type arguments"
 )
 CLASS_PATTERN_TYPE_REQUIRED: Final = 'Expected type in class pattern; found "{}"'
 CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS: Final = "Too many positional patterns for class pattern"
