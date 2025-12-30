@@ -3181,12 +3181,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return True
         elif isinstance(s, ReturnStmt) and is_literal_not_implemented(s.expr):
             return True
-        elif isinstance(s, (RaiseStmt, PassStmt)):
+        elif isinstance(s, RaiseStmt):
             return True
         elif isinstance(s, ExpressionStmt):
-            if isinstance(s.expr, EllipsisExpr):
-                return True
-            elif isinstance(s.expr, CallExpr):
+            if isinstance(s.expr, CallExpr):
                 with self.expr_checker.msg.filter_errors(filter_revealed_type=True):
                     typ = get_proper_type(
                         self.expr_checker.accept(
