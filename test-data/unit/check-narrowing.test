@@ -1364,13 +1364,13 @@ class A: ...
 val: Optional[A]
 
 if val == None:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 else:
     reveal_type(val)  # N: Revealed type is "__main__.A"
 if val != None:
     reveal_type(val)  # N: Revealed type is "__main__.A"
 else:
-    reveal_type(val)  # N: Revealed type is "__main__.A | None"
+    reveal_type(val)  # N: Revealed type is "None"
 
 if val in (None,):
     reveal_type(val)  # N: Revealed type is "__main__.A | None"
@@ -1380,6 +1380,19 @@ if val not in (None,):
     reveal_type(val)  # N: Revealed type is "__main__.A | None"
 else:
     reveal_type(val)  # N: Revealed type is "__main__.A | None"
+
+class Hmm:
+    def __eq__(self, other) -> bool: ...
+
+hmm: Optional[Hmm]
+if hmm == None:
+    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm | None"
+else:
+    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm"
+if hmm != None:
+    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm"
+else:
+    reveal_type(hmm)  # N: Revealed type is "__main__.Hmm | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithTupleOfTypes]
@@ -2277,7 +2290,7 @@ def f4(x: SE) -> None:
 # https://github.com/python/mypy/issues/17864
 def f(x: str | int) -> None:
     if x == "x":
-        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
         y = x
 
     if x in ["x"]:

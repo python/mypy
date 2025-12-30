@@ -2760,13 +2760,14 @@ else:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 [case testTypeEqualsMultipleTypesShouldntNarrow]
+# flags: --warn-unreachable
 # make sure we don't do any narrowing if there are multiple types being compared
 
 from typing import Union
 
 x: Union[int, str]
 if type(x) == int == str:
-    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(x)  # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 

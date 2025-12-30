@@ -61,7 +61,7 @@ m: object
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "builtins.object"
+        reveal_type(m)  # N: Revealed type is "builtins.int"
 [file b.py]
 b: int
 
