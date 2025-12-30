@@ -571,7 +571,7 @@ def define_options(
     #     URLs longer than the available terminal width will overflow without being
     #     broken apart. This facilitates both URL detection, and manual copy-pasting.
 
-    general_group = parser.add_argument_group(title="Optional arguments")
+    general_group = parser.add_argument_group(title="Utility arguments")
     general_group.add_argument(
         "-h", "--help", action="help", help="Show this help message and exit"
     )
