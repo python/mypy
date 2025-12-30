@@ -523,3 +523,28 @@ MypyFile:1(
         IntExpr(2))
       DictVarArg(
         NameExpr(y)))))
+
+[case testSimpleClass]
+class A:
+    pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    PassStmt:2()))
+
+[case testClassWithMethod]
+class Foo:
+    def bar(self):
+        return 1
+[out]
+MypyFile:1(
+  ClassDef:1(
+    Foo
+    FuncDef:2(
+      bar
+      Args(
+        Var:nil(self))
+      Block:3(
+        ReturnStmt:3(
+          IntExpr(1))))))

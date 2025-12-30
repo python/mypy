@@ -23,6 +23,7 @@ from typing import Final
 
 from mypy import nodes
 from mypy.cache import (
+    DICT_STR_GEN,
     END_TAG,
     LIST_GEN,
     LIST_INT,
@@ -50,6 +51,7 @@ from mypy.nodes import (
     AssignmentStmt,
     Block,
     CallExpr,
+    ClassDef,
     ComparisonExpr,
     Expression,
     ExpressionStmt,
@@ -210,6 +212,40 @@ def read_statement(data: ReadBuffer) -> Statement:
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
+    elif tag == nodes.CLASS_DEF:
+        # Class name
+        name = read_str(data)
+
+        # Body
+        body = read_block(data)
+
+        # TODO: Base classes (skip for now)
+        expect_tag(data, LIST_GEN)
+        n_bases = read_int_bare(data)
+        assert n_bases == 0, "Base classes not yet supported"
+
+        # TODO: Decorators (skip for now)
+        expect_tag(data, LIST_GEN)
+        n_decorators = read_int_bare(data)
+        assert n_decorators == 0, "Decorators not yet supported"
+
+        # TODO: Type parameters (skip for now)
+        has_type_params = read_bool(data)
+        assert not has_type_params, "Type parameters not yet supported"
+
+        # TODO: Metaclass (skip for now)
+        has_metaclass = read_bool(data)
+        assert not has_metaclass, "Metaclass not yet supported"
+
+        # TODO: Keywords (skip for now)
+        expect_tag(data, DICT_STR_GEN)
+        n_keywords = read_int_bare(data)
+        assert n_keywords == 0, "Keywords not yet supported"
+
+        class_def = ClassDef(name, body)
+        read_loc(data, class_def)
+        expect_end_tag(data)
+        return class_def
     else:
         assert False, tag
 
