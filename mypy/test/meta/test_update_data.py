@@ -21,7 +21,7 @@ class UpdateDataSuite(Suite):
         # Note: We test multiple testcases rather than 'test case per test case'
         #       so we could also exercise rewriting multiple testcases at once.
         result = _run_pytest_update_data(
-            """
+            r"""
             [case testCorrect]
             s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -49,10 +49,26 @@ class UpdateDataSuite(Suite):
             s: str = 'foo'  # W: foo \
                             # N: bar
 
+            [case testIndentationOfMultiline]
+            s: str = 42;  i: int = 'foo' # E: Incompatible types in assignment (expression has type "int", variable has type "str")\
+                # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+            s2: str = 42;  i2: int = 'foo' # E: Incompatible types in assignment (expression has type "int", variable has type "str")\
+                # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
             [case testOutCorrect]
             s: str = 42
             [out]
             main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+            [case testOutWithMuchTraillingWhitespace]
+            s: str = 42
+            [out]
+            main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+
+
+
+
 
             [case testOutWrong]
             s: str = 42
@@ -79,7 +95,7 @@ class UpdateDataSuite(Suite):
 
         # Assert
         expected = dedent_docstring(
-            """
+            r"""
         [case testCorrect]
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -93,7 +109,7 @@ class UpdateDataSuite(Suite):
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
         [case testMissingMultiline]
-        s: str = 42;  i: int = 'foo'  # E: Incompatible types in assignment (expression has type "int", variable has type "str") \\
+        s: str = 42;  i: int = 'foo'  # E: Incompatible types in assignment (expression has type "int", variable has type "str") \
                                       # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
         [case testExtraneous]
@@ -105,10 +121,26 @@ class UpdateDataSuite(Suite):
         [case testExtraneousMultilineNonError]
         s: str = 'foo'
 
+        [case testIndentationOfMultiline]
+        s: str = 42;  i: int = 'foo' # E: Incompatible types in assignment (expression has type "int", variable has type "str") \
+                                     # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        s2: str = 42;  i2: int = 'foo' # E: Incompatible types in assignment (expression has type "int", variable has type "str") \
+                                       # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
         [case testOutCorrect]
         s: str = 42
         [out]
         main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+        [case testOutWithMuchTraillingWhitespace]
+        s: str = 42
+        [out]
+        main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+
+
+
+
 
         [case testOutWrong]
         s: str = 42
