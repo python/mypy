@@ -26,6 +26,8 @@ from mypy.cache import (
     END_TAG,
     LIST_GEN,
     LIST_INT,
+    LITERAL_NONE,
+    LITERAL_STR,
     LOCATION,
     ReadBuffer,
     Tag,
@@ -35,6 +37,7 @@ from mypy.cache import (
     read_tag,
     read_bool,
 )
+from librt.internal import read_str as read_str_bare
 from mypy.nodes import (
     ARG_POS,
     ARG_OPT,
@@ -254,8 +257,23 @@ def read_expression(data: ReadBuffer) -> Expression:
     if tag == nodes.CALL_EXPR:
         callee = read_expression(data)
         args = read_expression_list(data)
-        n = len(args)
-        ce = CallExpr(callee, args, [ARG_POS] * n, [None] * n)
+        # Read argument kinds
+        expect_tag(data, LIST_INT)
+        n_kinds = read_int_bare(data)
+        arg_kinds = [ARG_KINDS[read_int_bare(data)] for _ in range(n_kinds)]
+        # Read argument names
+        expect_tag(data, LIST_GEN)
+        n_names = read_int_bare(data)
+        arg_names = []
+        for _ in range(n_names):
+            tag = read_tag(data)
+            if tag == LITERAL_NONE:
+                arg_names.append(None)
+            elif tag == LITERAL_STR:
+                arg_names.append(read_str_bare(data))
+            else:
+                assert False, f"Unexpected tag for arg_name: {tag}"
+        ce = CallExpr(callee, args, arg_kinds, arg_names)
         read_loc(data, ce)
         expect_end_tag(data)
         return ce
