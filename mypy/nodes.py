@@ -5036,6 +5036,7 @@ RETURN_STMT: Final[Tag] = 175
 WHILE_STMT: Final[Tag] = 176
 COMPARISON_EXPR: Final[Tag] = 177
 BOOL_OP_EXPR: Final[Tag] = 178
+FUNC_DEF_STMT: Final[Tag] = 179
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

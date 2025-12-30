@@ -280,3 +280,32 @@ MypyFile:1(
       NameExpr(None)
       NameExpr(True)
       NameExpr(False))))
+
+[case testSimpleFunction]
+def foo():
+    x = 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    foo
+    Block:2(
+      AssignmentStmt:2(
+        NameExpr(x)
+        IntExpr(1)))))
+
+[case testFunctionWithArgs]
+def add(x, y):
+    return x + y
+[out]
+MypyFile:1(
+  FuncDef:1(
+    add
+    Args(
+      Var:nil(x)
+      Var:nil(y))
+    Block:2(
+      ReturnStmt:2(
+        OpExpr:2(
+          +
+          NameExpr(x)
+          NameExpr(y))))))

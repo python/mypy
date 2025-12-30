@@ -37,12 +37,20 @@ from mypy.cache import (
 )
 from mypy.nodes import (
     ARG_POS,
+    ARG_OPT,
+    ARG_STAR,
+    ARG_NAMED,
+    ARG_STAR2,
+    ARG_NAMED_OPT,
+    ARG_KINDS,
+    Argument,
     AssignmentStmt,
     Block,
     CallExpr,
     ComparisonExpr,
     Expression,
     ExpressionStmt,
+    FuncDef,
     IfStmt,
     IndexExpr,
     IntExpr,
@@ -52,10 +60,12 @@ from mypy.nodes import (
     NameExpr,
     Node,
     OpExpr,
+    ReturnStmt,
     SetExpr,
     Statement,
     StrExpr,
     TupleExpr,
+    Var,
     WhileStmt,
 )
 
@@ -89,7 +99,57 @@ def parse_to_binary_ast(filename: str) -> bytes:
 def read_statement(data: ReadBuffer) -> Statement:
     tag = read_tag(data)
     stmt: Statement
-    if tag == nodes.EXPR_STMT:
+    if tag == nodes.FUNC_DEF_STMT:
+        # Function name
+        name = read_str(data)
+
+        # Arguments
+        expect_tag(data, LIST_GEN)
+        n_args = read_int_bare(data)
+        arguments = []
+        for _ in range(n_args):
+            arg_name = read_str(data)
+            arg_kind_int = read_int(data)
+            # Convert integer to ArgKind enum using ARG_KINDS tuple
+            arg_kind = ARG_KINDS[arg_kind_int]
+            # TODO: Read type annotation when implemented
+            has_type = read_bool(data)
+            assert not has_type, "Type annotations not yet supported"
+            # TODO: Read default value when implemented
+            has_default = read_bool(data)
+            assert not has_default, "Default values not yet supported"
+            pos_only = read_bool(data)
+
+            var = Var(arg_name)
+            arg = Argument(var, None, None, arg_kind, pos_only)
+            arguments.append(arg)
+
+        # Body
+        body = read_block(data)
+
+        # Decorators
+        expect_tag(data, LIST_GEN)
+        n_decorators = read_int_bare(data)
+        assert n_decorators == 0, "Decorators not yet supported"
+
+        # is_async
+        is_async = read_bool(data)
+
+        # TODO: type_params
+        has_type_params = read_bool(data)
+        assert not has_type_params, "Type params not yet supported"
+
+        # TODO: Return type annotation
+        has_return_type = read_bool(data)
+        assert not has_return_type, "Return type annotations not yet supported"
+
+        func_def = FuncDef(name, arguments, body)
+        if is_async:
+            func_def.is_coroutine = True
+        read_loc(data, func_def)
+        expect_end_tag(data)
+        return func_def
+    elif tag == nodes.EXPR_STMT:
         es = ExpressionStmt(read_expression(data))
         es.line = es.expr.line
         es.column = es.expr.column
@@ -121,7 +181,15 @@ def read_statement(data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return if_stmt
     elif tag == nodes.RETURN_STMT:
-        assert NotImplementedError
+        has_value = read_bool(data)
+        if has_value:
+            value = read_expression(data)
+        else:
+            value = None
+        stmt = ReturnStmt(value)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
     elif tag == nodes.WHILE_STMT:
         expr = read_expression(data)
         body = read_block(data)
