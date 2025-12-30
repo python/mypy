@@ -43,7 +43,6 @@ from mypy.nodes import (
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
     CallExpr,
-    ClassDef,
     Context,
     Expression,
     FuncDef,
@@ -250,8 +249,7 @@ class MessageBuilder:
         """
 
         def span_from_context(ctx: Context) -> Iterable[int]:
-            """This determines where a type: ignore for a given context has effect.
-            """
+            """This determines where a type: ignore for a given context has effect."""
             if not isinstance(ctx, Expression):
                 return range(ctx.line, ctx.line + 1)
             return range(ctx.line, (ctx.end_line or ctx.line) + 1)
