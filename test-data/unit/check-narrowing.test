@@ -2739,3 +2739,34 @@ def foo(x: dict[str, Any]) -> bool:
         return True
     raise
 [builtins fixtures/dict.pyi]
+
+
+[case testNarrowingTypeObjects]
+from __future__ import annotations
+from typing import Callable, Any, TypeVar, Generic, Protocol
+_T_co = TypeVar('_T_co', covariant=True)
+
+class Boxxy(Protocol[_T_co]):
+    def get_box(self) -> _T_co: ...
+
+class TupleLike(Generic[_T_co]):
+    def __init__(self, iterable: Boxxy[_T_co], /) -> None:
+        raise
+
+class Box1(Generic[_T_co]):
+    def __init__(self, content: _T_co, /) -> None: ...
+    def get_box(self) -> _T_co: raise
+
+class Box2(Generic[_T_co]):
+    def __init__(self, content: _T_co, /) -> None: ...
+    def get_box(self) -> _T_co: raise
+
+def get_type(setting_name: str) -> Callable[[Box1], Any] | type[Any]:
+    raise
+
+def main(key: str):
+    existing_value_type = get_type(key)
+    if existing_value_type is TupleLike:
+        reveal_type(TupleLike)  # N: Revealed type is "(def (__main__.Box1[Any]) -> Any) | type[Any]"
+        TupleLike(Box2("str"))  # E: Argument 1 has incompatible type "Box2[str]"; expected "Box1[Any]"
+[builtins fixtures/tuple.pyi]
