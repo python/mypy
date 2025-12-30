@@ -474,3 +474,52 @@ MypyFile:1(
       KwArgs(
         y
         IntExpr(4)))))
+
+[case testCallWithStarArgs]
+f(1, *x, 2)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args(
+        IntExpr(1)
+        NameExpr(x)
+        IntExpr(2))
+      VarArg)))
+
+[case testCallWithDictStarArgs]
+f(**x)
+f(1, **y)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args()
+      DictVarArg(
+        NameExpr(x))))
+  ExpressionStmt:2(
+    CallExpr:2(
+      NameExpr(f)
+      Args(
+        IntExpr(1))
+      DictVarArg(
+        NameExpr(y)))))
+
+[case testCallWithAllArgTypes]
+f(1, *x, a=2, **y)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(f)
+      Args(
+        IntExpr(1)
+        NameExpr(x))
+      VarArg
+      KwArgs(
+        a
+        IntExpr(2))
+      DictVarArg(
+        NameExpr(y)))))
