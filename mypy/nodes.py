@@ -5041,6 +5041,7 @@ PASS_STMT: Final[Tag] = 180
 FLOAT_EXPR: Final[Tag] = 181
 UNARY_EXPR: Final[Tag] = 182
 DICT_EXPR: Final[Tag] = 183
+COMPLEX_EXPR: Final[Tag] = 184
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

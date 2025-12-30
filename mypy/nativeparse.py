@@ -54,6 +54,7 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ComplexExpr,
     DictExpr,
     Expression,
     ExpressionStmt,
@@ -435,6 +436,19 @@ def read_expression(data: ReadBuffer) -> Expression:
         # Zip keys and values into items
         items = list(zip(keys, values))
         expr = DictExpr(items)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.COMPLEX_EXPR:
+        # Read real part
+        expect_tag(data, LITERAL_FLOAT)
+        real = read_float_bare(data)
+        # Read imaginary part
+        expect_tag(data, LITERAL_FLOAT)
+        imag = read_float_bare(data)
+        # Create complex value
+        value = complex(real, imag)
+        expr = ComplexExpr(value)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
