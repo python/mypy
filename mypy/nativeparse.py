@@ -219,10 +219,8 @@ def read_statement(data: ReadBuffer) -> Statement:
         # Body
         body = read_block(data)
 
-        # TODO: Base classes (skip for now)
-        expect_tag(data, LIST_GEN)
-        n_bases = read_int_bare(data)
-        assert n_bases == 0, "Base classes not yet supported"
+        # Base classes
+        base_type_exprs = read_expression_list(data)
 
         # TODO: Decorators (skip for now)
         expect_tag(data, LIST_GEN)
@@ -242,7 +240,7 @@ def read_statement(data: ReadBuffer) -> Statement:
         n_keywords = read_int_bare(data)
         assert n_keywords == 0, "Keywords not yet supported"
 
-        class_def = ClassDef(name, body)
+        class_def = ClassDef(name, body, base_type_exprs=base_type_exprs if base_type_exprs else None)
         read_loc(data, class_def)
         expect_end_tag(data)
         return class_def
