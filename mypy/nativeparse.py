@@ -25,6 +25,7 @@ from mypy import nodes
 from mypy.cache import (
     END_TAG,
     LIST_GEN,
+    LIST_INT,
     LOCATION,
     ReadBuffer,
     Tag,
@@ -39,6 +40,7 @@ from mypy.nodes import (
     AssignmentStmt,
     Block,
     CallExpr,
+    ComparisonExpr,
     Expression,
     ExpressionStmt,
     IfStmt,
@@ -165,6 +167,8 @@ def read_optional_block(data: ReadBuffer) -> Block | None:
 
 
 bin_ops: Final = ["+", "-", "*", "@", "/", "%", "**", "<<", ">>", "|", "^", "&", "//"]
+bool_ops: Final = ["and", "or"]
+cmp_ops: Final = ["==", "!=", "<", "<=", ">", ">=", "is", "is not", "in", "not in"]
 
 
 def read_expression(data: ReadBuffer) -> Expression:
@@ -235,6 +239,35 @@ def read_expression(data: ReadBuffer) -> Expression:
         base = read_expression(data)
         index = read_expression(data)
         expr = IndexExpr(base, index)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.BOOL_OP_EXPR:
+        op = bool_ops[read_int(data)]
+        values = read_expression_list(data)
+        # Convert list of values to nested OpExpr nodes
+        # E.g., [a, b, c] with "and" becomes OpExpr("and", OpExpr("and", a, b), c)
+        assert len(values) >= 2
+        result = values[0]
+        for val in values[1:]:
+            result = OpExpr(op, result, val)
+            result.line = values[0].line
+            result.column = values[0].column
+            result.end_line = val.end_line
+            result.end_column = val.end_column
+        read_loc(data, result)
+        expect_end_tag(data)
+        return result
+    elif tag == nodes.COMPARISON_EXPR:
+        left = read_expression(data)
+        # Read operators list
+        expect_tag(data, LIST_INT)
+        n_ops = read_int_bare(data)
+        ops = [cmp_ops[read_int_bare(data)] for _ in range(n_ops)]
+        # Read comparators list
+        comparators = read_expression_list(data)
+        assert len(ops) == len(comparators)
+        expr = ComparisonExpr(ops, [left] + comparators)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr

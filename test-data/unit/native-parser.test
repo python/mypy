@@ -168,3 +168,105 @@ MypyFile:1(
     NameExpr(c)
     SetExpr:3(
       IntExpr(3))))
+
+[case testBoolOpAnd]
+a and b
+a and b and c
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      and
+      NameExpr(a)
+      NameExpr(b)))
+  ExpressionStmt:2(
+    OpExpr:2(
+      and
+      OpExpr:2(
+        and
+        NameExpr(a)
+        NameExpr(b))
+      NameExpr(c))))
+
+[case testBoolOpOr]
+x or y
+1 or 2 or 3
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    OpExpr:1(
+      or
+      NameExpr(x)
+      NameExpr(y)))
+  ExpressionStmt:2(
+    OpExpr:2(
+      or
+      OpExpr:2(
+        or
+        IntExpr(1)
+        IntExpr(2))
+      IntExpr(3))))
+
+[case testComparisonSimple]
+a < b
+x == y
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ComparisonExpr:1(
+      <
+      NameExpr(a)
+      NameExpr(b)))
+  ExpressionStmt:2(
+    ComparisonExpr:2(
+      ==
+      NameExpr(x)
+      NameExpr(y))))
+
+[case testComparisonChained]
+a < b < c
+x == y != z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ComparisonExpr:1(
+      <
+      <
+      NameExpr(a)
+      NameExpr(b)
+      NameExpr(c)))
+  ExpressionStmt:2(
+    ComparisonExpr:2(
+      ==
+      !=
+      NameExpr(x)
+      NameExpr(y)
+      NameExpr(z))))
+
+[case testComparisonIsNotIn]
+a is b
+x is not y
+z in w
+q not in r
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ComparisonExpr:1(
+      is
+      NameExpr(a)
+      NameExpr(b)))
+  ExpressionStmt:2(
+    ComparisonExpr:2(
+      is not
+      NameExpr(x)
+      NameExpr(y)))
+  ExpressionStmt:3(
+    ComparisonExpr:3(
+      in
+      NameExpr(z)
+      NameExpr(w)))
+  ExpressionStmt:4(
+    ComparisonExpr:4(
+      not in
+      NameExpr(q)
+      NameExpr(r))))
