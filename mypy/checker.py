@@ -6549,7 +6549,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not is_false_literal(expr)
                 and not is_true_literal(expr)
                 and not self.is_literal_enum(expr)
-                and not (isinstance(expr_type, CallableType) and expr_type.is_type_obj())
+                and not (
+                    isinstance(p_expr := get_proper_type(expr_type), CallableType)
+                    and p_expr.is_type_obj()
+                )
             ):
                 h = literal_hash(expr)
                 if h is not None:
@@ -6959,13 +6962,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             else:
                 type_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
 
-        if False:
-            print()
-            print("operands", operands)
-            print("operand_types", operand_types)
-            print("operator_specific_targets", operator_specific_targets)
-            print("type_targets", type_targets)
-
         partial_type_maps = []
 
         if operator_specific_targets:
@@ -6997,19 +6993,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             else_map = {}
                             partial_type_maps.append((if_map, else_map))
 
-        final_if_map, final_else_map = reduce_conditional_maps(
-            partial_type_maps, use_meet=len(operands) > 2
-        )
-        if False:
-            print(
-                "final_if_map",
-                {str(k): str(v) for k, v in final_if_map.items()} if final_if_map else None,
-            )
-            print(
-                "final_else_map",
-                {str(k): str(v) for k, v in final_else_map.items()} if final_else_map else None,
-            )
-        return final_if_map, final_else_map
+        return reduce_conditional_maps(partial_type_maps, use_meet=len(operands) > 2)
 
     def refine_away_none_in_comparison(
         self,
@@ -8534,9 +8518,10 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, use_meet: bool = False) -> Ty
         for n1 in m1:
             for n2 in m2:
                 if literal_hash(n1) == literal_hash(n2):
-                    result[n1] = meet_types(m1[n1], m2[n2])
-                    if isinstance(result[n1], UninhabitedType):
+                    meet_result = meet_types(m1[n1], m2[n2])
+                    if isinstance(meet_result, UninhabitedType):
                         return None
+                    result[n1] = meet_result
     return result
 
 
@@ -8614,7 +8599,7 @@ BUILTINS_CUSTOM_EQ_CHECKS: Final = {
     "builtins.bytes",
     "builtins.bytearray",
     "builtins.memoryview",
-    "builtins.tuple",
+    # for Collection[Never]
     "builtins.list",
     "builtins.dict",
     "builtins.set",
@@ -8627,7 +8612,10 @@ def has_custom_eq_checks(t: Type) -> bool:
         or custom_special_method(t, "__ne__", check_all=False)
         # TODO: make the hack more principled. explain what and why we're doing this though
         # custom_special_method has special casing for builtins
-        or (isinstance(t, Instance) and t.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS)
+        or (
+            isinstance(pt := get_proper_type(t), Instance)
+            and pt.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS
+        )
     )
 
 
