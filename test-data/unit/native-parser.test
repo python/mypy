@@ -309,3 +309,71 @@ MypyFile:1(
           +
           NameExpr(x)
           NameExpr(y))))))
+
+[case testFunctionWithVarArgs]
+def foo(*args):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    foo
+    VarArg(
+      Var:nil(args))
+    Block:2(
+      PassStmt:2())))
+
+[case testFunctionWithKwargs]
+def bar(**kwargs):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    bar
+    DictVarArg(
+      Var:nil(kwargs))
+    Block:2(
+      PassStmt:2())))
+
+[case testFunctionWithKwOnly]
+def baz(x, *, y):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    baz
+    MaxPos(1)
+    Args(
+      Var:nil(x)
+      Var:nil(y))
+    Block:2(
+      PassStmt:2())))
+
+[case testFunctionWithAllArgKinds]
+def complex_fn(a, b, *args, c, **kwargs):
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    complex_fn
+    MaxPos(2)
+    Args(
+      Var:nil(a)
+      Var:nil(b)
+      Var:nil(c))
+    VarArg(
+      Var:nil(args))
+    DictVarArg(
+      Var:nil(kwargs))
+    Block:2(
+      PassStmt:2())))
+
+[case testAsyncFunction]
+async def async_foo():
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    async_foo
+    Async
+    Block:2(
+      PassStmt:2())))

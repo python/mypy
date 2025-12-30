@@ -60,6 +60,7 @@ from mypy.nodes import (
     NameExpr,
     Node,
     OpExpr,
+    PassStmt,
     ReturnStmt,
     SetExpr,
     Statement,
@@ -195,6 +196,11 @@ def read_statement(data: ReadBuffer) -> Statement:
         body = read_block(data)
         else_body = read_optional_block(data)
         stmt = WhileStmt(expr, body, else_body)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.PASS_STMT:
+        stmt = PassStmt()
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
