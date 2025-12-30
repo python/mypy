@@ -148,6 +148,7 @@ CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_BitLength(CPyTagged self);
 
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
@@ -734,6 +735,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, Py_ssize_t size) {
 #define BOTHSTRIP  2
 
 char CPyStr_Equal(PyObject *str1, PyObject *str2);
+char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t literal_length);
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
@@ -768,6 +770,7 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
+PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count);
 
 
 // Bytes operations
@@ -779,7 +782,8 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
-
+PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
+int CPyBytes_Startswith(PyObject *self, PyObject *subobj);
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);
 
@@ -948,6 +952,33 @@ PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
 void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
 void CPyTrace_LogEvent(const char *location, const char *line, const char *op, const char *details);
+
+static inline PyObject *CPyObject_GenericGetAttr(PyObject *self, PyObject *name) {
+    return _PyObject_GenericGetAttrWithDict(self, name, NULL, 1);
+}
+static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObject *value) {
+    return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
+}
+
+PyObject *CPy_SetupObject(PyObject *type);
+
+typedef struct {
+    PyCMethodObject func;
+
+    PyObject *func_name;
+    PyObject *func_code;
+} CPyFunction;
+
+PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
+                          PyCFunction func, int func_flags, const char *func_doc,
+                          int first_line, int code_flags, bool has_self_arg);
+PyObject* CPyFunction_get_name(PyObject *op, void *context);
+int CPyFunction_set_name(PyObject *op, PyObject *value, void *context);
+PyObject* CPyFunction_get_code(PyObject *op, void *context);
+PyObject* CPyFunction_get_defaults(PyObject *op, void *context);
+PyObject* CPyFunction_get_kwdefaults(PyObject *op, void *context);
+PyObject* CPyFunction_get_annotations(PyObject *op, void *context);
+int CPyFunction_set_annotations(PyObject *op, PyObject *value, void *context);
 
 #if CPY_3_11_FEATURES
 PyObject *CPy_GetName(PyObject *obj);

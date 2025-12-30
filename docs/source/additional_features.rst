@@ -135,7 +135,7 @@ Type annotations can be added as follows:
 
 .. code-block:: python
 
-    import attr
+    import attrs
 
     @attrs.define
     class A:

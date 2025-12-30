@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, Final, Union
+from typing import Any, Final
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -63,7 +63,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType, is_bool_rprimitive, is_int_rprimitive
 
-ErrorSource = Union[BasicBlock, Op]
+ErrorSource = BasicBlock | Op
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):

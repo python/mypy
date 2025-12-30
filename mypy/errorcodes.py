@@ -60,6 +60,9 @@ CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
 VALID_TYPE: Final = ErrorCode("valid-type", "Check that type (annotation) is valid", "General")
+NONETYPE_TYPE: Final = ErrorCode(
+    "nonetype-type", "Check that type (annotation) is not NoneType", "General"
+)
 VAR_ANNOTATED: Final = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
 )
@@ -212,6 +215,9 @@ TRUTHY_ITERABLE: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+STR_UNPACK: Final[ErrorCode] = ErrorCode(
+    "str-unpack", "Warn about expressions that unpack str", "General"
+)
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )
@@ -269,6 +275,11 @@ EXHAUSTIVE_MATCH: Final = ErrorCode(
     default_enabled=False,
 )
 METACLASS: Final = ErrorCode("metaclass", "Ensure that metaclass is valid", "General")
+MAYBE_UNRECOGNIZED_STR_TYPEFORM: Final = ErrorCode(
+    "maybe-unrecognized-str-typeform",
+    "Error when a string is used where a TypeForm is expected but a string annotation cannot be recognized",
+    "General",
+)
 
 # Syntax errors are often blocking.
 SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
@@ -300,6 +311,10 @@ PROPERTY_DECORATOR: Final = ErrorCode(
     "Decorators on top of @property are not supported",
     "General",
     sub_code_of=MISC,
+)
+
+UNTYPED_DECORATOR: Final = ErrorCode(
+    "untyped-decorator", "Error if an untyped decorator makes a typed function untyped", "General"
 )
 
 NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorCode(

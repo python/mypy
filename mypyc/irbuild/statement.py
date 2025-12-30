@@ -9,8 +9,7 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Sequence
-from typing import Callable
+from collections.abc import Callable, Sequence
 
 import mypy.nodes
 from mypy.nodes import (
@@ -599,7 +598,9 @@ def transform_try_except_stmt(builder: IRBuilder, t: TryStmt) -> None:
         (make_entry(type) if type else None, var, make_handler(body))
         for type, var, body in zip(t.types, t.vars, t.handlers)
     ]
-    else_body = (lambda: builder.accept(t.else_body)) if t.else_body else None
+
+    _else_body = t.else_body
+    else_body = (lambda: builder.accept(_else_body)) if _else_body else None
     transform_try_except(builder, body, handlers, else_body, t.line)
 
 
@@ -829,7 +830,14 @@ def transform_try_finally_stmt_async(
     # Check if we have a return value
     if ret_reg:
         return_block, check_old_exc = BasicBlock(), BasicBlock()
-        builder.add(Branch(builder.read(ret_reg), check_old_exc, return_block, Branch.IS_ERROR))
+        builder.add(
+            Branch(
+                builder.read(ret_reg, allow_error_value=True),
+                check_old_exc,
+                return_block,
+                Branch.IS_ERROR,
+            )
+        )
 
         builder.activate_block(return_block)
         builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Callable, TypeVar, cast
+from collections.abc import Callable, Sequence
+from typing import TypeVar, cast
 
 from mypy import message_registry, state
 from mypy.checker_shared import TypeCheckerSharedApi
@@ -409,6 +409,8 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
     if isinstance(ret_type, TupleType):
         ret_type = tuple_fallback(ret_type)
     if isinstance(ret_type, TypedDictType):
+        ret_type = ret_type.fallback
+    if isinstance(ret_type, LiteralType):
         ret_type = ret_type.fallback
     if isinstance(ret_type, Instance):
         if not mx.is_operator:
