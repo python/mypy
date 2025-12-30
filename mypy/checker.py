@@ -6977,14 +6977,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
                 targets = [t for j, t in operator_specific_targets if j != i]
                 if targets:
-                    expr_type = coerce_to_literal(operand_types[i])
-                    expr_type = try_expanding_sum_type_to_union(expr_type, None)
-                    if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expr_type, targets)
-                    )
-                    # print("ooo if_map", if_map)
-                    # print("ooo else_map", else_map)
-                    partial_type_maps.append((if_map, else_map))
+                    for target in targets:
+                        expr_type = coerce_to_literal(operand_types[i])
+                        expr_type = try_expanding_sum_type_to_union(expr_type, None)
+                        if_map, else_map = conditional_types_to_typemaps(
+                            operands[i], *conditional_types(expr_type, [target])
+                        )
+                        partial_type_maps.append((if_map, else_map))
 
         if type_targets:
             for i in chain_indices:
@@ -6992,20 +6991,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
                 targets = [t for j, t in type_targets if j != i]
                 if targets:
-                    expr_type = operand_types[i]
-                    if_map, else_map = conditional_types_to_typemaps(
-                        operands[i], *conditional_types(expr_type, targets)
-                    )
-                    if if_map:
-                        else_map = {}
-                        # print("ttt targets", targets)
-                        # print("ttt if_map", if_map)
-                        # print("ttt else_map", else_map)
-                        partial_type_maps.append((if_map, else_map))
+                    for target in targets:
+                        expr_type = operand_types[i]
+                        if_map, else_map = conditional_types_to_typemaps(
+                            operands[i], *conditional_types(expr_type, [target])
+                        )
+                        if if_map:
+                            else_map = {}
+                            partial_type_maps.append((if_map, else_map))
 
-        final_if_map, final_else_map = reduce_conditional_maps(partial_type_maps)
-        # print("final_if_map", final_if_map)
-        # print("final_else_map", final_else_map)
+        final_if_map, final_else_map = reduce_conditional_maps(partial_type_maps, use_meet=len(operands) > 2)
+        # print("final_if_map", {str(k): str(v) for k, v in final_if_map.items()})
+        # print("final_else_map", {str(k): str(v) for k, v in final_else_map.items()})
         return final_if_map, final_else_map
 
     def refine_away_none_in_comparison(
@@ -8532,6 +8529,8 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, use_meet: bool = False) -> Ty
             for n2 in m2:
                 if literal_hash(n1) == literal_hash(n2):
                     result[n1] = meet_types(m1[n1], m2[n2])
+                    if isinstance(result[n1], UninhabitedType):
+                        return None
     return result
 
 
@@ -8602,10 +8601,7 @@ def reduce_conditional_maps(
 
 def is_singleton_value(t: Type) -> bool:
     t = get_proper_type(t)
-    # TODO: check the type object thing
-    ret = isinstance(t, LiteralType) or t.is_singleton_type() or (isinstance(t, CallableType) and t.is_type_obj())
-    # print("!!!", t, type(t), ret)
-    return ret
+    return isinstance(t, LiteralType) or t.is_singleton_type()
 
 
 BUILTINS_CUSTOM_EQ_CHECKS: Final = {
