@@ -6960,11 +6960,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 type_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
 
         # print = lambda *a: None
-        print()
-        print("operands", operands)
-        print("operand_types", operand_types)
-        print("operator_specific_targets", operator_specific_targets)
-        print("type_targets", type_targets)
+        # print()
+        # print("operands", operands)
+        # print("operand_types", operand_types)
+        # print("operator_specific_targets", operator_specific_targets)
+        # print("type_targets", type_targets)
 
         partial_type_maps = []
 
@@ -6979,8 +6979,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if_map, else_map = conditional_types_to_typemaps(
                         operands[i], *conditional_types(expr_type, targets)
                     )
-                    print("ooo if_map", if_map)
-                    print("ooo else_map", else_map)
+                    # print("ooo if_map", if_map)
+                    # print("ooo else_map", else_map)
                     partial_type_maps.append((if_map, else_map))
 
         if type_targets:
@@ -6995,14 +6995,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     )
                     if if_map:
                         else_map = {}
-                        print("ttt targets", targets)
-                        print("ttt if_map", if_map)
-                        print("ttt else_map", else_map)
+                        # print("ttt targets", targets)
+                        # print("ttt if_map", if_map)
+                        # print("ttt else_map", else_map)
                         partial_type_maps.append((if_map, else_map))
 
         final_if_map, final_else_map = reduce_conditional_maps(partial_type_maps)
-        print("final_if_map", final_if_map)
-        print("final_else_map", final_else_map)
+        # print("final_if_map", final_if_map)
+        # print("final_else_map", final_else_map)
         return final_if_map, final_else_map
 
     def refine_away_none_in_comparison(
@@ -8601,7 +8601,7 @@ def is_singleton_value(t: Type) -> bool:
     t = get_proper_type(t)
     # TODO: check the type object thing
     ret = isinstance(t, LiteralType) or t.is_singleton_type() or (isinstance(t, CallableType) and t.is_type_obj())
-    print("!!!", t, type(t), ret)
+    # print("!!!", t, type(t), ret)
     return ret
 
 
