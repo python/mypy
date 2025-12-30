@@ -1958,7 +1958,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         Returns the inferred types of *actual arguments*.
         """
-        # Precompute arg_context so that we type check argument expresions in evaluation order
+        # Precompute arg_context so that we type check argument expressions in evaluation order
         arg_context: list[Type | None] = [None] * len(args)
         for fi, actuals in enumerate(formal_to_actual):
             for ai in actuals:
