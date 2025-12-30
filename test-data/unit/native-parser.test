@@ -581,3 +581,27 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x)
     FloatExpr(3.14)))
+
+[case testUnaryExpressions]
+-x
++y
+~z
+not w
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    UnaryExpr:1(
+      -
+      NameExpr(x)))
+  ExpressionStmt:2(
+    UnaryExpr:2(
+      +
+      NameExpr(y)))
+  ExpressionStmt:3(
+    UnaryExpr:3(
+      ~
+      NameExpr(z)))
+  ExpressionStmt:4(
+    UnaryExpr:4(
+      not
+      NameExpr(w))))

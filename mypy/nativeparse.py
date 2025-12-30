@@ -73,6 +73,7 @@ from mypy.nodes import (
     Statement,
     StrExpr,
     TupleExpr,
+    UnaryExpr,
     Var,
     WhileStmt,
 )
@@ -285,6 +286,7 @@ def read_optional_block(data: ReadBuffer) -> Block | None:
 bin_ops: Final = ["+", "-", "*", "@", "/", "%", "**", "<<", ">>", "|", "^", "&", "//"]
 bool_ops: Final = ["and", "or"]
 cmp_ops: Final = ["==", "!=", "<", "<=", ">", ">=", "is", "is not", "in", "not in"]
+unary_ops: Final = ["~", "not", "+", "-"]
 
 
 def read_expression(data: ReadBuffer) -> Expression:
@@ -406,6 +408,13 @@ def read_expression(data: ReadBuffer) -> Expression:
         comparators = read_expression_list(data)
         assert len(ops) == len(comparators)
         expr = ComparisonExpr(ops, [left] + comparators)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.UNARY_EXPR:
+        op = unary_ops[read_int(data)]
+        operand = read_expression(data)
+        expr = UnaryExpr(op, operand)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
