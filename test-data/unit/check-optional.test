@@ -472,15 +472,19 @@ def main(x: Union[str, int, None]):
 
 [case testInferEqualsNotOptionalWithOverlap]
 from typing import Union
-x = ''  # type: Union[str, int, None]
-if x == object():
-    reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
-if x is object():
-    reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
-else:
-    reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
+
+def make_random_object() -> object:
+    return None
+
+def main(x: Union[str, int, None]):
+    if x == make_random_object():
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
+    if x is make_random_object():
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.int | None"
 [builtins fixtures/ops.pyi]
 
 [case testInferEqualsStillOptionalWithNoOverlap]
@@ -524,14 +528,17 @@ def main(x: Optional[int], y: Optional[int]):
         reveal_type(y)  # N: Revealed type is "builtins.int | None"
 
 class A: pass
-a: Optional[A]
-b: Optional[A]
-if a == b == object():
-    reveal_type(a)  # N: Revealed type is "__main__.A | None"
-    reveal_type(b)  # N: Revealed type is "__main__.A | None"
-else:
-    reveal_type(a)  # N: Revealed type is "__main__.A | None"
-    reveal_type(b)  # N: Revealed type is "__main__.A | None"
+
+def returns_random_object() -> object:
+    return None
+
+def main2(a: Optional[A], b: Optional[A]):
+    if a == b == returns_random_object():
+        reveal_type(a)  # N: Revealed type is "__main__.A | None"
+        reveal_type(b)  # N: Revealed type is "__main__.A | None"
+    else:
+        reveal_type(a)  # N: Revealed type is "__main__.A | None"
+        reveal_type(b)  # N: Revealed type is "__main__.A | None"
 [builtins fixtures/ops.pyi]
 
 [case testInferInWithErasedTypes]
