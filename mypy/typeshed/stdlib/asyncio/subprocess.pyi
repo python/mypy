@@ -5,6 +5,7 @@ from asyncio import events, protocols, streams, transports
 from collections.abc import Callable, Collection
 from typing import IO, Any, Literal
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 __all__ = ("create_subprocess_exec", "create_subprocess_shell")
 
 PIPE: int
@@ -59,7 +60,7 @@ if sys.version_info >= (3, 11):
         creationflags: int = 0,
         restore_signals: bool = True,
         start_new_session: bool = False,
-        pass_fds: Collection[int] = ...,
+        pass_fds: Collection[int] = (),
         group: None | str | int = None,
         extra_groups: None | Collection[str | int] = None,
         user: None | str | int = None,
@@ -91,7 +92,7 @@ if sys.version_info >= (3, 11):
         creationflags: int = 0,
         restore_signals: bool = True,
         start_new_session: bool = False,
-        pass_fds: Collection[int] = ...,
+        pass_fds: Collection[int] = (),
         group: None | str | int = None,
         extra_groups: None | Collection[str | int] = None,
         user: None | str | int = None,
@@ -125,7 +126,7 @@ elif sys.version_info >= (3, 10):
         creationflags: int = 0,
         restore_signals: bool = True,
         start_new_session: bool = False,
-        pass_fds: Collection[int] = ...,
+        pass_fds: Collection[int] = (),
         group: None | str | int = None,
         extra_groups: None | Collection[str | int] = None,
         user: None | str | int = None,
@@ -156,7 +157,7 @@ elif sys.version_info >= (3, 10):
         creationflags: int = 0,
         restore_signals: bool = True,
         start_new_session: bool = False,
-        pass_fds: Collection[int] = ...,
+        pass_fds: Collection[int] = (),
         group: None | str | int = None,
         extra_groups: None | Collection[str | int] = None,
         user: None | str | int = None,
@@ -190,7 +191,7 @@ else:  # >= 3.9
         creationflags: int = 0,
         restore_signals: bool = True,
         start_new_session: bool = False,
-        pass_fds: Collection[int] = ...,
+        pass_fds: Collection[int] = (),
         group: None | str | int = None,
         extra_groups: None | Collection[str | int] = None,
         user: None | str | int = None,
@@ -221,7 +222,7 @@ else:  # >= 3.9
         creationflags: int = 0,
         restore_signals: bool = True,
         start_new_session: bool = False,
-        pass_fds: Collection[int] = ...,
+        pass_fds: Collection[int] = (),
         group: None | str | int = None,
         extra_groups: None | Collection[str | int] = None,
         user: None | str | int = None,

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
@@ -36,8 +36,8 @@ def map_actuals_to_formals(
     The result contains a list of caller argument indexes mapping to each
     callee argument index, indexed by callee index.
 
-    The caller_arg_type argument should evaluate to the type of the actual
-    argument type with the given index.
+    The actual_arg_type argument should evaluate to the type of the actual
+    argument with the given index.
     """
     nformals = len(formal_kinds)
     formal_to_actual: list[list[int]] = [[] for i in range(nformals)]
@@ -78,7 +78,7 @@ def map_actuals_to_formals(
         elif actual_kind.is_named():
             assert actual_names is not None, "Internal error: named kinds without names given"
             name = actual_names[ai]
-            if name in formal_names:
+            if name in formal_names and formal_kinds[formal_names.index(name)] != nodes.ARG_STAR:
                 formal_to_actual[formal_names.index(name)].append(ai)
             elif nodes.ARG_STAR2 in formal_kinds:
                 formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
@@ -167,7 +167,7 @@ class ArgTypeExpander:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
-        self.kwargs_used: set[str] = set()
+        self.kwargs_used: set[str] | None = None
         # Type context for `*` and `**` arg kinds.
         self.context = context
 
@@ -220,7 +220,7 @@ class ArgTypeExpander:
                     self.tuple_index += 1
                 item = actual_type.items[self.tuple_index - 1]
                 if isinstance(item, UnpackType) and not allow_unpack:
-                    # An upack item that doesn't have special handling, use upper bound as above.
+                    # An unpack item that doesn't have special handling, use upper bound as above.
                     unpacked = get_proper_type(item.type)
                     if isinstance(unpacked, TypeVarTupleType):
                         fallback = get_proper_type(unpacked.upper_bound)
@@ -241,6 +241,8 @@ class ArgTypeExpander:
             from mypy.subtypes import is_subtype
 
             if isinstance(actual_type, TypedDictType):
+                if self.kwargs_used is None:
+                    self.kwargs_used = set()
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
                     assert formal_name is not None
@@ -249,10 +251,8 @@ class ArgTypeExpander:
                     formal_name = (set(actual_type.items.keys()) - self.kwargs_used).pop()
                 self.kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
-            elif (
-                isinstance(actual_type, Instance)
-                and len(actual_type.args) > 1
-                and is_subtype(actual_type, self.context.mapping_type)
+            elif isinstance(actual_type, Instance) and is_subtype(
+                actual_type, self.context.mapping_type
             ):
                 # Only `Mapping` type can be unpacked with `**`.
                 # Other types will produce an error somewhere else.

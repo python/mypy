@@ -58,6 +58,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     ParamSpecExpr,
     PassStmt,
+    PromoteExpr,
     RaiseStmt,
     ReturnStmt,
     RevealExpr,
@@ -67,6 +68,7 @@ from mypy.nodes import (
     StarExpr,
     StrExpr,
     SuperExpr,
+    TempNode,
     TryStmt,
     TupleExpr,
     TypeAlias,
@@ -74,9 +76,11 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
+    Var,
     WhileStmt,
     WithStmt,
     YieldExpr,
@@ -286,6 +290,9 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_cast_expr(self, o: CastExpr, /) -> None:
         o.expr.accept(self)
 
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        pass
+
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         o.expr.accept(self)
 
@@ -415,6 +422,85 @@ class TraverserVisitor(NodeVisitor[None]):
         for a in o.assignments:
             a.accept(self)
 
+    # leaf nodes
+    def visit_name_expr(self, o: NameExpr, /) -> None:
+        return None
+
+    def visit_str_expr(self, o: StrExpr, /) -> None:
+        return None
+
+    def visit_int_expr(self, o: IntExpr, /) -> None:
+        return None
+
+    def visit_float_expr(self, o: FloatExpr, /) -> None:
+        return None
+
+    def visit_bytes_expr(self, o: BytesExpr, /) -> None:
+        return None
+
+    def visit_ellipsis(self, o: EllipsisExpr, /) -> None:
+        return None
+
+    def visit_var(self, o: Var, /) -> None:
+        return None
+
+    def visit_continue_stmt(self, o: ContinueStmt, /) -> None:
+        return None
+
+    def visit_pass_stmt(self, o: PassStmt, /) -> None:
+        return None
+
+    def visit_break_stmt(self, o: BreakStmt, /) -> None:
+        return None
+
+    def visit_temp_node(self, o: TempNode, /) -> None:
+        return None
+
+    def visit_nonlocal_decl(self, o: NonlocalDecl, /) -> None:
+        return None
+
+    def visit_global_decl(self, o: GlobalDecl, /) -> None:
+        return None
+
+    def visit_import_all(self, o: ImportAll, /) -> None:
+        return None
+
+    def visit_type_var_expr(self, o: TypeVarExpr, /) -> None:
+        return None
+
+    def visit_paramspec_expr(self, o: ParamSpecExpr, /) -> None:
+        return None
+
+    def visit_type_var_tuple_expr(self, o: TypeVarTupleExpr, /) -> None:
+        return None
+
+    def visit_type_alias_expr(self, o: TypeAliasExpr, /) -> None:
+        return None
+
+    def visit_type_alias(self, o: TypeAlias, /) -> None:
+        return None
+
+    def visit_namedtuple_expr(self, o: NamedTupleExpr, /) -> None:
+        return None
+
+    def visit_typeddict_expr(self, o: TypedDictExpr, /) -> None:
+        return None
+
+    def visit_newtype_expr(self, o: NewTypeExpr, /) -> None:
+        return None
+
+    def visit__promote_expr(self, o: PromoteExpr, /) -> None:
+        return None
+
+    def visit_complex_expr(self, o: ComplexExpr, /) -> None:
+        return None
+
+    def visit_enum_call_expr(self, o: EnumCallExpr, /) -> None:
+        return None
+
+    def visit_singleton_pattern(self, o: SingletonPattern, /) -> None:
+        return None
+
 
 class ExtendedTraverserVisitor(TraverserVisitor):
     """This is a more flexible traverser.
@@ -422,7 +508,7 @@ class ExtendedTraverserVisitor(TraverserVisitor):
     In addition to the base traverser it:
         * has visit_ methods for leaf nodes
         * has common method that is called for all nodes
-        * allows to skip recursing into a node
+        * allows skipping recursing into a node
 
     Note that this traverser still doesn't visit some internal
     mypy constructs like _promote expression and Var.
@@ -655,6 +741,11 @@ class ExtendedTraverserVisitor(TraverserVisitor):
             return
         super().visit_cast_expr(o)
 
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_form_expr(o)
+
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         if not self.visit(o):
             return
@@ -851,6 +942,41 @@ def has_return_statement(fdef: FuncBase) -> bool:
     seeker = ReturnSeeker()
     fdef.accept(seeker)
     return seeker.found
+
+
+class NameAndMemberCollector(TraverserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.name_exprs: list[NameExpr] = []
+        self.member_exprs: list[MemberExpr] = []
+
+    def visit_name_expr(self, o: NameExpr, /) -> None:
+        self.name_exprs.append(o)
+        super().visit_name_expr(o)
+
+    def visit_member_expr(self, o: MemberExpr, /) -> None:
+        self.member_exprs.append(o)
+        super().visit_member_expr(o)
+
+
+def all_name_and_member_expressions(node: Expression) -> tuple[list[NameExpr], list[MemberExpr]]:
+    v = NameAndMemberCollector()
+    node.accept(v)
+    return (v.name_exprs, v.member_exprs)
+
+
+class StringSeeker(TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_str_expr(self, o: StrExpr, /) -> None:
+        self.found = True
+
+
+def has_str_expression(node: Expression) -> bool:
+    v = StringSeeker()
+    node.accept(v)
+    return v.found
 
 
 class FuncCollectorBase(TraverserVisitor):

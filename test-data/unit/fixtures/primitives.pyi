@@ -13,12 +13,15 @@ class object:
 
 class type:
     def __init__(self, x: object) -> None: pass
+    # Real implementation returns UnionType
+    def __or__(self, value: object, /) -> object: pass
 
 class int:
     # Note: this is a simplification of the actual signature
     def __init__(self, x: object = ..., base: int = ...) -> None: pass
     def __add__(self, i: int) -> int: pass
     def __rmul__(self, x: int) -> int: pass
+    def __bool__(self) -> bool: pass
 class float:
     def __float__(self) -> float: pass
     def __add__(self, x: float) -> float: pass
@@ -71,3 +74,5 @@ class range(Sequence[int]):
     def __contains__(self, other: object) -> bool: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
+
+class BaseException: pass

@@ -187,7 +187,7 @@ L0:
     return 1
 
 [case testIntConstantFoldingFinal]
-from typing_extensions import Final
+from typing import Final
 X: Final = 5
 Y: Final = 2 + 4
 
@@ -203,7 +203,7 @@ L0:
     return 1
 
 [case testIntConstantFoldingClassFinal]
-from typing_extensions import Final
+from typing import Final
 class C:
     X: Final = 5
 
@@ -222,7 +222,7 @@ L0:
     return 1
 
 [case testFloatConstantFolding]
-from typing_extensions import Final
+from typing import Final
 
 N: Final = 1.5
 N2: Final = 1.5 * 2
@@ -391,7 +391,7 @@ L2:
     return 1
 
 [case testStrConstantFolding]
-from typing_extensions import Final
+from typing import Final
 
 S: Final = 'z'
 N: Final = 2
@@ -416,7 +416,7 @@ L0:
     return 1
 
 [case testBytesConstantFolding]
-from typing_extensions import Final
+from typing import Final
 
 N: Final = 2
 
@@ -438,7 +438,7 @@ L0:
     return 1
 
 [case testComplexConstantFolding]
-from typing_extensions import Final
+from typing import Final
 
 N: Final = 1
 FLOAT_N: Final = 1.5

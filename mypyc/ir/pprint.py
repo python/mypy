@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, Final, Union
+from typing import Any, Final
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -21,6 +21,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    CString,
     DecRef,
     Extend,
     Float,
@@ -49,18 +50,20 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
 from mypyc.ir.rtypes import RType, is_bool_rprimitive, is_int_rprimitive
 
-ErrorSource = Union[BasicBlock, Op]
+ErrorSource = BasicBlock | Op
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
@@ -193,7 +196,13 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return s
 
     def visit_cast(self, op: Cast) -> str:
-        return self.format("%r = %scast(%s, %r)", op, self.borrow_prefix(op), op.type, op.src)
+        if op.is_unchecked:
+            prefix = "unchecked "
+        else:
+            prefix = ""
+        return self.format(
+            "%r = %s%scast(%s, %r)", op, prefix, self.borrow_prefix(op), op.type, op.src
+        )
 
     def visit_box(self, op: Box) -> str:
         return self.format("%r = box(%s, %r)", op, op.src.type, op.src)
@@ -220,19 +229,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = %s(%s)", op, op.function_name, args_str)
 
     def visit_primitive_op(self, op: PrimitiveOp) -> str:
-        args = []
-        arg_index = 0
-        type_arg_index = 0
-        for arg_type in zip(op.desc.arg_types):
-            if arg_type:
-                args.append(self.format("%r", op.args[arg_index]))
-                arg_index += 1
-            else:
-                assert op.type_args
-                args.append(self.format("%r", op.type_args[type_arg_index]))
-                type_arg_index += 1
-
-        args_str = ", ".join(args)
+        args_str = ", ".join(self.format("%r", arg) for arg in op.args)
         if op.is_void:
             return self.format("%s %s", op.desc.name, args_str)
         else:
@@ -276,13 +273,18 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%r = %r %s %r", op, op.lhs, op.op_str[op.op], op.rhs)
 
     def visit_load_mem(self, op: LoadMem) -> str:
-        return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
+        return self.format(
+            "%r = %sload_mem %r :: %t*", op, self.borrow_prefix(op), op.src, op.type
+        )
 
     def visit_set_mem(self, op: SetMem) -> str:
         return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)
+
+    def visit_set_element(self, op: SetElement) -> str:
+        return self.format("%r = set_element %r, %s, %r", op, op.src, op.field, op.item)
 
     def visit_load_address(self, op: LoadAddress) -> str:
         if isinstance(op.src, Register):
@@ -339,6 +341,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                         result.append(str(arg.value))
                     elif isinstance(arg, Float):
                         result.append(repr(arg.value))
+                    elif isinstance(arg, CString):
+                        result.append(f"CString({arg.value!r})")
+                    elif isinstance(arg, Undef):
+                        result.append(f"undef {arg.type.name}")
                     else:
                         result.append(self.names[arg])
                 elif typespec == "d":
@@ -495,7 +501,7 @@ def generate_names_for_ir(args: list[Register], blocks: list[BasicBlock]) -> dic
                     continue
                 if isinstance(value, Register) and value.name:
                     name = value.name
-                elif isinstance(value, (Integer, Float)):
+                elif isinstance(value, (Integer, Float, Undef)):
                     continue
                 else:
                     name = "r%d" % temp_index

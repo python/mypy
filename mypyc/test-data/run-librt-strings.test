@@ -1,0 +1,197 @@
+[case testLibrtStrings_librt_experimental]
+from typing import Any
+import base64
+import binascii
+import random
+
+from librt.strings import BytesWriter
+
+from testutil import assertRaises
+
+def test_bytes_writer_basics() -> None:
+    w = BytesWriter()
+    assert w.getvalue() == b""
+    assert len(w) == 0
+    assert repr(w) == "BytesWriter(b'')"
+
+    w = BytesWriter()
+    w.append(ord('a'))
+    w.write(b'bc')
+    assert w.getvalue() == b"abc"
+    assert repr(w) == "BytesWriter(b'abc')"
+
+def test_bytes_writer_get_item() -> None:
+    w = BytesWriter()
+    w.write(b"foobar")
+    assert w[0] == ord("f")
+    assert w[5] == ord("r")
+    assert w[-1] == ord("r")
+    assert w[-2] == ord("a")
+    assert w[-6] == ord("f")
+
+    with assertRaises(IndexError):
+        w[6]
+    with assertRaises(IndexError):
+        w[-7]
+    with assertRaises(IndexError):
+        w[1 << 50]
+    with assertRaises(IndexError):
+        w[-(1 << 50)]
+
+def test_bytes_writer_set_item() -> None:
+    w = BytesWriter()
+    w.write(b"foobar")
+    w[0] = 255
+    assert w[0] == 255
+    w[5] = 0
+    assert w[5] == 0
+    assert w.getvalue() == b"\xffooba\x00"
+
+    with assertRaises(IndexError):
+        w[6] = 0
+    with assertRaises(IndexError):
+        w[-7] = 0
+    with assertRaises(IndexError):
+        w[1 << 50] = 0
+    with assertRaises(IndexError):
+        w[-(1 << 50)] = 0
+
+    with assertRaises(TypeError):
+        w[0] = int() - 1
+    with assertRaises(TypeError):
+        w[0] = int() + 256
+
+    # Grow BytesWriter
+    w.write(b"xy" * 512)
+    w[1024 + 5] = 66
+    assert w[1024 + 5] == 66
+    assert w[0] == 255
+
+def test_bytes_writer_append_grow() -> None:
+    w = BytesWriter()
+    for i in range(16384):
+        w.append((i ^ (i >> 8)) & 255)
+        assert len(w) == i + 1
+    b = w.getvalue()
+    for i in range(16384):
+        assert b[i] == (i ^ (i >> 8)) & 255
+
+def test_bytes_writer_write_grow() -> None:
+    w = BytesWriter()
+    for i in range(16384):
+        w.write(bytes([(i ^ (i >> 8)) & 255]))
+    b = w.getvalue()
+    for i in range(16384):
+        assert b[i] == (i ^ (i >> 8)) & 255
+        assert b[i] == w[i]
+
+    w = BytesWriter()
+    a = []
+    for i in range(16384):
+        w.write(bytes())
+        if i & 1 == 0:
+            segment = b"foobarz"
+        else:
+            segment = b"\x7f\x00ab!"
+        w.write(segment)
+        a.append(segment)
+    assert w.getvalue() == b"".join(a)
+
+def test_bytes_writer_truncate() -> None:
+    b = BytesWriter()
+    b.write(b"foobar")
+    b.truncate(6)  # No-op
+    assert len(b) == 6
+    assert b.getvalue() == b"foobar"
+    b.truncate(5)
+    assert len(b) == 5
+    assert b.getvalue() == b"fooba"
+    b.truncate(0)
+    assert len(b) == 0
+    assert b.getvalue() == b""
+
+    with assertRaises(ValueError):
+        b.truncate(1)
+
+    b = BytesWriter()
+    b.write(b"foobar")
+    with assertRaises(ValueError):
+        b.truncate(-1)
+
+def test_write_bytearray() -> None:
+    w = BytesWriter()
+    w.write(bytearray(b"foobar"))
+    w.write(bytearray(b""))
+    w.write(bytearray(b"\x00\xf8"))
+    assert w.getvalue() == b"foobar\x00\xf8"
+
+def test_cast_bytes_writer() -> None:
+    a: Any = BytesWriter()
+    b: BytesWriter = a
+    assert b.getvalue() == b""
+
+    a2: Any = "x"
+    with assertRaises(TypeError):
+        b = a2
+
+def test_bytes_writer_wrapper_functions() -> None:
+    cls: Any = BytesWriter
+    b: Any = cls()
+    assert repr(b) == "BytesWriter(b'')"
+    assert len(b) == 0
+    b.append(ord('a'))
+    b.append(0)
+    b.append(255)
+    b.write(b"foo")
+    b.write(bytearray(b"bar"))
+    assert b.getvalue() == b"a\x00\xfffoobar"
+    assert len(b) == 9
+
+    assert b[0] == ord('a')
+    assert b[8] == ord('r')
+    assert b[-1] == ord('r')
+    assert b[-9] == ord('a')
+
+    b[0] = 215
+    b[8] = 0
+    assert b[0] == 215
+    assert b[8] == 0
+    b[-1] = 1
+    assert b[8] == 1
+    b[-9] = 2
+    assert b[0] == 2
+
+    assert isinstance(b, cls)
+
+    with assertRaises(TypeError):
+        b.append("x")
+
+    with assertRaises(TypeError):
+        b.write("foo")
+
+    with assertRaises(TypeError):
+        b.append(256)
+
+    with assertRaises(TypeError):
+        b.append(-1)
+
+    with assertRaises(IndexError):
+        b[9]
+    with assertRaises(IndexError):
+        b[-10]
+    with assertRaises(IndexError):
+        b[9] = 0
+    with assertRaises(IndexError):
+        b[-10] = 0
+
+    with assertRaises(TypeError):
+        b[0] = -1
+    with assertRaises(TypeError):
+        b[0] = 256
+
+[case testStringsFeaturesNotAvailableInNonExperimentalBuild_librt]
+# This also ensures librt.strings can be built without experimental features
+import librt.strings
+
+def test_bytes_writer_not_available() -> None:
+    assert not hasattr(librt.strings, "BytesWriter")

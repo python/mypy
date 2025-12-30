@@ -107,7 +107,7 @@ performance.
 integer values. A side effect of this is that the exact runtime type of
 ``int`` values is lost. For example, consider this simple function::
 
-    def first_int(x: List[int]) -> int:
+    def first_int(x: list[int]) -> int:
         return x[0]
 
     print(first_int([True]))  # Output is 1, instead of True!
@@ -316,7 +316,9 @@ non-exhaustive list of what won't work:
 - Instance ``__annotations__`` is usually not kept
 - Frames of compiled functions can't be inspected using ``inspect``
 - Compiled methods aren't considered methods by ``inspect.ismethod``
-- ``inspect.signature`` chokes on compiled functions
+- ``inspect.signature`` chokes on compiled functions with default arguments that
+  are not simple literals
+- ``inspect.iscoroutinefunction`` and ``asyncio.iscoroutinefunction`` will always return False for compiled functions, even those defined with `async def`
 
 Profiling hooks and tracing
 ***************************

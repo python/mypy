@@ -34,6 +34,7 @@ from mypy.nodes import (
     NamedTupleExpr,
     NameExpr,
     PassStmt,
+    PlaceholderNode,
     RefExpr,
     Statement,
     StrExpr,
@@ -198,7 +199,7 @@ class NamedTupleAnalyzer:
                         # Something is incomplete. We need to defer this named tuple.
                         return None
                     types.append(analyzed)
-                # ...despite possible minor failures that allow further analyzis.
+                # ...despite possible minor failures that allow further analysis.
                 if name.startswith("_"):
                     self.fail(
                         f"NamedTuple field name cannot start with an underscore: {name}", stmt
@@ -606,7 +607,7 @@ class NamedTupleAnalyzer:
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
             signature = CallableType(cast(list[Type], types), arg_kinds, items, ret, function_type)
-            signature.variables = [self_type]
+            signature.variables = (self_type,)
             func = FuncDef(funcname, args, Block([]))
             func.info = info
             func.is_class = is_classmethod
@@ -697,10 +698,14 @@ class NamedTupleAnalyzer:
                 if isinstance(sym.node, (FuncBase, Decorator)) and not sym.plugin_generated:
                     # Keep user-defined methods as is.
                     continue
-                # Keep existing (user-provided) definitions under mangled names, so they
-                # get semantically analyzed.
-                r_key = get_unique_redefinition_name(key, named_tuple_info.names)
-                named_tuple_info.names[r_key] = sym
+                # Do not retain placeholders - we'll get back here if they cease to
+                # be placeholders later. If we keep placeholders alive, they may never
+                # be reached again, making it to cacheable symtable.
+                if not isinstance(sym.node, PlaceholderNode):
+                    # Keep existing (user-provided) definitions under mangled names, so they
+                    # get semantically analyzed.
+                    r_key = get_unique_redefinition_name(key, named_tuple_info.names)
+                    named_tuple_info.names[r_key] = sym
             named_tuple_info.names[key] = value
 
     # Helpers

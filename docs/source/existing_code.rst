@@ -199,9 +199,8 @@ The following config is equivalent to ``--strict`` (as of mypy 1.0):
    warn_redundant_casts = True
    warn_unused_ignores = True
 
-   # Getting these passing should be easy
+   # Getting this passing should be easy
    strict_equality = True
-   strict_concatenate = True
 
    # Strongly recommend enabling this one as soon as you can
    check_untyped_defs = True
@@ -222,6 +221,10 @@ The following config is equivalent to ``--strict`` (as of mypy 1.0):
 
    # This one can be tricky to get passing if you use a lot of untyped libraries
    warn_return_any = True
+
+   # This one is a catch-all flag for the rest of strict checks that are technically
+   # correct but may not be practical
+   extra_checks = True
 
 Note that you can also start with ``--strict`` and subtract, for instance:
 

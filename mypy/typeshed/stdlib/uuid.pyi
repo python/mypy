@@ -2,7 +2,8 @@ import builtins
 import sys
 from _typeshed import Unused
 from enum import Enum
-from typing_extensions import TypeAlias
+from typing import Final, NoReturn
+from typing_extensions import LiteralString, TypeAlias
 
 _FieldsType: TypeAlias = tuple[int, int, int, int, int, int]
 
@@ -12,6 +13,10 @@ class SafeUUID(Enum):
     unknown = None
 
 class UUID:
+    __slots__ = ("int", "is_safe", "__weakref__")
+    is_safe: Final[SafeUUID]
+    int: Final[builtins.int]
+
     def __init__(
         self,
         hex: str | None = None,
@@ -21,10 +26,8 @@ class UUID:
         int: builtins.int | None = None,
         version: builtins.int | None = None,
         *,
-        is_safe: SafeUUID = ...,
+        is_safe: SafeUUID = SafeUUID.unknown,
     ) -> None: ...
-    @property
-    def is_safe(self) -> SafeUUID: ...
     @property
     def bytes(self) -> builtins.bytes: ...
     @property
@@ -39,8 +42,6 @@ class UUID:
     def fields(self) -> _FieldsType: ...
     @property
     def hex(self) -> str: ...
-    @property
-    def int(self) -> builtins.int: ...
     @property
     def node(self) -> builtins.int: ...
     @property
@@ -64,14 +65,15 @@ class UUID:
     def __gt__(self, other: UUID) -> bool: ...
     def __ge__(self, other: UUID) -> bool: ...
     def __hash__(self) -> builtins.int: ...
+    def __setattr__(self, name: Unused, value: Unused) -> NoReturn: ...
 
-if sys.version_info >= (3, 9):
-    def getnode() -> int: ...
-
-else:
-    def getnode(*, getters: Unused = None) -> int: ...  # undocumented
-
+def getnode() -> int: ...
 def uuid1(node: int | None = None, clock_seq: int | None = None) -> UUID: ...
+
+if sys.version_info >= (3, 14):
+    def uuid6(node: int | None = None, clock_seq: int | None = None) -> UUID: ...
+    def uuid7() -> UUID: ...
+    def uuid8(a: int | None = None, b: int | None = None, c: int | None = None) -> UUID: ...
 
 if sys.version_info >= (3, 12):
     def uuid3(namespace: UUID, name: str | bytes) -> UUID: ...
@@ -87,14 +89,18 @@ if sys.version_info >= (3, 12):
 else:
     def uuid5(namespace: UUID, name: str) -> UUID: ...
 
-NAMESPACE_DNS: UUID
-NAMESPACE_URL: UUID
-NAMESPACE_OID: UUID
-NAMESPACE_X500: UUID
-RESERVED_NCS: str
-RFC_4122: str
-RESERVED_MICROSOFT: str
-RESERVED_FUTURE: str
+if sys.version_info >= (3, 14):
+    NIL: Final[UUID]
+    MAX: Final[UUID]
+
+NAMESPACE_DNS: Final[UUID]
+NAMESPACE_URL: Final[UUID]
+NAMESPACE_OID: Final[UUID]
+NAMESPACE_X500: Final[UUID]
+RESERVED_NCS: Final[LiteralString]
+RFC_4122: Final[LiteralString]
+RESERVED_MICROSOFT: Final[LiteralString]
+RESERVED_FUTURE: Final[LiteralString]
 
 if sys.version_info >= (3, 12):
     def main() -> None: ...

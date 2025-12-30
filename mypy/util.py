@@ -10,9 +10,9 @@ import re
 import shutil
 import sys
 import time
-from collections.abc import Container, Iterable, Sequence, Sized
+from collections.abc import Callable, Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, Any, Callable, Final, Literal, TypeVar
+from typing import IO, Any, Final, Literal, TypeVar
 
 orjson: Any
 try:
@@ -66,7 +66,7 @@ def is_dunder(name: str, exclude_special: bool = False) -> bool:
 
 
 def is_sunder(name: str) -> bool:
-    return not is_dunder(name) and name.startswith("_") and name.endswith("_")
+    return not is_dunder(name) and name.startswith("_") and name.endswith("_") and name != "_"
 
 
 def split_module_names(mod_name: str) -> list[str]:
@@ -482,10 +482,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 9):  # noqa: UP036, RUF100
+    if sys.version_info[:2] < (3, 10):  # noqa: UP036, RUF100
         sys.exit(
-            "Running {name} with Python 3.8 or lower is not supported; "
-            "please upgrade to 3.9 or newer".format(name=program)
+            "Running {name} with Python 3.9 or lower is not supported; "
+            "please upgrade to 3.10 or newer".format(name=program)
         )
 
 
@@ -569,10 +569,17 @@ def hash_digest(data: bytes) -> str:
     return hashlib.sha1(data).hexdigest()
 
 
+def hash_digest_bytes(data: bytes) -> bytes:
+    """Compute a hash digest of some data.
+
+    Similar to above but returns a bytes object.
+    """
+    return hashlib.sha1(data).digest()
+
+
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
-    if sys.platform == "win32":
-        assert False, "curses is not available on Windows"
+    assert sys.platform != "win32", "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
     gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
@@ -639,8 +646,7 @@ class FancyFormatter:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
         # we check with an assert at runtime and an if check for mypy, as asserts do not
         # yet narrow platform
-        assert sys.platform == "win32"
-        if sys.platform == "win32":
+        if sys.platform == "win32":  # needed to find win specific sys apis
             winver = sys.getwindowsversion()
             if (
                 winver.major < MINIMUM_WINDOWS_MAJOR_VT100
@@ -662,11 +668,12 @@ class FancyFormatter:
             )
             self.initialize_vt100_colors()
             return True
-        return False
+        assert False, "Running not on Windows"
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if sys.platform == "win32" or not CURSES_ENABLED:
+        is_win = sys.platform == "win32"
+        if is_win or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".

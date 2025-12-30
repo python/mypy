@@ -19,7 +19,16 @@ from mypy.modulefinder import ModuleNotFoundReason
 from mypy.moduleinspect import InspectError, ModuleInspect
 from mypy.nodes import PARAM_SPEC_KIND, TYPE_VAR_TUPLE_KIND, ClassDef, FuncDef, TypeAliasStmt
 from mypy.stubdoc import ArgSig, FunctionSig
-from mypy.types import AnyType, NoneType, Type, TypeList, TypeStrVisitor, UnboundType, UnionType
+from mypy.types import (
+    AnyType,
+    NoneType,
+    Type,
+    TypeList,
+    TypeStrVisitor,
+    UnboundType,
+    UnionType,
+    UnpackType,
+)
 
 # Modules that may fail when imported, or that may have side effects (fully qualified).
 NOT_IMPORTABLE_MODULES = ()
@@ -291,6 +300,11 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_union_type(self, t: UnionType) -> str:
         return " | ".join([item.accept(self) for item in t.items])
+
+    def visit_unpack_type(self, t: UnpackType) -> str:
+        if self.options.python_version >= (3, 11):
+            return f"*{t.type.accept(self)}"
+        return super().visit_unpack_type(t)
 
     def args_str(self, args: Iterable[Type]) -> str:
         """Convert an array of arguments to strings and join the results with commas.
@@ -789,7 +803,8 @@ class BaseStubGenerator:
                 signature.format_sig(
                     indent=self._indent,
                     is_async=is_coroutine,
-                    docstring=docstring if self._include_docstrings else None,
+                    docstring=docstring,
+                    include_docstrings=self._include_docstrings,
                 )
             )
         return lines

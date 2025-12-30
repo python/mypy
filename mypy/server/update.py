@@ -118,9 +118,8 @@ import os
 import re
 import sys
 import time
-from collections.abc import Sequence
-from typing import Callable, Final, NamedTuple, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from collections.abc import Callable, Sequence
+from typing import Final, NamedTuple, TypeAlias as _TypeAlias
 
 from mypy.build import (
     DEBUG_FINE_GRAINED,
@@ -555,7 +554,7 @@ class BlockedUpdate(NamedTuple):
     messages: list[str]
 
 
-UpdateResult: _TypeAlias = Union[NormalUpdate, BlockedUpdate]
+UpdateResult: _TypeAlias = NormalUpdate | BlockedUpdate
 
 
 def update_module_isolated(
@@ -631,6 +630,8 @@ def update_module_isolated(
 
     # Find any other modules brought in by imports.
     changed_modules = [(st.id, st.xpath) for st in new_modules]
+    for m in new_modules:
+        manager.import_map[m.id] = set(m.dependencies + m.suppressed)
 
     # If there are multiple modules to process, only process one of them and return
     # the remaining ones to the caller.
@@ -668,6 +669,8 @@ def update_module_isolated(
     state.type_check_first_pass()
     state.type_check_second_pass()
     state.detect_possibly_undefined_vars()
+    state.generate_unused_ignore_notes()
+    state.generate_ignore_without_code_notes()
     t2 = time.time()
     state.finish_passes()
     t3 = time.time()
@@ -1023,10 +1026,12 @@ def reprocess_nodes(
     # We seem to need additional passes in fine-grained incremental mode.
     checker.pass_num = 0
     checker.last_pass = 3
-    more = checker.check_second_pass(nodes)
+    # It is tricky to reliably invalidate constructor cache in fine-grained increments.
+    # See PR 19514 description for details.
+    more = checker.check_second_pass(nodes, allow_constructor_cache=False)
     while more:
         more = False
-        if graph[module_id].type_checker().check_second_pass():
+        if graph[module_id].type_checker().check_second_pass(allow_constructor_cache=False):
             more = True
 
     if manager.options.export_types:

@@ -108,16 +108,23 @@ from ast import (
     unaryop as unaryop,
     withitem as withitem,
 )
-from typing import Literal
+from typing import Final
 
 if sys.version_info >= (3, 12):
-    from ast import ParamSpec as ParamSpec, TypeVar as TypeVar, TypeVarTuple as TypeVarTuple, type_param as type_param
+    from ast import (
+        ParamSpec as ParamSpec,
+        TypeAlias as TypeAlias,
+        TypeVar as TypeVar,
+        TypeVarTuple as TypeVarTuple,
+        type_param as type_param,
+    )
 
 if sys.version_info >= (3, 11):
     from ast import TryStar as TryStar
 
 if sys.version_info >= (3, 10):
     from ast import (
+        Match as Match,
         MatchAs as MatchAs,
         MatchClass as MatchClass,
         MatchMapping as MatchMapping,
@@ -130,20 +137,9 @@ if sys.version_info >= (3, 10):
         pattern as pattern,
     )
 
-if sys.version_info < (3, 9):
-    from ast import (
-        AugLoad as AugLoad,
-        AugStore as AugStore,
-        ExtSlice as ExtSlice,
-        Index as Index,
-        Param as Param,
-        Suite as Suite,
-        slice as slice,
-    )
-
-PyCF_ALLOW_TOP_LEVEL_AWAIT: Literal[8192]
-PyCF_ONLY_AST: Literal[1024]
-PyCF_TYPE_COMMENTS: Literal[4096]
+PyCF_ALLOW_TOP_LEVEL_AWAIT: Final = 8192
+PyCF_ONLY_AST: Final = 1024
+PyCF_TYPE_COMMENTS: Final = 4096
 
 if sys.version_info >= (3, 13):
-    PyCF_OPTIMIZED_AST: Literal[33792]
+    PyCF_OPTIMIZED_AST: Final = 33792

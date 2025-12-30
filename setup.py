@@ -8,8 +8,8 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 9, 0):  # noqa: UP036, RUF100
-    sys.stderr.write("ERROR: You need Python 3.9 or later to use mypy.\n")
+if sys.version_info < (3, 10, 0):  # noqa: UP036, RUF100
+    sys.stderr.write("ERROR: You need Python 3.10 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -24,14 +24,14 @@ from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeGuard
+    from typing import TypeGuard
 
 
 def is_list_of_setuptools_extension(items: list[Any]) -> TypeGuard[list[Extension]]:
     return all(isinstance(item, Extension) for item in items)
 
 
-def find_package_data(base, globs, root="mypy"):
+def find_package_data(base: str, globs: list[str], root: str = "mypy") -> list[str]:
     """Find all interesting data files, for setup(package_data=)
 
     Arguments:
@@ -52,13 +52,13 @@ def find_package_data(base, globs, root="mypy"):
 
 
 class CustomPythonBuild(build_py):
-    def pin_version(self):
+    def pin_version(self) -> None:
         path = os.path.join(self.build_lib, "mypy")
         self.mkpath(path)
         with open(os.path.join(path, "version.py"), "w") as stream:
             stream.write(f'__version__ = "{version}"\n')
 
-    def run(self):
+    def run(self) -> None:
         self.execute(self.pin_version, ())
         build_py.run(self)
 
@@ -81,6 +81,8 @@ if USE_MYPYC:
             "__main__.py",
             "pyinfo.py",
             os.path.join("dmypy", "__main__.py"),
+            os.path.join("build_worker", "__main__.py"),
+            "exportjson.py",
             # Uses __getattr__/__setattr__
             "split_namespace.py",
             # Lies to mypy about code reachability
@@ -96,8 +98,10 @@ if USE_MYPYC:
     ) + (
         # Don't want to grab this accidentally
         os.path.join("mypyc", "lib-rt", "setup.py"),
+        os.path.join("mypyc", "lib-rt", "build_setup.py"),
         # Uses __file__ at top level https://github.com/mypyc/mypyc/issues/700
         os.path.join("mypyc", "__main__.py"),
+        os.path.join("mypyc", "build_setup.py"),  # for monkeypatching
     )
 
     everything = [os.path.join("mypy", x) for x in find_package_data("mypy", ["*.py"])] + [
@@ -145,6 +149,7 @@ if USE_MYPYC:
     opt_level = os.getenv("MYPYC_OPT_LEVEL", "3")
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
     force_multifile = os.getenv("MYPYC_MULTI_FILE", "") == "1"
+    log_trace = bool(int(os.getenv("MYPYC_LOG_TRACE", "0")))
     ext_modules = mypycify(
         mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
         opt_level=opt_level,
@@ -152,11 +157,14 @@ if USE_MYPYC:
         # Use multi-file compilation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == "win32" or force_multifile,
+        log_trace=log_trace,
+        # Mypy itself is allowed to use native_internal extension.
+        depends_on_librt_internal=True,
     )
-    assert is_list_of_setuptools_extension(ext_modules), "Expected mypycify to use setuptools"
 
 else:
     ext_modules = []
 
+assert is_list_of_setuptools_extension(ext_modules), "Expected mypycify to use setuptools"
 
 setup(version=version, ext_modules=ext_modules, cmdclass=cmdclass)

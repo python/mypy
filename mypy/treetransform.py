@@ -6,7 +6,7 @@ Subclass TransformVisitor to perform non-trivial transformations.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Optional, cast
+from typing import cast
 
 from mypy.nodes import (
     GDEF,
@@ -83,6 +83,7 @@ from mypy.nodes import (
     TypeAliasExpr,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -193,7 +194,7 @@ class TransformVisitor(NodeVisitor[Node]):
             node.name,
             [self.copy_argument(arg) for arg in node.arguments],
             self.block(node.body),
-            cast(Optional[FunctionLike], self.optional_type(node.type)),
+            cast(FunctionLike | None, self.optional_type(node.type)),
         )
 
         self.copy_function_attributes(new, node)
@@ -223,7 +224,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new = LambdaExpr(
             [self.copy_argument(arg) for arg in node.arguments],
             self.block(node.body),
-            cast(Optional[FunctionLike], self.optional_type(node.type)),
+            cast(FunctionLike | None, self.optional_type(node.type)),
         )
         self.copy_function_attributes(new, node)
         return new
@@ -527,7 +528,7 @@ class TransformVisitor(NodeVisitor[Node]):
             node.op,
             self.expr(node.left),
             self.expr(node.right),
-            cast(Optional[TypeAliasExpr], self.optional_expr(node.analyzed)),
+            cast(TypeAliasExpr | None, self.optional_expr(node.analyzed)),
         )
         new.method_type = self.optional_type(node.method_type)
         return new
@@ -539,6 +540,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_cast_expr(self, node: CastExpr) -> CastExpr:
         return CastExpr(self.expr(node.expr), self.type(node.type))
+
+    def visit_type_form_expr(self, node: TypeFormExpr) -> TypeFormExpr:
+        return TypeFormExpr(self.type(node.type))
 
     def visit_assert_type_expr(self, node: AssertTypeExpr) -> AssertTypeExpr:
         return AssertTypeExpr(self.expr(node.expr), self.type(node.type))
@@ -559,7 +563,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
-        return AssignmentExpr(self.expr(node.target), self.expr(node.value))
+        return AssignmentExpr(self.duplicate_name(node.target), self.expr(node.value))
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))

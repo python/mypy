@@ -51,7 +51,7 @@ hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
 > **Note**
-> You'll need Python 3.9 or higher to install all requirements listed in
+> You'll need Python 3.10 or higher to install all requirements listed in
 > test-requirements.txt
 
 ### Running tests
@@ -76,10 +76,14 @@ python runtests.py self
 # or equivalently:
 python -m mypy --config-file mypy_self_check.ini -p mypy
 
-# Run a single test from the test suite
-pytest -n0 -k 'test_name'
+# Run a single test from the test suite (uses pytest substring expression matching)
+python runtests.py test_name
+# or equivalently:
+pytest -n0 -k test_name
 
 # Run all test cases in the "test-data/unit/check-dataclasses.test" file
+python runtests.py check-dataclasses.test
+# or equivalently:
 pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 
 # Run the formatters and linters

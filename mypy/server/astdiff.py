@@ -53,14 +53,13 @@ Summary of how this works for certain kinds of differences:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TypeAlias as _TypeAlias, Union
 
 from mypy.expandtype import expand_type
 from mypy.nodes import (
+    SYMBOL_FUNCBASE_TYPES,
     UNBOUND_IMPORTED,
     Decorator,
-    FuncBase,
     FuncDef,
     FuncItem,
     MypyFile,
@@ -114,7 +113,7 @@ from mypy.util import get_prefix
 # For example, the snapshot of the 'int' type is ('Instance', 'builtins.int', ()).
 
 # Type snapshots are strict, they must be hashable and ordered (e.g. for Unions).
-Primitive: _TypeAlias = Union[str, float, int, bool]  # float is for Literal[3.14] support.
+Primitive: _TypeAlias = str | float | int | bool  # float is for Literal[3.14] support.
 SnapshotItem: _TypeAlias = tuple[Union[Primitive, "SnapshotItem"], ...]
 
 # Symbol snapshots can be more lenient.
@@ -234,19 +233,33 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
     The representation is nested tuples and dicts. Only externally
     visible attributes are included.
     """
-    if isinstance(node, FuncBase):
+    if isinstance(node, SYMBOL_FUNCBASE_TYPES):
         # TODO: info
         if node.type:
-            signature = snapshot_type(node.type)
+            signature: tuple[object, ...] = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
         impl: FuncDef | None = None
         if isinstance(node, FuncDef):
             impl = node
-        elif isinstance(node, OverloadedFuncDef) and node.impl:
+        elif node.impl:
             impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
+        setter_type = None
+        if isinstance(node, OverloadedFuncDef) and node.items:
+            first_item = node.items[0]
+            if isinstance(first_item, Decorator) and first_item.func.is_property:
+                setter_type = snapshot_optional_type(first_item.var.setter_type)
         is_trivial_body = impl.is_trivial_body if impl else False
         dataclass_transform_spec = find_dataclass_transform_spec(node)
+
+        deprecated: str | list[str | None] | None = None
+        if isinstance(node, FuncDef):
+            deprecated = node.deprecated
+        elif isinstance(node, OverloadedFuncDef):
+            deprecated = [node.deprecated] + [
+                i.func.deprecated for i in node.items if isinstance(i, Decorator)
+            ]
+
         return (
             "Func",
             common,
@@ -257,7 +270,8 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             signature,
             is_trivial_body,
             dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
-            node.deprecated if isinstance(node, FuncDef) else None,
+            deprecated,
+            setter_type,  # multi-part properties are stored as OverloadedFuncDef
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)
@@ -420,6 +434,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.flavor,
             snapshot_type(typ.upper_bound),
             snapshot_type(typ.default),
+            snapshot_type(typ.prefix),
         )
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> SnapshotItem:
@@ -454,6 +469,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.is_type_obj(),
             typ.is_ellipsis_args,
             snapshot_types(typ.variables),
+            typ.is_bound,
         )
 
     def normalize_callable_variables(self, typ: CallableType) -> CallableType:
@@ -502,7 +518,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         raise RuntimeError
 
     def visit_type_type(self, typ: TypeType) -> SnapshotItem:
-        return ("TypeType", snapshot_type(typ.item))
+        return ("TypeType", snapshot_type(typ.item), typ.is_type_form)
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> SnapshotItem:
         assert typ.alias is not None

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -38,7 +38,7 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import PROPSET_PREFIX, get_id_from_name
+from mypyc.common import FAST_PREFIX, PROPSET_PREFIX, SELF_NAME, get_id_from_name
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -51,7 +51,15 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
+from mypyc.ir.rtypes import (
+    RInstance,
+    RType,
+    dict_rprimitive,
+    none_rprimitive,
+    object_pointer_rprimitive,
+    object_rprimitive,
+    tuple_rprimitive,
+)
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
@@ -62,6 +70,8 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
+
+GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 
 
 def build_type_map(
@@ -88,7 +98,7 @@ def build_type_map(
             is_abstract=cdef.info.is_abstract,
             is_final_class=cdef.info.is_final,
         )
-        class_ir.is_ext_class = is_extension_class(cdef)
+        class_ir.is_ext_class = is_extension_class(module.path, cdef, errors)
         if class_ir.is_ext_class:
             class_ir.deletable = cdef.info.deletable_attributes.copy()
         # If global optimizations are disabled, turn of tracking of class children
@@ -96,6 +106,7 @@ def build_type_map(
             class_ir.children = None
         mapper.type_to_ir[cdef.info] = class_ir
         mapper.symbol_fullnames.add(class_ir.fullname)
+        class_ir.is_enum = cdef.info.is_enum and len(cdef.info.enum_members) > 0
 
     # Populate structural information in class IR for extension classes.
     for module, cdef in classes:
@@ -115,7 +126,7 @@ def build_type_map(
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
-    # is conditionally defined.
+    # is conditionally defined. This doesn't include nested functions!
     for module in modules:
         for func in get_module_func_defs(module):
             prepare_func_def(module.fullname, None, func, mapper, options)
@@ -148,7 +159,13 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
         for node in module.names.values():
-            if isinstance(node.node, TypeInfo) and is_from_module(node.node, module):
+            if (
+                isinstance(node.node, TypeInfo)
+                and is_from_module(node.node, module)
+                and not node.node.is_newtype
+                and not node.node.is_named_tuple
+                and node.node.typeddict_type is None
+            ):
                 ir = deser_ctx.classes[node.node.fullname]
                 mapper.type_to_ir[node.node] = ir
                 mapper.symbol_fullnames.add(node.node.fullname)
@@ -180,14 +197,55 @@ def prepare_func_def(
     options: CompilerOptions,
 ) -> FuncDecl:
     kind = (
-        FUNC_STATICMETHOD
-        if fdef.is_static
-        else (FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
+        FUNC_CLASSMETHOD
+        if fdef.is_class
+        else (FUNC_STATICMETHOD if fdef.is_static else FUNC_NORMAL)
     )
     sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
-    decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
+    decl = FuncDecl(
+        fdef.name,
+        class_name,
+        module_name,
+        sig,
+        kind,
+        is_generator=fdef.is_generator,
+        is_coroutine=fdef.is_coroutine,
+    )
     mapper.func_to_decl[fdef] = decl
     return decl
+
+
+def create_generator_class_for_func(
+    module_name: str, class_name: str | None, fdef: FuncDef, mapper: Mapper, name_suffix: str = ""
+) -> ClassIR:
+    """For a generator/async function, declare a generator class.
+
+    Each generator and async function gets a dedicated class that implements the
+    generator protocol with generated methods.
+    """
+    assert fdef.is_coroutine or fdef.is_generator
+    name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen" + name_suffix
+    cir = ClassIR(name, module_name, is_generated=True, is_final_class=class_name is None)
+    cir.reuse_freed_instance = True
+    mapper.fdef_to_generator[fdef] = cir
+
+    helper_sig = FuncSignature(
+        (
+            RuntimeArg(SELF_NAME, object_rprimitive),
+            RuntimeArg("type", object_rprimitive),
+            RuntimeArg("value", object_rprimitive),
+            RuntimeArg("traceback", object_rprimitive),
+            RuntimeArg("arg", object_rprimitive),
+            # If non-NULL, used to store return value instead of raising StopIteration(retv)
+            RuntimeArg("stop_iter_ptr", object_pointer_rprimitive),
+        ),
+        object_rprimitive,
+    )
+
+    # The implementation of most generator functionality is behind this magic method.
+    helper_fn_decl = FuncDecl(GENERATOR_HELPER_NAME, name, module_name, helper_sig, internal=True)
+    cir.method_decls[helper_fn_decl.name] = helper_fn_decl
+    return cir
 
 
 def prepare_method_def(
@@ -222,6 +280,36 @@ def prepare_method_def(
             assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
+
+
+def prepare_fast_path(
+    ir: ClassIR,
+    module_name: str,
+    cdef: ClassDef,
+    mapper: Mapper,
+    node: SymbolNode | None,
+    options: CompilerOptions,
+) -> None:
+    """Add fast (direct) variants of methods in non-extension classes."""
+    if ir.is_enum:
+        # We check that non-empty enums are implicitly final in mypy, so we
+        # can generate direct calls to enum methods.
+        if isinstance(node, OverloadedFuncDef):
+            if node.is_property:
+                return
+            node = node.impl
+        if not isinstance(node, FuncDef):
+            # TODO: support decorated methods (at least @classmethod and @staticmethod).
+            return
+        # The simplest case is a regular or overloaded method without decorators. In this
+        # case we can generate practically identical IR method body, but with a signature
+        # suitable for direct calls (usual non-extension class methods are converted to
+        # callable classes, and thus have an extra __mypyc_self__ argument).
+        name = FAST_PREFIX + node.name
+        sig = mapper.fdef_to_sig(node, options.strict_dunders_typing)
+        decl = FuncDecl(name, cdef.name, module_name, sig, FUNC_NORMAL)
+        ir.method_decls[name] = decl
+    return
 
 
 def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
@@ -274,12 +362,28 @@ def prepare_class_def(
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    attrs = get_mypyc_attrs(cdef)
+    attrs, attrs_lines = get_mypyc_attrs(cdef, path, errors)
     if attrs.get("allow_interpreted_subclasses") is True:
         ir.allow_interpreted_subclasses = True
     if attrs.get("serializable") is True:
         # Supports copy.copy and pickle (including subclasses)
         ir._serializable = True
+
+    free_list_len = attrs.get("free_list_len")
+    if free_list_len is not None:
+        line = attrs_lines["free_list_len"]
+        if ir.is_trait:
+            errors.error('"free_list_len" can\'t be used with traits', path, line)
+        if ir.allow_interpreted_subclasses:
+            errors.error(
+                '"free_list_len" can\'t be used in a class that allows interpreted subclasses',
+                path,
+                line,
+            )
+        if free_list_len == 1:
+            ir.reuse_freed_instance = True
+        else:
+            errors.error(f'Unsupported value for "free_list_len": {free_list_len}', path, line)
 
     # Check for subclassing from builtin types
     for cls in info.mro:
@@ -297,6 +401,16 @@ def prepare_class_def(
                 # common pitfalls.
                 errors.error(
                     "Inheriting from most builtin types is unimplemented", path, cdef.line
+                )
+                errors.note(
+                    "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)",
+                    path,
+                    cdef.line,
+                )
+                errors.note(
+                    "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
+                    path,
+                    cdef.line,
                 )
 
     # Set up the parent class
@@ -382,8 +496,12 @@ def prepare_methods_and_attributes(
 
             # Handle case for regular function overload
             else:
-                assert node.node.impl
-                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl, options)
+                if not node.node.impl:
+                    errors.error(
+                        "Overloads without implementation are not supported", path, cdef.line
+                    )
+                else:
+                    prepare_method_def(ir, module_name, cdef, mapper, node.node.impl, options)
 
     if ir.builtin_base:
         ir.attributes.clear()
@@ -464,21 +582,57 @@ def add_setter_declaration(
     ir.method_decls[setter_name] = decl
 
 
+def check_matching_args(init_sig: FuncSignature, new_sig: FuncSignature) -> bool:
+    num_init_args = len(init_sig.args) - init_sig.num_bitmap_args
+    num_new_args = len(new_sig.args) - new_sig.num_bitmap_args
+    if num_init_args != num_new_args:
+        return False
+
+    for idx in range(1, num_init_args):
+        init_arg = init_sig.args[idx]
+        new_arg = new_sig.args[idx]
+        if init_arg.type != new_arg.type:
+            return False
+
+        if init_arg.kind != new_arg.kind:
+            return False
+
+    return True
+
+
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
+
+    new_node: SymbolNode | None = None
+    new_symbol = cdef.info.get("__new__")
+    # We are only interested in __new__ method defined in a user-defined class,
+    # so we ignore it if it comes from a builtin type. It's usually builtins.object
+    # but could also be builtins.type for metaclasses so we detect the prefix which
+    # matches both.
+    if new_symbol and new_symbol.fullname and not new_symbol.fullname.startswith("builtins."):
+        new_node = new_symbol.node
+    if isinstance(new_node, (Decorator, OverloadedFuncDef)):
+        new_node = get_func_def(new_node)
     if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
         init_sig = mapper.fdef_to_sig(init_node, True)
+        args_match = True
+        if isinstance(new_node, FuncDef):
+            new_sig = mapper.fdef_to_sig(new_node, True)
+            args_match = check_matching_args(init_sig, new_sig)
 
         defining_ir = mapper.type_to_ir.get(init_node.info)
         # If there is a nontrivial __init__ that wasn't defined in an
         # extension class, we need to make the constructor take *args,
         # **kwargs so it can call tp_init.
         if (
-            defining_ir is None
-            or not defining_ir.is_ext_class
-            or cdef.info["__init__"].plugin_generated
-        ) and init_node.info.fullname != "builtins.object":
+            (
+                defining_ir is None
+                or not defining_ir.is_ext_class
+                or cdef.info["__init__"].plugin_generated
+            )
+            and init_node.info.fullname != "builtins.object"
+        ) or not args_match:
             init_sig = FuncSignature(
                 [
                     init_sig.args[0],
@@ -519,6 +673,8 @@ def prepare_non_ext_class_def(
             else:
                 prepare_method_def(ir, module_name, cdef, mapper, get_func_def(node.node), options)
 
+        prepare_fast_path(ir, module_name, cdef, mapper, node.node, options)
+
     if any(cls in mapper.type_to_ir and mapper.type_to_ir[cls].is_ext_class for cls in info.mro):
         errors.error(
             "Non-extension classes may not inherit from extension classes", path, cdef.line
@@ -556,6 +712,12 @@ class SingledispatchVisitor(TraverserVisitor):
         self.decorators_to_remove: dict[FuncDef, list[int]] = {}
 
         self.errors: Errors = errors
+        self.func_stack_depth = 0
+
+    def visit_func_def(self, o: FuncDef) -> None:
+        self.func_stack_depth += 1
+        super().visit_func_def(o)
+        self.func_stack_depth -= 1
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
@@ -567,6 +729,10 @@ class SingledispatchVisitor(TraverserVisitor):
             for i, d in enumerate(decorators_to_store):
                 impl = get_singledispatch_register_call_info(d, dec.func)
                 if impl is not None:
+                    if self.func_stack_depth > 0:
+                        self.errors.error(
+                            "Registering nested functions not supported", self.current_path, d.line
+                        )
                     self.singledispatch_impls[impl.singledispatch_func].append(
                         (impl.dispatch_type, dec.func)
                     )
@@ -583,6 +749,12 @@ class SingledispatchVisitor(TraverserVisitor):
                         )
                 else:
                     if refers_to_fullname(d, "functools.singledispatch"):
+                        if self.func_stack_depth > 0:
+                            self.errors.error(
+                                "Nested singledispatch functions not supported",
+                                self.current_path,
+                                d.line,
+                            )
                         decorators_to_remove.append(i)
                         # make sure that we still treat the function as a singledispatch function
                         # even if we don't find any registered implementations (which might happen
@@ -644,3 +816,82 @@ def registered_impl_from_possible_register_call(
         if isinstance(node, Decorator):
             return RegisteredImpl(node.func, dispatch_type)
     return None
+
+
+def adjust_generator_classes_of_methods(mapper: Mapper) -> None:
+    """Make optimizations and adjustments to generated generator classes of methods.
+
+    This is a separate pass after type map has been built, since we need all classes
+    to be processed to analyze class hierarchies.
+    """
+
+    generator_methods = []
+
+    for fdef, fn_ir in mapper.func_to_decl.items():
+        if isinstance(fdef, FuncDef) and (fdef.is_coroutine or fdef.is_generator):
+            gen_ir = create_generator_class_for_func(
+                fn_ir.module_name, fn_ir.class_name, fdef, mapper
+            )
+            # TODO: We could probably support decorators sometimes (static and class method?)
+            if not fdef.is_decorated:
+                name = fn_ir.name
+                precise_ret_type = True
+                if fn_ir.class_name is not None:
+                    class_ir = mapper.type_to_ir[fdef.info]
+                    subcls = class_ir.subclasses()
+                    if subcls is None:
+                        # Override could be of a different type, so we can't make assumptions.
+                        precise_ret_type = False
+                    elif class_ir.is_trait:
+                        # Give up on traits. We could possibly have an abstract base class
+                        # for generator return types to make this use precise types.
+                        precise_ret_type = False
+                    else:
+                        for s in subcls:
+                            if name in s.method_decls:
+                                m = s.method_decls[name]
+                                if (
+                                    m.is_generator != fn_ir.is_generator
+                                    or m.is_coroutine != fn_ir.is_coroutine
+                                ):
+                                    # Override is of a different kind, and the optimization
+                                    # to use a precise generator return type doesn't work.
+                                    precise_ret_type = False
+                else:
+                    class_ir = None
+
+                if precise_ret_type:
+                    # Give a more precise type for generators, so that we can optimize
+                    # code that uses them. They return a generator object, which has a
+                    # specific class. Without this, the type would have to be 'object'.
+                    fn_ir.sig.ret_type = RInstance(gen_ir)
+                    if fn_ir.bound_sig:
+                        fn_ir.bound_sig.ret_type = RInstance(gen_ir)
+                    if class_ir is not None:
+                        if class_ir.is_method_final(name):
+                            gen_ir.is_final_class = True
+                        generator_methods.append((name, class_ir, gen_ir))
+
+    new_bases = {}
+
+    for name, class_ir, gen in generator_methods:
+        # For generator methods, we need to have subclass generator classes inherit from
+        # baseclass generator classes when there are overrides to maintain LSP.
+        base = class_ir.real_base()
+        if base is not None:
+            if base.has_method(name):
+                base_sig = base.method_sig(name)
+                if isinstance(base_sig.ret_type, RInstance):
+                    base_gen = base_sig.ret_type.class_ir
+                    new_bases[gen] = base_gen
+
+    # Add generator inheritance relationships by adjusting MROs.
+    for deriv, base in new_bases.items():
+        if base.children is not None:
+            base.children.append(deriv)
+        while True:
+            deriv.mro.append(base)
+            deriv.base_mro.append(base)
+            if base not in new_bases:
+                break
+            base = new_bases[base]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Sequence
 from typing import Final
 
@@ -11,13 +12,24 @@ from mypyc.ir.ops import (
     Assign,
     AssignMulti,
     BasicBlock,
+    Box,
     ControlOp,
     DeserMaps,
+    Float,
+    Integer,
     LoadAddress,
+    LoadLiteral,
     Register,
+    TupleSet,
     Value,
 )
-from mypyc.ir.rtypes import RType, bitmap_rprimitive, deserialize_type
+from mypyc.ir.rtypes import (
+    RType,
+    bitmap_rprimitive,
+    deserialize_type,
+    is_bool_rprimitive,
+    is_none_rprimitive,
+)
 from mypyc.namegen import NameGenerator
 
 
@@ -137,9 +149,13 @@ class FuncDecl:
         module_name: str,
         sig: FuncSignature,
         kind: int = FUNC_NORMAL,
+        *,
         is_prop_setter: bool = False,
         is_prop_getter: bool = False,
+        is_generator: bool = False,
+        is_coroutine: bool = False,
         implicit: bool = False,
+        internal: bool = False,
     ) -> None:
         self.name = name
         self.class_name = class_name
@@ -148,6 +164,8 @@ class FuncDecl:
         self.kind = kind
         self.is_prop_setter = is_prop_setter
         self.is_prop_getter = is_prop_getter
+        self.is_generator = is_generator
+        self.is_coroutine = is_coroutine
         if class_name is None:
             self.bound_sig: FuncSignature | None = None
         else:
@@ -159,6 +177,9 @@ class FuncDecl:
         # If True, not present in the mypy AST and must be synthesized during irbuild
         # Currently only supported for property getters/setters
         self.implicit = implicit
+
+        # If True, only direct C level calls are supported (no wrapper function)
+        self.internal = internal
 
         # This is optional because this will be set to the line number when the corresponding
         # FuncIR is created
@@ -203,7 +224,10 @@ class FuncDecl:
             "kind": self.kind,
             "is_prop_setter": self.is_prop_setter,
             "is_prop_getter": self.is_prop_getter,
+            "is_generator": self.is_generator,
+            "is_coroutine": self.is_coroutine,
             "implicit": self.implicit,
+            "internal": self.internal,
         }
 
     # TODO: move this to FuncIR?
@@ -223,9 +247,12 @@ class FuncDecl:
             data["module_name"],
             FuncSignature.deserialize(data["sig"], ctx),
             data["kind"],
-            data["is_prop_setter"],
-            data["is_prop_getter"],
-            data["implicit"],
+            is_prop_setter=data["is_prop_setter"],
+            is_prop_getter=data["is_prop_getter"],
+            is_generator=data["is_generator"],
+            is_coroutine=data["is_coroutine"],
+            implicit=data["implicit"],
+            internal=data["internal"],
         )
 
 
@@ -286,6 +313,10 @@ class FuncIR:
     @property
     def id(self) -> str:
         return self.decl.id
+
+    @property
+    def internal(self) -> bool:
+        return self.decl.internal
 
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)
@@ -369,3 +400,85 @@ def all_values_full(args: list[Register], blocks: list[BasicBlock]) -> list[Valu
                     values.append(op)
 
     return values
+
+
+_ARG_KIND_TO_INSPECT: Final = {
+    ArgKind.ARG_POS: inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    ArgKind.ARG_OPT: inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    ArgKind.ARG_STAR: inspect.Parameter.VAR_POSITIONAL,
+    ArgKind.ARG_NAMED: inspect.Parameter.KEYWORD_ONLY,
+    ArgKind.ARG_STAR2: inspect.Parameter.VAR_KEYWORD,
+    ArgKind.ARG_NAMED_OPT: inspect.Parameter.KEYWORD_ONLY,
+}
+
+# Sentinel indicating a value that cannot be represented in a text signature.
+_NOT_REPRESENTABLE = object()
+
+
+def get_text_signature(fn: FuncIR, *, bound: bool = False) -> str | None:
+    """Return a text signature in CPython's internal doc format, or None
+    if the function's signature cannot be represented.
+    """
+    parameters = []
+    mark_self = (fn.class_name is not None) and (fn.decl.kind != FUNC_STATICMETHOD) and not bound
+    sig = fn.decl.bound_sig if bound and fn.decl.bound_sig is not None else fn.decl.sig
+    # Pre-scan for end of positional-only parameters.
+    # This is needed to handle signatures like 'def foo(self, __x)', where mypy
+    # currently sees 'self' as being positional-or-keyword and '__x' as positional-only.
+    pos_only_idx = -1
+    for idx, arg in enumerate(sig.args):
+        if arg.pos_only and arg.kind in (ArgKind.ARG_POS, ArgKind.ARG_OPT):
+            pos_only_idx = idx
+    for idx, arg in enumerate(sig.args):
+        if arg.name.startswith(("__bitmap", "__mypyc")):
+            continue
+        kind = (
+            inspect.Parameter.POSITIONAL_ONLY
+            if idx <= pos_only_idx
+            else _ARG_KIND_TO_INSPECT[arg.kind]
+        )
+        default: object = inspect.Parameter.empty
+        if arg.optional:
+            default = _find_default_argument(arg.name, fn.blocks)
+            if default is _NOT_REPRESENTABLE:
+                # This default argument cannot be represented in a __text_signature__
+                return None
+
+        curr_param = inspect.Parameter(arg.name, kind, default=default)
+        parameters.append(curr_param)
+        if mark_self:
+            # Parameter.__init__/Parameter.replace do not accept $
+            curr_param._name = f"${arg.name}"  # type: ignore[attr-defined]
+            mark_self = False
+    return f"{fn.name}{inspect.Signature(parameters)}"
+
+
+def _find_default_argument(name: str, blocks: list[BasicBlock]) -> object:
+    # Find assignment inserted by gen_arg_defaults. Assumed to be the first assignment.
+    for block in blocks:
+        for op in block.ops:
+            if isinstance(op, Assign) and op.dest.name == name:
+                return _extract_python_literal(op.src)
+    return _NOT_REPRESENTABLE
+
+
+def _extract_python_literal(value: Value) -> object:
+    if isinstance(value, Integer):
+        if is_none_rprimitive(value.type):
+            return None
+        val = value.numeric_value()
+        if is_bool_rprimitive(value.type):
+            return bool(val)
+        return val
+    elif isinstance(value, Float):
+        return value.value
+    elif isinstance(value, LoadLiteral):
+        return value.value
+    elif isinstance(value, Box):
+        return _extract_python_literal(value.src)
+    elif isinstance(value, TupleSet):
+        items = tuple(_extract_python_literal(item) for item in value.items)
+        if any(itm is _NOT_REPRESENTABLE for itm in items):
+            return _NOT_REPRESENTABLE
+        return items
+    return _NOT_REPRESENTABLE
