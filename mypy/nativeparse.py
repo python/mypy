@@ -62,6 +62,7 @@ from mypy.nodes import (
     FloatExpr,
     FuncDef,
     IfStmt,
+    Import,
     IndexExpr,
     IntExpr,
     ListExpr,
@@ -259,6 +260,24 @@ def read_statement(data: ReadBuffer) -> Statement:
         return stmt
     elif tag == nodes.PASS_STMT:
         stmt = PassStmt()
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.IMPORT:
+        # Read number of imports
+        n = read_int(data)
+        ids = []
+        for _ in range(n):
+            # Read import name
+            name = read_str(data)
+            # Read as_name (optional)
+            has_asname = read_bool(data)
+            if has_asname:
+                asname = read_str(data)
+            else:
+                asname = None
+            ids.append((name, asname))
+        stmt = Import(ids)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt

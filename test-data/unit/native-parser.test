@@ -765,3 +765,13 @@ MypyFile:1(
     NameExpr(y)
     StrExpr(hello)
     str?))
+
+[case testImportStatements]
+import x
+import a, b
+import y as z
+[out]
+MypyFile:1(
+  Import:1(x)
+  Import:2(a, b)
+  Import:3(y : z))
