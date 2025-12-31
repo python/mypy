@@ -546,8 +546,8 @@ import sys
 
 unary_minus = -(sys.platform == 'linux') and str()
 binary_minus = ((sys.platform == 'linux') - (sys.platform == 'linux')) and str()
-reveal_type(unary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
-reveal_type(binary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
+reveal_type(unary_minus) # N: Revealed type is "Literal[0] | builtins.str"
+reveal_type(binary_minus) # N: Revealed type is "Literal[0] | builtins.str"
 [builtins fixtures/ops.pyi]
 
 [case testMypyFalseValuesInBinaryOps_no_empty]
@@ -657,7 +657,7 @@ COMPILE_TIME_FALSE: Literal[True]  # type-narrowing: mapped in 'if' only
 a = COMPILE_TIME_FALSE or indeterminate
 reveal_type(a)  # N: Revealed type is "builtins.str"
 b = indeterminate or COMPILE_TIME_FALSE
-reveal_type(b)  # N: Revealed type is "Union[builtins.str, Literal[True]]"
+reveal_type(b)  # N: Revealed type is "builtins.str | Literal[True]"
 [typing fixtures/typing-medium.pyi]
 
 [case testSemanticAnalysisTrueButTypeNarrowingFalse]
@@ -669,7 +669,7 @@ COMPILE_TIME_TRUE: Literal[False]  # type narrowed to `else` only
 a = COMPILE_TIME_TRUE or indeterminate
 reveal_type(a)  # N: Revealed type is "Literal[False]"
 b = indeterminate or COMPILE_TIME_TRUE
-reveal_type(b)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
+reveal_type(b)  # N: Revealed type is "builtins.str | Literal[False]"
 
 [typing fixtures/typing-medium.pyi]
 [case testConditionalAssertWithoutElse]
