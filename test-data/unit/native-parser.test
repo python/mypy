@@ -701,7 +701,7 @@ def f() -> int:
     pass
 def g() -> None:
     pass
-def h(x: int, y):
+def h(x: foo.bar, y, z: x.y.z):
     pass
 [out]
 MypyFile:1(
@@ -719,8 +719,9 @@ MypyFile:1(
     h
     Args(
       Var:nil(x)
-      Var:nil(y))
-    def (x: int?, y: Any) -> Any
+      Var:nil(y)
+      Var:nil(z))
+    def (x: foo.bar?, y: Any, z: x.y.z?) -> Any
     Block:6(
       PassStmt:6())))
 
