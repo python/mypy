@@ -868,3 +868,22 @@ MypyFile:1(
         NameExpr(range)
         Args(
           IntExpr(2))))))
+
+[case testYieldExpressions]
+def gen():
+    yield
+    yield 1
+    yield from items
+[out]
+MypyFile:1(
+  FuncDef:1(
+    gen
+    Block:2(
+      ExpressionStmt:2(
+        YieldExpr:2())
+      ExpressionStmt:3(
+        YieldExpr:3(
+          IntExpr(1)))
+      ExpressionStmt:4(
+        YieldFromExpr:4(
+          NameExpr(items))))))

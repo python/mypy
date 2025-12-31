@@ -86,6 +86,8 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
     WhileStmt,
+    YieldExpr,
+    YieldFromExpr,
     MISSING_FALLBACK,
 )
 from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type
@@ -502,6 +504,24 @@ def read_expression(data: ReadBuffer) -> Expression:
         # Read all is_async flags
         is_async = [read_bool(data) for _ in range(n_generators)]
         expr = GeneratorExpr(left_expr, indices, sequences, condlists, is_async)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.YIELD_EXPR:
+        # Read optional value expression
+        has_value = read_bool(data)
+        if has_value:
+            value = read_expression(data)
+        else:
+            value = None
+        expr = YieldExpr(value)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.YIELD_FROM_EXPR:
+        # Read value expression (required for yield from)
+        value = read_expression(data)
+        expr = YieldFromExpr(value)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
