@@ -1,6 +1,11 @@
 #ifndef BYTESWRITER_EXTRA_OPS_H
 #define BYTESWRITER_EXTRA_OPS_H
 
+#ifdef MYPYC_EXPERIMENTAL
+
+#include <stdint.h>
+#include <Python.h>
+
 #include "librt_strings.h"
 
 static inline CPyTagged
@@ -30,5 +35,7 @@ CPyBytesWriter_Append(PyObject *obj, uint8_t value) {
 }
 
 char CPyBytesWriter_Write(PyObject *obj, PyObject *value);
+
+#endif // MYPYC_EXPERIMENTAL
 
 #endif

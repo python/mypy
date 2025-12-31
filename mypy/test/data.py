@@ -314,6 +314,19 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
+
+        if (
+            not [line for line in self.input if line.strip()]
+            and "Empty" not in self.name
+            and not [
+                file
+                for file in self.files
+                # these files are added based on other things
+                if os.path.basename(file[0]) not in ("typing.pyi", "_typeshed.pyi", "builtins.pyi")
+            ]
+        ):
+            raise AssertionError(f"{self.name} is empty.")
+
         parent = self.getparent(DataSuiteCollector)
         assert parent is not None, "Should not happen"
         suite = parent.obj()

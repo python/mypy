@@ -171,3 +171,41 @@ PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count) {
     }
     return PySequence_Repeat(bytes, temp_count);
 }
+
+int CPyBytes_Startswith(PyObject *self, PyObject *subobj) {
+    if (PyBytes_CheckExact(self) && PyBytes_CheckExact(subobj)) {
+        if (self == subobj) {
+            return 1;
+        }
+
+        Py_ssize_t subobj_len = PyBytes_GET_SIZE(subobj);
+        if (subobj_len == 0) {
+            return 1;
+        }
+
+        Py_ssize_t self_len = PyBytes_GET_SIZE(self);
+        if (subobj_len > self_len) {
+            return 0;
+        }
+
+        const char *self_buf = PyBytes_AS_STRING(self);
+        const char *subobj_buf = PyBytes_AS_STRING(subobj);
+
+        return memcmp(self_buf, subobj_buf, (size_t)subobj_len) == 0 ? 1 : 0;
+    }
+    _Py_IDENTIFIER(startswith);
+    PyObject *name = _PyUnicode_FromId(&PyId_startswith);
+    if (name == NULL) {
+        return 2;
+    }
+    PyObject *result = PyObject_CallMethodOneArg(self, name, subobj);
+    if (result == NULL) {
+        return 2;
+    }
+    int ret = PyObject_IsTrue(result);
+    Py_DECREF(result);
+    if (ret < 0) {
+        return 2;
+    }
+    return ret;
+}

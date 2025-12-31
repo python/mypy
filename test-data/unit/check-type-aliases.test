@@ -12,7 +12,7 @@ U = Union[int, str]
 def f(x: U) -> None: pass
 f(1)
 f('')
-f(()) # E: Argument 1 to "f" has incompatible type "tuple[()]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "tuple[()]"; expected "int | str"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
@@ -64,7 +64,7 @@ from _m import U
 def f(x: U) -> None: pass
 f(1)
 f('x')
-f(()) # E: Argument 1 to "f" has incompatible type "tuple[()]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "tuple[()]"; expected "int | str"
 [file _m.py]
 from typing import Union
 U = Union[int, str]
@@ -224,7 +224,7 @@ main:6: note: Recursive types are not allowed at function scope
 main:6: error: Cannot resolve name "C" (possible cyclic definition)
 main:7: error: Cannot resolve name "C" (possible cyclic definition)
 main:7: note: Recursive types are not allowed at function scope
-main:9: note: Revealed type is "Union[Any, builtins.int]"
+main:9: note: Revealed type is "Any | builtins.int"
 
 [case testDoubleForwardAlias]
 # flags: --disable-error-code=used-before-def
@@ -307,7 +307,7 @@ void = type(None)
 x: void
 reveal_type(x)  # N: Revealed type is "None"
 y: Union[int, void]
-reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]
@@ -316,7 +316,7 @@ void = type(None)
 x: int
 y: Union[int, void]
 z: Optional[int]
-x = y  # E: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+x = y  # E: Incompatible types in assignment (expression has type "int | None", variable has type "int")
 y = z
 [builtins fixtures/bool.pyi]
 
@@ -463,8 +463,8 @@ class C:
 
 class D(C): ...
 
-reveal_type(D.meth(1))  # N: Revealed type is "Union[__main__.D, builtins.int]"
-reveal_type(D().meth(1))  # N: Revealed type is "Union[__main__.D, builtins.int]"
+reveal_type(D.meth(1))  # N: Revealed type is "__main__.D | builtins.int"
+reveal_type(D().meth(1))  # N: Revealed type is "__main__.D | builtins.int"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -687,7 +687,7 @@ reveal_type(b)  # N: Revealed type is "builtins.str"
 
 z: TypeAlias = "int | str"
 c: z
-reveal_type(c)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(c)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testForwardRefPep613]
@@ -859,8 +859,8 @@ def plausible_top_3() -> SpecialImplicit: pass
 def plausible_top_4() -> SpecialExplicit: pass
 reveal_type(plausible_top_1)  # N: Revealed type is "def () -> __main__.Foo"
 reveal_type(plausible_top_2)  # N: Revealed type is "def () -> __main__.Foo"
-reveal_type(plausible_top_3)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
-reveal_type(plausible_top_4)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+reveal_type(plausible_top_3)  # N: Revealed type is "def () -> builtins.int | builtins.str"
+reveal_type(plausible_top_4)  # N: Revealed type is "def () -> builtins.int | builtins.str"
 
 def plausible_parent_1() -> Parent.NormalImplicit: pass  # E: Variable "__main__.Parent.NormalImplicit" is not valid as a type \
                                                          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
@@ -869,8 +869,8 @@ def plausible_parent_3() -> Parent.SpecialImplicit: pass
 def plausible_parent_4() -> Parent.SpecialExplicit: pass
 reveal_type(plausible_parent_1)  # N: Revealed type is "def () -> Parent.NormalImplicit?"
 reveal_type(plausible_parent_2)  # N: Revealed type is "def () -> __main__.Foo"
-reveal_type(plausible_parent_3)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
-reveal_type(plausible_parent_4)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+reveal_type(plausible_parent_3)  # N: Revealed type is "def () -> builtins.int | builtins.str"
+reveal_type(plausible_parent_4)  # N: Revealed type is "def () -> builtins.int | builtins.str"
 
 def plausible_child_1() -> Child.NormalImplicit: pass  # E: Variable "__main__.Parent.NormalImplicit" is not valid as a type \
                                                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
@@ -879,8 +879,8 @@ def plausible_child_3() -> Child.SpecialImplicit: pass
 def plausible_child_4() -> Child.SpecialExplicit: pass
 reveal_type(plausible_child_1)  # N: Revealed type is "def () -> Child.NormalImplicit?"
 reveal_type(plausible_child_2)  # N: Revealed type is "def () -> __main__.Foo"
-reveal_type(plausible_child_3)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
-reveal_type(plausible_child_4)  # N: Revealed type is "def () -> Union[builtins.int, builtins.str]"
+reveal_type(plausible_child_3)  # N: Revealed type is "def () -> builtins.int | builtins.str"
+reveal_type(plausible_child_4)  # N: Revealed type is "def () -> builtins.int | builtins.str"
 
 # Use type aliases in a type alias context in an implausible way
 
@@ -963,8 +963,8 @@ A = List[int, str] | int  # E: "list" expects 1 type argument, but 2 given
 B = int | list[int, str]  # E: "list" expects 1 type argument, but 2 given
 a: A
 b: B
-reveal_type(a)  # N: Revealed type is "Union[builtins.list[Any], builtins.int]"
-reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.list[Any]]"
+reveal_type(a)  # N: Revealed type is "builtins.list[Any] | builtins.int"
+reveal_type(b)  # N: Revealed type is "builtins.int | builtins.list[Any]"
 [builtins fixtures/type.pyi]
 
 [case testValidTypeAliasValues]
@@ -1069,7 +1069,7 @@ from typing_extensions import TypeAliasType
 TestType = TypeAliasType("TestType", Union[int, str])
 x: TestType = 42
 y: TestType = 'a'
-z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "int | str")
 
 reveal_type(TestType)  # N: Revealed type is "typing_extensions.TypeAliasType"
 TestType()  # E: "TypeAliasType" not callable
@@ -1105,7 +1105,7 @@ reveal_type(t3)  # N: Revealed type is "Any"
 
 T4 = TypeAliasType("T4")  # E: Missing positional argument "value" in call to "TypeAliasType"
 T5 = TypeAliasType("T5", int, str)  # E: Too many positional arguments for "TypeAliasType" \
-                                    # E: Argument 3 to "TypeAliasType" has incompatible type "type[str]"; expected "tuple[Union[TypeVar?, ParamSpec?, TypeVarTuple?], ...]"
+                                    # E: Argument 3 to "TypeAliasType" has incompatible type "type[str]"; expected "tuple[TypeVar? | ParamSpec? | TypeVarTuple?, ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
