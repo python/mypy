@@ -63,6 +63,7 @@ from mypy.nodes import (
     ExpressionStmt,
     FloatExpr,
     FuncDef,
+    GeneratorExpr,
     IfStmt,
     Import,
     IndexExpr,
@@ -484,6 +485,23 @@ def read_expression(data: ReadBuffer) -> Expression:
     elif tag == nodes.SET_EXPR:
         items = read_expression_list(data)
         expr = SetExpr(items)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.GENERATOR_EXPR:
+        # Read element expression
+        left_expr = read_expression(data)
+        # Read number of generators
+        n_generators = read_int(data)
+        # Read all indices (targets)
+        indices = [read_expression(data) for _ in range(n_generators)]
+        # Read all sequences (iters)
+        sequences = [read_expression(data) for _ in range(n_generators)]
+        # Read all condlists (ifs for each generator)
+        condlists = [read_expression_list(data) for _ in range(n_generators)]
+        # Read all is_async flags
+        is_async = [read_bool(data) for _ in range(n_generators)]
+        expr = GeneratorExpr(left_expr, indices, sequences, condlists, is_async)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
