@@ -657,7 +657,7 @@ T = TypeVar("T", bound=Union[Data, Dict[str, str]])
 
 
 def f(data: T) -> None:
-    reveal_type(data["x"]) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(data["x"]) # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

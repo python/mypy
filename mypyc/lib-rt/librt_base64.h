@@ -12,6 +12,8 @@ import_librt_base64(void)
 
 #else  // MYPYC_EXPERIMENTAL
 
+#include <Python.h>
+
 #define LIBRT_BASE64_ABI_VERSION 1
 #define LIBRT_BASE64_API_VERSION 2
 #define LIBRT_BASE64_API_LEN 4

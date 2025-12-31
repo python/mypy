@@ -33,7 +33,6 @@ static PyObject* CPyFunction_repr(CPyFunction *op) {
 }
 
 static PyObject* CPyFunction_call(PyObject *func, PyObject *args, PyObject *kw) {
-    PyObject *result;
     CPyFunction *f = (CPyFunction *)func;
     vectorcallfunc vc = CPyFunction_func_vectorcall(f);
     assert(vc);
