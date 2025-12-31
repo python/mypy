@@ -70,6 +70,7 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_sequence_rprimitive,
     is_uint8_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -81,6 +82,7 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    get_expr_length_value,
     sequence_from_generator_preallocate_helper,
     translate_list_comprehension,
     translate_set_comprehension,
@@ -222,17 +224,11 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
         arg = expr.args[0]
         expr_rtype = builder.node_type(arg)
-        if isinstance(expr_rtype, RTuple):
-            # len() of fixed-length tuple can be trivially determined
-            # statically, though we still need to evaluate it.
-            builder.accept(arg)
-            return Integer(len(expr_rtype.types))
+        # NOTE (?) I'm not sure if my handling of can_borrow is correct here
+        obj = builder.accept(arg, can_borrow=is_list_rprimitive(expr_rtype))
+        if is_sequence_rprimitive(expr_rtype) or isinstance(expr_rtype, RTuple):
+            return get_expr_length_value(builder, arg, obj, expr.line, use_pyssize_t=False)
         else:
-            if is_list_rprimitive(builder.node_type(arg)):
-                borrow = True
-            else:
-                borrow = False
-            obj = builder.accept(arg, can_borrow=borrow)
             return builder.builtin_len(obj, expr.line)
     return None
 

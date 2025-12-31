@@ -1455,12 +1455,12 @@ foo(g)
 main:17: note: Revealed type is "builtins.int"
 main:18: note: Revealed type is "builtins.str"
 main:19: note: Revealed type is "Any"
-main:20: note: Revealed type is "Union[builtins.int, builtins.str]"
+main:20: note: Revealed type is "builtins.int | builtins.str"
 main:21: error: Argument 1 to "foo" has incompatible type "list[bool]"; expected "list[int]"
 main:21: note: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:21: note: Consider using "Sequence" instead, which is covariant
 main:22: error: Argument 1 to "foo" has incompatible type "list[object]"; expected "list[int]"
-main:23: error: Argument 1 to "foo" has incompatible type "list[Union[int, str]]"; expected "list[int]"
+main:23: error: Argument 1 to "foo" has incompatible type "list[int | str]"; expected "list[int]"
 
 [case testOverloadAgainstEmptyCollections]
 from typing import overload, List
@@ -1891,7 +1891,7 @@ def g(x): pass
 
 a: Any
 reveal_type(f(a))  # N: Revealed type is "builtins.str"
-reveal_type(g(a))  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(g(a))  # N: Revealed type is "builtins.str | builtins.int"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument16]
 from typing import overload, Any, Union, Callable
@@ -2050,7 +2050,7 @@ class Child4(Parent):
     @overload
     def f(self, arg: str) -> str: ...
     def f(self, arg: Union[int, str]) -> Union[int, str]:
-        return b''  # E: Incompatible return value type (got "bytes", expected "Union[int, str]")
+        return b''  # E: Incompatible return value type (got "bytes", expected "int | str")
 
 [builtins fixtures/tuple.pyi]
 
@@ -2247,9 +2247,9 @@ oi: Optional[int]
 reveal_type(foo(None, None))  # N: Revealed type is "builtins.str"
 reveal_type(foo(None, 42))  # N: Revealed type is "builtins.int"
 reveal_type(foo(42, 42))  # N: Revealed type is "builtins.int"
-reveal_type(foo(oi, None))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(foo(oi, None))  # N: Revealed type is "builtins.int | builtins.str"
 reveal_type(foo(oi, 42))  # N: Revealed type is "builtins.int"
-reveal_type(foo(oi, oi))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(foo(oi, oi))  # N: Revealed type is "builtins.int | builtins.str"
 
 @overload
 def foo_list(x: None) -> None: ...
@@ -2257,7 +2257,7 @@ def foo_list(x: None) -> None: ...
 def foo_list(x: T) -> List[T]: ...
 def foo_list(x): ...
 
-reveal_type(foo_list(oi))  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+reveal_type(foo_list(oi))  # N: Revealed type is "builtins.list[builtins.int] | None"
 
 # What if 'T' is 'object'?
 @overload
@@ -3201,10 +3201,10 @@ def f1(x: C) -> D: ...
 def f1(x): ...
 
 arg1: Union[A, C]
-reveal_type(f1(arg1))  # N: Revealed type is "Union[__main__.B, __main__.D]"
+reveal_type(f1(arg1))  # N: Revealed type is "__main__.B | __main__.D"
 
 arg2: Union[A, B]
-f1(arg2)  # E: Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
+f1(arg2)  # E: Argument 1 to "f1" has incompatible type "A | B"; expected "A"
 
 @overload
 def f2(x: A) -> B: ...
@@ -3242,12 +3242,12 @@ reveal_type(f2(arg1, C()))
 
 [out]
 main:15: note: Revealed type is "__main__.B"
-main:15: error: Argument 1 to "f1" has incompatible type "Union[A, C]"; expected "A"
-main:15: error: Argument 2 to "f1" has incompatible type "Union[A, C]"; expected "C"
+main:15: error: Argument 1 to "f1" has incompatible type "A | C"; expected "A"
+main:15: error: Argument 2 to "f1" has incompatible type "A | C"; expected "C"
 main:23: note: Revealed type is "__main__.B"
-main:23: error: Argument 1 to "f2" has incompatible type "Union[A, C]"; expected "A"
-main:23: error: Argument 2 to "f2" has incompatible type "Union[A, C]"; expected "C"
-main:24: note: Revealed type is "Union[__main__.B, __main__.D]"
+main:23: error: Argument 1 to "f2" has incompatible type "A | C"; expected "A"
+main:23: error: Argument 2 to "f2" has incompatible type "A | C"; expected "C"
+main:24: note: Revealed type is "__main__.B | __main__.D"
 
 [case testOverloadInferUnionRespectsVariance]
 from typing import overload, TypeVar, Union, Generic
@@ -3269,10 +3269,10 @@ def foo(x: WrapperContra[B]) -> str: ...
 def foo(x): pass
 
 compat: Union[WrapperCo[C], WrapperContra[A]]
-reveal_type(foo(compat))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(foo(compat))  # N: Revealed type is "builtins.int | builtins.str"
 
 not_compat: Union[WrapperCo[A], WrapperContra[C]]
-foo(not_compat)  # E: Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
+foo(not_compat)  # E: Argument 1 to "foo" has incompatible type "WrapperCo[A] | WrapperContra[C]"; expected "WrapperCo[B]"
 
 [case testOverloadInferUnionIfParameterNamesAreDifferent]
 from typing import overload, Union
@@ -3290,7 +3290,7 @@ def f(x): ...
 x: Union[A, B]
 reveal_type(f(A()))  # N: Revealed type is "__main__.B"
 reveal_type(f(B()))  # N: Revealed type is "__main__.C"
-reveal_type(f(x))    # N: Revealed type is "Union[__main__.B, __main__.C]"
+reveal_type(f(x))    # N: Revealed type is "__main__.B | __main__.C"
 
 [case testOverloadInferUnionReturnFunctionsWithKwargs]
 from typing import overload, Union, Optional
@@ -3312,7 +3312,7 @@ reveal_type(f(A(), B()))  # N: Revealed type is "__main__.C"
 reveal_type(f(A(), C()))  # N: Revealed type is "__main__.B"
 
 arg: Union[B, C]
-reveal_type(f(A(), arg))  # N: Revealed type is "Union[__main__.C, __main__.B]"
+reveal_type(f(A(), arg))  # N: Revealed type is "__main__.C | __main__.B"
 reveal_type(f(A()))       # N: Revealed type is "__main__.D"
 
 [builtins fixtures/tuple.pyi]
@@ -3334,7 +3334,7 @@ def f(*args): ...
 
 x: Union[A, B]
 reveal_type(f(x))  # N: Revealed type is "__main__.Parent"
-f(x, B())  # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "B"
+f(x, B())  # E: Argument 1 to "f" has incompatible type "A | B"; expected "B"
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadInferUnionWithMixOfPositionalAndOptionalArgs]
@@ -3352,9 +3352,9 @@ def f(*args): ...
 x: Union[A, B]
 y: Optional[A]
 z: Union[A, Optional[B]]
-reveal_type(f(x))  # N: Revealed type is "Union[builtins.int, builtins.str]"
-reveal_type(f(y))  # N: Revealed type is "Union[builtins.int, builtins.str]"
-reveal_type(f(z))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(f(x))  # N: Revealed type is "builtins.int | builtins.str"
+reveal_type(f(y))  # N: Revealed type is "builtins.int | builtins.str"
+reveal_type(f(z))  # N: Revealed type is "builtins.int | builtins.str"
 reveal_type(f())   # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
@@ -3381,7 +3381,7 @@ x: Union[A, B]
 
 reveal_type(obj.f(A()))  # N: Revealed type is "__main__.C"
 reveal_type(obj.f(B()))  # N: Revealed type is "__main__.B"
-reveal_type(obj.f(x))    # N: Revealed type is "Union[__main__.C, __main__.B]"
+reveal_type(obj.f(x))    # N: Revealed type is "__main__.C | __main__.B"
 
 [case testOverloadingInferUnionReturnWithFunctionTypevarReturn]
 from typing import overload, Union, TypeVar, Generic
@@ -3411,10 +3411,10 @@ def wrapper() -> None:
 
     obj2: Union[W1[A], W2[B]]
 
-    reveal_type(foo(obj2))  # N: Revealed type is "Union[__main__.A, __main__.B]"
+    reveal_type(foo(obj2))  # N: Revealed type is "__main__.A | __main__.B"
     bar(obj2)  # E: Cannot infer value of type parameter "T" of "bar"
 
-    b1_overload: A = foo(obj2)  # E: Incompatible types in assignment (expression has type "Union[A, B]", variable has type "A")
+    b1_overload: A = foo(obj2)  # E: Incompatible types in assignment (expression has type "A | B", variable has type "A")
     b1_union: A    = bar(obj2)  # E: Cannot infer value of type parameter "T" of "bar"
 
 [case testOverloadingInferUnionReturnWithObjectTypevarReturn]
@@ -3444,11 +3444,11 @@ def wrapper() -> None:
 
     # Note: These should be fine, but mypy has an unrelated bug
     #       that makes them error out?
-    a2_overload: A = SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "W1[Never]"
-    a2_union: A    = SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[Never], W2[Never]]"
+    a2_overload: A = SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "W1[A] | W2[A]"; expected "W1[Never]"
+    a2_union: A    = SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "W1[A] | W2[A]"; expected "W1[Never] | W2[Never]"
 
-    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "W1[Never]"
-    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[Never], W2[Never]]"
+    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "W1[A] | W2[A]"; expected "W1[Never]"
+    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "W1[A] | W2[A]"; expected "W1[Never] | W2[Never]"
 
 [case testOverloadingInferUnionReturnWithBadObjectTypevarReturn]
 from typing import overload, Union, TypeVar, Generic
@@ -3472,14 +3472,14 @@ class SomeType(Generic[T]):
 def wrapper(mysterious: T) -> T:
     obj1: Union[W1[A], W2[B]]
 
-    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "W1[Never]"
-    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[Never], W2[Never]]"
+    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "W1[A] | W2[B]"; expected "W1[Never]"
+    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "W1[A] | W2[B]"; expected "W1[Never] | W2[Never]"
 
-    SomeType[A]().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "W1[A]"
-    SomeType[A]().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[A], W2[A]]"
+    SomeType[A]().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "W1[A] | W2[B]"; expected "W1[A]"
+    SomeType[A]().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "W1[A] | W2[B]"; expected "W1[A] | W2[A]"
 
-    SomeType[T]().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "W1[T]"
-    SomeType[T]().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[T], W2[T]]"
+    SomeType[T]().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "W1[A] | W2[B]"; expected "W1[T]"
+    SomeType[T]().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "W1[A] | W2[B]"; expected "W1[T] | W2[T]"
 
     return mysterious
 
@@ -3505,7 +3505,7 @@ T1 = TypeVar('T1', bound=A)
 def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     x1: Union[List[S], List[Tuple[T1, S]]]
     y1: S
-    reveal_type(Dummy[T1]().foo(x1, y1))  # N: Revealed type is "Union[S`-2, T1`-1]"
+    reveal_type(Dummy[T1]().foo(x1, y1))  # N: Revealed type is "S`-2 | T1`-1"
 
     x2: Union[List[T1], List[Tuple[T1, T1]]]
     y2: T1
@@ -3539,12 +3539,12 @@ def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     x3: Union[List[S], List[Tuple[S, T1]]]
     y3: S
     Dummy[T1]().foo(x3, y3)  # E: Cannot infer value of type parameter "S" of "foo" of "Dummy" \
-                             # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[list[S], list[tuple[S, T1]]]"; expected "list[tuple[T1, Any]]"
+                             # E: Argument 1 to "foo" of "Dummy" has incompatible type "list[S] | list[tuple[S, T1]]"; expected "list[tuple[T1, Any]]"
 
     x4: Union[List[int], List[Tuple[C, int]]]
     y4: int
-    reveal_type(Dummy[C]().foo(x4, y4))  # N: Revealed type is "Union[builtins.int, __main__.C]"
-    Dummy[A]().foo(x4, y4)               # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[list[int], list[tuple[C, int]]]"; expected "list[tuple[A, int]]"
+    reveal_type(Dummy[C]().foo(x4, y4))  # N: Revealed type is "builtins.int | __main__.C"
+    Dummy[A]().foo(x4, y4)               # E: Argument 1 to "foo" of "Dummy" has incompatible type "list[int] | list[tuple[C, int]]"; expected "list[tuple[A, int]]"
 
     return arg1, arg2
 
@@ -3572,7 +3572,7 @@ T1 = TypeVar('T1', bound=B)
 def t_is_tighter_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     x1: Union[List[S], List[Tuple[T1, S]]]
     y1: S
-    reveal_type(Dummy[T1]().foo(x1, y1))  # N: Revealed type is "Union[S`-2, T1`-1]"
+    reveal_type(Dummy[T1]().foo(x1, y1))  # N: Revealed type is "S`-2 | T1`-1"
 
     x2: Union[List[T1], List[Tuple[T1, T1]]]
     y2: T1
@@ -3614,8 +3614,8 @@ def t_is_compatible_bound(arg1: T3, arg2: S) -> Tuple[T3, S]:
 
 [builtins fixtures/list.pyi]
 [out]
-main:22: note: Revealed type is "Union[S`-2, __main__.B]"
-main:22: note: Revealed type is "Union[S`-2, __main__.C]"
+main:22: note: Revealed type is "S`-2 | __main__.B"
+main:22: note: Revealed type is "S`-2 | __main__.C"
 main:26: note: Revealed type is "__main__.B"
 main:26: note: Revealed type is "__main__.C"
 
@@ -3695,7 +3695,7 @@ b: int
 c: Optional[int]
 reveal_type(g(a))  # N: Revealed type is "builtins.int"
 reveal_type(g(b))  # N: Revealed type is "builtins.str"
-reveal_type(g(c))  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(g(c))  # N: Revealed type is "builtins.str | builtins.int"
 
 [case testOverloadsNoneAndTypeVarsWithNoStrictOptional]
 # flags: --no-strict-optional
@@ -3741,7 +3741,7 @@ f3: Optional[Callable[[int], str]]
 
 reveal_type(mymap(f1, seq))  # N: Revealed type is "typing.Iterable[builtins.str]"
 reveal_type(mymap(f2, seq))  # N: Revealed type is "typing.Iterable[builtins.int]"
-reveal_type(mymap(f3, seq))  # N: Revealed type is "Union[typing.Iterable[builtins.str], typing.Iterable[builtins.int]]"
+reveal_type(mymap(f3, seq))  # N: Revealed type is "typing.Iterable[builtins.str] | typing.Iterable[builtins.int]"
 
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -4586,7 +4586,7 @@ x: Union[int, str]
 reveal_type(Parent().foo(3))                  # N: Revealed type is "__main__.Parent"
 reveal_type(Child().foo(3))                   # N: Revealed type is "__main__.Child"
 reveal_type(Child().foo("..."))               # N: Revealed type is "builtins.str"
-reveal_type(Child().foo(x))                   # N: Revealed type is "Union[__main__.Child, builtins.str]"
+reveal_type(Child().foo(x))                   # N: Revealed type is "__main__.Child | builtins.str"
 reveal_type(Child().foo(3).child_only())      # N: Revealed type is "builtins.int"
 
 [case testOverloadAndSelfTypesGenericNoOverlap]
@@ -4634,7 +4634,7 @@ x: Union[int, str]
 reveal_type(Parent.foo(3))                  # N: Revealed type is "type[__main__.Parent]"
 reveal_type(Child.foo(3))                   # N: Revealed type is "type[__main__.Child]"
 reveal_type(Child.foo("..."))               # N: Revealed type is "builtins.str"
-reveal_type(Child.foo(x))                   # N: Revealed type is "Union[type[__main__.Child], builtins.str]"
+reveal_type(Child.foo(x))                   # N: Revealed type is "type[__main__.Child] | builtins.str"
 reveal_type(Child.foo(3)().child_only())    # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
 
@@ -4670,8 +4670,8 @@ x: Union[int, str]
 y: Union[int, str]
 f(x, y)
 [out]
-main:12: error: Argument 1 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:12: error: Argument 2 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:12: error: Argument 1 to "f" has incompatible type "int | str"; expected "int"
+main:12: error: Argument 2 to "f" has incompatible type "int | str"; expected "int"
 
 [case testUnionMathTrickyOverload2]
 from typing import overload, Union, Any
@@ -4688,7 +4688,7 @@ class D(C):
 
 x: D
 y: Union[D, Any]
-reveal_type(x.f(y))  # N: Revealed type is "Union[__main__.D, Any]"
+reveal_type(x.f(y))  # N: Revealed type is "__main__.D | Any"
 [out]
 
 [case testManyUnionsInOverload]
@@ -4710,7 +4710,7 @@ class B: pass
 x: Union[int, str, A, B]
 y = f(x, x, x, x, x, x, x, x) # 8 args
 
-reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str, __main__.A, __main__.B]"
+reveal_type(y)  # N: Revealed type is "builtins.int | builtins.str | __main__.A | __main__.B"
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -4774,14 +4774,14 @@ f(x, x, x, x, x, x, x, x)
 [builtins fixtures/tuple.pyi]
 [out]
 main:11: error: Not all union combinations were tried because there are too many unions
-main:11: error: Argument 1 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:11: error: Argument 2 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:11: error: Argument 3 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:11: error: Argument 4 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:11: error: Argument 5 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:11: error: Argument 6 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:11: error: Argument 7 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:11: error: Argument 8 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: error: Argument 1 to "f" has incompatible type "int | str"; expected "int"
+main:11: error: Argument 2 to "f" has incompatible type "int | str"; expected "int"
+main:11: error: Argument 3 to "f" has incompatible type "int | str"; expected "int"
+main:11: error: Argument 4 to "f" has incompatible type "int | str"; expected "int"
+main:11: error: Argument 5 to "f" has incompatible type "int | str"; expected "int"
+main:11: error: Argument 6 to "f" has incompatible type "int | str"; expected "int"
+main:11: error: Argument 7 to "f" has incompatible type "int | str"; expected "int"
+main:11: error: Argument 8 to "f" has incompatible type "int | str"; expected "int"
 
 [case testSafeDunderOverlapInSubclass]
 from typing import overload
@@ -5208,7 +5208,7 @@ def foo() -> None: ...
 def foo(iterable: Iterable[_T]) -> None: ...
 def foo(iterable = None) -> None: pass
 
-foo(bar('lol').foo())  # E: Item "int" of "Union[A, int]" has no attribute "foo" \
+foo(bar('lol').foo())  # E: Item "int" of "A | int" has no attribute "foo" \
                        # E: Argument 1 to "bar" has incompatible type "str"; expected "int"
 
 
@@ -5344,7 +5344,7 @@ def compose(f: Callable[[U], V], g: Callable[[W], U]) -> Callable[[W], V]:
 ID = NewType("ID", fakeint)
 
 compose(ID, fakeint)("test")
-reveal_type(compose(ID, fakeint))  # N: Revealed type is "def (Union[builtins.str, builtins.bytes]) -> __main__.ID"
+reveal_type(compose(ID, fakeint))  # N: Revealed type is "def (builtins.str | builtins.bytes) -> __main__.ID"
 
 [builtins fixtures/tuple.pyi]
 
@@ -6863,5 +6863,5 @@ if isinstance(headers, dict):
         (always_bytes(k), always_bytes(v)) for k, v in headers.items()
     )
 
-reveal_type(headers)  # N: Revealed type is "Union[__main__.Headers, typing.Iterable[tuple[builtins.bytes, builtins.bytes]]]"
+reveal_type(headers)  # N: Revealed type is "__main__.Headers | typing.Iterable[tuple[builtins.bytes, builtins.bytes]]"
 [builtins fixtures/isinstancelist.pyi]

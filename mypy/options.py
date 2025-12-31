@@ -4,7 +4,6 @@ import pprint
 import re
 import sys
 import sysconfig
-import warnings
 from collections.abc import Callable
 from re import Pattern
 from typing import Any, Final
@@ -410,11 +409,6 @@ class Options:
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
-        # Deprecated, Mypy only supports Python 3.9+
-        self.force_uppercase_builtins = False
-        self.force_union_syntax = False
-        # Mypy internal use only! Set during test run.
-        self.overwrite_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
@@ -424,19 +418,6 @@ class Options:
         # Skip writing C output files, but perform all other steps of a build (allows
         # preserving manual tweaks to generated C file)
         self.mypyc_skip_c_generation = False
-
-    def use_lowercase_names(self) -> bool:
-        warnings.warn(
-            "options.use_lowercase_names() is deprecated and will be removed in a future version",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return True
-
-    def use_or_syntax(self) -> bool:
-        if self.python_version >= (3, 10):
-            return not self.force_union_syntax
-        return self.overwrite_union_syntax
 
     def use_star_unpack(self) -> bool:
         return self.python_version >= (3, 11)

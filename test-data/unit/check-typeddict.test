@@ -863,12 +863,12 @@ g = G(a=cast(Any, 1))  # Work around #2610
 reveal_type(u(d, d)) # N: Revealed type is "TypedDict('__main__.D', {'a': builtins.int, 'b': builtins.int})"
 reveal_type(u(c, d)) # N: Revealed type is "TypedDict('__main__.C', {'a': builtins.int})"
 reveal_type(u(d, c)) # N: Revealed type is "TypedDict('__main__.C', {'a': builtins.int})"
-reveal_type(u(c, e)) # N: Revealed type is "Union[TypedDict('__main__.E', {'a': builtins.str}), TypedDict('__main__.C', {'a': builtins.int})]"
-reveal_type(u(e, c)) # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), TypedDict('__main__.E', {'a': builtins.str})]"
-reveal_type(u(c, f)) # N: Revealed type is "Union[TypedDict('__main__.F', {'x': builtins.int}), TypedDict('__main__.C', {'a': builtins.int})]"
-reveal_type(u(f, c)) # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), TypedDict('__main__.F', {'x': builtins.int})]"
-reveal_type(u(c, g)) # N: Revealed type is "Union[TypedDict('__main__.G', {'a': Any}), TypedDict('__main__.C', {'a': builtins.int})]"
-reveal_type(u(g, c)) # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), TypedDict('__main__.G', {'a': Any})]"
+reveal_type(u(c, e)) # N: Revealed type is "TypedDict('__main__.E', {'a': builtins.str}) | TypedDict('__main__.C', {'a': builtins.int})"
+reveal_type(u(e, c)) # N: Revealed type is "TypedDict('__main__.C', {'a': builtins.int}) | TypedDict('__main__.E', {'a': builtins.str})"
+reveal_type(u(c, f)) # N: Revealed type is "TypedDict('__main__.F', {'x': builtins.int}) | TypedDict('__main__.C', {'a': builtins.int})"
+reveal_type(u(f, c)) # N: Revealed type is "TypedDict('__main__.C', {'a': builtins.int}) | TypedDict('__main__.F', {'x': builtins.int})"
+reveal_type(u(c, g)) # N: Revealed type is "TypedDict('__main__.G', {'a': Any}) | TypedDict('__main__.C', {'a': builtins.int})"
+reveal_type(u(g, c)) # N: Revealed type is "TypedDict('__main__.C', {'a': builtins.int}) | TypedDict('__main__.G', {'a': Any})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -889,9 +889,9 @@ m_s_a: Mapping[str, Any]
 
 reveal_type(u(c, m_s_o)) # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
 reveal_type(u(m_s_o, c)) # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
-reveal_type(u(c, m_s_s)) # N: Revealed type is "Union[typing.Mapping[builtins.str, builtins.str], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]"
-reveal_type(u(c, m_i_i)) # N: Revealed type is "Union[typing.Mapping[builtins.int, builtins.int], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]"
-reveal_type(u(c, m_s_a)) # N: Revealed type is "Union[typing.Mapping[builtins.str, Any], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]"
+reveal_type(u(c, m_s_s)) # N: Revealed type is "typing.Mapping[builtins.str, builtins.str] | TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})"
+reveal_type(u(c, m_i_i)) # N: Revealed type is "typing.Mapping[builtins.int, builtins.int] | TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})"
+reveal_type(u(c, m_s_a)) # N: Revealed type is "typing.Mapping[builtins.str, Any] | TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -902,7 +902,7 @@ A = TypedDict('A', {'@type': Literal['a-type'], 'a': str})
 B = TypedDict('B', {'@type': Literal['b-type'], 'b': int})
 
 c: Union[A, B] = {'@type': 'a-type', 'a': 'Test'}
-reveal_type(c) # N: Revealed type is "Union[TypedDict('__main__.A', {'@type': Literal['a-type'], 'a': builtins.str}), TypedDict('__main__.B', {'@type': Literal['b-type'], 'b': builtins.int})]"
+reveal_type(c) # N: Revealed type is "TypedDict('__main__.A', {'@type': Literal['a-type'], 'a': builtins.str}) | TypedDict('__main__.B', {'@type': Literal['b-type'], 'b': builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -923,7 +923,7 @@ A = TypedDict('A', {'@type': Literal['a-type'], 'value': int})
 B = TypedDict('B', {'@type': Literal['b-type'], 'value': int})
 
 c: Union[A, B] = {'@type': 'a-type', 'value': 'Test'}  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
-                                                       # E: Incompatible types in assignment (expression has type "dict[str, str]", variable has type "Union[A, B]")
+                                                       # E: Incompatible types in assignment (expression has type "dict[str, str]", variable has type "A | B")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1026,26 +1026,26 @@ x_or_z: Literal['x', 'z']
 x_or_y_or_z: Literal['x', 'y', 'z']
 
 # test with literal expression
-reveal_type(d.get('x')) # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get('x')) # N: Revealed type is "builtins.int | None"
+reveal_type(d.get('y')) # N: Revealed type is "builtins.str | None"
 reveal_type(d.get('z')) # N: Revealed type is "builtins.object"
-reveal_type(d.get('x', u)) # N: Revealed type is "Union[builtins.int, __main__.Unrelated]"
+reveal_type(d.get('x', u)) # N: Revealed type is "builtins.int | __main__.Unrelated"
 reveal_type(d.get('x', 1)) # N: Revealed type is "builtins.int"
-reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get('y', None)) # N: Revealed type is "builtins.str | None"
 
 # test with literal type / union of literal types with implicit default
-reveal_type(d.get(x)) # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(d.get(y)) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get(x)) # N: Revealed type is "builtins.int | None"
+reveal_type(d.get(y)) # N: Revealed type is "builtins.str | None"
 reveal_type(d.get(z)) # N: Revealed type is "builtins.object"
-reveal_type(d.get(x_or_y)) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+reveal_type(d.get(x_or_y)) # N: Revealed type is "builtins.int | builtins.str | None"
 reveal_type(d.get(x_or_z)) # N: Revealed type is "builtins.object"
 reveal_type(d.get(x_or_y_or_z)) # N: Revealed type is "builtins.object"
 
 # test with literal type / union of literal types with explicit default
-reveal_type(d.get(x, u)) # N: Revealed type is "Union[builtins.int, __main__.Unrelated]"
-reveal_type(d.get(y, u)) # N: Revealed type is "Union[builtins.str, __main__.Unrelated]"
+reveal_type(d.get(x, u)) # N: Revealed type is "builtins.int | __main__.Unrelated"
+reveal_type(d.get(y, u)) # N: Revealed type is "builtins.str | __main__.Unrelated"
 reveal_type(d.get(z, u)) # N: Revealed type is "builtins.object"
-reveal_type(d.get(x_or_y, u)) # N: Revealed type is "Union[builtins.int, builtins.str, __main__.Unrelated]"
+reveal_type(d.get(x_or_y, u)) # N: Revealed type is "builtins.int | builtins.str | __main__.Unrelated"
 reveal_type(d.get(x_or_z, u)) # N: Revealed type is "builtins.object"
 reveal_type(d.get(x_or_y_or_z, u)) # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
@@ -1076,7 +1076,7 @@ reveal_type(d.get('y', None)) # N: Revealed type is "builtins.str"
 reveal_type(d.get(x)) # N: Revealed type is "builtins.int"
 reveal_type(d.get(y)) # N: Revealed type is "builtins.str"
 reveal_type(d.get(z)) # N: Revealed type is "builtins.object"
-reveal_type(d.get(x_or_y)) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(d.get(x_or_y)) # N: Revealed type is "builtins.int | builtins.str"
 reveal_type(d.get(x_or_z)) # N: Revealed type is "builtins.object"
 reveal_type(d.get(x_or_y_or_z)) # N: Revealed type is "builtins.object"
 
@@ -1084,7 +1084,7 @@ reveal_type(d.get(x_or_y_or_z)) # N: Revealed type is "builtins.object"
 reveal_type(d.get(x, u)) # N: Revealed type is "builtins.int"
 reveal_type(d.get(y, u)) # N: Revealed type is "builtins.str"
 reveal_type(d.get(z, u)) # N: Revealed type is "builtins.object"
-reveal_type(d.get(x_or_y, u)) # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(d.get(x_or_y, u)) # N: Revealed type is "builtins.int | builtins.str"
 reveal_type(d.get(x_or_z, u)) # N: Revealed type is "builtins.object"
 reveal_type(d.get(x_or_y_or_z, u)) # N: Revealed type is "builtins.object"
 
@@ -1108,25 +1108,25 @@ x_or_y_or_z: Literal['x', 'y', 'z']
 
 # test with literal expression
 reveal_type(d.get('x')) # N: Revealed type is "builtins.int"
-reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get('y')) # N: Revealed type is "builtins.str | None"
 reveal_type(d.get('z')) # N: Revealed type is "builtins.object"
 reveal_type(d.get('x', u)) # N: Revealed type is "builtins.int"
 reveal_type(d.get('x', 1)) # N: Revealed type is "builtins.int"
-reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get('y', None)) # N: Revealed type is "builtins.str | None"
 
 # test with literal type / union of literal types with implicit default
 reveal_type(d.get(x)) # N: Revealed type is "builtins.int"
-reveal_type(d.get(y)) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get(y)) # N: Revealed type is "builtins.str | None"
 reveal_type(d.get(z)) # N: Revealed type is "builtins.object"
-reveal_type(d.get(x_or_y)) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+reveal_type(d.get(x_or_y)) # N: Revealed type is "builtins.int | builtins.str | None"
 reveal_type(d.get(x_or_z)) # N: Revealed type is "builtins.object"
 reveal_type(d.get(x_or_y_or_z)) # N: Revealed type is "builtins.object"
 
 # test with literal type / union of literal types with explicit default
 reveal_type(d.get(x, u)) # N: Revealed type is "builtins.int"
-reveal_type(d.get(y, u)) # N: Revealed type is "Union[builtins.str, __main__.Unrelated]"
+reveal_type(d.get(y, u)) # N: Revealed type is "builtins.str | __main__.Unrelated"
 reveal_type(d.get(z, u)) # N: Revealed type is "builtins.object"
-reveal_type(d.get(x_or_y, u)) # N: Revealed type is "Union[builtins.int, builtins.str, __main__.Unrelated]"
+reveal_type(d.get(x_or_y, u)) # N: Revealed type is "builtins.int | builtins.str | __main__.Unrelated"
 reveal_type(d.get(x_or_z, u)) # N: Revealed type is "builtins.object"
 reveal_type(d.get(x_or_y_or_z, u)) # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
@@ -1139,9 +1139,9 @@ class A: pass
 D = TypedDict('D', {'x': List[int], 'y': int}, total=False)
 d: D
 reveal_type(d.get('x', [])) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(d.get('x', ['x']))  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+reveal_type(d.get('x', ['x']))  # N: Revealed type is "builtins.list[builtins.int] | builtins.list[builtins.str]"
 a = ['']
-reveal_type(d.get('x', a)) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+reveal_type(d.get('x', a)) # N: Revealed type is "builtins.list[builtins.int] | builtins.list[builtins.str]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1158,7 +1158,7 @@ d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument
                  # N: Possible overload variants: \
                  # N:     def get(self, k: str) -> object \
                  # N:     def get(self, str, object, /) -> object \
-                 # N:     def [V] get(self, str, Union[int, V], /) -> object
+                 # N:     def [V] get(self, str, int | V, /) -> object
 x = d.get('z')
 reveal_type(x) # N: Revealed type is "builtins.object"
 s = ''
@@ -1198,8 +1198,8 @@ C = TypedDict('C', {'a': int}, total=True)
 D = TypedDict('D', {'x': C, 'y': str}, total=False)
 d: D
 reveal_type(d.get('x', {})) # N: Revealed type is "TypedDict('__main__.C', {'a'?: builtins.int})"
-reveal_type(d.get('x', None)) # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), None]"
-reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(d.get('x', None)) # N: Revealed type is "TypedDict('__main__.C', {'a': builtins.int}) | None"
+reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "builtins.int | None"
 reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -1212,7 +1212,7 @@ D = TypedDict('D', {'x': C, 'y': str}, total=True)
 d: D
 reveal_type(d.get('x', {}))  # N: Revealed type is "TypedDict('__main__.C', {'a'?: builtins.int})"
 reveal_type(d.get('x', None))  # N: Revealed type is "TypedDict('__main__.C', {'a'?: builtins.int})"
-reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "builtins.int | None"
 reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -1237,8 +1237,8 @@ C = TypedDict('C', {'a': int}, total=False)
 D = TypedDict('D', {'x': C, 'y': str}, total=False)
 d: D
 reveal_type(d.get('x', {}))  # N: Revealed type is "TypedDict('__main__.C', {'a'?: builtins.int})"
-reveal_type(d.get('x', None))  # N: Revealed type is "Union[TypedDict('__main__.C', {'a'?: builtins.int}), None]"
-reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(d.get('x', None))  # N: Revealed type is "TypedDict('__main__.C', {'a'?: builtins.int}) | None"
+reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "builtins.int | None"
 reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -1280,22 +1280,22 @@ def test_chaining(d: Config) -> None:
     reveal_type( d.get("required_total", {}).get("key_one")  )  # N: Revealed type is "builtins.int"
     reveal_type( d.get("required_total", {}).get("key_two")  )  # N: Revealed type is "builtins.str"
     reveal_type( d.get("required_total", {}).get("bad_key")  )  # N: Revealed type is "builtins.object"
-    reveal_type( d.get("optional_total", {}).get("key_one")  )  # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type( d.get("optional_total", {}).get("key_two")  )  # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type( d.get("optional_total", {}).get("key_one")  )  # N: Revealed type is "builtins.int | None"
+    reveal_type( d.get("optional_total", {}).get("key_two")  )  # N: Revealed type is "builtins.str | None"
     reveal_type( d.get("optional_total", {}).get("bad_key")  )  # N: Revealed type is "builtins.object"
 
-    reveal_type( d.get("required_maybe", {}).get("key_one")  )  # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type( d.get("required_maybe", {}).get("key_two")  )  # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type( d.get("required_maybe", {}).get("key_one")  )  # N: Revealed type is "builtins.int | None"
+    reveal_type( d.get("required_maybe", {}).get("key_two")  )  # N: Revealed type is "builtins.str | None"
     reveal_type( d.get("required_maybe", {}).get("bad_key")  )  # N: Revealed type is "builtins.object"
-    reveal_type( d.get("optional_maybe", {}).get("key_one")  )  # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type( d.get("optional_maybe", {}).get("key_two")  )  # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type( d.get("optional_maybe", {}).get("key_one")  )  # N: Revealed type is "builtins.int | None"
+    reveal_type( d.get("optional_maybe", {}).get("key_two")  )  # N: Revealed type is "builtins.str | None"
     reveal_type( d.get("optional_maybe", {}).get("bad_key")  )  # N: Revealed type is "builtins.object"
 
     reveal_type( d.get("required_mixed", {}).get("key_one")  )  # N: Revealed type is "builtins.int"
-    reveal_type( d.get("required_mixed", {}).get("key_two")  )  # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type( d.get("required_mixed", {}).get("key_two")  )  # N: Revealed type is "builtins.str | None"
     reveal_type( d.get("required_mixed", {}).get("bad_key")  )  # N: Revealed type is "builtins.object"
-    reveal_type( d.get("optional_mixed", {}).get("key_one")  )  # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type( d.get("optional_mixed", {}).get("key_two")  )  # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type( d.get("optional_mixed", {}).get("key_one")  )  # N: Revealed type is "builtins.int | None"
+    reveal_type( d.get("optional_mixed", {}).get("key_two")  )  # N: Revealed type is "builtins.str | None"
     reveal_type( d.get("optional_mixed", {}).get("bad_key")  )  # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -1318,7 +1318,7 @@ A_or_B: TypeAlias = Union[A, B]
 A_or_B_or_C: TypeAlias = Union[A_or_B, C]
 
 def test(d: A_or_B_or_C) -> None:
-    reveal_type(d.get("key"))  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(d.get("key"))  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1375,8 +1375,8 @@ D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
 reveal_type(d['x']) # N: Revealed type is "builtins.int"
 reveal_type(d['y']) # N: Revealed type is "builtins.str"
-reveal_type(d.get('x')) # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get('x')) # N: Revealed type is "builtins.int | None"
+reveal_type(d.get('y')) # N: Revealed type is "builtins.str | None"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1851,7 +1851,7 @@ def f1(x: T, y: S) -> Union[T, S]: ...
 
 A = TypedDict('A', {'y': int, 'x': str})
 a: A
-reveal_type(f1(**a)) # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(f1(**a)) # N: Revealed type is "builtins.str | builtins.int"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1963,8 +1963,8 @@ b: B
 
 reveal_type(a.pop('x')) # N: Revealed type is "builtins.int"
 reveal_type(a.pop('y', [])) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(a.pop('x', '')) # N: Revealed type is "Union[builtins.int, Literal['']?]"
-reveal_type(a.pop('x', (1, 2))) # N: Revealed type is "Union[builtins.int, tuple[Literal[1]?, Literal[2]?]]"
+reveal_type(a.pop('x', '')) # N: Revealed type is "builtins.int | Literal['']?"
+reveal_type(a.pop('x', (1, 2))) # N: Revealed type is "builtins.int | tuple[Literal[1]?, Literal[2]?]"
 a.pop('invalid', '') # E: TypedDict "A" has no key "invalid"
 b.pop('x') # E: Key "x" of TypedDict "B" cannot be deleted
 x = ''
@@ -2010,12 +2010,12 @@ class TDB(TypedDict):
 td: Union[TDA, TDB]
 
 reveal_type(td.get('a'))  # N: Revealed type is "builtins.int"
-reveal_type(td.get('b'))  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(td.get('b'))  # N: Revealed type is "builtins.str | builtins.int"
 reveal_type(td.get('c'))  # N: Revealed type is "builtins.object"
 
 reveal_type(td['a'])  # N: Revealed type is "builtins.int"
-reveal_type(td['b'])  # N: Revealed type is "Union[builtins.str, builtins.int]"
-reveal_type(td['c'])  # N: Revealed type is "Union[Any, builtins.int]" \
+reveal_type(td['b'])  # N: Revealed type is "builtins.str | builtins.int"
+reveal_type(td['c'])  # N: Revealed type is "Any | builtins.int" \
                       # E: TypedDict "TDA" has no key "c"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -2035,8 +2035,8 @@ class TDB(TypedDict, total=False):
 td: Union[TDA, TDB]
 
 reveal_type(td.pop('a'))  # N: Revealed type is "builtins.int"
-reveal_type(td.pop('b'))  # N: Revealed type is "Union[builtins.str, builtins.int]"
-reveal_type(td.pop('c'))  # N: Revealed type is "Union[Any, builtins.int]" \
+reveal_type(td.pop('b'))  # N: Revealed type is "builtins.str | builtins.int"
+reveal_type(td.pop('c'))  # N: Revealed type is "Any | builtins.int" \
                           # E: TypedDict "TDA" has no key "c"
 
 [builtins fixtures/dict.pyi]
@@ -2830,9 +2830,9 @@ def func(foo: Union[Foo1, Foo2]) -> str:
     # ok, but type is incorrect:
     reveal_type(foo.__getitem__("z"))  # N: Revealed type is "builtins.object"
 
-    reveal_type(foo["a"])  # N: Revealed type is "Union[builtins.int, Any]" \
+    reveal_type(foo["a"])  # N: Revealed type is "builtins.int | Any" \
                            # E: TypedDict "Foo2" has no key "a"
-    reveal_type(foo["b"])  # N: Revealed type is "Union[Any, builtins.int]" \
+    reveal_type(foo["b"])  # N: Revealed type is "Any | builtins.int" \
                            # E: TypedDict "Foo1" has no key "b"
     reveal_type(foo["missing"])  # N: Revealed type is "Any" \
                                  # E: TypedDict "Foo1" has no key "missing" \
@@ -3142,7 +3142,7 @@ def method(message: Response) -> None: ...
 method({'type': 'a', 'value': True})  # OK
 method({'type': 'b', 'value': 'abc'})  # OK
 method({'type': 'a', 'value': 'abc'})  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
-                                       # E: Argument 1 to "method" has incompatible type "dict[str, str]"; expected "Union[A, B]"
+                                       # E: Argument 1 to "method" has incompatible type "dict[str, str]"; expected "A | B"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3161,7 +3161,7 @@ class D(TypedDict, total=False):
 def foo(data: Union[A, B]) -> None: ...
 foo({"foo": {"c": "foo"}})  # OK
 foo({"foo": {"e": "foo"}})  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
-                            # E: Argument 1 to "foo" has incompatible type "dict[str, dict[str, str]]"; expected "Union[A, B]"
+                            # E: Argument 1 to "foo" has incompatible type "dict[str, dict[str, str]]"; expected "A | B"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3244,7 +3244,7 @@ C = TypedDict("C", {"bar": int})
 
 a = A({"foo": 1, "bar": 2})
 u: Union[B, C]
-a.update(u)  # E: Argument 1 to "update" of "TypedDict" has incompatible type "Union[B, C]"; expected "Union[TypedDict({'foo': int, 'bar'?: int}), TypedDict({'foo'?: int, 'bar': int})]"
+a.update(u)  # E: Argument 1 to "update" of "TypedDict" has incompatible type "B | C"; expected "TypedDict({'foo': int, 'bar'?: int}) | TypedDict({'foo'?: int, 'bar': int})"
 u2: Union[A1, A2]
 a.update(u2)  # OK
 [builtins fixtures/dict.pyi]
@@ -3698,8 +3698,8 @@ class Bar(Foo[T], total=False):
     other: str
 
 b: Bar[int]
-reveal_type(b["a"])  # N: Revealed type is "Union[builtins.str, None]"
-reveal_type(b["g"])  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(b["a"])  # N: Revealed type is "builtins.str | None"
+reveal_type(b["g"])  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -4236,8 +4236,8 @@ class TP(TypedDict):
 
 x: TP
 reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TP', {'one'?=: builtins.int, 'two'?=: builtins.str})"
-reveal_type(x.get("one"))  # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(x.get("two"))  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(x.get("one"))  # N: Revealed type is "builtins.int | None"
+reveal_type(x.get("two"))  # N: Revealed type is "builtins.str | None"
 x["one"] = 1  # E: ReadOnly TypedDict key "one" TypedDict is mutated
 x["two"] = "a"  # E: ReadOnly TypedDict key "two" TypedDict is mutated
 [builtins fixtures/dict.pyi]
