@@ -6692,26 +6692,26 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         #   with narrowing when using 'is' and conservative when using '==' seems
         #   to break the least amount of real-world code.
         #
-        # should_narrow_by_identity:
+        # should_narrow_by_identity_equality:
         #   Set to 'false' only if the user defines custom __eq__ or __ne__ methods
         #   that could cause identity-based narrowing to produce invalid results.
         if operator in {"is", "is not"}:
             is_valid_target: Callable[[Type], bool] = is_singleton_type
             coerce_only_in_literal_context = False
-            should_narrow_by_identity = True
+            should_narrow_by_identity_equality = True
         elif operator in {"==", "!="}:
             is_valid_target = is_singleton_value
             coerce_only_in_literal_context = True
 
             expr_types = [operand_types[i] for i in expr_indices]
-            should_narrow_by_identity = not any(
+            should_narrow_by_identity_equality = not any(
                 map(has_custom_eq_checks, expr_types)
             ) and not is_ambiguous_mix_of_enums(expr_types)
         else:
             raise AssertionError
 
-        if should_narrow_by_identity:
-            return self.refine_identity_comparison_expression(
+        if should_narrow_by_identity_equality:
+            return self.narrow_identity_equality_comparison(
                 operands,
                 operand_types,
                 expr_indices,
@@ -6720,6 +6720,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 coerce_only_in_literal_context,
             )
 
+        # This is a bit of a legacy code path that might be a little unsound since it ignores
+        # custom __eq__. We should see if we can get rid of it.
         return self.refine_away_none_in_comparison(
             operands, operand_types, expr_indices, narrowable_indices
         )
@@ -6905,7 +6907,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             return parent_expr
         return expr
 
-    def refine_identity_comparison_expression(
+    def narrow_identity_equality_comparison(
         self,
         operands: list[Expression],
         operand_types: list[Type],
