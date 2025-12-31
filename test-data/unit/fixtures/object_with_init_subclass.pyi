@@ -1,3 +1,4 @@
+import _typeshed
 from typing import Sequence, Iterator, TypeVar, Mapping, Iterable, Optional, Union, overload, Tuple, Generic, List
 
 class object:

@@ -10,9 +10,9 @@ import re
 import shutil
 import sys
 import time
-from collections.abc import Container, Iterable, Sequence, Sized
+from collections.abc import Callable, Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, Any, Callable, Final, Literal, TypeVar
+from typing import IO, Any, Final, Literal, TypeVar
 
 orjson: Any
 try:
@@ -482,10 +482,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 9):  # noqa: UP036, RUF100
+    if sys.version_info[:2] < (3, 10):  # noqa: UP036, RUF100
         sys.exit(
-            "Running {name} with Python 3.8 or lower is not supported; "
-            "please upgrade to 3.9 or newer".format(name=program)
+            "Running {name} with Python 3.9 or lower is not supported; "
+            "please upgrade to 3.10 or newer".format(name=program)
         )
 
 
@@ -567,6 +567,14 @@ def hash_digest(data: bytes) -> str:
     cryptographic properties.
     """
     return hashlib.sha1(data).hexdigest()
+
+
+def hash_digest_bytes(data: bytes) -> bytes:
+    """Compute a hash digest of some data.
+
+    Similar to above but returns a bytes object.
+    """
+    return hashlib.sha1(data).digest()
 
 
 def parse_gray_color(cup: bytes) -> str:
