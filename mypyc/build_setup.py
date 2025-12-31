@@ -48,7 +48,7 @@ def spawn(self, cmd, **kwargs) -> None:  # type: ignore[no-untyped-def]
                 new_cmd.extend(["-msimd128"])
     else:
         compiler_type: str = self.compiler_type
-        extra_options = EXTRA_FLAGS_PER_COMPILER_TYPE_PER_PATH_COMPONENT[compiler_type]
+        extra_options = EXTRA_FLAGS_PER_COMPILER_TYPE_PER_PATH_COMPONENT.get(compiler_type, None)
         new_cmd = list(cmd)
         if X86_64 and extra_options is not None:
             # filenames are closer to the end of command line

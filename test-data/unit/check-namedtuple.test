@@ -144,7 +144,7 @@ X(0, 1)  # ok
 X(0, 1, 2)  # E: Too many arguments for "X"
 
 Y = namedtuple('Y', ['x', 'y'], defaults=(1, 2, 3))  # E: Too many defaults given in call to "namedtuple()"
-Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to namedtuple()  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"
+Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to namedtuple()  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Iterable[Any] | None"
 
 [builtins fixtures/list.pyi]
 
@@ -764,13 +764,13 @@ def test() -> None:
     class B(NamedTuple('B', [('val', object)])): pass
 
     exp: Exp
-    reveal_type(exp)  # N: Revealed type is "Union[Any, tuple[builtins.object, fallback=__main__.B@6]]"
+    reveal_type(exp)  # N: Revealed type is "Any | tuple[builtins.object, fallback=__main__.B@6]"
     if isinstance(exp, A):
-        reveal_type(exp[0][0])  # N: Revealed type is "Union[Any, tuple[builtins.object, fallback=__main__.B@6]]"
-        reveal_type(exp.attr[0])  # N: Revealed type is "Union[Any, tuple[builtins.object, fallback=__main__.B@6]]"
+        reveal_type(exp[0][0])  # N: Revealed type is "Any | tuple[builtins.object, fallback=__main__.B@6]"
+        reveal_type(exp.attr[0])  # N: Revealed type is "Any | tuple[builtins.object, fallback=__main__.B@6]"
     if isinstance(exp, B):
         reveal_type(exp.val)  # N: Revealed type is "builtins.object"
-    reveal_type(A([B(1), B(2)]))  # N: Revealed type is "tuple[builtins.list[Union[Any, tuple[builtins.object, fallback=__main__.B@6]]], fallback=__main__.A@5]"
+    reveal_type(A([B(1), B(2)]))  # N: Revealed type is "tuple[builtins.list[Any | tuple[builtins.object, fallback=__main__.B@6]], fallback=__main__.A@5]"
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -1241,7 +1241,7 @@ nti: NT[int]
 reveal_type(nti * x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 nts: NT[str]
-reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
+reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[builtins.int | builtins.str, ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1302,9 +1302,9 @@ reveal_type(foo(nti, nts))  # N: Revealed type is "tuple[builtins.int, builtins.
 reveal_type(foo(nts, nti))  # N: Revealed type is "tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
 
 reveal_type(foo(nti, x))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
+reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[builtins.int | builtins.str, ...]"
 reveal_type(foo(x, nti))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
+reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[builtins.int | builtins.str, ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1499,7 +1499,7 @@ def g(x: Union[A, B, str]) -> Union[A, B, str]:
     if isinstance(x, str):
         return x
     else:
-        reveal_type(x)  # N: Revealed type is "Union[tuple[tuple[builtins.str, fallback=__main__.AKey], fallback=__main__.A], tuple[tuple[builtins.str, fallback=__main__.BKey], fallback=__main__.B]]"
+        reveal_type(x)  # N: Revealed type is "tuple[tuple[builtins.str, fallback=__main__.AKey], fallback=__main__.A] | tuple[tuple[builtins.str, fallback=__main__.BKey], fallback=__main__.B]"
         return x._replace()
 
 # no errors should be raised above.
@@ -1516,7 +1516,7 @@ class C(T):
         return True
 
 c: Union[C, Any]
-reveal_type(c.f())  # N: Revealed type is "Union[builtins.bool, Any]"
+reveal_type(c.f())  # N: Revealed type is "builtins.bool | Any"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAsClassMemberNoCrash]

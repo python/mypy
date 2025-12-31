@@ -818,7 +818,7 @@ class B:
 
 AOrB = Union[A, B]
 
-reveal_type(A)  # N: Revealed type is "def (frob: builtins.list[Union[__main__.A, __main__.B]]) -> __main__.A"
+reveal_type(A)  # N: Revealed type is "def (frob: builtins.list[__main__.A | __main__.B]) -> __main__.A"
 reveal_type(B)  # N: Revealed type is "def () -> __main__.B"
 
 A([B()])
@@ -2166,8 +2166,8 @@ class B:
 
 a_or_b: A[int] | B
 a2 = attrs.evolve(a_or_b, x=42, y=True)
-a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected "Never"
-a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "dict[Never, Never]"; expected "Never"
+a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "A[int] | B" has incompatible type "str"; expected "Never"
+a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "A[int] | B" has incompatible type "dict[Never, Never]"; expected "Never"
 
 [builtins fixtures/plugin_attrs.pyi]
 
@@ -2191,8 +2191,8 @@ TA = TypeVar('TA', bound=A)
 TB = TypeVar('TB', bound=B)
 
 def f(b_or_t: TA | TB | int) -> None:
-    a2 = attrs.evolve(b_or_t)  # E: Argument 1 to "evolve" has type "Union[TA, TB, int]" whose item "TB" is not bound to an attrs class \
-                               # E: Argument 1 to "evolve" has incompatible type "Union[TA, TB, int]" whose item "int" is not an attrs class
+    a2 = attrs.evolve(b_or_t)  # E: Argument 1 to "evolve" has type "TA | TB | int" whose item "TB" is not bound to an attrs class \
+                               # E: Argument 1 to "evolve" has incompatible type "TA | TB | int" whose item "int" is not an attrs class
 
 
 [builtins fixtures/plugin_attrs.pyi]
@@ -2489,5 +2489,5 @@ class Child(Parent[float]):
 
 Parent(run_type = None)
 c = Child(run_type = None)
-reveal_type(c.run_type)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(c.run_type)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/plugin_attrs.pyi]

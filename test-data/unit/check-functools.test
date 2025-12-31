@@ -348,12 +348,12 @@ fn1: Union[Callable[[int], int], Callable[[int], int]]
 reveal_type(functools.partial(fn1, 2)())  # N: Revealed type is "builtins.int"
 
 fn2: Union[Callable[[int], int], Callable[[int], str]]
-reveal_type(functools.partial(fn2, 2)())  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(functools.partial(fn2, 2)())  # N: Revealed type is "builtins.int | builtins.str"
 
 fn3: Union[Callable[[int], int], str]
 reveal_type(functools.partial(fn3, 2)())  # E: "str" not callable \
                                           # N: Revealed type is "builtins.int" \
-                                          # E: Argument 1 to "partial" has incompatible type "Union[Callable[[int], int], str]"; expected "Callable[..., int]"
+                                          # E: Argument 1 to "partial" has incompatible type "Callable[[int], int] | str"; expected "Callable[..., int]"
 [builtins fixtures/tuple.pyi]
 
 [case testFunctoolsPartialUnionOfTypeAndCallable]

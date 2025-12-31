@@ -42,6 +42,7 @@ T4 = TypeVar("T4", int, str, default=int)
 T5 = TypeVar("T5", default=S0)
 T6 = TypeVar("T6", bound=float, default=S1)
 T7 = TypeVar("T7", bound=List[Any], default=List[S0])
+T8 = TypeVar("T8", default=Tuple[int, Unpack[Tuple[int, str]]])
 
 P1 = ParamSpec("P1", default=[])
 P2 = ParamSpec("P2", default=...)
@@ -274,11 +275,11 @@ def func_a4(
     a: ClassA4,
     b: ClassA4[float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "__main__.ClassA4[Union[builtins.int, None]]"
+    reveal_type(a)  # N: Revealed type is "__main__.ClassA4[builtins.int | None]"
     reveal_type(b)  # N: Revealed type is "__main__.ClassA4[builtins.float]"
 
     k = ClassA4()
-    reveal_type(k)  # N: Revealed type is "__main__.ClassA4[Union[builtins.int, None]]"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassA4[builtins.int | None]"
     l = ClassA4[float]()
     reveal_type(l)  # N: Revealed type is "__main__.ClassA4[builtins.float]"
 
@@ -591,11 +592,11 @@ def func_a3(
     d: TA3[float, float, float],
     e: TA3[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 1 and 3, given 4
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "Union[builtins.dict[Any, builtins.int], builtins.list[builtins.str]]"
-    reveal_type(b)  # N: Revealed type is "Union[builtins.dict[builtins.float, builtins.int], builtins.list[builtins.str]]"
-    reveal_type(c)  # N: Revealed type is "Union[builtins.dict[builtins.float, builtins.float], builtins.list[builtins.str]]"
-    reveal_type(d)  # N: Revealed type is "Union[builtins.dict[builtins.float, builtins.float], builtins.list[builtins.float]]"
-    reveal_type(e)  # N: Revealed type is "Union[builtins.dict[Any, builtins.int], builtins.list[builtins.str]]"
+    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, builtins.int] | builtins.list[builtins.str]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.float, builtins.int] | builtins.list[builtins.str]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.float, builtins.float] | builtins.list[builtins.str]"
+    reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.float, builtins.float] | builtins.list[builtins.float]"
+    reveal_type(e)  # N: Revealed type is "builtins.dict[Any, builtins.int] | builtins.list[builtins.str]"
 
 TA4 = Tuple[T1, T4, T2]
 
@@ -777,7 +778,7 @@ class A(Generic[T1, T2]):
 
 MyA = A[T1, int]
 a: MyA = A(None, 10)
-reveal_type(a.a)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(a.a)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarConstraintsDefaultAliasesTypeAliasType]
