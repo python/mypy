@@ -737,3 +737,16 @@ MypyFile:1(
     def (x: a?[b?]) -> c.d?[e.f.g?[h?], i?]
     Block:2(
       PassStmt:2())))
+
+[case testUnionTypes]
+def f(x: int | str) -> bool | None:
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var:nil(x))
+    def (x: Union[int?, str?]) -> Union[bool?, None?]
+    Block:2(
+      PassStmt:2())))

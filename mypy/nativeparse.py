@@ -296,6 +296,17 @@ def read_type(data: ReadBuffer) -> Type:
         read_loc(data, unbound)
         expect_end_tag(data)
         return unbound
+    elif tag == types.UNION_TYPE:
+        # Read items list
+        expect_tag(data, LIST_GEN)
+        n = read_int_bare(data)
+        items = [read_type(data) for i in range(n)]
+        # Read uses_pep604_syntax flag
+        uses_pep604_syntax = read_bool(data)
+        union = UnionType(items, uses_pep604_syntax=uses_pep604_syntax)
+        read_loc(data, union)
+        expect_end_tag(data)
+        return union
     else:
         assert False, tag
 
