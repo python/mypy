@@ -794,3 +794,34 @@ MypyFile:1(
   RaiseStmt:4(
     NameExpr(KeyError)
     NameExpr(e)))
+
+[case testBreakAndContinue]
+while True:
+    break
+while x:
+    continue
+while y:
+    if z:
+        break
+    else:
+        continue
+[out]
+MypyFile:1(
+  WhileStmt:1(
+    NameExpr(True)
+    Block:2(
+      BreakStmt:2()))
+  WhileStmt:3(
+    NameExpr(x)
+    Block:4(
+      ContinueStmt:4()))
+  WhileStmt:5(
+    NameExpr(y)
+    Block:6(
+      IfStmt:6(
+        If(
+          NameExpr(z))
+        Then(
+          BreakStmt:7())
+        Else(
+          ContinueStmt:9())))))

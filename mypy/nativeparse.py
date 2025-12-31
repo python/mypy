@@ -51,9 +51,11 @@ from mypy.nodes import (
     Argument,
     AssignmentStmt,
     Block,
+    BreakStmt,
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ContinueStmt,
     ComplexExpr,
     Context,
     DictExpr,
@@ -278,6 +280,16 @@ def read_statement(data: ReadBuffer) -> Statement:
         return stmt
     elif tag == nodes.PASS_STMT:
         stmt = PassStmt()
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.BREAK_STMT:
+        stmt = BreakStmt()
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.CONTINUE_STMT:
+        stmt = ContinueStmt()
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
