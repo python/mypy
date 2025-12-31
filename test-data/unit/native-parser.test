@@ -775,3 +775,22 @@ MypyFile:1(
   Import:1(x)
   Import:2(a, b)
   Import:3(y : z))
+
+[case testRaiseStatements]
+raise
+raise ValueError
+raise ValueError("error message")
+raise KeyError from e
+[out]
+MypyFile:1(
+  RaiseStmt:1()
+  RaiseStmt:2(
+    NameExpr(ValueError))
+  RaiseStmt:3(
+    CallExpr:3(
+      NameExpr(ValueError)
+      Args(
+        StrExpr(error message))))
+  RaiseStmt:4(
+    NameExpr(KeyError)
+    NameExpr(e)))

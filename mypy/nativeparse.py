@@ -72,6 +72,7 @@ from mypy.nodes import (
     Node,
     OpExpr,
     PassStmt,
+    RaiseStmt,
     ReturnStmt,
     SetExpr,
     SliceExpr,
@@ -247,6 +248,23 @@ def read_statement(data: ReadBuffer) -> Statement:
         else:
             value = None
         stmt = ReturnStmt(value)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.RAISE_STMT:
+        # Read exception expression (optional)
+        has_exc = read_bool(data)
+        if has_exc:
+            exc = read_expression(data)
+        else:
+            exc = None
+        # Read from expression (optional)
+        has_from = read_bool(data)
+        if has_from:
+            from_expr = read_expression(data)
+        else:
+            from_expr = None
+        stmt = RaiseStmt(exc, from_expr)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt

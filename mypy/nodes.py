@@ -5044,6 +5044,7 @@ DICT_EXPR: Final[Tag] = 183
 COMPLEX_EXPR: Final[Tag] = 184
 SLICE_EXPR: Final[Tag] = 185
 TEMP_NODE: Final[Tag] = 186
+RAISE_STMT: Final[Tag] = 187
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
