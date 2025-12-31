@@ -750,3 +750,18 @@ MypyFile:1(
     def (x: Union[int?, str?]) -> Union[bool?, None?]
     Block:2(
       PassStmt:2())))
+
+[case testAnnotatedAssignment]
+x: int
+y: str = "hello"
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    int?)
+  AssignmentStmt:2(
+    NameExpr(y)
+    StrExpr(hello)
+    str?))

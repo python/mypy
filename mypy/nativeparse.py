@@ -76,6 +76,7 @@ from mypy.nodes import (
     SliceExpr,
     Statement,
     StrExpr,
+    TempNode,
     TupleExpr,
     UnaryExpr,
     Var,
@@ -204,8 +205,22 @@ def read_statement(data: ReadBuffer) -> Statement:
     elif tag == nodes.ASSIGNMENT_STMT:
         lvalues = read_expression_list(data)
         rvalue = read_expression(data)
-        a = AssignmentStmt(lvalues, rvalue)
+        # Read type annotation
+        has_type = read_bool(data)
+        if has_type:
+            type_annotation = read_type(data)
+        else:
+            type_annotation = None
+        # Read new_syntax flag
+        new_syntax = read_bool(data)
+        a = AssignmentStmt(lvalues, rvalue, type=type_annotation, new_syntax=new_syntax)
         read_loc(data, a)
+        # If rvalue is TempNode, copy location from AssignmentStmt
+        if isinstance(rvalue, TempNode):
+            rvalue.line = a.line
+            rvalue.column = a.column
+            rvalue.end_line = a.end_line
+            rvalue.end_column = a.end_column
         expect_end_tag(data)
         return a
     elif tag == nodes.IF_STMT:
@@ -524,6 +539,11 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
+    elif tag == nodes.TEMP_NODE:
+        # TempNode with no attributes
+        temp = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
+        expect_end_tag(data)
+        return temp
     else:
         assert False, tag
 
