@@ -14,6 +14,14 @@ from gettext import gettext
 from io import TextIOWrapper
 from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
+if platform.python_implementation() == "PyPy":
+    sys.stderr.write(
+        "ERROR: Running mypy on PyPy is not supported yet.\n"
+        "To type-check a PyPy library please use an equivalent CPython version,\n"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
+    )
+    sys.exit(2)
+
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
     get_config_module_names,
@@ -40,14 +48,6 @@ from mypy.version import __version__
 
 if TYPE_CHECKING:
     from _typeshed import SupportsWrite
-
-if platform.python_implementation() == "PyPy":
-    sys.stderr.write(
-        "ERROR: Running mypy on PyPy is not supported yet.\n"
-        "To type-check a PyPy library please use an equivalent CPython version,\n"
-        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
-    )
-    sys.exit(2)
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
@@ -815,19 +815,6 @@ def define_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
-    # This flag is deprecated, Mypy only supports Python 3.9+
-    add_invertible_flag(
-        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
-    )
-
-    add_invertible_flag(
-        "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
-    )
-    # For internal use only! Will be removed once Mypy drops support for Python 3.9.
-    add_invertible_flag(
-        "--overwrite-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
-    )
-
     lint_group = parser.add_argument_group(
         title="Configuring warnings",
         description="Detect code that is sound but redundant or problematic.",
@@ -1544,9 +1531,6 @@ def process_options(
 
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
-
-    if options.force_uppercase_builtins:
-        print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:

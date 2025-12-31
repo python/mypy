@@ -1059,8 +1059,8 @@ _testTypedDictGet.py:10: note: Revealed type is "builtins.object"
 _testTypedDictGet.py:11: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:11: note: Possible overload variants:
 _testTypedDictGet.py:11: note:     def get(self, str, /) -> object
-_testTypedDictGet.py:11: note:     def get(self, str, /, default: object) -> object
-_testTypedDictGet.py:11: note:     def [_T] get(self, str, /, default: _T) -> object
+_testTypedDictGet.py:11: note:     def get(self, str, object, /) -> object
+_testTypedDictGet.py:11: note:     def [_T] get(self, str, _T, /) -> object
 _testTypedDictGet.py:13: note: Revealed type is "builtins.object"
 _testTypedDictGet.py:16: note: Revealed type is "builtins.int | None"
 _testTypedDictGet.py:17: note: Revealed type is "builtins.str | None"
@@ -1068,8 +1068,8 @@ _testTypedDictGet.py:18: note: Revealed type is "builtins.object"
 _testTypedDictGet.py:19: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:19: note: Possible overload variants:
 _testTypedDictGet.py:19: note:     def get(self, str, /) -> object
-_testTypedDictGet.py:19: note:     def get(self, str, /, default: object) -> object
-_testTypedDictGet.py:19: note:     def [_T] get(self, str, /, default: _T) -> object
+_testTypedDictGet.py:19: note:     def get(self, str, object, /) -> object
+_testTypedDictGet.py:19: note:     def [_T] get(self, str, _T, /) -> object
 _testTypedDictGet.py:21: note: Revealed type is "builtins.object"
 
 [case testTypedDictMappingMethods]

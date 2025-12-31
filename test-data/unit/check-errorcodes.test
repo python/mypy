@@ -371,7 +371,7 @@ class A:
 class B:
     y: str
 a: Union[A, B]
-a.x  # E: Item "B" of "Union[A, B]" has no attribute "x"  [union-attr]
+a.x  # E: Item "B" of "A | B" has no attribute "x"  [union-attr]
 
 [case testErrorCodeFunctionHasNoAnnotation]
 # flags: --disallow-untyped-defs
@@ -623,7 +623,7 @@ B()  # E: Cannot instantiate abstract class "B" with abstract attribute "f"  [ab
 [case testErrorCodeNewTypeNotSubclassable]
 from typing import Union, NewType
 
-X = NewType('X', Union[int, str])  # E: Argument 2 to NewType(...) must be subclassable (got "Union[int, str]")  [valid-newtype]
+X = NewType('X', Union[int, str])  # E: Argument 2 to NewType(...) must be subclassable (got "int | str")  [valid-newtype]
 
 [case testErrorCodeOverloadVariant]
 from typing import overload
@@ -682,7 +682,7 @@ def g() -> int:
 '{!x}'.format('Hm...')  # E: Invalid conversion type "x", must be one of "r", "s" or "a"  [str-format]
 '}{'.format()  # E: Invalid conversion specifier in format string: unexpected }  [str-format]
 
-'%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
+'%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int | float | SupportsInt")  [str-format]
 '%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
 
 '{}'.format(b'abc')  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes  [str-bytes-safe]
@@ -927,12 +927,12 @@ if not good_union:
 not good_union
 
 bad_union: Union[Foo, Bar] = Foo()
-if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if bad_union:  # E: "__main__.bad_union" has type "Foo | Bar" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
-if not bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if not bad_union:  # E: "__main__.bad_union" has type "Foo | Bar" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
-not bad_union  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+not bad_union  # E: "__main__.bad_union" has type "Foo | Bar" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
 
 # 'object' is special and is treated as potentially falsy
 obj: object = Foo()

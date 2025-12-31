@@ -15,8 +15,8 @@ a[1] = ctypes.c_int(42)
 a[2] = MyCInt(42)
 a[3] = b"bytes"  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "bytes" \
                  # N: Possible overload variants: \
-                 # N:     def __setitem__(self, int, Union[c_int, int], /) -> None \
-                 # N:     def __setitem__(self, slice, list[Union[c_int, int]], /) -> None
+                 # N:     def __setitem__(self, int, c_int | int, /) -> None \
+                 # N:     def __setitem__(self, slice, list[c_int | int], /) -> None
 for x in a:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/floatdict.pyi]
@@ -39,19 +39,19 @@ reveal_type(mya[1:3])  # N: Revealed type is "builtins.list[__main__.MyCInt]"
 mya[0] = 42
 mya[1] = ctypes.c_int(42)  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "c_int" \
                            # N: Possible overload variants: \
-                           # N:     def __setitem__(self, int, Union[MyCInt, int], /) -> None \
-                           # N:     def __setitem__(self, slice, list[Union[MyCInt, int]], /) -> None
+                           # N:     def __setitem__(self, int, MyCInt | int, /) -> None \
+                           # N:     def __setitem__(self, slice, list[MyCInt | int], /) -> None
 mya[2] = MyCInt(42)
 mya[3] = b"bytes"  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "bytes" \
                    # N: Possible overload variants: \
-                   # N:     def __setitem__(self, int, Union[MyCInt, int], /) -> None \
-                   # N:     def __setitem__(self, slice, list[Union[MyCInt, int]], /) -> None
+                   # N:     def __setitem__(self, int, MyCInt | int, /) -> None \
+                   # N:     def __setitem__(self, slice, list[MyCInt | int], /) -> None
 for myx in mya:
     reveal_type(myx)  # N: Revealed type is "__main__.MyCInt"
 
 myu: Union[ctypes.Array[ctypes.c_int], List[str]]
 for myi in myu:
-    reveal_type(myi)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(myi)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/floatdict.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -63,9 +63,9 @@ class MyCInt(ctypes.c_int):
     pass
 
 mya: ctypes.Array[Union[MyCInt, ctypes.c_uint]]
-reveal_type(mya)  # N: Revealed type is "_ctypes.Array[Union[__main__.MyCInt, ctypes.c_uint]]"
-reveal_type(mya[0])  # N: Revealed type is "Union[__main__.MyCInt, builtins.int]"
-reveal_type(mya[1:3])  # N: Revealed type is "builtins.list[Union[__main__.MyCInt, builtins.int]]"
+reveal_type(mya)  # N: Revealed type is "_ctypes.Array[__main__.MyCInt | ctypes.c_uint]"
+reveal_type(mya[0])  # N: Revealed type is "__main__.MyCInt | builtins.int"
+reveal_type(mya[1:3])  # N: Revealed type is "builtins.list[__main__.MyCInt | builtins.int]"
 # The behavior here is not strictly correct, but intentional.
 # See the comment in mypy.plugins.ctypes._autoconvertible_to_cdata for details.
 mya[0] = 42
@@ -73,10 +73,10 @@ mya[1] = ctypes.c_uint(42)
 mya[2] = MyCInt(42)
 mya[3] = b"bytes"  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "bytes" \
                    # N: Possible overload variants: \
-                   # N:     def __setitem__(self, int, Union[MyCInt, int, c_uint], /) -> None \
-                   # N:     def __setitem__(self, slice, list[Union[MyCInt, int, c_uint]], /) -> None
+                   # N:     def __setitem__(self, int, MyCInt | int | c_uint, /) -> None \
+                   # N:     def __setitem__(self, slice, list[MyCInt | int | c_uint], /) -> None
 for myx in mya:
-    reveal_type(myx)  # N: Revealed type is "Union[__main__.MyCInt, builtins.int]"
+    reveal_type(myx)  # N: Revealed type is "__main__.MyCInt | builtins.int"
 [builtins fixtures/floatdict.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -111,8 +111,8 @@ import ctypes
 from typing import Union
 
 cua: ctypes.Array[Union[ctypes.c_char, ctypes.c_wchar]]
-reveal_type(cua.value)  # N: Revealed type is "Union[builtins.bytes, builtins.str]"
-cua.raw  # E: Array attribute "raw" is only available with element type "c_char", not "Union[c_char, c_wchar]"
+reveal_type(cua.value)  # N: Revealed type is "builtins.bytes | builtins.str"
+cua.raw  # E: Array attribute "raw" is only available with element type "c_char", not "c_char | c_wchar"
 [builtins fixtures/floatdict.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -121,7 +121,7 @@ import ctypes
 from typing import Any, Union
 
 caa: ctypes.Array[Union[ctypes.c_char, Any]]
-reveal_type(caa.value)  # N: Revealed type is "Union[builtins.bytes, Any]"
+reveal_type(caa.value)  # N: Revealed type is "builtins.bytes | Any"
 reveal_type(caa.raw)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/floatdict.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -131,8 +131,8 @@ import ctypes
 from typing import Union
 
 cua: ctypes.Array[Union[ctypes.c_char, ctypes.c_int]]
-cua.value  # E: Array attribute "value" is only available with element type "c_char" or "c_wchar", not "Union[c_char, c_int]"
-cua.raw  # E: Array attribute "raw" is only available with element type "c_char", not "Union[c_char, c_int]"
+cua.value  # E: Array attribute "value" is only available with element type "c_char" or "c_wchar", not "c_char | c_int"
+cua.raw  # E: Array attribute "raw" is only available with element type "c_char", not "c_char | c_int"
 [builtins fixtures/floatdict.pyi]
 [typing fixtures/typing-medium.pyi]
 

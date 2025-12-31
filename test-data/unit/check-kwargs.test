@@ -34,10 +34,10 @@ f(a=A())
 f(b=B())
 f(c=C())
 f(b=B(), c=C())
-f(a=B()) # E: Argument "a" to "f" has incompatible type "B"; expected "Optional[A]"
-f(b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
-f(c=B()) # E: Argument "c" to "f" has incompatible type "B"; expected "Optional[C]"
-f(b=B(), c=A()) # E: Argument "c" to "f" has incompatible type "A"; expected "Optional[C]"
+f(a=B()) # E: Argument "a" to "f" has incompatible type "B"; expected "A | None"
+f(b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "B | None"
+f(c=B()) # E: Argument "c" to "f" has incompatible type "B"; expected "C | None"
+f(b=B(), c=A()) # E: Argument "c" to "f" has incompatible type "A"; expected "C | None"
 [case testBothPositionalAndKeywordArguments]
 import typing
 class A: pass
@@ -230,7 +230,7 @@ f(A(), b=B())
 f(A(), A(), b=B())
 f(B())      # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(b=A())    # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
+f(b=A())    # E: Argument "b" to "f" has incompatible type "A"; expected "B | None"
 [builtins fixtures/list.pyi]
 
 [case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
@@ -246,8 +246,8 @@ f(b=B())
 f(*a, b=B())
 f(A(), *a, b=B())
 f(A(), B())   # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(A(), b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
-f(*a, b=A())  # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
+f(A(), b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "B | None"
+f(*a, b=A())  # E: Argument "b" to "f" has incompatible type "A"; expected "B | None"
 [builtins fixtures/list.pyi]
 
 [case testCallingDynamicallyTypedFunctionWithKeywordArgs]
@@ -334,7 +334,7 @@ def f(**kwargs: 'A') -> None: pass
 b: Mapping
 d: Mapping[A, A]
 m: Mapping[str, A]
-f(**d)         # E: Keywords must be strings
+f(**d)         # E: Argument after ** must have string keys
 f(**m)
 f(**b)
 class A: pass
@@ -354,13 +354,16 @@ from typing import Dict, Any, Optional
 class A: pass
 def f(**kwargs: 'A') -> None: pass
 d = {} # type: Dict[A, A]
-f(**d)         # E: Keywords must be strings
+f(**d)         # E: Argument after ** must have string keys
 f(**A())       # E: Argument after ** must be a mapping, not "A"
 kwargs: Optional[Any]
-f(**kwargs)    # E: Argument after ** must be a mapping, not "Optional[Any]"
+f(**kwargs)    # E: Argument after ** must be a mapping, not "Any | None"
 
 def g(a: int) -> None: pass
 g(a=1, **4)  # E: Argument after ** must be a mapping, not "int"
+
+def main(f: Any) -> None:
+    f(**3)  # E: Argument after ** must be a mapping, not "int"
 [builtins fixtures/dict.pyi]
 
 [case testPassingKeywordVarArgsToNonVarArgsFunction]
@@ -449,7 +452,7 @@ f(b) # E: Argument 1 to "f" has incompatible type "dict[str, str]"; expected "in
 f(**b) # E: Argument 1 to "f" has incompatible type "**dict[str, str]"; expected "int"
 
 c = {0: 0}
-f(**c) # E: Keywords must be strings
+f(**c) # E: Argument after ** must have string keys
 [builtins fixtures/dict.pyi]
 
 [case testCallStar2WithStar]
@@ -566,4 +569,14 @@ main:37: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expec
 main:38: error: Argument after ** must be a mapping, not "C[str, float]"
 main:39: error: Argument after ** must be a mapping, not "D"
 main:41: error: Argument 1 to "foo" has incompatible type "**dict[str, str]"; expected "float"
+[builtins fixtures/dict.pyi]
+
+[case testLiteralKwargs]
+from typing import Any, Literal
+kw: dict[Literal["a", "b"], Any]
+def func(a, b): ...
+func(**kw)
+
+badkw: dict[Literal["one", 1], Any]
+func(**badkw)  # E: Argument after ** must have string keys
 [builtins fixtures/dict.pyi]
