@@ -72,6 +72,7 @@ from mypy.nodes import (
     PassStmt,
     ReturnStmt,
     SetExpr,
+    SliceExpr,
     Statement,
     StrExpr,
     TupleExpr,
@@ -449,6 +450,20 @@ def read_expression(data: ReadBuffer) -> Expression:
         # Create complex value
         value = complex(real, imag)
         expr = ComplexExpr(value)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.SLICE_EXPR:
+        # Read begin_index (lower in Ruff)
+        has_begin = read_bool(data)
+        begin_index = read_expression(data) if has_begin else None
+        # Read end_index (upper in Ruff)
+        has_end = read_bool(data)
+        end_index = read_expression(data) if has_end else None
+        # Read stride (step in Ruff)
+        has_stride = read_bool(data)
+        stride = read_expression(data) if has_stride else None
+        expr = SliceExpr(begin_index, end_index, stride)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr

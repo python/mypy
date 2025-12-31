@@ -627,3 +627,71 @@ MypyFile:1(
     ComplexExpr(1j))
   ExpressionStmt:2(
     ComplexExpr(2.5j)))
+
+[case testSlices]
+x[1:2]
+x[:1]
+x[1:]
+x[:]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(x)
+      SliceExpr:1(
+        IntExpr(1)
+        IntExpr(2))))
+  ExpressionStmt:2(
+    IndexExpr:2(
+      NameExpr(x)
+      SliceExpr:2(
+        <empty>
+        IntExpr(1))))
+  ExpressionStmt:3(
+    IndexExpr:3(
+      NameExpr(x)
+      SliceExpr:3(
+        IntExpr(1)
+        <empty>)))
+  ExpressionStmt:4(
+    IndexExpr:4(
+      NameExpr(x)
+      SliceExpr:4(
+        <empty>
+        <empty>))))
+
+[case testSliceWithStride]
+x[1:2:3]
+x[1::2]
+x[:1:2]
+x[::2]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(x)
+      SliceExpr:1(
+        IntExpr(1)
+        IntExpr(2)
+        IntExpr(3))))
+  ExpressionStmt:2(
+    IndexExpr:2(
+      NameExpr(x)
+      SliceExpr:2(
+        IntExpr(1)
+        <empty>
+        IntExpr(2))))
+  ExpressionStmt:3(
+    IndexExpr:3(
+      NameExpr(x)
+      SliceExpr:3(
+        <empty>
+        IntExpr(1)
+        IntExpr(2))))
+  ExpressionStmt:4(
+    IndexExpr:4(
+      NameExpr(x)
+      SliceExpr:4(
+        <empty>
+        <empty>
+        IntExpr(2)))))
