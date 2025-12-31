@@ -887,3 +887,56 @@ MypyFile:1(
       ExpressionStmt:4(
         YieldFromExpr:4(
           NameExpr(items))))))
+
+[case testListAndSetComprehensions]
+a = [x for x in items]
+b = [x * 2 for x in range(10) if x > 5]
+c = {y for y in data}
+d = {z + 1 for z in nums if z < 100}
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    ListComprehension:1(
+      GeneratorExpr:1(
+        NameExpr(x)
+        NameExpr(x)
+        NameExpr(items))))
+  AssignmentStmt:2(
+    NameExpr(b)
+    ListComprehension:2(
+      GeneratorExpr:2(
+        OpExpr:2(
+          *
+          NameExpr(x)
+          IntExpr(2))
+        NameExpr(x)
+        CallExpr:2(
+          NameExpr(range)
+          Args(
+            IntExpr(10)))
+        ComparisonExpr:2(
+          >
+          NameExpr(x)
+          IntExpr(5)))))
+  AssignmentStmt:3(
+    NameExpr(c)
+    SetComprehension:3(
+      GeneratorExpr:3(
+        NameExpr(y)
+        NameExpr(y)
+        NameExpr(data))))
+  AssignmentStmt:4(
+    NameExpr(d)
+    SetComprehension:4(
+      GeneratorExpr:4(
+        OpExpr:4(
+          +
+          NameExpr(z)
+          IntExpr(1))
+        NameExpr(z)
+        NameExpr(nums)
+        ComparisonExpr:4(
+          <
+          NameExpr(z)
+          IntExpr(100))))))

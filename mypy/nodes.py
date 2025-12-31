@@ -5050,6 +5050,8 @@ CONTINUE_STMT: Final[Tag] = 189
 GENERATOR_EXPR: Final[Tag] = 190
 YIELD_EXPR: Final[Tag] = 191
 YIELD_FROM_EXPR: Final[Tag] = 192
+LIST_COMPREHENSION: Final[Tag] = 193
+SET_COMPREHENSION: Final[Tag] = 194
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

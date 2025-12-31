@@ -66,6 +66,8 @@ from mypy.nodes import (
     GeneratorExpr,
     IfStmt,
     Import,
+    ListComprehension,
+    SetComprehension,
     IndexExpr,
     IntExpr,
     ListExpr,
@@ -491,20 +493,30 @@ def read_expression(data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.GENERATOR_EXPR:
-        # Read element expression
-        left_expr = read_expression(data)
-        # Read number of generators
-        n_generators = read_int(data)
-        # Read all indices (targets)
-        indices = [read_expression(data) for _ in range(n_generators)]
-        # Read all sequences (iters)
-        sequences = [read_expression(data) for _ in range(n_generators)]
-        # Read all condlists (ifs for each generator)
-        condlists = [read_expression_list(data) for _ in range(n_generators)]
-        # Read all is_async flags
-        is_async = [read_bool(data) for _ in range(n_generators)]
-        expr = GeneratorExpr(left_expr, indices, sequences, condlists, is_async)
+        expr = read_generator_expr(data)
         read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.LIST_COMPREHENSION:
+        generator = read_generator_expr(data)
+        expr = ListComprehension(generator)
+        read_loc(data, expr)
+        # Also copy location to the inner generator
+        generator.line = expr.line
+        generator.column = expr.column
+        generator.end_line = expr.end_line
+        generator.end_column = expr.end_column
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.SET_COMPREHENSION:
+        generator = read_generator_expr(data)
+        expr = SetComprehension(generator)
+        read_loc(data, expr)
+        # Also copy location to the inner generator
+        generator.line = expr.line
+        generator.column = expr.column
+        generator.end_line = expr.end_line
+        generator.end_column = expr.end_column
         expect_end_tag(data)
         return expr
     elif tag == nodes.YIELD_EXPR:
@@ -639,6 +651,23 @@ def read_expression_list(data: ReadBuffer) -> list[Expression]:
     expect_tag(data, LIST_GEN)
     n = read_int_bare(data)
     return [read_expression(data) for i in range(n)]
+
+
+def read_generator_expr(data: ReadBuffer) -> GeneratorExpr:
+    """Helper function to read comprehension data (shared by Generator, ListComp, SetComp)"""
+    # Read element expression
+    left_expr = read_expression(data)
+    # Read number of generators
+    n_generators = read_int(data)
+    # Read all indices (targets)
+    indices = [read_expression(data) for _ in range(n_generators)]
+    # Read all sequences (iters)
+    sequences = [read_expression(data) for _ in range(n_generators)]
+    # Read all condlists (ifs for each generator)
+    condlists = [read_expression_list(data) for _ in range(n_generators)]
+    # Read all is_async flags
+    is_async = [read_bool(data) for _ in range(n_generators)]
+    return GeneratorExpr(left_expr, indices, sequences, condlists, is_async)
 
 
 def read_loc(data: ReadBuffer, node: Context) -> None:
