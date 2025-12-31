@@ -2770,3 +2770,39 @@ def main(key: str):
         reveal_type(TupleLike)  # N: Revealed type is "def [_T_co] (__main__.Boxxy[_T_co`1]) -> __main__.TupleLike[_T_co`1]"
         TupleLike(Box2("str"))
 [builtins fixtures/tuple.pyi]
+
+[case testNarrowingCollections]
+# flags: --warn-unreachable
+from typing import cast
+
+class X:
+    def __init__(self) -> None:
+        self.x: dict[str, str] = {}
+        self.y: list[str] = []
+
+    def xxx(self) -> None:
+        if self.x == {}:
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+        if self.x == dict():
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+        if self.x == cast(dict[int, int], {}):
+            reveal_type(self.x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+            self.x["asdf"]
+
+    def yyy(self) -> None:
+        if self.y == []:
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+
+        if self.y == list():
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+
+        if self.y == cast(list[int], []):
+            reveal_type(self.y)  # N: Revealed type is "builtins.list[builtins.str]"
+            self.y[0].does_not_exist  # E: "str" has no attribute "does_not_exist"
+[builtins fixtures/dict.pyi]

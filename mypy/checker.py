@@ -6958,6 +6958,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         for i in chain_indices:
             expr_type = operand_types[i]
             if should_coerce:
+                # TODO: doing this prevents narrowing a single-member Enum to literal
+                # of its member, because we expand it here and then refuse to add equal
+                # types to typemaps. As a result, `x: Foo; x == Foo.A` does not narrow
+                # `x` to `Literal[Foo.A]` iff `Foo` has exactly one member.
+                # See testMatchEnumSingleChoice
                 expr_type = coerce_to_literal(expr_type)
             if is_valid_target(get_proper_type(expr_type)):
                 value_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
@@ -8603,7 +8608,6 @@ BUILTINS_CUSTOM_EQ_CHECKS: Final = {
     "builtins.bytes",
     "builtins.bytearray",
     "builtins.memoryview",
-    # for Collection[Never]
     "builtins.list",
     "builtins.dict",
     "builtins.set",
@@ -8614,8 +8618,10 @@ def has_custom_eq_checks(t: Type) -> bool:
     return (
         custom_special_method(t, "__eq__", check_all=False)
         or custom_special_method(t, "__ne__", check_all=False)
-        # TODO: make the hack more principled. explain what and why we're doing this though
-        # custom_special_method has special casing for builtins
+        # custom_special_method has special casing for builtins.* and typing.* that make the
+        # above always return False. So here we return True if the a value of a builtin type
+        # will ever compare equal to value of another type, e.g. a bytes value can compare equal
+        # to a bytearray value. We also include builtins collections, see testNarrowingCollections
         or (
             isinstance(pt := get_proper_type(t), Instance)
             and pt.type.fullname in BUILTINS_CUSTOM_EQ_CHECKS

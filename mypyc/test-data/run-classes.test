@@ -5000,7 +5000,6 @@ def test_setattr_overridden() -> None:
     assert i.const == 42
     i = i
 
-    i = SetAttrOverridden(99, 1, {"one": 1})
     i.__setattr__("two", "2")
     assert i.two == "2"
     i.__setattr__("regular_attr", 101)
