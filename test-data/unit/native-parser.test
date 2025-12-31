@@ -696,10 +696,12 @@ MypyFile:1(
         <empty>
         IntExpr(2)))))
 
-[case testFuncionSignature]
+[case testFunctionSignature]
 def f() -> int:
     pass
 def g() -> None:
+    pass
+def h(x: int, y):
     pass
 [out]
 MypyFile:1(
@@ -712,4 +714,13 @@ MypyFile:1(
     g
     def () -> None?
     Block:4(
-      PassStmt:4())))
+      PassStmt:4()))
+  FuncDef:5(
+    h
+    Args(
+      Var:nil(x)
+      Var:nil(y))
+    def (x: int?, y: Any) -> Any
+    Block:6(
+      PassStmt:6())))
+

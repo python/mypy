@@ -127,6 +127,7 @@ def read_statement(data: ReadBuffer) -> Statement:
         expect_tag(data, LIST_GEN)
         n_args = read_int_bare(data)
         arguments = []
+        has_ann = False
         for _ in range(n_args):
             arg_name = read_str(data)
             arg_kind_int = read_int(data)
@@ -134,7 +135,11 @@ def read_statement(data: ReadBuffer) -> Statement:
             arg_kind = ARG_KINDS[arg_kind_int]
             # TODO: Read type annotation when implemented
             has_type = read_bool(data)
-            assert not has_type, "Type annotations not yet supported"
+            if has_type:
+                ann = read_type(data)
+                has_ann = True
+            else:
+                ann = None
             # Read default value
             has_default = read_bool(data)
             if has_default:
@@ -144,7 +149,7 @@ def read_statement(data: ReadBuffer) -> Statement:
             pos_only = read_bool(data)
 
             var = Var(arg_name)
-            arg = Argument(var, None, default, arg_kind, pos_only)
+            arg = Argument(var, ann, default, arg_kind, pos_only)
             arguments.append(arg)
 
         # Body
@@ -166,14 +171,16 @@ def read_statement(data: ReadBuffer) -> Statement:
         has_return_type = read_bool(data)
         if has_return_type:
             return_type = read_type(data)
+            has_ann = True
         else:
             return_type = None
 
-        if return_type is not None:
+        if has_ann:
             typ = CallableType(
-                [AnyType(TypeOfAny.unannotated) for arg in arguments],
+                [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated) 
+                 for arg in arguments],
                 [arg.kind for arg in arguments],
-                [arg.name for arg in arguments],
+                [arg.variable.name for arg in arguments],
                 return_type if return_type else AnyType(TypeOfAny.unannotated),
                 _dummy_fallback
                 )
