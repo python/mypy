@@ -725,3 +725,15 @@ MypyFile:1(
     Block:6(
       PassStmt:6())))
 
+[case testFunctionSignature2]
+def f(x: a[b]) -> c.d[e.f.g[h], i]:
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var:nil(x))
+    def (x: a?[b?]) -> c.d?[e.f.g?[h?], i?]
+    Block:2(
+      PassStmt:2())))
