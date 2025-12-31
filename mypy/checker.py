@@ -6951,48 +6951,50 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         else:
             should_coerce = True
 
-        operator_specific_targets = []
+        value_targets = []
         type_targets = []
         for i in chain_indices:
             expr_type = operand_types[i]
             if should_coerce:
                 expr_type = coerce_to_literal(expr_type)
             if is_valid_target(get_proper_type(expr_type)):
-                operator_specific_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
+                value_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
             else:
                 type_targets.append((i, TypeRange(expr_type, is_upper_bound=False)))
 
         partial_type_maps = []
 
-        if operator_specific_targets:
+        if value_targets:
             for i in chain_indices:
                 if i not in narrowable_operand_indices:
                     continue
-                targets = [t for j, t in operator_specific_targets if j != i]
-                if targets:
-                    for target in targets:
-                        expr_type = coerce_to_literal(operand_types[i])
-                        expr_type = try_expanding_sum_type_to_union(expr_type, None)
-                        if_map, else_map = conditional_types_to_typemaps(
-                            operands[i], *conditional_types(expr_type, [target])
-                        )
-                        partial_type_maps.append((if_map, else_map))
+                for j, target in value_targets:
+                    if i == j:
+                        continue
+                    expr_type = coerce_to_literal(operand_types[i])
+                    expr_type = try_expanding_sum_type_to_union(expr_type, None)
+                    if_map, else_map = conditional_types_to_typemaps(
+                        operands[i], *conditional_types(expr_type, [target])
+                    )
+                    partial_type_maps.append((if_map, else_map))
 
         if type_targets:
             for i in chain_indices:
                 if i not in narrowable_operand_indices:
                     continue
-                targets = [t for j, t in type_targets if j != i]
-                if targets:
-                    for target in targets:
-                        expr_type = operand_types[i]
-                        if_map, else_map = conditional_types_to_typemaps(
-                            operands[i], *conditional_types(expr_type, [target])
-                        )
-                        if if_map:
-                            else_map = {}
-                            partial_type_maps.append((if_map, else_map))
+                for j, target in type_targets:
+                    if i == j:
+                        continue
+                    expr_type = operand_types[i]
+                    if_map, else_map = conditional_types_to_typemaps(
+                        operands[i], *conditional_types(expr_type, [target])
+                    )
+                    if if_map:
+                        else_map = {}
+                        partial_type_maps.append((if_map, else_map))
 
+        # We will not have duplicate entries in our type maps if we only have two operands,
+        # so we can skip running meets on the intersections
         return reduce_conditional_maps(partial_type_maps, use_meet=len(operands) > 2)
 
     def refine_away_none_in_comparison(
