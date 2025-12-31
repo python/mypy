@@ -21,7 +21,7 @@ import os
 import subprocess
 from typing import Final
 
-from mypy import nodes
+from mypy import nodes, types
 from mypy.cache import (
     DICT_STR_GEN,
     END_TAG,
@@ -55,6 +55,7 @@ from mypy.nodes import (
     ClassDef,
     ComparisonExpr,
     ComplexExpr,
+    Context,
     DictExpr,
     Expression,
     ExpressionStmt,
@@ -79,7 +80,14 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
     WhileStmt,
+    MISSING_FALLBACK,
 )
+from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type
+
+
+# There is no way to create reasonable fallbacks at this stage,
+# they must be patched later.
+_dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 
 def expect_end_tag(data: ReadBuffer) -> None:
@@ -156,9 +164,23 @@ def read_statement(data: ReadBuffer) -> Statement:
 
         # TODO: Return type annotation
         has_return_type = read_bool(data)
-        assert not has_return_type, "Return type annotations not yet supported"
+        if has_return_type:
+            return_type = read_type(data)
+        else:
+            return_type = None
 
-        func_def = FuncDef(name, arguments, body)
+        if return_type is not None:
+            typ = CallableType(
+                [AnyType(TypeOfAny.unannotated) for arg in arguments],
+                [arg.kind for arg in arguments],
+                [arg.name for arg in arguments],
+                return_type if return_type else AnyType(TypeOfAny.unannotated),
+                _dummy_fallback
+                )
+        else:
+            typ = None
+
+        func_def = FuncDef(name, arguments, body, typ=typ)
         if is_async:
             func_def.is_coroutine = True
         read_loc(data, func_def)
@@ -250,6 +272,23 @@ def read_statement(data: ReadBuffer) -> Statement:
         read_loc(data, class_def)
         expect_end_tag(data)
         return class_def
+    else:
+        assert False, tag
+
+
+def read_type(data: ReadBuffer) -> Type:
+    tag = read_tag(data)
+    if tag == types.UNBOUND_TYPE:
+        name = read_str(data)
+        expect_tag(data, LIST_GEN)
+        n = read_int_bare(data)
+        args = tuple(read_type(data) for i in range(n))
+        expect_tag(data, LITERAL_NONE)  # TODO
+        expect_tag(data, LITERAL_NONE)  # TODO
+        unbound = UnboundType(name, args)
+        read_loc(data, unbound)
+        expect_end_tag(data)
+        return unbound
     else:
         assert False, tag
 
@@ -477,7 +516,7 @@ def read_expression_list(data: ReadBuffer) -> list[Expression]:
     return [read_expression(data) for i in range(n)]
 
 
-def read_loc(data: ReadBuffer, node: Node) -> None:
+def read_loc(data: ReadBuffer, node: Context) -> None:
     expect_tag(data, LOCATION)
     line = read_int_bare(data)
     node.line = line
