@@ -258,6 +258,7 @@ def f(b):
 L0:
     r0 = b'_'
     r1 = CPyBytes_LjustCustomFill(b, 20, r0)
+    return r1
 
 [case testBytesMultiply]
 def b_times_i(s: bytes, n: int) -> bytes:
