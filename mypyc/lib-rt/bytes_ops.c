@@ -256,6 +256,8 @@ PyObject *CPyBytes_LjustCustomFill(PyObject *self, CPyTagged width, PyObject *fi
     memcpy(res_buf, PyBytes_AsString(self), len);
     memset(res_buf + len, fill, pad);
     return result;
+}
+
 
 PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count) {
     Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
