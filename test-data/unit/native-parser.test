@@ -1221,3 +1221,14 @@ MypyFile:1(
     Block:6(
       ExpressionStmt:6(
         NameExpr(z)))))
+
+[case testConditionalExprSimple]
+x if y else z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ConditionalExpr:1(
+      Condition(
+        NameExpr(y))
+      NameExpr(x)
+      NameExpr(z))))

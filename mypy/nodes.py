@@ -5060,6 +5060,7 @@ WITH_STMT: Final[Tag] = 199
 OPERATOR_ASSIGNMENT_STMT: Final[Tag] = 200
 TRY_STMT: Final[Tag] = 201
 ELLIPSIS_EXPR: Final[Tag] = 202
+CONDITIONAL_EXPR: Final[Tag] = 203
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

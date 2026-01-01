@@ -56,6 +56,7 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ConditionalExpr,
     ContinueStmt,
     ComplexExpr,
     Context,
@@ -824,6 +825,17 @@ def read_expression(data: ReadBuffer) -> Expression:
         return temp
     elif tag == nodes.ELLIPSIS_EXPR:
         expr = EllipsisExpr()
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.CONDITIONAL_EXPR:
+        # Read if_expr (value when condition is true)
+        if_expr = read_expression(data)
+        # Read cond (the condition)
+        cond = read_expression(data)
+        # Read else_expr (value when condition is false)
+        else_expr = read_expression(data)
+        expr = ConditionalExpr(cond, if_expr, else_expr)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
