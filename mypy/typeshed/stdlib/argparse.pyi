@@ -2,7 +2,7 @@ import sys
 from _typeshed import SupportsWrite, sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
-from typing import IO, Any, ClassVar, Final, Generic, NewType, NoReturn, Protocol, TypeVar, overload, type_check_only
+from typing import IO, Any, ClassVar, Final, Generic, NoReturn, Protocol, TypeVar, overload, type_check_only
 from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
@@ -36,9 +36,7 @@ ONE_OR_MORE: Final = "+"
 OPTIONAL: Final = "?"
 PARSER: Final = "A..."
 REMAINDER: Final = "..."
-_SUPPRESS_T = NewType("_SUPPRESS_T", str)
-SUPPRESS: _SUPPRESS_T | str  # not using Literal because argparse sometimes compares SUPPRESS with is
-# the | str is there so that foo = argparse.SUPPRESS; foo = "test" checks out in mypy
+SUPPRESS: Final = "==SUPPRESS=="
 ZERO_OR_MORE: Final = "*"
 _UNRECOGNIZED_ARGS_ATTR: Final = "_unrecognized_args"  # undocumented
 
@@ -81,7 +79,7 @@ class _ActionsContainer:
         # more precisely, Literal["?", "*", "+", "...", "A...", "==SUPPRESS=="],
         # but using this would make it hard to annotate callers that don't use a
         # literal argument and for subclasses to override this method.
-        nargs: int | str | _SUPPRESS_T | None = None,
+        nargs: int | str | None = None,
         const: Any = ...,
         default: Any = ...,
         type: _ActionType = ...,
@@ -93,15 +91,40 @@ class _ActionsContainer:
         version: str = ...,
         **kwargs: Any,
     ) -> Action: ...
-    def add_argument_group(
-        self,
-        title: str | None = None,
-        description: str | None = None,
-        *,
-        prefix_chars: str = ...,
-        argument_default: Any = ...,
-        conflict_handler: str = ...,
-    ) -> _ArgumentGroup: ...
+    if sys.version_info >= (3, 14):
+        @overload
+        def add_argument_group(
+            self,
+            title: str | None = None,
+            description: str | None = None,
+            *,
+            # argument_default's type must be valid for the arguments in the group
+            argument_default: Any = ...,
+            conflict_handler: str = ...,
+        ) -> _ArgumentGroup: ...
+        @overload
+        @deprecated("The `prefix_chars` parameter deprecated since Python 3.14.")
+        def add_argument_group(
+            self,
+            title: str | None = None,
+            description: str | None = None,
+            *,
+            prefix_chars: str,
+            argument_default: Any = ...,
+            conflict_handler: str = ...,
+        ) -> _ArgumentGroup: ...
+    else:
+        def add_argument_group(
+            self,
+            title: str | None = None,
+            description: str | None = None,
+            *,
+            prefix_chars: str = ...,
+            # argument_default's type must be valid for the arguments in the group
+            argument_default: Any = ...,
+            conflict_handler: str = ...,
+        ) -> _ArgumentGroup: ...
+
     def add_mutually_exclusive_group(self, *, required: bool = False) -> _MutuallyExclusiveGroup: ...
     def _add_action(self, action: _ActionT) -> _ActionT: ...
     def _remove_action(self, action: Action) -> None: ...
