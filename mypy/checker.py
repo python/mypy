@@ -6568,6 +6568,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     isinstance(p_expr := get_proper_type(expr_type), CallableType)
                     and p_expr.is_type_obj()
                 )
+                and not isinstance(p_expr, TypeType)
             ):
                 h = literal_hash(expr)
                 if h is not None:
