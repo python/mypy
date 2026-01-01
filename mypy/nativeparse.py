@@ -59,6 +59,7 @@ from mypy.nodes import (
     ContinueStmt,
     ComplexExpr,
     Context,
+    Decorator,
     DictExpr,
     DictionaryComprehension,
     Expression,
@@ -206,6 +207,22 @@ def read_statement(data: ReadBuffer) -> Statement:
         read_loc(data, func_def)
         expect_end_tag(data)
         return func_def
+    elif tag == nodes.DECORATOR:
+        expect_tag(data, LIST_GEN)
+        n_decorators = read_int_bare(data)
+        decorators = [read_expression(data) for i in range(n_decorators)]
+        fdef = read_statement(data)
+        assert isinstance(fdef, FuncDef)
+        var = Var(fdef.name)
+        # Create Decorator wrapping the FuncDef
+        stmt = Decorator(fdef, decorators, var)
+        stmt.line = fdef.line
+        stmt.column = fdef.column
+        stmt.end_line = fdef.end_line
+        stmt.end_column = fdef.end_column
+        # TODO: Adjust funcdef location to start after decorator?
+        expect_end_tag(data)
+        return stmt
     elif tag == nodes.EXPR_STMT:
         es = ExpressionStmt(read_expression(data))
         es.line = es.expr.line

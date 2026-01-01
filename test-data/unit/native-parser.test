@@ -1079,3 +1079,34 @@ MypyFile:1(
         >
         NameExpr(x)
         IntExpr(5)))))
+
+[case testDecoratedFuncDef]
+@dec
+def foo():
+    pass
+class C:    
+    @dec()
+    @staticmethod
+    def foo():
+        pass
+[out]
+MypyFile:1(
+  Decorator:1(
+    Var:nil(foo)
+    NameExpr(dec)
+    FuncDef:1(
+      foo
+      Block:3(
+        PassStmt:3())))
+  ClassDef:4(
+    C
+    Decorator:5(
+      Var:nil(foo)
+      CallExpr:5(
+        NameExpr(dec)
+        Args())
+      NameExpr(staticmethod)
+      FuncDef:5(
+        foo
+        Block:8(
+          PassStmt:8())))))
