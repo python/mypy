@@ -6492,10 +6492,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and not is_false_literal(expr)
                 and not is_true_literal(expr)
                 and not self.is_literal_enum(expr)
+                # CallableType type objects are usually already maximally specific
                 and not (
                     isinstance(p_expr := get_proper_type(expr_type), CallableType)
                     and p_expr.is_type_obj()
                 )
+                # This is a little ad hoc, in the absence of intersection types
+                and not (isinstance(p_expr, TypeType) and isinstance(p_expr.item, TypeVarType))
             ):
                 h = literal_hash(expr)
                 if h is not None:

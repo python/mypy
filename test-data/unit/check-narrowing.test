@@ -3018,6 +3018,60 @@ def f2(x: Any) -> None:
     reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
+[case testNarrowTypeObject]
+# flags: --strict-equality --warn-unreachable
+from typing import Any
+
+# https://github.com/python/mypy/issues/13704
+
+def f1(cls: type):
+    if cls is str:
+        reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
+        reveal_type(cls(5))  # N: Revealed type is "builtins.str"
+
+    if issubclass(cls, int):
+        pass
+    elif cls is str:
+        reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
+        reveal_type(cls(5))  # N: Revealed type is "builtins.str"
+
+def f2(cls: type[object]):
+    if cls is str:
+        reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
+        reveal_type(cls(5))  # N: Revealed type is "builtins.str"
+
+    if issubclass(cls, int):
+        pass
+    elif cls is str:
+        reveal_type(cls)  # N: Revealed type is "def (o: builtins.object =) -> builtins.str"
+        reveal_type(cls(5))  # N: Revealed type is "builtins.str"
+
+def f3(cls: type[Any]):
+    if cls is str:
+        reveal_type(cls)  # N: Revealed type is "type[Any]"
+        reveal_type(cls(5))  # N: Revealed type is "Any"
+
+    if issubclass(cls, int):
+        pass
+    elif cls is str:
+        reveal_type(cls)  # N: Revealed type is "type[Any]"
+        reveal_type(cls(5))  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeObjectUnion]
+# flags: --strict-equality --warn-unreachable
+from __future__ import annotations
+
+def f4(cls: type[str | int]):
+    reveal_type(cls)  # N: Revealed type is "type[builtins.str] | type[builtins.int]"
+
+    if cls is int:
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
+    if cls == int:
+        reveal_type(cls)  # N: Revealed type is "type[builtins.int]"
+[builtins fixtures/primitives.pyi]
+
+
 [case testTypeEqualsCheck]
 # flags: --strict-equality --warn-unreachable
 from typing import Any
@@ -3261,3 +3315,23 @@ def bar(y: Any):
     else:
         reveal_type(y) # N: Revealed type is "Any"
 [builtins fixtures/dict-full.pyi]
+
+[case testNarrowTypeVarType]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+class A: ...
+
+def foo(X: type[T]) -> T:
+    if X == A:
+        return X()
+    raise
+
+# It could be nice to make these two test cases consistent, but it would be tricky
+# The above case is much more common in real world code
+def bar(X: type[T]) -> T:
+    if X == A:
+        return A()  # E: Incompatible return value type (got "A", expected "T")
+    raise
+[builtins fixtures/type.pyi]
