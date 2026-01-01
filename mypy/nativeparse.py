@@ -62,6 +62,7 @@ from mypy.nodes import (
     Decorator,
     DictExpr,
     DictionaryComprehension,
+    EllipsisExpr,
     Expression,
     ExpressionStmt,
     FloatExpr,
@@ -821,6 +822,11 @@ def read_expression(data: ReadBuffer) -> Expression:
         temp = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
         expect_end_tag(data)
         return temp
+    elif tag == nodes.ELLIPSIS_EXPR:
+        expr = EllipsisExpr()
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
     else:
         assert False, tag
 

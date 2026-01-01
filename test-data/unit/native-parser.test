@@ -291,14 +291,15 @@ MypyFile:1(
       NameExpr(r))))
 
 [case testLiterals]
-(None, True, False)
+(None, True, False, ...)
 [out]
 MypyFile:1(
   ExpressionStmt:1(
     TupleExpr:1(
       NameExpr(None)
       NameExpr(True)
-      NameExpr(False))))
+      NameExpr(False)
+      Ellipsis)))
 
 [case testSimpleFunction]
 def foo():
