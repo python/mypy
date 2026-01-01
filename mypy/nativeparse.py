@@ -17,9 +17,9 @@ Expected benefits over mypy.fastparse:
 
 from __future__ import annotations
 
-import os
-import subprocess
 from typing import Final
+
+import ast_serialize
 
 from mypy import nodes, types
 from mypy.cache import (
@@ -122,9 +122,7 @@ def native_parse(filename: str) -> MypyFile:
 
 
 def parse_to_binary_ast(filename: str) -> bytes:
-    binpath = os.path.expanduser("~/src/ruff/target/release/mypy_parser")
-    result = subprocess.run([binpath, "serialize-ast", filename], capture_output=True, check=True)
-    return result.stdout
+    return ast_serialize.parse(filename)
 
 
 def read_statement(data: ReadBuffer) -> Statement:
