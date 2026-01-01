@@ -5058,6 +5058,7 @@ ASSERT_STMT: Final[Tag] = 197
 FOR_STMT: Final[Tag] = 198
 WITH_STMT: Final[Tag] = 199
 OPERATOR_ASSIGNMENT_STMT: Final[Tag] = 200
+TRY_STMT: Final[Tag] = 201
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

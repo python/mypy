@@ -1129,3 +1129,94 @@ MypyFile:1(
         foo
         Block:8(
           PassStmt:8())))))
+[case testTryFinally]
+try:
+    x
+finally:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    Finally(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testTryExcept]
+try:
+    x
+except Exception:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    NameExpr(Exception)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testTryExceptWithVar]
+try:
+    x
+except Exception as e:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    NameExpr(Exception)
+    NameExpr(e)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testTryExceptElse]
+try:
+    x
+except Exception:
+    y
+else:
+    z
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    NameExpr(Exception)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(y)))
+    Else(
+      ExpressionStmt:6(
+        NameExpr(z)))))
+
+[case testTryMultipleExcept]
+try:
+    x
+except ValueError:
+    y
+except KeyError as e:
+    z
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:2(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    NameExpr(ValueError)
+    Block:4(
+      ExpressionStmt:4(
+        NameExpr(y)))
+    NameExpr(KeyError)
+    NameExpr(e)
+    Block:6(
+      ExpressionStmt:6(
+        NameExpr(z)))))

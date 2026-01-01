@@ -90,6 +90,7 @@ from mypy.nodes import (
     Statement,
     StrExpr,
     TempNode,
+    TryStmt,
     TupleExpr,
     UnaryExpr,
     Var,
@@ -454,6 +455,58 @@ def read_statement(data: ReadBuffer) -> Statement:
         read_loc(data, class_def)
         expect_end_tag(data)
         return class_def
+    elif tag == nodes.TRY_STMT:
+        # Read try body
+        body = read_block(data)
+
+        # Read number of except handlers
+        num_handlers = read_int(data)
+
+        # Read exception types for each handler
+        types_list = []
+        for _ in range(num_handlers):
+            has_type = read_bool(data)
+            if has_type:
+                exc_type = read_expression(data)
+                types_list.append(exc_type)
+            else:
+                types_list.append(None)
+
+        # Read variable names for each handler
+        vars_list = []
+        for _ in range(num_handlers):
+            has_name = read_bool(data)
+            if has_name:
+                var_name = read_str(data)
+                var_expr = NameExpr(var_name)
+                vars_list.append(var_expr)
+            else:
+                vars_list.append(None)
+
+        # Read handler bodies
+        handlers = []
+        for _ in range(num_handlers):
+            handler_body = read_block(data)
+            handlers.append(handler_body)
+
+        # Read else body (optional)
+        has_else = read_bool(data)
+        if has_else:
+            else_body = read_block(data)
+        else:
+            else_body = None
+
+        # Read finally body (optional)
+        has_finally = read_bool(data)
+        if has_finally:
+            finally_body = read_block(data)
+        else:
+            finally_body = None
+
+        stmt = TryStmt(body, vars_list, types_list, handlers, else_body, finally_body)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
     else:
         assert False, tag
 
