@@ -864,6 +864,44 @@ MypyFile:1(
     Else(
       ContinueStmt:8())))
 
+[case testWithStatements]
+with f:
+    pass
+with open("file") as f:
+    x = 1
+with a as x, b as y:
+    break
+[out]
+MypyFile:1(
+  WithStmt:1(
+    Expr(
+      NameExpr(f))
+    Block:2(
+      PassStmt:2()))
+  WithStmt:3(
+    Expr(
+      CallExpr:3(
+        NameExpr(open)
+        Args(
+          StrExpr(file))))
+    Target(
+      NameExpr(f))
+    Block:4(
+      AssignmentStmt:4(
+        NameExpr(x)
+        IntExpr(1))))
+  WithStmt:5(
+    Expr(
+      NameExpr(a))
+    Target(
+      NameExpr(x))
+    Expr(
+      NameExpr(b))
+    Target(
+      NameExpr(y))
+    Block:6(
+      BreakStmt:6())))
+
 [case testBreakAndContinue]
 while True:
     break

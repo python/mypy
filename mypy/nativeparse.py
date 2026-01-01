@@ -92,6 +92,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
     WhileStmt,
+    WithStmt,
     YieldExpr,
     YieldFromExpr,
     MISSING_FALLBACK,
@@ -308,6 +309,29 @@ def read_statement(data: ReadBuffer) -> Statement:
         # Read else clause
         else_body = read_optional_block(data)
         stmt = ForStmt(index, expr, body, else_body)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.WITH_STMT:
+        # Read number of items
+        n = read_int(data)
+        expr_list = []
+        target_list = []
+        # Read each item
+        for _ in range(n):
+            # Read context expression
+            context_expr = read_expression(data)
+            expr_list.append(context_expr)
+            # Read optional target
+            has_target = read_bool(data)
+            if has_target:
+                target = read_expression(data)
+                target_list.append(target)
+            else:
+                target_list.append(None)
+        # Read body
+        body = read_block(data)
+        stmt = WithStmt(expr_list, target_list, body)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt

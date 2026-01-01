@@ -5056,6 +5056,7 @@ DICT_COMPREHENSION: Final[Tag] = 195
 IMPORT_FROM: Final[Tag] = 196
 ASSERT_STMT: Final[Tag] = 197
 FOR_STMT: Final[Tag] = 198
+WITH_STMT: Final[Tag] = 199
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
