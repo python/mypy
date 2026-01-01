@@ -5053,6 +5053,7 @@ YIELD_FROM_EXPR: Final[Tag] = 192
 LIST_COMPREHENSION: Final[Tag] = 193
 SET_COMPREHENSION: Final[Tag] = 194
 DICT_COMPREHENSION: Final[Tag] = 195
+IMPORT_FROM: Final[Tag] = 196
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

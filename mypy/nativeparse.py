@@ -67,6 +67,7 @@ from mypy.nodes import (
     GeneratorExpr,
     IfStmt,
     Import,
+    ImportFrom,
     ListComprehension,
     SetComprehension,
     IndexExpr,
@@ -312,6 +313,31 @@ def read_statement(data: ReadBuffer) -> Statement:
                 asname = None
             ids.append((name, asname))
         stmt = Import(ids)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.IMPORT_FROM:
+        # Read relative import level
+        relative = read_int(data)
+
+        # Read module name (empty string for "from . import x")
+        module_id = read_str(data)
+
+        # Read number of imported names
+        n = read_int(data)
+        names = []
+        for _ in range(n):
+            # Read imported name
+            name = read_str(data)
+            # Read optional alias
+            has_asname = read_bool(data)
+            if has_asname:
+                asname = read_str(data)
+            else:
+                asname = None
+            names.append((name, asname))
+
+        stmt = ImportFrom(module_id, relative, names)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt

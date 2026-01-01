@@ -776,6 +776,22 @@ MypyFile:1(
   Import:2(a, b)
   Import:3(y : z))
 
+[case testImportFromStatements]
+from os import path
+from sys import argv, exit
+from typing import List as L
+from . import foo
+from .. import bar
+from .pkg import baz
+[out]
+MypyFile:1(
+  ImportFrom:1(os, [path])
+  ImportFrom:2(sys, [argv, exit])
+  ImportFrom:3(typing, [List : L])
+  ImportFrom:4(., [foo])
+  ImportFrom:5(.., [bar])
+  ImportFrom:6(.pkg, [baz]))
+
 [case testRaiseStatements]
 raise
 raise ValueError
