@@ -49,6 +49,7 @@ from mypy.nodes import (
     ARG_NAMED_OPT,
     ARG_KINDS,
     Argument,
+    AssertStmt,
     AssignmentStmt,
     Block,
     BreakStmt,
@@ -272,6 +273,19 @@ def read_statement(data: ReadBuffer) -> Statement:
         else:
             from_expr = None
         stmt = RaiseStmt(exc, from_expr)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.ASSERT_STMT:
+        # Read test expression
+        test = read_expression(data)
+        # Read optional message expression
+        has_msg = read_bool(data)
+        if has_msg:
+            msg = read_expression(data)
+        else:
+            msg = None
+        stmt = AssertStmt(test, msg)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt

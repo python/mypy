@@ -811,6 +811,23 @@ MypyFile:1(
     NameExpr(KeyError)
     NameExpr(e)))
 
+[case testAssertStatements]
+assert x
+assert x == y
+assert condition, "error message"
+[out]
+MypyFile:1(
+  AssertStmt:1(
+    NameExpr(x))
+  AssertStmt:2(
+    ComparisonExpr:2(
+      ==
+      NameExpr(x)
+      NameExpr(y)))
+  AssertStmt:3(
+    NameExpr(condition)
+    StrExpr(error message)))
+
 [case testBreakAndContinue]
 while True:
     break
