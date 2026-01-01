@@ -4320,6 +4320,7 @@ LITERAL_TYPE: Final[Tag] = 114
 UNION_TYPE: Final[Tag] = 115
 TYPE_TYPE: Final[Tag] = 116
 PARAMETERS: Final[Tag] = 117
+LIST_TYPE: Final[Tag] = 118  # Only valid in serialized ASTs
 
 
 def read_type(data: ReadBuffer, tag: Tag | None = None) -> Type:

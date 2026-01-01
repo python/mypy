@@ -1232,3 +1232,44 @@ MypyFile:1(
         NameExpr(y))
       NameExpr(x)
       NameExpr(z))))
+
+[case testFunctionWithCallableType]
+def f(x: Callable[[int, str], None]) -> None:
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var:nil(x))
+    def (x: Callable?[<TypeList int?, str?>, None?]) -> None?
+    Block:2(
+      PassStmt:2())))
+
+[case testFunctionWithEmptyCallableType]
+def g(callback: Callable[[], bool]) -> int:
+    return 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    g
+    Args(
+      Var:nil(callback))
+    def (callback: Callable?[<TypeList >, bool?]) -> int?
+    Block:2(
+      ReturnStmt:2(
+        IntExpr(1)))))
+
+[case testFunctionWithComplexCallableType]
+def h(f: Callable[[List[int], Dict[str, int]], Tuple[int, str]]) -> None:
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    h
+    Args(
+      Var:nil(f))
+    def (f: Callable?[<TypeList List?[int?], Dict?[str?, int?]>, Tuple?[int?, str?]]) -> None?
+    Block:2(
+      PassStmt:2())))
+
