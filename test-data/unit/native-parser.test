@@ -69,6 +69,25 @@ MypyFile:1(
       NameExpr(c))
     IntExpr(6)))
 
+[case testOperatorAssignment]
+x += 1
+y -= 2
+z *= 3
+[out]
+MypyFile:1(
+  OperatorAssignmentStmt:1(
+    +
+    NameExpr(x)
+    IntExpr(1))
+  OperatorAssignmentStmt:2(
+    -
+    NameExpr(y)
+    IntExpr(2))
+  OperatorAssignmentStmt:3(
+    *
+    NameExpr(z)
+    IntExpr(3)))
+
 [case testIfStmt]
 if x:
     y

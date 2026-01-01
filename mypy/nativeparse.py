@@ -81,6 +81,7 @@ from mypy.nodes import (
     NameExpr,
     Node,
     OpExpr,
+    OperatorAssignmentStmt,
     PassStmt,
     RaiseStmt,
     ReturnStmt,
@@ -252,6 +253,17 @@ def read_statement(data: ReadBuffer) -> Statement:
             rvalue.end_column = a.end_column
         expect_end_tag(data)
         return a
+    elif tag == nodes.OPERATOR_ASSIGNMENT_STMT:
+        # Read operator string
+        op = read_str(data)
+        # Read lvalue (target)
+        lvalue = read_expression(data)
+        # Read rvalue (value)
+        rvalue = read_expression(data)
+        stmt = OperatorAssignmentStmt(op, lvalue, rvalue)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
     elif tag == nodes.IF_STMT:
         expr = [read_expression(data)]
         body = [read_block(data)]
