@@ -2124,7 +2124,7 @@ else:
 [builtins fixtures/ops.pyi]
 
 [case testNarrowingWithIntEnum]
-# mypy: strict-equality
+# flags: --strict-equality --warn-unreachable
 from __future__ import annotations
 from typing import Any
 from enum import IntEnum
@@ -2179,7 +2179,7 @@ def f6(x: IE) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithIntEnum2]
-# mypy: strict-equality
+# flags: --strict-equality --warn-unreachable
 from __future__ import annotations
 from typing import Any
 from enum import IntEnum, Enum
@@ -2282,6 +2282,27 @@ def f4(x: SE) -> None:
          reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.A]"
      else:
          reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.B]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingWithEnumStrSubclass]
+# flags: --strict-equality --warn-unreachable
+from enum import Enum
+
+class ParameterLocation(str, Enum):
+    QUERY = "query"
+    HEADER = "header"
+    PATH = "path"
+
+def foo(location: ParameterLocation):
+    if location == "path":
+        reveal_type(location)  # N: Revealed type is "__main__.ParameterLocation"
+    else:
+        reveal_type(location)  # N: Revealed type is "__main__.ParameterLocation"
+
+    if location == ParameterLocation.PATH:
+        reveal_type(location)  # N: Revealed type is "Literal[__main__.ParameterLocation.PATH]"
+    else:
+        reveal_type(location)  # N: Revealed type is "Literal[__main__.ParameterLocation.QUERY] | Literal[__main__.ParameterLocation.HEADER]"
 [builtins fixtures/primitives.pyi]
 
 [case testConsistentNarrowingEqAndIn]
