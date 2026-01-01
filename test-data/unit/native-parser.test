@@ -766,7 +766,7 @@ MypyFile:1(
     f
     Args(
       Var:nil(x))
-    def (x: Union[int?, str?]) -> Union[bool?, None?]
+    def (x: int? | str?) -> bool? | None?
     Block:2(
       PassStmt:2())))
 
