@@ -828,6 +828,42 @@ MypyFile:1(
     NameExpr(condition)
     StrExpr(error message)))
 
+[case testForStatements]
+for x in items:
+    pass
+for i, j in pairs:
+    x = 1
+for y in range(10):
+    break
+else:
+    continue
+[out]
+MypyFile:1(
+  ForStmt:1(
+    NameExpr(x)
+    NameExpr(items)
+    Block:2(
+      PassStmt:2()))
+  ForStmt:3(
+    TupleExpr:3(
+      NameExpr(i)
+      NameExpr(j))
+    NameExpr(pairs)
+    Block:4(
+      AssignmentStmt:4(
+        NameExpr(x)
+        IntExpr(1))))
+  ForStmt:5(
+    NameExpr(y)
+    CallExpr:5(
+      NameExpr(range)
+      Args(
+        IntExpr(10)))
+    Block:6(
+      BreakStmt:6())
+    Else(
+      ContinueStmt:8())))
+
 [case testBreakAndContinue]
 while True:
     break

@@ -64,6 +64,7 @@ from mypy.nodes import (
     Expression,
     ExpressionStmt,
     FloatExpr,
+    ForStmt,
     FuncDef,
     GeneratorExpr,
     IfStmt,
@@ -294,6 +295,19 @@ def read_statement(data: ReadBuffer) -> Statement:
         body = read_block(data)
         else_body = read_optional_block(data)
         stmt = WhileStmt(expr, body, else_body)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.FOR_STMT:
+        # Read index (target)
+        index = read_expression(data)
+        # Read iterator expression
+        expr = read_expression(data)
+        # Read body
+        body = read_block(data)
+        # Read else clause
+        else_body = read_optional_block(data)
+        stmt = ForStmt(index, expr, body, else_body)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
