@@ -59,6 +59,7 @@ from mypy.nodes import (
     ComplexExpr,
     Context,
     DictExpr,
+    DictionaryComprehension,
     Expression,
     ExpressionStmt,
     FloatExpr,
@@ -517,6 +518,25 @@ def read_expression(data: ReadBuffer) -> Expression:
         generator.column = expr.column
         generator.end_line = expr.end_line
         generator.end_column = expr.end_column
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.DICT_COMPREHENSION:
+        # Read key expression
+        key = read_expression(data)
+        # Read value expression
+        value = read_expression(data)
+        # Read number of generators
+        n_generators = read_int(data)
+        # Read all indices (targets)
+        indices = [read_expression(data) for _ in range(n_generators)]
+        # Read all sequences (iters)
+        sequences = [read_expression(data) for _ in range(n_generators)]
+        # Read all condlists (ifs for each generator)
+        condlists = [read_expression_list(data) for _ in range(n_generators)]
+        # Read all is_async flags
+        is_async = [read_bool(data) for _ in range(n_generators)]
+        expr = DictionaryComprehension(key, value, indices, sequences, condlists, is_async)
+        read_loc(data, expr)
         expect_end_tag(data)
         return expr
     elif tag == nodes.YIELD_EXPR:

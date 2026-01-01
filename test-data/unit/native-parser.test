@@ -940,3 +940,35 @@ MypyFile:1(
           <
           NameExpr(z)
           IntExpr(100))))))
+
+[case testDictComprehensions]
+a = {k: v for k, v in items}
+b = {x: x * 2 for x in range(10) if x > 5}
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    DictionaryComprehension:1(
+      NameExpr(k)
+      NameExpr(v)
+      TupleExpr:1(
+        NameExpr(k)
+        NameExpr(v))
+      NameExpr(items)))
+  AssignmentStmt:2(
+    NameExpr(b)
+    DictionaryComprehension:2(
+      NameExpr(x)
+      OpExpr:2(
+        *
+        NameExpr(x)
+        IntExpr(2))
+      NameExpr(x)
+      CallExpr:2(
+        NameExpr(range)
+        Args(
+          IntExpr(10)))
+      ComparisonExpr:2(
+        >
+        NameExpr(x)
+        IntExpr(5)))))
