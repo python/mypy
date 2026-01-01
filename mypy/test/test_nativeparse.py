@@ -79,7 +79,7 @@ class TestNativeParse(unittest.TestCase):
         def int_enc(n: int) -> int:
             return (n + 10) << 1
 
-        def locs(start_line: int, start_column: int, end_line: int, end_column) -> list[int]:
+        def locs(start_line: int, start_column: int, end_line: int, end_column: int) -> list[int]:
             return [
                 LOCATION,
                 int_enc(start_line),
@@ -151,8 +151,8 @@ class TestNativeParse(unittest.TestCase):
                 with open(fnam, "rb") as f:
                     data = f.read()
                 node = parse(data, fnam, "__main__", Errors(o), o)
-            assert False, 1 / ((time.time() - t0) / 100000)
             assert isinstance(node, MypyFile)
+            assert False, 1 / ((time.time() - t0) / 100000)
 
 
 @contextlib.contextmanager

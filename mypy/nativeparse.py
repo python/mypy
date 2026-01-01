@@ -1,3 +1,4 @@
+# mypy: allow-redefinition-new, local-partial-types
 """Python parser that directly constructs a native AST (when compiled).
 
 Use a Rust extension to generate a serialized AST, and deserialize the AST directly
@@ -19,7 +20,7 @@ from __future__ import annotations
 
 from typing import Final
 
-import ast_serialize
+import ast_serialize  # type: ignore[import-untyped]
 
 from mypy import nodes, types
 from mypy.cache import (
@@ -34,12 +35,11 @@ from mypy.cache import (
     ReadBuffer,
     Tag,
     read_int,
-    read_int_bare,
     read_str,
     read_tag,
     read_bool,
 )
-from librt.internal import read_str as read_str_bare, read_float as read_float_bare
+from librt.internal import read_str as read_str_bare, read_float as read_float_bare, read_int as read_int_bare
 from mypy.nodes import (
     ARG_POS,
     ARG_OPT,
@@ -127,7 +127,7 @@ def native_parse(filename: str) -> MypyFile:
 
 
 def parse_to_binary_ast(filename: str) -> bytes:
-    return ast_serialize.parse(filename)
+    return ast_serialize.parse(filename)  # type: ignore[no-any-return]
 
 
 def read_statement(data: ReadBuffer) -> Statement:
@@ -333,7 +333,7 @@ def read_statement(data: ReadBuffer) -> Statement:
         # Read number of items
         n = read_int(data)
         expr_list = []
-        target_list = []
+        target_list: list[Expression | None] = []
         # Read each item
         for _ in range(n):
             # Read context expression
@@ -525,7 +525,7 @@ def read_expression(data: ReadBuffer) -> Expression:
         # Read argument names
         expect_tag(data, LIST_GEN)
         n_names = read_int_bare(data)
-        arg_names = []
+        arg_names: list[str | None] = []
         for _ in range(n_names):
             tag = read_tag(data)
             if tag == LITERAL_NONE:
@@ -709,7 +709,7 @@ def read_expression(data: ReadBuffer) -> Expression:
         # Read keys
         expect_tag(data, LIST_GEN)
         n_keys = read_int_bare(data)
-        keys = []
+        keys: list[Expression | None] = []
         for _ in range(n_keys):
             has_key = read_bool(data)
             if has_key:
