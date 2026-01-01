@@ -1273,3 +1273,15 @@ MypyFile:1(
     Block:2(
       PassStmt:2())))
 
+[case testFunctionWithEllipsisCallableType]
+def f(callback: Callable[..., int]) -> None:
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var:nil(callback))
+    def (callback: Callable?[..., int?]) -> None?
+    Block:2(
+      PassStmt:2())))

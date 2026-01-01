@@ -102,7 +102,7 @@ from mypy.nodes import (
     YieldFromExpr,
     MISSING_FALLBACK,
 )
-from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList
+from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType
 
 
 # There is no way to create reasonable fallbacks at this stage,
@@ -546,6 +546,12 @@ def read_type(data: ReadBuffer) -> Type:
         read_loc(data, type_list)
         expect_end_tag(data)
         return type_list
+    elif tag == types.ELLIPSIS_TYPE:
+        # EllipsisType has no attributes
+        ellipsis_type = EllipsisType()
+        read_loc(data, ellipsis_type)
+        expect_end_tag(data)
+        return ellipsis_type
     else:
         assert False, tag
 
