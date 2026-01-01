@@ -2465,6 +2465,25 @@ def foo(a: int, b: int) -> str:
 [out2]
 tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
 
+[case testIncrementalWithSilentImportsReverse]
+-- Same commands as previous test, just in reverse order.
+-- expected output is also in reverse order
+# cmd: mypy -m b
+# cmd2: mypy -m a
+# flags: --follow-imports=silent
+[file a.py]
+import b
+
+b.foo(1, 2)
+
+[file b.py]
+def foo(a: int, b: int) -> str:
+    return a + b
+
+[out]
+tmp/b.py:2: error: Incompatible return value type (got "int", expected "str")
+[out2]
+
 [case testForwardNamedTupleToUnionWithOtherNamedTUple]
 from typing import NamedTuple, Union
 
