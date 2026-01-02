@@ -1643,3 +1643,18 @@ MypyFile:1(
             NameExpr(baz)
             Args(
               NameExpr(x))))))))
+
+[case testSyntaxError]
+x = [1 2]
+y = 2
+[out]
+1:8: error: Expected ',', found int
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    ListExpr:1(
+      IntExpr(1)
+      IntExpr(2)))
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(2)))

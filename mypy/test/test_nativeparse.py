@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from collections.abc import Iterator
 
+from typing import Any
+
 from mypy import defaults, nodes
 from mypy.cache import END_TAG, LIST_GEN, LITERAL_INT, LITERAL_STR, LOCATION
 from mypy.config_parser import parse_mypy_comments
@@ -61,17 +63,22 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     try:
         with temp_source(source) as fnam:
             try:
-                node = native_parse(fnam)
+                node, errors = native_parse(fnam)
             except ValueError as e:
                 print(f"Parse failed: {e}")
                 assert False
             node.path = "main"
             a = node.str_with_options(options).split("\n")
+            a = [format_error(err) for err in errors] + a
     except CompileError as e:
         a = e.messages
     assert_string_arrays_equal(
         testcase.output, a, f"Invalid parser output ({testcase.file}, line {testcase.line})"
     )
+
+
+def format_error(err: dict[str, Any]) -> str:
+    return f"{err['line']}:{err['column']}: error: {err['message']}"
 
 
 class TestNativeParse(unittest.TestCase):

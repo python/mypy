@@ -18,7 +18,7 @@ Expected benefits over mypy.fastparse:
 
 from __future__ import annotations
 
-from typing import Final, cast
+from typing import Final, cast, Any
 
 import ast_serialize  # type: ignore[import-untyped]
 
@@ -126,8 +126,8 @@ def expect_tag(data: ReadBuffer, tag: Tag) -> None:
     assert read_tag(data) == tag
 
 
-def native_parse(filename: str) -> MypyFile:
-    b = parse_to_binary_ast(filename)
+def native_parse(filename: str) -> tuple[MypyFile, list[dict[str, Any]]]:
+    b, errors = parse_to_binary_ast(filename)
     data = ReadBuffer(b)
     n = read_int(data)
     defs = []
@@ -135,10 +135,10 @@ def native_parse(filename: str) -> MypyFile:
         defs.append(read_statement(data))
     node = MypyFile(defs, [])
     node.path = filename
-    return node
+    return node, errors
 
 
-def parse_to_binary_ast(filename: str) -> bytes:
+def parse_to_binary_ast(filename: str) -> tuple[bytes, list[dict[str, Any]]]:
     return ast_serialize.parse(filename)  # type: ignore[no-any-return]
 
 
