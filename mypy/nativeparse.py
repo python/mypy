@@ -61,6 +61,7 @@ from mypy.nodes import (
     ComplexExpr,
     Context,
     Decorator,
+    DelStmt,
     DictExpr,
     DictionaryComprehension,
     EllipsisExpr,
@@ -506,6 +507,13 @@ def read_statement(data: ReadBuffer) -> Statement:
             finally_body = None
 
         stmt = TryStmt(body, vars_list, types_list, handlers, else_body, finally_body)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.DEL_STMT:
+        # Read the target expression
+        expr = read_expression(data)
+        stmt = DelStmt(expr)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt

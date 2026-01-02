@@ -1285,3 +1285,24 @@ MypyFile:1(
     def (callback: Callable?[..., int?]) -> None?
     Block:2(
       PassStmt:2())))
+
+[case testDelStmt]
+del x
+del x[0], y[1]
+del a.b
+[out]
+MypyFile:1(
+  DelStmt:1(
+    NameExpr(x))
+  DelStmt:2(
+    TupleExpr:2(
+      IndexExpr:2(
+        NameExpr(x)
+        IntExpr(0))
+      IndexExpr:2(
+        NameExpr(y)
+        IntExpr(1))))
+  DelStmt:3(
+    MemberExpr:3(
+      NameExpr(a)
+      b)))
