@@ -32,7 +32,7 @@ Example:
 
     # mypy: disallow-any-generics
 
-    # Error: Missing type parameters for generic type "list"  [type-arg]
+    # Error: Missing type arguments for generic type "list"  [type-arg]
     def remove_dups(items: list) -> list:
         ...
 

@@ -357,11 +357,11 @@ a.x = ''  # E: Incompatible types in assignment (expression has type "str", vari
 [case testErrorCodeMissingTypeArg]
 # flags: --disallow-any-generics
 from typing import List, TypeVar
-x: List  # E: Missing type parameters for generic type "List"  [type-arg]
-y: list  # E: Missing type parameters for generic type "list"  [type-arg]
+x: List  # E: Missing type arguments for generic type "List"  [type-arg]
+y: list  # E: Missing type arguments for generic type "list"  [type-arg]
 T = TypeVar('T')
 L = List[List[T]]
-z: L  # E: Missing type parameters for generic type "L"  [type-arg]
+z: L  # E: Missing type arguments for generic type "L"  [type-arg]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeUnionAttribute]

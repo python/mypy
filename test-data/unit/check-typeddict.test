@@ -3040,8 +3040,9 @@ reveal_type(ad)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtin
 Alias[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "list[str]")
 
 # Generic aliases are *always* filled with Any, so this is different from TD(...) call.
-Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
+Alias(key=0, value=0)  # E: Missing type arguments for generic type "Alias" \
                        # E: Incompatible types (expression has type "int", TypedDict item "value" has type "list[Any]")
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
