@@ -876,7 +876,13 @@ def read_expression(data: ReadBuffer) -> Expression:
                 read_loc(data, str_expr)
             elif t == nodes.FSTRING_INTERPOLATION:
                 expr = read_expression(data)
-                member = MemberExpr(StrExpr("{:{}}"), "format")
+                has_conv = read_bool(data)
+                if has_conv:
+                    c = read_str(data)
+                    fmt = "{" + c + ":{}}"
+                else:
+                    fmt = "{:{}}"
+                member = MemberExpr(StrExpr(fmt), "format")
                 set_line_column(member, expr)
                 call = CallExpr(member, [expr, StrExpr("")], [ARG_POS, ARG_POS], [None, None])
                 set_line_column(call, expr)

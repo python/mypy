@@ -1326,3 +1326,27 @@ MypyFile:1(
             Args(
               NameExpr(x)
               StrExpr())))))))
+
+[case testFStringWithConversion]
+x = 'mypy'
+F'Hello {x!r}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    CallExpr:2(
+      MemberExpr:2(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:2(
+          StrExpr(Hello )
+          CallExpr:2(
+            MemberExpr:2(
+              StrExpr({!r:{}})
+              format)
+            Args(
+              NameExpr(x)
+              StrExpr())))))))
