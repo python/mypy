@@ -877,10 +877,10 @@ def read_fstring_items(data: ReadBuffer) -> Expression:
     expect_tag(data, LIST_GEN)
     n = read_int_bare(data)
     items = [read_fstring_item(data) for i in range(n)]
-    if len(items) == 1 and isinstance(items[0], StrExpr):
-        str_expr = items[0]
-        read_loc(data, str_expr)
-        return str_expr
+    if len(items) == 1:
+        expr = items[0]
+        read_loc(data, expr)
+        return expr
     args = ListExpr(items)
     str_expr = StrExpr("")
     member = MemberExpr(str_expr, "join")
