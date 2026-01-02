@@ -1851,8 +1851,8 @@ main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 from typing import List
 
 A = List  # OK
-B = List[A]  # E:10: Missing type parameters for generic type "A"
-x: A  # E:4: Missing type parameters for generic type "A"
+B = List[A]  # E:10: Missing type arguments for generic type "A"
+x: A  # E:4: Missing type arguments for generic type "A"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitDefSignature]
