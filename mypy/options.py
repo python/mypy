@@ -236,7 +236,7 @@ class Options:
         self.strict_equality_for_none = False
 
         # Disable treating bytearray and memoryview as subtypes of bytes
-        self.strict_bytes = False
+        self.strict_bytes = True
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
@@ -407,8 +407,10 @@ class Options:
         # (undocumented feature).
         self.export_ref_info = False
 
-        self.disable_bytearray_promotion = False
-        self.disable_memoryview_promotion = False
+        self.disable_bytearray_promotion = True
+        self.disable_memoryview_promotion = True
+        self.force_uppercase_builtins = False
+        self.force_union_syntax = False
 
         # Sets custom output format
         self.output: str | None = None
