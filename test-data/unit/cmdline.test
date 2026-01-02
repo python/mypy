@@ -491,7 +491,7 @@ disallow_any_generics = True
 [file m.py]
 def j(s: frozenset) -> None: pass
 [out]
-m.py:1: error: Missing type parameters for generic type "frozenset"
+m.py:1: error: Missing type arguments for generic type "frozenset"
 
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
@@ -503,7 +503,7 @@ disallow_any_generics = True
 from typing import FrozenSet
 def j(s: FrozenSet) -> None: pass
 [out]
-m.py:2: error: Missing type parameters for generic type "FrozenSet"
+m.py:2: error: Missing type arguments for generic type "FrozenSet"
 
 [case testSectionInheritance]
 # cmd: mypy a
