@@ -78,6 +78,7 @@ from mypy.nodes import (
     SetComprehension,
     IndexExpr,
     IntExpr,
+    LambdaExpr,
     ListExpr,
     MemberExpr,
     MypyFile,
@@ -878,6 +879,56 @@ def read_expression(data: ReadBuffer) -> Expression:
                 read_loc(data, s)
                 items.append(s)
         expr = build_fstring_join(data, items)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.LAMBDA_EXPR:
+        # Read arguments
+        expect_tag(data, LIST_GEN)
+        n_args = read_int_bare(data)
+        arguments = []
+        has_ann = False
+        for _ in range(n_args):
+            arg_name = read_str(data)
+            arg_kind_int = read_int(data)
+            arg_kind = ARG_KINDS[arg_kind_int]
+            # Read type annotation
+            has_type = read_bool(data)
+            if has_type:
+                ann = read_type(data)
+                has_ann = True
+            else:
+                ann = None
+            # Read default value
+            has_default = read_bool(data)
+            if has_default:
+                default = read_expression(data)
+            else:
+                default = None
+            pos_only = read_bool(data)
+
+            var = Var(arg_name)
+            arg = Argument(var, ann, default, arg_kind, pos_only)
+            arguments.append(arg)
+
+        # Read body block
+        body = read_block(data)
+
+        # Create lambda expression
+        if has_ann:
+            typ = CallableType(
+                [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
+                 for arg in arguments],
+                [arg.kind for arg in arguments],
+                [arg.variable.name for arg in arguments],
+                AnyType(TypeOfAny.unannotated),
+                _dummy_fallback,
+            )
+        else:
+            typ = None
+
+        expr = LambdaExpr(arguments, body)
+        expr.type = typ
+        read_loc(data, expr)
         expect_end_tag(data)
         return expr
     else:

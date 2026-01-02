@@ -1437,3 +1437,77 @@ MypyFile:1(
                           NameExpr(y)
                           NameExpr(y))
                         StrExpr()))))))))))))
+
+[case testSimpleLambda]
+lambda: 1
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    LambdaExpr:1(
+      Block:1(
+        ReturnStmt:1(
+          IntExpr(1))))))
+
+[case testLambdaWithOneArg]
+lambda x: y + 1
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    LambdaExpr:1(
+      Args(
+        Var:nil(x))
+      Block:1(
+        ReturnStmt:1(
+          OpExpr:1(
+            +
+            NameExpr(y)
+            IntExpr(1)))))))
+
+[case testLambdaWithMultipleArgs]
+lambda x, y: x + y
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    LambdaExpr:1(
+      Args(
+        Var:nil(x)
+        Var:nil(y))
+      Block:1(
+        ReturnStmt:1(
+          OpExpr:1(
+            +
+            NameExpr(x)
+            NameExpr(y)))))))
+
+[case testLambdaWithDefault]
+lambda x=2: x
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    LambdaExpr:1(
+      Args(
+        default(
+          Var:nil(x)
+          IntExpr(2)))
+      Block:1(
+        ReturnStmt:1(
+          NameExpr(x))))))
+
+[case testLambdaInCall]
+map(lambda x: x * 2, items)
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      NameExpr(map)
+      Args(
+        LambdaExpr:1(
+          Args(
+            Var:nil(x))
+          Block:1(
+            ReturnStmt:1(
+              OpExpr:1(
+                *
+                NameExpr(x)
+                IntExpr(2)))))
+        NameExpr(items)))))

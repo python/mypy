@@ -5064,6 +5064,7 @@ CONDITIONAL_EXPR: Final[Tag] = 203
 DEL_STMT: Final[Tag] = 204
 FSTRING_EXPR: Final[Tag] = 205
 FSTRING_INTERPOLATION: Final[Tag] = 206
+LAMBDA_EXPR: Final[Tag] = 207
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
