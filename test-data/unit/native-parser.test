@@ -1306,3 +1306,23 @@ MypyFile:1(
     MemberExpr:3(
       NameExpr(a)
       b)))
+
+[case testFString]
+f"foo {x}"
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    CallExpr:1(
+      MemberExpr:1(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:1(
+          StrExpr(foo )
+          CallExpr:1(
+            MemberExpr:1(
+              StrExpr({:{}})
+              format)
+            Args(
+              NameExpr(x)
+              StrExpr())))))))

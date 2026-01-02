@@ -862,8 +862,47 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
+    elif tag == nodes.FSTRING_EXPR:
+        # F-strings are converted into nodes representing "".join([...]), to match
+        # pre-existing behavior.
+        items = []
+        expect_tag(data, LIST_GEN)
+        n = read_int_bare(data)
+        for _ in range(n):
+            t = read_tag(data)
+            if t == LITERAL_STR:
+                str_expr = StrExpr(read_str_bare(data))
+                items.append(str_expr)
+                read_loc(data, str_expr)
+            elif t == nodes.FSTRING_INTERPOLATION:
+                expr = read_expression(data)
+                member = MemberExpr(StrExpr("{:{}}"), "format")
+                set_line_column(member, expr)
+                call = CallExpr(member, [expr, StrExpr("")], [ARG_POS, ARG_POS], [None, None])
+                set_line_column(call, expr)
+                items.append(call)
+                b = read_bool(data)
+                assert not b
+                expect_end_tag(data)
+            else:
+                raise ValueError(f"Unexpected tag {t}")
+        l = ListExpr(items)
+        str_expr = StrExpr("")
+        member = MemberExpr(str_expr, "join")
+        call = CallExpr(member, [l], [ARG_POS], [None])
+        read_loc(data, call)
+        set_line_column(l, call)
+        set_line_column(str_expr, call)
+        set_line_column(member, call)
+        expect_end_tag(data)
+        return call
     else:
         assert False, tag
+
+
+def set_line_column(target: Context, src: Context) -> None:
+    target.line = src.line
+    target.column = src.column
 
 
 def read_expression_list(data: ReadBuffer) -> list[Expression]:
