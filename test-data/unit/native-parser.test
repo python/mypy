@@ -1571,3 +1571,43 @@ b'\1\476'
 MypyFile:1(
   ExpressionStmt:1(
     BytesExpr(\x01>)))
+[case testGlobalAndNonlocal]
+x = 1
+y = 2
+def outer():
+    global x
+    def inner():
+        nonlocal y
+        global z
+        y = 3
+        z = 4
+    x = 5
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(1))
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(2))
+  FuncDef:3(
+    outer
+    Block:4(
+      GlobalDecl:4(
+        x)
+      FuncDef:5(
+        inner
+        Block:6(
+          NonlocalDecl:6(
+            y)
+          GlobalDecl:7(
+            z)
+          AssignmentStmt:8(
+            NameExpr(y)
+            IntExpr(3))
+          AssignmentStmt:9(
+            NameExpr(z)
+            IntExpr(4))))
+      AssignmentStmt:10(
+        NameExpr(x)
+        IntExpr(5)))))

@@ -73,6 +73,7 @@ from mypy.nodes import (
     ForStmt,
     FuncDef,
     GeneratorExpr,
+    GlobalDecl,
     IfStmt,
     Import,
     ImportFrom,
@@ -86,6 +87,7 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     Node,
+    NonlocalDecl,
     OpExpr,
     OperatorAssignmentStmt,
     PassStmt,
@@ -518,6 +520,26 @@ def read_statement(data: ReadBuffer) -> Statement:
         # Read the target expression
         expr = read_expression(data)
         stmt = DelStmt(expr)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.GLOBAL_DECL:
+        # Read number of names
+        n = read_int(data)
+        names = []
+        for _ in range(n):
+            names.append(read_str(data))
+        stmt = GlobalDecl(names)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.NONLOCAL_DECL:
+        # Read number of names
+        n = read_int(data)
+        names = []
+        for _ in range(n):
+            names.append(read_str(data))
+        stmt = NonlocalDecl(names)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt

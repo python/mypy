@@ -5068,6 +5068,8 @@ LAMBDA_EXPR: Final[Tag] = 207
 NAMED_EXPR: Final[Tag] = 208
 STAR_EXPR: Final[Tag] = 209
 BYTES_EXPR: Final[Tag] = 210
+GLOBAL_DECL: Final[Tag] = 211
+NONLOCAL_DECL: Final[Tag] = 212
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
