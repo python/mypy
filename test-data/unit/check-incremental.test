@@ -7683,3 +7683,20 @@ main:4: error: Too many arguments for "C"
 [out2]
 main:2: error: Module "m1" has no attribute "D"
 main:4: error: Too many arguments for "C"
+
+[case testCyclicUndefinedImportWithStarIncremental]
+import m
+[file m.py]
+import a
+[file m.py.2]
+import a
+reveal_type(a.no_such_export)
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import *
+[out]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+[out2]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/m.py:2: note: Revealed type is "Any"
