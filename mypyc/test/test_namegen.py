@@ -52,3 +52,17 @@ class TestNameGen(unittest.TestCase):
         assert g.private_name("foo", "C_x_y") == "foo___C_x_y"
         assert g.private_name("foo", "C_x_y") == "foo___C_x_y"
         assert g.private_name("foo", "___") == "foo______3_"
+
+        g = NameGenerator([["foo.zar"]])
+        assert g.private_name("foo.zar", "f") == "f"
+
+    def test_name_generator_with_separate(self) -> None:
+        g = NameGenerator([["foo", "foo.zar"]], separate=True)
+        assert g.private_name("foo", "f") == "foo___f"
+        assert g.private_name("foo", "C.x.y") == "foo___C___x___y"
+        assert g.private_name("foo.zar", "C.x.y") == "foo___zar___C___x___y"
+        assert g.private_name("foo", "C.x_y") == "foo___C___x_y"
+        assert g.private_name("foo", "___") == "foo______3_"
+
+        g = NameGenerator([["foo.zar"]], separate=True)
+        assert g.private_name("foo.zar", "f") == "foo___zar___f"

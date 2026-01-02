@@ -1,10 +1,9 @@
 import sys
 from _queue import Empty as Empty, SimpleQueue as SimpleQueue
+from _typeshed import SupportsRichComparisonT
 from threading import Condition, Lock
+from types import GenericAlias
 from typing import Any, Generic, TypeVar
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 __all__ = ["Empty", "Full", "Queue", "PriorityQueue", "LifoQueue", "SimpleQueue"]
 if sys.version_info >= (3, 13):
@@ -47,11 +46,10 @@ class Queue(Generic[_T]):
     def qsize(self) -> int: ...
     def _qsize(self) -> int: ...
     def task_done(self) -> None: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class PriorityQueue(Queue[_T]):
-    queue: list[_T]
+class PriorityQueue(Queue[SupportsRichComparisonT]):
+    queue: list[SupportsRichComparisonT]
 
 class LifoQueue(Queue[_T]):
     queue: list[_T]

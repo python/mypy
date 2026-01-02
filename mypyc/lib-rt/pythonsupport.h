@@ -17,7 +17,6 @@
 #ifndef Py_BUILD_CORE
 #define Py_BUILD_CORE
 #endif
-#include "internal/pycore_call.h"  // _PyObject_CallMethodIdNoArgs, _PyObject_CallMethodIdOneArg
 #include "internal/pycore_genobject.h"  // _PyGen_FetchStopIterationValue
 #include "internal/pycore_pyerrors.h"  // _PyErr_FormatFromCause, _PyErr_SetKeyError
 #include "internal/pycore_setobject.h"  // _PySet_Update
@@ -69,7 +68,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        new_base = _PyObject_Vectorcall(meth, stack, 1, NULL);
+        new_base = PyObject_Vectorcall(meth, stack, 1, NULL);
         Py_DECREF(meth);
         if (!new_base) {
             goto error;
@@ -118,7 +117,7 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     PyObject *super, *func, *result;
     PyObject *args[2] = {(PyObject *)type, (PyObject *)type};
 
-    super = _PyObject_Vectorcall((PyObject *)&PySuper_Type, args, 2, NULL);
+    super = PyObject_Vectorcall((PyObject *)&PySuper_Type, args, 2, NULL);
     if (super == NULL) {
         return -1;
     }
@@ -390,16 +389,6 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
 }
 #else
 #define _CPyObject_HasAttrId _PyObject_HasAttrId
-#endif
-
-#if PY_VERSION_HEX < 0x03090000
-// OneArgs and NoArgs functions got added in 3.9
-#define _PyObject_CallMethodIdNoArgs(self, name) \
-    _PyObject_CallMethodIdObjArgs((self), (name), NULL)
-#define _PyObject_CallMethodIdOneArg(self, name, arg) \
-    _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
-#define PyObject_CallMethodOneArg(self, name, arg) \
-    PyObject_CallMethodObjArgs((self), (name), (arg), NULL)
 #endif
 
 #if CPY_3_12_FEATURES

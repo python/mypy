@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, Optional
+from typing import Final
 
 from mypyc.ir.ops import (
     Assign,
@@ -39,6 +39,7 @@ from mypyc.ir.ops import (
     RaiseStandardError,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
@@ -51,7 +52,7 @@ from mypyc.ir.ops import (
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 
-class IRTransform(OpVisitor[Optional[Value]]):
+class IRTransform(OpVisitor[Value | None]):
     """Identity transform.
 
     Subclass and override to perform changes to IR.
@@ -119,6 +120,9 @@ class IRTransform(OpVisitor[Optional[Value]]):
         self.add(op)
 
     def visit_assign(self, op: Assign) -> Value | None:
+        if op.src in self.op_map and self.op_map[op.src] is None:
+            # Special case: allow removing register initialization assignments
+            return None
         return self.add(op)
 
     def visit_assign_multi(self, op: AssignMulti) -> Value | None:
@@ -209,6 +213,9 @@ class IRTransform(OpVisitor[Optional[Value]]):
         return self.add(op)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> Value | None:
+        return self.add(op)
+
+    def visit_set_element(self, op: SetElement) -> Value | None:
         return self.add(op)
 
     def visit_load_address(self, op: LoadAddress) -> Value | None:
@@ -351,10 +358,13 @@ class PatchVisitor(OpVisitor[None]):
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         op.src = self.fix_op(op.src)
 
+    def visit_set_element(self, op: SetElement) -> None:
+        op.src = self.fix_op(op.src)
+
     def visit_load_address(self, op: LoadAddress) -> None:
         if isinstance(op.src, LoadStatic):
             new = self.fix_op(op.src)
-            assert isinstance(new, LoadStatic)
+            assert isinstance(new, LoadStatic), new
             op.src = new
 
     def visit_keep_alive(self, op: KeepAlive) -> None:

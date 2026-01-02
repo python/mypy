@@ -75,11 +75,12 @@ class Bar(Foo):
     def f(self, *args: int, **kwargs: int) -> None:
         print("stuff", args, kwargs)
 
-z: Foo = Bar()
-z.f(1, z=50)
-z.f()
-z.f(1)
-z.f(z=50)
+def test_pos_only() -> None:
+    z: Foo = Bar()
+    z.f(1, z=50)
+    z.f()
+    z.f(1)
+    z.f(z=50)
 
 [out]
 stuff (1,) {'z': 50}

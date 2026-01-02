@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, Final, overload
-from typing_extensions import Literal, Protocol
+from collections.abc import Callable
+from typing import Final, Literal, Protocol, overload
 
 from mypy_extensions import trait
 
@@ -47,6 +47,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     UnpackType,
+    flatten_nested_tuples,
     get_proper_type,
 )
 
@@ -76,11 +77,11 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+    def lookup_fully_qualified(self, fullname: str, /) -> SymbolTableNode:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode | None:
+    def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -176,7 +177,8 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @abstractmethod
     def anal_type(
         self,
-        t: Type,
+        typ: Type,
+        /,
         *,
         tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
@@ -198,11 +200,11 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def schedule_patch(self, priority: int, fn: Callable[[], None]) -> None:
+    def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> bool:
+    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode) -> bool:
         """Add node to the current symbol table."""
         raise NotImplementedError
 
@@ -242,7 +244,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def qualified_name(self, n: str) -> str:
+    def qualified_name(self, name: str) -> str:
         raise NotImplementedError
 
     @property
@@ -290,7 +292,7 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     fallback = typ.partial_fallback
     assert fallback.type.fullname == "builtins.tuple"
     items = []
-    for item in typ.items:
+    for item in flatten_nested_tuples(typ.items):
         # TODO: this duplicates some logic in typeops.tuple_fallback().
         if isinstance(item, UnpackType):
             unpacked_type = get_proper_type(item.type)
@@ -302,14 +304,16 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
             ):
                 items.append(unpacked_type.args[0])
             else:
-                raise NotImplementedError
+                # This is called before semanal_typeargs.py fixes broken unpacks,
+                # where the error should also be generated.
+                items.append(AnyType(TypeOfAny.from_error))
         else:
             items.append(item)
     fallback.args = (make_simplified_union(items),)
 
 
 class _NamedTypeCallback(Protocol):
-    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance: ...
+    def __call__(self, fullname: str, args: list[Type] | None = None) -> Instance: ...
 
 
 def paramspec_args(
@@ -452,7 +456,7 @@ def require_bool_literal_argument(
     api: SemanticAnalyzerInterface | SemanticAnalyzerPluginInterface,
     expression: Expression,
     name: str,
-    default: Literal[True] | Literal[False],
+    default: Literal[True, False],
 ) -> bool: ...
 
 

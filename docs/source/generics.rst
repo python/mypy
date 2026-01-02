@@ -93,7 +93,7 @@ Using ``Stack`` is similar to built-in container types:
    stack.push('x')
 
    stack2: Stack[str] = Stack()
-   stack2.append('x')
+   stack2.push('x')
 
 Construction of instances of generic types is type checked (Python 3.12 syntax):
 
@@ -630,7 +630,7 @@ Let us illustrate this by few simple examples:
 
      my_circles: list[Circle] = []
      add_one(my_circles)     # This may appear safe, but...
-     my_circles[-1].rotate()  # ...this will fail, since my_circles[0] is now a Shape, not a Circle
+     my_circles[0].rotate()  # ...this will fail, since my_circles[0] is now a Shape, not a Circle
 
   Another example of invariant type is ``dict``. Most mutable containers
   are invariant.
@@ -999,7 +999,7 @@ similarly supported via generics (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from colletions.abc import Callable
+    from collections.abc import Callable
     from typing import Any
 
     def route[F: Callable[..., Any]](url: str) -> Callable[[F], F]:
@@ -1165,7 +1165,7 @@ This example correctly uses a covariant type variable:
 
 See :ref:`variance-of-generics` for more about variance.
 
-Generic protocols can also be recursive. Example (Python 3.12 synta):
+Generic protocols can also be recursive. Example (Python 3.12 syntax):
 
 .. code-block:: python
 

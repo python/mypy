@@ -163,9 +163,12 @@ def g():
     r5 :: str
     r6 :: object
     r7 :: str
-    r8, r9 :: object
-    r10 :: bit
-    r11 :: None
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: bit
+    r13 :: None
 L0:
 L1:
     r0 = builtins :: module
@@ -173,7 +176,7 @@ L1:
     r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L3 (error at g:3) else goto L2
 L2:
-    r3 = PyObject_CallFunctionObjArgs(r2, 0)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
     dec_ref r2
     if is_error(r3) goto L3 (error at g:3) else goto L10
 L3:
@@ -184,9 +187,11 @@ L3:
     r8 = CPyObject_GetAttr(r6, r7)
     if is_error(r8) goto L6 (error at g:5) else goto L4
 L4:
-    r9 = PyObject_CallFunctionObjArgs(r8, r5, 0)
+    r9 = [r5]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 1, 0)
     dec_ref r8
-    if is_error(r9) goto L6 (error at g:5) else goto L11
+    if is_error(r11) goto L6 (error at g:5) else goto L11
 L5:
     CPy_RestoreExcInfo(r4)
     dec_ref r4
@@ -194,20 +199,20 @@ L5:
 L6:
     CPy_RestoreExcInfo(r4)
     dec_ref r4
-    r10 = CPy_KeepPropagating()
-    if not r10 goto L9 else goto L7 :: bool
+    r12 = CPy_KeepPropagating()
+    if not r12 goto L9 else goto L7 :: bool
 L7:
     unreachable
 L8:
     return 1
 L9:
-    r11 = <error> :: None
-    return r11
+    r13 = <error> :: None
+    return r13
 L10:
     dec_ref r3
     goto L8
 L11:
-    dec_ref r9
+    dec_ref r11
     goto L5
 
 [case testGenopsTryFinally]
@@ -229,9 +234,12 @@ def a():
     r10 :: str
     r11 :: object
     r12 :: str
-    r13, r14 :: object
-    r15 :: bit
-    r16 :: str
+    r13 :: object
+    r14 :: object[1]
+    r15 :: object_ptr
+    r16 :: object
+    r17 :: bit
+    r18 :: str
 L0:
 L1:
     r0 = builtins :: module
@@ -239,7 +247,7 @@ L1:
     r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L5 (error at a:3) else goto L2
 L2:
-    r3 = PyObject_CallFunctionObjArgs(r2, 0)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
     dec_ref r2
     if is_error(r3) goto L5 (error at a:3) else goto L19
 L3:
@@ -262,9 +270,11 @@ L6:
     r13 = CPyObject_GetAttr(r11, r12)
     if is_error(r13) goto L20 (error at a:6) else goto L7
 L7:
-    r14 = PyObject_CallFunctionObjArgs(r13, r10, 0)
+    r14 = [r10]
+    r15 = load_address r14
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
     dec_ref r13
-    if is_error(r14) goto L20 (error at a:6) else goto L21
+    if is_error(r16) goto L20 (error at a:6) else goto L21
 L8:
     if is_error(r7) goto L11 else goto L22
 L9:
@@ -282,15 +292,15 @@ L14:
     CPy_RestoreExcInfo(r7)
     xdec_ref r7
 L15:
-    r15 = CPy_KeepPropagating()
-    if not r15 goto L18 else goto L16 :: bool
+    r17 = CPy_KeepPropagating()
+    if not r17 goto L18 else goto L16 :: bool
 L16:
     unreachable
 L17:
     unreachable
 L18:
-    r16 = <error> :: str
-    return r16
+    r18 = <error> :: str
+    return r18
 L19:
     dec_ref r3
     goto L3
@@ -298,7 +308,7 @@ L20:
     xdec_ref r5
     goto L13
 L21:
-    dec_ref r14
+    dec_ref r16
     goto L8
 L22:
     xdec_ref r5
@@ -446,8 +456,11 @@ def f(b):
     r6 :: str
     r7 :: object
     r8 :: bool
-    r9 :: object
-    r10 :: None
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: bool
+    r13 :: None
 L0:
     r0 = <error> :: str
     v = r0
@@ -455,50 +468,59 @@ L0:
     inc_ref r1
     u = r1
 L1:
-    if b goto L10 else goto L11 :: bool
+    if b goto L13 else goto L14 :: bool
 L2:
     r2 = 'b'
     inc_ref r2
     v = r2
     r3 = v == u
     r4 = r3 ^ 1
-    if r4 goto L11 else goto L1 :: bool
+    if r4 goto L14 else goto L1 :: bool
 L3:
     r5 = builtins :: module
     r6 = 'print'
     r7 = CPyObject_GetAttr(r5, r6)
-    if is_error(r7) goto L12 (error at f:7) else goto L4
+    if is_error(r7) goto L15 (error at f:7) else goto L4
 L4:
-    if is_error(v) goto L13 else goto L7
+    if is_error(v) goto L16 else goto L7
 L5:
     r8 = raise UnboundLocalError('local variable "v" referenced before assignment')
-    if not r8 goto L9 (error at f:7) else goto L6 :: bool
+    if not r8 goto L12 (error at f:-1) else goto L6 :: bool
 L6:
     unreachable
 L7:
-    r9 = PyObject_CallFunctionObjArgs(r7, v, 0)
+    r9 = [v]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r7, r10, 1, 0)
     dec_ref r7
-    xdec_ref v
-    if is_error(r9) goto L9 (error at f:7) else goto L14
+    if is_error(r11) goto L15 (error at f:7) else goto L17
 L8:
-    return 1
+    if is_error(v) goto L9 else goto L11
 L9:
-    r10 = <error> :: None
-    return r10
+    r12 = raise UnboundLocalError('local variable "v" referenced before assignment')
+    if not r12 goto L12 (error at f:-1) else goto L10 :: bool
 L10:
+    unreachable
+L11:
+    xdec_ref v
+    return 1
+L12:
+    r13 = <error> :: None
+    return r13
+L13:
     xdec_ref v
     goto L2
-L11:
+L14:
     dec_ref u
     goto L3
-L12:
+L15:
     xdec_ref v
-    goto L9
-L13:
+    goto L12
+L16:
     dec_ref r7
     goto L5
-L14:
-    dec_ref r9
+L17:
+    dec_ref r11
     goto L8
 
 [case testExceptionWithOverlappingErrorValue]

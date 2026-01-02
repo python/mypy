@@ -54,7 +54,7 @@ from _operator import (
 )
 from _typeshed import SupportsGetItem
 from typing import Any, Generic, TypeVar, final, overload
-from typing_extensions import TypeVarTuple, Unpack
+from typing_extensions import Self, TypeVarTuple, Unpack
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
@@ -205,11 +205,13 @@ class itemgetter(Generic[_T_co]):
     #   "tuple[int, int]" is incompatible with protocol "SupportsIndex"
     # preventing [_T_co, ...] instead of [Any, ...]
     #
-    # A suspected mypy issue prevents using [..., _T] instead of [..., Any] here.
-    # https://github.com/python/mypy/issues/14032
+    # If we can't infer a literal key from __new__ (ie: `itemgetter[Literal[0]]` for `itemgetter(0)`),
+    # then we can't annotate __call__'s return type or it'll break on tuples
+    #
+    # These issues are best demonstrated by the `itertools.check_itertools_recipes.unique_justseen` test.
     def __call__(self, obj: SupportsGetItem[Any, Any]) -> Any: ...
 
 @final
 class methodcaller:
-    def __init__(self, name: str, /, *args: Any, **kwargs: Any) -> None: ...
+    def __new__(cls, name: str, /, *args: Any, **kwargs: Any) -> Self: ...
     def __call__(self, obj: Any) -> Any: ...

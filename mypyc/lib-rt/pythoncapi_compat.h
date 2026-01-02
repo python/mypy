@@ -19,6 +19,7 @@ extern "C" {
 #endif
 
 #include <Python.h>
+#include <stddef.h>               // offsetof()
 
 // Python 3.11.0b4 added PyFrame_Back() to Python.h
 #if PY_VERSION_HEX < 0x030b00B4 && !defined(PYPY_VERSION)
@@ -36,11 +37,13 @@ extern "C" {
 // Static inline functions should use _Py_NULL rather than using directly NULL
 // to prevent C++ compiler warnings. On C23 and newer and on C++11 and newer,
 // _Py_NULL is defined as nullptr.
-#if (defined (__STDC_VERSION__) && __STDC_VERSION__ > 201710L) \
-        || (defined(__cplusplus) && __cplusplus >= 201103)
-#  define _Py_NULL nullptr
-#else
-#  define _Py_NULL NULL
+#ifndef _Py_NULL
+#  if (defined (__STDC_VERSION__) && __STDC_VERSION__ > 201710L) \
+          || (defined(__cplusplus) && __cplusplus >= 201103)
+#    define _Py_NULL nullptr
+#  else
+#    define _Py_NULL NULL
+#  endif
 #endif
 
 // Cast argument to PyObject* type.
@@ -583,7 +586,7 @@ static inline int PyWeakref_GetRef(PyObject *ref, PyObject **pobj)
         return 0;
     }
     *pobj = Py_NewRef(obj);
-    return (*pobj != NULL);
+    return 1;
 }
 #endif
 
@@ -1454,6 +1457,18 @@ PyUnicodeWriter_WriteUTF8(PyUnicodeWriter *writer,
 }
 
 static inline int
+PyUnicodeWriter_WriteASCII(PyUnicodeWriter *writer,
+                           const char *str, Py_ssize_t size)
+{
+    if (size < 0) {
+        size = (Py_ssize_t)strlen(str);
+    }
+
+    return _PyUnicodeWriter_WriteASCIIString((_PyUnicodeWriter*)writer,
+                                             str, size);
+}
+
+static inline int
 PyUnicodeWriter_WriteWideChar(PyUnicodeWriter *writer,
                               const wchar_t *str, Py_ssize_t size)
 {
@@ -1476,7 +1491,8 @@ PyUnicodeWriter_WriteSubstring(PyUnicodeWriter *writer, PyObject *str,
                                Py_ssize_t start, Py_ssize_t end)
 {
     if (!PyUnicode_Check(str)) {
-        PyErr_Format(PyExc_TypeError, "expect str, not %T", str);
+        PyErr_Format(PyExc_TypeError, "expect str, not %s",
+                     Py_TYPE(str)->tp_name);
         return -1;
     }
     if (start < 0 || start > end) {
@@ -1930,6 +1946,645 @@ PyLongWriter_Finish(PyLongWriter *writer)
 #  define Py_READONLY            READONLY
 #  define Py_AUDIT_READ          READ_RESTRICTED
 #  define _Py_WRITE_RESTRICTED   PY_WRITE_RESTRICTED
+#endif
+
+
+// gh-127350 added Py_fopen() and Py_fclose() to Python 3.14a4
+#if PY_VERSION_HEX < 0x030E00A4
+static inline FILE* Py_fopen(PyObject *path, const char *mode)
+{
+#if 0x030400A2 <= PY_VERSION_HEX && !defined(PYPY_VERSION)
+    PyAPI_FUNC(FILE*) _Py_fopen_obj(PyObject *path, const char *mode);
+
+    return _Py_fopen_obj(path, mode);
+#else
+    FILE *f;
+    PyObject *bytes;
+#if PY_VERSION_HEX >= 0x03000000
+    if (!PyUnicode_FSConverter(path, &bytes)) {
+        return NULL;
+    }
+#else
+    if (!PyString_Check(path)) {
+        PyErr_SetString(PyExc_TypeError, "except str");
+        return NULL;
+    }
+    bytes = Py_NewRef(path);
+#endif
+    const char *path_bytes = PyBytes_AS_STRING(bytes);
+
+    f = fopen(path_bytes, mode);
+    Py_DECREF(bytes);
+
+    if (f == NULL) {
+        PyErr_SetFromErrnoWithFilenameObject(PyExc_OSError, path);
+        return NULL;
+    }
+    return f;
+#endif
+}
+
+static inline int Py_fclose(FILE *file)
+{
+    return fclose(file);
+}
+#endif
+
+
+#if 0x03080000 <= PY_VERSION_HEX && PY_VERSION_HEX < 0x030E0000 && !defined(PYPY_VERSION)
+static inline PyObject*
+PyConfig_Get(const char *name)
+{
+    typedef enum {
+        _PyConfig_MEMBER_INT,
+        _PyConfig_MEMBER_UINT,
+        _PyConfig_MEMBER_ULONG,
+        _PyConfig_MEMBER_BOOL,
+        _PyConfig_MEMBER_WSTR,
+        _PyConfig_MEMBER_WSTR_OPT,
+        _PyConfig_MEMBER_WSTR_LIST,
+    } PyConfigMemberType;
+
+    typedef struct {
+        const char *name;
+        size_t offset;
+        PyConfigMemberType type;
+        const char *sys_attr;
+    } PyConfigSpec;
+
+#define PYTHONCAPI_COMPAT_SPEC(MEMBER, TYPE, sys_attr) \
+    {#MEMBER, offsetof(PyConfig, MEMBER), \
+     _PyConfig_MEMBER_##TYPE, sys_attr}
+
+    static const PyConfigSpec config_spec[] = {
+        PYTHONCAPI_COMPAT_SPEC(argv, WSTR_LIST, "argv"),
+        PYTHONCAPI_COMPAT_SPEC(base_exec_prefix, WSTR_OPT, "base_exec_prefix"),
+        PYTHONCAPI_COMPAT_SPEC(base_executable, WSTR_OPT, "_base_executable"),
+        PYTHONCAPI_COMPAT_SPEC(base_prefix, WSTR_OPT, "base_prefix"),
+        PYTHONCAPI_COMPAT_SPEC(bytes_warning, UINT, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(exec_prefix, WSTR_OPT, "exec_prefix"),
+        PYTHONCAPI_COMPAT_SPEC(executable, WSTR_OPT, "executable"),
+        PYTHONCAPI_COMPAT_SPEC(inspect, BOOL, _Py_NULL),
+#if 0x030C0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(int_max_str_digits, UINT, _Py_NULL),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(interactive, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(module_search_paths, WSTR_LIST, "path"),
+        PYTHONCAPI_COMPAT_SPEC(optimization_level, UINT, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(parser_debug, BOOL, _Py_NULL),
+#if 0x03090000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(platlibdir, WSTR, "platlibdir"),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(prefix, WSTR_OPT, "prefix"),
+        PYTHONCAPI_COMPAT_SPEC(pycache_prefix, WSTR_OPT, "pycache_prefix"),
+        PYTHONCAPI_COMPAT_SPEC(quiet, BOOL, _Py_NULL),
+#if 0x030B0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(stdlib_dir, WSTR_OPT, "_stdlib_dir"),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(use_environment, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(verbose, UINT, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(warnoptions, WSTR_LIST, "warnoptions"),
+        PYTHONCAPI_COMPAT_SPEC(write_bytecode, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(xoptions, WSTR_LIST, "_xoptions"),
+        PYTHONCAPI_COMPAT_SPEC(buffered_stdio, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(check_hash_pycs_mode, WSTR, _Py_NULL),
+#if 0x030B0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(code_debug_ranges, BOOL, _Py_NULL),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(configure_c_stdio, BOOL, _Py_NULL),
+#if 0x030D0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(cpu_count, INT, _Py_NULL),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(dev_mode, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(dump_refs, BOOL, _Py_NULL),
+#if 0x030B0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(dump_refs_file, WSTR_OPT, _Py_NULL),
+#endif
+#ifdef Py_GIL_DISABLED
+        PYTHONCAPI_COMPAT_SPEC(enable_gil, INT, _Py_NULL),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(faulthandler, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(filesystem_encoding, WSTR, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(filesystem_errors, WSTR, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(hash_seed, ULONG, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(home, WSTR_OPT, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(import_time, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(install_signal_handlers, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(isolated, BOOL, _Py_NULL),
+#ifdef MS_WINDOWS
+        PYTHONCAPI_COMPAT_SPEC(legacy_windows_stdio, BOOL, _Py_NULL),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(malloc_stats, BOOL, _Py_NULL),
+#if 0x030A0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(orig_argv, WSTR_LIST, "orig_argv"),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(parse_argv, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(pathconfig_warnings, BOOL, _Py_NULL),
+#if 0x030C0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(perf_profiling, UINT, _Py_NULL),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(program_name, WSTR, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(run_command, WSTR_OPT, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(run_filename, WSTR_OPT, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(run_module, WSTR_OPT, _Py_NULL),
+#if 0x030B0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(safe_path, BOOL, _Py_NULL),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(show_ref_count, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(site_import, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(skip_source_first_line, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(stdio_encoding, WSTR, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(stdio_errors, WSTR, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(tracemalloc, UINT, _Py_NULL),
+#if 0x030B0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(use_frozen_modules, BOOL, _Py_NULL),
+#endif
+        PYTHONCAPI_COMPAT_SPEC(use_hash_seed, BOOL, _Py_NULL),
+        PYTHONCAPI_COMPAT_SPEC(user_site_directory, BOOL, _Py_NULL),
+#if 0x030A0000 <= PY_VERSION_HEX
+        PYTHONCAPI_COMPAT_SPEC(warn_default_encoding, BOOL, _Py_NULL),
+#endif
+    };
+
+#undef PYTHONCAPI_COMPAT_SPEC
+
+    const PyConfigSpec *spec;
+    int found = 0;
+    for (size_t i=0; i < sizeof(config_spec) / sizeof(config_spec[0]); i++) {
+        spec = &config_spec[i];
+        if (strcmp(spec->name, name) == 0) {
+            found = 1;
+            break;
+        }
+    }
+    if (found) {
+        if (spec->sys_attr != NULL) {
+            PyObject *value = PySys_GetObject(spec->sys_attr);
+            if (value == NULL) {
+                PyErr_Format(PyExc_RuntimeError, "lost sys.%s", spec->sys_attr);
+                return NULL;
+            }
+            return Py_NewRef(value);
+        }
+
+        PyAPI_FUNC(const PyConfig*) _Py_GetConfig(void);
+
+        const PyConfig *config = _Py_GetConfig();
+        void *member = (char *)config + spec->offset;
+        switch (spec->type) {
+        case _PyConfig_MEMBER_INT:
+        case _PyConfig_MEMBER_UINT:
+        {
+            int value = *(int *)member;
+            return PyLong_FromLong(value);
+        }
+        case _PyConfig_MEMBER_BOOL:
+        {
+            int value = *(int *)member;
+            return PyBool_FromLong(value != 0);
+        }
+        case _PyConfig_MEMBER_ULONG:
+        {
+            unsigned long value = *(unsigned long *)member;
+            return PyLong_FromUnsignedLong(value);
+        }
+        case _PyConfig_MEMBER_WSTR:
+        case _PyConfig_MEMBER_WSTR_OPT:
+        {
+            wchar_t *wstr = *(wchar_t **)member;
+            if (wstr != NULL) {
+                return PyUnicode_FromWideChar(wstr, -1);
+            }
+            else {
+                return Py_NewRef(Py_None);
+            }
+        }
+        case _PyConfig_MEMBER_WSTR_LIST:
+        {
+            const PyWideStringList *list = (const PyWideStringList *)member;
+            PyObject *tuple = PyTuple_New(list->length);
+            if (tuple == NULL) {
+                return NULL;
+            }
+
+            for (Py_ssize_t i = 0; i < list->length; i++) {
+                PyObject *item = PyUnicode_FromWideChar(list->items[i], -1);
+                if (item == NULL) {
+                    Py_DECREF(tuple);
+                    return NULL;
+                }
+                PyTuple_SET_ITEM(tuple, i, item);
+            }
+            return tuple;
+        }
+        default:
+            Py_UNREACHABLE();
+        }
+    }
+
+    PyErr_Format(PyExc_ValueError, "unknown config option name: %s", name);
+    return NULL;
+}
+
+static inline int
+PyConfig_GetInt(const char *name, int *value)
+{
+    PyObject *obj = PyConfig_Get(name);
+    if (obj == NULL) {
+        return -1;
+    }
+
+    if (!PyLong_Check(obj)) {
+        Py_DECREF(obj);
+        PyErr_Format(PyExc_TypeError, "config option %s is not an int", name);
+        return -1;
+    }
+
+    int as_int = PyLong_AsInt(obj);
+    Py_DECREF(obj);
+    if (as_int == -1 && PyErr_Occurred()) {
+        PyErr_Format(PyExc_OverflowError,
+                     "config option %s value does not fit into a C int", name);
+        return -1;
+    }
+
+    *value = as_int;
+    return 0;
+}
+#endif  // PY_VERSION_HEX > 0x03090000 && !defined(PYPY_VERSION)
+
+// gh-133144 added PyUnstable_Object_IsUniquelyReferenced() to Python 3.14.0b1.
+// Adapted from  _PyObject_IsUniquelyReferenced() implementation.
+#if PY_VERSION_HEX < 0x030E00B0
+static inline int PyUnstable_Object_IsUniquelyReferenced(PyObject *obj)
+{
+#if !defined(Py_GIL_DISABLED)
+    return Py_REFCNT(obj) == 1;
+#else
+    // NOTE: the entire ob_ref_shared field must be zero, including flags, to
+    // ensure that other threads cannot concurrently create new references to
+    // this object.
+    return (_Py_IsOwnedByCurrentThread(obj) &&
+            _Py_atomic_load_uint32_relaxed(&obj->ob_ref_local) == 1 &&
+            _Py_atomic_load_ssize_relaxed(&obj->ob_ref_shared) == 0);
+#endif
+}
+#endif
+
+
+#if PY_VERSION_HEX < 0x030F0000
+static inline PyObject*
+PySys_GetAttrString(const char *name)
+{
+#if PY_VERSION_HEX >= 0x03000000
+    PyObject *value = Py_XNewRef(PySys_GetObject(name));
+#else
+    PyObject *value = Py_XNewRef(PySys_GetObject((char*)name));
+#endif
+    if (value != NULL) {
+        return value;
+    }
+    if (!PyErr_Occurred()) {
+        PyErr_Format(PyExc_RuntimeError, "lost sys.%s", name);
+    }
+    return NULL;
+}
+
+static inline PyObject*
+PySys_GetAttr(PyObject *name)
+{
+#if PY_VERSION_HEX >= 0x03000000
+    const char *name_str = PyUnicode_AsUTF8(name);
+#else
+    const char *name_str = PyString_AsString(name);
+#endif
+    if (name_str == NULL) {
+        return NULL;
+    }
+
+    return PySys_GetAttrString(name_str);
+}
+
+static inline int
+PySys_GetOptionalAttrString(const char *name, PyObject **value)
+{
+#if PY_VERSION_HEX >= 0x03000000
+    *value = Py_XNewRef(PySys_GetObject(name));
+#else
+    *value = Py_XNewRef(PySys_GetObject((char*)name));
+#endif
+    if (*value != NULL) {
+        return 1;
+    }
+    return 0;
+}
+
+static inline int
+PySys_GetOptionalAttr(PyObject *name, PyObject **value)
+{
+#if PY_VERSION_HEX >= 0x03000000
+    const char *name_str = PyUnicode_AsUTF8(name);
+#else
+    const char *name_str = PyString_AsString(name);
+#endif
+    if (name_str == NULL) {
+        *value = NULL;
+        return -1;
+    }
+
+    return PySys_GetOptionalAttrString(name_str, value);
+}
+#endif  // PY_VERSION_HEX < 0x030F00A1
+
+
+#if PY_VERSION_HEX < 0x030F00A1
+typedef struct PyBytesWriter {
+    char small_buffer[256];
+    PyObject *obj;
+    Py_ssize_t size;
+} PyBytesWriter;
+
+static inline Py_ssize_t
+_PyBytesWriter_GetAllocated(PyBytesWriter *writer)
+{
+    if (writer->obj == NULL) {
+        return sizeof(writer->small_buffer);
+    }
+    else {
+        return PyBytes_GET_SIZE(writer->obj);
+    }
+}
+
+
+static inline int
+_PyBytesWriter_Resize_impl(PyBytesWriter *writer, Py_ssize_t size,
+                           int resize)
+{
+    int overallocate = resize;
+    assert(size >= 0);
+
+    if (size <= _PyBytesWriter_GetAllocated(writer)) {
+        return 0;
+    }
+
+    if (overallocate) {
+#ifdef MS_WINDOWS
+        /* On Windows, overallocate by 50% is the best factor */
+        if (size <= (PY_SSIZE_T_MAX - size / 2)) {
+            size += size / 2;
+        }
+#else
+        /* On Linux, overallocate by 25% is the best factor */
+        if (size <= (PY_SSIZE_T_MAX - size / 4)) {
+            size += size / 4;
+        }
+#endif
+    }
+
+    if (writer->obj != NULL) {
+        if (_PyBytes_Resize(&writer->obj, size)) {
+            return -1;
+        }
+        assert(writer->obj != NULL);
+    }
+    else {
+        writer->obj = PyBytes_FromStringAndSize(NULL, size);
+        if (writer->obj == NULL) {
+            return -1;
+        }
+
+        if (resize) {
+            assert((size_t)size > sizeof(writer->small_buffer));
+            memcpy(PyBytes_AS_STRING(writer->obj),
+                   writer->small_buffer,
+                   sizeof(writer->small_buffer));
+        }
+    }
+    return 0;
+}
+
+static inline void*
+PyBytesWriter_GetData(PyBytesWriter *writer)
+{
+    if (writer->obj == NULL) {
+        return writer->small_buffer;
+    }
+    else {
+        return PyBytes_AS_STRING(writer->obj);
+    }
+}
+
+static inline Py_ssize_t
+PyBytesWriter_GetSize(PyBytesWriter *writer)
+{
+    return writer->size;
+}
+
+static inline void
+PyBytesWriter_Discard(PyBytesWriter *writer)
+{
+    if (writer == NULL) {
+        return;
+    }
+
+    Py_XDECREF(writer->obj);
+    PyMem_Free(writer);
+}
+
+static inline PyBytesWriter*
+PyBytesWriter_Create(Py_ssize_t size)
+{
+    if (size < 0) {
+        PyErr_SetString(PyExc_ValueError, "size must be >= 0");
+        return NULL;
+    }
+
+    PyBytesWriter *writer = (PyBytesWriter*)PyMem_Malloc(sizeof(PyBytesWriter));
+    if (writer == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    writer->obj = NULL;
+    writer->size = 0;
+
+    if (size >= 1) {
+        if (_PyBytesWriter_Resize_impl(writer, size, 0) < 0) {
+            PyBytesWriter_Discard(writer);
+            return NULL;
+        }
+        writer->size = size;
+    }
+    return writer;
+}
+
+static inline PyObject*
+PyBytesWriter_FinishWithSize(PyBytesWriter *writer, Py_ssize_t size)
+{
+    PyObject *result;
+    if (size == 0) {
+        result = PyBytes_FromStringAndSize("", 0);
+    }
+    else if (writer->obj != NULL) {
+        if (size != PyBytes_GET_SIZE(writer->obj)) {
+            if (_PyBytes_Resize(&writer->obj, size)) {
+                goto error;
+            }
+        }
+        result = writer->obj;
+        writer->obj = NULL;
+    }
+    else {
+        result = PyBytes_FromStringAndSize(writer->small_buffer, size);
+    }
+    PyBytesWriter_Discard(writer);
+    return result;
+
+error:
+    PyBytesWriter_Discard(writer);
+    return NULL;
+}
+
+static inline PyObject*
+PyBytesWriter_Finish(PyBytesWriter *writer)
+{
+    return PyBytesWriter_FinishWithSize(writer, writer->size);
+}
+
+static inline PyObject*
+PyBytesWriter_FinishWithPointer(PyBytesWriter *writer, void *buf)
+{
+    Py_ssize_t size = (char*)buf - (char*)PyBytesWriter_GetData(writer);
+    if (size < 0 || size > _PyBytesWriter_GetAllocated(writer)) {
+        PyBytesWriter_Discard(writer);
+        PyErr_SetString(PyExc_ValueError, "invalid end pointer");
+        return NULL;
+    }
+
+    return PyBytesWriter_FinishWithSize(writer, size);
+}
+
+static inline int
+PyBytesWriter_Resize(PyBytesWriter *writer, Py_ssize_t size)
+{
+    if (size < 0) {
+        PyErr_SetString(PyExc_ValueError, "size must be >= 0");
+        return -1;
+    }
+    if (_PyBytesWriter_Resize_impl(writer, size, 1) < 0) {
+        return -1;
+    }
+    writer->size = size;
+    return 0;
+}
+
+static inline int
+PyBytesWriter_Grow(PyBytesWriter *writer, Py_ssize_t size)
+{
+    if (size < 0 && writer->size + size < 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid size");
+        return -1;
+    }
+    if (size > PY_SSIZE_T_MAX - writer->size) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    size = writer->size + size;
+
+    if (_PyBytesWriter_Resize_impl(writer, size, 1) < 0) {
+        return -1;
+    }
+    writer->size = size;
+    return 0;
+}
+
+static inline void*
+PyBytesWriter_GrowAndUpdatePointer(PyBytesWriter *writer,
+                                   Py_ssize_t size, void *buf)
+{
+    Py_ssize_t pos = (char*)buf - (char*)PyBytesWriter_GetData(writer);
+    if (PyBytesWriter_Grow(writer, size) < 0) {
+        return NULL;
+    }
+    return (char*)PyBytesWriter_GetData(writer) + pos;
+}
+
+static inline int
+PyBytesWriter_WriteBytes(PyBytesWriter *writer,
+                         const void *bytes, Py_ssize_t size)
+{
+    if (size < 0) {
+        size_t len = strlen((const char*)bytes);
+        if (len > (size_t)PY_SSIZE_T_MAX) {
+            PyErr_NoMemory();
+            return -1;
+        }
+        size = (Py_ssize_t)len;
+    }
+
+    Py_ssize_t pos = writer->size;
+    if (PyBytesWriter_Grow(writer, size) < 0) {
+        return -1;
+    }
+    char *buf = (char*)PyBytesWriter_GetData(writer);
+    memcpy(buf + pos, bytes, (size_t)size);
+    return 0;
+}
+
+static inline int
+PyBytesWriter_Format(PyBytesWriter *writer, const char *format, ...)
+                     Py_GCC_ATTRIBUTE((format(printf, 2, 3)));
+
+static inline int
+PyBytesWriter_Format(PyBytesWriter *writer, const char *format, ...)
+{
+    va_list vargs;
+    va_start(vargs, format);
+    PyObject *str = PyBytes_FromFormatV(format, vargs);
+    va_end(vargs);
+
+    if (str == NULL) {
+        return -1;
+    }
+    int res = PyBytesWriter_WriteBytes(writer,
+                                       PyBytes_AS_STRING(str),
+                                       PyBytes_GET_SIZE(str));
+    Py_DECREF(str);
+    return res;
+}
+#endif  // PY_VERSION_HEX < 0x030F00A1
+
+
+#if PY_VERSION_HEX < 0x030F00A1
+static inline PyObject*
+PyTuple_FromArray(PyObject *const *array, Py_ssize_t size)
+{
+    PyObject *tuple = PyTuple_New(size);
+    if (tuple == NULL) {
+        return NULL;
+    }
+    for (Py_ssize_t i=0; i < size; i++) {
+        PyObject *item = array[i];
+        PyTuple_SET_ITEM(tuple, i, Py_NewRef(item));
+    }
+    return tuple;
+}
+#endif
+
+
+#if PY_VERSION_HEX < 0x030F00A1
+static inline Py_hash_t
+PyUnstable_Unicode_GET_CACHED_HASH(PyObject *op)
+{
+#ifdef PYPY_VERSION
+    (void)op;  // unused argument
+    return -1;
+#elif PY_VERSION_HEX >= 0x03000000
+    return ((PyASCIIObject*)op)->hash;
+#else
+    return ((PyUnicodeObject*)op)->hash;
+#endif
+}
 #endif
 
 

@@ -2,37 +2,21 @@ import logging
 import sys
 import unittest.result
 from _typeshed import SupportsDunderGE, SupportsDunderGT, SupportsDunderLE, SupportsDunderLT, SupportsRSub, SupportsSub
+from builtins import _ClassInfo
 from collections.abc import Callable, Container, Iterable, Mapping, Sequence, Set as AbstractSet
 from contextlib import AbstractContextManager
 from re import Pattern
-from types import TracebackType
-from typing import (
-    Any,
-    AnyStr,
-    ClassVar,
-    Final,
-    Generic,
-    NamedTuple,
-    NoReturn,
-    Protocol,
-    SupportsAbs,
-    SupportsRound,
-    TypeVar,
-    overload,
-)
-from typing_extensions import ParamSpec, Self, TypeAlias
+from types import GenericAlias, TracebackType
+from typing import Any, AnyStr, Final, Generic, NoReturn, Protocol, SupportsAbs, SupportsRound, TypeVar, overload, type_check_only
+from typing_extensions import Never, ParamSpec, Self
+from unittest._log import _AssertLogsContext, _LoggingWatcher
 from warnings import WarningMessage
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
-
-if sys.version_info >= (3, 10):
-    from types import UnionType
 
 _T = TypeVar("_T")
 _S = TypeVar("_S", bound=SupportsSub[Any, Any])
 _E = TypeVar("_E", bound=BaseException)
 _FT = TypeVar("_FT", bound=Callable[..., Any])
+_SB = TypeVar("_SB", str, bytes, bytearray)
 _P = ParamSpec("_P")
 
 DIFF_OMITTED: Final[str]
@@ -58,29 +42,6 @@ class _AssertRaisesBaseContext(_BaseTestCaseContext):
     # but it's not possible to construct an overload which expresses that
     def handle(self, name: str, args: list[Any], kwargs: dict[str, Any]) -> Any: ...
 
-if sys.version_info >= (3, 9):
-    from unittest._log import _AssertLogsContext, _LoggingWatcher
-else:
-    # Unused dummy for _AssertLogsContext. Starting with Python 3.10,
-    # this is generic over the logging watcher, but in lower versions
-    # the watcher is hard-coded.
-    _L = TypeVar("_L")
-
-    class _LoggingWatcher(NamedTuple):
-        records: list[logging.LogRecord]
-        output: list[str]
-
-    class _AssertLogsContext(_BaseTestCaseContext, Generic[_L]):
-        LOGGING_FORMAT: ClassVar[str]
-        logger_name: str
-        level: int
-        msg: None
-        def __init__(self, test_case: TestCase, logger_name: str, level: int) -> None: ...
-        def __enter__(self) -> _LoggingWatcher: ...
-        def __exit__(
-            self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
-        ) -> bool | None: ...
-
 def addModuleCleanup(function: Callable[_P, object], /, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
 def doModuleCleanups() -> None: ...
 
@@ -95,15 +56,8 @@ def skipUnless(condition: object, reason: str) -> Callable[[_FT], _FT]: ...
 class SkipTest(Exception):
     def __init__(self, reason: str) -> None: ...
 
+@type_check_only
 class _SupportsAbsAndDunderGE(SupportsDunderGE[Any], SupportsAbs[Any], Protocol): ...
-
-# Keep this alias in sync with builtins._ClassInfo
-# We can't import it from builtins or pytype crashes,
-# due to the fact that pytype uses a custom builtins stub rather than typeshed's builtins stub
-if sys.version_info >= (3, 10):
-    _ClassInfo: TypeAlias = type | UnionType | tuple[_ClassInfo, ...]
-else:
-    _ClassInfo: TypeAlias = type | tuple[_ClassInfo, ...]
 
 class TestCase:
     failureException: type[BaseException]
@@ -323,6 +277,20 @@ class TestCase:
             self, subset: Mapping[Any, Any], dictionary: Mapping[Any, Any], msg: object = None
         ) -> None: ...
 
+    if sys.version_info >= (3, 10):
+        # Runtime has *args, **kwargs, but will error if any are supplied
+        def __init_subclass__(cls, *args: Never, **kwargs: Never) -> None: ...
+
+    if sys.version_info >= (3, 14):
+        def assertIsSubclass(self, cls: type, superclass: type | tuple[type, ...], msg: Any = None) -> None: ...
+        def assertNotIsSubclass(self, cls: type, superclass: type | tuple[type, ...], msg: Any = None) -> None: ...
+        def assertHasAttr(self, obj: object, name: str, msg: Any = None) -> None: ...
+        def assertNotHasAttr(self, obj: object, name: str, msg: Any = None) -> None: ...
+        def assertStartsWith(self, s: _SB, prefix: _SB | tuple[_SB, ...], msg: Any = None) -> None: ...
+        def assertNotStartsWith(self, s: _SB, prefix: _SB | tuple[_SB, ...], msg: Any = None) -> None: ...
+        def assertEndsWith(self, s: _SB, suffix: _SB | tuple[_SB, ...], msg: Any = None) -> None: ...
+        def assertNotEndsWith(self, s: _SB, suffix: _SB | tuple[_SB, ...], msg: Any = None) -> None: ...
+
 class FunctionTestCase(TestCase):
     def __init__(
         self,
@@ -341,8 +309,7 @@ class _AssertRaisesContext(_AssertRaisesBaseContext, Generic[_E]):
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
     ) -> bool: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class _AssertWarnsContext(_AssertRaisesBaseContext):
     warning: WarningMessage

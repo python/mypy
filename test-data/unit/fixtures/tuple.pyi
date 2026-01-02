@@ -1,18 +1,20 @@
 # Builtins stub used in tuple-related test cases.
 
 import _typeshed
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type, Self
 
 _T = TypeVar("_T")
 _Tco = TypeVar('_Tco', covariant=True)
 
 class object:
     def __init__(self) -> None: pass
+    def __new__(cls) -> Self: ...
 
 class type:
     def __init__(self, *a: object) -> None: pass
     def __call__(self, *a: object) -> object: pass
 class tuple(Sequence[_Tco], Generic[_Tco]):
+    def __hash__(self) -> int: ...
     def __new__(cls: Type[_T], iterable: Iterable[_Tco] = ...) -> _T: ...
     def __iter__(self) -> Iterator[_Tco]: pass
     def __contains__(self, item: object) -> bool: pass

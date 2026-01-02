@@ -10,9 +10,12 @@ from mypy.nodes import (
     NamedTupleExpr,
     NewTypeExpr,
     PromoteExpr,
+    TypeAlias,
     TypeAliasExpr,
+    TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     Var,
     WithStmt,
@@ -45,16 +48,17 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
         if info:
             for base in info.bases:
                 base.accept(self)
+            if info.special_alias:
+                info.special_alias.accept(self)
 
     def visit_type_alias_expr(self, o: TypeAliasExpr, /) -> None:
         super().visit_type_alias_expr(o)
-        self.in_type_alias_expr = True
-        o.node.target.accept(self)
-        self.in_type_alias_expr = False
+        o.node.accept(self)
 
     def visit_type_var_expr(self, o: TypeVarExpr, /) -> None:
         super().visit_type_var_expr(o)
         o.upper_bound.accept(self)
+        o.default.accept(self)
         for value in o.values:
             value.accept(self)
 
@@ -81,6 +85,17 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
         super().visit_assignment_stmt(o)
         self.visit_optional_type(o.type)
 
+    def visit_type_alias_stmt(self, o: TypeAliasStmt, /) -> None:
+        super().visit_type_alias_stmt(o)
+        if o.alias_node is not None:
+            o.alias_node.accept(self)
+
+    def visit_type_alias(self, o: TypeAlias, /) -> None:
+        super().visit_type_alias(o)
+        self.in_type_alias_expr = True
+        o.target.accept(self)
+        self.in_type_alias_expr = False
+
     def visit_for_stmt(self, o: ForStmt, /) -> None:
         super().visit_for_stmt(o)
         self.visit_optional_type(o.index_type)
@@ -94,6 +109,10 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     def visit_cast_expr(self, o: CastExpr, /) -> None:
         super().visit_cast_expr(o)
+        o.type.accept(self)
+
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        super().visit_type_form_expr(o)
         o.type.accept(self)
 
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:

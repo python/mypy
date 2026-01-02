@@ -1,0 +1,60 @@
+[case testLibrtStrings_experimental_64bit]
+from librt.strings import BytesWriter
+from mypy_extensions import u8, i64
+
+def bytes_writer_basics() -> bytes:
+    b = BytesWriter()
+    b.append(1)
+    b.write(b'foo')
+    n = 2
+    b.truncate(n)
+    return b.getvalue()
+def bytes_writer_len(b: BytesWriter) -> i64:
+    return len(b)
+[out]
+def bytes_writer_basics():
+    r0, b :: librt.strings.BytesWriter
+    r1 :: None
+    r2 :: bytes
+    r3 :: None
+    n :: int
+    r4 :: native_int
+    r5 :: bit
+    r6, r7 :: i64
+    r8 :: ptr
+    r9 :: c_ptr
+    r10 :: i64
+    r11 :: None
+    r12 :: bytes
+L0:
+    r0 = LibRTStrings_BytesWriter_internal()
+    b = r0
+    r1 = CPyBytesWriter_Append(b, 1)
+    r2 = b'foo'
+    r3 = CPyBytesWriter_Write(b, r2)
+    n = 4
+    r4 = n & 1
+    r5 = r4 == 0
+    if r5 goto L1 else goto L2 :: bool
+L1:
+    r6 = n >> 1
+    r7 = r6
+    goto L3
+L2:
+    r8 = n ^ 1
+    r9 = r8
+    r10 = CPyLong_AsInt64(r9)
+    r7 = r10
+    keep_alive n
+L3:
+    r11 = LibRTStrings_BytesWriter_truncate_internal(b, r7)
+    r12 = LibRTStrings_BytesWriter_getvalue_internal(b)
+    return r12
+def bytes_writer_len(b):
+    b :: librt.strings.BytesWriter
+    r0 :: short_int
+    r1 :: i64
+L0:
+    r0 = CPyBytesWriter_Len(b)
+    r1 = r0 >> 1
+    return r1

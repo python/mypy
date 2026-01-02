@@ -2,6 +2,11 @@
 
 [case testStrBasics]
 from typing import Tuple
+class A:
+    def __str__(self) -> str:
+        return "A-str"
+    def __repr__(self) -> str:
+        return "A-repr"
 def f() -> str:
     return 'some string'
 def g() -> str:
@@ -10,6 +15,14 @@ def tostr(x: int) -> str:
     return str(x)
 def booltostr(x: bool) -> str:
     return str(x)
+def clstostr(x: A) -> str:
+    return str(x)
+def torepr(x: int) -> str:
+    return repr(x)
+def booltorepr(x: bool) -> str:
+    return repr(x)
+def clstorepr(x: A) -> str:
+    return repr(x)
 def concat(x: str, y: str) -> str:
     return x + y
 def eq(x: str) -> int:
@@ -20,10 +33,21 @@ def eq(x: str) -> int:
     return 2
 def match(x: str, y: str) -> Tuple[bool, bool]:
     return (x.startswith(y), x.endswith(y))
+def match_tuple(x: str, y: Tuple[str, ...]) -> Tuple[bool, bool]:
+    return (x.startswith(y), x.endswith(y))
+def match_tuple_literal_args(x: str, y: str, z: str) -> Tuple[bool, bool]:
+    return (x.startswith((y, z)), x.endswith((y, z)))
+def remove_prefix_suffix(x: str, y: str) -> Tuple[str, str]:
+    return (x.removeprefix(y), x.removesuffix(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq, match
+from native import (
+    f, g, A, tostr, booltostr, clstostr, concat, eq, match, match_tuple,
+    match_tuple_literal_args, remove_prefix_suffix,
+    torepr, booltorepr, clstorepr
+)
 import sys
+from testutil import assertRaises
 
 assert f() == 'some string'
 assert f() is sys.intern('some string')
@@ -32,20 +56,103 @@ assert tostr(57) == '57'
 assert concat('foo', 'bar') == 'foobar'
 assert booltostr(True) == 'True'
 assert booltostr(False) == 'False'
+assert clstostr(A()) == "A-str"
 assert eq('foo') == 0
 assert eq('zar') == 1
 assert eq('bar') == 2
 
+assert torepr(57) == '57'
+assert booltorepr(True) == 'True'
+assert booltorepr(False) == 'False'
+assert clstorepr(A()) == "A-repr"
+
 assert int(tostr(0)) == 0
 assert int(tostr(20)) == 20
+assert int(torepr(0)) == 0
+assert int(torepr(20)) == 20
 assert match('', '') == (True, True)
 assert match('abc', '') == (True, True)
 assert match('abc', 'a') == (True, False)
 assert match('abc', 'c') == (False, True)
 assert match('', 'abc') == (False, False)
+assert match_tuple('abc', ('d', 'e')) == (False, False)
+assert match_tuple('abc', ('a', 'c')) == (True, True)
+assert match_tuple('abc', ('a',)) == (True, False)
+assert match_tuple('abc', ('c',)) == (False, True)
+assert match_tuple('abc', ('x', 'y', 'z')) == (False, False)
+assert match_tuple('abc', ('x', 'y', 'z', 'a', 'c')) == (True, True)
+with assertRaises(TypeError, "tuple for startswith must only contain str"):
+    assert match_tuple('abc', (None,))
+with assertRaises(TypeError, "tuple for endswith must only contain str"):
+    assert match_tuple('abc', ('a', None))
+assert match_tuple_literal_args('abc', 'z', 'a') == (True, False)
+assert match_tuple_literal_args('abc', 'z', 'c') == (False, True)
+
+assert remove_prefix_suffix('', '') == ('', '')
+assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
+assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
+
+[case testStringEquality]
+def eq(a: str, b: str) -> bool:
+    return a == b
+def ne(a: str, b: str) -> bool:
+    return a != b
+
+def test_basic() -> None:
+    xy = "xy"
+    xy2 = str().join(["x", "y"])
+    xx = "xx"
+    yy = "yy"
+    xxx = "xxx"
+
+    assert eq("", str())
+    assert not ne("", str())
+
+    assert eq("x", "x" + str())
+    assert ne("x", "y")
+
+    assert eq(xy, xy)
+    assert eq(xy, xy2)
+    assert not eq(xy, yy)
+    assert ne(xy, xx)
+    assert not ne(xy, xy)
+    assert not ne(xy, xy2)
+
+    assert ne(xx, xxx)
+    assert ne(xxx, xx)
+    assert ne("x", "")
+    assert ne("", "x")
+
+    assert ne("XX", xx)
+    assert ne(yy, xy)
+
+def test_unicode() -> None:
+    assert eq(chr(200), chr(200) + str())
+    assert ne(chr(200), chr(201))
+
+    assert eq(chr(1234), chr(1234) + str())
+    assert ne(chr(1234), chr(1235))
+
+    assert eq("\U0001f4a9", "\U0001f4a9" + str())
+    assert eq("\U0001f4a9", "\U0001F4A9" + str())
+    assert ne("\U0001f4a9", "\U0002f4a9" + str())
+    assert ne("\U0001f4a9", "\U0001f5a9" + str())
+    assert ne("\U0001f4a9", "\U0001f4a8" + str())
+
+    assert eq("foobar\u1234", "foobar\u1234" + str())
+    assert eq("\u1234foobar", "\u1234foobar" + str())
+    assert ne("foobar\uf234", "foobar\uf235")
+    assert ne("foobar\uf234", "foobar\uf334")
+    assert ne("foobar\u1234", "Foobar\u1234" + str())
+
+    assert eq("foo\U0001f4a9", "foo\U0001f4a9" + str())
+    assert eq("\U0001f4a9foo", "\U0001f4a9foo" + str())
+    assert ne("foo\U0001f4a9", "foo\U0001f4a8" + str())
+    assert ne("\U0001f4a9foo", "\U0001f4a8foo" + str())
 
 [case testStringOps]
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from testutil import assertRaises
 
 def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
     if sep is not None:
@@ -54,6 +161,14 @@ def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None)
         else:
             return s.split(sep)
     return s.split()
+
+def do_rsplit(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
+    if sep is not None:
+        if max_split is not None:
+            return s.rsplit(sep, max_split)
+        else:
+            return s.rsplit(sep)
+    return s.rsplit()
 
 ss = "abc abcd abcde abcdef"
 
@@ -66,12 +181,76 @@ def test_split() -> None:
     assert do_split(ss, " ", 1) == ["abc", "abcd abcde abcdef"]
     assert do_split(ss, " ", 2) == ["abc", "abcd", "abcde abcdef"]
 
+def test_rsplit() -> None:
+    assert do_rsplit(ss) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ") == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, "-") == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", -1) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ", 0) == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", 1) == ["abc abcd abcde", "abcdef"]  # different to do_split
+    assert do_rsplit(ss, " ", 2) == ["abc abcd", "abcde", "abcdef"]  # different to do_split
+
+def splitlines(s: str, keepends: Optional[bool] = None) -> List[str]:
+    if keepends is not None:
+        return s.splitlines(keepends)
+    return s.splitlines()
+
+s_text = "This\nis\n\nsome\nlong\ntext.\n"
+
+def test_splitlines() -> None:
+    assert splitlines(s_text) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, False) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, True) == ["This\n", "is\n", "\n", "some\n", "long\n", "text.\n"]
+
+s_partition = "Some long text"
+
+def partition(s: str, sep: str) -> Tuple[str, str, str]:
+    return s.partition(sep)
+
+def rpartition(s: str, sep: str) -> Tuple[str, str, str]:
+    return s.rpartition(sep)
+
+def test_partition() -> None:
+    assert partition(s_partition, " ") == ("Some", " ", "long text")
+    assert partition(s_partition, "Hello") == ("Some long text", "", "")
+    assert rpartition(s_partition, " ") == ("Some long", " ", "text")
+    assert rpartition(s_partition, "Hello") == ("", "", "Some long text")
+    with assertRaises(ValueError, "empty separator"):
+        partition(s_partition, "")
+    with assertRaises(ValueError, "empty separator"):
+        rpartition(s_partition, "")
+
+def contains(s: str, o: str) -> bool:
+    return o in s
+
 def getitem(s: str, index: int) -> str:
     return s[index]
 
-from testutil import assertRaises
+def find(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.find(substr, start, end)
+        return s.find(substr, start)
+    return s.find(substr)
+
+def rfind(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.rfind(substr, start, end)
+        return s.rfind(substr, start)
+    return s.rfind(substr)
 
 s = "abc"
+
+def test_contains() -> None:
+    assert contains(s, "a") is True
+    assert contains(s, "abc") is True
+    assert contains(s, "Hello") is False
+    assert contains(s, "bc") is True
+    assert contains(s, "abcd") is False
+    assert contains(s, "bb") is False
+    assert contains(s, "") is True
+    assert contains(s, " ") is False
 
 def test_getitem() -> None:
     assert getitem(s, 0) == "a"
@@ -84,6 +263,26 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
+
+def test_find() -> None:
+    s = "abcab"
+    assert find(s, "Hello") == -1
+    assert find(s, "abc") == 0
+    assert find(s, "b") == 1
+    assert find(s, "b", 1) == 1
+    assert find(s, "b", 1, 2) == 1
+    assert find(s, "b", 3) == 4
+    assert find(s, "b", 3, 5) == 4
+    assert find(s, "b", 3, 4) == -1
+
+    assert rfind(s, "Hello") == -1
+    assert rfind(s, "abc") == 0
+    assert rfind(s, "b") == 4
+    assert rfind(s, "b", 1) == 4
+    assert rfind(s, "b", 1, 2) == 1
+    assert rfind(s, "b", 3) == 4
+    assert rfind(s, "b", 3, 5) == 4
+    assert rfind(s, "b", 3, 4) == -1
 
 def str_to_int(s: str, base: Optional[int] = None) -> int:
     if base:
@@ -163,8 +362,41 @@ def test_str_min_max() -> None:
     assert max(x, y) == 'bbb'
     assert max(x, z) == 'aaa'
 
+def test_multiply() -> None:
+    # Use str() and int() to avoid constant folding
+    s = 'ab' + str()
+    zero = int()
+    one = 1 + zero
+    three = 3 + zero
+    neg_one = -1 + zero
+
+    assert s * zero == ''
+    assert s * one == 'ab'
+    assert s * three == 'ababab'
+    assert s * neg_one == ''
+    assert zero * s == ''
+    assert one * s == 'ab'
+    assert three * s == 'ababab'
+    assert neg_one * s == ''
+
+    # Test with empty string
+    empty = str()
+    five = 5 + zero
+    assert empty * five == ''
+    assert five * empty == ''
+
+    # Test with single character
+    single = 'x' + str()
+    four = 4 + zero
+    assert single * four == 'xxxx'
+    assert four * single == 'xxxx'
+
+    # Test type preservation
+    two = 2 + zero
+    result = s * two
+    assert type(result) == str
+
 [case testStringFormattingCStyle]
-[typing fixtures/typing-full.pyi]
 from typing import Tuple
 
 var = 'mypyc'
@@ -209,13 +441,21 @@ def test_basics() -> None:
     inf_num = float('inf')
     assert '%s, %s' % (nan_num, inf_num) == 'nan, inf'
     assert '%f, %f' % (nan_num, inf_num) == 'nan, inf'
+[typing fixtures/typing-full.pyi]
 
 [case testFStrings]
 import decimal
 from datetime import datetime
+from typing import Final
 
 var = 'mypyc'
 num = 20
+final_known_at_compile_time: Final = 'hello'
+
+def final_value_setter() -> str:
+    return 'goodbye'
+
+final_unknown_at_compile_time: Final = final_value_setter()
 
 def test_fstring_basics() -> None:
     assert f'Hello {var}, this is a test' == "Hello mypyc, this is a test"
@@ -251,6 +491,8 @@ def test_fstring_basics() -> None:
     nan_num = float('nan')
     inf_num = float('inf')
     assert f'{nan_num}, {inf_num}' == 'nan, inf'
+
+    assert f'{final_known_at_compile_time} {final_unknown_at_compile_time}' == 'hello goodbye'
 
 # F-strings would be translated into ''.join[string literals, format method call, ...] in mypy AST.
 # Currently we are using a str.join specializer for f-string speed up. We might not cover all cases
@@ -593,14 +835,23 @@ def test_ord() -> None:
         ord('')
 
 [case testDecode]
+from testutil import assertRaises
+
 def test_decode() -> None:
     assert "\N{GREEK CAPITAL LETTER DELTA}" == '\u0394'
     assert "\u0394" == "\u0394"
     assert "\U00000394" == '\u0394'
     assert b'\x80abc'.decode('utf-8', 'replace') == '\ufffdabc'
     assert b'\x80abc'.decode('utf-8', 'backslashreplace') == '\\x80abc'
+    assert b''.decode() == ''
+    assert b'a'.decode() == 'a'
     assert b'abc'.decode() == 'abc'
     assert b'abc'.decode('utf-8') == 'abc'
+    assert b'abc'.decode('utf-8' + str()) == 'abc'
+    assert b'abc\x00\xce'.decode('latin-1') == 'abc\x00\xce'
+    assert b'abc\x00\xce'.decode('latin-1' + str()) == 'abc\x00\xce'
+    assert b'abc\x00\x7f'.decode('ascii') == 'abc\x00\x7f'
+    assert b'abc\x00\x7f'.decode('ascii' + str()) == 'abc\x00\x7f'
     assert b'\x80abc'.decode('utf-8', 'ignore') == 'abc'
     assert b'\x80abc'.decode('UTF-8', 'ignore') == 'abc'
     assert b'\x80abc'.decode('Utf-8', 'ignore') == 'abc'
@@ -609,16 +860,71 @@ def test_decode() -> None:
     assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode('gbk', 'ignore') == '一二三'
     assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode('latin1', 'ignore') == 'Ò»¶þÈý'
     assert b'Z\xc3\xbcrich'.decode("utf-8") == 'Zürich'
-    try:
-        b'Z\xc3\xbcrich'.decode('ascii')
-        assert False
-    except UnicodeDecodeError:
-        pass
+    assert b'Z\xc3\xbcrich'.decode("utf-8" + str()) == 'Zürich'
+
     assert bytearray(range(5)).decode() == '\x00\x01\x02\x03\x04'
     b = bytearray(b'\xe4\xbd\xa0\xe5\xa5\xbd')
     assert b.decode() == '你好'
     assert b.decode('gbk') == '浣犲ソ'
     assert b.decode('latin1') == 'ä½\xa0å¥½'
+    assert b.decode('latin1' + str()) == 'ä½\xa0å¥½'
+
+def test_decode_error() -> None:
+    try:
+        b'Z\xc3\xbcrich'.decode('ascii')
+        assert False
+    except UnicodeDecodeError:
+        pass
+    try:
+        b'Z\xc3\xbcrich'.decode('ascii' + str())
+        assert False
+    except UnicodeDecodeError:
+        pass
+    try:
+        b'Z\xc3y'.decode('utf8')
+        assert False
+    except UnicodeDecodeError:
+        pass
+    try:
+        b'Z\xc3y'.decode('utf8' + str())
+        assert False
+    except UnicodeDecodeError:
+        pass
+
+def test_decode_bytearray() -> None:
+    b: bytes = bytearray(b'foo\x00bar')
+    assert b.decode() == 'foo\x00bar'
+    assert b.decode('utf-8') == 'foo\x00bar'
+    assert b.decode('latin-1') == 'foo\x00bar'
+    assert b.decode('ascii') == 'foo\x00bar'
+    assert b.decode('utf-8' + str()) == 'foo\x00bar'
+    assert b.decode('latin-1' + str()) == 'foo\x00bar'
+    assert b.decode('ascii' + str()) == 'foo\x00bar'
+    b2: bytes = bytearray(b'foo\x00bar\xbe')
+    assert b2.decode('latin-1') == 'foo\x00bar\xbe'
+    with assertRaises(UnicodeDecodeError):
+        b2.decode('ascii')
+    with assertRaises(UnicodeDecodeError):
+        b2.decode('ascii' + str())
+    with assertRaises(UnicodeDecodeError):
+        b2.decode('utf-8')
+    with assertRaises(UnicodeDecodeError):
+        b2.decode('utf-8' + str())
+    b3: bytes = bytearray(b'Z\xc3\xbcrich')
+    assert b3.decode("utf-8") == 'Zürich'
+
+def test_invalid_encoding() -> None:
+    try:
+        b"foo".decode("ut-f-8")
+        assert False
+    except Exception as e:
+        assert repr(e).startswith("LookupError")
+    try:
+        encoding = "ut-f-8"
+        b"foo".decode(encoding)
+        assert False
+    except Exception as e:
+        assert repr(e).startswith("LookupError")
 
 [case testEncode]
 from testutil import assertRaises
@@ -655,3 +961,179 @@ def test_surrogate() -> None:
     assert ord(f()) == 0xd800
     assert ord("\udfff") == 0xdfff
     assert repr("foobar\x00\xab\ud912\U00012345") == r"'foobar\x00«\ud912𒍅'"
+
+[case testStrip]
+def test_all_strips_default() -> None:
+    s = " a1\t"
+    assert s.lstrip() == "a1\t"
+    assert s.strip() == "a1"
+    assert s.rstrip() == " a1"
+def test_all_strips() -> None:
+    s = "xxb2yy"
+    assert s.lstrip("xy") == "b2yy"
+    assert s.strip("xy") == "b2"
+    assert s.rstrip("xy") == "xxb2"
+def test_unicode_whitespace() -> None:
+    assert "\u200A\u000D\u2009\u2020\u000Dtt\u0085\u000A".strip() == "\u2020\u000Dtt"
+def test_unicode_range() -> None:
+    assert "\u2029 \U00107581 ".lstrip() == "\U00107581 "
+    assert "\u2029 \U0010AAAA\U00104444B\u205F ".strip() == "\U0010AAAA\U00104444B"
+    assert " \u3000\u205F ".strip() == ""
+    assert "\u2029 \U00102865\u205F ".rstrip() == "\u2029 \U00102865"
+
+[case testCount]
+# mypy: disable-error-code="attr-defined"
+def test_count() -> None:
+    string = "abcbcb"
+    assert string.count("a") == 1
+    assert string.count("b") == 3
+    assert string.count("c") == 2
+def test_count_start() -> None:
+    string = "abcbcb"
+    assert string.count("a", 2) == string.count("a", -4) == 0, (string.count("a", 2), string.count("a", -4))
+    assert string.count("b", 2) == string.count("b", -4) == 2, (string.count("b", 2), string.count("b", -4))
+    assert string.count("c", 2) == string.count("c", -4) == 2, (string.count("c", 2), string.count("c", -4))
+    # out of bounds
+    assert string.count("a", 8) == 0
+    assert string.count("a", -8) == 1
+    assert string.count("b", 8) == 0
+    assert string.count("b", -8) == 3
+    assert string.count("c", 8) == 0
+    assert string.count("c", -8) == 2
+def test_count_start_end() -> None:
+    string = "abcbcb"
+    assert string.count("a", 0, 4) == 1, string.count("a", 0, 4)
+    assert string.count("b", 0, 4) == 2, string.count("b", 0, 4)
+    assert string.count("c", 0, 4) == 1, string.count("c", 0, 4)
+def test_count_multi() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa") == 1, string.count("aaa")
+    assert string.count("bbb") == 3, string.count("bbb")
+    assert string.count("ccc") == 2, string.count("ccc")
+def test_count_multi_start() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa", 6) == string.count("aaa", -12) == 0, (string.count("aaa", 6), string.count("aaa", -12))
+    assert string.count("bbb", 6) == string.count("bbb", -12) == 2, (string.count("bbb", 6), string.count("bbb", -12))
+    assert string.count("ccc", 6) == string.count("ccc", -12) == 2, (string.count("ccc", 6), string.count("ccc", -12))
+    # out of bounds
+    assert string.count("aaa", 20) == 0
+    assert string.count("aaa", -20) == 1
+    assert string.count("bbb", 20) == 0
+    assert string.count("bbb", -20) == 3
+    assert string.count("ccc", 20) == 0
+    assert string.count("ccc", -20) == 2
+def test_count_multi_start_end() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa", 0, 12) == 1, string.count("aaa", 0, 12)
+    assert string.count("bbb", 0, 12) == 2, string.count("bbb", 0, 12)
+    assert string.count("ccc", 0, 12) == 1, string.count("ccc", 0, 12)
+def test_count_emoji() -> None:
+    string = "😴🚀ñ🚀ñ🚀"
+    assert string.count("😴") == 1, string.count("😴")
+    assert string.count("🚀") == 3, string.count("🚀")
+    assert string.count("ñ") == 2, string.count("ñ")
+def test_count_start_emoji() -> None:
+    string = "😴🚀ñ🚀ñ🚀"
+    assert string.count("😴", 2) == string.count("😴", -4) == 0, (string.count("😴", 2), string.count("😴", -4))
+    assert string.count("🚀", 2) == string.count("🚀", -4) == 2, (string.count("🚀", 2), string.count("🚀", -4))
+    assert string.count("ñ", 2) == string.count("ñ", -4) == 2, (string.count("ñ", 2), string.count("ñ", -4))
+    # Out of bounds
+    assert string.count("😴", 8) == 0, string.count("😴", 8)
+    assert string.count("😴", -8) == 1, string.count("😴", -8)
+    assert string.count("🚀", 8) == 0, string.count("🚀", 8)
+    assert string.count("🚀", -8) == 3, string.count("🚀", -8)
+    assert string.count("ñ", 8) == 0, string.count("ñ", 8)
+    assert string.count("ñ", -8) == 2, string.count("ñ", -8)
+def test_count_start_end_emoji() -> None:
+    string = "😴🚀ñ🚀ñ🚀"
+    assert string.count("😴", 0, 4) == 1, string.count("😴", 0, 4)
+    assert string.count("🚀", 0, 4) == 2, string.count("🚀", 0, 4)
+    assert string.count("ñ", 0, 4) == 1, string.count("ñ", 0, 4)
+def test_count_multi_emoji() -> None:
+    string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
+    assert string.count("😴😴😴") == 1, string.count("😴😴😴")
+    assert string.count("🚀🚀🚀") == 3, string.count("🚀🚀🚀")
+    assert string.count("ñññ") == 2, string.count("ñññ")
+def test_count_multi_start_emoji() -> None:
+    string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
+    assert string.count("😴😴😴", 6) == string.count("😴😴😴", -12) == 0, (string.count("😴😴😴", 6), string.count("😴😴😴", -12))
+    assert string.count("🚀🚀🚀", 6) == string.count("🚀🚀🚀", -12) == 2, (string.count("🚀🚀🚀", 6), string.count("🚀🚀🚀", -12))
+    assert string.count("ñññ", 6) == string.count("ñññ", -12) == 2, (string.count("ñññ", 6), string.count("ñññ", -12))
+    # Out of bounds
+    assert string.count("😴😴😴", 20) == 0, string.count("😴😴😴", 20)
+    assert string.count("😴😴😴", -20) == 1, string.count("😴😴😴", -20)
+    assert string.count("🚀🚀🚀", 20) == 0, string.count("🚀🚀🚀", 20)
+    assert string.count("🚀🚀🚀", -20) == 3, string.count("🚀🚀🚀", -20)
+    assert string.count("ñññ", 20) == 0, string.count("ñññ", 20)
+    assert string.count("ñññ", -20) == 2, string.count("ñññ", -20)
+def test_count_multi_start_end_emoji() -> None:
+    string = "😴😴😴🚀🚀🚀ñññ🚀🚀🚀ñññ🚀🚀🚀"
+    assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
+    assert string.count("🚀🚀🚀", 0, 12) == 2, string.count("🚀🚀🚀", 0, 12)
+    assert string.count("ñññ", 0, 12) == 1, string.count("ñññ", 0, 12)
+
+[case testIsInstance]
+from copysubclass import subc
+from typing import Any
+def test_built_in() -> None:
+    s: Any = str()
+    assert isinstance(s, str)
+    assert isinstance(s + "test", str)
+    assert isinstance(s + "ñññ", str)
+    assert isinstance(subc(), str)
+    assert isinstance(subc("test"), str)
+    assert isinstance(subc("ñññ"), str)
+
+    assert not isinstance(set(), str)
+    assert not isinstance((), str)
+    assert not isinstance(('a','b'), str)
+    assert not isinstance({'a','b'}, str)
+    assert not isinstance(int() + 1, str)
+    assert not isinstance(['a','b'], str)
+
+def test_user_defined() -> None:
+    from userdefinedstr import str
+
+    s: Any = "str"
+    assert isinstance(str(), str)
+    assert not isinstance(s, str)
+
+[file copysubclass.py]
+from typing import Any
+class subc(str):
+    pass
+
+[file userdefinedstr.py]
+class str:
+    pass
+
+[case testStrOptionalEquality]
+from __future__ import annotations
+
+def eq_s_opt_s_opt(x: str | None, y: str | None) -> bool:
+    return x == y
+
+def ne_s_opt_s_opt(x: str | None, y: str | None) -> bool:
+    return x != y
+
+def test_optional_eq() -> None:
+    s = 'x'
+    assert eq_s_opt_s_opt(s, s)
+    assert eq_s_opt_s_opt(s + str(int()), s + str(int()))
+    assert eq_s_opt_s_opt(None, None)
+
+    assert not eq_s_opt_s_opt('x', 'y')
+    assert not eq_s_opt_s_opt('y', 'x')
+    assert not eq_s_opt_s_opt(None, 'x')
+    assert not eq_s_opt_s_opt('x', None)
+
+def test_optional_ne() -> None:
+    s = 'x'
+    assert not ne_s_opt_s_opt(s, s)
+    assert not ne_s_opt_s_opt(s + str(int()), s+ str(int()))
+    assert not ne_s_opt_s_opt(None, None)
+
+    assert ne_s_opt_s_opt('x', 'y')
+    assert ne_s_opt_s_opt('y', 'x')
+    assert ne_s_opt_s_opt(None, 'x')
+    assert ne_s_opt_s_opt('x', None)
