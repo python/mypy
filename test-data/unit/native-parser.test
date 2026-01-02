@@ -1544,3 +1544,30 @@ MypyFile:1(
       NameExpr(a)
       StarExpr:3(
         NameExpr(b)))))
+
+[case testBytesLiteral]
+b"foo"
+b"foobar"
+b"x\\n\\'"
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    BytesExpr(foo))
+  ExpressionStmt:2(
+    BytesExpr(foobar))
+  ExpressionStmt:3(
+    BytesExpr(x\\n\\\')))
+
+[case testBytesLiteralWithEscapes]
+b'\r\n\t\x2f\xbe'
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    BytesExpr(\r\n\t/\xbe)))
+
+[case testBytesLiteralOctalEscapes]
+b'\1\476'
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    BytesExpr(\x01>)))

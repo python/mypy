@@ -5067,6 +5067,7 @@ FSTRING_INTERPOLATION: Final[Tag] = 206
 LAMBDA_EXPR: Final[Tag] = 207
 NAMED_EXPR: Final[Tag] = 208
 STAR_EXPR: Final[Tag] = 209
+BYTES_EXPR: Final[Tag] = 210
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

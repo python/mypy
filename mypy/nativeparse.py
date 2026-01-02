@@ -54,6 +54,7 @@ from mypy.nodes import (
     AssignmentStmt,
     Block,
     BreakStmt,
+    BytesExpr,
     CallExpr,
     ClassDef,
     ComparisonExpr,
@@ -951,6 +952,13 @@ def read_expression(data: ReadBuffer) -> Expression:
         # Read the wrapped expression
         wrapped_expr = read_expression(data)
         expr = StarExpr(wrapped_expr)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.BYTES_EXPR:
+        # Read bytes literal as string
+        value = read_str(data)
+        expr = BytesExpr(value)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
