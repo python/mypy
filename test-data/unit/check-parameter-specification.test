@@ -481,10 +481,6 @@ class C(Generic[P, P2]):
 
     def m4(self, x: int) -> None:
         pass
-
-
-
-
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecOverUnannotatedDecorator]
