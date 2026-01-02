@@ -26,6 +26,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     method_op,
     unary_op,
@@ -75,6 +76,17 @@ for op, funcname in [
         priority=0,
     )
 
+
+function_op(
+    name="builtins.divmod",
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyNumber_Divmod",
+    error_kind=ERR_MAGIC,
+    priority=0,
+)
+
+
 for op, funcname in [
     ("+=", "PyNumber_InPlaceAdd"),
     ("-=", "PyNumber_InPlaceSubtract"),
@@ -98,14 +110,25 @@ for op, funcname in [
         priority=0,
     )
 
-binary_op(
-    name="**",
-    arg_types=[object_rprimitive, object_rprimitive],
-    return_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    c_function_name="CPyNumber_Power",
-    priority=0,
-)
+for op, c_function in (("**", "CPyNumber_Power"), ("**=", "CPyNumber_InPlacePower")):
+    binary_op(
+        name=op,
+        arg_types=[object_rprimitive, object_rprimitive],
+        return_type=object_rprimitive,
+        error_kind=ERR_MAGIC,
+        c_function_name=c_function,
+        priority=0,
+    )
+
+for arg_count, c_function in ((2, "CPyNumber_Power"), (3, "PyNumber_Power")):
+    function_op(
+        name="builtins.pow",
+        arg_types=[object_rprimitive] * arg_count,
+        return_type=object_rprimitive,
+        error_kind=ERR_MAGIC,
+        c_function_name=c_function,
+        priority=0,
+    )
 
 binary_op(
     name="in",
@@ -156,7 +179,7 @@ function_op(
 )
 
 # obj1[obj2]
-method_op(
+py_get_item_op = method_op(
     name="__getitem__",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -259,7 +282,7 @@ py_vectorcall_op = custom_op(
         object_rprimitive,
     ],  # Keyword arg names tuple (or NULL)
     return_type=object_rprimitive,
-    c_function_name="_PyObject_Vectorcall",
+    c_function_name="PyObject_Vectorcall",
     error_kind=ERR_MAGIC,
 )
 
@@ -282,6 +305,15 @@ py_call_with_kwargs_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyObject_Call",
+    error_kind=ERR_MAGIC,
+)
+
+# Call callable object with positional args only: func(*args)
+# Arguments are (func, *args tuple).
+py_call_with_posargs_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyObject_CallObject",
     error_kind=ERR_MAGIC,
 )
 
@@ -358,5 +390,37 @@ anext_op = custom_op(
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPy_GetANext",
+    error_kind=ERR_MAGIC,
+)
+
+# x.__name__ (requires Python 3.11+)
+name_op = custom_primitive_op(
+    name="__name__",
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_GetName",
+    error_kind=ERR_MAGIC,
+)
+
+# look-up name in tp_dict but don't raise AttributeError on failure
+generic_getattr = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyObject_GenericGetAttr",
+    error_kind=ERR_NEVER,
+    returns_null=True,
+)
+
+generic_setattr = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyObject_GenericSetAttr",
+    error_kind=ERR_NEG_INT,
+)
+
+setup_object = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_SetupObject",
     error_kind=ERR_MAGIC,
 )

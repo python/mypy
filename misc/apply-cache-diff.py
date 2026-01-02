@@ -8,13 +8,13 @@ many cases instead of full cache artifacts.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
+from mypy.util import json_dumps, json_loads
 
 
 def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
@@ -26,10 +26,10 @@ def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
 
 def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
     cache = make_cache(cache_dir, sqlite)
-    with open(diff_file) as f:
-        diff = json.load(f)
+    with open(diff_file, "rb") as f:
+        diff = json_loads(f.read())
 
-    old_deps = json.loads(cache.read("@deps.meta.json"))
+    old_deps = json_loads(cache.read("@deps.meta.json"))
 
     for file, data in diff.items():
         if data is None:
@@ -37,10 +37,10 @@ def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
         else:
             cache.write(file, data)
             if file.endswith(".meta.json") and "@deps" not in file:
-                meta = json.loads(data)
+                meta = json_loads(data)
                 old_deps["snapshot"][meta["id"]] = meta["hash"]
 
-    cache.write("@deps.meta.json", json.dumps(old_deps))
+    cache.write("@deps.meta.json", json_dumps(old_deps))
 
     cache.commit()
 

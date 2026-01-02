@@ -14,3 +14,6 @@ class str: pass
 
 class slice: pass
 class ellipsis: pass
+class dict: pass
+class list(Generic[T]):
+    def __getitem__(self, x: slice) -> list[T]: pass

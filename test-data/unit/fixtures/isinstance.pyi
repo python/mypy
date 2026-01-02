@@ -7,6 +7,7 @@ class object:
 
 class type:
     def __init__(self, x) -> None: pass
+    def __or__(self, other: type) -> type: pass
 
 class tuple(Generic[T]): pass
 
@@ -25,3 +26,5 @@ class str:
 class ellipsis: pass
 
 NotImplemented = cast(Any, None)
+
+class dict: pass

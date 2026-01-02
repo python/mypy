@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 """Shared logic between our three mypy parser files."""
 
@@ -10,6 +10,7 @@ _NON_BINARY_MAGIC_METHODS: Final = {
     "__call__",
     "__complex__",
     "__contains__",
+    "__buffer__",
     "__del__",
     "__delattr__",
     "__delitem__",
@@ -31,6 +32,7 @@ _NON_BINARY_MAGIC_METHODS: Final = {
     "__new__",
     "__oct__",
     "__pos__",
+    "__release_buffer__",
     "__repr__",
     "__reversed__",
     "__setattr__",

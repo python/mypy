@@ -152,7 +152,8 @@ between class and instance variables with callable types. For example:
 
 .. code-block:: python
 
-   from typing import Callable, ClassVar
+   from collections.abc import Callable
+   from typing import ClassVar
 
    class A:
        foo: Callable[[int], None]
@@ -208,6 +209,38 @@ override has a compatible signature:
    subtype such as ``list[int]``. Similarly, you can vary argument types
    **contravariantly** -- subclasses can have more general argument types.
 
+In order to ensure that your code remains correct when renaming methods,
+it can be helpful to explicitly mark a method as overriding a base
+method. This can be done with the ``@override`` decorator. ``@override``
+can be imported from ``typing`` starting with Python 3.12 or from
+``typing_extensions`` for use with older Python versions. If the base
+method is then renamed while the overriding method is not, mypy will
+show an error:
+
+.. code-block:: python
+
+   from typing import override
+
+   class Base:
+       def f(self, x: int) -> None:
+           ...
+       def g_renamed(self, y: str) -> None:
+           ...
+
+   class Derived1(Base):
+       @override
+       def f(self, x: int) -> None:   # OK
+           ...
+
+       @override
+       def g(self, y: str) -> None:   # Error: no corresponding base method found
+           ...
+
+.. note::
+
+   Use :ref:`--enable-error-code explicit-override <code-explicit-override>` to require
+   that method overrides use the ``@override`` decorator. Emit an error if it is missing.
+
 You can also override a statically typed method with a dynamically
 typed one. This allows dynamically typed code to override methods
 defined in library classes without worrying about their type
@@ -231,7 +264,7 @@ effect at runtime:
 Abstract base classes and multiple inheritance
 **********************************************
 
-Mypy supports Python :doc:`abstract base classes <library/abc>` (ABCs). Abstract classes
+Mypy supports Python :doc:`abstract base classes <python:library/abc>` (ABCs). Abstract classes
 have at least one abstract method or property that must be implemented
 by any *concrete* (non-abstract) subclass. You can define abstract base
 classes using the :py:class:`abc.ABCMeta` metaclass and the :py:func:`@abc.abstractmethod <abc.abstractmethod>`
@@ -339,8 +372,7 @@ property or an instance variable.
 Slots
 *****
 
-When a class has explicitly defined
-`__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_,
+When a class has explicitly defined :std:term:`__slots__`,
 mypy will check that all attributes assigned to are members of ``__slots__``:
 
 .. code-block:: python

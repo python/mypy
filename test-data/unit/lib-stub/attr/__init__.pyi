@@ -131,6 +131,7 @@ def define(
     *,
     these: Optional[Mapping[str, Any]] = ...,
     repr: bool = ...,
+    unsafe_hash: Optional[bool]=None,
     hash: Optional[bool] = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -153,6 +154,7 @@ def define(
     *,
     these: Optional[Mapping[str, Any]] = ...,
     repr: bool = ...,
+    unsafe_hash: Optional[bool]=None,
     hash: Optional[bool] = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -244,3 +246,8 @@ def field(
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
 ) -> Any: ...
+
+def evolve(inst: _T, **changes: Any) -> _T: ...
+def assoc(inst: _T, **changes: Any) -> _T: ...
+
+def fields(cls: type) -> Any: ...

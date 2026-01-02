@@ -6,7 +6,7 @@
 #include "CPy.h"
 
 // Returns -1 on error, 0 on inequality, 1 on equality.
-// 
+//
 // Falls back to PyObject_RichCompareBool.
 int CPyBytes_Compare(PyObject *left, PyObject *right) {
     if (PyBytes_CheckExact(left) && PyBytes_CheckExact(right)) {
@@ -99,10 +99,14 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
 // (mostly commonly, for bytearrays)
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
     if (PyBytes_CheckExact(sep)) {
-        return _PyBytes_Join(sep, iter);
+        return PyBytes_Join(sep, iter);
     } else {
         _Py_IDENTIFIER(join);
-        return _PyObject_CallMethodIdOneArg(sep, &PyId_join, iter);
+        PyObject *name = _PyUnicode_FromId(&PyId_join); /* borrowed */
+        if (name == NULL) {
+            return NULL;
+        }
+        return PyObject_CallMethodOneArg(sep, name, iter);
     }
 }
 
@@ -140,4 +144,68 @@ PyObject *CPyBytes_Build(Py_ssize_t len, ...) {
     }
 
     return (PyObject *)ret;
+}
+
+
+CPyTagged CPyBytes_Ord(PyObject *obj) {
+    if (PyBytes_Check(obj)) {
+        Py_ssize_t s = PyBytes_GET_SIZE(obj);
+        if (s == 1) {
+            return (unsigned char)(PyBytes_AS_STRING(obj)[0]) << 1;
+        }
+    } else if (PyByteArray_Check(obj)) {
+        Py_ssize_t s = PyByteArray_GET_SIZE(obj);
+        if (s == 1) {
+            return (unsigned char)(PyByteArray_AS_STRING(obj)[0]) << 1;
+        }
+    }
+    PyErr_SetString(PyExc_TypeError, "ord() expects a character");
+    return CPY_INT_TAG;
+}
+
+PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count) {
+    Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
+    if (temp_count == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+    return PySequence_Repeat(bytes, temp_count);
+}
+
+int CPyBytes_Startswith(PyObject *self, PyObject *subobj) {
+    if (PyBytes_CheckExact(self) && PyBytes_CheckExact(subobj)) {
+        if (self == subobj) {
+            return 1;
+        }
+
+        Py_ssize_t subobj_len = PyBytes_GET_SIZE(subobj);
+        if (subobj_len == 0) {
+            return 1;
+        }
+
+        Py_ssize_t self_len = PyBytes_GET_SIZE(self);
+        if (subobj_len > self_len) {
+            return 0;
+        }
+
+        const char *self_buf = PyBytes_AS_STRING(self);
+        const char *subobj_buf = PyBytes_AS_STRING(subobj);
+
+        return memcmp(self_buf, subobj_buf, (size_t)subobj_len) == 0 ? 1 : 0;
+    }
+    _Py_IDENTIFIER(startswith);
+    PyObject *name = _PyUnicode_FromId(&PyId_startswith);
+    if (name == NULL) {
+        return 2;
+    }
+    PyObject *result = PyObject_CallMethodOneArg(self, name, subobj);
+    if (result == NULL) {
+        return 2;
+    }
+    int ret = PyObject_IsTrue(result);
+    Py_DECREF(result);
+    if (ret < 0) {
+        return 2;
+    }
+    return ret;
 }

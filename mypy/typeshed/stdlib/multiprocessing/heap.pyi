@@ -2,7 +2,7 @@ import sys
 from _typeshed import Incomplete
 from collections.abc import Callable
 from mmap import mmap
-from typing import Protocol
+from typing import Protocol, type_check_only
 from typing_extensions import TypeAlias
 
 __all__ = ["BufferWrapper"]
@@ -15,11 +15,12 @@ class Arena:
         def __init__(self, size: int) -> None: ...
     else:
         fd: int
-        def __init__(self, size: int, fd: int = ...) -> None: ...
+        def __init__(self, size: int, fd: int = -1) -> None: ...
 
 _Block: TypeAlias = tuple[Arena, int, int]
 
 if sys.platform != "win32":
+    @type_check_only
     class _SupportsDetach(Protocol):
         def detach(self) -> int: ...
 

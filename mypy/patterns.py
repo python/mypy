@@ -19,7 +19,7 @@ class Pattern(Node):
     __slots__ = ()
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
 
 class AsPattern(Pattern):
@@ -60,7 +60,7 @@ class ValuePattern(Pattern):
 
     expr: Expression
 
-    def __init__(self, expr: Expression):
+    def __init__(self, expr: Expression) -> None:
         super().__init__()
         self.expr = expr
 
@@ -72,7 +72,7 @@ class SingletonPattern(Pattern):
     # This can be exactly True, False or None
     value: bool | None
 
-    def __init__(self, value: bool | None):
+    def __init__(self, value: bool | None) -> None:
         super().__init__()
         self.value = value
 
@@ -85,7 +85,7 @@ class SequencePattern(Pattern):
 
     patterns: list[Pattern]
 
-    def __init__(self, patterns: list[Pattern]):
+    def __init__(self, patterns: list[Pattern]) -> None:
         super().__init__()
         self.patterns = patterns
 
@@ -98,7 +98,7 @@ class StarredPattern(Pattern):
     # a name.
     capture: NameExpr | None
 
-    def __init__(self, capture: NameExpr | None):
+    def __init__(self, capture: NameExpr | None) -> None:
         super().__init__()
         self.capture = capture
 
@@ -111,7 +111,9 @@ class MappingPattern(Pattern):
     values: list[Pattern]
     rest: NameExpr | None
 
-    def __init__(self, keys: list[Expression], values: list[Pattern], rest: NameExpr | None):
+    def __init__(
+        self, keys: list[Expression], values: list[Pattern], rest: NameExpr | None
+    ) -> None:
         super().__init__()
         assert len(keys) == len(values)
         self.keys = keys
@@ -136,7 +138,7 @@ class ClassPattern(Pattern):
         positionals: list[Pattern],
         keyword_keys: list[str],
         keyword_values: list[Pattern],
-    ):
+    ) -> None:
         super().__init__()
         assert len(keyword_keys) == len(keyword_values)
         self.class_ref = class_ref

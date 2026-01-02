@@ -9,11 +9,11 @@
 
 from abc import abstractmethod, ABCMeta
 
-i = None # type: I
-j = None # type: J
-a = None # type: A
-b = None # type: B
-c = None # type: C
+i: I
+j: J
+a: A
+b: B
+c: C
 
 def f(): i, j, a, b, c # Prevent redefinition
 
@@ -44,10 +44,10 @@ class C(I): pass
 
 from abc import abstractmethod, ABCMeta
 
-i = None # type: I
-j = None # type: J
-a = None # type: A
-o = None # type: object
+i: I
+j: J
+a: A
+o: object
 
 def f(): i, j, a, o # Prevent redefinition
 
@@ -73,9 +73,9 @@ class A(J): pass
 [case testInheritingAbstractClassInSubclass]
 from abc import abstractmethod, ABCMeta
 
-i = None # type: I
-a = None # type: A
-b = None # type: B
+i: I
+a: A
+b: B
 
 if int():
     i = a # E: Incompatible types in assignment (expression has type "A", variable has type "I")
@@ -102,15 +102,15 @@ class B(A, I): pass
 
 from abc import abstractmethod, ABCMeta
 
-o = None # type: object
-t = None # type: type
-
-o = I
-t = I
-
 class I(metaclass=ABCMeta):
   @abstractmethod
   def f(self): pass
+
+o: object
+t: type
+
+o = I
+t = I
 
 [case testAbstractClassInCasts]
 from typing import cast
@@ -122,8 +122,10 @@ class I(metaclass=ABCMeta):
 class A(I): pass
 class B: pass
 
-i, a, b = None, None, None # type: (I, A, B)
-o = None # type: object
+i: I
+a: A
+b: B
+o: object
 
 if int():
     a = cast(I, o) # E: Incompatible types in assignment (expression has type "I", variable has type "A")
@@ -189,11 +191,29 @@ def f(cls: Type[A]) -> A:
 def g() -> A:
     return A()  # E: Cannot instantiate abstract class "A" with abstract attribute "m"
 
-f(A)  # E: Only concrete class can be given where "Type[A]" is expected
-f(B)  # E: Only concrete class can be given where "Type[A]" is expected
+f(A)  # E: Only concrete class can be given where "type[A]" is expected
+f(B)  # E: Only concrete class can be given where "type[A]" is expected
 f(C)  # OK
 x: Type[B]
 f(x)  # OK
+[out]
+
+[case testAbstractTypeInADict]
+from typing import Dict, Type
+from abc import abstractmethod
+
+class Class:
+    @abstractmethod
+    def method(self) -> None:
+        pass
+
+my_dict_init: Dict[int, Type[Class]] = {0: Class}  # E: Only concrete class can be given where "tuple[int, type[Class]]" is expected
+
+class Child(Class):
+    def method(self) -> None: ...
+
+other_dict_init: Dict[int, Type[Class]] = {0: Child}  # ok
+[builtins fixtures/dict.pyi]
 [out]
 
 [case testInstantiationAbstractsInTypeForAliases]
@@ -215,12 +235,13 @@ Alias = A
 GoodAlias = C
 Alias()  # E: Cannot instantiate abstract class "A" with abstract attribute "m"
 GoodAlias()
-f(Alias)  # E: Only concrete class can be given where "Type[A]" is expected
+f(Alias)  # E: Only concrete class can be given where "type[A]" is expected
 f(GoodAlias)
 [out]
 
 [case testInstantiationAbstractsInTypeForVariables]
-from typing import Type
+# flags: --no-strict-optional
+from typing import Type, overload
 from abc import abstractmethod
 
 class A:
@@ -234,20 +255,29 @@ class C(B):
 var: Type[A]
 var()
 if int():
-    var = A # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var = A # E: Can only assign concrete classes to a variable of type "type[A]"
 if int():
-    var = B # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var = B # E: Can only assign concrete classes to a variable of type "type[A]"
 if int():
     var = C # OK
 
 var_old = None # type: Type[A] # Old syntax for variable annotations
 var_old()
 if int():
-    var_old = A # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var_old = A # E: Can only assign concrete classes to a variable of type "type[A]"
 if int():
-    var_old = B # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var_old = B # E: Can only assign concrete classes to a variable of type "type[A]"
 if int():
     var_old = C # OK
+
+class D(A):
+    @overload
+    def __new__(cls, a) -> "D": ...
+    @overload
+    def __new__(cls) -> "D": ...
+    def __new__(cls, a=None) -> "D": ...
+if int():
+    var = D # E: Can only assign concrete classes to a variable of type "type[A]"
 [out]
 
 [case testInstantiationAbstractsInTypeForClassMethods]
@@ -382,10 +412,10 @@ class A(I):
     def g(self, a: 'A') -> 'A':
         return A()
 [out]
+main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
 main:11: error: Argument 1 of "h" is incompatible with supertype "I"; supertype defines the argument type as "I"
 main:11: note: This violates the Liskov substitution principle
 main:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
 
 
 -- Accessing abstract members
@@ -399,7 +429,9 @@ class I(metaclass=ABCMeta):
     @abstractmethod
     def f(self, a: int) -> str: pass
 
-i, a, b = None, None, None # type: (I, int, str)
+i: I
+a: int
+b: str
 
 if int():
     a = i.f(a) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -419,7 +451,9 @@ class J(metaclass=ABCMeta):
     def f(self, a: int) -> str: pass
 class I(J): pass
 
-i, a, b = None, None, None # type: (I, int, str)
+i: I
+a: int
+b: str
 
 if int():
     a = i.f(1) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -505,7 +539,7 @@ class B(metaclass=ABCMeta):
     @abstractmethod
     def g(self) -> None: pass
 class C(A, B): pass
-x = None # type: C
+x: C
 x.f()
 x.g()
 x.f(x) # E: Too many arguments for "f" of "A"
@@ -537,8 +571,12 @@ from abc import abstractmethod, ABCMeta
 import typing
 
 class A(metaclass=ABCMeta): pass
-class B(object, A): pass \
-      # E: Cannot determine consistent method resolution order (MRO) for "B"
+class B(object, A, metaclass=ABCMeta): # E: Cannot determine consistent method resolution order (MRO) for "B"
+    pass
+
+class C(object, A):  # E: Cannot determine consistent method resolution order (MRO) for "C" \
+                     # E: Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
+    pass
 
 [case testOverloadedAbstractMethod]
 from foo import *
@@ -735,7 +773,45 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
     @x.setter
     def x(self, x: int) -> None: pass
-[out]
+
+[case testReadWriteDeleteAbstractProperty]
+# flags: --no-strict-optional
+from abc import ABC, abstractmethod
+class Abstract(ABC):
+    @property
+    @abstractmethod
+    def prop(self) -> str: ...
+
+    @prop.setter
+    @abstractmethod
+    def prop(self, code: str) -> None: ...
+
+    @prop.deleter
+    @abstractmethod
+    def prop(self) -> None: ...
+
+class Good(Abstract):
+    @property
+    def prop(self) -> str: ...
+    @prop.setter
+    def prop(self, code: str) -> None: ...
+    @prop.deleter
+    def prop(self) -> None: ...
+
+class Bad1(Abstract):
+    @property  # E: Read-only property cannot override read-write property
+    def prop(self) -> str: ...
+
+class ThisShouldProbablyError(Abstract):
+    @property
+    def prop(self) -> str: ...
+    @prop.setter
+    def prop(self, code: str) -> None: ...
+
+a = Good()
+reveal_type(a.prop)  # N: Revealed type is "builtins.str"
+a.prop = 123  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/property.pyi]
 
 [case testInstantiateClassWithReadOnlyAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -767,7 +843,7 @@ b = B()
 b.x() # E: "int" not callable
 [builtins fixtures/property.pyi]
 
-[case testImplementReradWriteAbstractPropertyViaProperty]
+[case testImplementReadWriteAbstractPropertyViaProperty]
 from abc import abstractproperty, ABCMeta
 class A(metaclass=ABCMeta):
     @abstractproperty
@@ -790,7 +866,11 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
 class B(A):
     @property
-    def x(self) -> str: return "no" # E: Signature of "x" incompatible with supertype "A"
+    def x(self) -> str: return "no" # E: Signature of "x" incompatible with supertype "A" \
+                                    # N:      Superclass: \
+                                    # N:          int \
+                                    # N:      Subclass: \
+                                    # N:          str
 b = B()
 b.x() # E: "str" not callable
 [builtins fixtures/property.pyi]
@@ -812,6 +892,7 @@ main:8: error: Cannot instantiate abstract class "B" with abstract attribute "x"
 main:9: error: "int" has no attribute "y"
 
 [case testSuperWithAbstractProperty]
+# flags: --no-strict-optional
 from abc import abstractproperty, ABCMeta
 class A(metaclass=ABCMeta):
     @abstractproperty
@@ -819,9 +900,9 @@ class A(metaclass=ABCMeta):
 class B(A):
     @property
     def x(self) -> int:
-        return super().x.y # E: "int" has no attribute "y"
+        return super().x.y  # E: Call to abstract method "x" of "A" with trivial body via super() is unsafe \
+                            # E: "int" has no attribute "y"
 [builtins fixtures/property.pyi]
-[out]
 
 [case testSuperWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -913,7 +994,6 @@ class Mixin:
 class C(Mixin, A):
     pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testMixinSubtypedProperty]
 class X:
@@ -929,7 +1009,6 @@ class Mixin:
 class C(Mixin, A):
     pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testMixinTypedPropertyReversed]
 class A:
@@ -938,10 +1017,9 @@ class A:
         return "no"
 class Mixin:
     foo = "foo"
-class C(A, Mixin): # E: Definition of "foo" in base class "A" is incompatible with definition in base class "Mixin"
+class C(A, Mixin): # E: Cannot override writeable attribute "foo" in base "Mixin" with read-only property in base "A"
     pass
 [builtins fixtures/property.pyi]
-[out]
 
 -- Special cases
 -- -------------
@@ -1057,7 +1135,6 @@ b.y = 1
 -- -----------------------------------------------
 
 [case testEmptyBodyProhibitedFunction]
-# flags: --strict-optional
 from typing import overload, Union
 
 def func1(x: str) -> int: pass  # E: Missing return statement
@@ -1080,7 +1157,6 @@ def func5(x: Union[int, str]) -> Union[int, str]:  # E: Missing return statement
     """Some function."""
 
 [case testEmptyBodyProhibitedMethodNonAbstract]
-# flags: --strict-optional
 from typing import overload, Union
 
 class A:
@@ -1115,7 +1191,6 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyProhibitedPropertyNonAbstract]
-# flags: --strict-optional
 class A:
     @property
     def x(self) -> int: ...  # E: Missing return statement
@@ -1144,7 +1219,6 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyNoteABCMeta]
-# flags: --strict-optional
 from abc import ABC
 
 class A(ABC):
@@ -1153,7 +1227,6 @@ class A(ABC):
         ...
 
 [case testEmptyBodyAllowedFunctionStub]
-# flags: --strict-optional
 import stub
 [file stub.pyi]
 from typing import overload, Union
@@ -1164,7 +1237,6 @@ def func3(x: str) -> int:
     """Some function."""
 
 [case testEmptyBodyAllowedMethodNonAbstractStub]
-# flags: --strict-optional
 import stub
 [file stub.pyi]
 from typing import overload, Union
@@ -1186,7 +1258,6 @@ class B:
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyAllowedPropertyNonAbstractStub]
-# flags: --strict-optional
 import stub
 [file stub.pyi]
 class A:
@@ -1217,7 +1288,6 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyAllowedMethodAbstract]
-# flags: --strict-optional
 from typing import overload, Union
 from abc import abstractmethod
 
@@ -1265,7 +1335,6 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyAllowedPropertyAbstract]
-# flags: --strict-optional
 from abc import abstractmethod
 class A:
     @property
@@ -1304,7 +1373,6 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocol]
-# flags: --strict-optional
 from typing import Protocol, overload, Union
 
 class P1(Protocol):
@@ -1345,7 +1413,6 @@ C3()
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocolProperty]
-# flags: --strict-optional
 from typing import Protocol
 
 class P1(Protocol):
@@ -1375,7 +1442,6 @@ C2()
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocolStub]
-# flags: --strict-optional
 from stub import P1, P2, P3, P4
 
 class B1(P1): ...
@@ -1411,7 +1477,6 @@ class P4(Protocol):
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyUnsafeAbstractSuper]
-# flags: --strict-optional
 from stub import StubProto, StubAbstract
 from typing import Protocol
 from abc import abstractmethod
@@ -1460,7 +1525,6 @@ class StubAbstract:
     def meth(self) -> int: ...
 
 [case testEmptyBodyUnsafeAbstractSuperProperty]
-# flags: --strict-optional
 from stub import StubProto, StubAbstract
 from typing import Protocol
 from abc import abstractmethod
@@ -1518,7 +1582,6 @@ class StubAbstract:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyUnsafeAbstractSuperOverloads]
-# flags: --strict-optional
 from stub import StubProto
 from typing import Protocol, overload, Union
 
@@ -1597,13 +1660,12 @@ class Abstract:
 
 class SubProto(Proto):
     def meth(self) -> int:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe
 class SubAbstract(Abstract):
     def meth(self) -> int:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Abstract" with trivial body via super() is unsafe
 
 [case testEmptyBodyNoSuperWarningOptionalReturn]
-# flags: --strict-optional
 from typing import Protocol, Optional
 from abc import abstractmethod
 
@@ -1615,13 +1677,12 @@ class Abstract:
 
 class SubProto(Proto):
     def meth(self) -> Optional[int]:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe
 class SubAbstract(Abstract):
     def meth(self) -> Optional[int]:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Abstract" with trivial body via super() is unsafe
 
 [case testEmptyBodyTypeCheckingOnly]
-# flags: --strict-optional
 from typing import TYPE_CHECKING
 
 class C:

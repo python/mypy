@@ -432,7 +432,7 @@ def f(x: A) -> None:
         x.y
 [builtins fixtures/isinstancelist.pyi]
 [out]
-<m.<subclass of "A" and "B">.y> -> m.f
+<m.<subclass of "m.A" and "m.B">.y> -> m.f
 <m.A> -> <m.f>, m.A, m.f
 <m.B> -> m.B, m.f
 
@@ -597,6 +597,7 @@ class C:
 <m.f> -> m.C.__init__
 
 [case testPartialNoneTypeAttributeCrash1]
+# flags: --no-local-partial-types
 class C: pass
 
 class A:
@@ -612,7 +613,7 @@ class A:
 <m.C> -> <m.A.x>, m.A.f, m.C
 
 [case testPartialNoneTypeAttributeCrash2]
-# flags: --strict-optional
+# flags: --no-local-partial-types
 class C: pass
 
 class A:
@@ -643,12 +644,13 @@ x = 1
 <pkg> -> m, pkg, pkg.mod
 
 [case testTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 def foo(x: Point) -> int:
     return x['x'] + x['y']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.Point.__init__> -> m
 <m.Point.__new__> -> m
@@ -656,13 +658,14 @@ def foo(x: Point) -> int:
 <m.p> -> m
 
 [case testTypedDict2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 Point = TypedDict('Point', {'x': int, 'y': A})
 p = Point(dict(x=42, y=A()))
 def foo(x: Point) -> int:
     return x['x']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.A.__init__> -> m
 <m.A.__new__> -> m
@@ -673,7 +676,7 @@ def foo(x: Point) -> int:
 <m.p> -> m
 
 [case testTypedDict3]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 class Point(TypedDict):
     x: int
@@ -682,6 +685,7 @@ p = Point(dict(x=42, y=A()))
 def foo(x: Point) -> int:
     return x['x']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.A.__init__> -> m
 <m.A.__new__> -> m
@@ -750,7 +754,7 @@ class C:
 <mod.decb> -> m.outer
 <mod> -> m, m.outer
 
-[case testDecoratorDepsDeeepNested]
+[case testDecoratorDepsDeepNested]
 import mod
 
 def outer() -> None:
@@ -1370,7 +1374,6 @@ def h() -> None:
 <m.D> -> m.D, m.h
 
 [case testDataclassDepsOldVersion]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 
 Z = int
@@ -1388,11 +1391,13 @@ class B(A):
 <m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__dataclass_fields__> -> <m.B.__dataclass_fields__>
 <m.A.__init__> -> <m.B.__init__>, m.B.__init__
+<m.A.__mypy-replace> -> <m.B.__mypy-replace>, m, m.B.__mypy-replace
 <m.A.__new__> -> <m.B.__new__>
 <m.A.x> -> <m.B.x>
 <m.A.y> -> <m.B.y>
 <m.A> -> m, m.A, m.B
 <m.A[wildcard]> -> m
+<m.B.__mypy-replace> -> m
 <m.B.y> -> m
 <m.B> -> m.B
 <m.Z> -> m
@@ -1419,13 +1424,37 @@ class B(A):
 <m.A.__dataclass_fields__> -> <m.B.__dataclass_fields__>
 <m.A.__init__> -> <m.B.__init__>, m.B.__init__
 <m.A.__match_args__> -> <m.B.__match_args__>
+<m.A.__mypy-replace> -> <m.B.__mypy-replace>, m, m.B.__mypy-replace
 <m.A.__new__> -> <m.B.__new__>
 <m.A.x> -> <m.B.x>
 <m.A.y> -> <m.B.y>
 <m.A> -> m, m.A, m.B
 <m.A[wildcard]> -> m
+<m.B.__mypy-replace> -> m
 <m.B.y> -> m
 <m.B> -> m.B
 <m.Z> -> m
 <dataclasses.dataclass> -> m
 <dataclasses> -> m
+
+[case testPEP695TypeAliasDeps]
+# flags: --python-version=3.12
+from a import C, E
+type A = C
+type A2 = A
+type A3 = E
+[file a.py]
+class C: pass
+class D: pass
+type E = D
+[out]
+<m.A2> -> m
+<m.A3> -> m
+<m.A> -> m
+<a.C.__init__> -> m
+<a.C.__new__> -> m
+<a.C> -> m
+<a.E> -> m
+<a> -> m
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

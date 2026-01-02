@@ -42,7 +42,7 @@ test Python's official collection of library stubs,
 `typeshed <https://github.com/python/typeshed>`_.
 
 .. warning::
-    
+
     stubtest will import and execute Python code from the packages it checks.
 
 Example
@@ -69,7 +69,7 @@ Here's a quick example of what stubtest can do:
     error: library.foo is inconsistent, runtime argument "x" has a default value but stub argument does not
     Stub: at line 3
     def (x: builtins.int)
-    Runtime: at line 3 in file ~/library.py
+    Runtime: in file ~/library.py:3
     def (x=None)
 
     error: library.x variable differs from runtime type Literal['hello, stubtest']
@@ -85,7 +85,7 @@ Usage
 Running stubtest can be as simple as ``stubtest module_to_check``.
 Run :option:`stubtest --help` for a quick summary of options.
 
-Subtest must be able to import the code to be checked, so make sure that mypy
+Stubtest must be able to import the code to be checked, so make sure that mypy
 is installed in the same environment as the library to be tested. In some
 cases, setting ``PYTHONPATH`` can help stubtest find the code to import.
 
@@ -99,8 +99,75 @@ to mypy build errors". In this case, you will need to mitigate those errors
 before stubtest will run. Despite potential overlap in errors here, stubtest is
 not intended as a substitute for running mypy directly.
 
+Allowlist
+*********
+
 If you wish to ignore some of stubtest's complaints, stubtest supports a
-pretty handy allowlist system.
+pretty handy :option:`--allowlist` system.
+
+Let's say that you have this python module called ``ex``:
+
+.. code-block:: python
+
+   try:
+       import optional_expensive_dep
+   except ImportError:
+       optional_expensive_dep = None
+
+   first = 1
+   if optional_expensive_dep:
+       second = 2
+
+Let's say that you can't install ``optional_expensive_dep`` in CI for some reason,
+but you still want to include ``second: int`` in the stub file:
+
+.. code-block:: python
+
+    first: int
+    second: int
+
+In this case stubtest will correctly complain:
+
+.. code-block:: shell
+
+   error: ex.second is not present at runtime
+   Stub: in file /.../ex.pyi:2
+   builtins.int
+   Runtime:
+   MISSING
+
+   Found 1 error (checked 1 module)
+
+To fix this, you can add an ``allowlist`` entry:
+
+.. code-block:: ini
+
+   # Allowlist entries in `allowlist.txt` file:
+
+   # Does not exist if `optional_expensive_dep` is not installed:
+   ex.second
+
+And now when running stubtest with ``--allowlist=allowlist.txt``,
+no errors will be generated anymore.
+
+Allowlists also support regular expressions,
+which can be useful to ignore many similar errors at once.
+They can also be useful for suppressing stubtest errors that occur sometimes,
+but not on every CI run. For example, if some CI workers have
+``optional_expensive_dep`` installed, stubtest might complain with this message
+on those workers if you had the ``ex.second`` allowlist entry:
+
+.. code-block:: ini
+
+   note: unused allowlist entry ex.second
+   Found 1 error (checked 1 module)
+
+Changing ``ex.second`` to be ``(ex\.second)?`` will make this error optional,
+meaning that stubtest will pass whether or not a CI runner
+has``optional_expensive_dep`` installed.
+
+CLI
+***
 
 The rest of this section documents the command line interface of stubtest.
 
@@ -119,24 +186,39 @@ The rest of this section documents the command line interface of stubtest.
 .. option:: --allowlist FILE
 
     Use file as an allowlist. Can be passed multiple times to combine multiple
-    allowlists. Allowlists can be created with --generate-allowlist. Allowlists
-    support regular expressions.
+    allowlists. Allowlists can be created with :option:`--generate-allowlist`.
+    Allowlists support regular expressions.
+
+    The presence of an entry in the allowlist means stubtest will not generate
+    any errors for the corresponding definition.
 
 .. option:: --generate-allowlist
 
-    Print an allowlist (to stdout) to be used with --allowlist
+    Print an allowlist (to stdout) to be used with :option:`--allowlist`.
+
+    When introducing stubtest to an existing project, this is an easy way to
+    silence all existing errors.
 
 .. option:: --ignore-unused-allowlist
 
     Ignore unused allowlist entries
 
+    Without this option enabled, the default is for stubtest to complain if an
+    allowlist entry is not necessary for stubtest to pass successfully.
+
+    Note if an allowlist entry is a regex that matches the empty string,
+    stubtest will never consider it unused. For example, to get
+    ``--ignore-unused-allowlist`` behaviour for a single allowlist entry like
+    ``foo.bar`` you could add an allowlist entry ``(foo\.bar)?``.
+    This can be useful when an error only occurs on a specific platform.
+
 .. option:: --mypy-config-file FILE
 
-    Use specified mypy config file to determine mypy plugins and mypy path
+    Use specified mypy config *file* to determine mypy plugins and mypy path
 
 .. option:: --custom-typeshed-dir DIR
 
-    Use the custom typeshed in DIR
+    Use the custom typeshed in *DIR*
 
 .. option:: --check-typeshed
 

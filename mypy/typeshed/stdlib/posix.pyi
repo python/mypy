@@ -6,6 +6,8 @@ if sys.platform != "win32":
         CLD_CONTINUED as CLD_CONTINUED,
         CLD_DUMPED as CLD_DUMPED,
         CLD_EXITED as CLD_EXITED,
+        CLD_KILLED as CLD_KILLED,
+        CLD_STOPPED as CLD_STOPPED,
         CLD_TRAPPED as CLD_TRAPPED,
         EX_CANTCREAT as EX_CANTCREAT,
         EX_CONFIG as EX_CONFIG,
@@ -14,7 +16,6 @@ if sys.platform != "win32":
         EX_NOHOST as EX_NOHOST,
         EX_NOINPUT as EX_NOINPUT,
         EX_NOPERM as EX_NOPERM,
-        EX_NOTFOUND as EX_NOTFOUND,
         EX_NOUSER as EX_NOUSER,
         EX_OK as EX_OK,
         EX_OSERR as EX_OSERR,
@@ -29,28 +30,30 @@ if sys.platform != "win32":
         F_TEST as F_TEST,
         F_TLOCK as F_TLOCK,
         F_ULOCK as F_ULOCK,
+        NGROUPS_MAX as NGROUPS_MAX,
+        O_ACCMODE as O_ACCMODE,
         O_APPEND as O_APPEND,
         O_ASYNC as O_ASYNC,
+        O_CLOEXEC as O_CLOEXEC,
         O_CREAT as O_CREAT,
-        O_DIRECT as O_DIRECT,
         O_DIRECTORY as O_DIRECTORY,
         O_DSYNC as O_DSYNC,
         O_EXCL as O_EXCL,
-        O_LARGEFILE as O_LARGEFILE,
         O_NDELAY as O_NDELAY,
-        O_NOATIME as O_NOATIME,
         O_NOCTTY as O_NOCTTY,
         O_NOFOLLOW as O_NOFOLLOW,
         O_NONBLOCK as O_NONBLOCK,
         O_RDONLY as O_RDONLY,
         O_RDWR as O_RDWR,
-        O_RSYNC as O_RSYNC,
         O_SYNC as O_SYNC,
         O_TRUNC as O_TRUNC,
         O_WRONLY as O_WRONLY,
         P_ALL as P_ALL,
         P_PGID as P_PGID,
         P_PID as P_PID,
+        POSIX_SPAWN_CLOSE as POSIX_SPAWN_CLOSE,
+        POSIX_SPAWN_DUP2 as POSIX_SPAWN_DUP2,
+        POSIX_SPAWN_OPEN as POSIX_SPAWN_OPEN,
         PRIO_PGRP as PRIO_PGRP,
         PRIO_PROCESS as PRIO_PROCESS,
         PRIO_USER as PRIO_USER,
@@ -61,13 +64,9 @@ if sys.platform != "win32":
         RTLD_NODELETE as RTLD_NODELETE,
         RTLD_NOLOAD as RTLD_NOLOAD,
         RTLD_NOW as RTLD_NOW,
-        SCHED_BATCH as SCHED_BATCH,
         SCHED_FIFO as SCHED_FIFO,
-        SCHED_IDLE as SCHED_IDLE,
         SCHED_OTHER as SCHED_OTHER,
-        SCHED_RESET_ON_FORK as SCHED_RESET_ON_FORK,
         SCHED_RR as SCHED_RR,
-        SCHED_SPORADIC as SCHED_SPORADIC,
         SEEK_DATA as SEEK_DATA,
         SEEK_HOLE as SEEK_HOLE,
         ST_NOSUID as ST_NOSUID,
@@ -161,12 +160,17 @@ if sys.platform != "win32":
         pathconf as pathconf,
         pathconf_names as pathconf_names,
         pipe as pipe,
+        posix_spawn as posix_spawn,
+        posix_spawnp as posix_spawnp,
         pread as pread,
+        preadv as preadv,
         putenv as putenv,
         pwrite as pwrite,
+        pwritev as pwritev,
         read as read,
         readlink as readlink,
         readv as readv,
+        register_at_fork as register_at_fork,
         remove as remove,
         rename as rename,
         replace as replace,
@@ -218,26 +222,48 @@ if sys.platform != "win32":
         wait3 as wait3,
         wait4 as wait4,
         waitpid as waitpid,
+        waitstatus_to_exitcode as waitstatus_to_exitcode,
         write as write,
         writev as writev,
     )
 
-    if sys.platform == "linux":
+    if sys.version_info >= (3, 10):
+        from os import O_FSYNC as O_FSYNC
+
+    if sys.version_info >= (3, 11):
+        from os import login_tty as login_tty
+
+    if sys.version_info >= (3, 13):
+        from os import grantpt as grantpt, posix_openpt as posix_openpt, ptsname as ptsname, unlockpt as unlockpt
+
+    if sys.version_info >= (3, 13) and sys.platform == "linux":
         from os import (
-            GRND_NONBLOCK as GRND_NONBLOCK,
-            GRND_RANDOM as GRND_RANDOM,
-            RTLD_DEEPBIND as RTLD_DEEPBIND,
-            XATTR_CREATE as XATTR_CREATE,
-            XATTR_REPLACE as XATTR_REPLACE,
-            XATTR_SIZE_MAX as XATTR_SIZE_MAX,
-            getrandom as getrandom,
-            getxattr as getxattr,
-            listxattr as listxattr,
-            removexattr as removexattr,
-            setxattr as setxattr,
+            POSIX_SPAWN_CLOSEFROM as POSIX_SPAWN_CLOSEFROM,
+            TFD_CLOEXEC as TFD_CLOEXEC,
+            TFD_NONBLOCK as TFD_NONBLOCK,
+            TFD_TIMER_ABSTIME as TFD_TIMER_ABSTIME,
+            TFD_TIMER_CANCEL_ON_SET as TFD_TIMER_CANCEL_ON_SET,
+            timerfd_create as timerfd_create,
+            timerfd_gettime as timerfd_gettime,
+            timerfd_gettime_ns as timerfd_gettime_ns,
+            timerfd_settime as timerfd_settime,
+            timerfd_settime_ns as timerfd_settime_ns,
         )
-    else:
-        from os import chflags as chflags, lchflags as lchflags, lchmod as lchmod
+
+    if sys.version_info >= (3, 14):
+        from os import readinto as readinto
+
+    if sys.version_info >= (3, 14) and sys.platform == "linux":
+        from os import SCHED_DEADLINE as SCHED_DEADLINE, SCHED_NORMAL as SCHED_NORMAL
+
+    if sys.platform != "linux":
+        from os import O_EXLOCK as O_EXLOCK, O_SHLOCK as O_SHLOCK, chflags as chflags, lchflags as lchflags, lchmod as lchmod
+
+    if sys.platform != "linux" and sys.platform != "darwin":
+        from os import EX_NOTFOUND as EX_NOTFOUND, SCHED_SPORADIC as SCHED_SPORADIC
+
+    if sys.platform != "linux" and sys.version_info >= (3, 13):
+        from os import O_EXEC as O_EXEC, O_SEARCH as O_SEARCH
 
     if sys.platform != "darwin":
         from os import (
@@ -247,6 +273,19 @@ if sys.platform != "win32":
             POSIX_FADV_RANDOM as POSIX_FADV_RANDOM,
             POSIX_FADV_SEQUENTIAL as POSIX_FADV_SEQUENTIAL,
             POSIX_FADV_WILLNEED as POSIX_FADV_WILLNEED,
+            RWF_DSYNC as RWF_DSYNC,
+            RWF_HIPRI as RWF_HIPRI,
+            RWF_NOWAIT as RWF_NOWAIT,
+            RWF_SYNC as RWF_SYNC,
+            ST_APPEND as ST_APPEND,
+            ST_MANDLOCK as ST_MANDLOCK,
+            ST_NOATIME as ST_NOATIME,
+            ST_NODEV as ST_NODEV,
+            ST_NODIRATIME as ST_NODIRATIME,
+            ST_NOEXEC as ST_NOEXEC,
+            ST_RELATIME as ST_RELATIME,
+            ST_SYNCHRONOUS as ST_SYNCHRONOUS,
+            ST_WRITE as ST_WRITE,
             fdatasync as fdatasync,
             getresgid as getresgid,
             getresuid as getresuid,
@@ -262,57 +301,104 @@ if sys.platform != "win32":
             sched_setscheduler as sched_setscheduler,
             setresgid as setresgid,
             setresuid as setresuid,
-            waitid as waitid,
-            waitid_result as waitid_result,
         )
 
         if sys.version_info >= (3, 10):
             from os import RWF_APPEND as RWF_APPEND
 
-    if sys.version_info >= (3, 11):
-        from os import login_tty as login_tty
+    if sys.platform != "darwin" or sys.version_info >= (3, 13):
+        from os import waitid as waitid, waitid_result as waitid_result
 
-    if sys.version_info >= (3, 9):
-        from os import CLD_KILLED as CLD_KILLED, CLD_STOPPED as CLD_STOPPED, waitstatus_to_exitcode as waitstatus_to_exitcode
-
-        if sys.platform == "linux":
-            from os import P_PIDFD as P_PIDFD, pidfd_open as pidfd_open
-
-    if sys.version_info >= (3, 8):
+    if sys.platform == "linux":
         from os import (
-            POSIX_SPAWN_CLOSE as POSIX_SPAWN_CLOSE,
-            POSIX_SPAWN_DUP2 as POSIX_SPAWN_DUP2,
-            POSIX_SPAWN_OPEN as POSIX_SPAWN_OPEN,
-            posix_spawn as posix_spawn,
-            posix_spawnp as posix_spawnp,
+            GRND_NONBLOCK as GRND_NONBLOCK,
+            GRND_RANDOM as GRND_RANDOM,
+            MFD_ALLOW_SEALING as MFD_ALLOW_SEALING,
+            MFD_CLOEXEC as MFD_CLOEXEC,
+            MFD_HUGE_1GB as MFD_HUGE_1GB,
+            MFD_HUGE_1MB as MFD_HUGE_1MB,
+            MFD_HUGE_2GB as MFD_HUGE_2GB,
+            MFD_HUGE_2MB as MFD_HUGE_2MB,
+            MFD_HUGE_8MB as MFD_HUGE_8MB,
+            MFD_HUGE_16GB as MFD_HUGE_16GB,
+            MFD_HUGE_16MB as MFD_HUGE_16MB,
+            MFD_HUGE_32MB as MFD_HUGE_32MB,
+            MFD_HUGE_64KB as MFD_HUGE_64KB,
+            MFD_HUGE_256MB as MFD_HUGE_256MB,
+            MFD_HUGE_512KB as MFD_HUGE_512KB,
+            MFD_HUGE_512MB as MFD_HUGE_512MB,
+            MFD_HUGE_MASK as MFD_HUGE_MASK,
+            MFD_HUGE_SHIFT as MFD_HUGE_SHIFT,
+            MFD_HUGETLB as MFD_HUGETLB,
+            O_DIRECT as O_DIRECT,
+            O_LARGEFILE as O_LARGEFILE,
+            O_NOATIME as O_NOATIME,
+            O_PATH as O_PATH,
+            O_RSYNC as O_RSYNC,
+            O_TMPFILE as O_TMPFILE,
+            P_PIDFD as P_PIDFD,
+            RTLD_DEEPBIND as RTLD_DEEPBIND,
+            SCHED_BATCH as SCHED_BATCH,
+            SCHED_IDLE as SCHED_IDLE,
+            SCHED_RESET_ON_FORK as SCHED_RESET_ON_FORK,
+            XATTR_CREATE as XATTR_CREATE,
+            XATTR_REPLACE as XATTR_REPLACE,
+            XATTR_SIZE_MAX as XATTR_SIZE_MAX,
+            copy_file_range as copy_file_range,
+            getrandom as getrandom,
+            getxattr as getxattr,
+            listxattr as listxattr,
+            memfd_create as memfd_create,
+            pidfd_open as pidfd_open,
+            removexattr as removexattr,
+            setxattr as setxattr,
         )
 
-        if sys.platform == "linux":
+        if sys.version_info >= (3, 10):
             from os import (
-                MFD_ALLOW_SEALING as MFD_ALLOW_SEALING,
-                MFD_CLOEXEC as MFD_CLOEXEC,
-                MFD_HUGE_1GB as MFD_HUGE_1GB,
-                MFD_HUGE_1MB as MFD_HUGE_1MB,
-                MFD_HUGE_2GB as MFD_HUGE_2GB,
-                MFD_HUGE_2MB as MFD_HUGE_2MB,
-                MFD_HUGE_8MB as MFD_HUGE_8MB,
-                MFD_HUGE_16GB as MFD_HUGE_16GB,
-                MFD_HUGE_16MB as MFD_HUGE_16MB,
-                MFD_HUGE_32MB as MFD_HUGE_32MB,
-                MFD_HUGE_64KB as MFD_HUGE_64KB,
-                MFD_HUGE_256MB as MFD_HUGE_256MB,
-                MFD_HUGE_512KB as MFD_HUGE_512KB,
-                MFD_HUGE_512MB as MFD_HUGE_512MB,
-                MFD_HUGE_MASK as MFD_HUGE_MASK,
-                MFD_HUGE_SHIFT as MFD_HUGE_SHIFT,
-                MFD_HUGETLB as MFD_HUGETLB,
-                copy_file_range as copy_file_range,
-                memfd_create as memfd_create,
+                EFD_CLOEXEC as EFD_CLOEXEC,
+                EFD_NONBLOCK as EFD_NONBLOCK,
+                EFD_SEMAPHORE as EFD_SEMAPHORE,
+                SPLICE_F_MORE as SPLICE_F_MORE,
+                SPLICE_F_MOVE as SPLICE_F_MOVE,
+                SPLICE_F_NONBLOCK as SPLICE_F_NONBLOCK,
+                eventfd as eventfd,
+                eventfd_read as eventfd_read,
+                eventfd_write as eventfd_write,
+                splice as splice,
             )
-    from os import preadv as preadv, pwritev as pwritev, register_at_fork as register_at_fork
 
-    if sys.platform != "darwin":
-        from os import RWF_DSYNC as RWF_DSYNC, RWF_HIPRI as RWF_HIPRI, RWF_NOWAIT as RWF_NOWAIT, RWF_SYNC as RWF_SYNC
+        if sys.version_info >= (3, 12):
+            from os import (
+                CLONE_FILES as CLONE_FILES,
+                CLONE_FS as CLONE_FS,
+                CLONE_NEWCGROUP as CLONE_NEWCGROUP,
+                CLONE_NEWIPC as CLONE_NEWIPC,
+                CLONE_NEWNET as CLONE_NEWNET,
+                CLONE_NEWNS as CLONE_NEWNS,
+                CLONE_NEWPID as CLONE_NEWPID,
+                CLONE_NEWTIME as CLONE_NEWTIME,
+                CLONE_NEWUSER as CLONE_NEWUSER,
+                CLONE_NEWUTS as CLONE_NEWUTS,
+                CLONE_SIGHAND as CLONE_SIGHAND,
+                CLONE_SYSVSEM as CLONE_SYSVSEM,
+                CLONE_THREAD as CLONE_THREAD,
+                CLONE_VM as CLONE_VM,
+                PIDFD_NONBLOCK as PIDFD_NONBLOCK,
+                setns as setns,
+                unshare as unshare,
+            )
+
+    if sys.platform == "darwin":
+        if sys.version_info >= (3, 12):
+            from os import (
+                PRIO_DARWIN_BG as PRIO_DARWIN_BG,
+                PRIO_DARWIN_NONUI as PRIO_DARWIN_NONUI,
+                PRIO_DARWIN_PROCESS as PRIO_DARWIN_PROCESS,
+                PRIO_DARWIN_THREAD as PRIO_DARWIN_THREAD,
+            )
+    if sys.platform == "darwin" and sys.version_info >= (3, 10):
+        from os import O_EVTONLY as O_EVTONLY, O_NOFOLLOW_ANY as O_NOFOLLOW_ANY, O_SYMLINK as O_SYMLINK
 
     # Not same as os.environ or os.environb
     # Because of this variable, we can't do "from posix import *" in os/__init__.pyi

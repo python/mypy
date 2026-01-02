@@ -31,8 +31,8 @@ invocation to your codebase, or adding your mypy invocation to
 existing tools you use to run tests, like ``tox``.
 
 * Make sure everyone runs mypy with the same options. Checking a mypy
-  :ref:`configuration file <config-file>` into your codebase can help
-  with this.
+  :ref:`configuration file <config-file>` into your codebase is the
+  easiest way to do this.
 
 * Make sure everyone type checks the same set of files. See
   :ref:`specifying-code-to-be-checked` for details.
@@ -48,10 +48,10 @@ A simple CI script could look something like this:
 
 .. code-block:: text
 
-    python3 -m pip install mypy==0.971
+    python3 -m pip install mypy==1.8
     # Run your standardised mypy invocation, e.g.
     mypy my_project
-    # This could also look like `scripts/run_mypy.sh`, `tox -e mypy`, `make mypy`, etc
+    # This could also look like `scripts/run_mypy.sh`, `tox run -e mypy`, `make mypy`, etc
 
 Ignoring errors from certain modules
 ------------------------------------
@@ -74,6 +74,11 @@ You could even invert this, by setting ``ignore_errors = True`` in your global
 config section and only enabling error reporting with ``ignore_errors = False``
 for the set of modules you are ready to type check.
 
+The per-module configuration that mypy's configuration file allows can be
+extremely useful. Many configuration options can be enabled or disabled
+only for specific modules. In particular, you can also enable or disable
+various error codes on a per-module basis, see :ref:`error-codes`.
+
 Fixing errors related to imports
 --------------------------------
 
@@ -89,7 +94,7 @@ that it can't find, that don't have types, or don't have stub files:
 Sometimes these can be fixed by installing the relevant packages or
 stub libraries in the environment you're running ``mypy`` in.
 
-See :ref:`ignore-missing-imports` for a complete reference on these errors
+See :ref:`fix-missing-imports` for a complete reference on these errors
 and the ways in which you can fix them.
 
 You'll likely find that you want to suppress all errors from importing
@@ -118,13 +123,15 @@ codebase, use a config like this:
    ignore_missing_imports = True
 
 If you get a large number of errors, you may want to ignore all errors
-about missing imports, for instance by setting :confval:`ignore_missing_imports`
-to true globally. This can hide errors later on, so we recommend avoiding this
+about missing imports, for instance by setting
+:option:`--disable-error-code=import-untyped <mypy --ignore-missing-imports>`.
+or setting :confval:`ignore_missing_imports` to true globally.
+This can hide errors later on, so we recommend avoiding this
 if possible.
 
 Finally, mypy allows fine-grained control over specific import following
 behaviour. It's very easy to silently shoot yourself in the foot when playing
-around with these, so it's mostly recommended as a last resort. For more
+around with these, so this should be a last resort. For more
 details, look :ref:`here <follow-imports>`.
 
 Prioritise annotating widely imported modules
@@ -183,7 +190,7 @@ An excellent goal to aim for is to have your codebase pass when run against ``my
 This basically ensures that you will never have a type related error without an explicit
 circumvention somewhere (such as a ``# type: ignore`` comment).
 
-The following config is equivalent to ``--strict`` (as of mypy 0.990):
+The following config is equivalent to ``--strict`` (as of mypy 1.0):
 
 .. code-block:: text
 
@@ -191,11 +198,9 @@ The following config is equivalent to ``--strict`` (as of mypy 0.990):
    warn_unused_configs = True
    warn_redundant_casts = True
    warn_unused_ignores = True
-   no_implicit_optional = True
 
-   # Getting these passing should be easy
+   # Getting this passing should be easy
    strict_equality = True
-   strict_concatenate = True
 
    # Strongly recommend enabling this one as soon as you can
    check_untyped_defs = True
@@ -216,6 +221,10 @@ The following config is equivalent to ``--strict`` (as of mypy 0.990):
 
    # This one can be tricky to get passing if you use a lot of untyped libraries
    warn_return_any = True
+
+   # This one is a catch-all flag for the rest of strict checks that are technically
+   # correct but may not be practical
+   extra_checks = True
 
 Note that you can also start with ``--strict`` and subtract, for instance:
 

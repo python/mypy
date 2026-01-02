@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 import sys
-from typing import AbstractSet
+from collections.abc import Set as AbstractSet
 
-from mypy.build import (
-    BuildManager,
-    BuildSourceSet,
-    State,
-    order_ascc,
-    sorted_components,
-    strongly_connected_components,
-    topsort,
-)
+from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
 from mypy.errors import Errors
 from mypy.fscache import FileSystemCache
+from mypy.graph_utils import strongly_connected_components, topsort
 from mypy.modulefinder import SearchPaths
 from mypy.options import Options
 from mypy.plugin import Plugin
@@ -41,9 +34,9 @@ class GraphSuite(Suite):
         assert_equal(sccs, {frozenset({"A"}), frozenset({"B", "C"}), frozenset({"D"})})
 
     def _make_manager(self) -> BuildManager:
-        errors = Errors()
         options = Options()
         options.use_builtins_fixtures = True
+        errors = Errors(options)
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(
@@ -57,7 +50,7 @@ class GraphSuite(Suite):
             plugin=Plugin(options),
             plugins_snapshot={},
             errors=errors,
-            flush_errors=lambda msgs, serious: None,
+            flush_errors=lambda filename, msgs, serious: None,
             fscache=fscache,
             stdout=sys.stdout,
             stderr=sys.stderr,
@@ -72,8 +65,8 @@ class GraphSuite(Suite):
             "b": State("b", None, "import c", manager),
             "c": State("c", None, "import b, d", manager),
         }
-        res = sorted_components(graph)
-        assert_equal(res, [frozenset({"d"}), frozenset({"c", "b"}), frozenset({"a"})])
+        res = [scc.mod_ids for scc in sorted_components(graph)]
+        assert_equal(res, [{"d"}, {"c", "b"}, {"a"}])
 
     def test_order_ascc(self) -> None:
         manager = self._make_manager()
@@ -83,7 +76,7 @@ class GraphSuite(Suite):
             "b": State("b", None, "import c", manager),
             "c": State("c", None, "import b, d", manager),
         }
-        res = sorted_components(graph)
+        res = [scc.mod_ids for scc in sorted_components(graph)]
         assert_equal(res, [frozenset({"a", "d", "c", "b"})])
         ascc = res[0]
         scc = order_ascc(graph, ascc)

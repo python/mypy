@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import contextlib
+import difflib
 import os
 import pathlib
 import re
 import shutil
 import sys
 import time
-from typing import Any, Callable, Iterable, Iterator, Pattern
+from collections.abc import Callable, Iterable, Iterator
+from re import Pattern
+from typing import IO, Any
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -40,75 +43,91 @@ def run_mypy(args: list[str]) -> None:
     if status != 0:
         sys.stdout.write(outval)
         sys.stderr.write(errval)
-        pytest.fail(msg="Sample check failed", pytrace=False)
+        pytest.fail(reason="Sample check failed", pytrace=False)
 
 
-def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str) -> None:
+def diff_ranges(
+    left: list[str], right: list[str]
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    seq = difflib.SequenceMatcher(None, left, right)
+    # note last triple is a dummy, so don't need to worry
+    blocks = seq.get_matching_blocks()
+
+    i = 0
+    j = 0
+    left_ranges = []
+    right_ranges = []
+    for block in blocks:
+        # mismatched range
+        left_ranges.append((i, block.a))
+        right_ranges.append((j, block.b))
+
+        i = block.a + block.size
+        j = block.b + block.size
+
+        # matched range
+        left_ranges.append((block.a, i))
+        right_ranges.append((block.b, j))
+    return left_ranges, right_ranges
+
+
+def render_diff_range(
+    ranges: list[tuple[int, int]],
+    content: list[str],
+    *,
+    colour: str | None = None,
+    output: IO[str] = sys.stderr,
+    indent: int = 2,
+) -> None:
+    for i, line_range in enumerate(ranges):
+        is_matching = i % 2 == 1
+        lines = content[line_range[0] : line_range[1]]
+        for j, line in enumerate(lines):
+            if (
+                is_matching
+                # elide the middle of matching blocks
+                and j >= 3
+                and j < len(lines) - 3
+            ):
+                if j == 3:
+                    output.write(" " * indent + "...\n")
+                continue
+
+            if not is_matching and colour:
+                output.write(colour)
+
+            output.write(" " * indent + line)
+
+            if not is_matching:
+                if colour:
+                    output.write("\033[0m")
+                output.write(" (diff)")
+
+            output.write("\n")
+
+
+def assert_string_arrays_equal(
+    expected: list[str], actual: list[str], msg: str, *, traceback: bool = False
+) -> None:
     """Assert that two string arrays are equal.
-
-    We consider "can't" and "cannot" equivalent, by replacing the
-    former with the latter before comparing.
 
     Display any differences in a human-readable form.
     """
-    __tracebackhide__ = True
-
     actual = clean_up(actual)
-    actual = [line.replace("can't", "cannot") for line in actual]
-    expected = [line.replace("can't", "cannot") for line in expected]
-
-    if actual != expected:
-        num_skip_start = num_skipped_prefix_lines(expected, actual)
-        num_skip_end = num_skipped_suffix_lines(expected, actual)
-
+    if expected != actual:
+        expected_ranges, actual_ranges = diff_ranges(expected, actual)
         sys.stderr.write("Expected:\n")
-
-        # If omit some lines at the beginning, indicate it by displaying a line
-        # with '...'.
-        if num_skip_start > 0:
-            sys.stderr.write("  ...\n")
-
-        # Keep track of the first different line.
-        first_diff = -1
-
-        # Display only this many first characters of identical lines.
-        width = 75
-
-        for i in range(num_skip_start, len(expected) - num_skip_end):
-            if i >= len(actual) or expected[i] != actual[i]:
-                if first_diff < 0:
-                    first_diff = i
-                sys.stderr.write(f"  {expected[i]:<45} (diff)")
-            else:
-                e = expected[i]
-                sys.stderr.write("  " + e[:width])
-                if len(e) > width:
-                    sys.stderr.write("...")
-            sys.stderr.write("\n")
-        if num_skip_end > 0:
-            sys.stderr.write("  ...\n")
-
+        red = "\033[31m" if sys.platform != "win32" else None
+        render_diff_range(expected_ranges, expected, colour=red)
         sys.stderr.write("Actual:\n")
-
-        if num_skip_start > 0:
-            sys.stderr.write("  ...\n")
-
-        for j in range(num_skip_start, len(actual) - num_skip_end):
-            if j >= len(expected) or expected[j] != actual[j]:
-                sys.stderr.write(f"  {actual[j]:<45} (diff)")
-            else:
-                a = actual[j]
-                sys.stderr.write("  " + a[:width])
-                if len(a) > width:
-                    sys.stderr.write("...")
-            sys.stderr.write("\n")
-        if not actual:
-            sys.stderr.write("  (empty)\n")
-        if num_skip_end > 0:
-            sys.stderr.write("  ...\n")
+        green = "\033[32m" if sys.platform != "win32" else None
+        render_diff_range(actual_ranges, actual, colour=green)
 
         sys.stderr.write("\n")
-
+        first_diff = next(
+            (i for i, (a, b) in enumerate(zip(expected, actual)) if a != b),
+            max(len(expected), len(actual)),
+        )
         if 0 <= first_diff < len(actual) and (
             len(expected[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT
             or len(actual[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT
@@ -117,7 +136,11 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
 
-        raise AssertionError(msg)
+        sys.stderr.write(
+            "Update the test output using --update-data "
+            "(implies -n0; you can additionally use the -k selector to update only specific tests)\n"
+        )
+        pytest.fail(msg, pytrace=traceback)
 
 
 def assert_module_equivalence(name: str, expected: Iterable[str], actual: Iterable[str]) -> None:
@@ -126,7 +149,7 @@ def assert_module_equivalence(name: str, expected: Iterable[str], actual: Iterab
     assert_string_arrays_equal(
         expected_normalized,
         actual_normalized,
-        ("Actual modules ({}) do not match expected modules ({}) " 'for "[{} ...]"').format(
+        ('Actual modules ({}) do not match expected modules ({}) for "[{} ...]"').format(
             ", ".join(actual_normalized), ", ".join(expected_normalized), name
         ),
     )
@@ -137,43 +160,10 @@ def assert_target_equivalence(name: str, expected: list[str], actual: list[str])
     assert_string_arrays_equal(
         expected,
         actual,
-        ("Actual targets ({}) do not match expected targets ({}) " 'for "[{} ...]"').format(
+        ('Actual targets ({}) do not match expected targets ({}) for "[{} ...]"').format(
             ", ".join(actual), ", ".join(expected), name
         ),
     )
-
-
-def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:
-    assert testcase.old_cwd is not None, "test was not properly set up"
-    testcase_path = os.path.join(testcase.old_cwd, testcase.file)
-    with open(testcase_path, encoding="utf8") as f:
-        data_lines = f.read().splitlines()
-    test = "\n".join(data_lines[testcase.line : testcase.last_line])
-
-    mapping: dict[str, list[str]] = {}
-    for old, new in zip(testcase.output, output):
-        PREFIX = "error:"
-        ind = old.find(PREFIX)
-        if ind != -1 and old[:ind] == new[:ind]:
-            old, new = old[ind + len(PREFIX) :], new[ind + len(PREFIX) :]
-        mapping.setdefault(old, []).append(new)
-
-    for old in mapping:
-        if test.count(old) == len(mapping[old]):
-            betweens = test.split(old)
-
-            # Interleave betweens and mapping[old]
-            from itertools import chain
-
-            interleaved = [betweens[0]] + list(
-                chain.from_iterable(zip(mapping[old], betweens[1:]))
-            )
-            test = "".join(interleaved)
-
-    data_lines[testcase.line : testcase.last_line] = [test]
-    data = "\n".join(data_lines)
-    with open(testcase_path, "w", encoding="utf8") as f:
-        print(data, file=f)
 
 
 def show_align_message(s1: str, s2: str) -> None:
@@ -243,6 +233,9 @@ def clean_up(a: list[str]) -> list[str]:
         for p in prefix, prefix.replace(os.sep, "/"):
             if p != "/" and p != "//" and p != "\\" and p != "\\\\":
                 ss = ss.replace(p, "")
+        # Replace memory address with zeros
+        if "at 0x" in ss:
+            ss = re.sub(r"(at 0x)\w+>", r"\g<1>000000000000>", ss)
         # Ignore spaces at end of line.
         ss = re.sub(" +$", "", ss)
         # Remove pwd from driver.py's path
@@ -258,7 +251,7 @@ def local_sys_path_set() -> Iterator[None]:
     This can be used by test cases that do runtime imports, for example
     by the stubgen tests.
     """
-    old_sys_path = sys.path[:]
+    old_sys_path = sys.path.copy()
     if not ("" in sys.path or "." in sys.path):
         sys.path.insert(0, "")
     try:
@@ -267,25 +260,13 @@ def local_sys_path_set() -> Iterator[None]:
         sys.path = old_sys_path
 
 
-def num_skipped_prefix_lines(a1: list[str], a2: list[str]) -> int:
-    num_eq = 0
-    while num_eq < min(len(a1), len(a2)) and a1[num_eq] == a2[num_eq]:
-        num_eq += 1
-    return max(0, num_eq - 4)
-
-
-def num_skipped_suffix_lines(a1: list[str], a2: list[str]) -> int:
-    num_eq = 0
-    while num_eq < min(len(a1), len(a2)) and a1[-num_eq - 1] == a2[-num_eq - 1]:
-        num_eq += 1
-    return max(0, num_eq - 4)
-
-
 def testfile_pyversion(path: str) -> tuple[int, int]:
-    if path.endswith("python310.test"):
-        return 3, 10
+    if m := re.search(r"python3([0-9]+)\.test$", path):
+        # For older unsupported version like python38,
+        # default to that earliest supported version.
+        return max((3, int(m.group(1))), defaults.PYTHON3_VERSION_MIN)
     else:
-        return defaults.PYTHON3_VERSION
+        return defaults.PYTHON3_VERSION_MIN
 
 
 def normalize_error_messages(messages: list[str]) -> list[str]:
@@ -374,17 +355,17 @@ def parse_options(
     else:
         flag_list = []
         options = Options()
-        # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
-        options.strict_optional = False
         options.error_summary = False
         options.hide_error_codes = True
 
     # Allow custom python version to override testfile_pyversion.
-    if all(flag.split("=")[0] not in ["--python-version", "-2", "--py2"] for flag in flag_list):
+    if all(flag.split("=")[0] != "--python-version" for flag in flag_list):
         options.python_version = testfile_pyversion(testcase.file)
 
     if testcase.config.getoption("--mypy-verbose"):
         options.verbosity = testcase.config.getoption("--mypy-verbose")
+    if testcase.config.getoption("--mypy-num-workers"):
+        options.num_workers = testcase.config.getoption("--mypy-num-workers")
 
     return options
 
@@ -436,8 +417,7 @@ def check_test_output_files(
     testcase: DataDrivenTestCase, step: int, strip_prefix: str = ""
 ) -> None:
     for path, expected_content in testcase.output_files:
-        if path.startswith(strip_prefix):
-            path = path[len(strip_prefix) :]
+        path = path.removeprefix(strip_prefix)
         if not os.path.exists(path):
             raise AssertionError(
                 "Expected file {} was not produced by test case{}".format(
@@ -465,6 +445,8 @@ def check_test_output_files(
             if testcase.suite.native_sep and os.path.sep == "\\":
                 normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
             normalized_output = normalize_error_messages(normalized_output)
+        if os.path.basename(testcase.file) == "reports.test":
+            normalized_output = normalize_report_meta(normalized_output)
         assert_string_arrays_equal(
             expected_content.splitlines(),
             normalized_output,
@@ -488,9 +470,20 @@ def normalize_file_output(content: list[str], current_abs_path: str) -> list[str
     return result
 
 
+def normalize_report_meta(content: list[str]) -> list[str]:
+    # libxml 2.15 and newer emits the "modern" version of this <meta> element.
+    # Normalize the old style to look the same.
+    html_meta = '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
+    return ['<meta charset="UTF-8">' if x == html_meta else x for x in content]
+
+
 def find_test_files(pattern: str, exclude: list[str] | None = None) -> list[str]:
     return [
         path.name
         for path in (pathlib.Path(test_data_prefix).rglob(pattern))
         if path.name not in (exclude or [])
     ]
+
+
+def remove_typevar_ids(a: list[str]) -> list[str]:
+    return [re.sub(r"`-?\d+", "", line) for line in a]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum, unique
-from typing_extensions import Final
+from typing import Final
 
 from mypy.checkstrformat import (
     ConversionSpecifier,
@@ -12,7 +12,8 @@ from mypy.checkstrformat import (
 )
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
-from mypy.nodes import Context, Expression
+from mypy.nodes import Context, Expression, StrExpr
+from mypy.options import Options
 from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
@@ -108,7 +109,9 @@ def tokenizer_format_call(format_str: str) -> tuple[list[str], list[FormatOp]] |
     """
     # Creates an empty MessageBuilder here.
     # It wouldn't be used since the code has passed the type-checking.
-    specifiers = parse_format_value(format_str, EMPTY_CONTEXT, MessageBuilder(Errors(), {}))
+    specifiers = parse_format_value(
+        format_str, EMPTY_CONTEXT, MessageBuilder(Errors(Options()), {})
+    )
     if specifiers is None:
         return None
     format_ops = generate_format_ops(specifiers)
@@ -140,15 +143,17 @@ def convert_format_expr_to_str(
     for x, format_op in zip(exprs, format_ops):
         node_type = builder.node_type(x)
         if format_op == FormatOp.STR:
-            if is_str_rprimitive(node_type):
+            if is_str_rprimitive(node_type) or isinstance(
+                x, StrExpr
+            ):  # NOTE: why does mypyc think our fake StrExprs are not str rprimitives?
                 var_str = builder.accept(x)
             elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
-                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
+                var_str = builder.primitive_op(int_to_str_op, [builder.accept(x)], line)
             else:
-                var_str = builder.call_c(str_op, [builder.accept(x)], line)
+                var_str = builder.primitive_op(str_op, [builder.accept(x)], line)
         elif format_op == FormatOp.INT:
             if is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
-                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
+                var_str = builder.primitive_op(int_to_str_op, [builder.accept(x)], line)
             else:
                 return None
         else:

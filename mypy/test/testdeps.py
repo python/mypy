@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import os
+import sys
 from collections import defaultdict
+
+import pytest
 
 from mypy import build
 from mypy.errors import CompileError
@@ -15,7 +18,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
 from mypy.types import Type
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 
 # Only dependencies in these modules are dumped
 dumped_modules = ["__main__", "pkg", "pkg.mod"]
@@ -28,6 +31,8 @@ class GetDependenciesSuite(DataSuite):
         src = "\n".join(testcase.input)
         dump_all = "# __dump_all__" in src
         options = parse_options(src, testcase, incremental_step=1)
+        if options.python_version > sys.version_info:
+            pytest.skip("Test case requires a newer Python version")
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
@@ -41,23 +46,16 @@ class GetDependenciesSuite(DataSuite):
                 a = ["Unknown compile error (likely syntax error in test case or fixture)"]
         else:
             deps: defaultdict[str, set[str]] = defaultdict(set)
-            for module in files:
-                if (
-                    module in dumped_modules
-                    or dump_all
-                    and module
-                    not in ("abc", "typing", "mypy_extensions", "typing_extensions", "enum")
-                ):
-                    new_deps = get_dependencies(
-                        files[module], type_map, options.python_version, options
-                    )
+            for module, file in files.items():
+                if (module in dumped_modules or dump_all) and (module in testcase.test_modules):
+                    new_deps = get_dependencies(file, type_map, options.python_version, options)
                     for source in new_deps:
                         deps[source].update(new_deps[source])
 
-            TypeState.add_all_protocol_deps(deps)
+            type_state.add_all_protocol_deps(deps)
 
             for source, targets in sorted(deps.items()):
-                if source.startswith(("<enum", "<typing", "<mypy")):
+                if source.startswith(("<enum", "<typing", "<mypy", "<_typeshed.")):
                     # Remove noise.
                     continue
                 line = f"{source} -> {', '.join(sorted(targets))}"

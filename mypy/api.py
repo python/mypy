@@ -46,12 +46,12 @@ print('\nExit status:', result[2])
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from io import StringIO
-from typing import Callable, TextIO, cast
+from typing import TextIO
 
 
 def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> tuple[str, str, int]:
-
     stdout = StringIO()
     stderr = StringIO()
 
@@ -59,7 +59,8 @@ def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> tuple[str, str, int]
         main_wrapper(stdout, stderr)
         exit_status = 0
     except SystemExit as system_exit:
-        exit_status = cast(int, system_exit.code)
+        assert isinstance(system_exit.code, int)
+        exit_status = system_exit.code
 
     return stdout.getvalue(), stderr.getvalue(), exit_status
 

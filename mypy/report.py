@@ -8,12 +8,13 @@ import json
 import os
 import shutil
 import sys
+import sysconfig
 import time
 import tokenize
 from abc import ABCMeta, abstractmethod
+from collections.abc import Callable, Iterator
 from operator import attrgetter
-from typing import Any, Callable, Dict, Iterator, Tuple, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 from urllib.request import pathname2url
 
 from mypy import stats
@@ -25,9 +26,13 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree  # type: ignore[import]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        LXML_INSTALLED = False
+    else:
+        from lxml import etree  # type: ignore[import-untyped]
 
-    LXML_INSTALLED = True
+        LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
 
@@ -43,8 +48,8 @@ type_of_any_name_map: Final[collections.OrderedDict[int, str]] = collections.Ord
     ]
 )
 
-ReporterClasses: _TypeAlias = Dict[
-    str, Tuple[Callable[["Reports", str], "AbstractReporter"], bool],
+ReporterClasses: _TypeAlias = dict[
+    str, tuple[Callable[["Reports", str], "AbstractReporter"], bool]
 ]
 
 reporter_classes: Final[ReporterClasses] = {}
@@ -99,7 +104,7 @@ class AbstractReporter(metaclass=ABCMeta):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         self.output_dir = output_dir
         if output_dir != "<memory>":
-            stats.ensure_dir_exists(output_dir)
+            os.makedirs(output_dir, exist_ok=True)
 
     @abstractmethod
     def on_file(
@@ -140,12 +145,9 @@ def should_skip_path(path: str) -> bool:
 
 def iterate_python_lines(path: str) -> Iterator[tuple[int, str]]:
     """Return an iterator over (line number, line text) from a Python file."""
-    try:
+    if not os.path.isdir(path):  # can happen with namespace packages
         with tokenize.open(path) as input_file:
             yield from enumerate(input_file, 1)
-    except IsADirectoryError:
-        # can happen with namespace packages
-        pass
 
 
 class FuncCounterVisitor(TraverserVisitor):
@@ -171,8 +173,11 @@ class LineCountReporter(AbstractReporter):
     ) -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
-        with open(tree.path, "rb") as f:
-            physical_lines = len(f.readlines())
+        if not os.path.isdir(tree.path):  # can happen with namespace packages
+            with open(tree.path, "rb") as f:
+                physical_lines = len(f.readlines())
+        else:
+            physical_lines = 0
 
         func_counter = FuncCounterVisitor()
         tree.accept(func_counter)
@@ -353,7 +358,7 @@ class LineCoverageVisitor(TraverserVisitor):
         return None
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        start_line = defn.get_line() - 1
+        start_line = defn.line - 1
         start_indent = None
         # When a function is decorated, sometimes the start line will point to
         # whitespace or comments between the decorator and the function, so
@@ -419,6 +424,9 @@ class LineCoverageReporter(AbstractReporter):
         type_map: dict[Expression, Type],
         options: Options,
     ) -> None:
+        if os.path.isdir(tree.path):  # can happen with namespace packages
+            return
+
         with open(tree.path) as f:
             tree_source = f.readlines()
 
@@ -637,57 +645,56 @@ class CoberturaXmlReporter(AbstractReporter):
         etree.SubElement(class_element, "methods")
         lines_element = etree.SubElement(class_element, "lines")
 
-        with tokenize.open(path) as input_file:
-            class_lines_covered = 0
-            class_total_lines = 0
-            for lineno, _ in enumerate(input_file, 1):
-                status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
-                hits = 0
-                branch = False
-                if status == stats.TYPE_EMPTY:
-                    continue
-                class_total_lines += 1
-                if status != stats.TYPE_ANY:
-                    class_lines_covered += 1
-                    hits = 1
-                if status == stats.TYPE_IMPRECISE:
-                    branch = True
-                file_info.counts[status] += 1
-                line_element = etree.SubElement(
-                    lines_element,
-                    "line",
-                    branch=str(branch).lower(),
-                    hits=str(hits),
-                    number=str(lineno),
-                    precision=stats.precision_names[status],
-                )
-                if branch:
-                    line_element.attrib["condition-coverage"] = "50% (1/2)"
-            class_element.attrib["branch-rate"] = "0"
-            class_element.attrib["line-rate"] = get_line_rate(
-                class_lines_covered, class_total_lines
+        class_lines_covered = 0
+        class_total_lines = 0
+        for lineno, _ in iterate_python_lines(path):
+            status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
+            hits = 0
+            branch = False
+            if status == stats.TYPE_EMPTY:
+                continue
+            class_total_lines += 1
+            if status != stats.TYPE_ANY:
+                class_lines_covered += 1
+                hits = 1
+            if status == stats.TYPE_IMPRECISE:
+                branch = True
+            file_info.counts[status] += 1
+            line_element = etree.SubElement(
+                lines_element,
+                "line",
+                branch=str(branch).lower(),
+                hits=str(hits),
+                number=str(lineno),
+                precision=stats.precision_names[status],
             )
-            # parent_module is set to whichever module contains this file.  For most files, we want
-            # to simply strip the last element off of the module.  But for __init__.py files,
-            # the module == the parent module.
-            parent_module = file_info.module.rsplit(".", 1)[0]
-            if file_info.name.endswith("__init__.py"):
-                parent_module = file_info.module
+            if branch:
+                line_element.attrib["condition-coverage"] = "50% (1/2)"
+        class_element.attrib["branch-rate"] = "0"
+        class_element.attrib["line-rate"] = get_line_rate(class_lines_covered, class_total_lines)
+        # parent_module is set to whichever module contains this file.  For most files, we want
+        # to simply strip the last element off of the module.  But for __init__.py files,
+        # the module == the parent module.
+        parent_module = file_info.module.rsplit(".", 1)[0]
+        if file_info.name.endswith("__init__.py"):
+            parent_module = file_info.module
 
-            if parent_module not in self.root_package.packages:
-                self.root_package.packages[parent_module] = CoberturaPackage(parent_module)
-            current_package = self.root_package.packages[parent_module]
-            packages_to_update = [self.root_package, current_package]
-            for package in packages_to_update:
-                package.total_lines += class_total_lines
-                package.covered_lines += class_lines_covered
-            current_package.classes[class_name] = class_element
+        if parent_module not in self.root_package.packages:
+            self.root_package.packages[parent_module] = CoberturaPackage(parent_module)
+        current_package = self.root_package.packages[parent_module]
+        packages_to_update = [self.root_package, current_package]
+        for package in packages_to_update:
+            package.total_lines += class_total_lines
+            package.covered_lines += class_lines_covered
+        current_package.classes[class_name] = class_element
 
     def on_finish(self) -> None:
         self.root.attrib["line-rate"] = get_line_rate(
             self.root_package.covered_lines, self.root_package.total_lines
         )
         self.root.attrib["branch-rate"] = "0"
+        self.root.attrib["lines-covered"] = str(self.root_package.covered_lines)
+        self.root.attrib["lines-valid"] = str(self.root_package.total_lines)
         sources = etree.SubElement(self.root, "sources")
         source_element = etree.SubElement(sources, "source")
         source_element.text = os.getcwd()
@@ -707,8 +714,9 @@ class AbstractXmlReporter(AbstractReporter):
         super().__init__(reports, output_dir)
 
         memory_reporter = reports.add_report("memory-xml", "<memory>")
+        assert isinstance(memory_reporter, MemoryXmlReporter)
         # The dependency will be called first.
-        self.memory_xml = cast(MemoryXmlReporter, memory_reporter)
+        self.memory_xml = memory_reporter
 
 
 class XmlReporter(AbstractXmlReporter):
@@ -735,7 +743,7 @@ class XmlReporter(AbstractXmlReporter):
         if path.startswith(".."):
             return
         out_path = os.path.join(self.output_dir, "xml", path + ".xml")
-        stats.ensure_dir_exists(os.path.dirname(out_path))
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         last_xml.write(out_path, encoding="utf-8")
 
     def on_finish(self) -> None:
@@ -780,7 +788,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
         if path.startswith(".."):
             return
         out_path = os.path.join(self.output_dir, "html", path + ".html")
-        stats.ensure_dir_exists(os.path.dirname(out_path))
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         transformed_html = bytes(self.xslt_html(last_xml, ext=self.param_html))
         with open(out_path, "wb") as out_file:
             out_file.write(transformed_html)
@@ -862,7 +870,6 @@ class LinePrecisionReporter(AbstractReporter):
         type_map: dict[Expression, Type],
         options: Options,
     ) -> None:
-
         try:
             path = os.path.relpath(tree.path)
         except ValueError:

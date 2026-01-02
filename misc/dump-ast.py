@@ -9,7 +9,7 @@ import argparse
 import sys
 
 from mypy import defaults
-from mypy.errors import CompileError
+from mypy.errors import CompileError, Errors
 from mypy.options import Options
 from mypy.parse import parse
 
@@ -19,7 +19,7 @@ def dump(fname: str, python_version: tuple[int, int], quiet: bool = False) -> No
     options.python_version = python_version
     with open(fname, "rb") as f:
         s = f.read()
-        tree = parse(s, fname, None, errors=None, options=options)
+        tree = parse(s, fname, None, errors=Errors(options), options=options)
         if not quiet:
             print(tree)
 

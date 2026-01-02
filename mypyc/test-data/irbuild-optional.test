@@ -91,7 +91,7 @@ def f(x):
     r0 :: object
     r1 :: bit
     r2 :: __main__.A
-    r3 :: int32
+    r3 :: i32
     r4 :: bit
     r5 :: bool
 L0:
@@ -102,7 +102,7 @@ L1:
     r2 = cast(__main__.A, x)
     r3 = PyObject_IsTrue(r2)
     r4 = r3 >= 0 :: signed
-    r5 = truncate r3: int32 to builtins.bool
+    r5 = truncate r3: i32 to builtins.bool
     if r5 goto L2 else goto L3 :: bool
 L2:
     return 2
@@ -222,7 +222,7 @@ def f(y):
 L0:
     r0 = box(None, 1)
     x = r0
-    r1 = y == 2
+    r1 = int_eq y, 2
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = box(int, y)
@@ -251,28 +251,22 @@ def f(x: Union[int, A]) -> int:
 [out]
 def f(x):
     x :: union[int, __main__.A]
-    r0 :: object
-    r1 :: int32
-    r2 :: bit
-    r3 :: bool
-    r4, r5 :: int
-    r6 :: __main__.A
-    r7 :: int
+    r0 :: bit
+    r1, r2 :: int
+    r3 :: __main__.A
+    r4 :: int
 L0:
-    r0 = load_address PyLong_Type
-    r1 = PyObject_IsInstance(x, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r0 = PyLong_Check(x)
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r4 = unbox(int, x)
-    r5 = CPyTagged_Add(r4, 2)
-    return r5
+    r1 = unbox(int, x)
+    r2 = CPyTagged_Add(r1, 2)
+    return r2
 L2:
-    r6 = borrow cast(__main__.A, x)
-    r7 = r6.a
+    r3 = borrow cast(__main__.A, x)
+    r4 = r3.a
     keep_alive x
-    return r7
+    return r4
 L3:
     unreachable
 
@@ -317,7 +311,7 @@ def get(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -337,7 +331,7 @@ L3:
 def set(o, s):
     o :: union[__main__.A, __main__.B]
     s, r0 :: str
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
 L0:
     r0 = 'a'
@@ -396,7 +390,7 @@ def g(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -409,7 +403,7 @@ L1:
 L2:
     r8 = __main__.B :: type
     r9 = get_element_ptr o ob_type :: PyObject
-    r10 = load_mem r9 :: builtins.object*
+    r10 = borrow load_mem r9 :: builtins.object*
     keep_alive o
     r11 = r10 == r8
     if r11 goto L3 else goto L4 :: bool
@@ -462,7 +456,7 @@ def f(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -494,7 +488,7 @@ def g(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1 :: builtins.object*
+    r2 = borrow load_mem r1 :: builtins.object*
     keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
@@ -527,14 +521,10 @@ class B:
 
 [out]
 def f(o):
-    o :: union[object, object]
-    r0 :: object
-    r1 :: str
-    r2, r3 :: object
+    o :: object
+    r0 :: str
+    r1 :: object
 L0:
-    r0 = o
-    r1 = 'x'
-    r2 = CPyObject_GetAttr(r0, r1)
-    r3 = r2
-L1:
+    r0 = 'x'
+    r1 = CPyObject_GetAttr(o, r0)
     return 1

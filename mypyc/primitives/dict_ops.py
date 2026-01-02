@@ -53,7 +53,7 @@ dict_build_op = custom_op(
 )
 
 # Construct a dictionary from another dictionary.
-function_op(
+dict_copy_op = function_op(
     name="builtins.dict",
     arg_types=[dict_rprimitive],
     return_type=dict_rprimitive,
@@ -63,12 +63,21 @@ function_op(
 )
 
 # Generic one-argument dict constructor: dict(obj)
-function_op(
+dict_copy = function_op(
     name="builtins.dict",
     arg_types=[object_rprimitive],
     return_type=dict_rprimitive,
     c_function_name="CPyDict_FromAny",
     error_kind=ERR_MAGIC,
+)
+
+# translate isinstance(obj, dict)
+isinstance_dict = function_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyDict_Check",
+    error_kind=ERR_NEVER,
 )
 
 # dict[key]
@@ -86,6 +95,15 @@ dict_set_item_op = method_op(
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="CPyDict_SetItem",
+    error_kind=ERR_NEG_INT,
+)
+
+# dict[key] = value (exact dict only, no subclasses)
+# NOTE: this is currently for internal use only, and not used for CallExpr specialization
+exact_dict_set_item_op = custom_op(
+    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyDict_SetItem",
     error_kind=ERR_NEG_INT,
 )
 
@@ -113,7 +131,7 @@ dict_update_op = method_op(
 # Operation used for **value in dict displays.
 # This is mostly like dict.update(obj), but has customized error handling.
 dict_update_in_display_op = custom_op(
-    arg_types=[dict_rprimitive, dict_rprimitive],
+    arg_types=[dict_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="CPyDict_UpdateInDisplay",
     error_kind=ERR_NEG_INT,
@@ -289,7 +307,7 @@ dict_next_item_op = custom_op(
 
 # check that len(dict) == const during iteration
 dict_check_size_op = custom_op(
-    arg_types=[dict_rprimitive, int_rprimitive],
+    arg_types=[dict_rprimitive, c_pyssize_t_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="CPyDict_CheckSize",
     error_kind=ERR_FALSE,
@@ -299,5 +317,27 @@ dict_ssize_t_size_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name="PyDict_Size",
+    error_kind=ERR_NEVER,
+)
+
+# Delete an item from a dict
+dict_del_item = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyDict_DelItem",
+    error_kind=ERR_NEG_INT,
+)
+
+supports_mapping_protocol = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyMapping_Check",
+    error_kind=ERR_NEVER,
+)
+
+mapping_has_key = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyMapping_HasKey",
     error_kind=ERR_NEVER,
 )

@@ -1,10 +1,10 @@
 [case testFastParseSyntaxError]
 
-1 +  # E: invalid syntax
+1 +  # E: Invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
 
-x = None # type: a : b  # E: syntax error in type comment "a : b"
+x = None # type: a : b  # E: Syntax error in type comment "a : b"
 
 [case testFastParseInvalidTypeComment]
 
@@ -14,13 +14,13 @@ x = None # type: a + b  # E: Invalid type comment or annotation
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
 
-def f():  # E: syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
+def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
   pass
 
 [case testFastParseFunctionAnnotationSyntaxErrorSpaces]
 
-def f():  # E: syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
+def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type:             None -> None
   pass
 
@@ -31,7 +31,6 @@ def f(x):  # E: Invalid type comment or annotation
   pass
 
 [case testFastParseInvalidTypes3]
-# flags: --python-version 3.6
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
@@ -122,9 +121,9 @@ def f(a,        # type: A
       **kwargs  # type: F
       ):
     reveal_type(a)      # N: Revealed type is "__main__.A"
-    reveal_type(b)      # N: Revealed type is "Union[__main__.B, None]"
+    reveal_type(b)      # N: Revealed type is "__main__.B | None"
     reveal_type(args)   # N: Revealed type is "builtins.tuple[__main__.C, ...]"
-    reveal_type(d)      # N: Revealed type is "Union[__main__.D, None]"
+    reveal_type(d)      # N: Revealed type is "__main__.D | None"
     reveal_type(e)      # N: Revealed type is "__main__.E"
     reveal_type(kwargs) # N: Revealed type is "builtins.dict[builtins.str, __main__.F]"
 [builtins fixtures/dict.pyi]
@@ -148,9 +147,9 @@ def f(a,        # type: A
       ):
       # type: (...) -> int
     reveal_type(a)      # N: Revealed type is "__main__.A"
-    reveal_type(b)      # N: Revealed type is "Union[__main__.B, None]"
+    reveal_type(b)      # N: Revealed type is "__main__.B | None"
     reveal_type(args)   # N: Revealed type is "builtins.tuple[__main__.C, ...]"
-    reveal_type(d)      # N: Revealed type is "Union[__main__.D, None]"
+    reveal_type(d)      # N: Revealed type is "__main__.D | None"
     reveal_type(e)      # N: Revealed type is "__main__.E"
     reveal_type(kwargs) # N: Revealed type is "builtins.dict[builtins.str, __main__.F]"
     return "not an int"  # E: Incompatible return value type (got "str", expected "int")
@@ -159,7 +158,7 @@ def f(a,        # type: A
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 
-def f(*, # type: int  # E: bare * has associated type comment
+def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
       ):
       # type: (...) -> int
@@ -228,8 +227,8 @@ def g():  # E: Type signature has too many arguments
 assert 1, 2
 assert (1, 2)  # E: Assertion is always true, perhaps remove parentheses?
 assert (1, 2), 3  # E: Assertion is always true, perhaps remove parentheses?
-assert ()
 assert (1,)  # E: Assertion is always true, perhaps remove parentheses?
+assert ()
 [builtins fixtures/tuple.pyi]
 
 [case testFastParseAssertMessage]
@@ -242,37 +241,37 @@ assert 1, f()  # E: Name "f" is not defined
 
 [case testFastParserConsistentFunctionTypes]
 
-def f(x, y, z):
+def f1(x, y, z):
   # type: (int, int, int) -> int
   pass
 
-def f(x,  # type: int  # E: Function has duplicate type signatures
+def f2(x,  # type: int  # E: Function has duplicate type signatures
       y,  # type: int
       z   # type: int
     ):
     # type: (int, int, int) -> int
     pass
 
-def f(x,  # type: int
+def f3(x,  # type: int
       y,  # type: int
       z   # type: int
     ):
     # type: (...) -> int
     pass
 
-def f(x, y, z):
+def f4(x, y, z):
   # type: (int, int, int) -> int
   pass
 
-def f(x) -> int:  # E: Function has duplicate type signatures
+def f5(x) -> int:  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
-def f(x: int, y: int, z: int):
+def f6(x: int, y: int, z: int):
   # type: (...) -> int
   pass
 
-def f(x: int):  # E: Function has duplicate type signatures
+def f7(x: int):  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
@@ -325,3 +324,18 @@ class Bla:
 def call() -> str: pass
 
 [builtins fixtures/module.pyi]
+
+[case testInvalidEscapeSequenceWarningsSuppressed]
+# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+# Test that SyntaxWarnings for invalid escape sequences are suppressed
+# when parsing potential type expressions containing regex patterns or
+# similar strings. Callable arguments are always potential type expressions.
+from typing import TypeForm
+
+def identity(typx: TypeForm) -> TypeForm:
+    return typx
+
+# This should not generate SyntaxWarning despite invalid escape sequence
+identity(r"re\.match")  # E: Argument 1 to "identity" has incompatible type "str"; expected "TypeForm[Any]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

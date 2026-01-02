@@ -16,8 +16,9 @@ MypyFile:1(
 MypyFile:1(
   tmp/x.py
   AssignmentStmt:1(
-    NameExpr(y* [x.y])
-    IntExpr(1)))
+    NameExpr(y [x.y])
+    IntExpr(1)
+    builtins.int))
 
 [case testImportedNameInType]
 import m
@@ -51,8 +52,9 @@ MypyFile:1(
 MypyFile:1(
   tmp/m.py
   AssignmentStmt:1(
-    NameExpr(y* [m.y])
-    IntExpr(1)))
+    NameExpr(y [m.y])
+    IntExpr(1)
+    builtins.int))
 
 [case testImportFromType]
 from m import c
@@ -75,9 +77,9 @@ MypyFile:1(
 [case testImportMultiple]
 import _m, _n
 _m.x, _n.y
-[file _m.py]
+[fixture _m.py]
 x = 1
-[file _n.py]
+[fixture _n.py]
 y = 2
 [out]
 MypyFile:1(
@@ -94,7 +96,7 @@ MypyFile:1(
 [case testImportAs]
 import _m as n
 n.x
-[file _m.py]
+[fixture _m.py]
 x = 1
 [out]
 MypyFile:1(
@@ -107,7 +109,7 @@ MypyFile:1(
 [case testImportFromMultiple]
 from _m import x, y
 x, y
-[file _m.py]
+[fixture _m.py]
 x = y = 1
 [out]
 MypyFile:1(
@@ -120,7 +122,7 @@ MypyFile:1(
 [case testImportFromAs]
 from _m import y as z
 z
-[file _m.py]
+[fixture _m.py]
 y = 1
 [out]
 MypyFile:1(
@@ -133,7 +135,7 @@ from m import x
 y = x
 [file m.py]
 from _n import x
-[file _n.py]
+[fixture _n.py]
 x = 1
 [out]
 MypyFile:1(
@@ -148,9 +150,9 @@ MypyFile:1(
 [case testAccessImportedName2]
 import _m
 y = _m.x
-[file _m.py]
+[fixture _m.py]
 from _n import x
-[file _n.py]
+[fixture _n.py]
 x = 1
 [out]
 MypyFile:1(
@@ -164,9 +166,9 @@ MypyFile:1(
 [case testAccessingImportedNameInType]
 from _m import c
 x = None # type: c
-[file _m.py]
+[fixture _m.py]
 from _n import c
-[file _n.py]
+[fixture _n.py]
 class c: pass
 [out]
 MypyFile:1(
@@ -179,9 +181,9 @@ MypyFile:1(
 [case testAccessingImportedNameInType2]
 import _m
 x = None # type: _m.c
-[file _m.py]
+[fixture _m.py]
 from _n import c
-[file _n.py]
+[fixture _n.py]
 class c: pass
 [out]
 MypyFile:1(
@@ -194,9 +196,9 @@ MypyFile:1(
 [case testAccessingImportedModule]
 from _m import _n
 _n.x
-[file _m.py]
+[fixture _m.py]
 import _n
-[file _n.py]
+[fixture _n.py]
 x = 1
 [out]
 MypyFile:1(
@@ -209,9 +211,9 @@ MypyFile:1(
 [case testAccessingImportedModule2]
 import _m
 _m._n.x
-[file _m.py]
+[fixture _m.py]
 import _n
-[file _n.py]
+[fixture _n.py]
 x = 1
 [out]
 MypyFile:1(
@@ -226,9 +228,9 @@ MypyFile:1(
 [case testAccessTypeViaDoubleIndirection]
 from _m import c
 a = None # type: c
-[file _m.py]
+[fixture _m.py]
 from _n import c
-[file _n.py]
+[fixture _n.py]
 class c: pass
 [out]
 MypyFile:1(
@@ -241,9 +243,9 @@ MypyFile:1(
 [case testAccessTypeViaDoubleIndirection2]
 import _m
 a = None # type: _m.c
-[file _m.py]
+[fixture _m.py]
 from _n import c
-[file _n.py]
+[fixture _n.py]
 class c: pass
 [out]
 MypyFile:1(
@@ -256,7 +258,7 @@ MypyFile:1(
 [case testImportAsterisk]
 from _m import *
 x, y
-[file _m.py]
+[fixture _m.py]
 x = y = 1
 [out]
 MypyFile:1(
@@ -269,10 +271,10 @@ MypyFile:1(
 [case testImportAsteriskAndImportedNames]
 from _m import *
 n_.x, y
-[file _m.py]
+[fixture _m.py]
 import n_
 from n_ import y
-[file n_.py]
+[fixture n_.py]
 x = y = 1
 [out]
 MypyFile:1(
@@ -288,10 +290,10 @@ MypyFile:1(
 from _m import *
 x = None # type: n_.c
 y = None # type: d
-[file _m.py]
+[fixture _m.py]
 import n_
 from n_ import d
-[file n_.py]
+[fixture n_.py]
 class c: pass
 class d: pass
 [out]
@@ -309,7 +311,7 @@ MypyFile:1(
 [case testModuleInSubdir]
 import _m
 _m.x
-[file _m/__init__.py]
+[fixture _m/__init__.py]
 x = 1
 [out]
 MypyFile:1(
@@ -322,7 +324,7 @@ MypyFile:1(
 [case testNestedModules]
 import m.n
 m.n.x, m.y
-[file m/__init__.py]
+[fixture m/__init__.py]
 y = 1
 [file m/n.py]
 x = 1
@@ -342,14 +344,15 @@ MypyFile:1(
 MypyFile:1(
   tmp/m/n.py
   AssignmentStmt:1(
-    NameExpr(x* [m.n.x])
-    IntExpr(1)))
+    NameExpr(x [m.n.x])
+    IntExpr(1)
+    builtins.int))
 
 [case testImportFromSubmodule]
 from m._n import x
 x
-[file m/__init__.py]
-[file m/_n.py]
+[fixture m/__init__.py]
+[fixture m/_n.py]
 x = 1
 [out]
 MypyFile:1(
@@ -360,8 +363,8 @@ MypyFile:1(
 [case testImportAllFromSubmodule]
 from m._n import *
 x, y
-[file m/__init__.py]
-[file m/_n.py]
+[fixture m/__init__.py]
+[fixture m/_n.py]
 x = y = 1
 [out]
 MypyFile:1(
@@ -374,8 +377,8 @@ MypyFile:1(
 [case testSubmodulesAndTypes]
 import m._n
 x = None # type: m._n.c
-[file m/__init__.py]
-[file m/_n.py]
+[fixture m/__init__.py]
+[fixture m/_n.py]
 class c: pass
 [out]
 MypyFile:1(
@@ -388,8 +391,8 @@ MypyFile:1(
 [case testSubmodulesAndTypes2]
 from m._n import c
 x = None # type: c
-[file m/__init__.py]
-[file m/_n.py]
+[fixture m/__init__.py]
+[fixture m/_n.py]
 class c: pass
 [out]
 MypyFile:1(
@@ -402,8 +405,8 @@ MypyFile:1(
 [case testFromPackageImportModule]
 from m import _n
 _n.x
-[file m/__init__.py]
-[file m/_n.py]
+[fixture m/__init__.py]
+[fixture m/_n.py]
 x = 1
 [out]
 MypyFile:1(
@@ -418,9 +421,9 @@ import m.n.k
 m.n.k.x
 m.n.b
 m.a
-[file m/__init__.py]
+[fixture m/__init__.py]
 a = 1
-[file m/n/__init__.py]
+[fixture m/n/__init__.py]
 b = 1
 [file m/n/k.py]
 x = 1
@@ -448,16 +451,17 @@ MypyFile:1(
 MypyFile:1(
   tmp/m/n/k.py
   AssignmentStmt:1(
-    NameExpr(x* [m.n.k.x])
-    IntExpr(1)))
+    NameExpr(x [m.n.k.x])
+    IntExpr(1)
+    builtins.int))
 
 [case testImportInSubmodule]
 import m._n
 y = m._n.x
-[file m/__init__.py]
-[file m/_n.py]
+[fixture m/__init__.py]
+[fixture m/_n.py]
 from m._k import x
-[file m/_k.py]
+[fixture m/_k.py]
 x = 1
 [out]
 MypyFile:1(
@@ -490,7 +494,7 @@ MypyFile:1(
 import _m
 _m.x = (
   _m.x)
-[file _m.py]
+[fixture _m.py]
 x = None
 [out]
 MypyFile:1(
@@ -506,7 +510,7 @@ MypyFile:1(
 [case testAssignmentThatRefersToModule]
 import _m
 _m.x[None] = None
-[file _m.py]
+[fixture _m.py]
 x = None
 [out]
 MypyFile:1(
@@ -523,7 +527,7 @@ MypyFile:1(
 if 1:
     import _x
     _x.y
-[file _x.py]
+[fixture _x.py]
 y = 1
 [out]
 MypyFile:1(
@@ -541,14 +545,14 @@ MypyFile:1(
 def f() -> None:
     import _x
     _x.y
-[file _x.py]
+[fixture _x.py]
 y = 1
 [out]
 MypyFile:1(
   FuncDef:1(
     f
     def ()
-    Block:1(
+    Block:2(
       Import:2(_x)
       ExpressionStmt:3(
         MemberExpr:3(
@@ -559,7 +563,7 @@ MypyFile:1(
 class A:
     from _x import y
     z = y
-[file _x.py]
+[fixture _x.py]
 y = 1
 [out]
 MypyFile:1(
@@ -574,7 +578,7 @@ MypyFile:1(
 class A:
     import _x
     z = _x.y
-[file _x.py]
+[fixture _x.py]
 y = 1
 [out]
 MypyFile:1(
@@ -599,7 +603,7 @@ MypyFile:1(
   FuncDef:1(
     f
     def ()
-    Block:1(
+    Block:2(
       Import:2(x)
       Import:3(x)
       ExpressionStmt:4(
@@ -609,13 +613,14 @@ MypyFile:1(
 MypyFile:1(
   tmp/x.py
   AssignmentStmt:1(
-    NameExpr(y* [x.y])
-    IntExpr(1)))
+    NameExpr(y [x.y])
+    IntExpr(1)
+    builtins.int))
 
 [case testRelativeImport0]
 import m.x
 m.x.z.y
-[file m/__init__.py]
+[fixture m/__init__.py]
 [file m/x.py]
 from . import z
 [file m/z.py]
@@ -637,19 +642,20 @@ MypyFile:1(
 MypyFile:1(
   tmp/m/z.py
   AssignmentStmt:1(
-    NameExpr(y* [m.z.y])
-    IntExpr(1)))
+    NameExpr(y [m.z.y])
+    IntExpr(1)
+    builtins.int))
 
 [case testRelativeImport1]
 import m.t.b as b
 b.x.y
 b.z.y
-[file m/__init__.py]
+[fixture m/__init__.py]
 [file m/x.py]
 y = 1
 [file m/z.py]
 y = 3
-[file m/t/__init__.py]
+[fixture m/t/__init__.py]
 [file m/t/b.py]
 from .. import x, z
 [out]
@@ -673,24 +679,26 @@ MypyFile:1(
 MypyFile:1(
   tmp/m/x.py
   AssignmentStmt:1(
-    NameExpr(y* [m.x.y])
-    IntExpr(1)))
+    NameExpr(y [m.x.y])
+    IntExpr(1)
+    builtins.int))
 MypyFile:1(
   tmp/m/z.py
   AssignmentStmt:1(
-    NameExpr(y* [m.z.y])
-    IntExpr(3)))
+    NameExpr(y [m.z.y])
+    IntExpr(3)
+    builtins.int))
 
 [case testRelativeImport2]
 import m.t.b as b
 b.xy
 b.zy
-[file m/__init__.py]
+[fixture m/__init__.py]
 [file m/x.py]
 y = 1
 [file m/z.py]
 y = 3
-[file m/t/__init__.py]
+[fixture m/t/__init__.py]
 [file m/t/b.py]
 from ..x import y as xy
 from ..z import y as zy
@@ -712,27 +720,29 @@ MypyFile:1(
 MypyFile:1(
   tmp/m/x.py
   AssignmentStmt:1(
-    NameExpr(y* [m.x.y])
-    IntExpr(1)))
+    NameExpr(y [m.x.y])
+    IntExpr(1)
+    builtins.int))
 MypyFile:1(
   tmp/m/z.py
   AssignmentStmt:1(
-    NameExpr(y* [m.z.y])
-    IntExpr(3)))
+    NameExpr(y [m.z.y])
+    IntExpr(3)
+    builtins.int))
 
 [case testRelativeImport3]
 import m.t
 m.zy
 m.xy
 m.t.y
-[file m/__init__.py]
+[fixture m/__init__.py]
 from .x import *
 from .z import *
 [file m/x.py]
 from .z import zy as xy
 [file m/z.py]
 zy = 3
-[file m/t/__init__.py]
+[fixture m/t/__init__.py]
 from .b import *
 [file m/t/b.py]
 from .. import xy as y
@@ -762,12 +772,13 @@ MypyFile:1(
 MypyFile:1(
   tmp/m/z.py
   AssignmentStmt:1(
-    NameExpr(zy* [m.z.zy])
-    IntExpr(3)))
+    NameExpr(zy [m.z.zy])
+    IntExpr(3)
+    builtins.int))
 
 [case testRelativeImportFromSameModule]
 import m.x
-[file m/__init__.py]
+[fixture m/__init__.py]
 [file m/x.py]
 from .x import nonexistent
 [out]
@@ -775,7 +786,7 @@ tmp/m/x.py:1: error: Module "m.x" has no attribute "nonexistent"
 
 [case testImportFromSameModule]
 import m.x
-[file m/__init__.py]
+[fixture m/__init__.py]
 [file m/x.py]
 from m.x import nonexistent
 [out]
@@ -783,7 +794,7 @@ tmp/m/x.py:1: error: Module "m.x" has no attribute "nonexistent"
 
 [case testImportMisspellingSingleCandidate]
 import f
-[file m/__init__.py]
+[fixture m/__init__.py]
 [file m/x.py]
 def some_function():
     pass
@@ -794,7 +805,7 @@ tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "some_fun
 
 [case testImportMisspellingMultipleCandidates]
 import f
-[file m/__init__.py]
+[fixture m/__init__.py]
 [file m/x.py]
 def some_function():
     pass
@@ -803,11 +814,11 @@ def somef_unction():
 [file f.py]
 from m.x import somefunction
 [out]
-tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "somef_unction" or "some_function"?
+tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "some_function" or "somef_unction"?
 
 [case testImportMisspellingMultipleCandidatesTruncated]
 import f
-[file m/__init__.py]
+[fixture m/__init__.py]
 [file m/x.py]
 def some_function():
     pass
@@ -820,7 +831,7 @@ def somefun_ction():
 [file f.py]
 from m.x import somefunction
 [out]
-tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "somefun_ction", "somefu_nction", or "somef_unction"?
+tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "some_function", "somef_unction", or "somefu_nction"?
 
 [case testFromImportAsInStub]
 from m import *
@@ -838,10 +849,10 @@ y = 2
 from m_ import *
 x
 y
-[file m_.py]
+[fixture m_.py]
 from m2_ import x as x
 from m2_ import y
-[file m2_.py]
+[fixture m2_.py]
 x = 1
 y = 2
 [out]
@@ -867,11 +878,11 @@ import m3
 from m_ import *
 m2_
 m3_
-[file m_.py]
+[fixture m_.py]
 import m2_ as m2_
 import m3_
-[file m2_.py]
-[file m3_.py]
+[fixture m2_.py]
+[fixture m3_.py]
 [out]
 MypyFile:1(
   ImportAll:1(m_)
@@ -906,7 +917,7 @@ MypyFile:1(
   FuncDef:3(
     f
     def ()
-    Block:3(
+    Block:4(
       ImportFrom:4(x, [a])
       ImportFrom:5(x, [a])))
   Import:6(x)
@@ -914,5 +925,6 @@ MypyFile:1(
 MypyFile:1(
   tmp/x.py
   AssignmentStmt:1(
-    NameExpr(a* [x.a])
-    IntExpr(1)))
+    NameExpr(a [x.a])
+    IntExpr(1)
+    builtins.int))

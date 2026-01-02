@@ -51,6 +51,7 @@ from typing import TypeVar, cast
 
 from mypy.nodes import (
     MDEF,
+    SYMBOL_NODE_EXPRESSION_TYPES,
     AssertTypeExpr,
     AssignmentStmt,
     Block,
@@ -73,8 +74,8 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     TypeAlias,
-    TypeAliasExpr,
     TypedDictExpr,
+    TypeFormExpr,
     TypeInfo,
     Var,
 )
@@ -95,7 +96,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     SyntheticTypeVisitor,
     TupleType,
     Type,
@@ -110,7 +110,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import get_prefix, replace_object_state
 
 
@@ -162,7 +162,7 @@ def replacement_map_from_symbol_table(
         ):
             new_node = new[name]
             if (
-                type(new_node.node) == type(node.node)  # noqa: E721
+                type(new_node.node) == type(node.node)
                 and new_node.node
                 and node.node
                 and new_node.node.fullname == node.node.fullname
@@ -213,8 +213,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_mypy_file(node)
 
     def visit_block(self, node: Block) -> None:
-        super().visit_block(node)
         node.body = self.replace_statements(node.body)
+        super().visit_block(node)
 
     def visit_func_def(self, node: FuncDef) -> None:
         node = self.fixup(node)
@@ -251,6 +251,15 @@ class NodeReplaceVisitor(TraverserVisitor):
         for value in tv.values:
             self.fixup_type(value)
         self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_param_spec_def(self, tv: ParamSpecType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_type_var_tuple_def(self, tv: TypeVarTupleType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         self.fixup_type(node.type)
@@ -283,6 +292,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_cast_expr(node)
         self.fixup_type(node.type)
 
+    def visit_type_form_expr(self, node: TypeFormExpr) -> None:
+        super().visit_type_form_expr(node)
+        self.fixup_type(node.type)
+
     def visit_assert_type_expr(self, node: AssertTypeExpr) -> None:
         super().visit_assert_type_expr(node)
         self.fixup_type(node.type)
@@ -294,7 +307,7 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_call_expr(self, node: CallExpr) -> None:
         super().visit_call_expr(node)
-        if isinstance(node.analyzed, SymbolNode):
+        if isinstance(node.analyzed, SYMBOL_NODE_EXPRESSION_TYPES):
             node.analyzed = self.fixup(node.analyzed)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> None:
@@ -318,19 +331,18 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
 
-    def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
-        self.fixup_type(node.type)
-        super().visit_type_alias_expr(node)
-
     # Others
 
     def visit_var(self, node: Var) -> None:
         node.info = self.fixup(node.info)
         self.fixup_type(node.type)
+        self.fixup_type(node.setter_type)
         super().visit_var(node)
 
     def visit_type_alias(self, node: TypeAlias) -> None:
         self.fixup_type(node.target)
+        for v in node.alias_tvars:
+            self.fixup_type(v)
         super().visit_type_alias(node)
 
     # Helpers
@@ -338,13 +350,11 @@ class NodeReplaceVisitor(TraverserVisitor):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
-            skip_slots: tuple[str, ...] = ()
             if isinstance(node, TypeInfo) and isinstance(new, TypeInfo):
                 # Special case: special_alias is not exposed in symbol tables, but may appear
                 # in external types (e.g. named tuples), so we need to update it manually.
-                skip_slots = ("special_alias",)
                 replace_object_state(new.special_alias, node.special_alias)
-            replace_object_state(new, node, skip_slots=skip_slots)
+            replace_object_state(new, node, skip_slots=_get_ignored_slots(new))
             return cast(SN, new)
         return node
 
@@ -357,8 +367,9 @@ class NodeReplaceVisitor(TraverserVisitor):
         if node in self.replacements:
             # The subclass relationships may change, so reset all caches relevant to the
             # old MRO.
-            new = cast(TypeInfo, self.replacements[node])
-            TypeState.reset_all_subtype_caches_for(new)
+            new = self.replacements[node]
+            assert isinstance(new, TypeInfo)
+            type_state.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 
     def fixup_type(self, typ: Type | None) -> None:
@@ -388,7 +399,7 @@ class NodeReplaceVisitor(TraverserVisitor):
         # have bodies in the AST so we need to iterate over their symbol
         # tables separately, unlike normal classes.
         self.process_type_info(info)
-        for name, node in info.names.items():
+        for node in info.names.values():
             if node.node:
                 node.node.accept(self)
 
@@ -456,13 +467,13 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_erased_type(self, t: ErasedType) -> None:
         # This type should exist only temporarily during type inference
-        raise RuntimeError
+        raise RuntimeError("Cannot handle erased type")
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
 
     def visit_partial_type(self, typ: PartialType) -> None:
-        raise RuntimeError
+        raise RuntimeError("Cannot handle partial type")
 
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
@@ -476,14 +487,18 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_type_var(self, typ: TypeVarType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
         for value in typ.values:
             value.accept(self)
 
     def visit_param_spec(self, typ: ParamSpecType) -> None:
-        pass
+        typ.upper_bound.accept(self)
+        typ.default.accept(self)
+        typ.prefix.accept(self)
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
         typ.type.accept(self)
@@ -517,9 +532,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_ellipsis_type(self, typ: EllipsisType) -> None:
         pass
 
-    def visit_star_type(self, typ: StarType) -> None:
-        typ.type.accept(self)
-
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass
 
@@ -543,14 +555,21 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 def replace_nodes_in_symbol_table(
     symbols: SymbolTable, replacements: dict[SymbolNode, SymbolNode]
 ) -> None:
-    for name, node in symbols.items():
+    for node in symbols.values():
         if node.node:
             if node.node in replacements:
                 new = replacements[node.node]
                 old = node.node
-                # Needed for TypeInfo, see comment in fixup() above.
-                replace_object_state(new, old, skip_slots=("special_alias",))
+                replace_object_state(new, old, skip_slots=_get_ignored_slots(new))
                 node.node = new
             if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.
                 node.node.accept(NodeReplaceVisitor(replacements))
+
+
+def _get_ignored_slots(node: SymbolNode) -> tuple[str, ...]:
+    if isinstance(node, OverloadedFuncDef):
+        return ("setter",)
+    if isinstance(node, TypeInfo):
+        return ("special_alias",)
+    return ()

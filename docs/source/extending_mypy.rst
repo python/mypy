@@ -159,7 +159,7 @@ This hook will be also called for instantiation of classes.
 This is a good choice if the return type is too complex
 to be expressed by regular python typing.
 
-**get_function_signature_hook** is used to adjust the signature of a function.
+**get_function_signature_hook()** is used to adjust the signature of a function.
 
 **get_method_hook()** is the same as ``get_function_hook()`` but for methods
 instead of module level functions.
@@ -179,7 +179,7 @@ mypy will call ``get_method_signature_hook("ctypes.Array.__setitem__")``
 so that the plugin can mimic the :py:mod:`ctypes` auto-convert behavior.
 
 **get_attribute_hook()** overrides instance member field lookups and property
-access (not assignments, and not method calls). This hook is only called for
+access (not method calls). This hook is only called for
 fields which already exist on the class. *Exception:* if :py:meth:`__getattr__ <object.__getattr__>` or
 :py:meth:`__getattribute__ <object.__getattribute__>` is a method on the class, the hook is called for all
 fields which do not refer to methods.
@@ -237,3 +237,12 @@ mypy's cache for that module so that it can be rechecked. This hook
 should be used to report to mypy any relevant configuration data,
 so that mypy knows to recheck the module if the configuration changes.
 The hooks should return data encodable as JSON.
+
+Useful tools
+************
+
+Mypy ships ``mypy.plugins.proper_plugin`` plugin which can be useful
+for plugin authors, since it finds missing ``get_proper_type()`` calls,
+which is a pretty common mistake.
+
+It is recommended to enable it as a part of your plugin's CI.

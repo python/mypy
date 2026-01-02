@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -20,7 +21,11 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore[import]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        lxml = None
+    else:
+        import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
@@ -69,12 +74,10 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     env["PYTHONPATH"] = PREFIX
     if os.path.isdir(extra_path):
         env["PYTHONPATH"] += os.pathsep + extra_path
+    cwd = os.path.join(test_temp_dir, custom_cwd or "")
+    args = [arg.replace("$CWD", os.path.abspath(cwd)) for arg in args]
     process = subprocess.Popen(
-        fixed + args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=os.path.join(test_temp_dir, custom_cwd or ""),
-        env=env,
+        fixed + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, env=env
     )
     outb, errb = process.communicate()
     result = process.returncode

@@ -1,9 +1,7 @@
 [case testI32BasicOps]
 from typing import Any, Tuple
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i32, i64
+from mypy_extensions import i16, i32, i64
 
 from testutil import assertRaises
 
@@ -17,10 +15,10 @@ def test_box_and_unbox() -> None:
         o2: Any = x
         assert o == o2
         assert x == i
-    with assertRaises(OverflowError, "int too large to convert to i32"):
+    with assertRaises(ValueError, "int too large to convert to i32"):
         o = 2**31
         x2: i32 = o
-    with assertRaises(OverflowError, "int too large to convert to i32"):
+    with assertRaises(ValueError, "int too large to convert to i32"):
         o = -2**32 - 1
         x3: i32 = o
 
@@ -211,13 +209,13 @@ def test_mixed_comparisons() -> None:
 
     int_too_big = int() + (1 << 31)
     int_too_small = int() - (1 << 31) - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i32_3 < int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_big < i32_3
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i32_3 > int_too_small
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small < i32_3
 
 def test_mixed_arithmetic_and_bitwise_ops() -> None:
@@ -237,9 +235,9 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
 
     int_too_big = int() + (1 << 31)
     int_too_small = int() - (1 << 31) - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i32_3 & int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small & i32_3
 
 def test_coerce_to_and_from_int() -> None:
@@ -261,11 +259,15 @@ def test_explicit_conversion_to_i32() -> None:
     n64: i64 = 1733
     x = i32(n64)
     assert x == 1733
-    n32 = -1733
+    n32: i32 = -1733
     x = i32(n32)
     assert x == -1733
     z = i32(x)
     assert z == -1733
+    a: i16 = int() + 19764
+    assert i32(a) == 19764
+    a = int() - 1
+    assert i32(a) == -1
 
 def test_explicit_conversion_overflow() -> None:
     max_i32 = int() + 2**31 - 1
@@ -279,11 +281,11 @@ def test_explicit_conversion_overflow() -> None:
     assert int(y) == min_i32
 
     too_big = int() + 2**31
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = i32(too_big)
 
     too_small = int() - 2**31 - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = i32(too_small)
 
 def test_i32_from_large_small_literal() -> None:
@@ -305,6 +307,22 @@ def test_i32_truncate_from_i64() -> None:
     small2 = i64(-2**31 - 1 - int())
     x = i32(small2)
     assert x == 2**31 - 1
+
+def from_float(x: float) -> i32:
+    return i32(x)
+
+def test_explicit_conversion_from_float() -> None:
+    assert from_float(0.0) == 0
+    assert from_float(1.456) == 1
+    assert from_float(-1234.567) == -1234
+    assert from_float(2**31 - 1) == 2**31 - 1
+    assert from_float(-2**31) == -2**31
+    # The error message could be better, but this is acceptable
+    with assertRaises(ValueError, "int too large to convert to i32"):
+        assert from_float(float(2**31))
+    with assertRaises(ValueError, "int too large to convert to i32"):
+        # One ulp below the lowest valid i64 value
+        from_float(float(-2**31 - 2048))
 
 def test_tuple_i32() -> None:
     a: i32 = 1

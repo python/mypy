@@ -16,9 +16,10 @@ import subprocess
 import tarfile
 import tempfile
 import venv
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from urllib.request import urlopen
 
 BASE = "https://api.github.com/repos"
@@ -26,7 +27,20 @@ REPO = "mypyc/mypy_mypyc-wheels"
 
 
 def is_whl_or_tar(name: str) -> bool:
-    return name.endswith(".tar.gz") or name.endswith(".whl")
+    return name.endswith((".tar.gz", ".whl"))
+
+
+def item_ok_for_pypi(name: str) -> bool:
+    if not is_whl_or_tar(name):
+        return False
+
+    name = name.removesuffix(".tar.gz")
+    name = name.removesuffix(".whl")
+
+    if name.endswith("wasm32"):
+        return False
+
+    return True
 
 
 def get_release_for_tag(tag: str) -> dict[str, Any]:
@@ -75,7 +89,7 @@ def check_sdist(dist: Path, version: str) -> None:
 
 
 def spot_check_dist(dist: Path, version: str) -> None:
-    items = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
+    items = [item for item in dist.iterdir() if item_ok_for_pypi(item.name)]
     assert len(items) > 10
     assert all(version in item.name for item in items)
     assert any(item.name.endswith("py3-none-any.whl") for item in items)
@@ -93,8 +107,8 @@ def tmp_twine() -> Iterator[Path]:
 
 def upload_dist(dist: Path, dry_run: bool = True) -> None:
     with tmp_twine() as twine:
-        files = [item for item in dist.iterdir() if is_whl_or_tar(item.name)]
-        cmd: list[Any] = [twine, "upload"]
+        files = [item for item in dist.iterdir() if item_ok_for_pypi(item.name)]
+        cmd: list[Any] = [twine, "upload", "--skip-existing"]
         cmd += files
         if dry_run:
             print("[dry run] " + " ".join(map(str, cmd)))
@@ -104,11 +118,10 @@ def upload_dist(dist: Path, dry_run: bool = True) -> None:
 
 
 def upload_to_pypi(version: str, dry_run: bool = True) -> None:
-    assert re.match(r"v?0\.[0-9]{3}(\+\S+)?$", version)
+    assert re.match(r"v?[1-9]\.[0-9]+\.[0-9](\+\S+)?$", version)
     if "dev" in version:
         assert dry_run, "Must use --dry-run with dev versions of mypy"
-    if version.startswith("v"):
-        version = version[1:]
+    version = version.removeprefix("v")
 
     target_dir = tempfile.mkdtemp()
     dist = Path(target_dir) / "dist"

@@ -1,7 +1,5 @@
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Any
 T = TypeVar('T')
-
-Any = 0
 
 class object:
     def __init__(self) -> None: pass
@@ -34,3 +32,5 @@ class float:
     def __int__(self) -> int: ...
     def __mul__(self, x: float) -> float: ...
     def __rmul__(self, x: float) -> float: ...
+
+class dict: pass

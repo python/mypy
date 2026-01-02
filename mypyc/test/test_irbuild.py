@@ -7,7 +7,7 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypyc.common import TOP_LEVEL_NAME
+from mypyc.common import IS_FREE_THREADED, TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -23,12 +23,15 @@ from mypyc.test.testutil import (
 files = [
     "irbuild-basic.test",
     "irbuild-int.test",
+    "irbuild-bool.test",
     "irbuild-lists.test",
     "irbuild-tuple.test",
     "irbuild-dict.test",
     "irbuild-set.test",
     "irbuild-str.test",
     "irbuild-bytes.test",
+    "irbuild-float.test",
+    "irbuild-frozenset.test",
     "irbuild-statements.test",
     "irbuild-nested.test",
     "irbuild-classes.test",
@@ -39,6 +42,8 @@ files = [
     "irbuild-strip-asserts.test",
     "irbuild-i64.test",
     "irbuild-i32.test",
+    "irbuild-i16.test",
+    "irbuild-u8.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",
@@ -46,6 +51,11 @@ files = [
     "irbuild-singledispatch.test",
     "irbuild-constant-fold.test",
     "irbuild-glue-methods.test",
+    "irbuild-math.test",
+    "irbuild-weakref.test",
+    "irbuild-librt-strings.test",
+    "irbuild-base64.test",
+    "irbuild-match.test",
 ]
 
 
@@ -59,6 +69,9 @@ class TestGenOps(MypycDataSuite):
         options = infer_ir_build_options_from_test_name(testcase.name)
         if options is None:
             # Skipped test case
+            return
+        if "_withgil" in testcase.name and IS_FREE_THREADED:
+            # Test case should only run on a non-free-threaded build.
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)

@@ -1,6 +1,6 @@
 import sys
 from _typeshed import StrPath
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from http.client import HTTPResponse
 from re import Pattern
 from typing import ClassVar, TypeVar, overload
@@ -21,44 +21,40 @@ _T = TypeVar("_T")
 
 class LoadError(OSError): ...
 
-class CookieJar(Iterable[Cookie]):
+class CookieJar:
     non_word_re: ClassVar[Pattern[str]]  # undocumented
     quote_re: ClassVar[Pattern[str]]  # undocumented
     strict_domain_re: ClassVar[Pattern[str]]  # undocumented
     domain_re: ClassVar[Pattern[str]]  # undocumented
     dots_re: ClassVar[Pattern[str]]  # undocumented
     magic_re: ClassVar[Pattern[str]]  # undocumented
-    def __init__(self, policy: CookiePolicy | None = ...) -> None: ...
+    def __init__(self, policy: CookiePolicy | None = None) -> None: ...
     def add_cookie_header(self, request: Request) -> None: ...
     def extract_cookies(self, response: HTTPResponse, request: Request) -> None: ...
     def set_policy(self, policy: CookiePolicy) -> None: ...
     def make_cookies(self, response: HTTPResponse, request: Request) -> Sequence[Cookie]: ...
     def set_cookie(self, cookie: Cookie) -> None: ...
     def set_cookie_if_ok(self, cookie: Cookie, request: Request) -> None: ...
-    def clear(self, domain: str | None = ..., path: str | None = ..., name: str | None = ...) -> None: ...
+    def clear(self, domain: str | None = None, path: str | None = None, name: str | None = None) -> None: ...
     def clear_session_cookies(self) -> None: ...
     def clear_expired_cookies(self) -> None: ...  # undocumented
     def __iter__(self) -> Iterator[Cookie]: ...
     def __len__(self) -> int: ...
 
 class FileCookieJar(CookieJar):
-    filename: str
+    filename: str | None
     delayload: bool
-    if sys.version_info >= (3, 8):
-        def __init__(self, filename: StrPath | None = ..., delayload: bool = ..., policy: CookiePolicy | None = ...) -> None: ...
-    else:
-        def __init__(self, filename: str | None = ..., delayload: bool = ..., policy: CookiePolicy | None = ...) -> None: ...
-
-    def save(self, filename: str | None = ..., ignore_discard: bool = ..., ignore_expires: bool = ...) -> None: ...
-    def load(self, filename: str | None = ..., ignore_discard: bool = ..., ignore_expires: bool = ...) -> None: ...
-    def revert(self, filename: str | None = ..., ignore_discard: bool = ..., ignore_expires: bool = ...) -> None: ...
+    def __init__(self, filename: StrPath | None = None, delayload: bool = False, policy: CookiePolicy | None = None) -> None: ...
+    def save(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...
+    def load(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...
+    def revert(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...
 
 class MozillaCookieJar(FileCookieJar):
     if sys.version_info < (3, 10):
         header: ClassVar[str]  # undocumented
 
 class LWPCookieJar(FileCookieJar):
-    def as_lwp_str(self, ignore_discard: bool = ..., ignore_expires: bool = ...) -> str: ...  # undocumented
+    def as_lwp_str(self, ignore_discard: bool = True, ignore_expires: bool = True) -> str: ...  # undocumented
 
 class CookiePolicy:
     netscape: bool
@@ -82,40 +78,22 @@ class DefaultCookiePolicy(CookiePolicy):
     DomainRFC2965Match: ClassVar[int]
     DomainLiberal: ClassVar[int]
     DomainStrict: ClassVar[int]
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self,
-            blocked_domains: Sequence[str] | None = ...,
-            allowed_domains: Sequence[str] | None = ...,
-            netscape: bool = ...,
-            rfc2965: bool = ...,
-            rfc2109_as_netscape: bool | None = ...,
-            hide_cookie2: bool = ...,
-            strict_domain: bool = ...,
-            strict_rfc2965_unverifiable: bool = ...,
-            strict_ns_unverifiable: bool = ...,
-            strict_ns_domain: int = ...,
-            strict_ns_set_initial_dollar: bool = ...,
-            strict_ns_set_path: bool = ...,
-            secure_protocols: Sequence[str] = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            blocked_domains: Sequence[str] | None = ...,
-            allowed_domains: Sequence[str] | None = ...,
-            netscape: bool = ...,
-            rfc2965: bool = ...,
-            rfc2109_as_netscape: bool | None = ...,
-            hide_cookie2: bool = ...,
-            strict_domain: bool = ...,
-            strict_rfc2965_unverifiable: bool = ...,
-            strict_ns_unverifiable: bool = ...,
-            strict_ns_domain: int = ...,
-            strict_ns_set_initial_dollar: bool = ...,
-            strict_ns_set_path: bool = ...,
-        ) -> None: ...
-
+    def __init__(
+        self,
+        blocked_domains: Sequence[str] | None = None,
+        allowed_domains: Sequence[str] | None = None,
+        netscape: bool = True,
+        rfc2965: bool = False,
+        rfc2109_as_netscape: bool | None = None,
+        hide_cookie2: bool = False,
+        strict_domain: bool = False,
+        strict_rfc2965_unverifiable: bool = True,
+        strict_ns_unverifiable: bool = False,
+        strict_ns_domain: int = 0,
+        strict_ns_set_initial_dollar: bool = False,
+        strict_ns_set_path: bool = False,
+        secure_protocols: Sequence[str] = ("https", "wss"),
+    ) -> None: ...
     def blocked_domains(self) -> tuple[str, ...]: ...
     def set_blocked_domains(self, blocked_domains: Sequence[str]) -> None: ...
     def is_blocked(self, domain: str) -> bool: ...
@@ -170,7 +148,7 @@ class Cookie:
         comment: str | None,
         comment_url: str | None,
         rest: dict[str, str],
-        rfc2109: bool = ...,
+        rfc2109: bool = False,
     ) -> None: ...
     def has_nonstandard_attr(self, name: str) -> bool: ...
     @overload
@@ -178,4 +156,4 @@ class Cookie:
     @overload
     def get_nonstandard_attr(self, name: str, default: _T) -> str | _T: ...
     def set_nonstandard_attr(self, name: str, value: str) -> None: ...
-    def is_expired(self, now: int | None = ...) -> bool: ...
+    def is_expired(self, now: int | None = None) -> bool: ...

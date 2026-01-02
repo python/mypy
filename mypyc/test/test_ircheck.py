@@ -117,7 +117,7 @@ class TestIrcheck(unittest.TestCase):
             blocks=[self.basic_block([ret])],
         )
         assert_has_error(
-            fn, FnError(source=ret, desc="Cannot coerce source type int32 to dest type int64")
+            fn, FnError(source=ret, desc="Cannot coerce source type i32 to dest type i64")
         )
 
     def test_invalid_assign(self) -> None:
@@ -130,7 +130,7 @@ class TestIrcheck(unittest.TestCase):
             blocks=[self.basic_block([assign, ret])],
         )
         assert_has_error(
-            fn, FnError(source=assign, desc="Cannot coerce source type int32 to dest type int64")
+            fn, FnError(source=assign, desc="Cannot coerce source type i32 to dest type i64")
         )
 
     def test_can_coerce_to(self) -> None:

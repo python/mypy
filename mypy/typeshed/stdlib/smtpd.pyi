@@ -4,7 +4,7 @@ import socket
 import sys
 from collections import defaultdict
 from typing import Any
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, deprecated
 
 if sys.version_info >= (3, 11):
     __all__ = ["SMTPChannel", "SMTPServer", "DebuggingServer", "PureProxy"]
@@ -41,10 +41,10 @@ class SMTPChannel(asynchat.async_chat):
         server: SMTPServer,
         conn: socket.socket,
         addr: Any,
-        data_size_limit: int = ...,
-        map: asyncore._MapType | None = ...,
-        enable_SMTPUTF8: bool = ...,
-        decode_data: bool = ...,
+        data_size_limit: int = 33554432,
+        map: asyncore._MapType | None = None,
+        enable_SMTPUTF8: bool = False,
+        decode_data: bool = False,
     ) -> None: ...
     # base asynchat.async_chat.push() accepts bytes
     def push(self, msg: str) -> None: ...  # type: ignore[override]
@@ -71,10 +71,10 @@ class SMTPServer(asyncore.dispatcher):
         self,
         localaddr: _Address,
         remoteaddr: _Address,
-        data_size_limit: int = ...,
-        map: asyncore._MapType | None = ...,
-        enable_SMTPUTF8: bool = ...,
-        decode_data: bool = ...,
+        data_size_limit: int = 33554432,
+        map: asyncore._MapType | None = None,
+        enable_SMTPUTF8: bool = False,
+        decode_data: bool = False,
     ) -> None: ...
     def handle_accepted(self, conn: socket.socket, addr: Any) -> None: ...
     def process_message(
@@ -87,5 +87,6 @@ class PureProxy(SMTPServer):
     def process_message(self, peer: _Address, mailfrom: str, rcpttos: list[str], data: bytes | str) -> str | None: ...  # type: ignore[override]
 
 if sys.version_info < (3, 11):
+    @deprecated("Deprecated since Python 3.9; removed in Python 3.11.")
     class MailmanProxy(PureProxy):
         def process_message(self, peer: _Address, mailfrom: str, rcpttos: list[str], data: bytes | str) -> str | None: ...  # type: ignore[override]

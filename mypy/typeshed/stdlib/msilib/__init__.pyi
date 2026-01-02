@@ -1,30 +1,28 @@
 import sys
 from collections.abc import Container, Iterable, Sequence
 from types import ModuleType
-from typing import Any
-from typing_extensions import Literal
+from typing import Any, Final
 
 if sys.platform == "win32":
     from _msi import *
     from _msi import _Database
 
-    AMD64: bool
-    Win64: bool
+    AMD64: Final[bool]
+    Win64: Final[bool]
 
-    datasizemask: Literal[0x00FF]
-    type_valid: Literal[0x0100]
-    type_localizable: Literal[0x0200]
-    typemask: Literal[0x0C00]
-    type_long: Literal[0x0000]
-    type_short: Literal[0x0400]
-    type_string: Literal[0x0C00]
-    type_binary: Literal[0x0800]
-    type_nullable: Literal[0x1000]
-    type_key: Literal[0x2000]
-    knownbits: Literal[0x3FFF]
+    datasizemask: Final = 0x00FF
+    type_valid: Final = 0x0100
+    type_localizable: Final = 0x0200
+    typemask: Final = 0x0C00
+    type_long: Final = 0x0000
+    type_short: Final = 0x0400
+    type_string: Final = 0x0C00
+    type_binary: Final = 0x0800
+    type_nullable: Final = 0x1000
+    type_key: Final = 0x2000
+    knownbits: Final = 0x3FFF
 
     class Table:
-
         name: str
         fields: list[tuple[int, str, int]]
         def __init__(self, name: str) -> None: ...
@@ -50,7 +48,6 @@ if sys.platform == "win32":
     def gen_uuid() -> str: ...
 
     class CAB:
-
         name: str
         files: list[tuple[str, str]]
         filenames: set[str]
@@ -59,10 +56,10 @@ if sys.platform == "win32":
         def gen_id(self, file: str) -> str: ...
         def append(self, full: str, file: str, logical: str) -> tuple[int, str]: ...
         def commit(self, db: _Database) -> None: ...
+
     _directories: set[str]
 
     class Directory:
-
         db: _Database
         cab: CAB
         basedir: str
@@ -82,28 +79,26 @@ if sys.platform == "win32":
             physical: str,
             _logical: str,
             default: str,
-            componentflags: int | None = ...,
+            componentflags: int | None = None,
         ) -> None: ...
         def start_component(
             self,
-            component: str | None = ...,
-            feature: Feature | None = ...,
-            flags: int | None = ...,
-            keyfile: str | None = ...,
-            uuid: str | None = ...,
+            component: str | None = None,
+            feature: Feature | None = None,
+            flags: int | None = None,
+            keyfile: str | None = None,
+            uuid: str | None = None,
         ) -> None: ...
         def make_short(self, file: str) -> str: ...
-        def add_file(self, file: str, src: str | None = ..., version: str | None = ..., language: str | None = ...) -> str: ...
-        def glob(self, pattern: str, exclude: Container[str] | None = ...) -> list[str]: ...
+        def add_file(self, file: str, src: str | None = None, version: str | None = None, language: str | None = None) -> str: ...
+        def glob(self, pattern: str, exclude: Container[str] | None = None) -> list[str]: ...
         def remove_pyc(self) -> None: ...
 
     class Binary:
-
         name: str
         def __init__(self, fname: str) -> None: ...
 
     class Feature:
-
         id: str
         def __init__(
             self,
@@ -112,31 +107,28 @@ if sys.platform == "win32":
             title: str,
             desc: str,
             display: int,
-            level: int = ...,
-            parent: Feature | None = ...,
-            directory: str | None = ...,
-            attributes: int = ...,
+            level: int = 1,
+            parent: Feature | None = None,
+            directory: str | None = None,
+            attributes: int = 0,
         ) -> None: ...
         def set_current(self) -> None: ...
 
     class Control:
-
         dlg: Dialog
         name: str
         def __init__(self, dlg: Dialog, name: str) -> None: ...
-        def event(self, event: str, argument: str, condition: str = ..., ordering: int | None = ...) -> None: ...
+        def event(self, event: str, argument: str, condition: str = "1", ordering: int | None = None) -> None: ...
         def mapping(self, event: str, attribute: str) -> None: ...
         def condition(self, action: str, condition: str) -> None: ...
 
     class RadioButtonGroup(Control):
-
         property: str
         index: int
         def __init__(self, dlg: Dialog, name: str, property: str) -> None: ...
-        def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = ...) -> None: ...
+        def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = None) -> None: ...
 
     class Dialog:
-
         db: _Database
         name: str
         x: int

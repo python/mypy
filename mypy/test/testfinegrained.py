@@ -18,7 +18,7 @@ import os
 import re
 import sys
 import unittest
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
@@ -29,7 +29,7 @@ from mypy.dmypy_util import DEFAULT_STATUS_FILE
 from mypy.errors import CompileError
 from mypy.find_sources import create_source_list
 from mypy.modulefinder import BuildSource
-from mypy.options import TYPE_VAR_TUPLE, UNPACK, Options
+from mypy.options import Options
 from mypy.server.mergecheck import check_consistency
 from mypy.server.update import sort_messages_preserving_file_order
 from mypy.test.config import test_temp_dir
@@ -70,15 +70,11 @@ class FineGrainedSuite(DataSuite):
         else:
             if testcase.only_when == "-only_when_cache":
                 return True
-
-        if "Inspect" in testcase.name and sys.version_info < (3, 8):
-            return True
         return False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         if self.should_skip(testcase):
             pytest.skip()
-            return
 
         main_src = "\n".join(testcase.input)
         main_path = os.path.join(test_temp_dir, "main")
@@ -86,6 +82,9 @@ class FineGrainedSuite(DataSuite):
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
+        if options.python_version > sys.version_info:
+            pytest.skip("Test case requires a newer Python version")
+
         build_options = self.get_options(main_src, testcase, build_cache=True)
         server = Server(options, DEFAULT_STATUS_FILE)
 
@@ -101,8 +100,8 @@ class FineGrainedSuite(DataSuite):
         if messages:
             a.extend(normalize_messages(messages))
 
-        assert testcase.tmpdir
-        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        assert testcase.tmpdir is not None
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir))
         a.extend(self.maybe_inspect(step, server, main_src))
 
         if server.fine_grained_manager:
@@ -153,7 +152,7 @@ class FineGrainedSuite(DataSuite):
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
-        options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
+        options.export_types = "inspect" in testcase.file
         # Treat empty bodies safely for these test cases.
         options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
         if re.search("flags:.*--follow-imports", source) is None:
@@ -168,8 +167,9 @@ class FineGrainedSuite(DataSuite):
         return options
 
     def run_check(self, server: Server, sources: list[BuildSource]) -> list[str]:
-        response = server.check(sources, export_types=True, is_tty=False, terminal_width=-1)
-        out = cast(str, response["out"] or response["err"])
+        response = server.check(sources, export_types=False, is_tty=False, terminal_width=-1)
+        out = response["out"] or response["err"]
+        assert isinstance(out, str)
         return out.splitlines()
 
     def build(self, options: Options, sources: list[BuildSource]) -> list[str]:
@@ -247,8 +247,8 @@ class FineGrainedSuite(DataSuite):
         new_messages = normalize_messages(new_messages)
 
         a = new_messages
-        assert testcase.tmpdir
-        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        assert testcase.tmpdir is not None
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir))
         a.extend(self.maybe_inspect(step, server, main_src))
 
         return a, triggered
@@ -320,6 +320,7 @@ class FineGrainedSuite(DataSuite):
                 # JSON contains already escaped \ on Windows, so requires a bit of care.
                 val = val.replace("\\\\", "\\")
                 val = val.replace(os.path.realpath(tmp_dir) + os.path.sep, "")
+                val = val.replace(os.path.abspath(tmp_dir) + os.path.sep, "")
             output.extend(val.strip().split("\n"))
         return normalize_messages(output)
 
@@ -354,7 +355,7 @@ class FineGrainedSuite(DataSuite):
             )
             val = res["error"] if "error" in res else res["out"] + res["err"]
             output.extend(val.strip().split("\n"))
-        return normalize_messages(output)
+        return output
 
     def get_suggest(self, program_text: str, incremental_step: int) -> list[tuple[str, str]]:
         step_bit = "1?" if incremental_step == 1 else str(incremental_step)

@@ -159,7 +159,7 @@ class D: pass
 T = TypeVar('T', A, B)
 S = TypeVar('S', C, D)
 
-def f(x: T) -> S:
+def f(x: T, y: S) -> S:
     pass
 [out]
 <m.A> -> <m.T>, <m.f>, m, m.A, m.f
