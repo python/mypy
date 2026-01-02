@@ -1286,6 +1286,16 @@ MypyFile:1(
     Block:2(
       PassStmt:2())))
 
+[case testLiteralTypes]
+x: Literal[True, False]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    Literal?[True, False]))
+
 [case testDelStmt]
 del x
 del x[0], y[1]

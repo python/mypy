@@ -110,7 +110,7 @@ from mypy.nodes import (
     YieldFromExpr,
     MISSING_FALLBACK,
 )
-from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType
+from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType, RawExpressionType
 
 
 # There is no way to create reasonable fallbacks at this stage,
@@ -587,6 +587,17 @@ def read_type(data: ReadBuffer) -> Type:
         read_loc(data, ellipsis_type)
         expect_end_tag(data)
         return ellipsis_type
+    elif tag == types.RAW_EXPRESSION_TYPE:
+        type_name = read_str(data)
+        value: types.LiteralValue
+        if type_name == "builtins.bool":
+            value = read_bool(data)
+        else:
+            assert False  # TODO
+        raw_type = RawExpressionType(value, type_name)
+        read_loc(data, raw_type)
+        expect_end_tag(data)
+        return raw_type
     else:
         assert False, tag
 
