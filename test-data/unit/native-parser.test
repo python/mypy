@@ -1524,3 +1524,23 @@ MypyFile:1(
         IntExpr(1)))
     Then(
       PassStmt:2())))
+
+[case testStarExpression]
+*a
+*a, b
+a, *b
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    StarExpr:1(
+      NameExpr(a)))
+  ExpressionStmt:2(
+    TupleExpr:2(
+      StarExpr:2(
+        NameExpr(a))
+      NameExpr(b)))
+  ExpressionStmt:3(
+    TupleExpr:3(
+      NameExpr(a)
+      StarExpr:3(
+        NameExpr(b)))))

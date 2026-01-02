@@ -92,6 +92,7 @@ from mypy.nodes import (
     ReturnStmt,
     SetExpr,
     SliceExpr,
+    StarExpr,
     Statement,
     StrExpr,
     TempNode,
@@ -943,6 +944,13 @@ def read_expression(data: ReadBuffer) -> Expression:
             # For now, we'll assert since the grammar should ensure it's a NameExpr
             assert isinstance(target, NameExpr), f"Expected NameExpr for target, got {type(target)}"
         expr = AssignmentExpr(target, value)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.STAR_EXPR:
+        # Read the wrapped expression
+        wrapped_expr = read_expression(data)
+        expr = StarExpr(wrapped_expr)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
