@@ -747,7 +747,7 @@ def define_options(
         title="Untyped definitions and calls",
         description="Configure how untyped definitions and calls are handled. "
         "Note: by default, mypy assumes any calls to untyped "
-        "functions have a return type of 'Any'."
+        "functions have a return type of 'Any'.",
     )
     add_invertible_flag(
         "--disallow-untyped-calls",
@@ -784,7 +784,7 @@ def define_options(
     add_invertible_flag(
         "--no-check-untyped-defs",
         default=True,
-        dest='check_untyped_defs',
+        dest="check_untyped_defs",
         help="Don't type check the interior of functions without type annotations",
         group=untyped_group,
     )
