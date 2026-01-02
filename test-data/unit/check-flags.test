@@ -1634,7 +1634,7 @@ class A(Generic[T]):
 def f(c: A) -> None:  # E: Missing type arguments for generic type "A"
     pass
 [file mypy.ini]
-[mypy]
+\[mypy]
 strict = True
 
 
@@ -1651,7 +1651,7 @@ def f(c: A) -> None:  # E: Missing type arguments for generic type "A"
     pass
 
 [file pyproject.toml]
-[tool.mypy]
+\[tool.mypy]
 strict = true
 
 

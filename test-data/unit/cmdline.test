@@ -537,7 +537,7 @@ strict_optional = True
 \[mypy-a.b.c.d.e]
 ignore_errors = False
 [out]
-a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
+a/b/c/d/e/__init__.py:2: error: Missing type arguments for generic type "List"
 a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "list[Any]"
 
 [case testMissingFile]

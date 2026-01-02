@@ -263,10 +263,10 @@ class D(A):
 [case testColumnMissingTypeParameters]
 # flags: --disallow-any-generics
 from typing import List, Callable
-def f(x: List) -> None: pass # E:10: Missing type parameters for generic type "List"
-def g(x: list) -> None: pass # E:10: Missing type parameters for generic type "list"
+def f(x: List) -> None: pass # E:10: Missing type arguments for generic type "List"
+def g(x: list) -> None: pass # E:10: Missing type arguments for generic type "list"
 if int():
-    c: Callable # E:8: Missing type parameters for generic type "Callable"
+    c: Callable # E:8: Missing type arguments for generic type "Callable"
 [builtins fixtures/list.pyi]
 
 [case testColumnIncompatibleDefault]
