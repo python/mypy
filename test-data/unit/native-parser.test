@@ -1354,6 +1354,7 @@ MypyFile:1(
 [case testFStringTrivial]
 f"foo"
 f"{x}"
+f"foo" "bar"
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -1365,7 +1366,9 @@ MypyFile:1(
         format)
       Args(
         NameExpr(x)
-        StrExpr()))))
+        StrExpr())))
+  ExpressionStmt:3(
+    StrExpr(foobar)))
 
 [case testFStringWithOnlyFormatSpecifier]
 x = 'mypy'

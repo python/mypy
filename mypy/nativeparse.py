@@ -18,7 +18,7 @@ Expected benefits over mypy.fastparse:
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, cast
 
 import ast_serialize  # type: ignore[import-untyped]
 
@@ -865,7 +865,19 @@ def read_expression(data: ReadBuffer) -> Expression:
     elif tag == nodes.FSTRING_EXPR:
         # F-strings are converted into nodes representing "".join([...]), to match
         # pre-existing behavior.
-        expr = read_fstring_items(data)
+        nparts = read_int(data)
+        items = []
+        for _ in range(nparts):
+            b = read_bool(data)
+            if b:
+                n = read_int(data)
+                for i in range(n):
+                    items.append(read_fstring_item(data))
+            else:
+                s = StrExpr(read_str(data))
+                read_loc(data, s)
+                items.append(s)
+        expr = build_fstring_join(data, items)
         expect_end_tag(data)
         return expr
     else:
@@ -874,11 +886,19 @@ def read_expression(data: ReadBuffer) -> Expression:
 
 def read_fstring_items(data: ReadBuffer) -> Expression:
     items = []
-    expect_tag(data, LIST_GEN)
-    n = read_int_bare(data)
+    n = read_int(data)
     items = [read_fstring_item(data) for i in range(n)]
+    return build_fstring_join(data, items)
+
+
+def build_fstring_join(data: ReadBuffer, items: list[Expression]) -> Expression:
     if len(items) == 1:
         expr = items[0]
+        read_loc(data, expr)
+        return expr
+    if all(isinstance(item, StrExpr) for item in items):
+        s = "".join([cast(StrExpr, item).value for item in items])
+        expr = StrExpr(s)
         read_loc(data, expr)
         return expr
     args = ListExpr(items)
