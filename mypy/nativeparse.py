@@ -196,7 +196,7 @@ def read_statement(data: ReadBuffer) -> Statement:
 
         if has_ann:
             typ = CallableType(
-                [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated) 
+                [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
                  for arg in arguments],
                 [arg.kind for arg in arguments],
                 [arg.variable.name for arg in arguments],
@@ -865,45 +865,65 @@ def read_expression(data: ReadBuffer) -> Expression:
     elif tag == nodes.FSTRING_EXPR:
         # F-strings are converted into nodes representing "".join([...]), to match
         # pre-existing behavior.
-        items = []
-        expect_tag(data, LIST_GEN)
-        n = read_int_bare(data)
-        for _ in range(n):
-            t = read_tag(data)
-            if t == LITERAL_STR:
-                str_expr = StrExpr(read_str_bare(data))
-                items.append(str_expr)
-                read_loc(data, str_expr)
-            elif t == nodes.FSTRING_INTERPOLATION:
-                expr = read_expression(data)
-                has_conv = read_bool(data)
-                if has_conv:
-                    c = read_str(data)
-                    fmt = "{" + c + ":{}}"
-                else:
-                    fmt = "{:{}}"
-                member = MemberExpr(StrExpr(fmt), "format")
-                set_line_column(member, expr)
-                call = CallExpr(member, [expr, StrExpr("")], [ARG_POS, ARG_POS], [None, None])
-                set_line_column(call, expr)
-                items.append(call)
-                b = read_bool(data)
-                assert not b
-                expect_end_tag(data)
-            else:
-                raise ValueError(f"Unexpected tag {t}")
-        l = ListExpr(items)
-        str_expr = StrExpr("")
-        member = MemberExpr(str_expr, "join")
-        call = CallExpr(member, [l], [ARG_POS], [None])
-        read_loc(data, call)
-        set_line_column(l, call)
-        set_line_column(str_expr, call)
-        set_line_column(member, call)
+        expr = read_fstring_items(data)
+        expect_end_tag(data)
+        return expr
+    else:
+        assert False, tag
+
+
+def read_fstring_items(data: ReadBuffer) -> Expression:
+    items = []
+    expect_tag(data, LIST_GEN)
+    n = read_int_bare(data)
+    items = [read_fstring_item(data) for i in range(n)]
+    if len(items) == 1 and isinstance(items[0], StrExpr):
+        str_expr = items[0]
+        read_loc(data, str_expr)
+        return str_expr
+    args = ListExpr(items)
+    str_expr = StrExpr("")
+    member = MemberExpr(str_expr, "join")
+    call = CallExpr(member, [args], [ARG_POS], [None])
+    read_loc(data, call)
+    set_line_column(args, call)
+    set_line_column(str_expr, call)
+    set_line_column(member, call)
+    return call
+
+
+def read_fstring_item(data: ReadBuffer) -> Expression:
+    t = read_tag(data)
+    if t == LITERAL_STR:
+        str_expr = StrExpr(read_str_bare(data))
+        read_loc(data, str_expr)
+        return str_expr
+    elif t == nodes.FSTRING_INTERPOLATION:
+        expr = read_expression(data)
+
+        # Read conversion flag such as !r
+        has_conv = read_bool(data)
+        if has_conv:
+            c = read_str(data)
+            fmt = "{" + c + ":{}}"
+        else:
+            fmt = "{:{}}"
+
+        # Read format spec such as <30 (which may have nested {...})
+        has_spec = read_bool(data)
+        if has_spec:
+            spec = read_fstring_items(data)
+        else:
+            spec = StrExpr("")
+
+        member = MemberExpr(StrExpr(fmt), "format")
+        set_line_column(member, expr)
+        call = CallExpr(member, [expr, spec], [ARG_POS, ARG_POS], [None, None])
+        set_line_column(call, expr)
         expect_end_tag(data)
         return call
     else:
-        assert False, tag
+        raise ValueError(f"Unexpected tag {t}")
 
 
 def set_line_column(target: Context, src: Context) -> None:
