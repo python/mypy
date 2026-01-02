@@ -50,6 +50,7 @@ from mypy.nodes import (
     ARG_KINDS,
     Argument,
     AssertStmt,
+    AssignmentExpr,
     AssignmentStmt,
     Block,
     BreakStmt,
@@ -928,6 +929,20 @@ def read_expression(data: ReadBuffer) -> Expression:
 
         expr = LambdaExpr(arguments, body)
         expr.type = typ
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.NAMED_EXPR:
+        # Read target expression
+        target = read_expression(data)
+        # Read value expression
+        value = read_expression(data)
+        # AssignmentExpr expects target to be a NameExpr
+        if not isinstance(target, NameExpr):
+            # In case target is not a NameExpr, we need to handle this
+            # For now, we'll assert since the grammar should ensure it's a NameExpr
+            assert isinstance(target, NameExpr), f"Expected NameExpr for target, got {type(target)}"
+        expr = AssignmentExpr(target, value)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr

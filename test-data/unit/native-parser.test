@@ -1511,3 +1511,16 @@ MypyFile:1(
                 NameExpr(x)
                 IntExpr(2)))))
         NameExpr(items)))))
+
+[case testNamedExprSimple]
+if (x := 1):
+    pass
+[out]
+MypyFile:1(
+  IfStmt:1(
+    If(
+      AssignmentExpr:1(
+        NameExpr(x)
+        IntExpr(1)))
+    Then(
+      PassStmt:2())))
