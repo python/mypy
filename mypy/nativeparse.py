@@ -51,6 +51,7 @@ from mypy.nodes import (
     Argument,
     AssertStmt,
     AssignmentExpr,
+    AwaitExpr,
     AssignmentStmt,
     Block,
     BreakStmt,
@@ -981,6 +982,13 @@ def read_expression(data: ReadBuffer) -> Expression:
         # Read bytes literal as string
         value = read_str(data)
         expr = BytesExpr(value)
+        read_loc(data, expr)
+        expect_end_tag(data)
+        return expr
+    elif tag == nodes.AWAIT_EXPR:
+        # Read awaited expression
+        value = read_expression(data)
+        expr = AwaitExpr(value)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr

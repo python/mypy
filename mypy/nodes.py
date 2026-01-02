@@ -5070,6 +5070,7 @@ STAR_EXPR: Final[Tag] = 209
 BYTES_EXPR: Final[Tag] = 210
 GLOBAL_DECL: Final[Tag] = 211
 NONLOCAL_DECL: Final[Tag] = 212
+AWAIT_EXPR: Final[Tag] = 213
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:

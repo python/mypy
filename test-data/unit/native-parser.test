@@ -1611,3 +1611,25 @@ MypyFile:1(
       AssignmentStmt:10(
         NameExpr(x)
         IntExpr(5)))))
+[case testAwaitExpression]
+async def foo():
+    x = await bar()
+    return await baz(x)
+[out]
+MypyFile:1(
+  FuncDef:1(
+    foo
+    Async
+    Block:2(
+      AssignmentStmt:2(
+        NameExpr(x)
+        AwaitExpr:2(
+          CallExpr:2(
+            NameExpr(bar)
+            Args())))
+      ReturnStmt:3(
+        AwaitExpr:3(
+          CallExpr:3(
+            NameExpr(baz)
+            Args(
+              NameExpr(x))))))))
