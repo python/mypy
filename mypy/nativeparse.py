@@ -141,7 +141,7 @@ def native_parse(filename: str) -> tuple[MypyFile, list[dict[str, Any]], TypeIgn
 
 
 def read_statements(data: ReadBuffer, n: int) -> list[Statement]:
-    defs = []
+    defs: list[Statement] = []
     prev_func = False
     prev_name = ""
     for _ in range(n):
@@ -153,6 +153,7 @@ def read_statements(data: ReadBuffer, n: int) -> list[Statement]:
                 if isinstance(prev, OverloadedFuncDef):
                     prev.items.append(stmt)
                 else:
+                    assert isinstance(prev, (FuncDef, Decorator))
                     defs[-1] = OverloadedFuncDef([prev, stmt])
             else:
                 defs.append(stmt)
@@ -405,20 +406,20 @@ def read_statement(data: ReadBuffer) -> Statement:
     elif tag == nodes.GLOBAL_DECL:
         # Read number of names
         n = read_int(data)
-        names = []
+        decl_names = []
         for _ in range(n):
-            names.append(read_str(data))
-        stmt = GlobalDecl(names)
+            decl_names.append(read_str(data))
+        stmt = GlobalDecl(decl_names)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
     elif tag == nodes.NONLOCAL_DECL:
         # Read number of names
         n = read_int(data)
-        names = []
+        decl_names = []
         for _ in range(n):
-            names.append(read_str(data))
-        stmt = NonlocalDecl(names)
+            decl_names.append(read_str(data))
+        stmt = NonlocalDecl(decl_names)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt
@@ -553,7 +554,7 @@ def read_try_stmt(data: ReadBuffer) -> TryStmt:
     num_handlers = read_int(data)
 
     # Read exception types for each handler
-    types_list = []
+    types_list: list[Expression | None] = []
     for _ in range(num_handlers):
         has_type = read_bool(data)
         if has_type:
@@ -563,7 +564,7 @@ def read_try_stmt(data: ReadBuffer) -> TryStmt:
             types_list.append(None)
 
     # Read variable names for each handler
-    vars_list = []
+    vars_list: list[NameExpr | None] = []
     for _ in range(num_handlers):
         has_name = read_bool(data)
         if has_name:
@@ -955,18 +956,18 @@ def read_expression(data: ReadBuffer) -> Expression:
         # F-strings are converted into nodes representing "".join([...]), to match
         # pre-existing behavior.
         nparts = read_int(data)
-        items = []
+        fitems = []
         for _ in range(nparts):
             b = read_bool(data)
             if b:
                 n = read_int(data)
                 for i in range(n):
-                    items.append(read_fstring_item(data))
+                    fitems.append(read_fstring_item(data))
             else:
                 s = StrExpr(read_str(data))
                 read_loc(data, s)
-                items.append(s)
-        expr = build_fstring_join(data, items)
+                fitems.append(s)
+        expr = build_fstring_join(data, fitems)
         expect_end_tag(data)
         return expr
     elif tag == nodes.LAMBDA_EXPR:

@@ -105,7 +105,7 @@ class TestNativeParse(unittest.TestCase):
             ]
 
         with temp_source("print('hello')") as fnam:
-            b = parse_to_binary_ast(fnam)
+            b, _, _ = parse_to_binary_ast(fnam)
             assert list(b) == (
                 [LITERAL_INT, 22, nodes.EXPR_STMT, nodes.CALL_EXPR]
                 + [nodes.NAME_EXPR, LITERAL_STR]
@@ -128,7 +128,7 @@ class TestNativeParse(unittest.TestCase):
 
     def test_deserialize_member_expr(self) -> None:
         with temp_source("foo_bar.xyz2") as fnam:
-            node = native_parse(fnam)
+            node, _, _ = native_parse(fnam)
             assert isinstance(node, MypyFile)
             assert isinstance(node.defs[0], ExpressionStmt)
             assert isinstance(node.defs[0].expr, MemberExpr)
@@ -141,7 +141,7 @@ class TestNativeParse(unittest.TestCase):
                 native_parse(fnam)
             t0 = time.time()
             for i in range(25):
-                node = native_parse(fnam)
+                node, _, _ = native_parse(fnam)
             assert isinstance(node, MypyFile)
             print(len(node.defs))
             print((time.time() - t0) * 1000)
