@@ -146,79 +146,7 @@ def read_statement(data: ReadBuffer) -> Statement:
     tag = read_tag(data)
     stmt: Statement
     if tag == nodes.FUNC_DEF_STMT:
-        # Function name
-        name = read_str(data)
-
-        # Arguments
-        expect_tag(data, LIST_GEN)
-        n_args = read_int_bare(data)
-        arguments = []
-        has_ann = False
-        for _ in range(n_args):
-            arg_name = read_str(data)
-            arg_kind_int = read_int(data)
-            # Convert integer to ArgKind enum using ARG_KINDS tuple
-            arg_kind = ARG_KINDS[arg_kind_int]
-            # TODO: Read type annotation when implemented
-            has_type = read_bool(data)
-            if has_type:
-                ann = read_type(data)
-                has_ann = True
-            else:
-                ann = None
-            # Read default value
-            has_default = read_bool(data)
-            if has_default:
-                default = read_expression(data)
-            else:
-                default = None
-            pos_only = read_bool(data)
-
-            var = Var(arg_name)
-            arg = Argument(var, ann, default, arg_kind, pos_only)
-            arguments.append(arg)
-
-        # Body
-        body = read_block(data)
-
-        # Decorators
-        expect_tag(data, LIST_GEN)
-        n_decorators = read_int_bare(data)
-        assert n_decorators == 0, "Decorators not yet supported"
-
-        # is_async
-        is_async = read_bool(data)
-
-        # TODO: type_params
-        has_type_params = read_bool(data)
-        assert not has_type_params, "Type params not yet supported"
-
-        # TODO: Return type annotation
-        has_return_type = read_bool(data)
-        if has_return_type:
-            return_type = read_type(data)
-            has_ann = True
-        else:
-            return_type = None
-
-        if has_ann:
-            typ = CallableType(
-                [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
-                 for arg in arguments],
-                [arg.kind for arg in arguments],
-                [arg.variable.name for arg in arguments],
-                return_type if return_type else AnyType(TypeOfAny.unannotated),
-                _dummy_fallback
-                )
-        else:
-            typ = None
-
-        func_def = FuncDef(name, arguments, body, typ=typ)
-        if is_async:
-            func_def.is_coroutine = True
-        read_loc(data, func_def)
-        expect_end_tag(data)
-        return func_def
+        return read_func_def(data)
     elif tag == nodes.DECORATOR:
         expect_tag(data, LIST_GEN)
         n_decorators = read_int_bare(data)
@@ -434,89 +362,9 @@ def read_statement(data: ReadBuffer) -> Statement:
         expect_end_tag(data)
         return stmt
     elif tag == nodes.CLASS_DEF:
-        # Class name
-        name = read_str(data)
-
-        # Body
-        body = read_block(data)
-
-        # Base classes
-        base_type_exprs = read_expression_list(data)
-
-        # TODO: Decorators (skip for now)
-        expect_tag(data, LIST_GEN)
-        n_decorators = read_int_bare(data)
-        assert n_decorators == 0, "Decorators not yet supported"
-
-        # TODO: Type parameters (skip for now)
-        has_type_params = read_bool(data)
-        assert not has_type_params, "Type parameters not yet supported"
-
-        # TODO: Metaclass (skip for now)
-        has_metaclass = read_bool(data)
-        assert not has_metaclass, "Metaclass not yet supported"
-
-        # TODO: Keywords (skip for now)
-        expect_tag(data, DICT_STR_GEN)
-        n_keywords = read_int_bare(data)
-        assert n_keywords == 0, "Keywords not yet supported"
-
-        class_def = ClassDef(name, body, base_type_exprs=base_type_exprs if base_type_exprs else None)
-        read_loc(data, class_def)
-        expect_end_tag(data)
-        return class_def
+        return read_class_def(data)
     elif tag == nodes.TRY_STMT:
-        # Read try body
-        body = read_block(data)
-
-        # Read number of except handlers
-        num_handlers = read_int(data)
-
-        # Read exception types for each handler
-        types_list = []
-        for _ in range(num_handlers):
-            has_type = read_bool(data)
-            if has_type:
-                exc_type = read_expression(data)
-                types_list.append(exc_type)
-            else:
-                types_list.append(None)
-
-        # Read variable names for each handler
-        vars_list = []
-        for _ in range(num_handlers):
-            has_name = read_bool(data)
-            if has_name:
-                var_name = read_str(data)
-                var_expr = NameExpr(var_name)
-                vars_list.append(var_expr)
-            else:
-                vars_list.append(None)
-
-        # Read handler bodies
-        handlers = []
-        for _ in range(num_handlers):
-            handler_body = read_block(data)
-            handlers.append(handler_body)
-
-        # Read else body (optional)
-        has_else = read_bool(data)
-        if has_else:
-            else_body = read_block(data)
-        else:
-            else_body = None
-
-        # Read finally body (optional)
-        has_finally = read_bool(data)
-        if has_finally:
-            finally_body = read_block(data)
-        else:
-            finally_body = None
-
-        stmt = TryStmt(body, vars_list, types_list, handlers, else_body, finally_body)
-        read_loc(data, stmt)
-        expect_end_tag(data)
-        return stmt
+        return read_try_stmt(data)
     elif tag == nodes.DEL_STMT:
         # Read the target expression
         expr = read_expression(data)
@@ -546,6 +394,168 @@ def read_statement(data: ReadBuffer) -> Statement:
         return stmt
     else:
         assert False, tag
+
+
+def read_func_def(data: ReadBuffer) -> FuncDef:
+    # Function name
+    name = read_str(data)
+
+    # Arguments
+    expect_tag(data, LIST_GEN)
+    n_args = read_int_bare(data)
+    arguments = []
+    has_ann = False
+    for _ in range(n_args):
+        arg_name = read_str(data)
+        arg_kind_int = read_int(data)
+        # Convert integer to ArgKind enum using ARG_KINDS tuple
+        arg_kind = ARG_KINDS[arg_kind_int]
+        # TODO: Read type annotation when implemented
+        has_type = read_bool(data)
+        if has_type:
+            ann = read_type(data)
+            has_ann = True
+        else:
+            ann = None
+        # Read default value
+        has_default = read_bool(data)
+        if has_default:
+            default = read_expression(data)
+        else:
+            default = None
+        pos_only = read_bool(data)
+
+        var = Var(arg_name)
+        arg = Argument(var, ann, default, arg_kind, pos_only)
+        arguments.append(arg)
+
+    body = read_block(data)
+
+    # Decorators
+    expect_tag(data, LIST_GEN)
+    n_decorators = read_int_bare(data)
+    assert n_decorators == 0, "Decorators not yet supported"
+
+    is_async = read_bool(data)
+
+    # TODO: type_params
+    has_type_params = read_bool(data)
+    assert not has_type_params, "Type params not yet supported"
+
+    # TODO: Return type annotation
+    has_return_type = read_bool(data)
+    if has_return_type:
+        return_type = read_type(data)
+        has_ann = True
+    else:
+        return_type = None
+
+    if has_ann:
+        typ = CallableType(
+            [arg.type_annotation if arg.type_annotation else AnyType(TypeOfAny.unannotated)
+                for arg in arguments],
+            [arg.kind for arg in arguments],
+            [arg.variable.name for arg in arguments],
+            return_type if return_type else AnyType(TypeOfAny.unannotated),
+            _dummy_fallback
+            )
+    else:
+        typ = None
+
+    func_def = FuncDef(name, arguments, body, typ=typ)
+    if is_async:
+        func_def.is_coroutine = True
+    read_loc(data, func_def)
+    expect_end_tag(data)
+    return func_def
+
+
+def read_class_def(data: ReadBuffer) -> ClassDef:
+    # Class name
+    name = read_str(data)
+
+    # Body
+    body = read_block(data)
+
+    # Base classes
+    base_type_exprs = read_expression_list(data)
+
+    # TODO: Decorators (skip for now)
+    expect_tag(data, LIST_GEN)
+    n_decorators = read_int_bare(data)
+    assert n_decorators == 0, "Decorators not yet supported"
+
+    # TODO: Type parameters (skip for now)
+    has_type_params = read_bool(data)
+    assert not has_type_params, "Type parameters not yet supported"
+
+    # TODO: Metaclass (skip for now)
+    has_metaclass = read_bool(data)
+    assert not has_metaclass, "Metaclass not yet supported"
+
+    # TODO: Keywords (skip for now)
+    expect_tag(data, DICT_STR_GEN)
+    n_keywords = read_int_bare(data)
+    assert n_keywords == 0, "Keywords not yet supported"
+
+    class_def = ClassDef(name, body, base_type_exprs=base_type_exprs if base_type_exprs else None)
+    read_loc(data, class_def)
+    expect_end_tag(data)
+    return class_def
+
+
+def read_try_stmt(data: ReadBuffer) -> TryStmt:
+    # Read try body
+    body = read_block(data)
+
+    # Read number of except handlers
+    num_handlers = read_int(data)
+
+    # Read exception types for each handler
+    types_list = []
+    for _ in range(num_handlers):
+        has_type = read_bool(data)
+        if has_type:
+            exc_type = read_expression(data)
+            types_list.append(exc_type)
+        else:
+            types_list.append(None)
+
+    # Read variable names for each handler
+    vars_list = []
+    for _ in range(num_handlers):
+        has_name = read_bool(data)
+        if has_name:
+            var_name = read_str(data)
+            var_expr = NameExpr(var_name)
+            vars_list.append(var_expr)
+        else:
+            vars_list.append(None)
+
+    # Read handler bodies
+    handlers = []
+    for _ in range(num_handlers):
+        handler_body = read_block(data)
+        handlers.append(handler_body)
+
+    # Read else body (optional)
+    has_else = read_bool(data)
+    if has_else:
+        else_body = read_block(data)
+    else:
+        else_body = None
+
+    # Read finally body (optional)
+    has_finally = read_bool(data)
+    if has_finally:
+        finally_body = read_block(data)
+    else:
+        finally_body = None
+
+    stmt = TryStmt(body, vars_list, types_list, handlers, else_body, finally_body)
+    read_loc(data, stmt)
+    expect_end_tag(data)
+    return stmt
 
 
 def read_type(data: ReadBuffer) -> Type:
