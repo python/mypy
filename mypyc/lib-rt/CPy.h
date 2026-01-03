@@ -784,8 +784,11 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
 PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
 int CPyBytes_Startswith(PyObject *self, PyObject *subobj);
-
 int CPyBytes_Compare(PyObject *left, PyObject *right);
+PyObject *CPyBytes_LjustDefaultFill(PyObject *self, CPyTagged width);
+PyObject *CPyBytes_RjustDefaultFill(PyObject *self, CPyTagged width);
+PyObject *CPyBytes_LjustCustomFill(PyObject *self, CPyTagged width, PyObject *fillbyte);
+PyObject *CPyBytes_RjustCustomFill(PyObject *self, CPyTagged width, PyObject *fillbyte);
 
 
 // Set operations
