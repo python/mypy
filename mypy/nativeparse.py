@@ -114,6 +114,9 @@ from mypy.nodes import (
 from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType, RawExpressionType
 
 
+TypeIgnores = list[tuple[int, list[str]]]
+
+
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
@@ -127,14 +130,14 @@ def expect_tag(data: ReadBuffer, tag: Tag) -> None:
     assert read_tag(data) == tag
 
 
-def native_parse(filename: str) -> tuple[MypyFile, list[dict[str, Any]]]:
-    b, errors = parse_to_binary_ast(filename)
+def native_parse(filename: str) -> tuple[MypyFile, list[dict[str, Any]], TypeIgnores]:
+    b, errors, ignores = parse_to_binary_ast(filename)
     data = ReadBuffer(b)
     n = read_int(data)
     defs = read_statements(data, n)
     node = MypyFile(defs, [])
     node.path = filename
-    return node, errors
+    return node, errors, ignores
 
 
 def read_statements(data: ReadBuffer, n: int) -> list[Statement]:
@@ -161,7 +164,7 @@ def read_statements(data: ReadBuffer, n: int) -> list[Statement]:
     return defs
 
 
-def parse_to_binary_ast(filename: str) -> tuple[bytes, list[dict[str, Any]]]:
+def parse_to_binary_ast(filename: str) -> tuple[bytes, list[dict[str, Any]], TypeIgnores]:
     return ast_serialize.parse(filename)  # type: ignore[no-any-return]
 
 

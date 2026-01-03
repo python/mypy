@@ -63,13 +63,14 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     try:
         with temp_source(source) as fnam:
             try:
-                node, errors = native_parse(fnam)
+                node, errors, type_ignores = native_parse(fnam)
             except ValueError as e:
                 print(f"Parse failed: {e}")
                 assert False
             node.path = "main"
             a = node.str_with_options(options).split("\n")
             a = [format_error(err) for err in errors] + a
+            a = [format_ignore(ignore) for ignore in type_ignores] + a
     except CompileError as e:
         a = e.messages
     assert_string_arrays_equal(
@@ -79,6 +80,14 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
 def format_error(err: dict[str, Any]) -> str:
     return f"{err['line']}:{err['column']}: error: {err['message']}"
+
+
+def format_ignore(ignore: tuple[int, list[str]]) -> str:
+    line, codes = ignore
+    if not codes:
+        return f"ignore: {line}"
+    else:
+        return f"ignore: {line} [{', '.join(codes)}]"
 
 
 class TestNativeParse(unittest.TestCase):
