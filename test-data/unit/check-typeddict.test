@@ -3011,6 +3011,39 @@ reveal_type(s3)  # N: Revealed type is "TypedDict('__main__.Sub3', {'x': Any, 'y
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testGenericTypedDictUpdate]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar("T")
+
+class Group(TypedDict, Generic[T]):
+    a: T
+
+value: Group[int] = {"a": 1}
+
+def func(value2: Group[int]) -> None:
+    value.update(value2)
+    value.update({"a": 2})
+    value.update({"a": "string"})  # E: Incompatible types (expression has type "str", TypedDict item "a" has type "int")
+
+S = TypeVar("S")
+
+class MultiField(TypedDict, Generic[T, S]):
+    x: T
+    y: S
+
+mf1: MultiField[int, str] = {"x": 1, "y": "a"}
+mf2: MultiField[int, str] = {"x": 2, "y": "b"}
+mf1.update(mf2)
+
+mf3: MultiField[str, str] = {"x": "test", "y": "c"}
+mf1.update(mf3)  # E: Argument 1 to "update" of "TypedDict" has incompatible type "MultiField[str, str]"; expected "TypedDict({'x': int, 'y': str})"
+
+mf1.update({"x": 3})
+mf1.update({"y": "d"})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictAttributeOnClassObject]
 from typing import TypedDict
 
