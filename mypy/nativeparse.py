@@ -91,6 +91,7 @@ from mypy.nodes import (
     NonlocalDecl,
     OpExpr,
     OperatorAssignmentStmt,
+    OverloadedFuncDef,
     PassStmt,
     RaiseStmt,
     ReturnStmt,
@@ -130,12 +131,34 @@ def native_parse(filename: str) -> tuple[MypyFile, list[dict[str, Any]]]:
     b, errors = parse_to_binary_ast(filename)
     data = ReadBuffer(b)
     n = read_int(data)
-    defs = []
-    for i in range(n):
-        defs.append(read_statement(data))
+    defs = read_statements(data, n)
     node = MypyFile(defs, [])
     node.path = filename
     return node, errors
+
+
+def read_statements(data: ReadBuffer, n: int) -> list[Statement]:
+    defs = []
+    prev_func = False
+    prev_name = ""
+    for _ in range(n):
+        stmt = read_statement(data)
+        if isinstance(stmt, (FuncDef, Decorator)):
+            if prev_func and stmt.name == prev_name:
+                # Merge into overloaded function definition
+                prev = defs[-1]
+                if isinstance(prev, OverloadedFuncDef):
+                    prev.items.append(stmt)
+                else:
+                    defs[-1] = OverloadedFuncDef([prev, stmt])
+            else:
+                defs.append(stmt)
+                prev_name = stmt.name
+            prev_func = True
+        else:
+            defs.append(stmt)
+            prev_func = False
+    return defs
 
 
 def parse_to_binary_ast(filename: str) -> tuple[bytes, list[dict[str, Any]]]:
@@ -617,7 +640,7 @@ def read_block(data: ReadBuffer) -> Block:
     expect_tag(data, LIST_GEN)
     n = read_int_bare(data)
     assert n > 0
-    a = [read_statement(data) for i in range(n)]
+    a = read_statements(data, n)
     expect_end_tag(data)
     b = Block(a)
     b.line = a[0].line
