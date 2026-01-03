@@ -238,7 +238,7 @@ class Options:
         # Disable treating bytearray and memoryview as subtypes of bytes
         self.strict_bytes = False
 
-        # Deprecated, use extra_checks instead.
+        # Make arguments prepended via Concatenate be truly positional-only.
         self.strict_concatenate = False
 
         # Enable additional checks that are technically correct but impractical.

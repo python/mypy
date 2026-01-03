@@ -1397,21 +1397,15 @@ def process_options(
         parser.error(f"Cannot find config file '{config_file}'")
 
     options = Options()
-    strict_option_set = False
-
-    def set_strict_flags() -> None:
-        nonlocal strict_option_set
-        strict_option_set = True
-        for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
 
     # Parse config file first, so command line can override.
-    parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
+    parse_config_file(options, strict_flag_assignments, config_file, stdout, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
     if getattr(dummy, "special-opts:strict"):
-        set_strict_flags()
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv("MYPY_CACHE_DIR", "")
@@ -1528,9 +1522,6 @@ def process_options(
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
         options.cache_fine_grained = True
-
-    if options.strict_concatenate and not strict_option_set:
-        print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
     # Set target.
     if special_opts.modules + special_opts.packages:
