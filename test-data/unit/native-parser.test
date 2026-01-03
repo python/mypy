@@ -321,8 +321,8 @@ MypyFile:1(
   FuncDef:1(
     add
     Args(
-      Var:nil(x)
-      Var:nil(y))
+      Var(x)
+      Var(y))
     Block:2(
       ReturnStmt:2(
         OpExpr:2(
@@ -338,7 +338,7 @@ MypyFile:1(
   FuncDef:1(
     foo
     VarArg(
-      Var:nil(args))
+      Var(args))
     Block:2(
       PassStmt:2())))
 
@@ -350,7 +350,7 @@ MypyFile:1(
   FuncDef:1(
     bar
     DictVarArg(
-      Var:nil(kwargs))
+      Var(kwargs))
     Block:2(
       PassStmt:2())))
 
@@ -363,8 +363,8 @@ MypyFile:1(
     baz
     MaxPos(1)
     Args(
-      Var:nil(x)
-      Var:nil(y))
+      Var(x)
+      Var(y))
     Block:2(
       PassStmt:2())))
 
@@ -377,13 +377,13 @@ MypyFile:1(
     complex_fn
     MaxPos(2)
     Args(
-      Var:nil(a)
-      Var:nil(b)
-      Var:nil(c))
+      Var(a)
+      Var(b)
+      Var(c))
     VarArg(
-      Var:nil(args))
+      Var(args))
     DictVarArg(
-      Var:nil(kwargs))
+      Var(kwargs))
     Block:2(
       PassStmt:2())))
 
@@ -407,7 +407,7 @@ MypyFile:1(
     greet
     Args(
       default(
-        Var:nil(name)
+        Var(name)
         StrExpr(World)))
     Block:2(
       PassStmt:2())))
@@ -421,10 +421,10 @@ MypyFile:1(
     add
     Args(
       default(
-        Var:nil(x)
+        Var(x)
         IntExpr(1))
       default(
-        Var:nil(y)
+        Var(y)
         IntExpr(2)))
     Block:2(
       ReturnStmt:2(
@@ -438,12 +438,12 @@ MypyFile:1(
   FuncDef:1(
     func
     Args(
-      Var:nil(a)
+      Var(a)
       default(
-        Var:nil(b)
+        Var(b)
         IntExpr(5))
       default(
-        Var:nil(c)
+        Var(c)
         IntExpr(10)))
     Block:2(
       PassStmt:2())))
@@ -458,7 +458,7 @@ MypyFile:1(
     MaxPos(0)
     Args(
       default(
-        Var:nil(x)
+        Var(x)
         IntExpr(42)))
     Block:2(
       PassStmt:2())))
@@ -564,7 +564,7 @@ MypyFile:1(
     FuncDef:2(
       bar
       Args(
-        Var:nil(self))
+        Var(self))
       Block:3(
         ReturnStmt:3(
           IntExpr(1))))))
@@ -738,9 +738,9 @@ MypyFile:1(
   FuncDef:5(
     h
     Args(
-      Var:nil(x)
-      Var:nil(y)
-      Var:nil(z))
+      Var(x)
+      Var(y)
+      Var(z))
     def (x: foo.bar?, y: Any, z: x.y.z?) -> Any
     Block:6(
       PassStmt:6())))
@@ -753,7 +753,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Args(
-      Var:nil(x))
+      Var(x))
     def (x: a?[b?]) -> c.d?[e.f.g?[h?], i?]
     Block:2(
       PassStmt:2())))
@@ -766,7 +766,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Args(
-      Var:nil(x))
+      Var(x))
     def (x: int? | str?) -> bool? | None?
     Block:2(
       PassStmt:2())))
@@ -1241,7 +1241,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Args(
-      Var:nil(x))
+      Var(x))
     def (x: Callable?[<TypeList int?, str?>, None?]) -> None?
     Block:2(
       PassStmt:2())))
@@ -1254,7 +1254,7 @@ MypyFile:1(
   FuncDef:1(
     g
     Args(
-      Var:nil(callback))
+      Var(callback))
     def (callback: Callable?[<TypeList >, bool?]) -> int?
     Block:2(
       ReturnStmt:2(
@@ -1268,7 +1268,7 @@ MypyFile:1(
   FuncDef:1(
     h
     Args(
-      Var:nil(f))
+      Var(f))
     def (f: Callable?[<TypeList List?[int?], Dict?[str?, int?]>, Tuple?[int?, str?]]) -> None?
     Block:2(
       PassStmt:2())))
@@ -1281,7 +1281,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Args(
-      Var:nil(callback))
+      Var(callback))
     def (callback: Callable?[..., int?]) -> None?
     Block:2(
       PassStmt:2())))
@@ -1465,7 +1465,7 @@ MypyFile:1(
   ExpressionStmt:1(
     LambdaExpr:1(
       Args(
-        Var:nil(x))
+        Var(x))
       Block:1(
         ReturnStmt:1(
           OpExpr:1(
@@ -1480,8 +1480,8 @@ MypyFile:1(
   ExpressionStmt:1(
     LambdaExpr:1(
       Args(
-        Var:nil(x)
-        Var:nil(y))
+        Var(x)
+        Var(y))
       Block:1(
         ReturnStmt:1(
           OpExpr:1(
@@ -1497,7 +1497,7 @@ MypyFile:1(
     LambdaExpr:1(
       Args(
         default(
-          Var:nil(x)
+          Var(x)
           IntExpr(2)))
       Block:1(
         ReturnStmt:1(
@@ -1513,7 +1513,7 @@ MypyFile:1(
       Args(
         LambdaExpr:1(
           Args(
-            Var:nil(x))
+            Var(x))
           Block:1(
             ReturnStmt:1(
               OpExpr:1(

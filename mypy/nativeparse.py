@@ -423,7 +423,7 @@ def read_func_def(data: ReadBuffer) -> FuncDef:
     # Function name
     name = read_str(data)
 
-    # Arguments
+    # Parameters
     expect_tag(data, LIST_GEN)
     n_args = read_int_bare(data)
     arguments = []
@@ -450,6 +450,11 @@ def read_func_def(data: ReadBuffer) -> FuncDef:
 
         var = Var(arg_name)
         arg = Argument(var, ann, default, arg_kind, pos_only)
+        read_loc(data, arg)
+        var.line = arg.line
+        var.column = arg.column
+        var.end_line = arg.end_line
+        var.end_column = arg.end_column
         arguments.append(arg)
 
     body = read_block(data)
@@ -973,6 +978,11 @@ def read_expression(data: ReadBuffer) -> Expression:
 
             var = Var(arg_name)
             arg = Argument(var, ann, default, arg_kind, pos_only)
+            read_loc(data, arg)
+            var.line = arg.line
+            var.column = arg.column
+            var.end_line = arg.end_line
+            var.end_column = arg.end_column
             arguments.append(arg)
 
         # Read body block
