@@ -353,6 +353,7 @@ class IterationErrorWatcher(ErrorWatcher):
     making too-hasty reports."""
 
     iteration_dependent_errors: IterationDependentErrors
+    collect_revealed_types: bool
 
     def __init__(
         self,
@@ -362,6 +363,7 @@ class IterationErrorWatcher(ErrorWatcher):
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
         filter_deprecated: bool = False,
+        collect_revealed_types: bool = True,
     ) -> None:
         super().__init__(
             errors,
@@ -373,6 +375,7 @@ class IterationErrorWatcher(ErrorWatcher):
         iteration_dependent_errors.uselessness_errors.append(set())
         iteration_dependent_errors.nonoverlapping_types.append({})
         iteration_dependent_errors.unreachable_lines.append(set())
+        self.collect_revealed_types = collect_revealed_types
 
     def on_error(self, file: str, info: ErrorInfo) -> bool:
         """Filter out the "iteration-dependent" errors and notes and store their
