@@ -137,9 +137,9 @@ myclass2 = MyClass(float, float)
 reveal_type(myclass2)  # N: Revealed type is "__main__.MyClass[builtins.float, builtins.float]"
 myclass3 = MyClass(float, float, float)  # E: No overload variant of "MyClass" matches argument types "type[float]", "type[float]", "type[float]" \
                                          # N: Possible overload variants: \
-                                         # N:     def [T1, T2] __init__(self) -> MyClass[None, None] \
-                                         # N:     def [T1, T2] __init__(self, type[T1], /) -> MyClass[T1, None] \
-                                         # N:     def [T1, T2] __init__(type[T1], type[T2], /) -> MyClass[T1, T2]
+                                         # N:     def [T1, T2] MyClass() -> MyClass[None, None] \
+                                         # N:     def [T1, T2] MyClass(type[T1], /) -> MyClass[T1, None] \
+                                         # N:     def [T1, T2] MyClass(type[T1], type[T2], /) -> MyClass[T1, T2]
 reveal_type(myclass3)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 

@@ -3609,7 +3609,7 @@ test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P"
          # N:     Expected: \
          # N:         def __call__(x: int, y: int) -> Any \
          # N:     Got: \
-         # N:         def __init__(x: int, y: str) -> C \
+         # N:         def C(x: int, y: str) -> C \
          # N: "P.__call__" has type "def __call__(self, x: int, y: int) -> Any"
 
 [case testProtocolClassObjectPureCallback]
@@ -3631,7 +3631,7 @@ test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P"
          # N:     Expected: \
          # N:         def __call__(x: int, y: int) -> Any \
          # N:     Got: \
-         # N:         def __init__(x: int, y: str) -> C \
+         # N:         def C(x: int, y: str) -> C \
          # N: "P.__call__" has type "def __call__(self, x: int, y: int) -> Any"
 [builtins fixtures/type.pyi]
 
@@ -3654,7 +3654,7 @@ p: P = C  # E: Incompatible types in assignment (expression has type "type[C]", 
           # N:     Expected: \
           # N:         def __call__(app: int) -> Callable[[str], None] \
           # N:     Got: \
-          # N:         def __init__(app: str) -> C \
+          # N:         def C(app: str) -> C \
           # N: "P.__call__" has type "def __call__(self, app: int) -> Callable[[str], None]"
 
 [builtins fixtures/type.pyi]
@@ -3890,7 +3890,7 @@ other_flag = False
 def update() -> str: ...
 [builtins fixtures/module.pyi]
 
-[case testModuleAsProtocolImplementationClassObject_no_parallel]
+[case testModuleAsProtocolImplementationClassObject]
 import runner
 import bad_runner
 from typing import Callable, Protocol
@@ -3909,7 +3909,7 @@ run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected
                  # N:     Expected: \
                  # N:         def (int, /) -> Result \
                  # N:     Got: \
-                 # N:         def __init__(arg: str) -> Run
+                 # N:         def Run(arg: str) -> Run
 
 [file runner.py]
 class Run:
@@ -3922,7 +3922,7 @@ class Run:
     def __init__(self, arg: str) -> None: ...
 [builtins fixtures/module.pyi]
 
-[case testModuleAsProtocolImplementationTypeAlias_no_parallel]
+[case testModuleAsProtocolImplementationTypeAlias]
 import runner
 import bad_runner
 from typing import Callable, Protocol
@@ -3941,7 +3941,7 @@ run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected
                  # N:     Expected: \
                  # N:         def (int, /) -> Result \
                  # N:     Got: \
-                 # N:         def __init__(arg: str) -> Run
+                 # N:         def Run(arg: str) -> Run
 
 [file runner.py]
 class Run:

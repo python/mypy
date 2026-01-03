@@ -625,8 +625,8 @@ a = A(a)
 a = A(b)
 a = A(object()) # E: No overload variant of "A" matches argument type "object" \
                 # N: Possible overload variants: \
-                # N:     def __init__(self, a: A) -> A \
-                # N:     def __init__(self, b: B) -> A
+                # N:     def A(a: A) -> A \
+                # N:     def A(b: B) -> A
 
 class A:
   @overload

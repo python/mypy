@@ -749,7 +749,7 @@ def bad(x: str) -> str: ...
 reveal_type(ci.from_item(conv))  # N: Revealed type is "builtins.str"
 ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "Callable[[str], str]"; expected "Callable[[int], str]"
 
-[case testSelfTypeRestrictedMethodOverloadInit_no_parallel]
+[case testSelfTypeRestrictedMethodOverloadInit]
 from typing import TypeVar
 from lib import P, C
 
@@ -767,8 +767,8 @@ class SubP(P[T]):
 
 SubP('no')  # E: No overload variant of "SubP" matches argument type "str" \
             # N: Possible overload variants: \
-            # N:     def [T] __init__(self, use_str: Literal[True]) -> SubP[T] \
-            # N:     def [T] __init__(self, use_str: Literal[False]) -> SubP[T]
+            # N:     def [T] SubP(use_str: Literal[True]) -> SubP[T] \
+            # N:     def [T] SubP(use_str: Literal[False]) -> SubP[T]
 
 # This is a bit unfortunate: we don't have a way to map the overloaded __init__ to subtype.
 x = SubP(use_str=True)  # E: Need type annotation for "x"
