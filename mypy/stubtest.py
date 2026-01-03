@@ -424,6 +424,18 @@ def verify_mypyfile(
 
     for entry in sorted(to_check):
         stub_entry = stub.names[entry].node if entry in stub.names else MISSING
+        if entry in stub.names:
+            if xref := stub.names[entry].cross_ref:
+                orig_module = xref.rsplit(".", 1)[0]
+            elif isinstance(stub_entry, nodes.SymbolNode) and (name := stub_entry.fullname):
+                orig_module = name.rsplit(".", 1)[0]
+            else:
+                orig_module = None
+
+            if orig_module and orig_module != stub.fullname and orig_module in _all_stubs:
+                # Skip re-exported names whose defining module will be checked separately.
+                continue
+
         if isinstance(stub_entry, nodes.MypyFile):
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
