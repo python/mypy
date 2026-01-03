@@ -1746,9 +1746,9 @@ class A: pass
 class B: pass
 
 class X:
-    attr = None  # type: A
+    attr: A
 class Y:
-    attr = None  # type: B
+    attr: B
 class Z(X, Y): pass
 [stale]
 [out]
@@ -2064,10 +2064,10 @@ m.A().x = 0
 [file m.py]
 from typing import ClassVar
 class A:
-    x = None  # type: ClassVar[int]
+    x: ClassVar[int]
 [file m.py.2]
 class A:
-    x = None  # type: int
+    x: int
 [out1]
 main:2: error: Cannot assign to class variable "x" via instance
 
@@ -2076,7 +2076,7 @@ import b
 [file a.py]
 from typing import ClassVar
 class A:
-    x = None  # type: ClassVar[int]
+    x: ClassVar[int]
 [file b.py]
 import a
 [file b.py.2]

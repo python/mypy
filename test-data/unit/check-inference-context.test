@@ -639,7 +639,7 @@ reveal_type((lambda s, i, **k: i)(i=0, s='x')) # N: Revealed type is "Any"
 from typing import TypeVar, List, Any, Callable
 t = TypeVar('t')
 class A:
-  x = None # type: A
+  x: 'A'
 def f(a: List[t], fn: Callable[[t], Any]) -> None: pass
 list_a = [] # type: List[A]
 f(list_a, lambda a: a.x)

@@ -124,7 +124,7 @@ if int():
     b = a.v
 
 class A(Generic[T]):
-    v = None # type: A[T]
+    v: A[T]
 
 class B: pass
 class C: pass
@@ -1094,7 +1094,7 @@ SameA = A[T, T]
 SameB = B[T, T]
 
 class C(Generic[T]):
-    a = None # type: SameA[T]
+    a: SameA[T]
     b = SameB[T]([], [])
 
 reveal_type(C[int]().a) # N: Revealed type is "__main__.A[builtins.int, builtins.int]"

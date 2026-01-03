@@ -215,7 +215,7 @@ from mypy_extensions import trait
 
 @trait
 class Base:
-    x = None  # type: int
+    x: int
 
 class Plugin(Base):
     def __init__(self) -> None:
