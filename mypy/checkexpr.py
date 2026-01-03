@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import sys
 # sys.exit(1)
-
 import enum
 import itertools
 import time
@@ -35,7 +33,6 @@ from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infe
 from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
-from mypy.subtypes import is_subtype
 from mypy.message_registry import ErrorMessage
 from mypy.messages import MessageBuilder, format_type
 from mypy.nodes import (
@@ -1770,7 +1767,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         # or inferred something incompatible).
                         if is_subtype(candidate.ret_type, item):
                             candidates.append(candidate)
-    
+
                     if candidates:
                         # We use 'None' context to prevent infinite recursion when checking overloads
                         # provided one of the candidates remains generic.
