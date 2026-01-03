@@ -177,6 +177,8 @@ def read_statement(data: ReadBuffer) -> Statement:
         fdef = read_statement(data)
         assert isinstance(fdef, FuncDef)
         var = Var(fdef.name)
+        var.line = fdef.line
+        var.is_ready = False
         # Create Decorator wrapping the FuncDef
         stmt = Decorator(fdef, decorators, var)
         stmt.line = fdef.line
