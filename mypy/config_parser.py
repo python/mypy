@@ -510,7 +510,7 @@ def parse_section(
         "disabled_error_codes": "disable_error_code",
     }
 
-    for key in section:
+    for key in sorted(section, key=lambda k: -1 if k in {"strict"} else 0):
         invert = False
         options_key = key
         if key in config_types:

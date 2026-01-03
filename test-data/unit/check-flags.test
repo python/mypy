@@ -2180,6 +2180,29 @@ strict = False
 \[mypy-strictmodule]
 strict = True
 
+
+[case testStrictPerModuleOverride]
+# flags: --config-file tmp/mypy.ini
+
+import strictmodule
+import strictermodule
+
+[file strictmodule.py]
+x: list
+0  # type: ignore
+
+[file strictermodule.py]
+x: list  # E: Missing type arguments for generic type "list"
+0  # type: ignore  # E: Unused "type: ignore" comment
+
+[file mypy.ini]
+\[mypy]
+disallow_any_generics = false
+strict = true
+warn_unused_ignores = false
+\[mypy-strictermodule]
+strict = true
+
 [case testNoImplicitOptionalPerModule]
 # flags: --config-file tmp/mypy.ini
 import m
