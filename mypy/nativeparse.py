@@ -419,11 +419,12 @@ def read_statement(data: ReadBuffer) -> Statement:
         assert False, tag
 
 
-def read_func_def(data: ReadBuffer) -> FuncDef:
-    # Function name
-    name = read_str(data)
+def read_parameters(data: ReadBuffer) -> tuple[list[Argument], bool]:
+    """Read function/lambda parameters from the buffer.
 
-    # Parameters
+    Returns:
+        A tuple of (arguments list, has_annotations flag)
+    """
     expect_tag(data, LIST_GEN)
     n_args = read_int_bare(data)
     arguments = []
@@ -433,7 +434,7 @@ def read_func_def(data: ReadBuffer) -> FuncDef:
         arg_kind_int = read_int(data)
         # Convert integer to ArgKind enum using ARG_KINDS tuple
         arg_kind = ARG_KINDS[arg_kind_int]
-        # TODO: Read type annotation when implemented
+        # Read type annotation
         has_type = read_bool(data)
         if has_type:
             ann = read_type(data)
@@ -456,6 +457,16 @@ def read_func_def(data: ReadBuffer) -> FuncDef:
         var.end_line = arg.end_line
         var.end_column = arg.end_column
         arguments.append(arg)
+
+    return arguments, has_ann
+
+
+def read_func_def(data: ReadBuffer) -> FuncDef:
+    # Function name
+    name = read_str(data)
+
+    # Parameters
+    arguments, has_ann = read_parameters(data)
 
     body = read_block(data)
 
@@ -952,38 +963,8 @@ def read_expression(data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.LAMBDA_EXPR:
-        # Read arguments
-        expect_tag(data, LIST_GEN)
-        n_args = read_int_bare(data)
-        arguments = []
-        has_ann = False
-        for _ in range(n_args):
-            arg_name = read_str(data)
-            arg_kind_int = read_int(data)
-            arg_kind = ARG_KINDS[arg_kind_int]
-            # Read type annotation
-            has_type = read_bool(data)
-            if has_type:
-                ann = read_type(data)
-                has_ann = True
-            else:
-                ann = None
-            # Read default value
-            has_default = read_bool(data)
-            if has_default:
-                default = read_expression(data)
-            else:
-                default = None
-            pos_only = read_bool(data)
-
-            var = Var(arg_name)
-            arg = Argument(var, ann, default, arg_kind, pos_only)
-            read_loc(data, arg)
-            var.line = arg.line
-            var.column = arg.column
-            var.end_line = arg.end_line
-            var.end_column = arg.end_column
-            arguments.append(arg)
+        # Read parameters
+        arguments, has_ann = read_parameters(data)
 
         # Read body block
         body = read_block(data)
