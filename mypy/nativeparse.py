@@ -454,11 +454,6 @@ def read_func_def(data: ReadBuffer) -> FuncDef:
 
     body = read_block(data)
 
-    # Decorators
-    expect_tag(data, LIST_GEN)
-    n_decorators = read_int_bare(data)
-    assert n_decorators == 0, "Decorators not yet supported"
-
     is_async = read_bool(data)
 
     # TODO: type_params
