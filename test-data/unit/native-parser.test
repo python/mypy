@@ -1114,7 +1114,7 @@ MypyFile:1(
   Decorator:1(
     Var(foo)
     NameExpr(dec)
-    FuncDef:1(
+    FuncDef:2(
       foo
       Block:3(
         PassStmt:3())))
@@ -1126,7 +1126,7 @@ MypyFile:1(
         NameExpr(dec)
         Args())
       NameExpr(staticmethod)
-      FuncDef:5(
+      FuncDef:7(
         foo
         Block:8(
           PassStmt:8())))))
@@ -1658,3 +1658,66 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(y)
     IntExpr(2)))
+
+[case testFunctionOverload]
+@overload
+def f() -> x: pass
+@overload
+def f() -> y: pass
+[out]
+MypyFile:1(
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(f)
+      NameExpr(overload)
+      FuncDef:2(
+        f
+        def () -> x?
+        Block:2(
+          PassStmt:2())))
+    Decorator:3(
+      Var(f)
+      NameExpr(overload)
+      FuncDef:4(
+        f
+        def () -> y?
+        Block:4(
+          PassStmt:4())))))
+
+[case testFunctionOverloadWithImplementation]
+@overload
+def f(a: x) -> x: ...
+@overload
+def f(a: y) -> y: ...
+def f(a): pass
+[out]
+MypyFile:1(
+  OverloadedFuncDef:1(
+    Decorator:1(
+      Var(f)
+      NameExpr(overload)
+      FuncDef:2(
+        f
+        Args(
+          Var(a))
+        def (a: x?) -> x?
+        Block:2(
+          ExpressionStmt:2(
+            Ellipsis))))
+    Decorator:3(
+      Var(f)
+      NameExpr(overload)
+      FuncDef:4(
+        f
+        Args(
+          Var(a))
+        def (a: y?) -> y?
+        Block:4(
+          ExpressionStmt:4(
+            Ellipsis))))
+    FuncDef:5(
+      f
+      Args(
+        Var(a))
+      Block:5(
+        PassStmt:5()))))

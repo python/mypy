@@ -174,6 +174,8 @@ def read_statement(data: ReadBuffer) -> Statement:
         expect_tag(data, LIST_GEN)
         n_decorators = read_int_bare(data)
         decorators = [read_expression(data) for i in range(n_decorators)]
+        line = read_int(data)
+        column = read_int(data)
         fdef = read_statement(data)
         assert isinstance(fdef, FuncDef)
         var = Var(fdef.name)
@@ -181,8 +183,8 @@ def read_statement(data: ReadBuffer) -> Statement:
         var.is_ready = False
         # Create Decorator wrapping the FuncDef
         stmt = Decorator(fdef, decorators, var)
-        stmt.line = fdef.line
-        stmt.column = fdef.column
+        stmt.line = line
+        stmt.column = column
         stmt.end_line = fdef.end_line
         stmt.end_column = fdef.end_column
         # TODO: Adjust funcdef location to start after decorator?
