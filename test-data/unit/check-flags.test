@@ -2175,9 +2175,9 @@ a = 0  # type: ignore
 1 + "asdf"  # E: Unsupported operand types for + ("int" and "str")
 
 [file mypy.ini]
-[mypy]
+\[mypy]
 strict = False
-[mypy-strictmodule]
+\[mypy-strictmodule]
 strict = True
 
 [case testNoImplicitOptionalPerModule]
