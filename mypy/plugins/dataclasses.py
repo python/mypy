@@ -631,8 +631,6 @@ class DataclassTransformer:
                 )
                 continue
 
-            assert isinstance(node, Var), node
-
             if not isinstance(node, Var):
                 if name in redefined_attrs and len(redefined_attrs[name]) > 1:
                     if name in last_def_with_type:
