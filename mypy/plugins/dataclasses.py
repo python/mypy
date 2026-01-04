@@ -575,6 +575,19 @@ class DataclassTransformer:
         # Second, collect attributes belonging to the current class.
         current_attr_names: set[str] = set()
         kw_only = self._get_bool_arg("kw_only", self._spec.kw_only_default)
+        all_assignments = self._get_assignment_statements_from_block(cls.defs)
+        redefined_attrs: dict[str, list[AssignmentStmt]] = {}
+        last_def_with_type: dict[str, AssignmentStmt] = {}
+        for stmt in all_assignments:
+            if not isinstance(stmt.lvalues[0], NameExpr):
+                continue
+            name = stmt.lvalues[0].name
+            if stmt.type is not None:
+                last_def_with_type[name] = stmt
+            if name in redefined_attrs:
+                redefined_attrs[name].append(stmt)
+            else:
+                redefined_attrs[name] = [stmt]
         for stmt in self._get_assignment_statements_from_block(cls.defs):
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
@@ -608,7 +621,39 @@ class DataclassTransformer:
                 # This might be a property / field name clash.
                 # We will issue an error later.
                 continue
+            if not isinstance(node, Var):
+                if name in redefined_attrs and len(redefined_attrs[name]) > 1:
+                    continue
+                self._api.fail(
+                    f"Dataclass attribute '{name}' cannot be a function. "
+                    f"Use a variable with type annotation instead.",
+                    stmt,
+                )
+                continue
 
+            assert isinstance(node, Var), node
+
+            if not isinstance(node, Var):
+                if name in redefined_attrs and len(redefined_attrs[name]) > 1:
+                    if name in last_def_with_type:
+                        continue
+                last_def = redefined_attrs.get(name, [stmt])[-1]
+                if last_def.type is not None:
+                    var = Var(name)
+                    var.is_property = False
+                    var.info = cls.info
+                    var.line = last_def.line
+                    var.column = last_def.column
+                    var.type = self._api.anal_type(last_def.type)
+                    cls.info.names[name] = SymbolTableNode(MDEF, var)
+                    node = var
+                else:
+                    self._api.fail(
+                        f"Dataclass attribute '{name}' cannot be a function. "
+                        f"Use a variable with type annotation instead.",
+                        stmt,
+                    )
+                    continue
             assert isinstance(node, Var), node
 
             # x: ClassVar[int] is ignored by dataclasses.
