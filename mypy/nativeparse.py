@@ -1030,6 +1030,12 @@ def read_expression(data: ReadBuffer) -> Expression:
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
+    elif tag == nodes.BIG_INT_EXPR:
+        strval = read_str(data)
+        ie = IntExpr(int(strval))
+        read_loc(data, ie)
+        expect_end_tag(data)
+        return ie
     else:
         assert False, tag
 

@@ -40,7 +40,7 @@ MypyFile:1(
       StrExpr(z))))
 
 [case testIntExpr]
-(0, 1, 2, 203, 5345, 50123, 1234567890)
+(0, 1, 2, 203, 5345, 50123, 1234567890, 9982374892739487239847897928374897298374)
 [out]
 MypyFile:1(
   ExpressionStmt:1(
@@ -51,7 +51,8 @@ MypyFile:1(
       IntExpr(203)
       IntExpr(5345)
       IntExpr(50123)
-      IntExpr(1234567890))))
+      IntExpr(1234567890)
+      IntExpr(9982374892739487239847897928374897298374))))
 
 [case testAssignmentStmt]
 x = 1
