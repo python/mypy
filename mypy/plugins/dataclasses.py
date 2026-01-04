@@ -600,13 +600,15 @@ class DataclassTransformer:
             if not isinstance(lhs, NameExpr):
                 continue
 
-            sym = cls.info.names.get(lhs.name)
+            attr_name = lhs.name
+            sym = cls.info.names.get(attr_name)
             if sym is None:
                 # There was probably a semantic analysis error.
                 continue
 
             node = sym.node
-            assert not isinstance(node, PlaceholderNode)
+            if isinstance(node, PlaceholderNode):
+                continue
 
             if isinstance(node, TypeAlias):
                 self._api.fail(
@@ -622,32 +624,23 @@ class DataclassTransformer:
                 # We will issue an error later.
                 continue
             if not isinstance(node, Var):
-                if name in redefined_attrs and len(redefined_attrs[name]) > 1:
-                    continue
-                self._api.fail(
-                    f"Dataclass attribute '{name}' cannot be a function. "
-                    f"Use a variable with type annotation instead.",
-                    stmt,
-                )
-                continue
-
-            if not isinstance(node, Var):
-                if name in redefined_attrs and len(redefined_attrs[name]) > 1:
-                    if name in last_def_with_type:
+                if attr_name in redefined_attrs and len(redefined_attrs[attr_name]) > 1:
+                    if attr_name in last_def_with_type:
                         continue
-                last_def = redefined_attrs.get(name, [stmt])[-1]
+
+                last_def = redefined_attrs.get(attr_name, [stmt])[-1]
                 if last_def.type is not None:
-                    var = Var(name)
+                    var = Var(attr_name)
                     var.is_property = False
                     var.info = cls.info
                     var.line = last_def.line
                     var.column = last_def.column
                     var.type = self._api.anal_type(last_def.type)
-                    cls.info.names[name] = SymbolTableNode(MDEF, var)
+                    cls.info.names[attr_name] = SymbolTableNode(MDEF, var)
                     node = var
                 else:
                     self._api.fail(
-                        f"Dataclass attribute '{name}' cannot be a function. "
+                        f"Dataclass attribute '{attr_name}' cannot be a function. "
                         f"Use a variable with type annotation instead.",
                         stmt,
                     )
