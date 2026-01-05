@@ -653,8 +653,10 @@ def read_type(data: ReadBuffer) -> Type:
         value: types.LiteralValue
         if type_name == "builtins.bool":
             value = read_bool(data)
+        elif type_name == "builtins.int":
+            value = read_int(data)
         else:
-            assert False  # TODO
+            assert False, f"Unsupported RawExpressionType: {type_name}"
         raw_type = RawExpressionType(value, type_name)
         read_loc(data, raw_type)
         expect_end_tag(data)

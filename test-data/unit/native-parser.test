@@ -1297,6 +1297,22 @@ MypyFile:1(
       Any)
     Literal?[True, False]))
 
+[case testLiteralIntTypes]
+x: Literal[1]
+y: Literal[1, 2, 3]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    Literal?[1])
+  AssignmentStmt:2(
+    NameExpr(y)
+    TempNode:2(
+      Any)
+    Literal?[1, 2, 3]))
+
 [case testDelStmt]
 del x
 del x[0], y[1]
