@@ -816,7 +816,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, Overloaded) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, TypedDictType):
-            actual = actual.as_anonymous().fallback
+            actual = actual.create_anonymous_fallback()
         if isinstance(actual, LiteralType):
             actual = actual.fallback
         if isinstance(actual, Instance):
