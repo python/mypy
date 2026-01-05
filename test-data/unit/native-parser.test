@@ -1300,6 +1300,8 @@ MypyFile:1(
 [case testLiteralIntTypes]
 x: Literal[1]
 y: Literal[1, 2, 3]
+z: Literal[-1]
+w: Literal[-1, 0, 1]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
@@ -1311,7 +1313,17 @@ MypyFile:1(
     NameExpr(y)
     TempNode:2(
       Any)
-    Literal?[1, 2, 3]))
+    Literal?[1, 2, 3])
+  AssignmentStmt:3(
+    NameExpr(z)
+    TempNode:3(
+      Any)
+    Literal?[-1])
+  AssignmentStmt:4(
+    NameExpr(w)
+    TempNode:4(
+      Any)
+    Literal?[-1, 0, 1]))
 
 [case testDelStmt]
 del x
