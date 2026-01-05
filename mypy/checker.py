@@ -2500,8 +2500,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(override, Overloaded) and isinstance(original, CallableType):
             if not self.is_forward_op_method(name):
                 if all(is_subtype(item.ret_type, original.ret_type) for item in override.items):
+                    # Return True to maintain backwards compatibility with existing mypy_primer
                     return True
-
+                if isinstance(node, OverloadedFuncDef) and node.impl and node.impl.type:
+                    impl_type = node.impl.type
+                    if is_subtype(impl_type, original, ignore_pos_arg_names=True):
+                        return True
+                    proper_impl_type = get_proper_type(impl_type)
+                    if isinstance(proper_impl_type, CallableType):
+                        if any(
+                            isinstance(get_proper_type(tp), AnyType)
+                            for tp in proper_impl_type.arg_types
+                        ):
+                            return True
         if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
         elif isinstance(override, Overloaded) and self.is_forward_op_method(name):
