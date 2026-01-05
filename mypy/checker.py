@@ -2501,10 +2501,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if not self.is_forward_op_method(name):
                 if all(is_subtype(item.ret_type, original.ret_type) for item in override.items):
                     return True
-                if isinstance(node, OverloadedFuncDef) and node.impl and node.impl.type:
-                    impl_type = node.impl.type
-                    if is_subtype(impl_type, original, ignore_pos_arg_names=True):
-                        return True
 
         if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
