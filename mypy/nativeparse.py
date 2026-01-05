@@ -111,7 +111,7 @@ from mypy.nodes import (
     YieldFromExpr,
     MISSING_FALLBACK,
 )
-from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType, RawExpressionType
+from mypy.types import CallableType, UnboundType, NoneType, UnionType, AnyType, TypeOfAny, Instance, Type, TypeList, EllipsisType, RawExpressionType, UnpackType
 
 
 TypeIgnores = list[tuple[int, list[str]]]
@@ -659,6 +659,12 @@ def read_type(data: ReadBuffer) -> Type:
         read_loc(data, raw_type)
         expect_end_tag(data)
         return raw_type
+    elif tag == types.UNPACK_TYPE:
+        inner_type = read_type(data)
+        unpack = UnpackType(inner_type)
+        read_loc(data, unpack)
+        expect_end_tag(data)
+        return unpack
     else:
         assert False, tag
 

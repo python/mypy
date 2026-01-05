@@ -1771,3 +1771,26 @@ MypyFile:1(
     Foo
     Keywords(_root=NameExpr(None), total=NameExpr(False))
     PassStmt:1()))
+
+[case testUnpackTypeInSignature]
+def f(*args: *Ts) -> None:
+    pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def (*args: Unpack[Ts?]) -> None?
+    VarArg(
+      Var(args))
+    Block:2(
+      PassStmt:2())))
+
+[case testUnpackTypeInTuple]
+x: tuple[int, *Ts, str]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    tuple?[int?, Unpack[Ts?], str?]))
