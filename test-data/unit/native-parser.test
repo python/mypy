@@ -1752,3 +1752,12 @@ MypyFile:1(
   AssignmentStmt:7(
     NameExpr(zz)
     IntExpr(1)))
+
+[case testMetaclass]
+class Foo(metaclass=Bar): pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    Foo
+    Metaclass(NameExpr(Bar))
+    PassStmt:1()))
