@@ -531,23 +531,24 @@ def read_class_def(data: ReadBuffer) -> ClassDef:
     has_type_params = read_bool(data)
     assert not has_type_params, "Type parameters not yet supported"
 
-    # Metaclass
-    has_metaclass = read_bool(data)
-    if has_metaclass:
-        metaclass = read_expression(data)
-    else:
-        metaclass = None
-
-    # TODO: Keywords (skip for now)
+    # Keywords (all keyword arguments including metaclass)
     expect_tag(data, DICT_STR_GEN)
     n_keywords = read_int_bare(data)
-    assert n_keywords == 0, "Keywords not yet supported"
+    keywords = []
+    for _ in range(n_keywords):
+        key = read_str(data)
+        value = read_expression(data)
+        keywords.append((key, value))
+
+    # Extract metaclass from keywords if present
+    metaclass = dict(keywords).get("metaclass") if keywords else None
 
     class_def = ClassDef(
         name,
         body,
         base_type_exprs=base_type_exprs if base_type_exprs else None,
-        metaclass=metaclass
+        metaclass=metaclass,
+        keywords=keywords if keywords else None
     )
     read_loc(data, class_def)
     expect_end_tag(data)

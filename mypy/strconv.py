@@ -185,6 +185,9 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, ("TypeVars", o.type_vars))
         if o.metaclass:
             a.insert(1, f"Metaclass({o.metaclass.accept(self)})")
+        if o.keywords:
+            keyword_items = [f"{k}={v.accept(self)}" for k, v in o.keywords.items()]
+            a.insert(1, f"Keywords({', '.join(keyword_items)})")
         if o.decorators:
             a.insert(1, ("Decorators", o.decorators))
         if o.info and o.info._promote:
