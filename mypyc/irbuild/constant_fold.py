@@ -90,19 +90,28 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                     begin_index = None
                 else:
                     begin_index = constant_fold_expr(builder, index_expr.begin_index)
-                    if not isinstance(begin_index, int):
+                    if begin_index is None:
                         return None
                 if index_expr.end_index is None:
                     end_index = None
                 else:
                     end_index = constant_fold_expr(builder, index_expr.end_index)
-                    if not isinstance(end_index, int):
+                    if end_index is None:
                         return None
                 if index_expr.stride is None:
                     stride = None
                 else:
                     stride = constant_fold_expr(builder, index_expr.stride)
-                    if not isinstance(stride, int):
+                    if stride is None:
+                        return None
+
+                # this branching just keeps mypy happy, non-functional
+                if isinstance(base, Sequence):
+                    indexes = begin_index, end_index, stride
+                    assert all(isinstance(v, int) or v is None for v in indexes)
+                    try:
+                        return base[begin_index:end_index:stride]
+                    except Exception:
                         return None
                 try:
                     return base[begin_index:end_index:stride]
@@ -110,7 +119,16 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                     return None
 
             index = constant_fold_expr(builder, index_expr)
-            if index is not None:
+            
+            # this branching just keeps mypy happy, non-functional
+            if isinstance(base, Sequence):
+                
+                if isinstance(index, int):
+                    try:
+                        return base[index]
+                    except Exception:
+                        return None
+            else:
                 try:
                     return base[index]
                 except Exception:
