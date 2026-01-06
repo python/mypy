@@ -114,7 +114,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                         return base[begin_index:end_index:stride]
                     except Exception:
                         return None
-                try:
+                try:  # type: ignore [unreachable]
                     return base[begin_index:end_index:stride]
                 except Exception:
                     return None
@@ -130,7 +130,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                     except Exception:
                         return None
             else:
-                try:
+                try:  # type: ignore [unreachable]
                     return base[index]
                 except Exception:
                     return None
