@@ -55,6 +55,9 @@ if sys.version_info >= (3, 14):
 else:
     from _ctypes import POINTER as POINTER, pointer as pointer
 
+if sys.version_info >= (3, 14):
+    CField = _CField
+
 DEFAULT_MODE: Final[int]
 
 class ArgumentError(Exception): ...
