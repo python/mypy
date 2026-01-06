@@ -107,8 +107,9 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
 
                 # this branching just keeps mypy happy, non-functional
                 if isinstance(base, Sequence):
-                    indexes = begin_index, end_index, stride
-                    assert all(isinstance(v, int) or v is None for v in indexes)
+                    assert isinstance(begin_index, int) or begin_index is None
+                    assert isinstance(end_index, int) or end_index is None
+                    assert isinstance(stride, int) or stride is None
                     try:
                         return base[begin_index:end_index:stride]
                     except Exception:
