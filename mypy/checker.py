@@ -7072,10 +7072,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         non_optional_types = []
         for i in chain_indices:
             typ = operand_types[i]
-            # Skip Any types - they could be None, so comparing with them
-            # shouldn't narrow away None from other operands.
-            if isinstance(get_proper_type(typ), AnyType):
-                continue
             if not is_overlapping_none(typ):
                 non_optional_types.append(typ)
 
