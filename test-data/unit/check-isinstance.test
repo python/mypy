@@ -37,16 +37,16 @@ from typing import Union, List, Tuple, Dict
 
 def f(x: Union[int, str, List]) -> None:
     if isinstance(x, (str, (int,))):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        x[1]  # E: Value of type "Union[int, str]" is not indexable
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
+        x[1]  # E: Value of type "int | str" is not indexable
     else:
         reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
         x[1]
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if isinstance(x, (str, (list,))):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        reveal_type(x)  # N: Revealed type is "builtins.str | builtins.list[Any]"
         x[1]
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testClassAttributeInitialization]
@@ -191,7 +191,7 @@ def bar() -> None:
         x + 'a'
         while bool():
             x + 'a'         # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                            # N: Left operand is of type "int | str"
             x = foo()
             if bool():
                 continue
@@ -422,17 +422,17 @@ def f(x: Union[List[int], List[str], int]) -> None:
             a + 'x' # E: Unsupported operand types for + ("int" and "str")
 
         # type of a?
-        reveal_type(x) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+        reveal_type(x) # N: Revealed type is "builtins.list[builtins.int] | builtins.list[builtins.str]"
         x + 1 # E: Unsupported operand types for + ("list[int]" and "int") \
               # E: Unsupported operand types for + ("list[str]" and "int") \
-              # N: Left operand is of type "Union[list[int], list[str]]"
+              # N: Left operand is of type "list[int] | list[str]"
     else:
         x[0] # E: Value of type "int" is not indexable
         x + 1
-    x[0] # E: Value of type "Union[list[int], list[str], int]" is not indexable
+    x[0] # E: Value of type "list[int] | list[str] | int" is not indexable
     x + 1 # E: Unsupported operand types for + ("list[int]" and "int") \
           # E: Unsupported operand types for + ("list[str]" and "int") \
-          # N: Left operand is of type "Union[list[int], list[str], int]"
+          # N: Left operand is of type "list[int] | list[str] | int"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionListIsinstance2]
@@ -465,7 +465,7 @@ if int():
     x = x + 1
     x = foo()
     x = x + 1                # E: Unsupported operand types for + ("str" and "int") \
-                             # N: Left operand is of type "Union[int, str]"
+                             # N: Left operand is of type "int | str"
 if isinstance(x, str):
    x = x + 1             # E: Unsupported operand types for + ("str" and "int")
    x = 1
@@ -530,9 +530,9 @@ while bool():
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
         y = h.pet.paws + 1   # E: Unsupported operand types for + ("str" and "int") \
-                             # N: Left operand is of type "Union[int, str]"
+                             # N: Left operand is of type "int | str"
         z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str") \
-                             # N: Left operand is of type "Union[int, str]"
+                             # N: Left operand is of type "int | str"
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
             break
@@ -578,7 +578,7 @@ v = A() # type: Union[A, B, C]
 
 if isinstance(v, (B, C)):
     v.method2(123)
-    v.method3('xyz') # E: Item "B" of "Union[B, C]" has no attribute "method3"
+    v.method3('xyz') # E: Item "B" of "B | C" has no attribute "method3"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceNeverWidens]
@@ -594,7 +594,7 @@ reveal_type(a)  # N: Revealed type is "__main__.A"
 
 b = A()  # type: Union[A, B]
 assert isinstance(b, (A, B, C))
-reveal_type(b)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+reveal_type(b)  # N: Revealed type is "__main__.A | __main__.B"
 [builtins fixtures/isinstance.pyi]
 
 [case testMemberAssignmentChanges]
@@ -606,7 +606,7 @@ class Dog:
 pet = Dog()
 
 pet.paws + 'a'  # E: Unsupported operand types for + ("int" and "str") \
-                # N: Left operand is of type "Union[int, str]"
+                # N: Left operand is of type "int | str"
 pet.paws = 'a'
 pet.paws + 'a'
 pet.paws = 1
@@ -635,7 +635,7 @@ if isinstance(h.pet, Dog):
         for i in [1]:
             # TODO: should we allow this if iterable is of length one or zero?
             h.pet.paws + 'a'  # E: Unsupported operand types for + ("int" and "str") \
-                              # N: Left operand is of type "Union[int, str]"
+                              # N: Left operand is of type "int | str"
             if bool():
                 break
             h.pet.paws = 1
@@ -678,7 +678,7 @@ def foo() -> None:
     else:
         pass
     y = x + 'asdad'    # E: Unsupported operand types for + ("int" and "str") \
-                       # N: Left operand is of type "Union[int, str]"
+                       # N: Left operand is of type "int | str"
 
 foo()
 [builtins fixtures/isinstancelist.pyi]
@@ -697,11 +697,11 @@ while bool():
         x + [1]
     x + 'a'           # E: Unsupported operand types for + ("int" and "str") \
                       # E: Unsupported operand types for + ("list[int]" and "str") \
-                      # N: Left operand is of type "Union[int, str, list[int]]"
+                      # N: Left operand is of type "int | str | list[int]"
 
 x + [1]               # E: Unsupported operand types for + ("int" and "list[int]") \
                       # E: Unsupported operand types for + ("str" and "list[int]") \
-                      # N: Left operand is of type "Union[int, str, list[int]]"
+                      # N: Left operand is of type "int | str | list[int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion2]
@@ -718,7 +718,7 @@ while bool():
     x + 'a'           # E: Unsupported operand types for + ("list[int]" and "str")
 x + [1]               # E: Unsupported operand types for + ("int" and "list[int]") \
                       # E: Unsupported operand types for + ("str" and "list[int]") \
-                      # N: Left operand is of type "Union[int, str, list[int]]"
+                      # N: Left operand is of type "int | str | list[int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion3]
@@ -738,7 +738,7 @@ while bool():
     x + 'a'
 x + [1]               # E: Unsupported operand types for + ("int" and "list[int]") \
                       # E: Unsupported operand types for + ("str" and "list[int]") \
-                      # N: Left operand is of type "Union[int, str, list[int]]"
+                      # N: Left operand is of type "int | str | list[int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRemovingTypeRepeatedly]
@@ -749,27 +749,27 @@ def foo() -> Union[int, str]: pass
 for i in [1, 2]:
     x = foo()
     x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                            # N: Left operand is of type "int | str"
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
     x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                            # N: Left operand is of type "int | str"
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
     x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                            # N: Left operand is of type "int | str"
     if isinstance(x, int):
         break
     x + 'a'
 
 x + 'a'                    # E: Unsupported operand types for + ("int" and "str") \
-                            # N: Left operand is of type "Union[int, str]"
+                           # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyRepeatedly]
@@ -780,9 +780,9 @@ def foo() -> Union[int, str]: pass
 x = foo()
 def f(): x  # Prevent redefinition
 x + 1     # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
 x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
 
 x = 1
 x + 1
@@ -794,9 +794,9 @@ x + 'a'
 
 x = foo()
 x + 1     # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
 x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoop]
@@ -807,7 +807,7 @@ def foo() -> Union[int, str]: pass
 x = foo()
 def f(): x  # Prevent redefinition
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str]"
+           # N: Left operand is of type "int | str"
 x = 'a'
 x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
@@ -815,7 +815,7 @@ x + 1
 
 while bool():
       x + 1    # E: Unsupported operand types for + ("str" and "int") \
-               # N: Left operand is of type "Union[int, str]"
+               # N: Left operand is of type "int | str"
       x = 'a'
 [builtins fixtures/isinstancelist.pyi]
 
@@ -827,7 +827,7 @@ def foo() -> Union[int, str]: pass
 x = foo()
 def f(): x  # Prevent redefinition
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str]"
+           # N: Left operand is of type "int | str"
 x = 'a'
 x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
@@ -837,7 +837,7 @@ for i in [1]:
       x = 'a'
 
 x + 1    # E: Unsupported operand types for + ("str" and "int") \
-         # N: Left operand is of type "Union[int, str]"
+         # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoop3]
@@ -856,7 +856,7 @@ while bool():
 else:
     x + 1
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str]"
+           # N: Left operand is of type "int | str"
 x = 1
 for y in [1]:
     x + 1
@@ -865,7 +865,7 @@ for y in [1]:
 else:
     x + 1
 x + 1      # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str]"
+           # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopWhile4]
@@ -889,13 +889,13 @@ x + 'a'
 x = 1
 while bool():
     x + 1 # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
     if bool():
         x = 'a'
         continue
 else:
     x + 1 # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
     x = 'a'
 x + 'a'
 [builtins fixtures/isinstancelist.pyi]
@@ -921,13 +921,13 @@ x + 'a'
 x = 1
 for y in [1]:
     x + 1 # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
     if bool():
         x = 'a'
         continue
 else:
     x + 1 # E: Unsupported operand types for + ("str" and "int") \
-          # N: Left operand is of type "Union[int, str]"
+          # N: Left operand is of type "int | str"
     x = 'a'
 x + 'a'
 [builtins fixtures/isinstancelist.pyi]
@@ -950,7 +950,7 @@ for y in [1]:
 else:
     x + 1
 x + 1 # E: Unsupported operand types for + ("str" and "int") \
-      # N: Left operand is of type "Union[int, str]"
+      # N: Left operand is of type "int | str"
 x = 1
 while bool():
     while bool():
@@ -961,7 +961,7 @@ while bool():
 else:
     x + 1
 x + 1 # E: Unsupported operand types for + ("str" and "int") \
-      # N: Left operand is of type "Union[int, str]"
+      # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopLong]
@@ -974,7 +974,7 @@ def foo() -> Union[int, str, A]: pass
 def bar() -> None:
     x = foo()
     x + 1  # E: Unsupported left operand type for + ("A") \
-           # N: Left operand is of type "Union[int, str, A]" \
+           # N: Left operand is of type "int | str | A" \
            # E: Unsupported operand types for + ("str" and "int")
     if isinstance(x, A):
        x.a
@@ -1007,7 +1007,7 @@ def bar() -> None:
           if isinstance(x, int):
              x + 1
           else:
-             x.a     # E: Item "str" of "Union[str, A]" has no attribute "a"
+             x.a     # E: Item "str" of "str | A" has no attribute "a"
           x = 'a'
 [builtins fixtures/isinstancelist.pyi]
 
@@ -1032,7 +1032,7 @@ while isinstance(x, int):
     x = 'a'
 else:
     reveal_type(x)  # N: Revealed type is "builtins.str"
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/isinstance.pyi]
 
 [case testWhileLinkedList]
@@ -1295,7 +1295,7 @@ from typing import Optional
 def h(a: bool, x: object) -> Optional[int]:
     if a or isinstance(x, int):
         return None
-    return x # E: Incompatible return value type (got "object", expected "Optional[int]")
+    return x # E: Incompatible return value type (got "object", expected "int | None")
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceWithOverlappingUnionType]
@@ -1337,7 +1337,7 @@ def f1(x: Union[float, int]) -> None:
 def f2(x: Union[FloatLike, IntLike]) -> None:
     # ...but not regular subtyping relationships
     if isinstance(x, FloatLike):
-        reveal_type(x)  # N: Revealed type is "Union[__main__.FloatLike, __main__.IntLike]"
+        reveal_type(x)  # N: Revealed type is "__main__.FloatLike | __main__.IntLike"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceOfSuperclass]
@@ -1397,7 +1397,7 @@ def f(x: Union[List[int], str]) -> None:
         x[0]() # E: "int" not callable
     else:
         reveal_type(x) # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.list[builtins.int] | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceOrIsinstance]
@@ -1411,7 +1411,7 @@ class C(A):
 
 x1 = A()
 if isinstance(x1, B) or isinstance(x1, C):
-    reveal_type(x1) # N: Revealed type is "Union[__main__.B, __main__.C]"
+    reveal_type(x1) # N: Revealed type is "__main__.B | __main__.C"
     f = x1.flag  # type: int
 else:
     reveal_type(x1) # N: Revealed type is "__main__.A"
@@ -1462,11 +1462,11 @@ from typing import Union
 def f(x: Union[int, str], typ: type) -> None:
     if isinstance(x, (typ, int)):
         x + 1  # E: Unsupported operand types for + ("str" and "int") \
-               # N: Left operand is of type "Union[int, str]"
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+               # N: Left operand is of type "int | str"
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.str"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithBoundedType]
@@ -1476,10 +1476,10 @@ class A: pass
 
 def f(x: Union[int, A], a: Type[A]) -> None:
     if isinstance(x, (a, int)):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, __main__.A]"
+        reveal_type(x)  # N: Revealed type is "builtins.int | __main__.A"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.A"
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, __main__.A]"
+    reveal_type(x) # N: Revealed type is "builtins.int | __main__.A"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithEmtpy2ndArg]
@@ -1490,7 +1490,7 @@ def f(x: Union[int, str]) -> None:
     if isinstance(x, ()):
         reveal_type(x)  # E: Statement is unreachable
     else:
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithTypeObject]
@@ -1505,7 +1505,7 @@ def f(x: Union[int, A], a: Type[A]) -> None:
         reveal_type(x)  # N: Revealed type is "builtins.int"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.A"
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, __main__.A]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | __main__.A"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclassUnreachable]
@@ -1521,7 +1521,7 @@ class Z(X): pass
 
 a: Union[Type[Y], Type[Z]]
 if issubclass(a, X):
-    reveal_type(a)  # N: Revealed type is "Union[type[__main__.Y], type[__main__.Z]]"
+    reveal_type(a)  # N: Revealed type is "type[__main__.Y] | type[__main__.Z]"
 else:
     reveal_type(a)  # unreachable block
 [builtins fixtures/isinstancelist.pyi]
@@ -1530,21 +1530,21 @@ else:
 from typing import Union, List, Tuple, Dict, Type
 def f(x: Union[Type[int], Type[str], Type[List]]) -> None:
     if issubclass(x, (str, (int,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+        reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str]"
+        reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str"
+        x()[1]  # E: Value of type "int | str" is not indexable
     else:
         reveal_type(x)  # N: Revealed type is "type[builtins.list[Any]]"
         reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if issubclass(x, (str, (list,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.str], type[builtins.list[Any]]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        reveal_type(x)  # N: Revealed type is "type[builtins.str] | type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.str | builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions2]
@@ -1552,45 +1552,45 @@ from typing import Union, List, Tuple, Dict, Type
 
 def f(x: Type[Union[int, str, List]]) -> None:
     if issubclass(x, (str, (int,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+        reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str]"
+        reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str"
+        x()[1]  # E: Value of type "int | str" is not indexable
     else:
         reveal_type(x)  # N: Revealed type is "type[builtins.list[Any]]"
         reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if issubclass(x, (str, (list,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.str], type[builtins.list[Any]]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        reveal_type(x)  # N: Revealed type is "type[builtins.str] | type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.str | builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions3]
 from typing import Union, List, Tuple, Dict, Type
 
 def f(x: Type[Union[int, str, List]]) -> None:
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if issubclass(x, (str, (int,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        x()[1]  # E: Value of type "Union[int, str]" is not indexable
+        reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str]"
+        reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str"
+        x()[1]  # E: Value of type "int | str" is not indexable
     else:
         reveal_type(x)  # N: Revealed type is "type[builtins.list[Any]]"
         reveal_type(x())  # N: Revealed type is "builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
     if issubclass(x, (str, (list,))):
-        reveal_type(x)  # N: Revealed type is "Union[type[builtins.str], type[builtins.list[Any]]]"
-        reveal_type(x())  # N: Revealed type is "Union[builtins.str, builtins.list[Any]]"
+        reveal_type(x)  # N: Revealed type is "type[builtins.str] | type[builtins.list[Any]]"
+        reveal_type(x())  # N: Revealed type is "builtins.str | builtins.list[Any]"
         x()[1]
-    reveal_type(x)  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], type[builtins.list[Any]]]"
-    reveal_type(x())  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.list[Any]]"
+    reveal_type(x)  # N: Revealed type is "type[builtins.int] | type[builtins.str] | type[builtins.list[Any]]"
+    reveal_type(x())  # N: Revealed type is "builtins.int | builtins.str | builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclass]
@@ -1720,7 +1720,7 @@ def test_issubclass(cls: Type[Mob]) -> None:
             ga.job = "Warrior"  # E: Cannot assign to class variable "job" via instance
 
     if issubclass(cls, (GoblinDigger, GoblinAmbusher)):
-        reveal_type(cls)  # N: Revealed type is "Union[type[__main__.GoblinDigger], type[__main__.GoblinAmbusher]]"
+        reveal_type(cls)  # N: Revealed type is "type[__main__.GoblinDigger] | type[__main__.GoblinAmbusher]"
         cls.level
         cls.job
         g = cls()
@@ -1859,8 +1859,8 @@ def f(x: T) -> T:
         reveal_type(x)      # N: Revealed type is "T`-1"
         x.a                 # E: "T" has no attribute "a"
         x.b
-    x.a                     # E: Item "B" of the upper bound "Union[A, B]" of type variable "T" has no attribute "a"
-    x.b                     # E: Item "A" of the upper bound "Union[A, B]" of type variable "T" has no attribute "b"
+    x.a                     # E: Item "B" of the upper bound "A | B" of type variable "T" has no attribute "a"
+    x.b                     # E: Item "A" of the upper bound "A | B" of type variable "T" has no attribute "b"
     return x
 [builtins fixtures/isinstance.pyi]
 
@@ -1898,13 +1898,13 @@ U = (list, T)
 x: object = None
 
 if isinstance(x, T):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 if isinstance(x, U):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.list[Any], builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.list[Any] | builtins.int | builtins.str"
 
 if isinstance(x, (set, (list, T))):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.set[Any], builtins.list[Any], builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.set[Any] | builtins.list[Any] | builtins.int | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTooFewArgs]
@@ -1932,7 +1932,7 @@ if issubclass(y): # E: Missing positional argument "t" in call to "issubclass"
 
 [case testIsInstanceTooManyArgs]
 isinstance(1, 1, 1) # E: Too many arguments for "isinstance" \
-         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[type, tuple[Any, ...]]"
+         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "type | tuple[Any, ...]"
 x: object
 if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
     reveal_type(x) # N: Revealed type is "builtins.object"
@@ -1973,9 +1973,9 @@ y: Optional[int]
 if y in x:
     reveal_type(y)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 if y not in x:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
@@ -1988,9 +1988,9 @@ x: List[Optional[int]]
 y: Optional[int]
 
 if y not in x:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2001,9 +2001,9 @@ x: List[str]
 y: Optional[int]
 
 if y in x:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2017,7 +2017,7 @@ nested_any: List[List[Any]]
 if lst in nested_any:
     reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int]"
 if x in nested_any:
-    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(x) # N: Revealed type is "builtins.int | None"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2031,7 +2031,7 @@ y: Optional[B]
 if y in (B(), C()):
     reveal_type(y) # N: Revealed type is "__main__.B"
 else:
-    reveal_type(y) # N: Revealed type is "Union[__main__.B, None]"
+    reveal_type(y) # N: Revealed type is "__main__.B | None"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2044,7 +2044,7 @@ nt: NT
 
 y: Optional[int]
 if y not in nt:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
     reveal_type(y) # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
@@ -2058,9 +2058,9 @@ y: Optional[str]
 if y in x:
     reveal_type(y) # N: Revealed type is "builtins.str"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(y) # N: Revealed type is "builtins.str | None"
 if y not in x:
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(y) # N: Revealed type is "builtins.str | None"
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
@@ -2073,14 +2073,14 @@ z: List[object]
 
 y: Optional[int]
 if y in x:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 
 if y not in z:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [out]
@@ -2095,13 +2095,13 @@ class C(Container[int]):
 y: Optional[int]
 # We never trust user defined types
 if y in C():
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 if y not in C():
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "builtins.int | None"
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [out]
@@ -2114,9 +2114,9 @@ y: Optional[str]
 if y in {'a', 'b', 'c'}:
     reveal_type(y) # N: Revealed type is "builtins.str"
 else:
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(y) # N: Revealed type is "builtins.str | None"
 if y not in s:
-    reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(y) # N: Revealed type is "builtins.str | None"
 else:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/set.pyi]
@@ -2154,7 +2154,7 @@ from typing import Any, Union
 class A: ...
 B: Any
 x: Union[A, B]
-reveal_type(x)  # N: Revealed type is "Union[__main__.A, Any]"
+reveal_type(x)  # N: Revealed type is "__main__.A | Any"
 assert isinstance(x, B)
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
@@ -2163,7 +2163,7 @@ reveal_type(x)  # N: Revealed type is "Any"
 from typing import Union
 from foo import A  # type: ignore
 def f(x: Union[A, str]) -> None:
-    x.method_only_in_a()  # E: Item "str" of "Union[Any, str]" has no attribute "method_only_in_a"
+    x.method_only_in_a()  # E: Item "str" of "Any | str" has no attribute "method_only_in_a"
     if isinstance(x, A):
         x.method_only_in_a()
 [builtins fixtures/isinstance.pyi]
@@ -2284,14 +2284,14 @@ from typing import Union, Optional, List
 # correctly ignores 'None' in unions.
 
 def foo(x: Optional[List[str]]) -> None:
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | None"
     assert isinstance(x, list)
     reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str]"
 
 def bar(x: Union[List[str], List[int], None]) -> None:
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int], None]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int] | None"
     assert isinstance(x, list)
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNoneAndGenericTypesOverlapStrictOptional]
@@ -2302,30 +2302,30 @@ from typing import Union, Optional, List
 # of completeness.
 
 def foo(x: Optional[List[str]]) -> None:
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | None"
     assert isinstance(x, list)
     reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str]"
 
 def bar(x: Union[List[str], List[int], None]) -> None:
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int], None]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int] | None"
     assert isinstance(x, list)
-    reveal_type(x)                  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
+    reveal_type(x)                  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithStarExpression]
 from typing import Union, List, Tuple
 
 def f(var: Union[List[str], Tuple[str, str], str]) -> None:
-    reveal_type(var)  # N: Revealed type is "Union[builtins.list[builtins.str], tuple[builtins.str, builtins.str], builtins.str]"
+    reveal_type(var)  # N: Revealed type is "builtins.list[builtins.str] | tuple[builtins.str, builtins.str] | builtins.str"
     if isinstance(var, (list, *(str, int))):
-        reveal_type(var)  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.str]"
+        reveal_type(var)  # N: Revealed type is "builtins.list[builtins.str] | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithStarExpressionAndVariable]
 from typing import Union
 
 def f(var: Union[int, str]) -> None:
-    reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(var)  # N: Revealed type is "builtins.int | builtins.str"
     some_types = (str, tuple)
     another_type = list
     if isinstance(var, (*some_types, another_type)):
@@ -2440,7 +2440,7 @@ class B:
 
     def t3(self) -> None:
         if isinstance(self, (A1, A2)):
-            reveal_type(self)           # N: Revealed type is "Union[__main__.<subclass of "__main__.A1" and "__main__.B">, __main__.<subclass of "__main__.A2" and "__main__.B">]"
+            reveal_type(self)           # N: Revealed type is "__main__.<subclass of "__main__.A1" and "__main__.B"> | __main__.<subclass of "__main__.A2" and "__main__.B">"
             x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1, 2]", variable has type "Literal[0]")
             x1: Literal[1] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1, 2]", variable has type "Literal[1]")
 
@@ -2625,15 +2625,15 @@ class D: pass
 
 v1: A
 if isinstance(v1, (B, C)):
-    reveal_type(v1)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.B">, __main__.<subclass of "__main__.A" and "__main__.C">]"
+    reveal_type(v1)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B"> | __main__.<subclass of "__main__.A" and "__main__.C">"
 
 v2: Union[A, B]
 if isinstance(v2, C):
-    reveal_type(v2)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.C">, __main__.<subclass of "__main__.B" and "__main__.C">]"
+    reveal_type(v2)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C"> | __main__.<subclass of "__main__.B" and "__main__.C">"
 
 v3: Union[A, B]
 if isinstance(v3, (C, D)):
-    reveal_type(v3)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.C">, __main__.<subclass of "__main__.A" and "__main__.D">, __main__.<subclass of "__main__.B" and "__main__.C">, __main__.<subclass of "__main__.B" and "__main__.D">]"
+    reveal_type(v3)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C"> | __main__.<subclass of "__main__.A" and "__main__.D"> | __main__.<subclass of "__main__.B" and "__main__.C"> | __main__.<subclass of "__main__.B" and "__main__.D">"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionSameNames]
@@ -2757,7 +2757,7 @@ x: Union[int, str]
 if type(x) is int:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 [case testTypeEqualsMultipleTypesShouldntNarrow]
 # make sure we don't do any narrowing if there are multiple types being compared
@@ -2766,9 +2766,9 @@ from typing import Union
 
 x: Union[int, str]
 if type(x) == int == str:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 
 # mypy thinks int isn't defined unless we include this
 [builtins fixtures/primitives.pyi]
@@ -2778,7 +2778,7 @@ from typing import Union
 
 x: Union[int, str]
 if type(x) != int:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
@@ -2790,7 +2790,7 @@ from typing import Union
 
 x: Union[int, str]
 if type(x) is not int:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
@@ -2922,8 +2922,8 @@ class B:
 
 xu: Union[A, B]
 if hasattr(xu, "x"):
-    reveal_type(xu)  # N: Revealed type is "Union[__main__.A, __main__.B]"
-    reveal_type(xu.x)  # N: Revealed type is "Union[Any, builtins.int]"
+    reveal_type(xu)  # N: Revealed type is "__main__.A | __main__.B"
+    reveal_type(xu.x)  # N: Revealed type is "Any | builtins.int"
 else:
     reveal_type(xu)  # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
@@ -3013,13 +3013,13 @@ from typing import Any
 var: Any
 reveal_type(var)  # N: Revealed type is "Any"
 assert isinstance(var, (bool, str))
-reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+reveal_type(var)  # N: Revealed type is "builtins.bool | builtins.str"
 
 if isinstance(var, bool):
     reveal_type(var)  # N: Revealed type is "builtins.bool"
 
 # Type of var shouldn't fall back to Any
-reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+reveal_type(var)  # N: Revealed type is "builtins.bool | builtins.str"
 [builtins fixtures/isinstance.pyi]
 
 [case testReuseIntersectionForRepeatedIsinstanceCalls]

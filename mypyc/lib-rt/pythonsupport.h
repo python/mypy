@@ -11,6 +11,7 @@
 #include "pythoncapi_compat.h"
 #include <frameobject.h>
 #include <assert.h>
+#include "static_data.h"
 #include "mypyc_util.h"
 
 #if CPY_3_13_FEATURES
@@ -35,7 +36,6 @@ extern "C" {
 
 /////////////////////////////////////////
 // Adapted from bltinmodule.c in Python 3.7.0
-_Py_IDENTIFIER(__mro_entries__);
 static PyObject*
 update_bases(PyObject *bases)
 {
@@ -57,7 +57,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        if (PyObject_GetOptionalAttrString(base, PyId___mro_entries__.string, &meth) < 0) {
+        if (PyObject_GetOptionalAttrString(base, "__mro_entries__", &meth) < 0) {
             goto error;
         }
         if (!meth) {
@@ -110,7 +110,6 @@ error:
 }
 
 // From Python 3.7's typeobject.c
-_Py_IDENTIFIER(__init_subclass__);
 static int
 init_subclass(PyTypeObject *type, PyObject *kwds)
 {
@@ -122,7 +121,7 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
         return -1;
     }
 
-    func = _PyObject_GetAttrId(super, &PyId___init_subclass__);
+    func = PyObject_GetAttrString(super, "__init_subclass__");
     Py_DECREF(super);
     if (func == NULL) {
         return -1;
@@ -377,19 +376,15 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 }
 #endif
 
-#if PY_VERSION_HEX >= 0x030A0000  // 3.10
 static int
-_CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
+_CPyObject_HasAttr(PyObject *v, PyObject *name) {
     PyObject *tmp = NULL;
-    int result = PyObject_GetOptionalAttrString(v, name->string, &tmp);
+    int result = PyObject_GetOptionalAttr(v, name, &tmp);
     if (tmp) {
         Py_DECREF(tmp);
     }
     return result;
 }
-#else
-#define _CPyObject_HasAttrId _PyObject_HasAttrId
-#endif
 
 #if CPY_3_12_FEATURES
 

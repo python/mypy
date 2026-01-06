@@ -1263,7 +1263,7 @@ def typed_dict_mapping_overlap(
     key_type, value_type = get_proper_types(other.args)
 
     # TODO: is there a cleaner way to get str_type here?
-    fallback = typed.as_anonymous().fallback
+    fallback = typed.create_anonymous_fallback()
     str_type = fallback.type.bases[0].args[0]  # typing._TypedDict inherits Mapping[str, object]
 
     # Special case: a TypedDict with no required keys overlaps with an empty dict.

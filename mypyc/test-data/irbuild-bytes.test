@@ -248,3 +248,16 @@ def f(b, table):
 L0:
     r0 = CPyBytes_Translate(b, table)
     return r0
+
+[case testBytesStartsWith]
+def f(a: bytes, b: bytes) -> bool:
+    return a.startswith(b)
+[out]
+def f(a, b):
+    a, b :: bytes
+    r0 :: i32
+    r1 :: bool
+L0:
+    r0 = CPyBytes_Startswith(a, b)
+    r1 = truncate r0: i32 to builtins.bool
+    return r1

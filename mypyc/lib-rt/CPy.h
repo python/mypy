@@ -783,8 +783,7 @@ PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
 PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
-PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table);
-
+int CPyBytes_Startswith(PyObject *self, PyObject *subobj);
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);
 
@@ -939,7 +938,7 @@ int CPyStatics_Initialize(PyObject **statics,
                           const int *frozensets);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
-                                  _Py_Identifier *method);
+                                  PyObject *method);
 
 bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
@@ -972,7 +971,7 @@ typedef struct {
 
 PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
                           PyCFunction func, int func_flags, const char *func_doc,
-                          int first_line, int code_flags);
+                          int first_line, int code_flags, bool has_self_arg);
 PyObject* CPyFunction_get_name(PyObject *op, void *context);
 int CPyFunction_set_name(PyObject *op, PyObject *value, void *context);
 PyObject* CPyFunction_get_code(PyObject *op, void *context);

@@ -285,9 +285,9 @@ typx2: TypeForm = no_such_module.NoSuchType  # E: Name "no_such_module" is not d
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
 from typing_extensions import TypeForm
 typx_or_int1: TypeForm[int | None] | int = int | None  # No error; interpret as TypeForm
-typx_or_int2: TypeForm[int | None] | int = str | None  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[TypeForm[Optional[int]], int]")
+typx_or_int2: TypeForm[int | None] | int = str | None  # E: Incompatible types in assignment (expression has type "object", variable has type "TypeForm[int | None] | int")
 typx_or_int3: TypeForm[int | None] | int = 1
-typx_or_int4: TypeForm[int | None] | int = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[TypeForm[Optional[int]], int]")
+typx_or_int4: TypeForm[int | None] | int = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "TypeForm[int | None] | int")
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -297,7 +297,7 @@ from typing_extensions import TypeForm
 typx_or_str1: TypeForm[int | None] | str = 'int | None'
 typx_or_str2: TypeForm[int | None] | str = 'str | None'  # No error; interpret as str
 typx_or_str3: TypeForm[int | None] | str = 'hello'
-typx_or_str4: TypeForm[int | None] | str = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[TypeForm[Optional[int]], str]")
+typx_or_str4: TypeForm[int | None] | str = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "TypeForm[int | None] | str")
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -313,9 +313,9 @@ list_of_typx2: List[TypeForm[int | None] | str] = ['str | None']  # E: TypeForm 
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
 from typing import List, TypeForm
 list_of_typx3: List[TypeForm[int | None] | int] = ['int | None']  # E: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
-                                                                  # E: List item 0 has incompatible type "str"; expected "Union[TypeForm[Optional[int]], int]"
+                                                                  # E: List item 0 has incompatible type "str"; expected "TypeForm[int | None] | int"
 list_of_typx4: List[TypeForm[str | None] | int] = ['str | None']  # E: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
-                                                                  # E: List item 0 has incompatible type "str"; expected "Union[TypeForm[Optional[str]], int]"
+                                                                  # E: List item 0 has incompatible type "str"; expected "TypeForm[str | None] | int"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -336,9 +336,9 @@ reveal_type(ANY_TF)  # N: Revealed type is "TypeForm[Any]"
 typx1: TypeForm[int | str] = INT_OR_STR_TF
 typx2: TypeForm[int | str] = INT_TF
 typx3: TypeForm[int | str] = STR_TF
-typx4: TypeForm[int | str] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "TypeForm[Union[int, str]]")
+typx4: TypeForm[int | str] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "TypeForm[int | str]")
 typx5: TypeForm[int | str] = ANY_TF  # no error
-typx6: TypeForm[int] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Union[int, str]]", variable has type "TypeForm[int]")
+typx6: TypeForm[int] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int | str]", variable has type "TypeForm[int]")
 typx7: TypeForm[int] = INT_TF
 typx8: TypeForm[int] = STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[str]", variable has type "TypeForm[int]")
 typx9: TypeForm[int] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "TypeForm[int]")
@@ -358,7 +358,7 @@ ANY_T: Type = object
 reveal_type(ANY_T)  # N: Revealed type is "type[Any]"
 typx1: TypeForm[int | str] = INT_T
 typx2: TypeForm[int | str] = STR_T
-typx3: TypeForm[int | str] = OBJECT_T  # E: Incompatible types in assignment (expression has type "type[object]", variable has type "TypeForm[Union[int, str]]")
+typx3: TypeForm[int | str] = OBJECT_T  # E: Incompatible types in assignment (expression has type "type[object]", variable has type "TypeForm[int | str]")
 typx4: TypeForm[int | str] = ANY_T  # no error
 typx5: TypeForm[int] = INT_T
 typx6: TypeForm[int] = STR_T  # E: Incompatible types in assignment (expression has type "type[str]", variable has type "TypeForm[int]")
@@ -378,12 +378,12 @@ STR_TF: TypeForm[str] = str
 OBJECT_TF: TypeForm[object] = object
 ANY_TF: TypeForm = object
 reveal_type(ANY_TF)  # N: Revealed type is "TypeForm[Any]"
-typ1: Type[int] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Union[int, str]]", variable has type "type[int]")
+typ1: Type[int] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int | str]", variable has type "type[int]")
 typ2: Type[int] = INT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int]", variable has type "type[int]")
 typ3: Type[int] = STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[str]", variable has type "type[int]")
 typ4: Type[int] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "type[int]")
 typ5: Type[int] = ANY_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Any]", variable has type "type[int]")
-typ6: Type[object] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[Union[int, str]]", variable has type "type[object]")
+typ6: Type[object] = INT_OR_STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int | str]", variable has type "type[object]")
 typ7: Type[object] = INT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[int]", variable has type "type[object]")
 typ8: Type[object] = STR_TF  # E: Incompatible types in assignment (expression has type "TypeForm[str]", variable has type "type[object]")
 typ9: Type[object] = OBJECT_TF  # E: Incompatible types in assignment (expression has type "TypeForm[object]", variable has type "type[object]")
@@ -586,9 +586,9 @@ reveal_type(f(g))  # N: Revealed type is "type[TypedDict({'b': builtins.str, 'c'
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
 from typing_extensions import TypeForm
 tf1 = TypeForm(int | str)
-reveal_type(tf1)  # N: Revealed type is "TypeForm[Union[builtins.int, builtins.str]]"
+reveal_type(tf1)  # N: Revealed type is "TypeForm[builtins.int | builtins.str]"
 tf2 = TypeForm('int | str')
-reveal_type(tf2)  # N: Revealed type is "TypeForm[Union[builtins.int, builtins.str]]"
+reveal_type(tf2)  # N: Revealed type is "TypeForm[builtins.int | builtins.str]"
 tf3: TypeForm = TypeForm(int | str)
 reveal_type(tf3)  # N: Revealed type is "TypeForm[Any]"
 tf4: TypeForm = TypeForm(1)  # E: Invalid type: try using Literal[1] instead?
@@ -620,7 +620,7 @@ from typing_extensions import TypeForm, TypeVar
 T = TypeVar('T')
 def as_typeform(typx: TypeForm[T]) -> TypeForm[T]:
     return typx
-reveal_type(as_typeform(int | str))  # N: Revealed type is "TypeForm[Union[builtins.int, builtins.str]]"
+reveal_type(as_typeform(int | str))  # N: Revealed type is "TypeForm[builtins.int | builtins.str]"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -633,8 +633,8 @@ def as_type(typx: TypeForm[T]) -> Type[T] | None:
         return typx
     else:
         return None
-reveal_type(as_type(int | str))  # N: Revealed type is "Union[type[builtins.int], type[builtins.str], None]"
-reveal_type(as_type(int))  # N: Revealed type is "Union[type[builtins.int], None]"
+reveal_type(as_type(int | str))  # N: Revealed type is "type[builtins.int] | type[builtins.str] | None"
+reveal_type(as_type(int))  # N: Revealed type is "type[builtins.int] | None"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -647,8 +647,8 @@ def as_instance(typx: TypeForm[T]) -> T | None:
         return typx()
     else:
         return None
-reveal_type(as_instance(int | str))  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
-reveal_type(as_instance(int))  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(as_instance(int | str))  # N: Revealed type is "builtins.int | builtins.str | None"
+reveal_type(as_instance(int))  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -678,7 +678,7 @@ count: int | str = 1
 if isassignable(count, int):
     reveal_type(count)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(count)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(count)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 

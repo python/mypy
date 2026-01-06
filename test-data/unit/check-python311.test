@@ -27,7 +27,7 @@ class Custom(Exception): ...
 try:
     pass
 except* (RuntimeError, Custom) as e:
-    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Union[builtins.RuntimeError, __main__.Custom]]"
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[builtins.RuntimeError | __main__.Custom]"
 [builtins fixtures/exception.pyi]
 
 [case testTryStarInvalidType]
@@ -49,7 +49,7 @@ except* ExceptionGroup as e:  # E: Exception type in except* cannot derive from 
 try:
     pass
 except* (RuntimeError, ExceptionGroup) as e:  # E: Exception type in except* cannot derive from BaseExceptionGroup
-    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Union[builtins.RuntimeError, Any]]"
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[builtins.RuntimeError | Any]"
 [builtins fixtures/exception.pyi]
 
 [case testBasicTypeVarTupleGeneric]

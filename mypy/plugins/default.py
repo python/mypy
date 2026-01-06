@@ -479,8 +479,9 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
         arg_type = get_proper_type(signature.arg_types[0])
         if not isinstance(arg_type, TypedDictType):
             return signature
-        arg_type = arg_type.as_anonymous()
-        arg_type = arg_type.copy_modified(required_keys=set())
+        arg_type = ctx.type.copy_modified(
+            fallback=arg_type.create_anonymous_fallback(), required_keys=set()
+        )
         if ctx.args and ctx.args[0]:
             if signature.name in _TP_DICT_MUTATING_METHODS:
                 # If we want to mutate this object in place, we need to set this flag,
