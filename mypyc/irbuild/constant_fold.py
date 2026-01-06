@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder
 
 # All possible result types of constant folding
-ConstantValue = Union[int, float, complex, str, bytes]
+ConstantValue = int | float | complex | str | bytes
 CONST_TYPES: Final = (int, float, complex, str, bytes)
 
 Expr = TypeVar("Expr", bound=Expression)

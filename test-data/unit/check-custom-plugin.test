@@ -356,9 +356,9 @@ class C:
     z = AnotherAlias(int, required=False)
 
 c = C()
-reveal_type(c.x)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(c.x)  # N: Revealed type is "builtins.int | None"
 reveal_type(c.y)  # N: Revealed type is "builtins.int"
-reveal_type(c.z)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(c.z)  # N: Revealed type is "builtins.int | None"
 
 [file mod.py]
 from typing import Generic, TypeVar, Type

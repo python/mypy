@@ -754,8 +754,8 @@ from typing import Optional
 x: Optional[int]
 def f(x: int) -> None: pass
 [out2]
-tmp/a.py:2: note: Revealed type is "Union[builtins.int, None]"
-tmp/a.py:3: error: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
+tmp/a.py:2: note: Revealed type is "builtins.int | None"
+tmp/a.py:3: error: Argument 1 to "f" has incompatible type "int | None"; expected "int"
 
 --
 -- # type: ignore
@@ -993,7 +993,7 @@ Ty2 = type
 [out2]
 tmp/a.py:9: note: Revealed type is "b.DD"
 tmp/a.py:10: note: Revealed type is "Any"
-tmp/a.py:11: note: Revealed type is "Union[builtins.int, builtins.str]"
+tmp/a.py:11: note: Revealed type is "builtins.int | builtins.str"
 tmp/a.py:12: note: Revealed type is "builtins.list[builtins.int]"
 tmp/a.py:13: note: Revealed type is "tuple[builtins.int, builtins.str]"
 tmp/a.py:14: note: Revealed type is "def (builtins.int) -> builtins.str"
