@@ -210,16 +210,7 @@ class Emitter:
 
         If it contains illegal characters, an empty string is returned."""
         line_width = self._indent + len(line)
-
-        # temporarily override pprint._safe_key
-        default_safe_key = pprint._safe_key  # type: ignore [attr-defined]
-        pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
-
-        # pretty print the object
-        formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
-
-        # replace the _safe_key
-        pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
+        formatted = pformat_deterministic(obj, line_width)
 
         if any(x in formatted for x in ("/*", "*/", "\0")):
             return ""
@@ -1281,6 +1272,19 @@ def native_function_doc_initializer(func: FuncIR) -> str:
         return "NULL"
     docstring = f"{text_sig}\n--\n\n"
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
+def pformat_deterministic(obj: object, line_width: int) -> str:
+    """Pretty-print `obj` with deterministic sorting for mypyc literal types."""
+    # Temporarily override pprint._safe_key
+    default_safe_key = pprint._safe_key  # type: ignore [attr-defined]
+    pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
+    
+    try:
+        return pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+    finally:
+        # Always restore the original key to avoid affecting other pprint users.
+        pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
 
 
 def _mypyc_safe_key(obj: object) -> str:
