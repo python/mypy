@@ -10,7 +10,7 @@ to other compiled modules in the same compilation unit.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Final, TypeVar
 
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
@@ -83,6 +83,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
     elif isinstance(expr, IndexExpr):
         base = constant_fold_expr(builder, expr.base)
         if base is not None:
+            assert isinstance(base, (Sequence, dict)), base
             index_expr = expr.index
             if isinstance(index_expr, SliceExpr):
                 if index_expr.begin_index is None:
