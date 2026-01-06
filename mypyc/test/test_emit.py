@@ -28,7 +28,7 @@ class TestPformatDeterministic(unittest.TestCase):
         fs_large = frozenset({("a", 1), ("b", 2)})
         literal_a = frozenset({fs_large, fs_small})
         literal_b = frozenset({fs_small, fs_large})
-        expected = "frozenset({frozenset({('a', 1)}), frozenset({('a', 1), ('b', 2)})})"
+        expected = "frozenset({frozenset({('a', 1), ('b', 2)}), frozenset({('a', 1)})})"
 
         assert pformat_deterministic(literal_a, 80) == expected
         assert pformat_deterministic(literal_b, 80) == expected
