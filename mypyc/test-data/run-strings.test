@@ -276,7 +276,7 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
-    assert getitem_folded() == "bcabcabcbab", getitem_folded()
+    assert getitem_folded() == "bcabcabbcab", getitem_folded()
 
 def test_find() -> None:
     s = "abcab"
