@@ -53,9 +53,9 @@ def generate_format_ops(specifiers: list[ConversionSpecifier]) -> list[FormatOp]
     format_ops = []
     for spec in specifiers:
         # TODO: Match specifiers instead of using whole_seq
-        if spec.whole_seq == "%s" or spec.whole_seq == "{:{}}":
+        if spec.whole_seq == "%s" or spec.whole_seq in ("{:{}}", ":s"):
             format_op = FormatOp.STR
-        elif spec.whole_seq == "%d":
+        elif spec.whole_seq in ("%d", ":d"):
             format_op = FormatOp.INT
         elif spec.whole_seq == "%b":
             format_op = FormatOp.BYTES
