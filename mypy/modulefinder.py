@@ -16,7 +16,7 @@ from enum import Enum, unique
 from typing import Final, TypeAlias as _TypeAlias
 
 from pathspec import PathSpec
-from pathspec.patterns.gitwildmatch import GitWildMatchPatternError
+from pathspec.patterns.gitignore import GitIgnorePatternError
 
 from mypy import pyinfo
 from mypy.errors import CompileError
@@ -736,8 +736,8 @@ def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
         with open(gitignore) as f:
             lines = f.readlines()
         try:
-            return parent_gitignores + [(dir, PathSpec.from_lines("gitwildmatch", lines))]
-        except GitWildMatchPatternError:
+            return parent_gitignores + [(dir, PathSpec.from_lines("gitignore", lines))]
+        except GitIgnorePatternError:
             print(f"error: could not parse {gitignore}", file=sys.stderr)
             return parent_gitignores
     return parent_gitignores
