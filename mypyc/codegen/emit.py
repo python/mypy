@@ -1281,7 +1281,7 @@ def pformat_deterministic(obj: object, width: int) -> str:
     pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
 
     try:
-        return pprint.pformat(obj, compact=True, width=width)
+        return pprint.pformat(_normalize_sets(obj), compact=True, width=width)
     finally:
         # Always restore the original key to avoid affecting other pprint users.
         pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
@@ -1293,5 +1293,22 @@ def _mypyc_safe_key(obj: object) -> str:
 
     This is NOT safe for use as a sort key for other types, so we MUST replace the
     original pprint._safe_key once we've pprinted our object.
+
+    Since this is a bit hacky, see for context https://github.com/python/mypy/pull/20012
     """
-    return str(type(obj)) + pprint.pformat(obj)
+    return str(type(obj)) + pprint.pformat(obj, compact=True, sort_dicts=True)
+
+
+def _normalize_sets(obj: object) -> object:
+    """Recursively normalize sets/frozensets so pprint sees a stable order.
+
+    We rebuild each set/frozenset from a deterministically sorted list of
+    elements (using _mypyc_safe_key), recursing into tuples those sets contain.
+    This keeps repr (used internally) output deterministic without otherwise changing content.
+    """
+    if isinstance(obj, frozenset):
+        return frozenset(map(_normalize_sets, sorted(obj, key=_mypyc_safe_key)))
+    elif isinstance(obj, tuple):
+        return tuple(map(_normalize_sets, obj))
+    else:
+        return obj
