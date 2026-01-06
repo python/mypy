@@ -6,7 +6,7 @@ import pprint
 import sys
 import textwrap
 from collections.abc import Callable
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.literals import Literals
@@ -58,6 +58,9 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsWrite
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -1281,7 +1284,8 @@ def pformat_deterministic(obj: object, width: int) -> str:
     pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
 
     try:
-        return pprint.pformat(_normalize_sets(obj), compact=True, width=width)
+        printer = _DeterministicPrettyPrinter(width=width, compact=True, sort_dicts=True)
+        return printer.pformat(obj)
     finally:
         # Always restore the original key to avoid affecting other pprint users.
         pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
@@ -1299,16 +1303,34 @@ def _mypyc_safe_key(obj: object) -> str:
     return str(type(obj)) + pprint.pformat(obj, compact=True, sort_dicts=True)
 
 
-def _normalize_sets(obj: object) -> object:
-    """Recursively normalize sets/frozensets so pprint sees a stable order.
+class _DeterministicPrettyPrinter(pprint.PrettyPrinter):
+    """PrettyPrinter that sorts set/frozenset elements deterministically."""
 
-    We rebuild each set/frozenset from a deterministically sorted list of
-    elements (using _mypyc_safe_key), recursing into tuples those sets contain.
-    This keeps repr (used internally) output deterministic without otherwise changing content.
-    """
-    if isinstance(obj, frozenset):
-        return frozenset(map(_normalize_sets, sorted(obj, key=_mypyc_safe_key)))
-    elif isinstance(obj, tuple):
-        return tuple(map(_normalize_sets, obj))
-    else:
-        return obj
+    _dispatch = pprint.PrettyPrinter._dispatch.copy()
+
+    def _pprint_set(
+        self,
+        object: set[object] | frozenset[object],
+        stream: "SupportsWrite[str]",
+        indent: int,
+        allowance: int,
+        context: dict[int, int],
+        level: int,
+    ) -> None:
+        if not object:
+            stream.write(repr(object))
+            return
+        typ = type(object)
+        if typ is set:
+            stream.write("{")
+            endchar = "}"
+        else:
+            stream.write("frozenset({")
+            endchar = "})"
+            indent += len("frozenset(")
+        items = sorted(object, key=_mypyc_safe_key)
+        self._format_items(items, stream, indent, allowance + len(endchar), context, level)
+        stream.write(endchar)
+
+    _dispatch[set.__repr__] = _pprint_set
+    _dispatch[frozenset.__repr__] = _pprint_set
