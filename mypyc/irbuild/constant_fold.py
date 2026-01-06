@@ -90,19 +90,19 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                     begin_index = None
                 else:
                     begin_index = constant_fold_expr(builder, index_expr.begin_index)
-                    if begin_index is None:
+                    if not isinstance(begin_index, int):
                         return None
                 if index_expr.end_index is None:
                     end_index = None
                 else:
                     end_index = constant_fold_expr(builder, index_expr.end_index)
-                    if end_index is None:
+                    if not isinstance(end_index, int):
                         return None
                 if index_expr.stride is None:
                     stride = None
                 else:
                     stride = constant_fold_expr(builder, index_expr.stride)
-                    if stride is None:
+                    if not isinstance(stride, int):
                         return None
                 try:
                     return base[begin_index:end_index:stride]
