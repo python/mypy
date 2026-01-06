@@ -931,8 +931,8 @@ reveal_type(C)  # N: Revealed type is "def [T2 = Any] () -> __main__.C[T2`1 = An
 c: C
 reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
 
-class D(Generic[T2, T1]): ...  # E: Type variable T1 referenced in the default of T2 is unbound \
-                               # E: "T1" cannot appear after "T2" in type parameter list because it has no default type
+class D(Generic[T2, T1]): ...  # E: "T1" cannot appear after "T2" in type parameter list because it has no default type \
+                               # E: Type variable T1 referenced in the default of T2 is unbound
 reveal_type(D)  # N: Revealed type is "def [T2 = Any, T1 = Any] () -> __main__.D[T2`1 = Any, T1`2 = Any]"
 d: D
 reveal_type(d)  # N: Revealed type is "__main__.D[Any, Any]"
