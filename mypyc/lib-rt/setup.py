@@ -11,6 +11,10 @@ import sys
 from distutils import ccompiler, sysconfig
 from typing import Any
 
+# we'll import stuff from the source tree, let's ensure is on the sys path
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
+import build_setup  # noqa: F401
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
@@ -50,7 +54,7 @@ if "--run-capi-tests" in sys.argv:
     kwargs: dict[str, Any]
     if sys.platform == "darwin":
         kwargs = {"language": "c++"}
-        compile_args = []
+        compile_args: list[str] = []
     else:
         kwargs = {}
         compile_args = ["--std=c++11"]
@@ -72,14 +76,12 @@ if "--run-capi-tests" in sys.argv:
         cmdclass={"build_ext": BuildExtGtest},
     )
 else:
-    # TODO: we need a way to share our preferred C flags and get_extension() logic with
-    # mypyc/build.py without code duplication.
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
     cflags: list[str] = []
-    if compiler.compiler_type == "unix":
-        cflags += ["-O3"]
-    elif compiler.compiler_type == "msvc":
+    if compiler.compiler_type == "unix":  # type: ignore[attr-defined]
+        cflags += ["-O3", "-Wno-unused-function"]
+    elif compiler.compiler_type == "msvc":  # type: ignore[attr-defined]
         cflags += ["/O2"]
 
     setup(
@@ -96,6 +98,39 @@ else:
                 ],
                 include_dirs=["."],
                 extra_compile_args=cflags,
-            )
+            ),
+            Extension(
+                "librt.strings",
+                [
+                    "librt_strings.c",
+                    "init.c",
+                    "int_ops.c",
+                    "exc_ops.c",
+                    "pythonsupport.c",
+                    "getargsfast.c",
+                ],
+                include_dirs=["."],
+                extra_compile_args=cflags,
+            ),
+            Extension(
+                "librt.base64",
+                [
+                    "librt_base64.c",
+                    "base64/lib.c",
+                    "base64/codec_choose.c",
+                    "base64/tables/tables.c",
+                    "base64/arch/generic/codec.c",
+                    "base64/arch/ssse3/codec.c",
+                    "base64/arch/sse41/codec.c",
+                    "base64/arch/sse42/codec.c",
+                    "base64/arch/avx/codec.c",
+                    "base64/arch/avx2/codec.c",
+                    "base64/arch/avx512/codec.c",
+                    "base64/arch/neon32/codec.c",
+                    "base64/arch/neon64/codec.c",
+                ],
+                include_dirs=[".", "base64"],
+                extra_compile_args=cflags,
+            ),
         ]
     )

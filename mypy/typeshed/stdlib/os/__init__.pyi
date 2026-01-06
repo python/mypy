@@ -41,9 +41,21 @@ from typing import (
     runtime_checkable,
     type_check_only,
 )
-from typing_extensions import Self, TypeAlias, Unpack, deprecated
+from typing_extensions import LiteralString, Self, TypeAlias, Unpack, deprecated
 
 from . import path as _path
+
+# Re-export common definitions from os.path to reduce duplication
+from .path import (
+    altsep as altsep,
+    curdir as curdir,
+    defpath as defpath,
+    devnull as devnull,
+    extsep as extsep,
+    pardir as pardir,
+    pathsep as pathsep,
+    sep as sep,
+)
 
 __all__ = [
     "F_OK",
@@ -162,7 +174,8 @@ __all__ = [
     "write",
 ]
 if sys.version_info >= (3, 14):
-    __all__ += ["readinto"]
+    # reload_environ was added to __all__ in Python 3.14.1
+    __all__ += ["readinto", "reload_environ"]
 if sys.platform == "darwin" and sys.version_info >= (3, 12):
     __all__ += ["PRIO_DARWIN_BG", "PRIO_DARWIN_NONUI", "PRIO_DARWIN_PROCESS", "PRIO_DARWIN_THREAD"]
 if sys.platform == "darwin" and sys.version_info >= (3, 10):
@@ -674,19 +687,8 @@ if sys.platform != "win32":
     ST_NOSUID: Final[int]
     ST_RDONLY: Final[int]
 
-curdir: str
-pardir: str
-sep: str
-if sys.platform == "win32":
-    altsep: str
-else:
-    altsep: str | None
-extsep: str
-pathsep: str
-defpath: str
 linesep: Literal["\n", "\r\n"]
-devnull: str
-name: str
+name: LiteralString
 
 F_OK: Final = 0
 R_OK: Final = 4
@@ -708,6 +710,18 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
         encodevalue: _EnvironCodeFunc[AnyStr],
         decodevalue: _EnvironCodeFunc[AnyStr],
     ) -> None: ...
+    @overload
+    def get(self, key: AnyStr, default: None = None) -> AnyStr | None: ...
+    @overload
+    def get(self, key: AnyStr, default: AnyStr) -> AnyStr: ...
+    @overload
+    def get(self, key: AnyStr, default: _T) -> AnyStr | _T: ...
+    @overload
+    def pop(self, key: AnyStr) -> AnyStr: ...
+    @overload
+    def pop(self, key: AnyStr, default: AnyStr) -> AnyStr: ...
+    @overload
+    def pop(self, key: AnyStr, default: _T) -> AnyStr | _T: ...
     def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...
     def copy(self) -> dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
@@ -728,6 +742,9 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
 environ: _Environ[str]
 if sys.platform != "win32":
     environb: _Environ[bytes]
+
+if sys.version_info >= (3, 14):
+    def reload_environ() -> None: ...
 
 if sys.version_info >= (3, 11) or sys.platform != "win32":
     EX_OK: Final[int]
@@ -1390,19 +1407,48 @@ class _wrap_close:
     def write(self, s: str, /) -> int: ...
     def writelines(self, lines: Iterable[str], /) -> None: ...
 
-def popen(cmd: str, mode: str = "r", buffering: int = -1) -> _wrap_close: ...
-def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
-def spawnle(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise sig
-
-if sys.platform != "win32":
-    def spawnv(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
-    def spawnve(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+if sys.version_info >= (3, 14):
+    @deprecated("Soft deprecated. Use the subprocess module instead.")
+    def popen(cmd: str, mode: str = "r", buffering: int = -1) -> _wrap_close: ...
+    @deprecated("Soft deprecated. Use the subprocess module instead.")
+    def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
+    @deprecated("Soft deprecated. Use the subprocess module instead.")
+    def spawnle(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise sig
 
 else:
-    def spawnv(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, /) -> int: ...
-    def spawnve(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, env: _ExecEnv, /) -> int: ...
+    def popen(cmd: str, mode: str = "r", buffering: int = -1) -> _wrap_close: ...
+    def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
+    def spawnle(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise sig
 
-def system(command: StrOrBytesPath) -> int: ...
+if sys.platform != "win32":
+    if sys.version_info >= (3, 14):
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnv(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnve(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+
+    else:
+        def spawnv(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
+        def spawnve(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+
+else:
+    if sys.version_info >= (3, 14):
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnv(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, /) -> int: ...
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnve(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, env: _ExecEnv, /) -> int: ...
+
+    else:
+        def spawnv(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, /) -> int: ...
+        def spawnve(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, env: _ExecEnv, /) -> int: ...
+
+if sys.version_info >= (3, 14):
+    @deprecated("Soft deprecated. Use the subprocess module instead.")
+    def system(command: StrOrBytesPath) -> int: ...
+
+else:
+    def system(command: StrOrBytesPath) -> int: ...
+
 @final
 class times_result(structseq[float], tuple[float, float, float, float, float]):
     if sys.version_info >= (3, 10):
@@ -1435,10 +1481,22 @@ if sys.platform == "win32":
         def startfile(filepath: StrOrBytesPath, operation: str = ...) -> None: ...
 
 else:
-    def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
-    def spawnlpe(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise signature
-    def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
-    def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+    if sys.version_info >= (3, 14):
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnlpe(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise signature
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
+        @deprecated("Soft deprecated. Use the subprocess module instead.")
+        def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+
+    else:
+        def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
+        def spawnlpe(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise signature
+        def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
+        def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
+
     def wait() -> tuple[int, int]: ...  # Unix only
     # Added to MacOS in 3.13
     if sys.platform != "darwin" or sys.version_info >= (3, 13):
@@ -1472,34 +1530,66 @@ else:
     def WEXITSTATUS(status: int) -> int: ...
     def WSTOPSIG(status: int) -> int: ...
     def WTERMSIG(status: int) -> int: ...
-    def posix_spawn(
-        path: StrOrBytesPath,
-        argv: _ExecVArgs,
-        env: _ExecEnv,
-        /,
-        *,
-        file_actions: Sequence[tuple[Any, ...]] | None = ...,
-        setpgroup: int | None = ...,
-        resetids: bool = ...,
-        setsid: bool = ...,
-        setsigmask: Iterable[int] = ...,
-        setsigdef: Iterable[int] = ...,
-        scheduler: tuple[Any, sched_param] | None = ...,
-    ) -> int: ...
-    def posix_spawnp(
-        path: StrOrBytesPath,
-        argv: _ExecVArgs,
-        env: _ExecEnv,
-        /,
-        *,
-        file_actions: Sequence[tuple[Any, ...]] | None = ...,
-        setpgroup: int | None = ...,
-        resetids: bool = ...,
-        setsid: bool = ...,
-        setsigmask: Iterable[int] = ...,
-        setsigdef: Iterable[int] = ...,
-        scheduler: tuple[Any, sched_param] | None = ...,
-    ) -> int: ...
+
+    if sys.version_info >= (3, 13):
+        def posix_spawn(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv | None,  # None allowed starting in 3.13
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+        def posix_spawnp(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv | None,  # None allowed starting in 3.13
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+    else:
+        def posix_spawn(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv,
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+        def posix_spawnp(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv,
+            /,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+
     POSIX_SPAWN_OPEN: Final = 0
     POSIX_SPAWN_CLOSE: Final = 1
     POSIX_SPAWN_DUP2: Final = 2
