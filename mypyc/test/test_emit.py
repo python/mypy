@@ -39,10 +39,7 @@ class TestPformatDeterministic(unittest.TestCase):
         item_b = ("outer", 2, frozenset({("x", 3)}))
         literal_a = frozenset({item_a, item_b})
         literal_b = frozenset({item_b, item_a})
-        expected = (
-            "frozenset({('outer', 1, frozenset({('m', 0), ('n', 1)})), "
-            "('outer', 2, frozenset({('x', 3)}))})"
-        )
+        expected = "frozenset({('outer', 2, frozenset({('x', 3)})), ('outer', 1, frozenset({('m', 0), ('n', 1)}))})"
 
         assert pformat_deterministic(literal_a, 120) == expected
         assert pformat_deterministic(literal_b, 120) == expected
