@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import pprint
 import unittest
 
-from mypyc.codegen.emit import Emitter, EmitterContext
+from mypyc.codegen.emit import Emitter, EmitterContext, pformat_deterministic
 from mypyc.common import HAVE_IMMORTAL
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import BasicBlock, Register, Value
@@ -19,6 +20,37 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
+
+
+class TestPformatDeterministic(unittest.TestCase):
+    def test_frozenset_elements_sorted(self) -> None:
+        fs_small = frozenset({("a", 1)})
+        fs_large = frozenset({("a", 1), ("b", 2)})
+        literal_a = frozenset({fs_large, fs_small})
+        literal_b = frozenset({fs_small, fs_large})
+        expected = "frozenset({frozenset({('a', 1)}), frozenset({('a', 1), ('b', 2)})})"
+
+        assert pformat_deterministic(literal_a, 80) == expected
+        assert pformat_deterministic(literal_b, 80) == expected
+
+    def test_nested_supported_literals(self) -> None:
+        nested_frozen = frozenset({("m", 0), ("n", 1)})
+        item_a = ("outer", 1, nested_frozen)
+        item_b = ("outer", 2, frozenset({("x", 3)}))
+        literal_a = frozenset({item_a, item_b})
+        literal_b = frozenset({item_b, item_a})
+        expected = (
+            "frozenset({('outer', 1, frozenset({('m', 0), ('n', 1)})), "
+            "('outer', 2, frozenset({('x', 3)}))})"
+        )
+
+        assert pformat_deterministic(literal_a, 120) == expected
+        assert pformat_deterministic(literal_b, 120) == expected
+
+    def test_restores_default_safe_key(self) -> None:
+        original_safe_key = pprint._safe_key
+        pformat_deterministic({"key": "value"}, 80)
+        assert pprint._safe_key is original_safe_key
 
 
 class TestEmitter(unittest.TestCase):

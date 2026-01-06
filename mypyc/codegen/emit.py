@@ -210,7 +210,7 @@ class Emitter:
 
         If it contains illegal characters, an empty string is returned."""
         line_width = self._indent + len(line)
-        formatted = pformat_deterministic(obj, line_width)
+        formatted = pformat_deterministic(obj, max(90 - line_width, 20))
 
         if any(x in formatted for x in ("/*", "*/", "\0")):
             return ""
@@ -1274,14 +1274,14 @@ def native_function_doc_initializer(func: FuncIR) -> str:
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
 
 
-def pformat_deterministic(obj: object, line_width: int) -> str:
+def pformat_deterministic(obj: object, width: int) -> str:
     """Pretty-print `obj` with deterministic sorting for mypyc literal types."""
-    # Temporarily override pprint._safe_key
+    # Temporarily override pprint._safe_key to get deterministic ordering of containers.
     default_safe_key = pprint._safe_key  # type: ignore [attr-defined]
     pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
-    
+
     try:
-        return pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+        return pprint.pformat(obj, compact=True, width=width)
     finally:
         # Always restore the original key to avoid affecting other pprint users.
         pprint._safe_key = default_safe_key  # type: ignore [attr-defined]
