@@ -1100,7 +1100,7 @@ class TD(TypedDict, Generic[T]):
     key: str
     value: T
 
-def foo(**kwds: Unpack[TD]) -> None: ...  # E: Missing type parameters for generic type "TD"
+def foo(**kwds: Unpack[TD]) -> None: ...  # E: Missing type arguments for generic type "TD"
 foo(key="yes", value=42)
 foo(key="yes", value="ok")
 [builtins fixtures/dict.pyi]
