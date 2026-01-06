@@ -9,8 +9,8 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from collections.abc import Iterator
-from typing import Any, Callable
+from collections.abc import Callable, Iterator
+from typing import Any
 
 from pytest import raises
 
@@ -88,6 +88,8 @@ class _TypedDict(Mapping[str, object]):
     __total__: ClassVar[bool]
     __readonly_keys__: ClassVar[frozenset[str]]
     __mutable_keys__: ClassVar[frozenset[str]]
+    __closed__: ClassVar[bool | None]
+    __extra_items__: ClassVar[Any]
 def overload(func: _T) -> _T: ...
 def type_check_only(func: _T) -> _T: ...
 def final(func: _T) -> _T: ...
@@ -307,6 +309,29 @@ class StubtestUnit(unittest.TestCase):
                 mistyped_var = 1
             """,
             error="X.mistyped_var",
+        )
+
+    @collect_cases
+    def test_transparent_type_check_only_subclasses(self) -> Iterator[Case]:
+        # See https://github.com/python/mypy/issues/20223
+        yield Case(
+            stub="""
+            from typing import type_check_only
+
+            class UFunc: ...
+
+            @type_check_only
+            class _BinaryUFunc(UFunc): ...
+
+            equal: _BinaryUFunc
+            """,
+            runtime="""
+            class UFunc:
+                pass
+
+            equal = UFunc()
+            """,
+            error=None,
         )
 
     @collect_cases
@@ -1304,38 +1329,37 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
-        if sys.version_info >= (3, 10):
-            yield Case(
-                stub="""
-                Q = Dict[str, str]
-                R = dict[int, int]
-                S = Tuple[int, int]
-                T = tuple[str, str]
-                U = int | str
-                V = Union[int, str]
-                W = typing.Callable[[str], bool]
-                Z = collections.abc.Callable[[str], bool]
-                QQ = typing.Iterable[str]
-                RR = collections.abc.Iterable[str]
-                MM = typing.Match[str]
-                MMM = re.Match[str]
-                """,
-                runtime="""
-                Q = dict[str, str]
-                R = dict[int, int]
-                S = tuple[int, int]
-                T = tuple[str, str]
-                U = int | str
-                V = int | str
-                W = collections.abc.Callable[[str], bool]
-                Z = collections.abc.Callable[[str], bool]
-                QQ = collections.abc.Iterable[str]
-                RR = collections.abc.Iterable[str]
-                MM = re.Match[str]
-                MMM = re.Match[str]
-                """,
-                error=None,
-            )
+        yield Case(
+            stub="""
+            Q = Dict[str, str]
+            R = dict[int, int]
+            S = Tuple[int, int]
+            T = tuple[str, str]
+            U = int | str
+            V = Union[int, str]
+            W = typing.Callable[[str], bool]
+            Z = collections.abc.Callable[[str], bool]
+            QQ = typing.Iterable[str]
+            RR = collections.abc.Iterable[str]
+            MM = typing.Match[str]
+            MMM = re.Match[str]
+            """,
+            runtime="""
+            Q = dict[str, str]
+            R = dict[int, int]
+            S = tuple[int, int]
+            T = tuple[str, str]
+            U = int | str
+            V = int | str
+            W = collections.abc.Callable[[str], bool]
+            Z = collections.abc.Callable[[str], bool]
+            QQ = collections.abc.Iterable[str]
+            RR = collections.abc.Iterable[str]
+            MM = re.Match[str]
+            MMM = re.Match[str]
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:
@@ -1480,6 +1504,30 @@ class StubtestUnit(unittest.TestCase):
                 __slots__ = ()
             """,
             error=None,
+        )
+        yield Case(
+            stub="""
+            class HasCompatibleValue(enum.Enum):
+                _value_: str
+                FOO = ...
+            """,
+            runtime="""
+            class HasCompatibleValue(enum.Enum):
+                FOO = "foo"
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class HasIncompatibleValue(enum.Enum):
+                _value_: int
+                FOO = ...
+            """,
+            runtime="""
+            class HasIncompatibleValue(enum.Enum):
+                FOO = "foo"
+            """,
+            error="HasIncompatibleValue.FOO",
         )
 
     @collect_cases
@@ -2330,13 +2378,10 @@ assert annotations
         )
         yield Case(stub="A = TypeVar('A')", runtime="A = TypeVar('A')", error=None)
         yield Case(stub="B = TypeVar('B')", runtime="B = 5", error="B")
-        if sys.version_info >= (3, 10):
-            yield Case(
-                stub="from typing import ParamSpec",
-                runtime="from typing import ParamSpec",
-                error=None,
-            )
-            yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
+        yield Case(
+            stub="from typing import ParamSpec", runtime="from typing import ParamSpec", error=None
+        )
+        yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
 
     @collect_cases
     def test_metaclass_match(self) -> Iterator[Case]:
@@ -2860,10 +2905,7 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = result.files["__main__"].names["myfunction"].node
         assert isinstance(stub, nodes.OverloadedFuncDef)
         sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
-        if sys.version_info >= (3, 10):
-            assert str(sig) == "def (arg: builtins.int | builtins.str)"
-        else:
-            assert str(sig) == "def (arg: Union[builtins.int, builtins.str])"
+        assert str(sig) == "def (arg: builtins.int | builtins.str)"
 
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"

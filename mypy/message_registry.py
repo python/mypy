@@ -176,7 +176,7 @@ GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
     "Access to generic instance variables via class is ambiguous"
 )
 GENERIC_CLASS_VAR_ACCESS: Final = "Access to generic class variables is ambiguous"
-BARE_GENERIC: Final = "Missing type parameters for generic type {}"
+BARE_GENERIC: Final = "Missing type arguments for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
