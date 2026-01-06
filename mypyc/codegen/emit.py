@@ -1279,7 +1279,7 @@ def pformat_deterministic(obj: object, line_width: int) -> str:
     # Temporarily override pprint._safe_key
     default_safe_key = pprint._safe_key  # type: ignore [attr-defined]
     pprint._safe_key = _mypyc_safe_key  # type: ignore [attr-defined]
-    
+
     try:
         return pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
     finally:
