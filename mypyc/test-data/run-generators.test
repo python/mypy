@@ -866,7 +866,7 @@ def test_bitmap_is_cleared_when_object_is_reused() -> None:
     list(gen(True))
 
     # Ensure bitmap has been cleared.
-    with assertRaises(AttributeError):  # TODO: Should be UnboundLocalError
+    with assertRaises(UnboundLocalError):
       list(gen(False))
 
 def gen2(set: bool) -> Iterator[int]:
@@ -878,7 +878,7 @@ def gen2(set: bool) -> Iterator[int]:
 def test_undefined_int_in_environment() -> None:
     list(gen2(True))
 
-    with assertRaises(AttributeError):  # TODO: Should be UnboundLocalError
+    with assertRaises(UnboundLocalError):
       list(gen2(False))
 
 [case testVariableWithSameNameAsHelperMethod]
@@ -902,10 +902,9 @@ def test_same_names() -> None:
     assert list(gen_send()) == [2]
     assert list(gen_throw()) == [84]
 
-    with assertRaises(AttributeError, "attribute 'send' of 'undefined_gen' undefined"):
-        # TODO: Should be UnboundLocalError, this test verifies that the attribute name
-        # matches the variable name in the input code, since internally it's generated
-        # with a prefix.
+    with assertRaises(UnboundLocalError, "local variable 'send' referenced before assignment"):
+        # this test verifies that the attribute name matches the variable name
+        # in the input code, since internally it's generated with a prefix.
         list(undefined())
 
 [case testGeneratorInheritance]
