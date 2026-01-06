@@ -314,6 +314,11 @@ class range(Iterable[int]):
     def __len__(self) -> int: pass
     def __next__(self) -> int: pass
 
+class map(Iterator[_S]):
+    def __init__(self, func: Callable[[_T], _S], iterable: Iterable[_T]) -> None: pass
+    def __iter__(self) -> Self: pass
+    def __next__(self) -> _S: pass
+
 class property:
     def __init__(self, fget: Optional[Callable[[Any], Any]] = ...,
                  fset: Optional[Callable[[Any, Any], None]] = ...,
