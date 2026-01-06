@@ -230,7 +230,14 @@ final_string: Final = "abc"
 final_int: Final = 1
 
 def getitem_folded() -> str:
-    return final_string[final_int] + final_string[-1]
+    return (
+        final_string[final_int]
+        + final_string[-1]
+        + final_string[:]
+        + final_string[:2]
+        + final_string[1:3]
+        + final_string[-3:-1]
+    )
 
 def find(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
     if start is not None:
@@ -269,7 +276,7 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
-    assert getitem_folded() == "bc"
+    assert getitem_folded() == "bcabcabcbab"
 
 def test_find() -> None:
     s = "abcab"

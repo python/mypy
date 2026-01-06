@@ -490,6 +490,14 @@ def neg_index() -> None:
     a = long_string[-5]
 def slice_index() -> None:
     a = long_string[5:]
+def full_slice() -> None:
+    a = long_string[:]
+def prefix_slice() -> None:
+    a = long_string[:5]
+def mid_slice() -> None:
+    a = long_string[3:5]
+def negative_slice() -> None:
+    a = long_string[-6:-1]
 [out]
 def pos_index():
     r0, a :: str
@@ -507,5 +515,29 @@ def slice_index():
     r0, a :: str
 L0:
     r0 = 'string'
+    a = r0
+    return 1
+def full_slice():
+    r0, a :: str
+L0:
+    r0 = 'long string'
+    a = r0
+    return 1
+def prefix_slice():
+    r0, a :: str
+L0:
+    r0 = 'long '
+    a = r0
+    return 1
+def mid_slice():
+    r0, a :: str
+L0:
+    r0 = 'g '
+    a = r0
+    return 1
+def negative_slice():
+    r0, a :: str
+L0:
+    r0 = 'strin'
     a = r0
     return 1
