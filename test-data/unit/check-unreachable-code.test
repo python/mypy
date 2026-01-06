@@ -1653,12 +1653,7 @@ main:4: error: Statement is unreachable
 
 [case testNoFalseUnreachableWithAnyEqualityNarrowing]
 # flags: --warn-unreachable
-# Regression test for https://github.com/python/mypy/issues/20532
 from typing import Any, Optional
-
 def main(contents: Any, commit: Optional[str]) -> None:
-    if (
-        contents.get("commit") == commit
-        and (commit is not None or 1)
-    ):
+    if contents.get("commit") == commit and (commit is not None or 1):
         pass
