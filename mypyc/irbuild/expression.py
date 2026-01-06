@@ -1028,7 +1028,7 @@ def dict_literal_values(
         if not isinstance(expr, TupleExpr):
             return None
         folded = tuple(map(constant_fold_expr_or_tuple, expr.items))
-        return cast(ConstantValueTuple, folded) if None not in folded else None
+        return None if None in folded else cast(ConstantValueTuple, folded)
 
     result = {}
     for key_expr, value_expr in items:
