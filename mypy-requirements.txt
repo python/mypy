@@ -2,6 +2,6 @@
 # and the pins in setup.py
 typing_extensions>=4.6.0
 mypy_extensions>=1.0.0
-pathspec>=0.9.0
+pathspec>=1.0.0
 tomli>=1.1.0; python_version<'3.11'
 librt>=0.6.2; platform_python_implementation != 'PyPy'
