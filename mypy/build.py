@@ -2180,7 +2180,8 @@ class State:
             self.dep_hashes = {
                 k: v for (k, v) in zip(self.meta.dependencies, self.meta.dep_hashes)
             }
-            self.error_lines = self.meta.error_lines
+            # Only copy `error_lines` if the module is not silently imported.
+            self.error_lines = [] if self.ignore_all else self.meta.error_lines
             if temporary:
                 self.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():

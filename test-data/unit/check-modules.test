@@ -3184,7 +3184,7 @@ from b import no_such_export
 [file b.py]
 from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
 
-[case testCyclicUndefinedImportWithStar1_no_parallel]
+[case testCyclicUndefinedImportWithStar1]
 import a
 [file a.py]
 from b import no_such_export
@@ -3192,9 +3192,8 @@ from b import no_such_export
 from a import *
 [out]
 tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
-[case testCyclicUndefinedImportWithStar2_no_parallel]
+[case testCyclicUndefinedImportWithStar2]
 import a
 [file a.py]
 from b import no_such_export
@@ -3204,8 +3203,6 @@ from c import *
 from a import *
 [out]
 tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
-tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
 [case testCyclicUndefinedImportWithStar3]
 import test1
