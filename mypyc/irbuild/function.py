@@ -69,7 +69,7 @@ from mypyc.irbuild.callable_class import (
     instantiate_callable_class,
     setup_callable_class,
 )
-from mypyc.irbuild.context import FuncInfo
+from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_vars_to_env,
     finalize_env_class,
@@ -246,6 +246,12 @@ def gen_func_item(
     is_generator = fn_info.is_generator
     builder.enter(fn_info, ret_type=sig.ret_type)
 
+    if is_generator:
+        fitem = builder.fn_info.fitem
+        assert isinstance(fitem, FuncDef), fitem
+        generator_class_ir = builder.mapper.fdef_to_generator[fitem]
+        builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
+
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
     # store a variable denoting the next instruction to be executed when the __next__ function
@@ -357,8 +363,8 @@ def gen_func_ir(
                 builder.module_name,
                 sig,
                 func_decl.kind,
-                func_decl.is_prop_getter,
-                func_decl.is_prop_setter,
+                is_prop_getter=func_decl.is_prop_getter,
+                is_prop_setter=func_decl.is_prop_setter,
             )
             func_ir = FuncIR(func_decl, args, blocks, fitem.line, traceback_name=fitem.name)
         else:
@@ -756,6 +762,7 @@ def gen_glue_method(
             builder.module_name,
             FuncSignature(rt_args, ret_type),
             target.decl.kind,
+            is_coroutine=target.decl.is_coroutine,
         ),
         arg_regs,
         blocks,
@@ -851,11 +858,6 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     return builder.add_local_reg(fdef, object_rprimitive)
 
 
-# This function still does not support the following imports.
-# import json as _json
-# from json import decoder
-# Using either _json.JSONDecoder or decoder.JSONDecoder as a type hint for a dataclass field will fail.
-# See issue mypyc/mypyc#1099.
 def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, line: int) -> Value:
     # typ.fullname contains the module where the class object was defined. However, it is possible
     # that the class object's module was not imported in the file currently being compiled. So, we
@@ -869,34 +871,17 @@ def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, li
     # `mod2.mod3.OuterClass.InnerClass` and `unbounded_type.name` is `mod1.OuterClass.InnerClass`.
     # So, we must use unbounded_type.name to load the class object.
     # See issue mypyc/mypyc#1087.
-    load_attr_path = (
-        unbounded_type.name if isinstance(unbounded_type, UnboundType) else typ.fullname
-    ).removesuffix(f".{typ.name}")
     if typ in builder.mapper.type_to_ir:
         class_ir = builder.mapper.type_to_ir[typ]
         class_obj = builder.builder.get_native_type(class_ir)
     elif typ.fullname in builtin_names:
         builtin_addr_type, src = builtin_names[typ.fullname]
         class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
-    # This elif-condition finds the longest import that matches the load_attr_path.
-    elif module_name := max(
-        (i for i in builder.imports if load_attr_path == i or load_attr_path.startswith(f"{i}.")),
-        default="",
-        key=len,
-    ):
-        # Load the imported module.
-        loaded_module = builder.load_module(module_name)
-        # Recursively load attributes of the imported module. These may be submodules, classes or
-        # any other object.
-        for attr in (
-            load_attr_path.removeprefix(f"{module_name}.").split(".")
-            if load_attr_path != module_name
-            else []
-        ):
-            loaded_module = builder.py_get_attr(loaded_module, attr, line)
-        class_obj = builder.builder.get_attr(
-            loaded_module, typ.name, object_rprimitive, line, borrow=False
-        )
+    elif isinstance(unbounded_type, UnboundType):
+        path_parts = unbounded_type.name.split(".")
+        class_obj = builder.load_global_str(path_parts[0], line)
+        for attr in path_parts[1:]:
+            class_obj = builder.py_get_attr(class_obj, attr, line)
     else:
         class_obj = builder.load_global_str(typ.name, line)
 
