@@ -3799,3 +3799,13 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     wrapper = r2
     return wrapper
+
+[case testStaticLength]
+def get_length() -> int:
+    return len("https://w3id.org/cwl/salad#")
+[out]
+def get_length():
+    r0 :: str
+L0:
+    r0 = 'https://w3id.org/cwl/salad#'
+    return 54

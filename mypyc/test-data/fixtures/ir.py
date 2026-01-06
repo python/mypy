@@ -86,6 +86,7 @@ class int:
     def __gt__(self, n: int) -> bool: pass
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
+    def bit_length(self) -> int: pass
 
 class str:
     @overload
@@ -177,6 +178,8 @@ class bytes:
     def __getitem__(self, i: slice) -> bytes: ...
     def join(self, x: Iterable[object]) -> bytes: ...
     def decode(self, encoding: str=..., errors: str=...) -> str: ...
+    def translate(self, t: bytes) -> bytes: ...
+    def startswith(self, t: bytes) -> bool: ...
     def __iter__(self) -> Iterator[int]: ...
 
 class bytearray:
@@ -190,6 +193,7 @@ class bytearray:
     def __setitem__(self, i: int, o: int) -> None: ...
     def __getitem__(self, i: int) -> int: ...
     def decode(self, x: str = ..., y: str = ...) -> str: ...
+    def startswith(self, t: bytes) -> bool: ...
 
 class bool(int):
     def __init__(self, o: object = ...) -> None: ...
@@ -309,6 +313,11 @@ class range(Iterable[int]):
     def __iter__(self) -> Iterator[int]: pass
     def __len__(self) -> int: pass
     def __next__(self) -> int: pass
+
+class map(Iterator[_S]):
+    def __init__(self, func: Callable[[_T], _S], iterable: Iterable[_T]) -> None: pass
+    def __iter__(self) -> Self: pass
+    def __next__(self) -> _S: pass
 
 class property:
     def __init__(self, fget: Optional[Callable[[Any], Any]] = ...,

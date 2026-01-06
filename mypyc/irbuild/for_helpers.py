@@ -7,11 +7,11 @@ such special case.
 
 from __future__ import annotations
 
-from typing import Callable, ClassVar
+from collections.abc import Callable
+from typing import ClassVar, cast
 
 from mypy.nodes import (
     ARG_POS,
-    BytesExpr,
     CallExpr,
     DictionaryComprehension,
     Expression,
@@ -23,7 +23,6 @@ from mypy.nodes import (
     RefExpr,
     SetExpr,
     StarExpr,
-    StrExpr,
     TupleExpr,
     TypeAlias,
     Var,
@@ -67,6 +66,7 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.primitives.dict_ops import (
@@ -241,24 +241,44 @@ def sequence_from_generator_preallocate_helper(
         rtype = builder.node_type(sequence_expr)
         if not (is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple)):
             return None
-        sequence = builder.accept(sequence_expr)
-        length = get_expr_length_value(builder, sequence_expr, sequence, line, use_pyssize_t=True)
+
         if isinstance(rtype, RTuple):
             # If input is RTuple, box it to tuple_rprimitive for generic iteration
             # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
             proper_type = get_proper_type(builder.types[sequence_expr])
             assert isinstance(proper_type, TupleType), proper_type
 
-            get_item_ops = [
-                (
-                    LoadLiteral(typ.value, object_rprimitive)
-                    if isinstance(typ, LiteralType)
-                    else TupleGet(sequence, i, line)
-                )
-                for i, typ in enumerate(get_proper_types(proper_type.items))
-            ]
+            # the for_loop_helper_with_index crashes for empty tuples, bail out
+            if not proper_type.items:
+                return None
+
+            proper_types = get_proper_types(proper_type.items)
+
+            get_item_ops: list[LoadLiteral | TupleGet]
+            if all(isinstance(typ, LiteralType) for typ in proper_types):
+                get_item_ops = [
+                    LoadLiteral(cast(LiteralType, typ).value, object_rprimitive)
+                    for typ in proper_types
+                ]
+
+            else:
+                sequence = builder.accept(sequence_expr)
+                get_item_ops = [
+                    (
+                        LoadLiteral(typ.value, object_rprimitive)
+                        if isinstance(typ, LiteralType)
+                        else TupleGet(sequence, i, line)
+                    )
+                    for i, typ in enumerate(proper_types)
+                ]
+
             items = list(map(builder.add, get_item_ops))
             sequence = builder.new_tuple(items, line)
+
+        else:
+            sequence = builder.accept(sequence_expr)
+
+        length = get_expr_length_value(builder, sequence_expr, sequence, line, use_pyssize_t=True)
 
         target_op = empty_op_llbuilder(length, line)
 
@@ -1203,18 +1223,19 @@ class ForZip(ForGenerator):
             gen.gen_cleanup()
 
 
-def get_expr_length(expr: Expression) -> int | None:
-    if isinstance(expr, (StrExpr, BytesExpr)):
-        return len(expr.value)
+def get_expr_length(builder: IRBuilder, expr: Expression) -> int | None:
+    folded = constant_fold_expr(builder, expr)
+    if isinstance(folded, (str, bytes)):
+        return len(folded)
     elif isinstance(expr, (ListExpr, TupleExpr)):
         # if there are no star expressions, or we know the length of them,
         # we know the length of the expression
-        stars = [get_expr_length(i) for i in expr.items if isinstance(i, StarExpr)]
+        stars = [get_expr_length(builder, i) for i in expr.items if isinstance(i, StarExpr)]
         if None not in stars:
             other = sum(not isinstance(i, StarExpr) for i in expr.items)
             return other + sum(stars)  # type: ignore [arg-type]
     elif isinstance(expr, StarExpr):
-        return get_expr_length(expr.expr)
+        return get_expr_length(builder, expr.expr)
     elif (
         isinstance(expr, RefExpr)
         and isinstance(expr.node, Var)
@@ -1223,10 +1244,47 @@ def get_expr_length(expr: Expression) -> int | None:
         and expr.node.has_explicit_value
     ):
         return len(expr.node.final_value)
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, NameExpr)
+        and all(kind == ARG_POS for kind in expr.arg_kinds)
+    ):
+        fullname = callee.fullname
+        if (
+            fullname
+            in (
+                "builtins.list",
+                "builtins.tuple",
+                "builtins.enumerate",
+                "builtins.sorted",
+                "builtins.reversed",
+            )
+            and len(expr.args) == 1
+        ):
+            return get_expr_length(builder, expr.args[0])
+        elif fullname == "builtins.map" and len(expr.args) == 2:
+            return get_expr_length(builder, expr.args[1])
+        elif fullname == "builtins.zip" and expr.args:
+            arg_lengths = [get_expr_length(builder, arg) for arg in expr.args]
+            if all(arg is not None for arg in arg_lengths):
+                return min(arg_lengths)  # type: ignore [type-var]
+        elif fullname == "builtins.range" and len(expr.args) <= 3:
+            folded_args = [constant_fold_expr(builder, arg) for arg in expr.args]
+            if all(isinstance(arg, int) for arg in folded_args):
+                try:
+                    return len(range(*cast(list[int], folded_args)))
+                except ValueError:  # prevent crash if invalid args
+                    pass
+
     # TODO: extend this, passing length of listcomp and genexp should have worthwhile
     # performance boost and can be (sometimes) figured out pretty easily. set and dict
     # comps *can* be done as well but will need special logic to consider the possibility
-    # of key conflicts. Range, enumerate, zip are all simple logic.
+    # of key conflicts.
+
+    # we might still be able to get the length directly from the type
+    rtype = builder.node_type(expr)
+    if isinstance(rtype, RTuple):
+        return len(rtype.types)
     return None
 
 
@@ -1235,7 +1293,7 @@ def get_expr_length_value(
 ) -> Value:
     rtype = builder.node_type(expr)
     assert is_sequence_rprimitive(rtype) or isinstance(rtype, RTuple), rtype
-    length = get_expr_length(expr)
+    length = get_expr_length(builder, expr)
     if length is None:
         # We cannot compute the length at compile time, so we will fetch it.
         return builder.builder.builtin_len(expr_reg, line, use_pyssize_t=use_pyssize_t)

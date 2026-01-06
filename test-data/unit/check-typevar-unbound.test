@@ -80,7 +80,7 @@ class B: ...
 lookup_table: Mapping[str, Type[Union[A,B]]]
 def load(lookup_table: Mapping[str, Type[T]], lookup_key: str) -> T:
     ...
-reveal_type(load(lookup_table, "a"))  # N: Revealed type is "Union[__main__.A, __main__.B]"
+reveal_type(load(lookup_table, "a"))  # N: Revealed type is "__main__.A | __main__.B"
 
 lookup_table_a: Mapping[str, Type[A]]
 def load2(lookup_table: Mapping[str, Type[Union[T, int]]], lookup_key: str) -> T:
@@ -105,7 +105,7 @@ T2 = TypeVar("T2", bool, str)
 def foo2(t: Type[T2]) -> None: ...
 foo2(t1)
 # Rejected correctly: T2 cannot be Union[bool, str]
-foo2(t2)  # E: Value of type variable "T2" of "foo2" cannot be "Union[bool, str]"
+foo2(t2)  # E: Value of type variable "T2" of "foo2" cannot be "bool | str"
 
 T3 = TypeVar("T3")
 def foo3(t: Type[T3]) -> None: ...
