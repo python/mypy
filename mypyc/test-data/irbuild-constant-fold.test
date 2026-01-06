@@ -191,7 +191,7 @@ L0:
 # it is not intended to test the result.
 from typing import Any, Final
 
-FMT: Final = "{:d} {}"
+FMT: Final = "{} {}"
 
 def f() -> str:
     return FMT.format(400 + 20, "roll" + "up")
