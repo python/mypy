@@ -1311,7 +1311,7 @@ class _DeterministicPrettyPrinter(pprint.PrettyPrinter):
     def _pprint_set(
         self,
         object: set[object] | frozenset[object],
-        stream: "SupportsWrite[str]",
+        stream: SupportsWrite[str],
         indent: int,
         allowance: int,
         context: dict[int, int],
