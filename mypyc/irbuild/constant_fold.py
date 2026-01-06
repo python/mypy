@@ -119,10 +119,10 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
                     return None
 
             index = constant_fold_expr(builder, index_expr)
-            
+
             # this branching just keeps mypy happy, non-functional
             if isinstance(base, Sequence):
-                
+
                 if isinstance(index, int):
                     try:
                         return base[index]
