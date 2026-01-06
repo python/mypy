@@ -9076,7 +9076,7 @@ def foo() -> Optional[List]:
     20
 [out]
 ==
-a.py:4: error: Missing type parameters for generic type "List"
+a.py:4: error: Missing type arguments for generic type "List"
 ==
 ==
 a.py:2: error: Missing return statement
@@ -9149,7 +9149,7 @@ T = TypeVar('T')
 class A(Generic[T]): ...
 [out]
 ==
-main:5: error: Missing type parameters for generic type "A"
+main:5: error: Missing type arguments for generic type "A"
 
 [case testStripNewAnalyzer]
 # flags: --ignore-missing-imports

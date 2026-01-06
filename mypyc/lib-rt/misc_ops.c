@@ -29,12 +29,7 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
-        _Py_IDENTIFIER(send);
-        PyObject *name = _PyUnicode_FromId(&PyId_send); /* borrowed */
-        if (name == NULL) {
-            return NULL;
-        }
-        return PyObject_CallMethodOneArg(iter, name, val);
+        return PyObject_CallMethodOneArg(iter, mypyc_interned_str.send, val);
     }
 }
 
@@ -50,8 +45,6 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 // Signals an error (2) if the an exception should be propagated.
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
 {
-    _Py_IDENTIFIER(close);
-    _Py_IDENTIFIER(throw);
     PyObject *exc_type = (PyObject *)Py_TYPE(CPy_ExcState()->exc_value);
     PyObject *type, *value, *traceback;
     PyObject *_m;
@@ -59,7 +52,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
     *outp = NULL;
 
     if (PyErr_GivenExceptionMatches(exc_type, PyExc_GeneratorExit)) {
-        _m = _PyObject_GetAttrId(iter, &PyId_close);
+        _m = PyObject_GetAttr(iter, mypyc_interned_str.close_);
         if (_m) {
             res = PyObject_CallNoArgs(_m);
             Py_DECREF(_m);
@@ -72,7 +65,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
             return 2;
         }
     } else {
-        _m = _PyObject_GetAttrId(iter, &PyId_throw);
+        _m = PyObject_GetAttr(iter, mypyc_interned_str.throw_);
         if (_m) {
             _CPy_GetExcInfo(&type, &value, &traceback);
             res = PyObject_CallFunctionObjArgs(_m, type, value, traceback, NULL);
@@ -877,9 +870,9 @@ PyObject *
 CPy_CallReverseOpMethod(PyObject *left,
                         PyObject *right,
                         const char *op,
-                        _Py_Identifier *method) {
+                        PyObject *method) {
     // Look up reverse method
-    PyObject *m = _PyObject_GetAttrId(right, method);
+    PyObject *m = PyObject_GetAttr(right, method);
     if (m == NULL) {
         // If reverse method not defined, generate TypeError instead AttributeError
         if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
@@ -1065,9 +1058,7 @@ PyObject *CPy_GetName(PyObject *obj) {
     if (PyType_Check(obj)) {
         return PyType_GetName((PyTypeObject *)obj);
     }
-    _Py_IDENTIFIER(__name__);
-    PyObject *name = _PyUnicode_FromId(&PyId___name__); /* borrowed */
-    return PyObject_GetAttr(obj, name);
+    return PyObject_GetAttr(obj, mypyc_interned_str.__name__);
 }
 
 #endif

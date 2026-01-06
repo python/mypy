@@ -36,20 +36,20 @@ EXTRA_FLAGS_PER_COMPILER_TYPE_PER_PATH_COMPONENT = {
 ccompiler.CCompiler.__spawn = ccompiler.CCompiler.spawn  # type: ignore[attr-defined]
 X86_64 = platform.machine() in ("x86_64", "AMD64", "amd64")
 PYODIDE = "PYODIDE" in os.environ
+NO_EXTRA_FLAGS = "MYPYC_NO_EXTRA_FLAGS" in os.environ
 
 
 def spawn(self, cmd, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    new_cmd = list(cmd)
     if PYODIDE:
-        new_cmd = list(cmd)
         for argument in reversed(new_cmd):
             if not str(argument).endswith(".c"):
                 continue
             if "base64/arch/" in str(argument):
                 new_cmd.extend(["-msimd128"])
-    else:
+    elif not NO_EXTRA_FLAGS:
         compiler_type: str = self.compiler_type
         extra_options = EXTRA_FLAGS_PER_COMPILER_TYPE_PER_PATH_COMPONENT.get(compiler_type, None)
-        new_cmd = list(cmd)
         if X86_64 and extra_options is not None:
             # filenames are closer to the end of command line
             for argument in reversed(new_cmd):
