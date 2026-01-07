@@ -2754,3 +2754,20 @@ class X(Generic[Unpack[Ts]]):
 def c(t: X[Concatenate[int, ...]]) -> None:  # E: Cannot use "[int, VarArg(Any), KwArg(Any)]" for TypeVarTuple, only for ParamSpec
     reveal_type(t)  # N: Revealed type is "__main__.X[Unpack[builtins.tuple[Any, ...]]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleLiteralValueAsTypeArgument]
+# flags: --python-version 3.12
+from typing import TypeVarTuple, Generic, Unpack
+
+Ts = TypeVarTuple('Ts')
+
+def fn[*T]() -> None:
+    pass
+
+class C(Generic[*Ts]):
+    pass
+
+x = C[1, 2, 3]() # E: Invalid type: try using Literal[1] instead? \
+                 # E: Invalid type: try using Literal[2] instead? \
+                 # E: Invalid type: try using Literal[3] instead?
+[builtins fixtures/tuple.pyi]

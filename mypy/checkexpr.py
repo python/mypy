@@ -4966,7 +4966,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
             return list(args)
         # TODO: in future we may want to support type application to variadic functions.
-        assert t.is_type_obj()
+        if not t.is_type_obj():
+            self.chk.fail(f"Invalid type argument: type expected, for {args[0]!r}", ctx)
+            return [AnyType(TypeOfAny.from_error)] * len(vars)
         info = t.type_object()
         # We reuse the logic from semanal phase to reduce code duplication.
         fake = Instance(info, args, line=ctx.line, column=ctx.column)
