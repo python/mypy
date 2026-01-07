@@ -2737,3 +2737,13 @@ class ClassB(ClassA):
     def value(self) -> int:
         return 0
 [builtins fixtures/dict.pyi]
+
+[case testDataclassNameCollisionNoCrash]
+from dataclasses import dataclass
+def fn(a: int) -> int:
+    return a
+@dataclass
+class Test:
+    foo = fn
+    foo: int = 42  # E: Name "foo" already defined on line 6
+[builtins fixtures/tuple.pyi]
