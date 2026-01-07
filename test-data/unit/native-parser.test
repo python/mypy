@@ -1812,6 +1812,31 @@ MypyFile:1(
     Keywords(_root=NameExpr(None), total=NameExpr(False))
     PassStmt:1()))
 
+[case testClassDecorator]
+@foo
+class X: pass
+@foo(bar)
+@x.y
+class Z: pass
+[out]
+MypyFile:1(
+  ClassDef:2(
+    X
+    Decorators(
+      NameExpr(foo))
+    PassStmt:2())
+  ClassDef:5(
+    Z
+    Decorators(
+      CallExpr:3(
+        NameExpr(foo)
+        Args(
+          NameExpr(bar)))
+      MemberExpr:4(
+        NameExpr(x)
+        y))
+    PassStmt:5()))
+
 [case testUnpackTypeInSignature]
 def f(*args: *Ts) -> None:
     pass

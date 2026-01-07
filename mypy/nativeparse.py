@@ -534,10 +534,10 @@ def read_class_def(data: ReadBuffer) -> ClassDef:
     # Base classes
     base_type_exprs = read_expression_list(data)
 
-    # TODO: Decorators (skip for now)
+    # Decorators
     expect_tag(data, LIST_GEN)
     n_decorators = read_int_bare(data)
-    assert n_decorators == 0, "Decorators not yet supported"
+    decorators = [read_expression(data) for _ in range(n_decorators)]
 
     # TODO: Type parameters (skip for now)
     has_type_params = read_bool(data)
@@ -562,6 +562,7 @@ def read_class_def(data: ReadBuffer) -> ClassDef:
         metaclass=metaclass,
         keywords=keywords if keywords else None
     )
+    class_def.decorators = decorators
     read_loc(data, class_def)
     expect_end_tag(data)
     return class_def
