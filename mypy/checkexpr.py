@@ -6759,8 +6759,53 @@ def any_causes_overload_ambiguity(
                 for formal in formals:
                     matching_formals.append(matched_callable.arg_types[formal])
             if not all_same_types(matching_formals) and not all_same_types(matching_returns):
-                # Any maps to multiple different types, and the return types of these items differ.
+                if _any_in_unrelated_position(get_proper_type(arg_type), matching_formals):
+                    continue
                 return True
+    return False
+
+
+def _any_in_unrelated_position(arg_type: ProperType, formals: list[Type]) -> bool:
+    """Whether Any in arg_type doesn't affect overload differentiation."""
+    if isinstance(arg_type, AnyType):
+        return False
+
+    proper_formals = [get_proper_type(f) for f in formals]
+    if len(proper_formals) < 2:
+        return False
+
+    if isinstance(arg_type, TupleType):
+        if not all(isinstance(f, TupleType) and len(f.items) == len(arg_type.items)
+                   for f in proper_formals):
+            return False
+        tuple_formals = cast(list[TupleType], proper_formals)
+        for i, item in enumerate(arg_type.items):
+            item_proper = get_proper_type(item)
+            if has_any_type(item_proper):
+                formal_items = [tf.items[i] for tf in tuple_formals]
+                if all_same_types(formal_items):
+                    continue
+                if not _any_in_unrelated_position(item_proper, formal_items):
+                    return False
+        return True
+
+    if isinstance(arg_type, CallableType):
+        if not all(isinstance(f, CallableType) for f in proper_formals):
+            return False
+        formal_callables = cast(list[CallableType], proper_formals)
+        first_args = formal_callables[0].arg_types
+        for fc in formal_callables[1:]:
+            if len(fc.arg_types) != len(first_args):
+                return False
+            for a1, a2 in zip(first_args, fc.arg_types):
+                if not is_same_type(a1, a2):
+                    return False
+        return_types = [fc.ret_type for fc in formal_callables]
+        for candidate in return_types:
+            if all(is_subtype(candidate, other) for other in return_types):
+                return True
+        return False
+
     return False
 
 

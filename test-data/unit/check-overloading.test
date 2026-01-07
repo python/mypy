@@ -1906,6 +1906,73 @@ a: Any
 reveal_type(f(a))     # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(f(a)(a))  # N: Revealed type is "Any"
 
+[case testOverloadWithNestedAnyInCallableDoesNotCauseAmbiguity]
+# https://github.com/python/mypy/issues/20442
+from typing import overload, Any, Generic, Callable
+from typing_extensions import TypeVar
+
+T = TypeVar("T")
+
+class MyClass(Generic[T]):
+    pass
+
+class Result1:
+    pass
+
+class Result2:
+    pass
+
+@overload
+def test(x: Callable[[MyClass[Any]], int]) -> Result1: ...
+@overload
+def test(x: Callable[[MyClass[Any]], Any]) -> Result2: ...
+def test(x: object) -> object:
+    return x
+
+def fn1(c: MyClass[Any]) -> int:
+    return 1
+
+reveal_type(test(fn1))  # N: Revealed type is "__main__.Result1"
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadWithNestedAnyInTupleCallableDoesNotCauseAmbiguity]
+# https://github.com/python/mypy/issues/20442
+from typing import overload, Any, Generic, Callable, Iterable
+from collections.abc import Hashable
+from typing_extensions import TypeVar, Self
+
+IndexT0 = TypeVar("IndexT0")
+T = TypeVar("T")
+
+class Series:
+    pass
+
+class _LocIndexerFrame(Generic[T]):
+    @overload
+    def __getitem__(self, idx: tuple[Callable[[DataFrame], int], str]) -> int: ...
+    @overload
+    def __getitem__(self, idx: tuple[Callable[[DataFrame], list[Hashable]], str]) -> Series: ...
+    @overload
+    def __getitem__(self, idx: tuple[Callable[[DataFrame], Any], Iterable[Hashable]]) -> T: ...
+    def __getitem__(self, idx: object) -> object:
+        return idx
+
+class DataFrame(Generic[IndexT0]):
+    @property
+    def loc(self) -> _LocIndexerFrame[Self]:
+        return _LocIndexerFrame()
+
+def select2(df: DataFrame[Any]) -> list[Hashable]:
+    return []
+
+def select3(_: DataFrame[Any]) -> int:
+    return 1
+
+reveal_type(DataFrame().loc[select2, "x"])  # N: Revealed type is "__main__.Series"
+reveal_type(DataFrame().loc[select3, "x"])  # N: Revealed type is "builtins.int"
+[builtins fixtures/property.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
 from mod import MyInt
