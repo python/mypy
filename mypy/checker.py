@@ -160,6 +160,7 @@ from mypy.subtypes import (
     find_member,
     infer_class_variances,
     is_callable_compatible,
+    is_enum_value_pair,
     is_equivalent,
     is_more_precise,
     is_proper_subtype,
@@ -6695,6 +6696,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if operator in {"is", "is not"}:
             is_valid_target: Callable[[Type], bool] = is_singleton_type
             coerce_only_in_literal_context = False
+            no_custom_eq = True
             should_narrow_by_identity = True
         else:
 
@@ -6710,14 +6712,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             coerce_only_in_literal_context = True
 
             expr_types = [operand_types[i] for i in expr_indices]
-            should_narrow_by_identity = all(
-                map(has_no_custom_eq_checks, expr_types)
-            ) and not is_ambiguous_mix_of_enums(expr_types)
+            no_custom_eq = all(map(has_no_custom_eq_checks, expr_types))
+            should_narrow_by_identity = not is_ambiguous_mix_of_enums(expr_types)
 
         if_map: TypeMap = {}
         else_map: TypeMap = {}
-        if should_narrow_by_identity:
-            if_map, else_map = self.refine_identity_comparison_expression(
+        if no_custom_eq:
+            # Try to narrow the types or at least identify unreachable blocks.
+            # If there's some mix of enums and values, we do not want to narrow enums
+            # to literals, but still want to detect unreachable branches.
+            if_map_optimistic, else_map_optimistic = self.refine_identity_comparison_expression(
                 operands,
                 operand_types,
                 expr_indices,
@@ -6725,6 +6729,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 is_valid_target,
                 coerce_only_in_literal_context,
             )
+            if should_narrow_by_identity:
+                if_map = if_map_optimistic
+                else_map = else_map_optimistic
+            else:
+                if if_map_optimistic is None:
+                    if_map = None
+                if else_map_optimistic is None:
+                    else_map = None
 
         if if_map == {} and else_map == {}:
             if_map, else_map = self.refine_away_none_in_comparison(
@@ -6972,13 +6984,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 expr_type = coerce_to_literal(expr_type)
             if not is_valid_target(get_proper_type(expr_type)):
                 continue
-            if target and not is_same_type(target, expr_type):
+            if (
+                target is not None
+                and not is_same_type(target, expr_type)
+                and not is_enum_value_pair(target, expr_type)
+            ):
                 # We have multiple disjoint target types. So the 'if' branch
                 # must be unreachable.
                 return None, {}
             target = expr_type
             possible_target_indices.append(i)
-
         # There's nothing we can currently infer if none of the operands are valid targets,
         # so we end early and infer nothing.
         if target is None:
@@ -9447,7 +9462,8 @@ def _ambiguous_enum_variants(types: list[Type]) -> set[str]:
             if t.last_known_value:
                 result.update(_ambiguous_enum_variants([t.last_known_value]))
             elif t.type.is_enum and any(
-                base.fullname in ("enum.IntEnum", "enum.StrEnum") for base in t.type.mro
+                base.fullname in ("enum.IntEnum", "enum.StrEnum", "builtins.str", "builtins.int")
+                for base in t.type.mro
             ):
                 result.add(t.type.fullname)
             elif not t.type.is_enum:
