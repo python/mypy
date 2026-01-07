@@ -44,6 +44,7 @@ from mypy.nodes import (
     ArgKind,
     CallExpr,
     Context,
+    Decorator,
     Expression,
     FuncDef,
     IndexExpr,
@@ -762,13 +763,28 @@ class MessageBuilder:
                 actual_type_str, expected_type_str
             )
         else:
-            if self.prefer_simple_messages():
+            try:
+                expected_type = callee.arg_types[m - 1]
+            except IndexError:  # Varargs callees
+                expected_type = callee.arg_types[-1]
+
+            decorator_context = callee_name is None and isinstance(outer_context, Decorator)
+            simple_message = self.prefer_simple_messages() and not decorator_context
+
+            if decorator_context:
+                decorator = cast(Decorator, outer_context)
+                arg_type_str, expected_type_str = format_type_distinctly(
+                    arg_type, expected_type, bare=True, options=self.options
+                )
+                func_name = decorator.func.name
+                msg = (
+                    f'Decorated function "{func_name}" has incompatible type '
+                    f"{quote_type_string(arg_type_str)}; expected "
+                    f"{quote_type_string(expected_type_str)}"
+                )
+            elif simple_message:
                 msg = "Argument has incompatible type"
             else:
-                try:
-                    expected_type = callee.arg_types[m - 1]
-                except IndexError:  # Varargs callees
-                    expected_type = callee.arg_types[-1]
                 arg_type_str, expected_type_str = format_type_distinctly(
                     arg_type, expected_type, bare=True, options=self.options
                 )
@@ -812,6 +828,7 @@ class MessageBuilder:
                         quote_type_string(arg_type_str),
                         quote_type_string(expected_type_str),
                     )
+            if not simple_message:
                 expected_type = get_proper_type(expected_type)
                 if isinstance(expected_type, UnionType):
                     expected_types = list(expected_type.items)
