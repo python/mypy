@@ -77,6 +77,7 @@ from mypy.nodes import (
     GlobalDecl,
     IfStmt,
     Import,
+    ImportAll,
     ImportFrom,
     ListComprehension,
     SetComprehension,
@@ -389,6 +390,17 @@ def read_statement(data: ReadBuffer) -> Statement:
             names.append((name, asname))
 
         stmt = ImportFrom(module_id, relative, names)
+        read_loc(data, stmt)
+        expect_end_tag(data)
+        return stmt
+    elif tag == nodes.IMPORT_ALL:
+        # Read module name (empty string for "from . import *")
+        module_id = read_str(data)
+
+        # Read relative import level
+        relative = read_int(data)
+
+        stmt = ImportAll(module_id, relative)
         read_loc(data, stmt)
         expect_end_tag(data)
         return stmt

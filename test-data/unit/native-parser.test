@@ -813,6 +813,18 @@ MypyFile:1(
   ImportFrom:5(.., [bar])
   ImportFrom:6(.pkg, [baz]))
 
+[case testImportAllStatements]
+from os import *
+from . import *
+from .. import *
+from .pkg import *
+[out]
+MypyFile:1(
+  ImportAll:1(os)
+  ImportAll:2(.)
+  ImportAll:3(..)
+  ImportAll:4(.pkg))
+
 [case testRaiseStatements]
 raise
 raise ValueError

@@ -5072,6 +5072,7 @@ GLOBAL_DECL: Final[Tag] = 211
 NONLOCAL_DECL: Final[Tag] = 212
 AWAIT_EXPR: Final[Tag] = 213
 BIG_INT_EXPR: Final[Tag] = 214
+IMPORT_ALL: Final[Tag] = 215
 
 
 def read_symbol(data: ReadBuffer) -> SymbolNode:
