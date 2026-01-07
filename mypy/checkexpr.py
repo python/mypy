@@ -6775,8 +6775,10 @@ def _any_in_unrelated_position(arg_type: ProperType, formals: list[Type]) -> boo
         return False
 
     if isinstance(arg_type, TupleType):
-        if not all(isinstance(f, TupleType) and len(f.items) == len(arg_type.items)
-                   for f in proper_formals):
+        if not all(
+            isinstance(f, TupleType) and len(f.items) == len(arg_type.items)
+            for f in proper_formals
+        ):
             return False
         tuple_formals = cast(list[TupleType], proper_formals)
         for i, item in enumerate(arg_type.items):
