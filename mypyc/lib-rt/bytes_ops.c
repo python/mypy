@@ -101,8 +101,7 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
     if (PyBytes_CheckExact(sep)) {
         return PyBytes_Join(sep, iter);
     } else {
-        _Py_IDENTIFIER(join);
-        return _PyObject_CallMethodIdOneArg(sep, &PyId_join, iter);
+        return PyObject_CallMethodOneArg(sep, mypyc_interned_str.join, iter);
     }
 }
 
@@ -157,4 +156,46 @@ CPyTagged CPyBytes_Ord(PyObject *obj) {
     }
     PyErr_SetString(PyExc_TypeError, "ord() expects a character");
     return CPY_INT_TAG;
+}
+
+PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count) {
+    Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
+    if (temp_count == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+    return PySequence_Repeat(bytes, temp_count);
+}
+
+int CPyBytes_Startswith(PyObject *self, PyObject *subobj) {
+    if (PyBytes_CheckExact(self) && PyBytes_CheckExact(subobj)) {
+        if (self == subobj) {
+            return 1;
+        }
+
+        Py_ssize_t subobj_len = PyBytes_GET_SIZE(subobj);
+        if (subobj_len == 0) {
+            return 1;
+        }
+
+        Py_ssize_t self_len = PyBytes_GET_SIZE(self);
+        if (subobj_len > self_len) {
+            return 0;
+        }
+
+        const char *self_buf = PyBytes_AS_STRING(self);
+        const char *subobj_buf = PyBytes_AS_STRING(subobj);
+
+        return memcmp(self_buf, subobj_buf, (size_t)subobj_len) == 0 ? 1 : 0;
+    }
+    PyObject *result = PyObject_CallMethodOneArg(self, mypyc_interned_str.startswith, subobj);
+    if (result == NULL) {
+        return 2;
+    }
+    int ret = PyObject_IsTrue(result);
+    Py_DECREF(result);
+    if (ret < 0) {
+        return 2;
+    }
+    return ret;
 }

@@ -31,7 +31,14 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     void_rtype,
 )
-from mypyc.primitives.registry import binary_op, custom_op, function_op, load_address_op, unary_op
+from mypyc.primitives.registry import (
+    binary_op,
+    custom_op,
+    function_op,
+    load_address_op,
+    method_op,
+    unary_op,
+)
 
 # Constructors for builtins.int and native int types have the same behavior. In
 # interpreted mode, native int types are just aliases to 'int'.
@@ -77,25 +84,25 @@ for int_name in (
         error_kind=ERR_MAGIC,
     )
 
-# str(int)
-int_to_str_op = function_op(
-    name="builtins.str",
-    arg_types=[int_rprimitive],
-    return_type=str_rprimitive,
-    c_function_name="CPyTagged_Str",
-    error_kind=ERR_MAGIC,
-    priority=2,
-)
-
-# We need a specialization for str on bools also since the int one is wrong...
-function_op(
-    name="builtins.str",
-    arg_types=[bool_rprimitive],
-    return_type=str_rprimitive,
-    c_function_name="CPyBool_Str",
-    error_kind=ERR_MAGIC,
-    priority=3,
-)
+for name in ("builtins.str", "builtins.repr"):
+    # str(int) and repr(int)
+    int_to_str_op = function_op(
+        name=name,
+        arg_types=[int_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name="CPyTagged_Str",
+        error_kind=ERR_MAGIC,
+        priority=2,
+    )
+    # We need a specialization for str on bools also since the int one is wrong...
+    function_op(
+        name=name,
+        arg_types=[bool_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name="CPyBool_Str",
+        error_kind=ERR_MAGIC,
+        priority=3,
+    )
 
 
 def int_binary_primitive(
@@ -295,4 +302,22 @@ uint8_overflow = custom_op(
     return_type=void_rtype,
     c_function_name="CPyUInt8_Overflow",
     error_kind=ERR_ALWAYS,
+)
+
+# translate isinstance(obj, int)
+isinstance_int = function_op(
+    name="builtints.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyLong_Check",
+    error_kind=ERR_NEVER,
+)
+
+# int.bit_length()
+method_op(
+    name="bit_length",
+    arg_types=[int_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyTagged_BitLength",
+    error_kind=ERR_MAGIC,
 )

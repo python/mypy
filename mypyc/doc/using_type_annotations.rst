@@ -37,10 +37,10 @@ implementations:
 * ``float`` (:ref:`native operations <float-ops>`)
 * ``bool`` (:ref:`native operations <bool-ops>`)
 * ``str`` (:ref:`native operations <str-ops>`)
-* ``List[T]`` (:ref:`native operations <list-ops>`)
-* ``Dict[K, V]`` (:ref:`native operations <dict-ops>`)
-* ``Set[T]`` (:ref:`native operations <set-ops>`)
-* ``Tuple[T, ...]`` (variable-length tuple; :ref:`native operations <tuple-ops>`)
+* ``list[T]`` (:ref:`native operations <list-ops>`)
+* ``dict[K, V]`` (:ref:`native operations <dict-ops>`)
+* ``set[T]`` (:ref:`native operations <set-ops>`)
+* ``tuple[T, ...]`` (variable-length tuple; :ref:`native operations <tuple-ops>`)
 * ``None``
 
 The link after each type lists all supported native, optimized
@@ -61,10 +61,10 @@ variable. For example, here we have a runtime type error on the final
 line of ``example`` (the ``Any`` type means an arbitrary, unchecked
 value)::
 
-    from typing import List, Any
+    from typing import Any
 
-    def example(a: List[Any]) -> None:
-        b: List[int] = a  # No error -- items are not checked
+    def example(a: list[Any]) -> None:
+        b: list[int] = a  # No error -- items are not checked
         print(b[0])  # Error here -- got str, but expected int
 
     example(["x"])
@@ -126,7 +126,7 @@ Tuple types
 
 Fixed-length
 `tuple types <https://mypy.readthedocs.io/en/stable/kinds_of_types.html#tuple-types>`_
-such as ``Tuple[int, str]`` are represented
+such as ``tuple[int, str]`` are represented
 as :ref:`value types <value-and-heap-types>` when stored in variables,
 passed as arguments, or returned from functions. Value types are
 allocated in the low-level machine stack or in CPU registers, as

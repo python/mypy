@@ -9,8 +9,8 @@ if sys.platform == "win32":
     __all__ = ("pipe", "Popen", "PIPE", "PipeHandle")
 
     BUFSIZE: Final = 8192
-    PIPE = subprocess.PIPE
-    STDOUT = subprocess.STDOUT
+    PIPE: Final = subprocess.PIPE
+    STDOUT: Final = subprocess.STDOUT
     def pipe(*, duplex: bool = False, overlapped: tuple[bool, bool] = (True, True), bufsize: int = 8192) -> tuple[int, int]: ...
 
     class PipeHandle:
@@ -34,9 +34,9 @@ if sys.platform == "win32":
         def __new__(
             cls,
             args: subprocess._CMD,
-            stdin: subprocess._FILE | None = ...,
-            stdout: subprocess._FILE | None = ...,
-            stderr: subprocess._FILE | None = ...,
+            stdin: subprocess._FILE | None = None,
+            stdout: subprocess._FILE | None = None,
+            stderr: subprocess._FILE | None = None,
             **kwds: Any,
         ) -> Self: ...
         def __init__(

@@ -38,9 +38,9 @@ def warn_explicit(
     filename: str,
     lineno: int,
     module: str | None = ...,
-    registry: dict[str | tuple[str, type[Warning], int], int] | None = ...,
-    module_globals: dict[str, Any] | None = ...,
-    source: Any | None = ...,
+    registry: dict[str | tuple[str, type[Warning], int], int] | None = None,
+    module_globals: dict[str, Any] | None = None,
+    source: Any | None = None,
 ) -> None: ...
 @overload
 def warn_explicit(
@@ -48,8 +48,8 @@ def warn_explicit(
     category: Any,
     filename: str,
     lineno: int,
-    module: str | None = ...,
-    registry: dict[str | tuple[str, type[Warning], int], int] | None = ...,
-    module_globals: dict[str, Any] | None = ...,
-    source: Any | None = ...,
+    module: str | None = None,
+    registry: dict[str | tuple[str, type[Warning], int], int] | None = None,
+    module_globals: dict[str, Any] | None = None,
+    source: Any | None = None,
 ) -> None: ...

@@ -11,13 +11,13 @@
 #include "pythoncapi_compat.h"
 #include <frameobject.h>
 #include <assert.h>
+#include "static_data.h"
 #include "mypyc_util.h"
 
 #if CPY_3_13_FEATURES
 #ifndef Py_BUILD_CORE
 #define Py_BUILD_CORE
 #endif
-#include "internal/pycore_call.h"  // _PyObject_CallMethodIdNoArgs, _PyObject_CallMethodIdOneArg
 #include "internal/pycore_genobject.h"  // _PyGen_FetchStopIterationValue
 #include "internal/pycore_pyerrors.h"  // _PyErr_FormatFromCause, _PyErr_SetKeyError
 #include "internal/pycore_setobject.h"  // _PySet_Update
@@ -36,7 +36,6 @@ extern "C" {
 
 /////////////////////////////////////////
 // Adapted from bltinmodule.c in Python 3.7.0
-_Py_IDENTIFIER(__mro_entries__);
 static PyObject*
 update_bases(PyObject *bases)
 {
@@ -58,7 +57,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        if (PyObject_GetOptionalAttrString(base, PyId___mro_entries__.string, &meth) < 0) {
+        if (PyObject_GetOptionalAttrString(base, "__mro_entries__", &meth) < 0) {
             goto error;
         }
         if (!meth) {
@@ -69,7 +68,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        new_base = _PyObject_Vectorcall(meth, stack, 1, NULL);
+        new_base = PyObject_Vectorcall(meth, stack, 1, NULL);
         Py_DECREF(meth);
         if (!new_base) {
             goto error;
@@ -111,19 +110,18 @@ error:
 }
 
 // From Python 3.7's typeobject.c
-_Py_IDENTIFIER(__init_subclass__);
 static int
 init_subclass(PyTypeObject *type, PyObject *kwds)
 {
     PyObject *super, *func, *result;
     PyObject *args[2] = {(PyObject *)type, (PyObject *)type};
 
-    super = _PyObject_Vectorcall((PyObject *)&PySuper_Type, args, 2, NULL);
+    super = PyObject_Vectorcall((PyObject *)&PySuper_Type, args, 2, NULL);
     if (super == NULL) {
         return -1;
     }
 
-    func = _PyObject_GetAttrId(super, &PyId___init_subclass__);
+    func = PyObject_GetAttrString(super, "__init_subclass__");
     Py_DECREF(super);
     if (func == NULL) {
         return -1;
@@ -378,29 +376,15 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 }
 #endif
 
-#if PY_VERSION_HEX >= 0x030A0000  // 3.10
 static int
-_CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
+_CPyObject_HasAttr(PyObject *v, PyObject *name) {
     PyObject *tmp = NULL;
-    int result = PyObject_GetOptionalAttrString(v, name->string, &tmp);
+    int result = PyObject_GetOptionalAttr(v, name, &tmp);
     if (tmp) {
         Py_DECREF(tmp);
     }
     return result;
 }
-#else
-#define _CPyObject_HasAttrId _PyObject_HasAttrId
-#endif
-
-#if PY_VERSION_HEX < 0x03090000
-// OneArgs and NoArgs functions got added in 3.9
-#define _PyObject_CallMethodIdNoArgs(self, name) \
-    _PyObject_CallMethodIdObjArgs((self), (name), NULL)
-#define _PyObject_CallMethodIdOneArg(self, name, arg) \
-    _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
-#define PyObject_CallMethodOneArg(self, name, arg) \
-    PyObject_CallMethodObjArgs((self), (name), (arg), NULL)
-#endif
 
 #if CPY_3_12_FEATURES
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict
+from collections.abc import Callable
 from functools import cmp_to_key
-from typing import Callable
 
 from mypy.build import State
 from mypy.messages import format_type
@@ -564,7 +564,7 @@ class InspectionEngine:
     ) -> dict[str, object]:
         """Top-level logic to inspect expression(s) at a location.
 
-        This can be re-used by various simple inspections.
+        This can be reused by various simple inspections.
         """
         try:
             file, pos = parse_location(location)
