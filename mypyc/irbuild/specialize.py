@@ -1246,7 +1246,9 @@ def translate_bytes_writer_get_item(
 
     # Handle valid index - get the item
     builder.activate_block(valid_block)
-    result = builder.primitive_op(bytes_writer_get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line)
+    result = builder.primitive_op(
+        bytes_writer_get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line
+    )
 
     return result
 
@@ -1292,6 +1294,8 @@ def translate_bytes_writer_set_item(
 
     # Handle valid index - set the item
     builder.activate_block(valid_block)
-    builder.primitive_op(bytes_writer_set_item_unsafe_op, [obj, adjusted_index, value], ctx_expr.line)
+    builder.primitive_op(
+        bytes_writer_set_item_unsafe_op, [obj, adjusted_index, value], ctx_expr.line
+    )
 
     return builder.none()
