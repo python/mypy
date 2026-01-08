@@ -95,7 +95,7 @@ bytes_writer_range_check_op = custom_primitive_op(
 )
 
 # BytesWriter.__getitem__() - get byte at index (no bounds checking)
-bytes_writer_get_item_op = custom_primitive_op(
+bytes_writer_get_item_unsafe_op = custom_primitive_op(
     name="bytes_writer_get_item",
     arg_types=[bytes_writer_rprimitive, int64_rprimitive],
     return_type=uint8_rprimitive,
@@ -106,7 +106,7 @@ bytes_writer_get_item_op = custom_primitive_op(
 )
 
 # BytesWriter.__setitem__() - set byte at index (no bounds checking)
-bytes_writer_set_item_op = custom_primitive_op(
+bytes_writer_set_item_unsafe_op = custom_primitive_op(
     name="bytes_writer_set_item",
     arg_types=[bytes_writer_rprimitive, int64_rprimitive, uint8_rprimitive],
     return_type=void_rtype,

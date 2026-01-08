@@ -107,9 +107,9 @@ from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import isinstance_int
 from mypyc.primitives.librt_strings_ops import (
     bytes_writer_adjust_index_op,
-    bytes_writer_get_item_op,
+    bytes_writer_get_item_unsafe_op,
     bytes_writer_range_check_op,
-    bytes_writer_set_item_op,
+    bytes_writer_set_item_unsafe_op,
 )
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
@@ -1246,7 +1246,7 @@ def translate_bytes_writer_get_item(
 
     # Handle valid index - get the item
     builder.activate_block(valid_block)
-    result = builder.primitive_op(bytes_writer_get_item_op, [obj, adjusted_index], ctx_expr.line)
+    result = builder.primitive_op(bytes_writer_get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line)
 
     return result
 
@@ -1292,6 +1292,6 @@ def translate_bytes_writer_set_item(
 
     # Handle valid index - set the item
     builder.activate_block(valid_block)
-    builder.primitive_op(bytes_writer_set_item_op, [obj, adjusted_index, value], ctx_expr.line)
+    builder.primitive_op(bytes_writer_set_item_unsafe_op, [obj, adjusted_index, value], ctx_expr.line)
 
     return builder.none()
