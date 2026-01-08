@@ -40,7 +40,14 @@ from typing import (
     TypedDict,
 )
 
-from librt.internal import cache_version
+
+# from librt.internal import cache_version
+# from mypy.cache import CACHE_VERSION as cache_version
+def cache_version() -> int:
+    from mypy.cache import CACHE_VERSION
+
+    return CACHE_VERSION
+
 
 import mypy.semanal_main
 from mypy.cache import (
