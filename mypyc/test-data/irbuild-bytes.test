@@ -50,11 +50,7 @@ def f(s, num):
     num :: int
     r0 :: object
     r1 :: str
-    r2, r3, a :: object
-    r4 :: bytes
-    b, r5 :: object
-    r6 :: bytes
-    c :: object
+    r2, r3, a, r4, b, r5, r6, c :: object
 L0:
     r0 = builtins :: module
     r1 = 'bytearray'
