@@ -8,6 +8,7 @@ from mypyc.ir.rtypes import (
     RUnion,
     bit_rprimitive,
     bool_rprimitive,
+    bytearray_rprimitive,
     bytes_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -51,7 +52,7 @@ isinstance_bytes = function_op(
 function_op(
     name="builtins.bytearray",
     arg_types=[object_rprimitive],
-    return_type=object_rprimitive,
+    return_type=bytearray_rprimitive,
     c_function_name="PyByteArray_FromObject",
     error_kind=ERR_MAGIC,
 )
