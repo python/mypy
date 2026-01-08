@@ -1,4 +1,4 @@
-"""Primitive bytes ops."""
+"""Primitive bytes and bytearray ops."""
 
 from __future__ import annotations
 
@@ -29,6 +29,9 @@ from mypyc.primitives.registry import (
 
 # Get the 'bytes' type object.
 load_address_op(name="builtins.bytes", type=object_rprimitive, src="PyBytes_Type")
+
+# Get the 'bytearray' type object.
+load_address_op(name="builtins.bytearray", type=object_rprimitive, src="PyByteArray_Type")
 
 # bytes(obj)
 function_op(

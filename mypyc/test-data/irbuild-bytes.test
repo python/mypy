@@ -48,24 +48,20 @@ def f(s: str, num: int) -> None:
 def f(s, num):
     s :: str
     num :: int
-    r0 :: object
-    r1 :: str
-    r2, r3 :: object
-    r4, a, r5, b :: bytearray
-    r6 :: object
-    r7, c :: bytearray
+    r0, r1 :: object
+    r2, a, r3, b :: bytearray
+    r4 :: object
+    r5, c :: bytearray
 L0:
-    r0 = builtins :: module
-    r1 = 'bytearray'
-    r2 = CPyObject_GetAttr(r0, r1)
-    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
-    r4 = cast(bytearray, r3)
-    a = r4
-    r5 = PyByteArray_FromObject(s)
-    b = r5
-    r6 = box(int, num)
-    r7 = PyByteArray_FromObject(r6)
-    c = r7
+    r0 = load_address PyByteArray_Type
+    r1 = PyObject_Vectorcall(r0, 0, 0, 0)
+    r2 = cast(bytearray, r1)
+    a = r2
+    r3 = PyByteArray_FromObject(s)
+    b = r3
+    r4 = box(int, num)
+    r5 = PyByteArray_FromObject(r4)
+    c = r5
     return 1
 
 [case testBytesEquality]
