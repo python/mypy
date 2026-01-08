@@ -2453,8 +2453,7 @@ class State:
         if self.options.mypyc and not self.options.strict_bytes:
             self.manager.errors.set_file(self.xpath, self.id, options=self.options)
             self.manager.errors.report(
-                1, 0, "Option --strict-bytes cannot be disabled when using mypyc",
-                blocker=True
+                1, 0, "Option --strict-bytes cannot be disabled when using mypyc", blocker=True
             )
 
     def semantic_analysis_pass1(self) -> None:
