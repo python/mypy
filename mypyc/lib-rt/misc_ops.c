@@ -81,6 +81,8 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
                 if (res) {
                     *outp = res;
                     return 1;
+                } else {
+                    return 2;
                 }
             }
         } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
