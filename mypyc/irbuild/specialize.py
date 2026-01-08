@@ -55,6 +55,7 @@ from mypyc.ir.rtypes import (
     RType,
     bool_rprimitive,
     bytes_rprimitive,
+    bytes_writer_rprimitive,
     c_int_rprimitive,
     dict_rprimitive,
     int16_rprimitive,
@@ -104,6 +105,12 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import isinstance_int
+from mypyc.primitives.librt_strings_ops import (
+    bytes_writer_adjust_index_op,
+    bytes_writer_get_item_unsafe_op,
+    bytes_writer_range_check_op,
+    bytes_writer_set_item_unsafe_op,
+)
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
 from mypyc.primitives.misc_ops import isinstance_bool
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
@@ -127,11 +134,24 @@ from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
 # compiled, and the RefExpr that is the left hand side of the call.
 Specializer = Callable[["IRBuilder", CallExpr, RefExpr], Value | None]
 
+# Dunder specializers are for special method calls like __getitem__, __setitem__, etc.
+# that don't naturally map to CallExpr nodes (e.g., from IndexExpr).
+#
+# They take four arguments: the IRBuilder, the base expression (target object),
+# the list of argument expressions (positional arguments to the dunder), and the
+# context expression (e.g., IndexExpr) for error reporting.
+DunderSpecializer = Callable[["IRBuilder", Expression, list[Expression], Expression], Value | None]
+
 # Dictionary containing all configured specializers.
 #
 # Specializers can operate on methods as well, and are keyed on the
 # name and RType in that case.
 specializers: dict[tuple[str, RType | None], list[Specializer]] = {}
+
+# Dictionary containing all configured dunder specializers.
+#
+# Dunder specializers are keyed on the dunder name and RType (always a method call).
+dunder_specializers: dict[tuple[str, RType], list[DunderSpecializer]] = {}
 
 
 def _apply_specialization(
@@ -180,6 +200,53 @@ def specialize_function(
         return f
 
     return wrapper
+
+
+def specialize_dunder(name: str, typ: RType) -> Callable[[DunderSpecializer], DunderSpecializer]:
+    """Decorator to register a function as being a dunder specializer.
+
+    Dunder specializers handle special method calls like __getitem__ that
+    don't naturally map to CallExpr nodes.
+
+    There may exist multiple specializers for one dunder. When translating
+    dunder calls, the earlier appended specializer has higher priority.
+    """
+
+    def wrapper(f: DunderSpecializer) -> DunderSpecializer:
+        dunder_specializers.setdefault((name, typ), []).append(f)
+        return f
+
+    return wrapper
+
+
+def apply_dunder_specialization(
+    builder: IRBuilder,
+    base_expr: Expression,
+    args: list[Expression],
+    name: str,
+    ctx_expr: Expression,
+) -> Value | None:
+    """Invoke the DunderSpecializer callback if one has been registered.
+
+    Args:
+        builder: The IR builder
+        base_expr: The base expression (target object)
+        args: List of argument expressions (positional arguments to the dunder)
+        name: The dunder method name (e.g., "__getitem__")
+        ctx_expr: The context expression for error reporting (e.g., IndexExpr)
+
+    Returns:
+        The specialized value, or None if no specialization was found.
+    """
+    base_type = builder.node_type(base_expr)
+
+    # Check if there's a specializer for this dunder method and type
+    if (name, base_type) in dunder_specializers:
+        for specializer in dunder_specializers[name, base_type]:
+            val = specializer(builder, base_expr, args, ctx_expr)
+            if val is not None:
+                return val
+    return None
 
 
 @specialize_function("builtins.globals")
@@ -1137,3 +1204,98 @@ def translate_object_setattr(builder: IRBuilder, expr: CallExpr, callee: RefExpr
 
     name_reg = builder.accept(attr_name)
     return builder.call_c(generic_setattr, [self_reg, name_reg, value], expr.line)
+
+
+@specialize_dunder("__getitem__", bytes_writer_rprimitive)
+def translate_bytes_writer_get_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized BytesWriter.__getitem__ implementation with bounds checking."""
+    # Check that we have exactly one argument
+    if len(args) != 1:
+        return None
+
+    # Get the BytesWriter object
+    obj = builder.accept(base_expr)
+
+    # Get the index argument
+    index = builder.accept(args[0])
+
+    # Adjust the index (handle negative indices)
+    adjusted_index = builder.primitive_op(
+        bytes_writer_adjust_index_op, [obj, index], ctx_expr.line
+    )
+
+    # Check if the adjusted index is in valid range
+    range_check = builder.primitive_op(
+        bytes_writer_range_check_op, [obj, adjusted_index], ctx_expr.line
+    )
+
+    # Create blocks for branching
+    valid_block = BasicBlock()
+    invalid_block = BasicBlock()
+
+    builder.add_bool_branch(range_check, valid_block, invalid_block)
+
+    # Handle invalid index - raise IndexError
+    builder.activate_block(invalid_block)
+    builder.add(
+        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
+    )
+    builder.add(Unreachable())
+
+    # Handle valid index - get the item
+    builder.activate_block(valid_block)
+    result = builder.primitive_op(
+        bytes_writer_get_item_unsafe_op, [obj, adjusted_index], ctx_expr.line
+    )
+
+    return result
+
+
+@specialize_dunder("__setitem__", bytes_writer_rprimitive)
+def translate_bytes_writer_set_item(
+    builder: IRBuilder, base_expr: Expression, args: list[Expression], ctx_expr: Expression
+) -> Value | None:
+    """Optimized BytesWriter.__setitem__ implementation with bounds checking."""
+    # Check that we have exactly two arguments (index and value)
+    if len(args) != 2:
+        return None
+
+    # Get the BytesWriter object
+    obj = builder.accept(base_expr)
+
+    # Get the index and value arguments
+    index = builder.accept(args[0])
+    value = builder.accept(args[1])
+
+    # Adjust the index (handle negative indices)
+    adjusted_index = builder.primitive_op(
+        bytes_writer_adjust_index_op, [obj, index], ctx_expr.line
+    )
+
+    # Check if the adjusted index is in valid range
+    range_check = builder.primitive_op(
+        bytes_writer_range_check_op, [obj, adjusted_index], ctx_expr.line
+    )
+
+    # Create blocks for branching
+    valid_block = BasicBlock()
+    invalid_block = BasicBlock()
+
+    builder.add_bool_branch(range_check, valid_block, invalid_block)
+
+    # Handle invalid index - raise IndexError
+    builder.activate_block(invalid_block)
+    builder.add(
+        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
+    )
+    builder.add(Unreachable())
+
+    # Handle valid index - set the item
+    builder.activate_block(valid_block)
+    builder.primitive_op(
+        bytes_writer_set_item_unsafe_op, [obj, adjusted_index, value], ctx_expr.line
+    )
+
+    return builder.none()
