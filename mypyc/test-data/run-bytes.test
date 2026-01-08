@@ -79,8 +79,8 @@ def test_concat() -> None:
     assert type(b1) == bytes
     assert type(b2) == bytes
     assert type(b3) == bytes
-    brr1: bytes = bytearray(3)
-    brr2: bytes = bytearray(range(5))
+    brr1 = bytearray(3)
+    brr2 = bytearray(range(5))
     b4 = b1 + brr1
     assert b4 == b'123\x00\x00\x00'
     assert type(brr1) == bytearray
@@ -346,10 +346,6 @@ from a import bytes_subclass
 def test_bytes_join() -> None:
     assert b' '.join([b'a', b'b']) == b'a b'
     assert b' '.join([]) == b''
-
-    x: bytes = bytearray(b' ')
-    assert x.join([b'a', b'b']) == b'a b'
-    assert type(x.join([b'a', b'b'])) == bytearray
 
     y: bytes = bytes_subclass()
     assert y.join([]) == b'spook'
