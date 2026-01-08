@@ -15,11 +15,13 @@ from mypy.message_registry import ErrorMessage
 from mypy.nodes import (
     ArgKind,
     Context,
+    Decorator,
     Expression,
     FuncItem,
     LambdaExpr,
     MypyFile,
     Node,
+    OverloadedFuncDef,
     RefExpr,
     SymbolNode,
     TypeInfo,
@@ -285,6 +287,12 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
 
     @abstractmethod
     def add_any_attribute_to_type(self, typ: Type, name: str) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_property_instance(
+        self, method: Var | Decorator | OverloadedFuncDef
+    ) -> Instance | None:
         raise NotImplementedError
 
     @abstractmethod
