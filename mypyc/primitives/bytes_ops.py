@@ -51,7 +51,7 @@ isinstance_bytes = function_op(
 function_op(
     name="builtins.bytearray",
     arg_types=[object_rprimitive],
-    return_type=bytes_rprimitive,
+    return_type=object_rprimitive,
     c_function_name="PyByteArray_FromObject",
     error_kind=ERR_MAGIC,
 )
@@ -74,7 +74,6 @@ bytes_compare = custom_op(
 )
 
 # bytes + bytes
-# bytearray + bytearray
 binary_op(
     name="+",
     arg_types=[bytes_rprimitive, bytes_rprimitive],
