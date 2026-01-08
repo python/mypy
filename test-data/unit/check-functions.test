@@ -3512,6 +3512,56 @@ class Qux(Bar):
         pass
 [builtins fixtures/tuple.pyi]
 
+[case testCallableJoinWithDefaults]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+def join(t1: T, t2: T) -> T: ...
+
+def f1() -> None: ...
+def f2(i: int = 0) -> None: ...
+def f3(i: str = "") -> None: ...
+
+reveal_type(join(f1, f2))  # N: Revealed type is "def ()"
+reveal_type(join(f1, f3))  # N: Revealed type is "def ()"
+reveal_type(join(f2, f3))  # N: Revealed type is "builtins.function"  # TODO: this could be better
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoinWithDefaultsMultiple]
+from typing import TypeVar
+T = TypeVar("T")
+def join(t1: T, t2: T, t3: T) -> T: ...
+
+def f_1(common, a=None): ...
+def f_any(*_, **__): ...
+def f_3(common, b=None, x=None): ...
+
+fdict = {
+    "f_1": f_1,
+    "f_any": f_any,
+    "f_3": f_3,
+}
+reveal_type(fdict)  # N: Revealed type is "builtins.dict[builtins.str, def (common: Any, a: Any =) -> Any]"
+
+reveal_type(join(f_1, f_any, f_3))  # N: Revealed type is "def (common: Any, a: Any =) -> Any"
+
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoinWithType]
+from __future__ import annotations
+class Exc: ...
+class AttributeErr(Exc):
+    def __init__(self, *args: object) -> None: ...
+class FnfErr(Exc): ...
+
+x = [
+    FnfErr,
+    AttributeErr,
+]
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.type]"
+[builtins fixtures/type.pyi]
+
 [case testDistinctFormatting]
 from typing import Awaitable, Callable, ParamSpec
 
