@@ -1637,7 +1637,17 @@ class C:
             return C()
         else:
             return NotImplemented
+[builtins fixtures/isinstance.pyi]
 
+[case testPassAndEllipsisUnreachable]
+# flags: --warn-unreachable
+def f() -> None:
+    return
+    pass  # E: Statement is unreachable
+
+def g() -> None:
+    return
+    ...  # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
 
 [case testUnreachableStatementPrettyHighlighting]
