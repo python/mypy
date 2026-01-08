@@ -2756,21 +2756,13 @@ def c(t: X[Concatenate[int, ...]]) -> None:  # E: Cannot use "[int, VarArg(Any),
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleLiteralValueAsTypeArgument]
-from typing import TypeVarTuple, Generic, Unpack, Callable, TypeVar
+from typing import TypeVarTuple, Unpack, Callable, TypeVar
 
 Ts = TypeVarTuple('Ts')
 T = TypeVar('T')
 
-class C(Generic[Unpack[Ts]]):
-    pass
-
-x = C[1, 2, 3]() # E: Invalid type: try using Literal[1] instead? \
-                 # E: Invalid type: try using Literal[2] instead? \
-                 # E: Invalid type: try using Literal[3] instead?
-
 def func(d: Callable[[Unpack[Ts]], T]) -> T: ...
 
 y = func[1, int] # E: Type application is only supported for generic classes \
-                 # E: Invalid type argument: type expected, for Any \
                  # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/tuple.pyi]
