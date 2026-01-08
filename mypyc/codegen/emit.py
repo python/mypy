@@ -657,7 +657,7 @@ class Emitter:
         elif is_bytes_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f"PyObject *{dest};")
-            check = "(PyBytes_Check({}) || PyByteArray_Check({}))"
+            check = "(PyBytes_Check({}))"
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check.format(src, src), optional)

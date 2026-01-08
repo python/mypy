@@ -892,7 +892,7 @@ def test_decode_error() -> None:
         pass
 
 def test_decode_bytearray() -> None:
-    b: bytes = bytearray(b'foo\x00bar')
+    b = bytearray(b'foo\x00bar')
     assert b.decode() == 'foo\x00bar'
     assert b.decode('utf-8') == 'foo\x00bar'
     assert b.decode('latin-1') == 'foo\x00bar'
@@ -900,7 +900,7 @@ def test_decode_bytearray() -> None:
     assert b.decode('utf-8' + str()) == 'foo\x00bar'
     assert b.decode('latin-1' + str()) == 'foo\x00bar'
     assert b.decode('ascii' + str()) == 'foo\x00bar'
-    b2: bytes = bytearray(b'foo\x00bar\xbe')
+    b2 = bytearray(b'foo\x00bar\xbe')
     assert b2.decode('latin-1') == 'foo\x00bar\xbe'
     with assertRaises(UnicodeDecodeError):
         b2.decode('ascii')
@@ -910,7 +910,7 @@ def test_decode_bytearray() -> None:
         b2.decode('utf-8')
     with assertRaises(UnicodeDecodeError):
         b2.decode('utf-8' + str())
-    b3: bytes = bytearray(b'Z\xc3\xbcrich')
+    b3 = bytearray(b'Z\xc3\xbcrich')
     assert b3.decode("utf-8") == 'Zürich'
 
 def test_invalid_encoding() -> None:

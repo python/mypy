@@ -261,3 +261,16 @@ L0:
     r0 = CPyBytes_Startswith(a, b)
     r1 = truncate r0: i32 to builtins.bool
     return r1
+
+[case testBytesVsBytearray]
+def bytes_func(b: bytes) -> None: pass
+def bytearray_func(ba: bytearray) -> None: pass
+
+def foo(b: bytes, ba: bytearray) -> None:
+    bytes_func(b)
+    bytearray_func(ba)
+    bytes_func(ba)
+    bytearray_func(b)
+[out]
+main:7: error: Argument 1 to "bytes_func" has incompatible type "bytearray"; expected "bytes"
+main:8: error: Argument 1 to "bytearray_func" has incompatible type "bytes"; expected "bytearray"
