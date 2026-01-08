@@ -94,9 +94,9 @@ def test_concat() -> None:
     b5 = brr2 + b2
     assert b5 == bytearray(b'\x00\x01\x02\x03\x04456')
     assert type(b5) == bytearray
-    b5 = b2 + brr2
-    assert b5 == b'456\x00\x01\x02\x03\x04'
-    assert type(b5) == bytes
+    b6 = b2 + brr2
+    assert b6 == b'456\x00\x01\x02\x03\x04'
+    assert type(b6) == bytes
 
 def test_join() -> None:
     seq = (b'1', b'"', b'\xf0')
@@ -217,9 +217,9 @@ def test_startswith() -> None:
     assert test.startswith(bytearray(b'some'))
     assert not test.startswith(bytearray(b'other'))
 
-    test = bytearray(b'some string')
-    assert test.startswith(b'some')
-    assert not test.startswith(b'other')
+    test2 = bytearray(b'some string')
+    assert test2.startswith(b'some')
+    assert not test2.startswith(b'other')
 
 [case testBytesSlicing]
 def test_bytes_slicing() -> None:
