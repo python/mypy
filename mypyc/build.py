@@ -680,10 +680,13 @@ def mypycify(
             cflags.append("-DMYPYC_LOG_TRACE")
         if experimental_features:
             cflags.append("-DMYPYC_EXPERIMENTAL")
+        if opt_level == "0":
+            cflags.append("-UNDEBUG")
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
             opt_level = "d"
+            cflags.append("/UNDEBUG")
         elif opt_level in ("1", "2", "3"):
             opt_level = "2"
         if debug_level == "0":

@@ -16,6 +16,10 @@ mypyc_interned_str_struct mypyc_interned_str;
 
 int
 intern_strings(void) {
+    if (mypyc_interned_str.values != NULL) {
+        // Already interned.
+        return 0;
+    }
     INTERN_STRING(__init_subclass__, "__init_subclass__");
     INTERN_STRING(__mro_entries__, "__mro_entries__");
     INTERN_STRING(__name__, "__name__");
