@@ -1,4 +1,4 @@
-"""Primitive bytes and bytearray ops."""
+"""Primitive bytes ops."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from mypyc.ir.rtypes import (
     RUnion,
     bit_rprimitive,
     bool_rprimitive,
-    bytearray_rprimitive,
     bytes_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -30,9 +29,6 @@ from mypyc.primitives.registry import (
 # Get the 'bytes' type object.
 load_address_op(name="builtins.bytes", type=object_rprimitive, src="PyBytes_Type")
 
-# Get the 'bytearray' type object.
-load_address_op(name="builtins.bytearray", type=object_rprimitive, src="PyByteArray_Type")
-
 # bytes(obj)
 function_op(
     name="builtins.bytes",
@@ -48,24 +44,6 @@ isinstance_bytes = function_op(
     arg_types=[object_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="PyBytes_Check",
-    error_kind=ERR_NEVER,
-)
-
-# bytearray(obj)
-function_op(
-    name="builtins.bytearray",
-    arg_types=[object_rprimitive],
-    return_type=bytearray_rprimitive,
-    c_function_name="PyByteArray_FromObject",
-    error_kind=ERR_MAGIC,
-)
-
-# translate isinstance(obj, bytearray)
-isinstance_bytearray = function_op(
-    name="builtins.isinstance",
-    arg_types=[object_rprimitive],
-    return_type=bit_rprimitive,
-    c_function_name="PyByteArray_Check",
     error_kind=ERR_NEVER,
 )
 
