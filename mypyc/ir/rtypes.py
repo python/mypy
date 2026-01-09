@@ -505,7 +505,9 @@ str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcount
 bytes_rprimitive: Final = RPrimitive("builtins.bytes", is_unboxed=False, is_refcounted=True)
 
 # Python bytearray object.
-bytearray_rprimitive: Final = RPrimitive("builtins.bytearray", is_unboxed=False, is_refcounted=True)
+bytearray_rprimitive: Final = RPrimitive(
+    "builtins.bytearray", is_unboxed=False, is_refcounted=True
+)
 
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').

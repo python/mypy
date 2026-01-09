@@ -2,8 +2,8 @@ from mypyc.ir.deps import BYTES_WRITER_EXTRA_OPS, LIBRT_STRINGS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bool_rprimitive,
-    bytes_rprimitive,
     bytearray_rprimitive,
+    bytes_rprimitive,
     bytes_writer_rprimitive,
     int64_rprimitive,
     none_rprimitive,

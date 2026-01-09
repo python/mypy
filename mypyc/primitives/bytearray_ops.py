@@ -10,7 +10,7 @@ from __future__ import annotations
 from mypyc.ir.deps import BYTEARRAY_EXTRA_OPS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import bit_rprimitive, bytearray_rprimitive, object_rprimitive
-from mypyc.primitives.registry import function_op, load_address_op, custom_primitive_op
+from mypyc.primitives.registry import custom_primitive_op, function_op, load_address_op
 
 # Get the 'bytearray' type object.
 load_address_op(name="builtins.bytearray", type=object_rprimitive, src="PyByteArray_Type")
