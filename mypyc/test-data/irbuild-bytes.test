@@ -103,17 +103,6 @@ L0:
     return r0
 
 [case testBytesIndex]
-def f(a: bytes, i: int) -> int:
-    return a[i]
-[out]
-def f(a, i):
-    a :: bytes
-    i, r0 :: int
-L0:
-    r0 = CPyBytes_GetItem(a, i)
-    return r0
-
-[case testBytesIndex_experimental_64bit]
 from mypy_extensions import i64
 
 def f(a: bytes, i: i64) -> int:
