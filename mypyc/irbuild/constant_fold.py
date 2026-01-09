@@ -10,7 +10,8 @@ to other compiled modules in the same compilation unit.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Final, TypeVar
 
 from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
@@ -18,14 +19,17 @@ from mypy.nodes import (
     ComplexExpr,
     Expression,
     FloatExpr,
+    IndexExpr,
     IntExpr,
     MemberExpr,
     NameExpr,
     OpExpr,
+    SliceExpr,
     StrExpr,
     UnaryExpr,
     Var,
 )
+from mypyc.ir.ops import Value
 from mypyc.irbuild.util import bytes_from_str
 
 if TYPE_CHECKING:
@@ -34,6 +38,8 @@ if TYPE_CHECKING:
 # All possible result types of constant folding
 ConstantValue = int | float | complex | str | bytes
 CONST_TYPES: Final = (int, float, complex, str, bytes)
+
+Expr = TypeVar("Expr", bound=Expression)
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
@@ -74,6 +80,60 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
+    elif isinstance(expr, IndexExpr):
+        base = constant_fold_expr(builder, expr.base)
+        if base is not None:
+            assert isinstance(base, (Sequence, dict)), base
+            index_expr = expr.index
+            if isinstance(index_expr, SliceExpr):
+                if index_expr.begin_index is None:
+                    begin_index = None
+                else:
+                    begin_index = constant_fold_expr(builder, index_expr.begin_index)
+                    if begin_index is None:
+                        return None
+                if index_expr.end_index is None:
+                    end_index = None
+                else:
+                    end_index = constant_fold_expr(builder, index_expr.end_index)
+                    if end_index is None:
+                        return None
+                if index_expr.stride is None:
+                    stride = None
+                else:
+                    stride = constant_fold_expr(builder, index_expr.stride)
+                    if stride is None:
+                        return None
+
+                # this branching just keeps mypy happy, non-functional
+                if isinstance(base, Sequence):
+                    assert isinstance(begin_index, int) or begin_index is None
+                    assert isinstance(end_index, int) or end_index is None
+                    assert isinstance(stride, int) or stride is None
+                    try:
+                        return base[begin_index:end_index:stride]
+                    except Exception:
+                        return None
+                try:  # type: ignore [unreachable]
+                    return base[begin_index:end_index:stride]
+                except Exception:
+                    return None
+
+            index = constant_fold_expr(builder, index_expr)
+
+            # this branching just keeps mypy happy, non-functional
+            if isinstance(base, Sequence):
+
+                if isinstance(index, int):
+                    try:
+                        return base[index]
+                    except Exception:
+                        return None
+            else:
+                try:  # type: ignore [unreachable]
+                    return base[index]
+                except Exception:
+                    return None
     return None
 
 
@@ -95,3 +155,31 @@ def constant_fold_binary_op_extended(
         return left * right
 
     return None
+
+
+def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
+    """Return the constant value of an expression if possible.
+
+    Return None otherwise.
+    """
+    value = constant_fold_expr(builder, expr)
+    if value is not None:
+        return builder.load_literal_value(value)
+    return None
+
+
+def folding_candidate(
+    transform: Callable[[IRBuilder, Expr], Value],
+) -> Callable[[IRBuilder, Expr], Value]:
+    """Mark a transform function as a candidate for constant folding.
+
+    Candidate functions will attempt to short-circuit the transformation
+    by constant folding the expression and will only proceed to transform
+    the expression if folding is not possible.
+    """
+
+    def constant_fold_wrap(builder: IRBuilder, expr: Expr) -> Value:
+        folded = try_constant_fold(builder, expr)
+        return folded if folded is not None else transform(builder, expr)
+
+    return constant_fold_wrap
