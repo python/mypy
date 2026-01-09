@@ -2582,3 +2582,19 @@ def last_known_value() -> None:
     x, y, z = xy  # E: Unpacking a string is disallowed
     reveal_type(z)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
+
+[case testInvalidArgumentInOverloadError]
+from typing import overload
+
+@overload 
+def f(foobar: int) -> None:
+    pass
+
+@overload
+def f(foobar: str) -> None:
+    pass
+
+def f(foobar: bool) -> None:
+    pass
+
+f(fobar=1) # E: Unexpected keyword argument "fobar" for overloaded function "f"; did you mean "foobar"?

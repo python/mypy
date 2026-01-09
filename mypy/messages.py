@@ -1091,14 +1091,65 @@ class MessageBuilder:
         arg_types: list[Type],
         context: Context,
         *,
+        arg_names: Sequence[str | None] | None,
+        arg_kinds: list[ArgKind] | None = None,
         code: ErrorCode | None = None,
     ) -> None:
         code = code or codes.CALL_OVERLOAD
         name = callable_name(overload)
         if name:
             name_str = f" of {name}"
+            for_func = f" for overloaded function {name}"
         else:
             name_str = ""
+            for_func = ""
+
+        # For keyword argument errors
+        unexpected_kwargs: list[tuple[str, Type]] = [] 
+        if arg_names is not None and arg_kinds is not None: 
+            all_valid_kwargs: set[str] = set()
+            for item in overload.items:
+                for i, arg_name in enumerate(item.arg_names): 
+                    if arg_name is not None and arg_kinds[i] != ARG_STAR:
+                        all_valid_kwargs.add(arg_name)
+                if item.is_kw_arg:
+                    all_valid_kwargs.clear()
+                    break
+
+            if all_valid_kwargs: 
+                for i, (arg_name, arg_kind) in enumerate(zip(arg_names, arg_kinds)):
+                    if arg_kind == ARG_NAMED and arg_name is not None: 
+                        if arg_name not in all_valid_kwargs:
+                            unexpected_kwargs.append((arg_name, arg_types[i]))
+        
+        if unexpected_kwargs:
+            for kwarg_name, kwarg_type in unexpected_kwargs:
+                matching_type_args: list[str] = []
+                not_matching_type_args: list[str] = []
+
+                for item in overload.items:
+                    for i, formal_type in enumerate(item.arg_types):
+                        formal_name = item.arg_names[i]
+                        if formal_name is not None and item.arg_kinds[i] != ARG_STAR:
+                            if is_subtype(kwarg_type, formal_type):
+                                if formal_name not in matching_type_args:
+                                    matching_type_args.append(formal_name)
+                            else:
+                                if formal_name not in not_matching_type_args:
+                                    not_matching_type_args.append(formal_name)
+                
+                matches = best_matches(kwarg_name, matching_type_args, n=3)
+                if not matches:
+                    matches = best_matches(kwarg_name, not_matching_type_args, n=3)
+                
+                msg = f'Unexpected keyword argument "{kwarg_name}"' + for_func
+                if matches: 
+                    msg += f"; did you mean {pretty_seq(matches, 'or')}?"
+                self.fail(msg, context, code=code)
+
+                # do we want to still show possible overload variants as a note?
+            return 
+            
         arg_types_str = ", ".join(format_type(arg, self.options) for arg in arg_types)
         num_args = len(arg_types)
         if num_args == 0:
