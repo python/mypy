@@ -1161,6 +1161,15 @@ class MessageBuilder:
                 if matches: 
                     msg += f"; did you mean {pretty_seq(matches, 'or')}?"
                 self.fail(msg, context, code=code)
+                
+                if matching_variant is None:
+                    self.note(
+                        f"Possible overload variant{plural_s(len(overload.items))}:",
+                        context,
+                        code=code,
+                    )
+                    for item in overload.items:
+                        self.note(pretty_callable(item, self.options), context, offset=4, code=code)
 
             return 
             
