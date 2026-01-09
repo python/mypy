@@ -100,15 +100,26 @@ L0:
     return r0
 
 [case testBytesIndex]
-def f(a: bytes, i: int) -> int:
+from mypy_extensions import i64
+
+def f(a: bytes, i: i64) -> int:
     return a[i]
 [out]
 def f(a, i):
     a :: bytes
-    i, r0 :: int
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: int
 L0:
-    r0 = CPyBytes_GetItem(a, i)
-    return r0
+    r0 = CPyBytes_AdjustIndex(a, i)
+    r1 = CPyBytes_RangeCheck(a, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyBytes_GetItemUnsafe(a, r0)
+    return r3
 
 [case testBytesConcat]
 def f(a: bytes, b: bytes) -> bytes:
